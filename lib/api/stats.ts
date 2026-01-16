@@ -47,7 +47,7 @@ export async function getTopPages(siteId: string, startDate?: string, endDate?: 
   if (startDate) params.append('start_date', startDate)
   if (endDate) params.append('end_date', endDate)
   params.append('limit', limit.toString())
-  return apiRequest<{ pages: TopPage[] }>(`/sites/${siteId}/pages?${params.toString()}`).then(r => r.pages)
+  return apiRequest<{ pages: TopPage[] }>(`/sites/${siteId}/pages?${params.toString()}`).then(r => r?.pages || [])
 }
 
 export async function getTopReferrers(siteId: string, startDate?: string, endDate?: string, limit = 10): Promise<TopReferrer[]> {
@@ -55,7 +55,7 @@ export async function getTopReferrers(siteId: string, startDate?: string, endDat
   if (startDate) params.append('start_date', startDate)
   if (endDate) params.append('end_date', endDate)
   params.append('limit', limit.toString())
-  return apiRequest<{ referrers: TopReferrer[] }>(`/sites/${siteId}/referrers?${params.toString()}`).then(r => r.referrers)
+  return apiRequest<{ referrers: TopReferrer[] }>(`/sites/${siteId}/referrers?${params.toString()}`).then(r => r?.referrers || [])
 }
 
 export async function getCountries(siteId: string, startDate?: string, endDate?: string, limit = 10): Promise<CountryStat[]> {
@@ -63,12 +63,12 @@ export async function getCountries(siteId: string, startDate?: string, endDate?:
   if (startDate) params.append('start_date', startDate)
   if (endDate) params.append('end_date', endDate)
   params.append('limit', limit.toString())
-  return apiRequest<{ countries: CountryStat[] }>(`/sites/${siteId}/countries?${params.toString()}`).then(r => r.countries)
+  return apiRequest<{ countries: CountryStat[] }>(`/sites/${siteId}/countries?${params.toString()}`).then(r => r?.countries || [])
 }
 
 export async function getDailyStats(siteId: string, startDate?: string, endDate?: string): Promise<DailyStat[]> {
   const params = new URLSearchParams()
   if (startDate) params.append('start_date', startDate)
   if (endDate) params.append('end_date', endDate)
-  return apiRequest<{ stats: DailyStat[] }>(`/sites/${siteId}/daily?${params.toString()}`).then(r => r.stats)
+  return apiRequest<{ stats: DailyStat[] }>(`/sites/${siteId}/daily?${params.toString()}`).then(r => r?.stats || [])
 }
