@@ -42,8 +42,8 @@ function AuthCallbackContent() {
 
     processedRef.current = true
 
-    const storedState = localStorage.getItem('oauth_state')
-    const codeVerifier = localStorage.getItem('oauth_code_verifier')
+    const storedState = sessionStorage.getItem('oauth_state')
+    const codeVerifier = sessionStorage.getItem('oauth_code_verifier')
 
     if (state !== storedState) {
         console.error('State mismatch', { received: state, stored: storedState })
@@ -53,7 +53,7 @@ function AuthCallbackContent() {
 
     const exchangeCode = async () => {
       try {
-        const authApiUrl = process.env.NEXT_PUBLIC_AUTH_API_URL || 'http://localhost:8081'
+        const authApiUrl = process.env.NEXT_PUBLIC_AUTH_API_URL || 'https://auth-api.ciphera.net'
         const res = await fetch(`${authApiUrl}/oauth/token`, {
           method: 'POST',
           headers: {
@@ -83,8 +83,8 @@ function AuthCallbackContent() {
             totp_enabled: payload.totp_enabled || false
         })
         
-        localStorage.removeItem('oauth_state')
-        localStorage.removeItem('oauth_code_verifier')
+        sessionStorage.removeItem('oauth_state')
+        sessionStorage.removeItem('oauth_code_verifier')
         
         router.push('/')
       } catch (err: any) {
