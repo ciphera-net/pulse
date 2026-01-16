@@ -2,7 +2,6 @@
 
 import React, { memo, useMemo, useState } from 'react'
 import { ComposableMap, Geographies, Geography } from 'react-simple-maps'
-import { scaleLinear } from 'd3-scale'
 import countries from 'i18n-iso-countries'
 import enLocale from 'i18n-iso-countries/langs/en.json'
 import { useTheme } from 'next-themes'
@@ -34,21 +33,18 @@ const WorldMap = ({ data }: WorldMapProps) => {
     return { map, max }
   }, [data])
 
-  const colorScale = scaleLinear<string>()
-    .domain([0, processedData.max || 1])
-    .range(["#fed7aa", "#FD5E0F"]) // standard choropleth: darker = more visitors
-
   // Plausible-like colors based on provided SVG snippet
   const isDark = resolvedTheme === 'dark'
   const defaultFill = isDark ? "#2d2d2d" : "#F2F2F2" // Approx gray-750 / gray-150
   const defaultStroke = isDark ? "#171717" : "#FFFFFF" // gray-900 / white
+  const brandOrange = "#FD5E0F"
   
   return (
     <div className="relative w-full">
       <ComposableMap 
         width={800} 
         height={400}
-        projectionConfig={{ rotate: [-10, 0, 0], scale: 145, center: [0, 0] }}
+        projectionConfig={{ rotate: [-10, 0, 0], scale: 155, center: [0, 0] }}
         className="w-full h-auto"
       >
         <Geographies geography={geoUrl}>
@@ -58,17 +54,25 @@ const WorldMap = ({ data }: WorldMapProps) => {
               .map((geo) => {
                 const id = String(geo.id).padStart(3, '0')
                 const count = processedData.map.get(id) || 0
+                const fillColor = count > 0 ? brandOrange : defaultFill
               
                 return (
                   <Geography
                     key={geo.rsmKey}
                     geography={geo}
-                    fill={count > 0 ? colorScale(count) : defaultFill}
+                    fill={fillColor}
                     stroke={defaultStroke}
                     strokeWidth={0.5}
                     style={{
                       default: { outline: "none", transition: "all 250ms" },
-                      hover: { fill: "#FD5E0F", outline: "none", cursor: 'pointer' },
+                      hover: { 
+                        fill: fillColor, 
+                        stroke: brandOrange,
+                        strokeWidth: 2,
+                        outline: "none", 
+                        cursor: 'pointer',
+                        zIndex: 100 // Bring border to front
+                      },
                       pressed: { outline: "none" },
                     }}
                     onMouseEnter={(evt) => {
