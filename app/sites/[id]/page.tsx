@@ -85,7 +85,7 @@ export default function SiteDashboardPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <div>
