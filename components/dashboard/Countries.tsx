@@ -10,7 +10,7 @@ interface LocationProps {
   cities: Array<{ city: string; country: string; pageviews: number }>
 }
 
-type Tab = 'countries' | 'cities'
+type Tab = 'map' | 'countries' | 'cities'
 
 export default function Locations({ countries, cities }: LocationProps) {
   const [activeTab, setActiveTab] = useState<Tab>('countries')
@@ -34,26 +34,30 @@ export default function Locations({ countries, cities }: LocationProps) {
   }
 
   const renderContent = () => {
+    if (activeTab === 'map') {
+      if (!countries || countries.length === 0) {
+        return <p className="text-neutral-600 dark:text-neutral-400">No data available</p>
+      }
+      return <WorldMap data={countries} />
+    }
+
     if (activeTab === 'countries') {
       if (!countries || countries.length === 0) {
         return <p className="text-neutral-600 dark:text-neutral-400">No data available</p>
       }
       return (
-        <div className="space-y-4">
-          <WorldMap data={countries} />
-          <div className="space-y-3">
-            {countries.map((country, index) => (
-              <div key={index} className="flex items-center justify-between">
-                <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
-                  <span className="shrink-0">{getFlagComponent(country.country)}</span>
-                  <span className="truncate">{getCountryName(country.country)}</span>
-                </div>
-                <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
-                  {formatNumber(country.pageviews)}
-                </div>
+        <div className="space-y-3">
+          {countries.map((country, index) => (
+            <div key={index} className="flex items-center justify-between">
+              <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
+                <span className="shrink-0">{getFlagComponent(country.country)}</span>
+                <span className="truncate">{getCountryName(country.country)}</span>
               </div>
-            ))}
-          </div>
+              <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
+                {formatNumber(country.pageviews)}
+              </div>
+            </div>
+          ))}
         </div>
       )
     }
@@ -87,6 +91,16 @@ export default function Locations({ countries, cities }: LocationProps) {
           Locations
         </h3>
         <div className="flex p-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg">
+          <button
+            onClick={() => setActiveTab('map')}
+            className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+              activeTab === 'map'
+                ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
+                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+            }`}
+          >
+            Map
+          </button>
           <button
             onClick={() => setActiveTab('countries')}
             className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
