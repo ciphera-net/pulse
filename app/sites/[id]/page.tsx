@@ -12,8 +12,6 @@ import RealtimeVisitors from '@/components/dashboard/RealtimeVisitors'
 import TopPages from '@/components/dashboard/TopPages'
 import TopReferrers from '@/components/dashboard/TopReferrers'
 import Countries from '@/components/dashboard/Countries'
-import Cities from '@/components/dashboard/Cities'
-import Regions from '@/components/dashboard/Regions'
 import Chart from '@/components/dashboard/Chart'
 
 export default function SiteDashboardPage() {
@@ -141,12 +139,7 @@ export default function SiteDashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-2 mb-8">
         <TopReferrers referrers={topReferrers} />
-        <Countries countries={countries} />
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Cities cities={cities} />
-        <Regions regions={regions} />
+        <Countries countries={countries} cities={cities} regions={regions} />
       </div>
     </div>
   )
