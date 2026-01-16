@@ -20,7 +20,7 @@ export interface UpdateSiteRequest {
 
 export async function listSites(): Promise<Site[]> {
   const response = await apiRequest<{ sites: Site[] }>('/sites')
-  return response.sites
+  return response?.sites || []
 }
 
 export async function getSite(id: string): Promise<Site> {

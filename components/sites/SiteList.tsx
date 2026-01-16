@@ -19,9 +19,10 @@ export default function SiteList() {
     try {
       setLoading(true)
       const data = await listSites()
-      setSites(data)
+      setSites(Array.isArray(data) ? data : [])
     } catch (error: any) {
       toast.error('Failed to load sites: ' + (error.message || 'Unknown error'))
+      setSites([]) // Ensure sites is always an array
     } finally {
       setLoading(false)
     }

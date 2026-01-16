@@ -50,12 +50,12 @@ export default function SiteDashboardPage() {
         getCountries(siteId, dateRange.start, dateRange.end, 10),
       ])
       setSite(siteData)
-      setStats(statsData)
-      setRealtime(realtimeData.visitors)
-      setDailyStats(dailyData)
-      setTopPages(pagesData)
-      setTopReferrers(referrersData)
-      setCountries(countriesData)
+      setStats(statsData || { pageviews: 0, visitors: 0 })
+      setRealtime(realtimeData?.visitors || 0)
+      setDailyStats(Array.isArray(dailyData) ? dailyData : [])
+      setTopPages(Array.isArray(pagesData) ? pagesData : [])
+      setTopReferrers(Array.isArray(referrersData) ? referrersData : [])
+      setCountries(Array.isArray(countriesData) ? countriesData : [])
     } catch (error: any) {
       toast.error('Failed to load data: ' + (error.message || 'Unknown error'))
     } finally {

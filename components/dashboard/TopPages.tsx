@@ -7,7 +7,7 @@ interface TopPagesProps {
 }
 
 export default function TopPages({ pages }: TopPagesProps) {
-  if (pages.length === 0) {
+  if (!pages || pages.length === 0) {
     return (
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6">
         <h3 className="text-lg font-semibold mb-4 text-neutral-900 dark:text-white">
