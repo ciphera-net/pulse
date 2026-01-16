@@ -2,6 +2,8 @@ import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // * Enable standalone output for Railway deployment
+  output: 'standalone',
   // * Privacy-first: Disable analytics and telemetry
   productionBrowserSourceMaps: false,
   async redirects() {
