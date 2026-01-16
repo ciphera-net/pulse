@@ -36,23 +36,26 @@ const WorldMap = ({ data }: WorldMapProps) => {
 
   const colorScale = scaleLinear<string>()
     .domain([0, processedData.max || 1])
-    .range(["#fed7aa", "#FD5E0F"]) // orange-200 to brand orange (standard: more visitors = darker)
+    .range(["#fed7aa", "#FD5E0F"]) // standard choropleth: darker = more visitors
 
-  // Dark mode adjustment
+  // Plausible-like colors based on provided SVG snippet
   const isDark = resolvedTheme === 'dark'
-  const defaultFill = isDark ? "#262626" : "#F5F5F5" // neutral-800 : neutral-100
-  const defaultStroke = isDark ? "#404040" : "#D4D4D4" // neutral-700 : neutral-300
+  const defaultFill = isDark ? "#2d2d2d" : "#F2F2F2" // Approx gray-750 / gray-150
+  const defaultStroke = isDark ? "#171717" : "#FFFFFF" // gray-900 / white
   
   return (
-    <div className="relative w-full h-[300px] overflow-hidden">
-      <ComposableMap projectionConfig={{ rotate: [-10, 0, 0], scale: 160, center: [0, 30] }}>
-        <ZoomableGroup maxZoom={1} translateExtent={[[0, 0], [800, 600]]}>
+    <div className="relative w-full h-[300px] overflow-hidden flex items-center justify-center">
+      <ComposableMap 
+        width={800} 
+        height={450} // Aspect ratio adjustment
+        projectionConfig={{ rotate: [-10, 0, 0], scale: 155 }}
+      >
+        <ZoomableGroup center={[0, 10]} maxZoom={1}>
           <Geographies geography={geoUrl}>
             {({ geographies }) =>
               geographies
                 .filter(geo => geo.id !== "010") // Remove Antarctica
                 .map((geo) => {
-                  // Ensure ID is padded to 3 digits as standard ISO numeric
                   const id = String(geo.id).padStart(3, '0')
                   const count = processedData.map.get(id) || 0
                 
@@ -62,7 +65,7 @@ const WorldMap = ({ data }: WorldMapProps) => {
                       geography={geo}
                       fill={count > 0 ? colorScale(count) : defaultFill}
                       stroke={defaultStroke}
-                      strokeWidth={0.5}
+                      strokeWidth={0.7}
                       style={{
                         default: { outline: "none", transition: "all 250ms" },
                         hover: { fill: "#FD5E0F", outline: "none", cursor: 'pointer' },
