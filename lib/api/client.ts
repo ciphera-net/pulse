@@ -5,7 +5,7 @@
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8082'
 export const AUTH_URL = process.env.NEXT_PUBLIC_AUTH_URL || 'http://localhost:3000'
 export const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3003'
-export const AUTH_API_URL = process.env.NEXT_PUBLIC_AUTH_API_URL || 'http://localhost:8081'
+export const AUTH_API_URL = process.env.NEXT_PUBLIC_AUTH_API_URL || 'https://auth-api.ciphera.net'
 
 export function getLoginUrl(redirectPath = '/auth/callback') {
   const redirectUri = encodeURIComponent(`${APP_URL}${redirectPath}`)
