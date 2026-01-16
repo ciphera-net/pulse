@@ -45,43 +45,45 @@ const WorldMap = ({ data }: WorldMapProps) => {
   
   return (
     <div className="relative w-full h-[300px] bg-neutral-50 dark:bg-neutral-900/50 rounded-lg overflow-hidden border border-neutral-100 dark:border-neutral-800">
-      <ComposableMap projectionConfig={{ rotate: [-10, 0, 0], scale: 147 }}>
-        <ZoomableGroup>
+      <ComposableMap projectionConfig={{ rotate: [-10, 0, 0], scale: 160, center: [0, 15] }}>
+        <ZoomableGroup maxZoom={1}>
           <Geographies geography={geoUrl}>
             {({ geographies }) =>
-              geographies.map((geo) => {
-                // Ensure ID is padded to 3 digits as standard ISO numeric
-                const id = String(geo.id).padStart(3, '0')
-                const count = processedData.map.get(id) || 0
+              geographies
+                .filter(geo => geo.id !== "010") // Remove Antarctica
+                .map((geo) => {
+                  // Ensure ID is padded to 3 digits as standard ISO numeric
+                  const id = String(geo.id).padStart(3, '0')
+                  const count = processedData.map.get(id) || 0
                 
-                return (
-                  <Geography
-                    key={geo.rsmKey}
-                    geography={geo}
-                    fill={count > 0 ? colorScale(count) : defaultFill}
-                    stroke={defaultStroke}
-                    strokeWidth={0.5}
-                    style={{
-                      default: { outline: "none", transition: "all 250ms" },
-                      hover: { fill: "#FD5E0F", outline: "none", cursor: 'pointer' },
-                      pressed: { outline: "none" },
-                    }}
-                    onMouseEnter={(evt) => {
-                       const { name } = geo.properties
-                       setTooltipContent({
-                         content: `${name}: ${count} visitors`,
-                         x: evt.clientX,
-                         y: evt.clientY
-                       })
-                    }}
-                    onMouseLeave={() => {
-                      setTooltipContent(null)
-                    }}
-                    onMouseMove={(evt) => {
-                       setTooltipContent(prev => prev ? { ...prev, x: evt.clientX, y: evt.clientY } : null)
-                    }}
-                  />
-                )
+                  return (
+                    <Geography
+                      key={geo.rsmKey}
+                      geography={geo}
+                      fill={count > 0 ? colorScale(count) : defaultFill}
+                      stroke={defaultStroke}
+                      strokeWidth={0.5}
+                      style={{
+                        default: { outline: "none", transition: "all 250ms" },
+                        hover: { fill: "#FD5E0F", outline: "none", cursor: 'pointer' },
+                        pressed: { outline: "none" },
+                      }}
+                      onMouseEnter={(evt) => {
+                         const { name } = geo.properties
+                         setTooltipContent({
+                           content: `${name}: ${count} visitors`,
+                           x: evt.clientX,
+                           y: evt.clientY
+                         })
+                      }}
+                      onMouseLeave={() => {
+                        setTooltipContent(null)
+                      }}
+                      onMouseMove={(evt) => {
+                         setTooltipContent(prev => prev ? { ...prev, x: evt.clientX, y: evt.clientY } : null)
+                      }}
+                    />
+                  )
               })
             }
           </Geographies>

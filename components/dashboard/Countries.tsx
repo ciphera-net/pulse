@@ -13,7 +13,7 @@ interface LocationProps {
 type Tab = 'map' | 'countries' | 'cities'
 
 export default function Locations({ countries, cities }: LocationProps) {
-  const [activeTab, setActiveTab] = useState<Tab>('countries')
+  const [activeTab, setActiveTab] = useState<Tab>('map')
 
   const getFlagComponent = (countryCode: string) => {
     if (!countryCode || countryCode === 'Unknown') return null
