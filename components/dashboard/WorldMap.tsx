@@ -45,8 +45,8 @@ const WorldMap = ({ data }: WorldMapProps) => {
   
   return (
     <div className="relative w-full h-[300px] bg-neutral-50 dark:bg-neutral-900/50 rounded-lg overflow-hidden border border-neutral-100 dark:border-neutral-800">
-      <ComposableMap projectionConfig={{ rotate: [-10, 0, 0], scale: 160, center: [0, 15] }}>
-        <ZoomableGroup maxZoom={1}>
+      <ComposableMap projectionConfig={{ rotate: [-10, 0, 0], scale: 200, center: [0, 10] }}>
+        <ZoomableGroup maxZoom={1} translateExtent={[[0, 0], [800, 600]]}>
           <Geographies geography={geoUrl}>
             {({ geographies }) =>
               geographies
