@@ -8,11 +8,12 @@ import WorldMap from './WorldMap'
 interface LocationProps {
   countries: Array<{ country: string; pageviews: number }>
   cities: Array<{ city: string; country: string; pageviews: number }>
+  regions: Array<{ region: string; country: string; pageviews: number }>
 }
 
-type Tab = 'map' | 'countries' | 'cities'
+type Tab = 'map' | 'countries' | 'regions' | 'cities'
 
-export default function Locations({ countries, cities }: LocationProps) {
+export default function Locations({ countries, cities, regions }: LocationProps) {
   const [activeTab, setActiveTab] = useState<Tab>('map')
 
   const getFlagComponent = (countryCode: string) => {
@@ -55,6 +56,27 @@ export default function Locations({ countries, cities }: LocationProps) {
               </div>
               <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
                 {formatNumber(country.pageviews)}
+              </div>
+            </div>
+          ))}
+        </div>
+      )
+    }
+
+    if (activeTab === 'regions') {
+      if (!regions || regions.length === 0) {
+        return <p className="text-neutral-600 dark:text-neutral-400">No data available</p>
+      }
+      return (
+        <div className="space-y-3">
+          {regions.map((region, index) => (
+            <div key={index} className="flex items-center justify-between">
+              <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
+                <span className="shrink-0">{getFlagComponent(region.country)}</span>
+                <span className="truncate">{region.region === 'Unknown' ? 'Unknown' : region.region}</span>
+              </div>
+              <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
+                {formatNumber(region.pageviews)}
               </div>
             </div>
           ))}
@@ -110,6 +132,16 @@ export default function Locations({ countries, cities }: LocationProps) {
             }`}
           >
             Countries
+          </button>
+          <button
+            onClick={() => setActiveTab('regions')}
+            className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+              activeTab === 'regions'
+                ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
+                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+            }`}
+          >
+            Regions
           </button>
           <button
             onClick={() => setActiveTab('cities')}

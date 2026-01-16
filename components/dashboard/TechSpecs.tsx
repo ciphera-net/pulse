@@ -7,11 +7,12 @@ interface TechSpecsProps {
   browsers: Array<{ browser: string; pageviews: number }>
   os: Array<{ os: string; pageviews: number }>
   devices: Array<{ device: string; pageviews: number }>
+  screenResolutions: Array<{ screen_resolution: string; pageviews: number }>
 }
 
-type Tab = 'browsers' | 'os' | 'devices'
+type Tab = 'browsers' | 'os' | 'devices' | 'screens'
 
-export default function TechSpecs({ browsers, os, devices }: TechSpecsProps) {
+export default function TechSpecs({ browsers, os, devices, screenResolutions }: TechSpecsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('browsers')
 
   const renderContent = () => {
@@ -23,6 +24,8 @@ export default function TechSpecs({ browsers, os, devices }: TechSpecsProps) {
         data = os.map(o => ({ name: o.os, pageviews: o.pageviews }))
     } else if (activeTab === 'devices') {
         data = devices.map(d => ({ name: d.device, pageviews: d.pageviews }))
+    } else if (activeTab === 'screens') {
+        data = screenResolutions.map(s => ({ name: s.screen_resolution, pageviews: s.pageviews }))
     }
 
     if (!data || data.length === 0) {
@@ -81,6 +84,16 @@ export default function TechSpecs({ browsers, os, devices }: TechSpecsProps) {
             }`}
           >
             Devices
+          </button>
+          <button
+            onClick={() => setActiveTab('screens')}
+            className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+              activeTab === 'screens'
+                ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
+                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+            }`}
+          >
+            Screens
           </button>
         </div>
       </div>

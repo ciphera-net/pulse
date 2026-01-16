@@ -3,10 +3,18 @@ import apiRequest from './client'
 export interface Stats {
   pageviews: number
   visitors: number
+  bounce_rate: number
+  avg_duration: number
 }
 
 export interface TopPage {
   path: string
+  pageviews: number
+  visits?: number // For entry/exit pages
+}
+
+export interface ScreenResolutionStat {
+  screen_resolution: string
   pageviews: number
 }
 
@@ -138,4 +146,27 @@ export async function getDailyStats(siteId: string, startDate?: string, endDate?
   if (startDate) params.append('start_date', startDate)
   if (endDate) params.append('end_date', endDate)
   return apiRequest<{ stats: DailyStat[] }>(`/sites/${siteId}/daily?${params.toString()}`).then(r => r?.stats || [])
+}
+export async function getEntryPages(siteId: string, startDate?: string, endDate?: string, limit = 10): Promise<TopPage[]> {
+  const params = new URLSearchParams()
+  if (startDate) params.append('start_date', startDate)
+  if (endDate) params.append('end_date', endDate)
+  params.append('limit', limit.toString())
+  return apiRequest<{ pages: TopPage[] }>(`/sites/${siteId}/entry-pages?${params.toString()}`).then(r => r?.pages || [])
+}
+
+export async function getExitPages(siteId: string, startDate?: string, endDate?: string, limit = 10): Promise<TopPage[]> {
+  const params = new URLSearchParams()
+  if (startDate) params.append('start_date', startDate)
+  if (endDate) params.append('end_date', endDate)
+  params.append('limit', limit.toString())
+  return apiRequest<{ pages: TopPage[] }>(`/sites/${siteId}/exit-pages?${params.toString()}`).then(r => r?.pages || [])
+}
+
+export async function getScreenResolutions(siteId: string, startDate?: string, endDate?: string, limit = 10): Promise<ScreenResolutionStat[]> {
+  const params = new URLSearchParams()
+  if (startDate) params.append('start_date', startDate)
+  if (endDate) params.append('end_date', endDate)
+  params.append('limit', limit.toString())
+  return apiRequest<{ screen_resolutions: ScreenResolutionStat[] }>(`/sites/${siteId}/screen-resolutions?${params.toString()}`).then(r => r?.screen_resolutions || [])
 }
