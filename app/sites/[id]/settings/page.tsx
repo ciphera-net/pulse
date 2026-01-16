@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { getSite, updateSite, type Site } from '@/lib/api/sites'
 import { toast } from 'sonner'
 import LoadingOverlay from '@/components/LoadingOverlay'
-import { APP_URL } from '@/lib/api/client'
+import { APP_URL, API_URL } from '@/lib/api/client'
 
 export default function SiteSettingsPage() {
   const params = useParams()
@@ -53,7 +53,7 @@ export default function SiteSettingsPage() {
   }
 
   const copyScript = () => {
-    const script = `<script defer data-domain="${site?.domain}" src="${APP_URL}/script.js"></script>`
+    const script = `<script defer data-domain="${site?.domain}" data-api="${API_URL}" src="${APP_URL}/script.js"></script>`
     navigator.clipboard.writeText(script)
     setScriptCopied(true)
     toast.success('Script copied to clipboard')
@@ -87,7 +87,7 @@ export default function SiteSettingsPage() {
         </p>
         <div className="bg-neutral-100 dark:bg-neutral-800 rounded-lg p-4 mb-4">
           <code className="text-sm text-neutral-900 dark:text-white break-all">
-            {`<script defer data-domain="${site.domain}" src="${APP_URL}/script.js"></script>`}
+            {`<script defer data-domain="${site.domain}" data-api="${API_URL}" src="${APP_URL}/script.js"></script>`}
           </code>
         </div>
         <button

@@ -18,7 +18,7 @@
   }
 
   const domain = script.getAttribute('data-domain');
-  const apiUrl = script.getAttribute('data-api') || 'https://analytics.ciphera.net';
+  const apiUrl = script.getAttribute('data-api') || 'https://analytics-api.ciphera.net';
   
   // * Generate ephemeral session ID (not persistent)
   function getSessionId() {
