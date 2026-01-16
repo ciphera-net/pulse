@@ -1,6 +1,7 @@
 'use client'
 
 import { formatNumber } from '@/lib/utils/format'
+import { getReferrerIcon } from '@/lib/utils/icons'
 
 interface TopReferrersProps {
   referrers: Array<{ referrer: string; pageviews: number }>
@@ -9,7 +10,7 @@ interface TopReferrersProps {
 export default function TopReferrers({ referrers }: TopReferrersProps) {
   if (!referrers || referrers.length === 0) {
     return (
-      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6">
+      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 h-full">
         <h3 className="text-lg font-semibold mb-4 text-neutral-900 dark:text-white">
           Top Referrers
         </h3>
@@ -19,15 +20,16 @@ export default function TopReferrers({ referrers }: TopReferrersProps) {
   }
 
   return (
-    <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6">
+    <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 h-full">
       <h3 className="text-lg font-semibold mb-4 text-neutral-900 dark:text-white">
         Top Referrers
       </h3>
       <div className="space-y-3">
         {referrers.map((ref, index) => (
           <div key={index} className="flex items-center justify-between">
-            <div className="flex-1 truncate text-neutral-900 dark:text-white">
-              {ref.referrer}
+            <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
+              <span className="text-lg flex-shrink-0">{getReferrerIcon(ref.referrer)}</span>
+              <span className="truncate" title={ref.referrer}>{ref.referrer}</span>
             </div>
             <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
               {formatNumber(ref.pageviews)}

@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { formatNumber } from '@/lib/utils/format'
+import { getBrowserIcon, getOSIcon, getDeviceIcon } from '@/lib/utils/icons'
+import { MdMonitor } from 'react-icons/md'
 
 interface TechSpecsProps {
   browsers: Array<{ browser: string; pageviews: number }>
@@ -16,16 +18,16 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions }: 
   const [activeTab, setActiveTab] = useState<Tab>('browsers')
 
   const renderContent = () => {
-    let data: Array<{ name: string; pageviews: number }> = []
+    let data: Array<{ name: string; pageviews: number; icon?: React.ReactNode }> = []
     
     if (activeTab === 'browsers') {
-        data = browsers.map(b => ({ name: b.browser, pageviews: b.pageviews }))
+        data = browsers.map(b => ({ name: b.browser, pageviews: b.pageviews, icon: getBrowserIcon(b.browser) }))
     } else if (activeTab === 'os') {
-        data = os.map(o => ({ name: o.os, pageviews: o.pageviews }))
+        data = os.map(o => ({ name: o.os, pageviews: o.pageviews, icon: getOSIcon(o.os) }))
     } else if (activeTab === 'devices') {
-        data = devices.map(d => ({ name: d.device, pageviews: d.pageviews }))
+        data = devices.map(d => ({ name: d.device, pageviews: d.pageviews, icon: getDeviceIcon(d.device) }))
     } else if (activeTab === 'screens') {
-        data = screenResolutions.map(s => ({ name: s.screen_resolution, pageviews: s.pageviews }))
+        data = screenResolutions.map(s => ({ name: s.screen_resolution, pageviews: s.pageviews, icon: <MdMonitor className="text-neutral-500" /> }))
     }
 
     if (!data || data.length === 0) {
@@ -37,6 +39,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions }: 
         {data.map((item, index) => (
           <div key={index} className="flex items-center justify-between">
             <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
+              {item.icon && <span className="text-lg">{item.icon}</span>}
               <span className="truncate">{item.name === 'Unknown' ? 'Unknown' : item.name}</span>
             </div>
             <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
