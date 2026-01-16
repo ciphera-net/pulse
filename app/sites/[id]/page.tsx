@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { getSite, type Site } from '@/lib/api/sites'
-import { getStats, getRealtime, getDailyStats, getTopPages, getTopReferrers, getCountries, getCities, getRegions } from '@/lib/api/stats'
+import { getStats, getRealtime, getDailyStats, getTopPages, getTopReferrers, getCountries, getCities } from '@/lib/api/stats'
 import { formatNumber, getDateRange } from '@/lib/utils/format'
 import { toast } from 'sonner'
 import LoadingOverlay from '@/components/LoadingOverlay'
@@ -28,7 +28,6 @@ export default function SiteDashboardPage() {
   const [topReferrers, setTopReferrers] = useState<any[]>([])
   const [countries, setCountries] = useState<any[]>([])
   const [cities, setCities] = useState<any[]>([])
-  const [regions, setRegions] = useState<any[]>([])
   const [dateRange, setDateRange] = useState(getDateRange(30))
 
   useEffect(() => {
@@ -42,7 +41,7 @@ export default function SiteDashboardPage() {
   const loadData = async () => {
     try {
       setLoading(true)
-      const [siteData, statsData, realtimeData, dailyData, pagesData, referrersData, countriesData, citiesData, regionsData] = await Promise.all([
+      const [siteData, statsData, realtimeData, dailyData, pagesData, referrersData, countriesData, citiesData] = await Promise.all([
         getSite(siteId),
         getStats(siteId, dateRange.start, dateRange.end),
         getRealtime(siteId),
@@ -51,7 +50,6 @@ export default function SiteDashboardPage() {
         getTopReferrers(siteId, dateRange.start, dateRange.end, 10),
         getCountries(siteId, dateRange.start, dateRange.end, 10),
         getCities(siteId, dateRange.start, dateRange.end, 10),
-        getRegions(siteId, dateRange.start, dateRange.end, 10),
       ])
       setSite(siteData)
       setStats(statsData || { pageviews: 0, visitors: 0 })
@@ -61,7 +59,6 @@ export default function SiteDashboardPage() {
       setTopReferrers(Array.isArray(referrersData) ? referrersData : [])
       setCountries(Array.isArray(countriesData) ? countriesData : [])
       setCities(Array.isArray(citiesData) ? citiesData : [])
-      setRegions(Array.isArray(regionsData) ? regionsData : [])
     } catch (error: any) {
       toast.error('Failed to load data: ' + (error.message || 'Unknown error'))
     } finally {
@@ -139,7 +136,7 @@ export default function SiteDashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-2 mb-8">
         <TopReferrers referrers={topReferrers} />
-        <Countries countries={countries} cities={cities} regions={regions} />
+        <Countries countries={countries} cities={cities} />
       </div>
     </div>
   )
