@@ -1,28 +1,42 @@
 'use client'
 
-import Image from 'next/image'
+import React, { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 
 interface LoadingOverlayProps {
-  logoSrc: string
-  title: string
+  logoSrc?: string
+  title?: string
 }
 
-export default function LoadingOverlay({ logoSrc, title }: LoadingOverlayProps) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 dark:bg-neutral-950/80 backdrop-blur-sm">
-      <div className="text-center">
-        <div className="mb-4 flex justify-center">
-          <Image
-            src={logoSrc}
-            alt={title}
-            width={64}
-            height={64}
-            className="animate-pulse"
+export default function LoadingOverlay({ 
+  logoSrc = "/ciphera_icon_no_margins.png", 
+  title = "Ciphera Analytics" 
+}: LoadingOverlayProps) {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+    return () => setMounted(false)
+  }, [])
+
+  if (!mounted) return null
+
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white dark:bg-neutral-950 animate-in fade-in duration-200">
+      <div className="flex flex-col items-center gap-6">
+        <div className="flex items-center gap-3">
+          <img 
+            src={logoSrc} 
+            alt={title} 
+            className="h-12 w-auto object-contain"
           />
+          <span className="text-3xl font-bold tracking-tight text-neutral-900 dark:text-white">
+            {title}
+          </span>
         </div>
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-neutral-200 border-t-brand-orange mx-auto mb-4"></div>
-        <p className="text-neutral-600 dark:text-neutral-400">Loading...</p>
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-neutral-200 border-t-brand-orange dark:border-neutral-800 dark:border-t-brand-orange" />
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

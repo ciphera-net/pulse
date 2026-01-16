@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { listSites, deleteSite, type Site } from '@/lib/api/sites'
 import { toast } from 'sonner'
 import LoadingOverlay from '../LoadingOverlay'
+import { Button } from '@ciphera-net/ui'
+import { BarChartIcon, TrashIcon, PlusIcon } from '@radix-ui/react-icons'
 
 export default function SiteList() {
   const [sites, setSites] = useState<Site[]>([])
@@ -50,12 +52,12 @@ export default function SiteList() {
     return (
       <div className="text-center py-12">
         <p className="text-neutral-600 dark:text-neutral-400 mb-4">No sites yet. Create your first site to get started.</p>
-        <button
+        <Button
           onClick={() => router.push('/sites/new')}
-          className="btn-primary"
         >
+          <PlusIcon className="w-4 h-4 mr-2" />
           Create Site
-        </button>
+        </Button>
       </div>
     )
   }
@@ -74,27 +76,29 @@ export default function SiteList() {
             {site.domain}
           </p>
           <div className="flex gap-2">
-            <button
+            <Button
               onClick={() => router.push(`/sites/${site.id}`)}
-              className="btn-primary flex-1 text-sm"
+              className="flex-1 text-sm"
             >
+              <BarChartIcon className="w-4 h-4 mr-2" />
               View Dashboard
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="secondary"
               onClick={() => handleDelete(site.id)}
-              className="btn-secondary text-sm px-4"
+              className="text-sm px-4"
             >
-              Delete
-            </button>
+              <TrashIcon className="w-4 h-4" />
+            </Button>
           </div>
         </div>
       ))}
       <button
         onClick={() => router.push('/sites/new')}
-        className="bg-white dark:bg-neutral-900 border-2 border-dashed border-neutral-300 dark:border-neutral-700 rounded-xl p-6 hover:border-brand-orange transition-colors text-neutral-600 dark:text-neutral-400"
+        className="bg-white dark:bg-neutral-900 border-2 border-dashed border-neutral-300 dark:border-neutral-700 rounded-xl p-6 hover:border-brand-orange transition-colors text-neutral-600 dark:text-neutral-400 w-full h-full min-h-[160px] flex items-center justify-center"
       >
         <div className="text-center">
-          <div className="text-2xl mb-2">+</div>
+          <div className="text-2xl mb-2 mx-auto w-8 h-8 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center">+</div>
           <div>Add New Site</div>
         </div>
       </button>
