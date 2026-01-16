@@ -20,6 +20,18 @@ export interface CountryStat {
   pageviews: number
 }
 
+export interface CityStat {
+  city: string
+  country: string
+  pageviews: number
+}
+
+export interface RegionStat {
+  region: string
+  country: string
+  pageviews: number
+}
+
 export interface DailyStat {
   date: string
   pageviews: number
@@ -64,6 +76,22 @@ export async function getCountries(siteId: string, startDate?: string, endDate?:
   if (endDate) params.append('end_date', endDate)
   params.append('limit', limit.toString())
   return apiRequest<{ countries: CountryStat[] }>(`/sites/${siteId}/countries?${params.toString()}`).then(r => r?.countries || [])
+}
+
+export async function getCities(siteId: string, startDate?: string, endDate?: string, limit = 10): Promise<CityStat[]> {
+  const params = new URLSearchParams()
+  if (startDate) params.append('start_date', startDate)
+  if (endDate) params.append('end_date', endDate)
+  params.append('limit', limit.toString())
+  return apiRequest<{ cities: CityStat[] }>(`/sites/${siteId}/cities?${params.toString()}`).then(r => r?.cities || [])
+}
+
+export async function getRegions(siteId: string, startDate?: string, endDate?: string, limit = 10): Promise<RegionStat[]> {
+  const params = new URLSearchParams()
+  if (startDate) params.append('start_date', startDate)
+  if (endDate) params.append('end_date', endDate)
+  params.append('limit', limit.toString())
+  return apiRequest<{ regions: RegionStat[] }>(`/sites/${siteId}/regions?${params.toString()}`).then(r => r?.regions || [])
 }
 
 export async function getDailyStats(siteId: string, startDate?: string, endDate?: string): Promise<DailyStat[]> {
