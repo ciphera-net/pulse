@@ -65,7 +65,15 @@ const WorldMap = ({ data }: WorldMapProps) => {
                       strokeWidth={0.5}
                       style={{
                         default: { outline: "none", transition: "all 250ms" },
-                        hover: { fill: "#FD5E0F", outline: "none", cursor: 'pointer' },
+                        hover: { 
+                          fill: count > 0 ? colorScale(count) : defaultFill,
+                          stroke: "#FD5E0F",
+                          strokeWidth: 2,
+                          outline: "none", 
+                          cursor: 'pointer',
+                          // Bring to front on hover so border isn't covered by neighbors
+                          zIndex: 100, 
+                        },
                         pressed: { outline: "none" },
                       }}
                       onMouseEnter={(evt) => {
