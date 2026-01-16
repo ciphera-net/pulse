@@ -44,15 +44,16 @@ export default function Locations({ countries, cities }: LocationProps) {
           <div className="space-y-3">
             {countries.map((country, index) => (
               <div key={index} className="flex items-center justify-between">
-              <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
-                <span className="shrink-0">{getFlagComponent(country.country)}</span>
-                <span className="truncate">{getCountryName(country.country)}</span>
+                <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
+                  <span className="shrink-0">{getFlagComponent(country.country)}</span>
+                  <span className="truncate">{getCountryName(country.country)}</span>
+                </div>
+                <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
+                  {formatNumber(country.pageviews)}
+                </div>
               </div>
-              <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
-                {formatNumber(country.pageviews)}
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )
     }
