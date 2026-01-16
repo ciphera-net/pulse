@@ -13,8 +13,10 @@ function AuthCallbackContent() {
   const processedRef = useRef(false)
 
   useEffect(() => {
+    // * Prevent double execution (React Strict Mode or fast re-renders)
     if (processedRef.current) return
     
+    // * Check for direct token passing (from auth-frontend direct login)
     const token = searchParams.get('token')
     const refreshToken = searchParams.get('refresh_token')
     
@@ -38,14 +40,21 @@ function AuthCallbackContent() {
     const code = searchParams.get('code')
     const state = searchParams.get('state')
     
+    // * Skip if params are missing (might be initial render before params are ready)
     if (!code || !state) return
 
     processedRef.current = true
 
-    const storedState = sessionStorage.getItem('oauth_state')
-    const codeVerifier = sessionStorage.getItem('oauth_code_verifier')
+    const storedState = localStorage.getItem('oauth_state')
+    const codeVerifier = localStorage.getItem('oauth_code_verifier')
+
+    if (!code || !state) {
+      setError('Missing code or state')
+      return
+    }
 
     if (state !== storedState) {
+        // * Debugging: Log state mismatch to help user diagnose
         console.error('State mismatch', { received: state, stored: storedState })
         setError('Invalid state')
         return
@@ -53,7 +62,7 @@ function AuthCallbackContent() {
 
     const exchangeCode = async () => {
       try {
-        const authApiUrl = process.env.NEXT_PUBLIC_AUTH_API_URL || 'https://auth-api.ciphera.net'
+        const authApiUrl = process.env.NEXT_PUBLIC_AUTH_API_URL || process.env.NEXT_PUBLIC_AUTH_URL || 'http://localhost:8081'
         const res = await fetch(`${authApiUrl}/oauth/token`, {
           method: 'POST',
           headers: {
@@ -79,12 +88,13 @@ function AuthCallbackContent() {
         
         login(data.access_token, data.refresh_token, {
             id: payload.sub,
-            email: payload.email || 'user@ciphera.net',
+            email: payload.email || 'user@ciphera.net', // Fallback if email claim missing
             totp_enabled: payload.totp_enabled || false
         })
         
-        sessionStorage.removeItem('oauth_state')
-        sessionStorage.removeItem('oauth_code_verifier')
+        // * Cleanup
+        localStorage.removeItem('oauth_state')
+        localStorage.removeItem('oauth_code_verifier')
         
         router.push('/')
       } catch (err: any) {

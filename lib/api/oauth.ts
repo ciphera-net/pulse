@@ -1,12 +1,14 @@
-/**
- * OAuth 2.0 PKCE utilities
- */
+import { AUTH_URL, APP_URL } from './client'
 
 function generateRandomString(length: number): string {
   const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~'
+  let result = ''
   const values = new Uint8Array(length)
   crypto.getRandomValues(values)
-  return Array.from(values, (x) => charset[x % charset.length]).join('')
+  for (let i = 0; i < length; i++) {
+    result += charset[values[i] % charset.length]
+  }
+  return result
 }
 
 async function generateCodeChallenge(codeVerifier: string): Promise<string> {
@@ -42,24 +44,31 @@ export async function generateOAuthParams(): Promise<OAuthParams> {
 export async function initiateOAuthFlow(redirectPath = '/auth/callback') {
   if (typeof window === 'undefined') return
 
-  const params = await generateOAuthParams()
-  const redirectUri = `${window.location.origin}${redirectPath}`
+  const { state, codeVerifier, codeChallenge } = await generateOAuthParams()
+
+  // Store params for verification in callback
+  localStorage.setItem('oauth_state', state)
+  localStorage.setItem('oauth_code_verifier', codeVerifier)
+
+  const redirectUri = encodeURIComponent(`${APP_URL}${redirectPath}`)
   
-  // Store PKCE params in sessionStorage for later use
-  sessionStorage.setItem('oauth_state', params.state)
-  sessionStorage.setItem('oauth_code_verifier', params.codeVerifier)
-  
-  const authUrl = process.env.NEXT_PUBLIC_AUTH_URL || 'https://auth.ciphera.net'
-  const authApiUrl = process.env.NEXT_PUBLIC_AUTH_API_URL || 'https://auth-api.ciphera.net'
-  
-  // Redirect to OAuth authorize endpoint
-  const authorizeUrl = new URL(`${authApiUrl}/oauth/authorize`)
-  authorizeUrl.searchParams.set('client_id', 'analytics-app')
-  authorizeUrl.searchParams.set('redirect_uri', redirectUri)
-  authorizeUrl.searchParams.set('response_type', 'code')
-  authorizeUrl.searchParams.set('state', params.state)
-  authorizeUrl.searchParams.set('code_challenge', params.codeChallenge)
-  authorizeUrl.searchParams.set('code_challenge_method', 'S256')
-  
-  window.location.href = authorizeUrl.toString()
+  const loginUrl = `${AUTH_URL}/login?client_id=analytics-app&redirect_uri=${redirectUri}&response_type=code&state=${state}&code_challenge=${codeChallenge}&code_challenge_method=S256`
+
+  window.location.href = loginUrl
 }
+
+export async function initiateSignupFlow(redirectPath = '/auth/callback') {
+    if (typeof window === 'undefined') return
+  
+    const { state, codeVerifier, codeChallenge } = await generateOAuthParams()
+  
+    // Store params for verification in callback
+    localStorage.setItem('oauth_state', state)
+    localStorage.setItem('oauth_code_verifier', codeVerifier)
+  
+    const redirectUri = encodeURIComponent(`${APP_URL}${redirectPath}`)
+    
+    const signupUrl = `${AUTH_URL}/signup?client_id=analytics-app&redirect_uri=${redirectUri}&response_type=code&state=${state}&code_challenge=${codeChallenge}&code_challenge_method=S256`
+  
+    window.location.href = signupUrl
+  }

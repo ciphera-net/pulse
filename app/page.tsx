@@ -1,7 +1,7 @@
 'use client'
 
 import { useAuth } from '@/lib/auth/context'
-import { initiateOAuthFlow } from '@/lib/api/oauth'
+import { initiateOAuthFlow, initiateSignupFlow } from '@/lib/api/oauth'
 import LoadingOverlay from '@/components/LoadingOverlay'
 import SiteList from '@/components/sites/SiteList'
 
@@ -30,10 +30,7 @@ export default function HomePage() {
               Sign In
             </button>
             <button
-              onClick={() => {
-                const authUrl = process.env.NEXT_PUBLIC_AUTH_URL || 'https://auth.ciphera.net'
-                window.location.href = `${authUrl}/signup?client_id=analytics-app&redirect_uri=${encodeURIComponent((process.env.NEXT_PUBLIC_APP_URL || window.location.origin) + '/auth/callback')}&response_type=code`
-              }}
+              onClick={() => initiateSignupFlow()}
               className="btn-secondary"
             >
               Sign Up
