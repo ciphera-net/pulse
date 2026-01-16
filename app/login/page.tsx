@@ -12,6 +12,7 @@ export default function LoginPage() {
 
   return (
     <LoadingOverlay 
+      logoSrc="/ciphera_icon_no_margins.png"
       title="Redirecting to sign in..."
     />
   )
