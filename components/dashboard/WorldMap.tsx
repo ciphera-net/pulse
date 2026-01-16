@@ -36,7 +36,7 @@ const WorldMap = ({ data }: WorldMapProps) => {
 
   const colorScale = scaleLinear<string>()
     .domain([0, processedData.max || 1])
-    .range(["#FD5E0F", "#fed7aa"]) // brand orange to orange-200 (inverted: less visitors = darker)
+    .range(["#fed7aa", "#FD5E0F"]) // orange-200 to brand orange (standard: more visitors = darker)
 
   // Dark mode adjustment
   const isDark = resolvedTheme === 'dark'
@@ -65,15 +65,7 @@ const WorldMap = ({ data }: WorldMapProps) => {
                       strokeWidth={0.5}
                       style={{
                         default: { outline: "none", transition: "all 250ms" },
-                        hover: { 
-                          fill: count > 0 ? colorScale(count) : defaultFill,
-                          stroke: "#FD5E0F",
-                          strokeWidth: 2,
-                          outline: "none", 
-                          cursor: 'pointer',
-                          // Bring to front on hover so border isn't covered by neighbors
-                          zIndex: 100, 
-                        },
+                        hover: { fill: "#FD5E0F", outline: "none", cursor: 'pointer' },
                         pressed: { outline: "none" },
                       }}
                       onMouseEnter={(evt) => {
