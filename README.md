@@ -26,7 +26,7 @@ Analytics Frontend is the dashboard interface for Ciphera Analytics. It provides
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 18+ 
 - npm or yarn
 
 ### Installation
