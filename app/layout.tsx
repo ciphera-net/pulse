@@ -1,10 +1,9 @@
-import Header from '@ciphera-net/ui/Header'
-import Footer from '@ciphera-net/ui/Footer'
-import { AuthProvider } from '@/lib/auth/context'
 import { ThemeProviders } from '@ciphera-net/ui'
+import { AuthProvider } from '@/lib/auth/context'
 import { Toaster } from 'sonner'
 import type { Metadata } from 'next'
 import { Plus_Jakarta_Sans } from 'next/font/google'
+import LayoutContent from './layout-content'
 import '../styles/globals.css'
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -42,11 +41,7 @@ export default function RootLayout({
       <body className="antialiased min-h-screen flex flex-col bg-white dark:bg-neutral-950 text-neutral-900 dark:text-neutral-50">
         <ThemeProviders>
           <AuthProvider>
-            <Header />
-            <main className="flex-1 pt-24 pb-8">
-              {children}
-            </main>
-            <Footer />
+            <LayoutContent>{children}</LayoutContent>
             <Toaster position="top-center" richColors closeButton />
           </AuthProvider>
         </ThemeProviders>
