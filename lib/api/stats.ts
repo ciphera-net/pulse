@@ -32,6 +32,21 @@ export interface RegionStat {
   pageviews: number
 }
 
+export interface BrowserStat {
+  browser: string
+  pageviews: number
+}
+
+export interface OSStat {
+  os: string
+  pageviews: number
+}
+
+export interface DeviceStat {
+  device: string
+  pageviews: number
+}
+
 export interface DailyStat {
   date: string
   pageviews: number
@@ -92,6 +107,30 @@ export async function getRegions(siteId: string, startDate?: string, endDate?: s
   if (endDate) params.append('end_date', endDate)
   params.append('limit', limit.toString())
   return apiRequest<{ regions: RegionStat[] }>(`/sites/${siteId}/regions?${params.toString()}`).then(r => r?.regions || [])
+}
+
+export async function getBrowsers(siteId: string, startDate?: string, endDate?: string, limit = 10): Promise<BrowserStat[]> {
+  const params = new URLSearchParams()
+  if (startDate) params.append('start_date', startDate)
+  if (endDate) params.append('end_date', endDate)
+  params.append('limit', limit.toString())
+  return apiRequest<{ browsers: BrowserStat[] }>(`/sites/${siteId}/browsers?${params.toString()}`).then(r => r?.browsers || [])
+}
+
+export async function getOS(siteId: string, startDate?: string, endDate?: string, limit = 10): Promise<OSStat[]> {
+  const params = new URLSearchParams()
+  if (startDate) params.append('start_date', startDate)
+  if (endDate) params.append('end_date', endDate)
+  params.append('limit', limit.toString())
+  return apiRequest<{ os: OSStat[] }>(`/sites/${siteId}/os?${params.toString()}`).then(r => r?.os || [])
+}
+
+export async function getDevices(siteId: string, startDate?: string, endDate?: string, limit = 10): Promise<DeviceStat[]> {
+  const params = new URLSearchParams()
+  if (startDate) params.append('start_date', startDate)
+  if (endDate) params.append('end_date', endDate)
+  params.append('limit', limit.toString())
+  return apiRequest<{ devices: DeviceStat[] }>(`/sites/${siteId}/devices?${params.toString()}`).then(r => r?.devices || [])
 }
 
 export async function getDailyStats(siteId: string, startDate?: string, endDate?: string): Promise<DailyStat[]> {

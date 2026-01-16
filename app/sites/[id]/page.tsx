@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { getSite, type Site } from '@/lib/api/sites'
-import { getStats, getRealtime, getDailyStats, getTopPages, getTopReferrers, getCountries, getCities } from '@/lib/api/stats'
+import { getStats, getRealtime, getDailyStats, getTopPages, getTopReferrers, getCountries, getCities, getBrowsers, getOS, getDevices } from '@/lib/api/stats'
 import { formatNumber, getDateRange } from '@/lib/utils/format'
 import { toast } from 'sonner'
 import LoadingOverlay from '@/components/LoadingOverlay'
@@ -12,6 +12,7 @@ import RealtimeVisitors from '@/components/dashboard/RealtimeVisitors'
 import TopPages from '@/components/dashboard/TopPages'
 import TopReferrers from '@/components/dashboard/TopReferrers'
 import Countries from '@/components/dashboard/Countries'
+import TechSpecs from '@/components/dashboard/TechSpecs'
 import Chart from '@/components/dashboard/Chart'
 
 export default function SiteDashboardPage() {
@@ -28,6 +29,9 @@ export default function SiteDashboardPage() {
   const [topReferrers, setTopReferrers] = useState<any[]>([])
   const [countries, setCountries] = useState<any[]>([])
   const [cities, setCities] = useState<any[]>([])
+  const [browsers, setBrowsers] = useState<any[]>([])
+  const [os, setOS] = useState<any[]>([])
+  const [devices, setDevices] = useState<any[]>([])
   const [dateRange, setDateRange] = useState(getDateRange(30))
 
   useEffect(() => {
@@ -41,7 +45,7 @@ export default function SiteDashboardPage() {
   const loadData = async () => {
     try {
       setLoading(true)
-      const [siteData, statsData, realtimeData, dailyData, pagesData, referrersData, countriesData, citiesData] = await Promise.all([
+      const [siteData, statsData, realtimeData, dailyData, pagesData, referrersData, countriesData, citiesData, browsersData, osData, devicesData] = await Promise.all([
         getSite(siteId),
         getStats(siteId, dateRange.start, dateRange.end),
         getRealtime(siteId),
@@ -50,6 +54,9 @@ export default function SiteDashboardPage() {
         getTopReferrers(siteId, dateRange.start, dateRange.end, 10),
         getCountries(siteId, dateRange.start, dateRange.end, 10),
         getCities(siteId, dateRange.start, dateRange.end, 10),
+        getBrowsers(siteId, dateRange.start, dateRange.end, 10),
+        getOS(siteId, dateRange.start, dateRange.end, 10),
+        getDevices(siteId, dateRange.start, dateRange.end, 10),
       ])
       setSite(siteData)
       setStats(statsData || { pageviews: 0, visitors: 0 })
@@ -59,6 +66,9 @@ export default function SiteDashboardPage() {
       setTopReferrers(Array.isArray(referrersData) ? referrersData : [])
       setCountries(Array.isArray(countriesData) ? countriesData : [])
       setCities(Array.isArray(citiesData) ? citiesData : [])
+      setBrowsers(Array.isArray(browsersData) ? browsersData : [])
+      setOS(Array.isArray(osData) ? osData : [])
+      setDevices(Array.isArray(devicesData) ? devicesData : [])
     } catch (error: any) {
       toast.error('Failed to load data: ' + (error.message || 'Unknown error'))
     } finally {
@@ -137,6 +147,10 @@ export default function SiteDashboardPage() {
       <div className="grid gap-6 lg:grid-cols-2 mb-8">
         <TopReferrers referrers={topReferrers} />
         <Countries countries={countries} cities={cities} />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2 mb-8">
+        <TechSpecs browsers={browsers} os={os} devices={devices} />
       </div>
     </div>
   )
