@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { formatNumber } from '@/lib/utils/format'
 import * as Flags from 'country-flag-icons/react/3x2'
+import WorldMap from './WorldMap'
 
 interface LocationProps {
   countries: Array<{ country: string; pageviews: number }>
@@ -38,9 +39,11 @@ export default function Locations({ countries, cities }: LocationProps) {
         return <p className="text-neutral-600 dark:text-neutral-400">No data available</p>
       }
       return (
-        <div className="space-y-3">
-          {countries.map((country, index) => (
-            <div key={index} className="flex items-center justify-between">
+        <div className="space-y-4">
+          <WorldMap data={countries} />
+          <div className="space-y-3">
+            {countries.map((country, index) => (
+              <div key={index} className="flex items-center justify-between">
               <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
                 <span className="shrink-0">{getFlagComponent(country.country)}</span>
                 <span className="truncate">{getCountryName(country.country)}</span>
