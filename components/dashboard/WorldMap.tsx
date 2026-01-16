@@ -44,7 +44,7 @@ const WorldMap = ({ data }: WorldMapProps) => {
       <ComposableMap 
         width={800} 
         height={400}
-        projectionConfig={{ rotate: [-10, 0, 0], scale: 155, center: [0, 0] }}
+        projectionConfig={{ rotate: [-10, 0, 0], scale: 170, center: [0, 10] }}
         className="w-full h-auto"
       >
         <Geographies geography={geoUrl}>
