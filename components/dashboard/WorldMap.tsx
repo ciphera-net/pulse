@@ -1,7 +1,7 @@
 'use client'
 
 import React, { memo, useMemo, useState } from 'react'
-import { ComposableMap, Geographies, Geography, ZoomableGroup } from 'react-simple-maps'
+import { ComposableMap, Geographies, Geography } from 'react-simple-maps'
 import { scaleLinear } from 'd3-scale'
 import countries from 'i18n-iso-countries'
 import enLocale from 'i18n-iso-countries/langs/en.json'
@@ -44,53 +44,52 @@ const WorldMap = ({ data }: WorldMapProps) => {
   const defaultStroke = isDark ? "#171717" : "#FFFFFF" // gray-900 / white
   
   return (
-    <div className="relative w-full h-[300px] overflow-hidden flex items-center justify-center">
+    <div className="relative w-full">
       <ComposableMap 
-        width={800} 
-        height={450} // Aspect ratio adjustment
-        projectionConfig={{ rotate: [-10, 0, 0], scale: 155 }}
+        width={475} 
+        height={335}
+        projectionConfig={{ rotate: [-10, 0, 0], scale: 90, center: [0, 20] }}
+        className="w-full h-auto"
       >
-        <ZoomableGroup center={[0, 10]} maxZoom={1}>
-          <Geographies geography={geoUrl}>
-            {({ geographies }) =>
-              geographies
-                .filter(geo => geo.id !== "010") // Remove Antarctica
-                .map((geo) => {
-                  const id = String(geo.id).padStart(3, '0')
-                  const count = processedData.map.get(id) || 0
-                
-                  return (
-                    <Geography
-                      key={geo.rsmKey}
-                      geography={geo}
-                      fill={count > 0 ? colorScale(count) : defaultFill}
-                      stroke={defaultStroke}
-                      strokeWidth={0.7}
-                      style={{
-                        default: { outline: "none", transition: "all 250ms" },
-                        hover: { fill: "#FD5E0F", outline: "none", cursor: 'pointer' },
-                        pressed: { outline: "none" },
-                      }}
-                      onMouseEnter={(evt) => {
-                         const { name } = geo.properties
-                         setTooltipContent({
-                           content: `${name}: ${count} visitors`,
-                           x: evt.clientX,
-                           y: evt.clientY
-                         })
-                      }}
-                      onMouseLeave={() => {
-                        setTooltipContent(null)
-                      }}
-                      onMouseMove={(evt) => {
-                         setTooltipContent(prev => prev ? { ...prev, x: evt.clientX, y: evt.clientY } : null)
-                      }}
-                    />
-                  )
-              })
-            }
-          </Geographies>
-        </ZoomableGroup>
+        <Geographies geography={geoUrl}>
+          {({ geographies }) =>
+            geographies
+              .filter(geo => geo.id !== "010") // Remove Antarctica
+              .map((geo) => {
+                const id = String(geo.id).padStart(3, '0')
+                const count = processedData.map.get(id) || 0
+              
+                return (
+                  <Geography
+                    key={geo.rsmKey}
+                    geography={geo}
+                    fill={count > 0 ? colorScale(count) : defaultFill}
+                    stroke={defaultStroke}
+                    strokeWidth={0.5}
+                    style={{
+                      default: { outline: "none", transition: "all 250ms" },
+                      hover: { fill: "#FD5E0F", outline: "none", cursor: 'pointer' },
+                      pressed: { outline: "none" },
+                    }}
+                    onMouseEnter={(evt) => {
+                       const { name } = geo.properties
+                       setTooltipContent({
+                         content: `${name}: ${count} visitors`,
+                         x: evt.clientX,
+                         y: evt.clientY
+                       })
+                    }}
+                    onMouseLeave={() => {
+                      setTooltipContent(null)
+                    }}
+                    onMouseMove={(evt) => {
+                       setTooltipContent(prev => prev ? { ...prev, x: evt.clientX, y: evt.clientY } : null)
+                    }}
+                  />
+                )
+            })
+          }
+        </Geographies>
       </ComposableMap>
       {tooltipContent && (
          <div 
