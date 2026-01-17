@@ -29,7 +29,9 @@
       return cachedSessionId;
     }
 
-    const key = 'plausible_session_' + domain;
+    // * Use a static key for session storage to ensure consistency across pages
+    // * We don't use the domain in the key to avoid issues with subdomains/casing
+    const key = 'ciphera_session_id';
     
     try {
       cachedSessionId = sessionStorage.getItem(key);
