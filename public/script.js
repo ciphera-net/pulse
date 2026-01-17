@@ -31,14 +31,15 @@
 
     // * Use a static key for session storage to ensure consistency across pages
     const key = 'ciphera_session_id';
-    // * Legacy key support for migration
-    const legacyKey = 'plausible_session_' + domain;
+    // * Legacy key support for migration (strip whitespace just in case)
+    const legacyKey = 'plausible_session_' + (domain ? domain.trim() : '');
     
     try {
+      // * Try to get existing session ID
       cachedSessionId = sessionStorage.getItem(key);
       
       // * If not found in new key, try legacy key and migrate
-      if (!cachedSessionId) {
+      if (!cachedSessionId && legacyKey) {
         cachedSessionId = sessionStorage.getItem(legacyKey);
         if (cachedSessionId) {
           sessionStorage.setItem(key, cachedSessionId);
