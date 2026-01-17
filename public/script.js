@@ -20,15 +20,32 @@
   const domain = script.getAttribute('data-domain');
   const apiUrl = script.getAttribute('data-api') || 'https://analytics-api.ciphera.net';
   
+  // * Memory cache for session ID (fallback if sessionStorage is unavailable)
+  let cachedSessionId = null;
+
   // * Generate ephemeral session ID (not persistent)
   function getSessionId() {
-    const key = 'plausible_session_' + domain;
-    let sessionId = sessionStorage.getItem(key);
-    if (!sessionId) {
-      sessionId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-      sessionStorage.setItem(key, sessionId);
+    if (cachedSessionId) {
+      return cachedSessionId;
     }
-    return sessionId;
+
+    const key = 'plausible_session_' + domain;
+    
+    try {
+      cachedSessionId = sessionStorage.getItem(key);
+    } catch (e) {
+      // * Access denied or unavailable - ignore
+    }
+
+    if (!cachedSessionId) {
+      cachedSessionId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      try {
+        sessionStorage.setItem(key, cachedSessionId);
+      } catch (e) {
+        // * Storage full or unavailable - ignore, will use memory cache
+      }
+    }
+    return cachedSessionId;
   }
 
   // * Track pageview
