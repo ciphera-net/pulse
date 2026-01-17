@@ -45,6 +45,7 @@
       path: path,
       referrer: referrer,
       screen: screen,
+      session_id: getSessionId(),
     };
 
     // * Send event
