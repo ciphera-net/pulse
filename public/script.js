@@ -30,11 +30,21 @@
     }
 
     // * Use a static key for session storage to ensure consistency across pages
-    // * We don't use the domain in the key to avoid issues with subdomains/casing
     const key = 'ciphera_session_id';
+    // * Legacy key support for migration
+    const legacyKey = 'plausible_session_' + domain;
     
     try {
       cachedSessionId = sessionStorage.getItem(key);
+      
+      // * If not found in new key, try legacy key and migrate
+      if (!cachedSessionId) {
+        cachedSessionId = sessionStorage.getItem(legacyKey);
+        if (cachedSessionId) {
+          sessionStorage.setItem(key, cachedSessionId);
+          sessionStorage.removeItem(legacyKey);
+        }
+      }
     } catch (e) {
       // * Access denied or unavailable - ignore
     }
