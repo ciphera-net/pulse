@@ -163,7 +163,7 @@ export default function SiteDashboardPage() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5 mb-8">
         <StatsCard title="Pageviews" value={formatNumber(stats.pageviews)} />
         <StatsCard title="Visitors" value={formatNumber(stats.visitors)} />
-        <RealtimeVisitors count={realtime} />
+        <RealtimeVisitors count={realtime} siteId={siteId} />
         <StatsCard title="Bounce Rate" value={`${Math.round(stats.bounce_rate)}%`} />
         <StatsCard title="Avg Visit Duration" value={formatDuration(stats.avg_duration)} />
       </div>
