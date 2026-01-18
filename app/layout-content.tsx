@@ -17,7 +17,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
           <span className="flex items-center">
             <span className="font-bold">Ciphera</span>
             <span className="font-light">Analytics</span>
-          </span>
+          </span> as any
         }
       />
       <main className="flex-1 pt-24 pb-8">
