@@ -13,7 +13,10 @@ const config: Config = {
       colors: {
         // * Brand color: Orange (#FD5E0F) - used as accent only
         brand: {
-          orange: '#FD5E0F',
+          orange: {
+            DEFAULT: '#FD5E0F',
+            hover: '#E54E00',
+          },
         },
       },
       fontFamily: {

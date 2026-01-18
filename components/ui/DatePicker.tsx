@@ -140,7 +140,7 @@ export default function DatePicker({ isOpen, onClose, onApply, initialRange }: D
                   ${selected 
                     ? 'bg-brand-orange text-white shadow-md shadow-brand-orange/20' 
                     : inRange
-                    ? 'bg-orange-50 dark:bg-orange-900/20 text-brand-orange'
+                    ? 'bg-brand-orange/10 dark:bg-brand-orange/20 text-brand-orange'
                     : 'hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-900 dark:text-white'
                   }
                   ${today && !selected && !inRange ? 'ring-1 ring-brand-orange text-brand-orange' : ''}
@@ -171,7 +171,7 @@ export default function DatePicker({ isOpen, onClose, onApply, initialRange }: D
             </button>
             <button
               onClick={() => onApply({ start: formatDate(startDate), end: formatDate(endDate) })}
-              className="px-4 py-2 text-sm font-medium bg-brand-orange text-white rounded-xl shadow-sm hover:bg-orange-600 transition-colors"
+              className="px-4 py-2 text-sm font-medium bg-brand-orange text-white rounded-xl shadow-sm hover:bg-brand-orange-hover transition-colors"
             >
               Apply
             </button>
