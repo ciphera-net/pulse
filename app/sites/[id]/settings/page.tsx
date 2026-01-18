@@ -57,7 +57,7 @@ export default function SiteSettingsPage() {
   const [scriptCopied, setScriptCopied] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
   const [showVerificationModal, setShowVerificationModal] = useState(false)
-  const [isPasswordMasked, setIsPasswordMasked] = useState(false)
+  const [isPasswordEnabled, setIsPasswordEnabled] = useState(false)
 
   useEffect(() => {
     loadSite()
@@ -76,7 +76,9 @@ export default function SiteSettingsPage() {
         excluded_paths: (data.excluded_paths || []).join('\n')
       })
       if (data.has_password) {
-        setIsPasswordMasked(true)
+        setIsPasswordEnabled(true)
+      } else {
+        setIsPasswordEnabled(false)
       }
     } catch (error: any) {
       toast.error('Failed to load site: ' + (error.message || 'Unknown error'))
@@ -99,7 +101,8 @@ export default function SiteSettingsPage() {
         name: formData.name,
         timezone: formData.timezone,
         is_public: formData.is_public,
-        password: isPasswordMasked ? undefined : (formData.password || undefined),
+        password: isPasswordEnabled ? (formData.password || undefined) : undefined,
+        clear_password: !isPasswordEnabled,
         excluded_paths: excludedPathsArray
       })
       toast.success('Site updated successfully')
@@ -447,27 +450,45 @@ export default function SiteSettingsPage() {
                           </div>
 
                           <div>
-                            <PasswordInput
-                              id="password"
-                              label="Password Protection (Optional)"
-                              value={isPasswordMasked ? '********' : formData.password}
-                              onChange={(value) => setFormData({ ...formData, password: value })}
-                              onFocus={() => {
-                                if (isPasswordMasked) {
-                                  setIsPasswordMasked(false)
-                                  setFormData({ ...formData, password: '' })
-                                }
-                              }}
-                              onBlur={() => {
-                                if (!formData.password && site.has_password) {
-                                  setIsPasswordMasked(true)
-                                }
-                              }}
-                              placeholder={site.has_password ? "Change password" : "Leave empty to keep existing password (if any)"}
-                            />
-                            <p className="mt-2 text-xs text-neutral-500">
-                              Set a password to restrict access to the public dashboard.
-                            </p>
+                            <div className="flex items-center justify-between mb-4">
+                              <div>
+                                <h3 className="text-sm font-medium text-neutral-900 dark:text-white">Password Protection</h3>
+                                <p className="text-xs text-neutral-500 mt-1">Restrict access to this dashboard.</p>
+                              </div>
+                              <label className="relative inline-flex items-center cursor-pointer">
+                                <input 
+                                  type="checkbox" 
+                                  checked={isPasswordEnabled} 
+                                  onChange={(e) => {
+                                    setIsPasswordEnabled(e.target.checked);
+                                    if (!e.target.checked) setFormData({...formData, password: ''}); 
+                                  }}
+                                  className="sr-only peer"
+                                />
+                                <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-orange/20 dark:peer-focus:ring-brand-orange/20 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-brand-orange"></div>
+                              </label>
+                            </div>
+
+                            <AnimatePresence>
+                              {isPasswordEnabled && (
+                                <motion.div
+                                  initial={{ opacity: 0, height: 0 }}
+                                  animate={{ opacity: 1, height: 'auto' }}
+                                  exit={{ opacity: 0, height: 0 }}
+                                  className="overflow-hidden"
+                                >
+                                  <PasswordInput
+                                    id="password"
+                                    value={formData.password}
+                                    onChange={(value) => setFormData({ ...formData, password: value })}
+                                    placeholder={site.has_password ? "Change password (leave empty to keep current)" : "Set a password"}
+                                  />
+                                  <p className="mt-2 text-xs text-neutral-500">
+                                    Visitors will need to enter this password to view the dashboard.
+                                  </p>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
                           </div>
                         </motion.div>
                       )}

@@ -23,6 +23,7 @@ export interface UpdateSiteRequest {
   timezone?: string
   is_public?: boolean
   password?: string
+  clear_password?: boolean
   excluded_paths?: string[]
 }
 
