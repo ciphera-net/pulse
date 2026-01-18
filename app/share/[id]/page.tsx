@@ -234,28 +234,19 @@ export default function PublicDashboardPage() {
 
           <StatsCard
             title="Total Visitors"
-            value={safeStats.visitors}
-            change={0} 
-            loading={false}
+            value={safeStats.visitors.toLocaleString()}
           />
           <StatsCard
             title="Total Pageviews"
-            value={safeStats.pageviews}
-            change={0}
-            loading={false}
+            value={safeStats.pageviews.toLocaleString()}
           />
           <StatsCard
             title="Bounce Rate"
             value={`${Math.round(safeStats.bounce_rate)}%`}
-            change={0}
-            loading={false}
-            inverse
           />
           <StatsCard
             title="Avg Duration"
             value={`${Math.round(safeStats.avg_duration)}s`}
-            change={0}
-            loading={false}
           />
         </div>
 
