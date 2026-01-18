@@ -160,15 +160,16 @@ export default function SiteSettingsPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 pb-12">
-      <div>
-        <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">Site Settings</h1>
-        <p className="mt-2 text-neutral-600 dark:text-neutral-400">
-          Manage settings for <span className="font-medium text-neutral-900 dark:text-white">{site.domain}</span>
-        </p>
-      </div>
+    <div className="min-h-screen pt-12 pb-12 px-4 sm:px-6">
+      <div className="max-w-4xl mx-auto space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">Site Settings</h1>
+          <p className="mt-2 text-neutral-600 dark:text-neutral-400">
+            Manage settings for <span className="font-medium text-neutral-900 dark:text-white">{site.domain}</span>
+          </p>
+        </div>
 
-      <div className="flex flex-col md:flex-row gap-8">
+        <div className="flex flex-col md:flex-row gap-8">
         {/* Sidebar Navigation */}
         <nav className="w-full md:w-64 flex-shrink-0 space-y-1">
           <button
@@ -519,5 +520,6 @@ export default function SiteSettingsPage() {
         </div>
       </div>
     </div>
+  </div>
   )
 }
