@@ -288,9 +288,6 @@ export default function PublicDashboardPage() {
           />
         </div>
 
-        <footer className="mt-12 pt-8 border-t border-neutral-200 dark:border-neutral-800 text-center text-sm text-neutral-500">
-           <p>© {new Date().getFullYear()} {site.name}. Analytics by <a href="https://ciphera.net" className="text-brand-orange hover:underline">Ciphera</a>.</p>
-        </footer>
       </div>
 
       <DatePickerModal
