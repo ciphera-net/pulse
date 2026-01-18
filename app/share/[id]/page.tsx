@@ -97,7 +97,7 @@ export default function PublicDashboardPage() {
 
   if (isPasswordProtected && !data) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-black px-4">
+      <div className="min-h-screen flex items-center justify-center px-4">
         <div className="max-w-md w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-8 shadow-lg">
           <div className="text-center mb-6">
              <div className="w-12 h-12 bg-brand-orange/10 rounded-xl flex items-center justify-center mx-auto mb-4 text-brand-orange">
@@ -154,7 +154,7 @@ export default function PublicDashboardPage() {
   const safeScreenResolutions = screen_resolutions || []
 
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-black">
+    <div className="min-h-screen">
       <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
         {/* Header */}
         <div className="mb-8">
