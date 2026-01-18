@@ -119,7 +119,7 @@ export default function Locations({ countries, cities, regions }: LocationProps)
             hasData ? (
               <>
                 {displayedData.map((item, index) => (
-                  <div key={index} className="flex items-center justify-between h-7">
+                  <div key={index} className="flex items-center justify-between h-7 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
                     <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
                       {activeTab === 'countries' && <span className="shrink-0">{getFlagComponent(item.country)}</span>}
                       {activeTab !== 'countries' && <span className="shrink-0">{getFlagComponent(item.country)}</span>}
@@ -136,7 +136,7 @@ export default function Locations({ countries, cities, regions }: LocationProps)
                   </div>
                 ))}
                 {Array.from({ length: emptySlots }).map((_, i) => (
-                  <div key={`empty-${i}`} className="h-7" aria-hidden="true" />
+                  <div key={`empty-${i}`} className="h-7 px-2 -mx-2" aria-hidden="true" />
                 ))}
               </>
             ) : (
@@ -155,7 +155,7 @@ export default function Locations({ countries, cities, regions }: LocationProps)
       >
         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
           {(data as any[]).map((item, index) => (
-            <div key={index} className="flex items-center justify-between py-1">
+            <div key={index} className="flex items-center justify-between py-1 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
               <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
                 <span className="shrink-0">{getFlagComponent(item.country)}</span>
                 <span className="truncate">

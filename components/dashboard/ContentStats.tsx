@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { formatNumber } from '@/lib/utils/format'
 import { TopPage } from '@/lib/api/stats'
 import { Modal } from '@ciphera-net/ui'
+import { FiExternalLink } from 'react-icons/fi'
 
 interface ContentStatsProps {
   topPages: TopPage[]
@@ -85,15 +86,16 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain }
           {hasData ? (
             <>
               {displayedData.map((page, index) => (
-                <div key={index} className="flex items-center justify-between h-7">
-                  <div className="flex-1 truncate text-neutral-900 dark:text-white">
+                <div key={index} className="flex items-center justify-between h-7 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
+                  <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center">
                     <a
                       href={`https://${domain.replace(/^https?:\/\//, '')}${page.path}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="hover:underline"
+                      className="hover:underline flex items-center"
                     >
                       {page.path}
+                      <FiExternalLink className="w-3 h-3 ml-2 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                     </a>
                   </div>
                   <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
@@ -102,7 +104,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain }
                 </div>
               ))}
               {Array.from({ length: emptySlots }).map((_, i) => (
-                <div key={`empty-${i}`} className="h-7" aria-hidden="true" />
+                <div key={`empty-${i}`} className="h-7 px-2 -mx-2" aria-hidden="true" />
               ))}
             </>
           ) : (
@@ -120,15 +122,16 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain }
       >
         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
           {data.map((page, index) => (
-            <div key={index} className="flex items-center justify-between py-1">
-              <div className="flex-1 truncate text-neutral-900 dark:text-white">
+            <div key={index} className="flex items-center justify-between py-1 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
+              <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center">
                 <a
                   href={`https://${domain.replace(/^https?:\/\//, '')}${page.path}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:underline"
+                  className="hover:underline flex items-center"
                 >
                   {page.path}
+                  <FiExternalLink className="w-3 h-3 ml-2 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </a>
               </div>
               <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
