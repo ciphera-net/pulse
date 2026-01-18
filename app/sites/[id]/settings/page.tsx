@@ -40,6 +40,7 @@ export default function SiteSettingsPage() {
     excluded_paths: ''
   })
   const [scriptCopied, setScriptCopied] = useState(false)
+  const [linkCopied, setLinkCopied] = useState(false)
 
   useEffect(() => {
     loadSite()
@@ -125,6 +126,14 @@ export default function SiteSettingsPage() {
     setScriptCopied(true)
     toast.success('Script copied to clipboard')
     setTimeout(() => setScriptCopied(false), 2000)
+  }
+
+  const copyLink = () => {
+    const link = `${APP_URL}/share/${siteId}`
+    navigator.clipboard.writeText(link)
+    setLinkCopied(true)
+    toast.success('Link copied to clipboard')
+    setTimeout(() => setLinkCopied(false), 2000)
   }
 
   if (loading) {
@@ -275,21 +284,47 @@ export default function SiteSettingsPage() {
             </div>
 
             {formData.is_public && (
-              <div className="pt-4 border-t border-neutral-200 dark:border-neutral-800">
-                 <label htmlFor="password" className="block text-sm font-medium mb-2 text-neutral-900 dark:text-white">
-                  Password Protection (Optional)
-                </label>
-                <input
-                  type="password"
-                  id="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  placeholder="Leave empty to keep existing password (if any)"
-                  className="w-full px-4 py-2 border border-neutral-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-brand-orange focus:border-transparent"
-                />
-                <p className="mt-1 text-xs text-neutral-500">
-                  Set a password to restrict access to the public dashboard.
-                </p>
+              <div className="pt-4 border-t border-neutral-200 dark:border-neutral-800 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-neutral-900 dark:text-white">
+                    Public Link
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={`${APP_URL}/share/${siteId}`}
+                      className="flex-1 px-4 py-2 border border-neutral-300 dark:border-neutral-700 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 font-mono text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={copyLink}
+                      className="btn-secondary whitespace-nowrap"
+                    >
+                      {linkCopied ? 'Copied!' : 'Copy Link'}
+                    </button>
+                  </div>
+                  <p className="mt-1 text-xs text-neutral-500">
+                    Share this link with others to view the dashboard.
+                  </p>
+                </div>
+
+                <div>
+                  <label htmlFor="password" className="block text-sm font-medium mb-2 text-neutral-900 dark:text-white">
+                    Password Protection (Optional)
+                  </label>
+                  <input
+                    type="password"
+                    id="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    placeholder="Leave empty to keep existing password (if any)"
+                    className="w-full px-4 py-2 border border-neutral-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-brand-orange focus:border-transparent"
+                  />
+                  <p className="mt-1 text-xs text-neutral-500">
+                    Set a password to restrict access to the public dashboard.
+                  </p>
+                </div>
               </div>
             )}
           </div>
