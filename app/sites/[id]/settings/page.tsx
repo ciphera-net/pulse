@@ -54,7 +54,7 @@ export default function SiteSettingsPage() {
   })
   const [scriptCopied, setScriptCopied] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
-  const [verifying, setVerifying] = useState(false)
+  const [verificationStatus, setVerificationStatus] = useState<'idle' | 'checking' | 'success' | 'error'>('idle')
 
   useEffect(() => {
     loadSite()
@@ -136,17 +136,15 @@ export default function SiteSettingsPage() {
 
   const handleVerify = async () => {
     if (!site?.domain) return
-    setVerifying(true)
-    let attempts = 0
-    const maxAttempts = 10 // Try for 20 seconds (10 * 2s)
     
-    // 1. Open the site in a new tab with a cache-busting/tracking param
-    // We use a timestamp to ensure it's a fresh navigation
+    setVerificationStatus('checking')
+    let attempts = 0
+    const maxAttempts = 10 
+    
+    // 1. Open site
     const protocol = site.domain.includes('http') ? '' : 'https://'
     const verificationUrl = `${protocol}${site.domain}/?utm_source=ciphera_verify&_t=${Date.now()}`
     window.open(verificationUrl, '_blank')
-
-    toast.info('Checking for connection... (Please ensure the new tab loads)')
 
     // 2. Poll for success
     const checkInterval = setInterval(async () => {
@@ -154,28 +152,18 @@ export default function SiteSettingsPage() {
       try {
         const data = await getRealtime(siteId)
         
-        // Success condition: We see visitors
         if (data.visitors > 0) {
           clearInterval(checkInterval)
-          setVerifying(false)
-          toast.success('Success! Installation verified.')
-        } 
-        // Failure condition: Time out
-        else if (attempts >= maxAttempts) {
+          setVerificationStatus('success')
+          toast.success('Connection established!')
+        } else if (attempts >= maxAttempts) {
           clearInterval(checkInterval)
-          setVerifying(false)
-          toast.warning(
-            'We couldn\'t detect the connection yet. Please checking the following:',
-            {
-              description: '1. Ad blockers are disabled\n2. The script is in the <head>\n3. You are not on localhost (unless configured)',
-              duration: 6000
-            }
-          )
+          setVerificationStatus('error')
         }
       } catch (e) {
-        // Ignore network errors during polling
+        // Ignore errors while polling
       }
-    }, 2000) // Poll every 2 seconds
+    }, 2000)
   }
 
   const copyScript = () => {
@@ -348,23 +336,73 @@ export default function SiteSettingsPage() {
                       </button>
                     </div>
 
-                    <div className="flex items-center gap-4">
-                      <button
-                        type="button"
-                        onClick={handleVerify}
-                        disabled={verifying}
-                        className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-all text-sm font-medium"
-                      >
-                        {verifying ? (
-                          <div className="w-4 h-4 border-2 border-neutral-500 border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <LightningBoltIcon className="w-4 h-4" />
+                    <div className="space-y-4 pt-2">
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={handleVerify}
+                          disabled={verificationStatus === 'checking'}
+                          className={`flex items-center gap-2 px-4 py-2 border rounded-xl text-sm font-medium transition-all
+                            ${verificationStatus === 'success' 
+                              ? 'bg-green-50 border-green-200 text-green-700 dark:bg-green-900/20 dark:border-green-900 dark:text-green-400'
+                              : 'bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700'
+                            }`}
+                        >
+                          {verificationStatus === 'checking' ? (
+                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                          ) : verificationStatus === 'success' ? (
+                            <CheckIcon className="w-4 h-4" />
+                          ) : (
+                            <LightningBoltIcon className="w-4 h-4" />
+                          )}
+                          {verificationStatus === 'checking' ? 'Checking...' : 
+                           verificationStatus === 'success' ? 'Installation Verified' : 'Verify Installation'}
+                        </button>
+
+                        {/* Status Text */}
+                        {verificationStatus === 'checking' && (
+                          <span className="text-sm text-neutral-500 animate-pulse">
+                            Waiting for signal from {site.domain}...
+                          </span>
                         )}
-                        Verify Installation
-                      </button>
-                      <p className="text-xs text-neutral-500 dark:text-neutral-500">
-                        This will open your site in a new tab to check connection.
-                      </p>
+                      </div>
+
+                      {/* Error State - Inline Troubleshooting */}
+                      <AnimatePresence>
+                        {verificationStatus === 'error' && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="p-4 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 rounded-xl text-sm">
+                              <div className="flex items-start gap-3">
+                                <ExclamationTriangleIcon className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                                <div className="space-y-2">
+                                  <p className="font-medium text-red-900 dark:text-red-200">
+                                    We couldn't detect the script.
+                                  </p>
+                                  <p className="text-red-700 dark:text-red-300">
+                                    Please ensure you opened the new tab and check the following:
+                                  </p>
+                                  <ul className="list-disc list-inside space-y-1 text-red-700 dark:text-red-300 ml-1">
+                                    <li>Ad blockers are disabled on your site</li>
+                                    <li>The script is placed in the <code>&lt;head&gt;</code> tag</li>
+                                    <li>You are not testing on localhost (unless configured)</li>
+                                  </ul>
+                                  <button 
+                                    onClick={handleVerify}
+                                    className="text-red-700 dark:text-red-300 underline font-medium hover:text-red-800 mt-1"
+                                  >
+                                    Try Again
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   </div>
 
