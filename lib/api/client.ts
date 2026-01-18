@@ -19,9 +19,12 @@ export function getSignupUrl(redirectPath = '/auth/callback') {
 
 export class ApiError extends Error {
   status: number
-  constructor(message: string, status: number) {
+  data?: any
+  
+  constructor(message: string, status: number, data?: any) {
     super(message)
     this.status = status
+    this.data = data
   }
 }
 
@@ -136,7 +139,7 @@ async function apiRequest<T>(
       error: 'Unknown error',
       message: `HTTP ${response.status}: ${response.statusText}`,
     }))
-    throw new ApiError(errorBody.message || errorBody.error || 'Request failed', response.status)
+    throw new ApiError(errorBody.message || errorBody.error || 'Request failed', response.status, errorBody)
   }
 
   return response.json()
