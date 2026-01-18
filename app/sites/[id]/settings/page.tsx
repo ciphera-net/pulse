@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { getSite, updateSite, resetSiteData, deleteSite, type Site } from '@/lib/api/sites'
+import { getRealtime } from '@/lib/api/stats'
 import { toast } from 'sonner'
 import LoadingOverlay from '@/components/LoadingOverlay'
 import { APP_URL, API_URL } from '@/lib/api/client'
@@ -13,7 +14,8 @@ import {
   FileTextIcon,
   CheckIcon,
   CopyIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  LightningBoltIcon
 } from '@radix-ui/react-icons'
 
 const TIMEZONES = [
@@ -52,6 +54,7 @@ export default function SiteSettingsPage() {
   })
   const [scriptCopied, setScriptCopied] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
+  const [verifying, setVerifying] = useState(false)
 
   useEffect(() => {
     loadSite()
@@ -129,6 +132,50 @@ export default function SiteSettingsPage() {
     } catch (error: any) {
       toast.error('Failed to delete site: ' + (error.message || 'Unknown error'))
     }
+  }
+
+  const handleVerify = async () => {
+    if (!site?.domain) return
+    setVerifying(true)
+    let attempts = 0
+    const maxAttempts = 10 // Try for 20 seconds (10 * 2s)
+    
+    // 1. Open the site in a new tab with a cache-busting/tracking param
+    // We use a timestamp to ensure it's a fresh navigation
+    const protocol = site.domain.includes('http') ? '' : 'https://'
+    const verificationUrl = `${protocol}${site.domain}/?utm_source=ciphera_verify&_t=${Date.now()}`
+    window.open(verificationUrl, '_blank')
+
+    toast.info('Checking for connection... (Please ensure the new tab loads)')
+
+    // 2. Poll for success
+    const checkInterval = setInterval(async () => {
+      attempts++
+      try {
+        const data = await getRealtime(siteId)
+        
+        // Success condition: We see visitors
+        if (data.visitors > 0) {
+          clearInterval(checkInterval)
+          setVerifying(false)
+          toast.success('Success! Installation verified.')
+        } 
+        // Failure condition: Time out
+        else if (attempts >= maxAttempts) {
+          clearInterval(checkInterval)
+          setVerifying(false)
+          toast.warning(
+            'We couldn\'t detect the connection yet. Please checking the following:',
+            {
+              description: '1. Ad blockers are disabled\n2. The script is in the <head>\n3. You are not on localhost (unless configured)',
+              duration: 6000
+            }
+          )
+        }
+      } catch (e) {
+        // Ignore network errors during polling
+      }
+    }, 2000) // Poll every 2 seconds
   }
 
   const copyScript = () => {
@@ -299,6 +346,25 @@ export default function SiteSettingsPage() {
                       >
                         {scriptCopied ? <CheckIcon className="w-4 h-4 text-green-500" /> : <CopyIcon className="w-4 h-4 text-neutral-500" />}
                       </button>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                      <button
+                        type="button"
+                        onClick={handleVerify}
+                        disabled={verifying}
+                        className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-all text-sm font-medium"
+                      >
+                        {verifying ? (
+                          <div className="w-4 h-4 border-2 border-neutral-500 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <LightningBoltIcon className="w-4 h-4" />
+                        )}
+                        Verify Installation
+                      </button>
+                      <p className="text-xs text-neutral-500 dark:text-neutral-500">
+                        This will open your site in a new tab to check connection.
+                      </p>
                     </div>
                   </div>
 
