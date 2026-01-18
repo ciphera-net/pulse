@@ -7,6 +7,7 @@ import { getRealtime } from '@/lib/api/stats'
 import { toast } from 'sonner'
 import LoadingOverlay from '@/components/LoadingOverlay'
 import VerificationModal from '@/components/sites/VerificationModal'
+import PasswordInput from '@/components/PasswordInput'
 import { APP_URL, API_URL } from '@/lib/api/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -446,13 +447,11 @@ export default function SiteSettingsPage() {
                           </div>
 
                           <div>
-                            <label htmlFor="password" className="block text-sm font-medium mb-2 text-neutral-900 dark:text-white">
-                              Password Protection (Optional)
-                            </label>
-                            <input
-                              type="password"
+                            <PasswordInput
                               id="password"
+                              label="Password Protection (Optional)"
                               value={isPasswordMasked ? '********' : formData.password}
+                              onChange={(value) => setFormData({ ...formData, password: value })}
                               onFocus={() => {
                                 if (isPasswordMasked) {
                                   setIsPasswordMasked(false)
@@ -464,10 +463,7 @@ export default function SiteSettingsPage() {
                                   setIsPasswordMasked(true)
                                 }
                               }}
-                              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                               placeholder={site.has_password ? "Change password" : "Leave empty to keep existing password (if any)"}
-                              className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-xl bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:bg-white dark:focus:bg-neutral-900 
-                              focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all duration-200"
                             />
                             <p className="mt-2 text-xs text-neutral-500">
                               Set a password to restrict access to the public dashboard.
