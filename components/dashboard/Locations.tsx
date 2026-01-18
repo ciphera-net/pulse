@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { formatNumber } from '@/lib/utils/format'
 import * as Flags from 'country-flag-icons/react/3x2'
+// @ts-ignore
+import iso3166 from 'iso-3166-2'
 import WorldMap from './WorldMap'
 import { Modal } from '@ciphera-net/ui'
 
@@ -33,6 +35,27 @@ export default function Locations({ countries, cities, regions }: LocationProps)
       return regionNames.of(code) || code
     } catch (e) {
       return code
+    }
+  }
+
+  const getRegionName = (regionCode: string, countryCode: string) => {
+    if (!regionCode || regionCode === 'Unknown' || !countryCode || countryCode === 'Unknown') return 'Unknown'
+    
+    try {
+      const countryData = iso3166.data[countryCode]
+      if (!countryData || !countryData.sub) return regionCode
+      
+      // ISO 3166-2 structure keys are typically "US-OR"
+      const fullCode = `${countryCode}-${regionCode}`
+      const regionData = countryData.sub[fullCode]
+      
+      if (regionData && regionData.name) {
+        return regionData.name
+      }
+      
+      return regionCode
+    } catch (e) {
+      return regionCode
     }
   }
 
@@ -103,7 +126,7 @@ export default function Locations({ countries, cities, regions }: LocationProps)
                       
                       <span className="truncate">
                         {activeTab === 'countries' ? getCountryName(item.country) : 
-                         activeTab === 'regions' ? (item.region === 'Unknown' ? 'Unknown' : item.region) :
+                         activeTab === 'regions' ? getRegionName(item.region, item.country) :
                          (item.city === 'Unknown' ? 'Unknown' : item.city)}
                       </span>
                     </div>
@@ -137,7 +160,7 @@ export default function Locations({ countries, cities, regions }: LocationProps)
                 <span className="shrink-0">{getFlagComponent(item.country)}</span>
                 <span className="truncate">
                   {activeTab === 'countries' ? getCountryName(item.country) : 
-                   activeTab === 'regions' ? (item.region === 'Unknown' ? 'Unknown' : item.region) :
+                   activeTab === 'regions' ? getRegionName(item.region, item.country) :
                    (item.city === 'Unknown' ? 'Unknown' : item.city)}
                 </span>
               </div>
