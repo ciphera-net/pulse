@@ -301,7 +301,7 @@ export default function PublicDashboardPage() {
       <DatePickerModal
         isOpen={isDatePickerOpen}
         onClose={() => setIsDatePickerOpen(false)}
-        dateRange={dateRange}
+        initialRange={dateRange}
         onApply={(range) => {
           setDateRange(range)
           setIsDatePickerOpen(false)
