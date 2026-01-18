@@ -7,6 +7,7 @@ import { getStats, getRealtime, getDailyStats, getTopPages, getTopReferrers, get
 import { formatNumber, formatDuration, getDateRange } from '@/lib/utils/format'
 import { toast } from 'sonner'
 import LoadingOverlay from '@/components/LoadingOverlay'
+import Select from '@/components/ui/Select'
 import ContentStats from '@/components/dashboard/ContentStats'
 import TopReferrers from '@/components/dashboard/TopReferrers'
 import Locations from '@/components/dashboard/Locations'
@@ -161,7 +162,7 @@ export default function SiteDashboardPage() {
           </div>
 
           <div className="flex gap-2">
-            <select
+            <Select
               value={
                 dateRange.start === new Date().toISOString().split('T')[0] && dateRange.end === new Date().toISOString().split('T')[0] 
                 ? 'today' 
@@ -171,21 +172,21 @@ export default function SiteDashboardPage() {
                 ? '30' 
                 : 'custom'
               }
-              onChange={(e) => {
-                if (e.target.value === '7') setDateRange(getDateRange(7))
-                else if (e.target.value === '30') setDateRange(getDateRange(30))
-                else if (e.target.value === 'today') {
+              onChange={(value) => {
+                if (value === '7') setDateRange(getDateRange(7))
+                else if (value === '30') setDateRange(getDateRange(30))
+                else if (value === 'today') {
                   const today = new Date().toISOString().split('T')[0]
                   setDateRange({ start: today, end: today })
                 }
               }}
-              className="btn-secondary text-sm"
-            >
-              <option value="today">Today</option>
-              <option value="7">Last 7 days</option>
-              <option value="30">Last 30 days</option>
-              <option value="custom">Custom</option>
-            </select>
+              options={[
+                { value: 'today', label: 'Today' },
+                { value: '7', label: 'Last 7 days' },
+                { value: '30', label: 'Last 30 days' },
+                { value: 'custom', label: 'Custom' },
+              ]}
+            />
             <button
               onClick={() => router.push(`/sites/${siteId}/settings`)}
               className="btn-secondary text-sm"
