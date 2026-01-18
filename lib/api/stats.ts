@@ -1,4 +1,5 @@
 import apiRequest from './client'
+import { Site } from './sites'
 
 export interface Stats {
   pageviews: number
@@ -169,4 +170,30 @@ export async function getScreenResolutions(siteId: string, startDate?: string, e
   if (endDate) params.append('end_date', endDate)
   params.append('limit', limit.toString())
   return apiRequest<{ screen_resolutions: ScreenResolutionStat[] }>(`/sites/${siteId}/screen-resolutions?${params.toString()}`).then(r => r?.screen_resolutions || [])
+}
+
+export interface DashboardData {
+  site: Site
+  stats: Stats
+  realtime_visitors: number
+  daily_stats: DailyStat[]
+  top_pages: TopPage[]
+  entry_pages: TopPage[]
+  exit_pages: TopPage[]
+  top_referrers: TopReferrer[]
+  countries: CountryStat[]
+  cities: CityStat[]
+  regions: RegionStat[]
+  browsers: BrowserStat[]
+  os: OSStat[]
+  devices: DeviceStat[]
+  screen_resolutions: ScreenResolutionStat[]
+}
+
+export async function getDashboard(siteId: string, startDate?: string, endDate?: string, limit = 10): Promise<DashboardData> {
+  const params = new URLSearchParams()
+  if (startDate) params.append('start_date', startDate)
+  if (endDate) params.append('end_date', endDate)
+  params.append('limit', limit.toString())
+  return apiRequest<DashboardData>(`/sites/${siteId}/dashboard?${params.toString()}`)
 }

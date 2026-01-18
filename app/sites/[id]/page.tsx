@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { getSite, type Site } from '@/lib/api/sites'
-import { getStats, getRealtime, getDailyStats, getTopPages, getTopReferrers, getCountries, getCities, getRegions, getBrowsers, getOS, getDevices, getScreenResolutions, getEntryPages, getExitPages } from '@/lib/api/stats'
+import { getStats, getRealtime, getDailyStats, getTopPages, getTopReferrers, getCountries, getCities, getRegions, getBrowsers, getOS, getDevices, getScreenResolutions, getEntryPages, getExitPages, getDashboard } from '@/lib/api/stats'
 import { formatNumber, formatDuration, getDateRange } from '@/lib/utils/format'
 import { toast } from 'sonner'
 import LoadingOverlay from '@/components/LoadingOverlay'
@@ -49,54 +49,23 @@ export default function SiteDashboardPage() {
   const loadData = async () => {
     try {
       setLoading(true)
-      const [
-        siteData, 
-        statsData, 
-        realtimeData, 
-        dailyData, 
-        pagesData, 
-        entryPagesData,
-        exitPagesData,
-        referrersData, 
-        countriesData, 
-        citiesData, 
-        regionsData,
-        browsersData, 
-        osData, 
-        devicesData,
-        screensData
-      ] = await Promise.all([
-        getSite(siteId),
-        getStats(siteId, dateRange.start, dateRange.end),
-        getRealtime(siteId),
-        getDailyStats(siteId, dateRange.start, dateRange.end),
-        getTopPages(siteId, dateRange.start, dateRange.end, 10),
-        getEntryPages(siteId, dateRange.start, dateRange.end, 10),
-        getExitPages(siteId, dateRange.start, dateRange.end, 10),
-        getTopReferrers(siteId, dateRange.start, dateRange.end, 10),
-        getCountries(siteId, dateRange.start, dateRange.end, 10),
-        getCities(siteId, dateRange.start, dateRange.end, 10),
-        getRegions(siteId, dateRange.start, dateRange.end, 10),
-        getBrowsers(siteId, dateRange.start, dateRange.end, 10),
-        getOS(siteId, dateRange.start, dateRange.end, 10),
-        getDevices(siteId, dateRange.start, dateRange.end, 10),
-        getScreenResolutions(siteId, dateRange.start, dateRange.end, 10),
-      ])
-      setSite(siteData)
-      setStats(statsData || { pageviews: 0, visitors: 0, bounce_rate: 0, avg_duration: 0 })
-      setRealtime(realtimeData?.visitors || 0)
-      setDailyStats(Array.isArray(dailyData) ? dailyData : [])
-      setTopPages(Array.isArray(pagesData) ? pagesData : [])
-      setEntryPages(Array.isArray(entryPagesData) ? entryPagesData : [])
-      setExitPages(Array.isArray(exitPagesData) ? exitPagesData : [])
-      setTopReferrers(Array.isArray(referrersData) ? referrersData : [])
-      setCountries(Array.isArray(countriesData) ? countriesData : [])
-      setCities(Array.isArray(citiesData) ? citiesData : [])
-      setRegions(Array.isArray(regionsData) ? regionsData : [])
-      setBrowsers(Array.isArray(browsersData) ? browsersData : [])
-      setOS(Array.isArray(osData) ? osData : [])
-      setDevices(Array.isArray(devicesData) ? devicesData : [])
-      setScreenResolutions(Array.isArray(screensData) ? screensData : [])
+      const data = await getDashboard(siteId, dateRange.start, dateRange.end, 10)
+
+      setSite(data.site)
+      setStats(data.stats || { pageviews: 0, visitors: 0, bounce_rate: 0, avg_duration: 0 })
+      setRealtime(data.realtime_visitors || 0)
+      setDailyStats(Array.isArray(data.daily_stats) ? data.daily_stats : [])
+      setTopPages(Array.isArray(data.top_pages) ? data.top_pages : [])
+      setEntryPages(Array.isArray(data.entry_pages) ? data.entry_pages : [])
+      setExitPages(Array.isArray(data.exit_pages) ? data.exit_pages : [])
+      setTopReferrers(Array.isArray(data.top_referrers) ? data.top_referrers : [])
+      setCountries(Array.isArray(data.countries) ? data.countries : [])
+      setCities(Array.isArray(data.cities) ? data.cities : [])
+      setRegions(Array.isArray(data.regions) ? data.regions : [])
+      setBrowsers(Array.isArray(data.browsers) ? data.browsers : [])
+      setOS(Array.isArray(data.os) ? data.os : [])
+      setDevices(Array.isArray(data.devices) ? data.devices : [])
+      setScreenResolutions(Array.isArray(data.screen_resolutions) ? data.screen_resolutions : [])
     } catch (error: any) {
       toast.error('Failed to load data: ' + (error.message || 'Unknown error'))
     } finally {
