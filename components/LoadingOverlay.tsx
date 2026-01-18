@@ -27,11 +27,11 @@ export default function LoadingOverlay({
         <div className="flex items-center gap-3">
           <img 
             src={logoSrc} 
-            alt={title} 
+            alt={typeof title === 'string' ? title : "Ciphera Analytics"} 
             className="h-12 w-auto object-contain"
           />
-          <span className="text-3xl font-bold tracking-tight text-neutral-900 dark:text-white">
-            {title}
+          <span className="text-3xl tracking-tight text-neutral-900 dark:text-white">
+            <span className="font-bold">Ciphera</span><span className="font-light">Analytics</span>
           </span>
         </div>
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-neutral-200 border-t-brand-orange dark:border-neutral-800 dark:border-t-brand-orange" />

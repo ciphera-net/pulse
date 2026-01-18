@@ -13,7 +13,12 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         auth={auth} 
         LinkComponent={Link} 
         logoSrc="/ciphera_icon_no_margins.png"
-        appName="Ciphera Analytics"
+        appName={
+          <span className="flex items-center">
+            <span className="font-bold">Ciphera</span>
+            <span className="font-light">Analytics</span>
+          </span>
+        }
       />
       <main className="flex-1 pt-24 pb-8">
         {children}
