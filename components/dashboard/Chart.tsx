@@ -75,6 +75,7 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
       value: formatNumber(stats.visitors),
       trend: calculateTrend(stats.visitors, prevStats?.visitors),
       color: '#4F46E5', // Indigo
+      invertTrend: false,
     },
     {
       id: 'pageviews',
@@ -82,6 +83,7 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
       value: formatNumber(stats.pageviews),
       trend: calculateTrend(stats.pageviews, prevStats?.pageviews),
       color: '#FD5E0F', // Orange
+      invertTrend: false,
     },
     {
       id: 'bounce_rate',
@@ -97,6 +99,7 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
       value: formatDuration(stats.avg_duration),
       trend: calculateTrend(stats.avg_duration, prevStats?.avg_duration),
       color: '#10B981', // Emerald
+      invertTrend: false,
     },
   ] as const
 
