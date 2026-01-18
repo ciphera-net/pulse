@@ -5,6 +5,9 @@ export interface Site {
   user_id: string
   domain: string
   name: string
+  timezone?: string
+  is_public?: boolean
+  excluded_paths?: string[]
   created_at: string
   updated_at: string
 }
@@ -16,6 +19,10 @@ export interface CreateSiteRequest {
 
 export interface UpdateSiteRequest {
   name: string
+  timezone?: string
+  is_public?: boolean
+  password?: string
+  excluded_paths?: string[]
 }
 
 export async function listSites(): Promise<Site[]> {
@@ -44,5 +51,11 @@ export async function updateSite(id: string, data: UpdateSiteRequest): Promise<S
 export async function deleteSite(id: string): Promise<void> {
   await apiRequest(`/sites/${id}`, {
     method: 'DELETE',
+  })
+}
+
+export async function resetSiteData(id: string): Promise<void> {
+  await apiRequest(`/sites/${id}/reset`, {
+    method: 'POST',
   })
 }
