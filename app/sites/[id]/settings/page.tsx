@@ -6,6 +6,15 @@ import { getSite, updateSite, resetSiteData, deleteSite, type Site } from '@/lib
 import { toast } from 'sonner'
 import LoadingOverlay from '@/components/LoadingOverlay'
 import { APP_URL, API_URL } from '@/lib/api/client'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  GearIcon,
+  GlobeIcon,
+  FileTextIcon,
+  CheckIcon,
+  CopyIcon,
+  ExclamationTriangleIcon
+} from '@radix-ui/react-icons'
 
 const TIMEZONES = [
   'UTC',
@@ -32,6 +41,8 @@ export default function SiteSettingsPage() {
   const [site, setSite] = useState<Site | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [activeTab, setActiveTab] = useState<'general' | 'visibility' | 'data'>('general')
+
   const [formData, setFormData] = useState({
     name: '',
     timezone: 'UTC',
@@ -149,245 +160,364 @@ export default function SiteSettingsPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <h1 className="text-3xl font-bold mb-8 text-neutral-900 dark:text-white">
-        Site Settings
-      </h1>
-
-      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 mb-6">
-        <h2 className="text-xl font-semibold mb-4 text-neutral-900 dark:text-white">
-          Tracking Script
-        </h2>
-        <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
-          Add this script to your website to start tracking visitors.
+    <div className="max-w-4xl mx-auto space-y-8 pb-12">
+      <div>
+        <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">Site Settings</h1>
+        <p className="mt-2 text-neutral-600 dark:text-neutral-400">
+          Manage settings for <span className="font-medium text-neutral-900 dark:text-white">{site.domain}</span>
         </p>
-        <div className="bg-neutral-100 dark:bg-neutral-800 rounded-lg p-4 mb-4">
-          <code className="text-sm text-neutral-900 dark:text-white break-all">
-            {`<script defer data-domain="${site.domain}" data-api="${API_URL}" src="${APP_URL}/script.js"></script>`}
-          </code>
-        </div>
-        <button
-          onClick={copyScript}
-          className="btn-primary"
-        >
-          {scriptCopied ? 'Copied!' : 'Copy Script'}
-        </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* General Configuration */}
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6">
-          <h2 className="text-xl font-semibold mb-4 text-neutral-900 dark:text-white">
-            General Configuration
-          </h2>
-
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium mb-2 text-neutral-900 dark:text-white">
-                Site Name
-              </label>
-              <input
-                type="text"
-                id="name"
-                required
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-4 py-2 border border-neutral-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-brand-orange focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="timezone" className="block text-sm font-medium mb-2 text-neutral-900 dark:text-white">
-                Timezone
-              </label>
-              <select
-                id="timezone"
-                value={formData.timezone}
-                onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
-                className="w-full px-4 py-2 border border-neutral-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-brand-orange focus:border-transparent"
-              >
-                {TIMEZONES.map((tz) => (
-                  <option key={tz} value={tz}>
-                    {tz}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2 text-neutral-900 dark:text-white">
-                Domain
-              </label>
-              <input
-                type="text"
-                value={site.domain}
-                disabled
-                className="w-full px-4 py-2 border border-neutral-300 dark:border-neutral-700 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 cursor-not-allowed"
-              />
-              <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
-                Domain cannot be changed after creation
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Data Filters */}
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6">
-          <h2 className="text-xl font-semibold mb-4 text-neutral-900 dark:text-white">
-            Data Filters
-          </h2>
-          
-          <div>
-            <label htmlFor="excludedPaths" className="block text-sm font-medium mb-2 text-neutral-900 dark:text-white">
-              Excluded Paths
-            </label>
-            <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-2">
-              Enter paths to exclude from tracking (one per line). Supports simple matching (e.g., /admin/*).
-            </p>
-            <textarea
-              id="excludedPaths"
-              rows={4}
-              value={formData.excluded_paths}
-              onChange={(e) => setFormData({ ...formData, excluded_paths: e.target.value })}
-              placeholder="/admin/*&#10;/staging/*"
-              className="w-full px-4 py-2 border border-neutral-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-brand-orange focus:border-transparent font-mono text-sm"
-            />
-          </div>
-        </div>
-
-        {/* Visibility */}
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6">
-          <h2 className="text-xl font-semibold mb-4 text-neutral-900 dark:text-white">
+      <div className="flex flex-col md:flex-row gap-8">
+        {/* Sidebar Navigation */}
+        <nav className="w-full md:w-64 flex-shrink-0 space-y-1">
+          <button
+            onClick={() => setActiveTab('general')}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
+              activeTab === 'general'
+                ? 'bg-brand-orange/10 text-brand-orange'
+                : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+            }`}
+          >
+            <GearIcon className="w-5 h-5" />
+            General
+          </button>
+          <button
+            onClick={() => setActiveTab('visibility')}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
+              activeTab === 'visibility'
+                ? 'bg-brand-orange/10 text-brand-orange'
+                : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+            }`}
+          >
+            <GlobeIcon className="w-5 h-5" />
             Visibility
-          </h2>
-          
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <label htmlFor="isPublic" className="font-medium text-neutral-900 dark:text-white">
-                  Public Dashboard
-                </label>
-                <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                  Allow anyone with the link to view this dashboard
-                </p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  id="isPublic"
-                  checked={formData.is_public}
-                  onChange={(e) => setFormData({ ...formData, is_public: e.target.checked })}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-orange/20 dark:peer-focus:ring-brand-orange/20 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-brand-orange"></div>
-              </label>
-            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('data')}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
+              activeTab === 'data'
+                ? 'bg-brand-orange/10 text-brand-orange'
+                : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+            }`}
+          >
+            <FileTextIcon className="w-5 h-5" />
+            Data & Privacy
+          </button>
+        </nav>
 
-            {formData.is_public && (
-              <div className="pt-4 border-t border-neutral-200 dark:border-neutral-800 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-neutral-900 dark:text-white">
-                    Public Link
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      readOnly
-                      value={`${APP_URL}/share/${siteId}`}
-                      className="flex-1 px-4 py-2 border border-neutral-300 dark:border-neutral-700 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 font-mono text-sm"
-                    />
+        {/* Content Area */}
+        <div className="flex-1 relative">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.2 }}
+            className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-6 md:p-8 shadow-sm"
+          >
+            {activeTab === 'general' && (
+              <div className="space-y-12">
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div>
+                    <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-1">General Configuration</h2>
+                    <p className="text-sm text-neutral-500 dark:text-neutral-400">Update your site details and tracking script.</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label htmlFor="name" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                        Site Name
+                      </label>
+                      <input
+                        type="text"
+                        id="name"
+                        required
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-xl bg-neutral-50/50 dark:bg-neutral-900/50 focus:bg-white dark:focus:bg-neutral-900 
+                        focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all duration-200 dark:text-white"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label htmlFor="timezone" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                        Timezone
+                      </label>
+                      <div className="relative">
+                        <select
+                          id="timezone"
+                          value={formData.timezone}
+                          onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
+                          className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-xl bg-neutral-50/50 dark:bg-neutral-900/50 focus:bg-white dark:focus:bg-neutral-900 
+                          focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all duration-200 dark:text-white appearance-none"
+                        >
+                          {TIMEZONES.map((tz) => (
+                            <option key={tz} value={tz}>
+                              {tz}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none">
+                          <svg className="w-4 h-4 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                        Domain
+                      </label>
+                      <input
+                        type="text"
+                        value={site.domain}
+                        disabled
+                        className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-xl bg-neutral-100 dark:bg-neutral-800/50 text-neutral-500 dark:text-neutral-400 cursor-not-allowed"
+                      />
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                        Domain cannot be changed after creation
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-neutral-100 dark:border-neutral-800">
+                    <h3 className="text-lg font-medium text-neutral-900 dark:text-white mb-2">Tracking Script</h3>
+                    <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
+                      Add this script to your website to start tracking visitors.
+                    </p>
+                    <div className="bg-neutral-100 dark:bg-neutral-800 rounded-lg p-4 mb-4 relative group">
+                      <code className="text-sm text-neutral-900 dark:text-white break-all font-mono block">
+                        {`<script defer data-domain="${site.domain}" data-api="${API_URL}" src="${APP_URL}/script.js"></script>`}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={copyScript}
+                        className="absolute top-2 right-2 p-2 bg-white dark:bg-neutral-700 rounded-lg shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Copy Script"
+                      >
+                        {scriptCopied ? <CheckIcon className="w-4 h-4 text-green-500" /> : <CopyIcon className="w-4 h-4 text-neutral-500" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-neutral-100 dark:border-neutral-800 flex justify-end">
                     <button
-                      type="button"
-                      onClick={copyLink}
-                      className="btn-secondary whitespace-nowrap"
+                      type="submit"
+                      disabled={saving}
+                      className="flex items-center gap-2 px-6 py-2.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-xl font-medium 
+                      hover:bg-neutral-800 dark:hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                     >
-                      {linkCopied ? 'Copied!' : 'Copy Link'}
+                      {saving ? (
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <CheckIcon className="w-4 h-4" />
+                          Save Changes
+                        </>
+                      )}
                     </button>
                   </div>
-                  <p className="mt-1 text-xs text-neutral-500">
-                    Share this link with others to view the dashboard.
-                  </p>
-                </div>
+                </form>
 
-                <div>
-                  <label htmlFor="password" className="block text-sm font-medium mb-2 text-neutral-900 dark:text-white">
-                    Password Protection (Optional)
-                  </label>
-                  <input
-                    type="password"
-                    id="password"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    placeholder="Leave empty to keep existing password (if any)"
-                    className="w-full px-4 py-2 border border-neutral-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-brand-orange focus:border-transparent"
-                  />
-                  <p className="mt-1 text-xs text-neutral-500">
-                    Set a password to restrict access to the public dashboard.
-                  </p>
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-xl font-semibold text-red-600 dark:text-red-500 mb-1">Danger Zone</h2>
+                    <p className="text-sm text-neutral-500 dark:text-neutral-400">Irreversible actions for your site.</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="p-4 border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/10 rounded-xl flex items-center justify-between">
+                      <div>
+                        <h3 className="font-medium text-red-900 dark:text-red-200">Reset Data</h3>
+                        <p className="text-sm text-red-700 dark:text-red-300 mt-1">Delete all stats and events. This cannot be undone.</p>
+                      </div>
+                      <button
+                        onClick={handleResetData}
+                        className="px-4 py-2 bg-white dark:bg-neutral-900 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-sm font-medium"
+                      >
+                        Reset Data
+                      </button>
+                    </div>
+
+                    <div className="p-4 border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/10 rounded-xl flex items-center justify-between">
+                      <div>
+                        <h3 className="font-medium text-red-900 dark:text-red-200">Delete Site</h3>
+                        <p className="text-sm text-red-700 dark:text-red-300 mt-1">Permanently delete this site and all data.</p>
+                      </div>
+                      <button
+                        onClick={handleDeleteSite}
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                      >
+                        Delete Site
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
-          </div>
-        </div>
 
-        {/* Danger Zone */}
-        <div className="bg-white dark:bg-neutral-900 border border-red-200 dark:border-red-900 rounded-xl p-6">
-          <h2 className="text-xl font-semibold mb-4 text-red-600 dark:text-red-400">
-            Danger Zone
-          </h2>
-          
-          <div className="space-y-4">
-            <div className="flex items-center justify-between py-2">
-              <div>
-                <h3 className="font-medium text-neutral-900 dark:text-white">Reset Data</h3>
-                <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                  Delete all stats and events for this site. This cannot be undone.
-                </p>
+            {activeTab === 'visibility' && (
+              <div className="space-y-12">
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div>
+                    <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-1">Visibility Settings</h2>
+                    <p className="text-sm text-neutral-500 dark:text-neutral-400">Manage who can view your dashboard.</p>
+                  </div>
+
+                  <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-xl border border-neutral-100 dark:border-neutral-800">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-white dark:bg-neutral-800 rounded-lg text-neutral-400">
+                          <GlobeIcon className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <h3 className="font-medium text-neutral-900 dark:text-white">Public Dashboard</h3>
+                          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                            Allow anyone with the link to view this dashboard
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formData.is_public}
+                          onChange={(e) => setFormData({ ...formData, is_public: e.target.checked })}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-orange/20 dark:peer-focus:ring-brand-orange/20 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-brand-orange"></div>
+                      </label>
+                    </div>
+
+                    <AnimatePresence>
+                      {formData.is_public && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="mt-6 pt-6 border-t border-neutral-200 dark:border-neutral-800 overflow-hidden space-y-6"
+                        >
+                          <div>
+                            <label className="block text-sm font-medium mb-2 text-neutral-900 dark:text-white">
+                              Public Link
+                            </label>
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                readOnly
+                                value={`${APP_URL}/share/${siteId}`}
+                                className="flex-1 px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-xl bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 font-mono text-sm"
+                              />
+                              <button
+                                type="button"
+                                onClick={copyLink}
+                                className="px-4 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-white rounded-xl font-medium hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
+                              >
+                                {linkCopied ? 'Copied!' : 'Copy Link'}
+                              </button>
+                            </div>
+                            <p className="mt-2 text-xs text-neutral-500">
+                              Share this link with others to view the dashboard.
+                            </p>
+                          </div>
+
+                          <div>
+                            <label htmlFor="password" className="block text-sm font-medium mb-2 text-neutral-900 dark:text-white">
+                              Password Protection (Optional)
+                            </label>
+                            <input
+                              type="password"
+                              id="password"
+                              value={formData.password}
+                              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                              placeholder="Leave empty to keep existing password (if any)"
+                              className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-xl bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:bg-white dark:focus:bg-neutral-900 
+                              focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all duration-200"
+                            />
+                            <p className="mt-2 text-xs text-neutral-500">
+                              Set a password to restrict access to the public dashboard.
+                            </p>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  <div className="pt-4 border-t border-neutral-100 dark:border-neutral-800 flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={saving}
+                      className="flex items-center gap-2 px-6 py-2.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-xl font-medium 
+                      hover:bg-neutral-800 dark:hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                    >
+                      {saving ? (
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <CheckIcon className="w-4 h-4" />
+                          Save Changes
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
               </div>
-              <button
-                type="button"
-                onClick={handleResetData}
-                className="px-4 py-2 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-              >
-                Reset Data
-              </button>
-            </div>
+            )}
 
-            <div className="pt-4 border-t border-neutral-200 dark:border-neutral-800 flex items-center justify-between py-2">
-              <div>
-                <h3 className="font-medium text-neutral-900 dark:text-white">Delete Site</h3>
-                <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                  Permanently delete this site and all its data.
-                </p>
+            {activeTab === 'data' && (
+              <div className="space-y-12">
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div>
+                    <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-1">Data & Privacy</h2>
+                    <p className="text-sm text-neutral-500 dark:text-neutral-400">Manage data collection and filtering.</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label htmlFor="excludedPaths" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                        Excluded Paths
+                      </label>
+                      <div className="relative">
+                        <textarea
+                          id="excludedPaths"
+                          rows={6}
+                          value={formData.excluded_paths}
+                          onChange={(e) => setFormData({ ...formData, excluded_paths: e.target.value })}
+                          placeholder="/admin/*&#10;/staging/*"
+                          className="w-full px-4 py-3 border border-neutral-200 dark:border-neutral-800 rounded-xl bg-neutral-50/50 dark:bg-neutral-900/50 focus:bg-white dark:focus:bg-neutral-900 
+                          focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all duration-200 dark:text-white font-mono text-sm"
+                        />
+                      </div>
+                      <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2">
+                        Enter paths to exclude from tracking (one per line). Supports simple matching (e.g., /admin/*).
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-neutral-100 dark:border-neutral-800 flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={saving}
+                      className="flex items-center gap-2 px-6 py-2.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-xl font-medium 
+                      hover:bg-neutral-800 dark:hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                    >
+                      {saving ? (
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <CheckIcon className="w-4 h-4" />
+                          Save Changes
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
               </div>
-              <button
-                type="button"
-                onClick={handleDeleteSite}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-              >
-                Delete Site
-              </button>
-            </div>
-          </div>
+            )}
+          </motion.div>
         </div>
-
-        <div className="flex gap-4 sticky bottom-6 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-sm p-4 rounded-xl border border-neutral-200 dark:border-neutral-800 shadow-lg">
-          <button
-            type="submit"
-            disabled={saving}
-            className="btn-primary flex-1"
-          >
-            {saving ? 'Saving...' : 'Save Changes'}
-          </button>
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="btn-secondary flex-1"
-          >
-            Cancel
-          </button>
-        </div>
-      </form>
+      </div>
     </div>
   )
 }
