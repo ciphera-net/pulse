@@ -302,8 +302,8 @@ export default function PublicDashboardPage() {
         isOpen={isDatePickerOpen}
         onClose={() => setIsDatePickerOpen(false)}
         dateRange={dateRange}
-        onApply={(start, end) => {
-          setDateRange({ start, end })
+        onApply={(range) => {
+          setDateRange(range)
           setIsDatePickerOpen(false)
         }}
       />
