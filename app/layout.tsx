@@ -42,7 +42,24 @@ export default function RootLayout({
         <ThemeProviders>
           <AuthProvider>
             <LayoutContent>{children}</LayoutContent>
-            <Toaster position="top-center" richColors closeButton />
+            <Toaster 
+              position="top-center"
+              closeButton
+              theme="system"
+              className="toaster group"
+              toastOptions={{
+                classNames: {
+                  toast: 'group toast group-[.toaster]:bg-white group-[.toaster]:dark:bg-neutral-900 group-[.toaster]:text-neutral-950 group-[.toaster]:dark:text-neutral-50 group-[.toaster]:border-neutral-200 group-[.toaster]:dark:border-neutral-800 group-[.toaster]:shadow-lg group-[.toaster]:rounded-xl font-medium',
+                  description: 'group-[.toast]:text-neutral-500 group-[.toast]:dark:text-neutral-400',
+                  actionButton: 'group-[.toast]:bg-neutral-900 group-[.toast]:dark:bg-neutral-50 group-[.toast]:text-neutral-50 group-[.toast]:dark:text-neutral-900',
+                  cancelButton: 'group-[.toast]:bg-neutral-100 group-[.toast]:dark:bg-neutral-800 group-[.toast]:text-neutral-500 group-[.toast]:dark:text-neutral-400',
+                  success: 'group-[.toast]:!text-green-600 group-[.toast]:dark:!text-green-400',
+                  error: 'group-[.toast]:!text-red-600 group-[.toast]:dark:!text-red-400',
+                  warning: 'group-[.toast]:!text-amber-600 group-[.toast]:dark:!text-amber-400',
+                  info: 'group-[.toast]:!text-blue-600 group-[.toast]:dark:!text-blue-400',
+                },
+              }}
+            />
           </AuthProvider>
         </ThemeProviders>
       </body>
