@@ -76,6 +76,9 @@ export default function PublicDashboardPage() {
     } catch (error: any) {
       if ((error.status === 401 || error.response?.status === 401) && (error.data?.is_protected || error.response?.data?.is_protected)) {
         setIsPasswordProtected(true)
+        if (password) {
+          toast.error('Invalid password')
+        }
       } else if (error.status === 404 || error.response?.status === 404) {
         toast.error('Site not found')
       } else if (!silent) {
