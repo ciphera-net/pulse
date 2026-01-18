@@ -7,6 +7,7 @@ export interface Site {
   name: string
   timezone?: string
   is_public?: boolean
+  has_password?: boolean
   excluded_paths?: string[]
   created_at: string
   updated_at: string

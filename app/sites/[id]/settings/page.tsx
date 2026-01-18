@@ -56,6 +56,7 @@ export default function SiteSettingsPage() {
   const [scriptCopied, setScriptCopied] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
   const [showVerificationModal, setShowVerificationModal] = useState(false)
+  const [isPasswordMasked, setIsPasswordMasked] = useState(false)
 
   useEffect(() => {
     loadSite()
@@ -73,6 +74,9 @@ export default function SiteSettingsPage() {
         password: '', // Don't show existing password
         excluded_paths: (data.excluded_paths || []).join('\n')
       })
+      if (data.has_password) {
+        setIsPasswordMasked(true)
+      }
     } catch (error: any) {
       toast.error('Failed to load site: ' + (error.message || 'Unknown error'))
     } finally {
@@ -94,7 +98,7 @@ export default function SiteSettingsPage() {
         name: formData.name,
         timezone: formData.timezone,
         is_public: formData.is_public,
-        password: formData.password || undefined,
+        password: isPasswordMasked ? undefined : (formData.password || undefined),
         excluded_paths: excludedPathsArray
       })
       toast.success('Site updated successfully')
@@ -448,9 +452,20 @@ export default function SiteSettingsPage() {
                             <input
                               type="password"
                               id="password"
-                              value={formData.password}
+                              value={isPasswordMasked ? '********' : formData.password}
+                              onFocus={() => {
+                                if (isPasswordMasked) {
+                                  setIsPasswordMasked(false)
+                                  setFormData({ ...formData, password: '' })
+                                }
+                              }}
+                              onBlur={() => {
+                                if (!formData.password && site.has_password) {
+                                  setIsPasswordMasked(true)
+                                }
+                              }}
                               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                              placeholder="Leave empty to keep existing password (if any)"
+                              placeholder={site.has_password ? "Change password" : "Leave empty to keep existing password (if any)"}
                               className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-xl bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:bg-white dark:focus:bg-neutral-900 
                               focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all duration-200"
                             />
