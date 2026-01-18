@@ -319,7 +319,6 @@ export default function SiteSettingsPage() {
                       </p>
                     </div>
                   </div>
-                  </div>
 
                   <div className="pt-4 border-t border-neutral-100 dark:border-neutral-800 flex justify-end">
                     <button
@@ -538,6 +537,7 @@ export default function SiteSettingsPage() {
           </motion.div>
         </div>
       </div>
+    </div>
 
       <VerificationModal
         isOpen={showVerificationModal}
