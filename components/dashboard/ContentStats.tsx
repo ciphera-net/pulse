@@ -82,11 +82,11 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain }
           </div>
         </div>
 
-        <div className="space-y-3 flex-1 min-h-[270px]">
+        <div className="space-y-2 flex-1 min-h-[270px]">
           {hasData ? (
             <>
               {displayedData.map((page, index) => (
-                <div key={index} className="flex items-center justify-between h-7 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
+                <div key={index} className="flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
                   <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center">
                     <a
                       href={`https://${domain.replace(/^https?:\/\//, '')}${page.path}`}
@@ -104,7 +104,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain }
                 </div>
               ))}
               {Array.from({ length: emptySlots }).map((_, i) => (
-                <div key={`empty-${i}`} className="h-7 px-2 -mx-2" aria-hidden="true" />
+                <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
               ))}
             </>
           ) : (
@@ -122,7 +122,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain }
       >
         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
           {data.map((page, index) => (
-            <div key={index} className="flex items-center justify-between py-1 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
+            <div key={index} className="flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
               <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center">
                 <a
                   href={`https://${domain.replace(/^https?:\/\//, '')}${page.path}`}
