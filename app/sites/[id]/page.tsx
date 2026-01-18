@@ -137,17 +137,17 @@ export default function SiteDashboardPage() {
         <StatsCard title="Avg Visit Duration" value={formatDuration(stats.avg_duration)} />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2 mb-8">
+      <div className="mb-8">
         <Chart data={dailyStats} />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2 mb-8">
         <ContentStats topPages={topPages} entryPages={entryPages} exitPages={exitPages} />
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2 mb-8">
         <TopReferrers referrers={topReferrers} />
-        <Locations countries={countries} cities={cities} regions={regions} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2 mb-8">
+        <Locations countries={countries} cities={cities} regions={regions} />
         <TechSpecs browsers={browsers} os={os} devices={devices} screenResolutions={screenResolutions} />
       </div>
     </div>
