@@ -5,7 +5,6 @@ import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { getPublicDashboard, type DashboardData } from '@/lib/api/stats'
 import { toast } from 'sonner'
 import LoadingOverlay from '@/components/LoadingOverlay'
-import StatsCard from '@/components/dashboard/StatsCard'
 import Chart from '@/components/dashboard/Chart'
 import TopPages from '@/components/dashboard/ContentStats'
 import TopReferrers from '@/components/dashboard/TopReferrers'
@@ -156,107 +155,103 @@ export default function PublicDashboardPage() {
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-black">
-      <div className="container mx-auto px-4 py-8">
+      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <div className="w-2 h-2 rounded-full bg-brand-orange animate-pulse" />
-              <span className="text-sm font-medium text-brand-orange uppercase tracking-wider">Public Dashboard</span>
-            </div>
-            <h1 className="text-3xl font-bold text-neutral-900 dark:text-white flex items-center gap-3">
-              <img 
-                src={`https://www.google.com/s2/favicons?domain=${site.domain}&sz=64`}
-                alt={site.name}
-                className="w-8 h-8 rounded-lg"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = '/globe.svg'
-                }}
-              />
-              {site.domain}
-            </h1>
-          </div>
+        <div className="mb-8">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-4 mb-2">
+                 <div>
+                    <div className="flex items-center gap-2 mb-1">
+                        <div className="w-2 h-2 rounded-full bg-brand-orange animate-pulse" />
+                        <span className="text-sm font-medium text-brand-orange uppercase tracking-wider">Public Dashboard</span>
+                    </div>
+                    <h1 className="text-3xl font-bold text-neutral-900 dark:text-white flex items-center gap-3">
+                    <img 
+                        src={`https://www.google.com/s2/favicons?domain=${site.domain}&sz=64`}
+                        alt={site.name}
+                        className="w-8 h-8 rounded-lg"
+                        onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/globe.svg'
+                        }}
+                    />
+                    {site.domain}
+                    </h1>
+                 </div>
 
-          <div className="flex gap-2">
-            <Select
-              value={
-                dateRange.start === new Date().toISOString().split('T')[0] && dateRange.end === new Date().toISOString().split('T')[0] 
-                ? 'today' 
-                : dateRange.start === getDateRange(7).start 
-                ? '7' 
-                : dateRange.start === getDateRange(30).start 
-                ? '30' 
-                : 'custom'
-              }
-              onChange={(value) => {
-                if (value === '7') setDateRange(getDateRange(7))
-                else if (value === '30') setDateRange(getDateRange(30))
-                else if (value === 'today') {
-                  const today = new Date().toISOString().split('T')[0]
-                  setDateRange({ start: today, end: today })
-                }
-                else if (value === 'custom') {
-                  setIsDatePickerOpen(true)
-                }
-              }}
-              options={[
-                { value: 'today', label: 'Today' },
-                { value: '7', label: 'Last 7 days' },
-                { value: '30', label: 'Last 30 days' },
-                { value: 'custom', label: 'Custom' },
-              ]}
-            />
-            {/* Powered by Ciphera Badge */}
-            <a 
-              href="https://ciphera.net" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="hidden md:flex items-center gap-2 px-3 py-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors"
-            >
-              <LightningBoltIcon className="w-4 h-4" />
-              <span>Powered by Ciphera</span>
-            </a>
-          </div>
-        </div>
-
-        {/* Realtime & Key Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-           <div className="col-span-2 lg:col-span-4 bg-gradient-to-r from-brand-orange/10 to-transparent border border-brand-orange/20 rounded-xl p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <div className="w-3 h-3 bg-brand-orange rounded-full animate-ping absolute top-0 left-0 opacity-75"></div>
-                <div className="w-3 h-3 bg-brand-orange rounded-full relative z-10"></div>
+                 {/* Realtime Indicator - Desktop */}
+                 <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded-full border border-green-500/20 self-end mb-1">
+                    <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                    </span>
+                    <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                        {realtime_visitors} current visitors
+                    </span>
+                 </div>
               </div>
-              <span className="text-brand-orange font-medium">Current Visitors</span>
             </div>
-            <span className="text-2xl font-bold text-brand-orange">{realtime_visitors}</span>
-          </div>
 
-          <StatsCard
-            title="Total Visitors"
-            value={safeStats.visitors.toLocaleString()}
-          />
-          <StatsCard
-            title="Total Pageviews"
-            value={safeStats.pageviews.toLocaleString()}
-          />
-          <StatsCard
-            title="Bounce Rate"
-            value={`${Math.round(safeStats.bounce_rate)}%`}
-          />
-          <StatsCard
-            title="Avg Duration"
-            value={`${Math.round(safeStats.avg_duration)}s`}
-          />
+            <div className="flex gap-2">
+              <Select
+                value={
+                  dateRange.start === new Date().toISOString().split('T')[0] && dateRange.end === new Date().toISOString().split('T')[0] 
+                  ? 'today' 
+                  : dateRange.start === getDateRange(7).start 
+                  ? '7' 
+                  : dateRange.start === getDateRange(30).start 
+                  ? '30' 
+                  : 'custom'
+                }
+                onChange={(value) => {
+                  if (value === '7') setDateRange(getDateRange(7))
+                  else if (value === '30') setDateRange(getDateRange(30))
+                  else if (value === 'today') {
+                    const today = new Date().toISOString().split('T')[0]
+                    setDateRange({ start: today, end: today })
+                  }
+                  else if (value === 'custom') {
+                    setIsDatePickerOpen(true)
+                  }
+                }}
+                options={[
+                  { value: 'today', label: 'Today' },
+                  { value: '7', label: 'Last 7 days' },
+                  { value: '30', label: 'Last 30 days' },
+                  { value: 'custom', label: 'Custom' },
+                ]}
+              />
+              {/* Powered by Ciphera Badge */}
+              <a 
+                href="https://ciphera.net" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="hidden md:flex items-center gap-2 px-3 py-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors"
+              >
+                <LightningBoltIcon className="w-4 h-4" />
+                <span>Powered by Ciphera</span>
+              </a>
+            </div>
+          </div>
+          
+           {/* Realtime Indicator - Mobile */}
+            <div className="md:hidden flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded-full border border-green-500/20 w-fit mt-4">
+                 <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                </span>
+                <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                    {realtime_visitors} current visitors
+                </span>
+            </div>
         </div>
 
         {/* Chart */}
         <div className="mb-8">
           <Chart 
             data={safeDailyStats} 
-            prevData={[]} // No comparison for public view yet
+            prevData={[]} 
             stats={safeStats} 
-            prevStats={{ pageviews: 0, visitors: 0, bounce_rate: 0, avg_duration: 0 }}
             interval={dateRange.start === dateRange.end ? 'hour' : 'day'}
           />
         </div>
