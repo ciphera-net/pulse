@@ -14,6 +14,7 @@ import TopReferrers from '@/components/dashboard/TopReferrers'
 import Locations from '@/components/dashboard/Locations'
 import TechSpecs from '@/components/dashboard/TechSpecs'
 import Chart from '@/components/dashboard/Chart'
+import PerformanceStats from '@/components/dashboard/PerformanceStats'
 
 export default function SiteDashboardPage() {
   const params = useParams()
@@ -38,6 +39,7 @@ export default function SiteDashboardPage() {
   const [os, setOS] = useState<any[]>([])
   const [devices, setDevices] = useState<any[]>([])
   const [screenResolutions, setScreenResolutions] = useState<any[]>([])
+  const [performance, setPerformance] = useState<{ lcp: number, cls: number, inp: number }>({ lcp: 0, cls: 0, inp: 0 })
   const [dateRange, setDateRange] = useState(getDateRange(30))
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
 
@@ -109,6 +111,7 @@ export default function SiteDashboardPage() {
       setOS(Array.isArray(data.os) ? data.os : [])
       setDevices(Array.isArray(data.devices) ? data.devices : [])
       setScreenResolutions(Array.isArray(data.screen_resolutions) ? data.screen_resolutions : [])
+      setPerformance(data.performance || { lcp: 0, cls: 0, inp: 0 })
     } catch (error: any) {
       toast.error('Failed to load data: ' + (error.message || 'Unknown error'))
     } finally {
@@ -212,6 +215,13 @@ export default function SiteDashboardPage() {
           interval={dateRange.start === dateRange.end ? 'hour' : 'day'}
         />
       </div>
+
+      {/* Performance Stats */}
+      {performance.lcp > 0 && (
+        <div className="mb-8">
+          <PerformanceStats stats={performance} />
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2 mb-8">
         <ContentStats 

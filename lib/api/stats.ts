@@ -19,6 +19,12 @@ export interface ScreenResolutionStat {
   pageviews: number
 }
 
+export interface PerformanceStats {
+  lcp: number
+  cls: number
+  inp: number
+}
+
 export interface TopReferrer {
   referrer: string
   pageviews: number
@@ -190,6 +196,7 @@ export interface DashboardData {
   os: OSStat[]
   devices: DeviceStat[]
   screen_resolutions: ScreenResolutionStat[]
+  performance?: PerformanceStats
 }
 
 export async function getDashboard(siteId: string, startDate?: string, endDate?: string, limit = 10, interval?: string): Promise<DashboardData> {
