@@ -3,12 +3,10 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { getSite, type Site } from '@/lib/api/sites'
-import { getStats, getRealtime, getDailyStats, getTopPages, getTopReferrers, getCountries, getCities, getRegions, getBrowsers, getOS, getDevices, getScreenResolutions, getEntryPages, getExitPages, getDashboard } from '@/lib/api/stats'
+import { getStats, getRealtime, getDailyStats, getTopPages, getTopReferrers, getCountries, getCities, getRegions, getBrowsers, getOS, getDevices, getScreenResolutions, getEntryPages, getExitPages, getDashboard, type Stats, type DailyStat } from '@/lib/api/stats'
 import { formatNumber, formatDuration, getDateRange } from '@/lib/utils/format'
 import { toast } from 'sonner'
 import LoadingOverlay from '@/components/LoadingOverlay'
-import StatsCard from '@/components/dashboard/StatsCard'
-import RealtimeVisitors from '@/components/dashboard/RealtimeVisitors'
 import ContentStats from '@/components/dashboard/ContentStats'
 import TopReferrers from '@/components/dashboard/TopReferrers'
 import Locations from '@/components/dashboard/Locations'
@@ -22,9 +20,11 @@ export default function SiteDashboardPage() {
 
   const [site, setSite] = useState<Site | null>(null)
   const [loading, setLoading] = useState(true)
-  const [stats, setStats] = useState({ pageviews: 0, visitors: 0, bounce_rate: 0, avg_duration: 0 })
+  const [stats, setStats] = useState<Stats>({ pageviews: 0, visitors: 0, bounce_rate: 0, avg_duration: 0 })
+  const [prevStats, setPrevStats] = useState<Stats | undefined>(undefined)
   const [realtime, setRealtime] = useState(0)
-  const [dailyStats, setDailyStats] = useState<any[]>([])
+  const [dailyStats, setDailyStats] = useState<DailyStat[]>([])
+  const [prevDailyStats, setPrevDailyStats] = useState<DailyStat[] | undefined>(undefined)
   const [topPages, setTopPages] = useState<any[]>([])
   const [entryPages, setEntryPages] = useState<any[]>([])
   const [exitPages, setExitPages] = useState<any[]>([])
@@ -46,15 +46,55 @@ export default function SiteDashboardPage() {
     return () => clearInterval(interval)
   }, [siteId, dateRange])
 
+  const getPreviousDateRange = (start: string, end: string) => {
+    const startDate = new Date(start)
+    const endDate = new Date(end)
+    const duration = endDate.getTime() - startDate.getTime()
+    
+    // * If duration is 0 (Today), set previous range to yesterday
+    if (duration === 0) {
+      const prevEnd = new Date(startDate.getTime() - 24 * 60 * 60 * 1000)
+      const prevStart = prevEnd
+      return {
+        start: prevStart.toISOString().split('T')[0],
+        end: prevEnd.toISOString().split('T')[0]
+      }
+    }
+
+    const prevEnd = new Date(startDate.getTime() - 24 * 60 * 60 * 1000)
+    const prevStart = new Date(prevEnd.getTime() - duration)
+    
+    return {
+      start: prevStart.toISOString().split('T')[0],
+      end: prevEnd.toISOString().split('T')[0]
+    }
+  }
+
   const loadData = async () => {
     try {
       setLoading(true)
-      const data = await getDashboard(siteId, dateRange.start, dateRange.end, 10)
+      const interval = dateRange.start === dateRange.end ? 'hour' : 'day'
+      
+      const [data, prevStatsData, prevDailyStatsData] = await Promise.all([
+        getDashboard(siteId, dateRange.start, dateRange.end, 10, interval),
+        (async () => {
+          const prevRange = getPreviousDateRange(dateRange.start, dateRange.end)
+          return getStats(siteId, prevRange.start, prevRange.end)
+        })(),
+        (async () => {
+          const prevRange = getPreviousDateRange(dateRange.start, dateRange.end)
+          return getDailyStats(siteId, prevRange.start, prevRange.end, interval)
+        })()
+      ])
 
       setSite(data.site)
       setStats(data.stats || { pageviews: 0, visitors: 0, bounce_rate: 0, avg_duration: 0 })
       setRealtime(data.realtime_visitors || 0)
       setDailyStats(Array.isArray(data.daily_stats) ? data.daily_stats : [])
+      
+      setPrevStats(prevStatsData)
+      setPrevDailyStats(prevDailyStatsData)
+
       setTopPages(Array.isArray(data.top_pages) ? data.top_pages : [])
       setEntryPages(Array.isArray(data.entry_pages) ? data.entry_pages : [])
       setExitPages(Array.isArray(data.exit_pages) ? data.exit_pages : [])
@@ -98,23 +138,50 @@ export default function SiteDashboardPage() {
     <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-3xl font-bold text-neutral-900 dark:text-white mb-2">
-              {site.name}
-            </h1>
-            <p className="text-neutral-600 dark:text-neutral-400">
-              {site.domain}
-            </p>
+          <div className="flex items-center gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-neutral-900 dark:text-white mb-2">
+                {site.name}
+              </h1>
+              <p className="text-neutral-600 dark:text-neutral-400">
+                {site.domain}
+              </p>
+            </div>
+            
+            {/* Realtime Indicator */}
+            <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded-full border border-green-500/20">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+              </span>
+              <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                {realtime} current visitors
+              </span>
+            </div>
           </div>
+
           <div className="flex gap-2">
             <select
-              value={dateRange.start === getDateRange(7).start ? '7' : dateRange.start === getDateRange(30).start ? '30' : 'custom'}
+              value={
+                dateRange.start === new Date().toISOString().split('T')[0] && dateRange.end === new Date().toISOString().split('T')[0] 
+                ? 'today' 
+                : dateRange.start === getDateRange(7).start 
+                ? '7' 
+                : dateRange.start === getDateRange(30).start 
+                ? '30' 
+                : 'custom'
+              }
               onChange={(e) => {
                 if (e.target.value === '7') setDateRange(getDateRange(7))
                 else if (e.target.value === '30') setDateRange(getDateRange(30))
+                else if (e.target.value === 'today') {
+                  const today = new Date().toISOString().split('T')[0]
+                  setDateRange({ start: today, end: today })
+                }
               }}
               className="btn-secondary text-sm"
             >
+              <option value="today">Today</option>
               <option value="7">Last 7 days</option>
               <option value="30">Last 30 days</option>
               <option value="custom">Custom</option>
@@ -129,16 +196,15 @@ export default function SiteDashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5 mb-8">
-        <StatsCard title="Pageviews" value={formatNumber(stats.pageviews)} />
-        <StatsCard title="Visitors" value={formatNumber(stats.visitors)} />
-        <RealtimeVisitors count={realtime} siteId={siteId} />
-        <StatsCard title="Bounce Rate" value={`${Math.round(stats.bounce_rate)}%`} />
-        <StatsCard title="Avg Visit Duration" value={formatDuration(stats.avg_duration)} />
-      </div>
-
+      {/* Advanced Chart with Integrated Stats */}
       <div className="mb-8">
-        <Chart data={dailyStats} />
+        <Chart 
+          data={dailyStats} 
+          prevData={prevDailyStats}
+          stats={stats} 
+          prevStats={prevStats}
+          interval={dateRange.start === dateRange.end ? 'hour' : 'day'}
+        />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2 mb-8">

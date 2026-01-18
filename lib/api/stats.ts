@@ -142,12 +142,14 @@ export async function getDevices(siteId: string, startDate?: string, endDate?: s
   return apiRequest<{ devices: DeviceStat[] }>(`/sites/${siteId}/devices?${params.toString()}`).then(r => r?.devices || [])
 }
 
-export async function getDailyStats(siteId: string, startDate?: string, endDate?: string): Promise<DailyStat[]> {
+export async function getDailyStats(siteId: string, startDate?: string, endDate?: string, interval?: string): Promise<DailyStat[]> {
   const params = new URLSearchParams()
   if (startDate) params.append('start_date', startDate)
   if (endDate) params.append('end_date', endDate)
+  if (interval) params.append('interval', interval)
   return apiRequest<{ stats: DailyStat[] }>(`/sites/${siteId}/daily?${params.toString()}`).then(r => r?.stats || [])
 }
+
 export async function getEntryPages(siteId: string, startDate?: string, endDate?: string, limit = 10): Promise<TopPage[]> {
   const params = new URLSearchParams()
   if (startDate) params.append('start_date', startDate)
@@ -190,10 +192,11 @@ export interface DashboardData {
   screen_resolutions: ScreenResolutionStat[]
 }
 
-export async function getDashboard(siteId: string, startDate?: string, endDate?: string, limit = 10): Promise<DashboardData> {
+export async function getDashboard(siteId: string, startDate?: string, endDate?: string, limit = 10, interval?: string): Promise<DashboardData> {
   const params = new URLSearchParams()
   if (startDate) params.append('start_date', startDate)
   if (endDate) params.append('end_date', endDate)
+  if (interval) params.append('interval', interval)
   params.append('limit', limit.toString())
   return apiRequest<DashboardData>(`/sites/${siteId}/dashboard?${params.toString()}`)
 }
