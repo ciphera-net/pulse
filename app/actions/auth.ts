@@ -4,6 +4,16 @@ import { cookies } from 'next/headers'
 
 const AUTH_API_URL = process.env.NEXT_PUBLIC_AUTH_API_URL || process.env.NEXT_PUBLIC_AUTH_URL || 'http://localhost:8081'
 
+// * Determine cookie domain dynamically
+// * In production (on ciphera.net), we want to share cookies with subdomains (e.g. analytics-api.ciphera.net)
+// * In local dev (localhost), we don't set a domain
+const getCookieDomain = () => {
+  if (process.env.NODE_ENV === 'production') {
+    return '.ciphera.net'
+  }
+  return undefined
+}
+
 interface AuthResponse {
   access_token: string
   refresh_token: string
@@ -46,6 +56,7 @@ export async function exchangeAuthCode(code: string, codeVerifier: string, redir
 
     // * Set Cookies
     const cookieStore = await cookies()
+    const cookieDomain = getCookieDomain()
     
     // * Access Token
     cookieStore.set('access_token', data.access_token, {
@@ -53,6 +64,7 @@ export async function exchangeAuthCode(code: string, codeVerifier: string, redir
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
+      domain: cookieDomain,
       maxAge: 60 * 15 // 15 minutes (short lived)
     })
 
@@ -62,6 +74,7 @@ export async function exchangeAuthCode(code: string, codeVerifier: string, redir
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
+      domain: cookieDomain,
       maxAge: 60 * 60 * 24 * 30 // 30 days
     })
 
@@ -86,12 +99,14 @@ export async function setSessionAction(accessToken: string, refreshToken: string
         const payload: UserPayload = JSON.parse(Buffer.from(payloadPart, 'base64').toString())
         
         const cookieStore = await cookies()
+        const cookieDomain = getCookieDomain()
         
         cookieStore.set('access_token', accessToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
             path: '/',
+            domain: cookieDomain,
             maxAge: 60 * 15
         })
 
@@ -100,6 +115,7 @@ export async function setSessionAction(accessToken: string, refreshToken: string
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
             path: '/',
+            domain: cookieDomain,
             maxAge: 60 * 60 * 24 * 30
         })
 
@@ -118,8 +134,18 @@ export async function setSessionAction(accessToken: string, refreshToken: string
 
 export async function logoutAction() {
   const cookieStore = await cookies()
-  cookieStore.delete('access_token')
-  cookieStore.delete('refresh_token')
+  const cookieDomain = getCookieDomain()
+  
+  cookieStore.set('access_token', '', { 
+    maxAge: 0, 
+    path: '/', 
+    domain: cookieDomain 
+  })
+  cookieStore.set('refresh_token', '', { 
+    maxAge: 0, 
+    path: '/', 
+    domain: cookieDomain 
+  })
   return { success: true }
 }
 

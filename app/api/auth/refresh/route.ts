@@ -3,6 +3,14 @@ import { NextResponse } from 'next/server'
 
 const AUTH_API_URL = process.env.NEXT_PUBLIC_AUTH_API_URL || process.env.NEXT_PUBLIC_AUTH_URL || 'http://localhost:8081'
 
+// * Determine cookie domain dynamically
+const getCookieDomain = () => {
+  if (process.env.NODE_ENV === 'production') {
+    return '.ciphera.net'
+  }
+  return undefined
+}
+
 export async function POST() {
   const cookieStore = await cookies()
   const refreshToken = cookieStore.get('refresh_token')?.value
@@ -18,10 +26,12 @@ export async function POST() {
       body: JSON.stringify({ refresh_token: refreshToken }),
     })
 
+    const cookieDomain = getCookieDomain()
+
     if (!res.ok) {
         // * If refresh fails, clear cookies
-        cookieStore.delete('access_token')
-        cookieStore.delete('refresh_token')
+        cookieStore.set('access_token', '', { maxAge: 0, path: '/', domain: cookieDomain })
+        cookieStore.set('refresh_token', '', { maxAge: 0, path: '/', domain: cookieDomain })
         return NextResponse.json({ error: 'Refresh failed' }, { status: 401 })
     }
 
@@ -32,6 +42,7 @@ export async function POST() {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
+      domain: cookieDomain,
       maxAge: 60 * 15
     })
 
@@ -40,6 +51,7 @@ export async function POST() {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
+      domain: cookieDomain,
       maxAge: 60 * 60 * 24 * 30
     })
 
