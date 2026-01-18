@@ -6,6 +6,7 @@ import { getSite, updateSite, resetSiteData, deleteSite, type Site } from '@/lib
 import { getRealtime } from '@/lib/api/stats'
 import { toast } from 'sonner'
 import LoadingOverlay from '@/components/LoadingOverlay'
+import VerificationModal from '@/components/sites/VerificationModal'
 import { APP_URL, API_URL } from '@/lib/api/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -15,7 +16,7 @@ import {
   CheckIcon,
   CopyIcon,
   ExclamationTriangleIcon,
-  LightningBoltIcon
+  LightningBoltIcon,
 } from '@radix-ui/react-icons'
 
 const TIMEZONES = [
@@ -54,7 +55,7 @@ export default function SiteSettingsPage() {
   })
   const [scriptCopied, setScriptCopied] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
-  const [verificationStatus, setVerificationStatus] = useState<'idle' | 'checking' | 'success' | 'error'>('idle')
+  const [showVerificationModal, setShowVerificationModal] = useState(false)
 
   useEffect(() => {
     loadSite()
@@ -132,38 +133,6 @@ export default function SiteSettingsPage() {
     } catch (error: any) {
       toast.error('Failed to delete site: ' + (error.message || 'Unknown error'))
     }
-  }
-
-  const handleVerify = async () => {
-    if (!site?.domain) return
-    
-    setVerificationStatus('checking')
-    let attempts = 0
-    const maxAttempts = 10 
-    
-    // 1. Open site
-    const protocol = site.domain.includes('http') ? '' : 'https://'
-    const verificationUrl = `${protocol}${site.domain}/?utm_source=ciphera_verify&_t=${Date.now()}`
-    window.open(verificationUrl, '_blank')
-
-    // 2. Poll for success
-    const checkInterval = setInterval(async () => {
-      attempts++
-      try {
-        const data = await getRealtime(siteId)
-        
-        if (data.visitors > 0) {
-          clearInterval(checkInterval)
-          setVerificationStatus('success')
-          toast.success('Connection established!')
-        } else if (attempts >= maxAttempts) {
-          clearInterval(checkInterval)
-          setVerificationStatus('error')
-        }
-      } catch (e) {
-        // Ignore errors while polling
-      }
-    }, 2000)
   }
 
   const copyScript = () => {
@@ -336,74 +305,20 @@ export default function SiteSettingsPage() {
                       </button>
                     </div>
 
-                    <div className="space-y-4 pt-2">
-                      <div className="flex items-center gap-3">
-                        <button
-                          type="button"
-                          onClick={handleVerify}
-                          disabled={verificationStatus === 'checking'}
-                          className={`flex items-center gap-2 px-4 py-2 border rounded-xl text-sm font-medium transition-all
-                            ${verificationStatus === 'success' 
-                              ? 'bg-green-50 border-green-200 text-green-700 dark:bg-green-900/20 dark:border-green-900 dark:text-green-400'
-                              : 'bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700'
-                            }`}
-                        >
-                          {verificationStatus === 'checking' ? (
-                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                          ) : verificationStatus === 'success' ? (
-                            <CheckIcon className="w-4 h-4" />
-                          ) : (
-                            <LightningBoltIcon className="w-4 h-4" />
-                          )}
-                          {verificationStatus === 'checking' ? 'Checking...' : 
-                           verificationStatus === 'success' ? 'Installation Verified' : 'Verify Installation'}
-                        </button>
-
-                        {/* Status Text */}
-                        {verificationStatus === 'checking' && (
-                          <span className="text-sm text-neutral-500 animate-pulse">
-                            Waiting for signal from {site.domain}...
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Error State - Inline Troubleshooting */}
-                      <AnimatePresence>
-                        {verificationStatus === 'error' && (
-                          <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            className="overflow-hidden"
-                          >
-                            <div className="p-4 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 rounded-xl text-sm">
-                              <div className="flex items-start gap-3">
-                                <ExclamationTriangleIcon className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
-                                <div className="space-y-2">
-                                  <p className="font-medium text-red-900 dark:text-red-200">
-                                    We couldn't detect the script.
-                                  </p>
-                                  <p className="text-red-700 dark:text-red-300">
-                                    Please ensure you opened the new tab and check the following:
-                                  </p>
-                                  <ul className="list-disc list-inside space-y-1 text-red-700 dark:text-red-300 ml-1">
-                                    <li>Ad blockers are disabled on your site</li>
-                                    <li>The script is placed in the <code>&lt;head&gt;</code> tag</li>
-                                    <li>You are not testing on localhost (unless configured)</li>
-                                  </ul>
-                                  <button 
-                                    onClick={handleVerify}
-                                    className="text-red-700 dark:text-red-300 underline font-medium hover:text-red-800 mt-1"
-                                  >
-                                    Try Again
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+                    <div className="flex items-center gap-4">
+                      <button
+                        type="button"
+                        onClick={() => setShowVerificationModal(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-all text-sm font-medium"
+                      >
+                        <LightningBoltIcon className="w-4 h-4" />
+                        Verify Installation
+                      </button>
+                      <p className="text-xs text-neutral-500 dark:text-neutral-500">
+                        Check if your site is sending data correctly.
+                      </p>
                     </div>
+                  </div>
                   </div>
 
                   <div className="pt-4 border-t border-neutral-100 dark:border-neutral-800 flex justify-end">
@@ -623,7 +538,12 @@ export default function SiteSettingsPage() {
           </motion.div>
         </div>
       </div>
+
+      <VerificationModal
+        isOpen={showVerificationModal}
+        onClose={() => setShowVerificationModal(false)}
+        site={site}
+      />
     </div>
-  </div>
   )
 }
