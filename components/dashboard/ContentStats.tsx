@@ -9,13 +9,14 @@ interface ContentStatsProps {
   topPages: TopPage[]
   entryPages: TopPage[]
   exitPages: TopPage[]
+  domain: string
 }
 
 type Tab = 'top_pages' | 'entry_pages' | 'exit_pages'
 
 const LIMIT = 7
 
-export default function ContentStats({ topPages, entryPages, exitPages }: ContentStatsProps) {
+export default function ContentStats({ topPages, entryPages, exitPages, domain }: ContentStatsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('top_pages')
   const [isModalOpen, setIsModalOpen] = useState(false)
 
@@ -86,7 +87,14 @@ export default function ContentStats({ topPages, entryPages, exitPages }: Conten
               {displayedData.map((page, index) => (
                 <div key={index} className="flex items-center justify-between h-7">
                   <div className="flex-1 truncate text-neutral-900 dark:text-white">
-                    {page.path}
+                    <a
+                      href={`https://${domain.replace(/^https?:\/\//, '')}${page.path}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:underline"
+                    >
+                      {page.path}
+                    </a>
                   </div>
                   <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
                     {formatNumber(page.pageviews)}
@@ -114,7 +122,14 @@ export default function ContentStats({ topPages, entryPages, exitPages }: Conten
           {data.map((page, index) => (
             <div key={index} className="flex items-center justify-between py-1">
               <div className="flex-1 truncate text-neutral-900 dark:text-white">
-                {page.path}
+                <a
+                  href={`https://${domain.replace(/^https?:\/\//, '')}${page.path}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:underline"
+                >
+                  {page.path}
+                </a>
               </div>
               <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
                 {formatNumber(page.pageviews)}

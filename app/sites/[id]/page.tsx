@@ -208,7 +208,12 @@ export default function SiteDashboardPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2 mb-8">
-        <ContentStats topPages={topPages} entryPages={entryPages} exitPages={exitPages} />
+        <ContentStats 
+          topPages={topPages} 
+          entryPages={entryPages} 
+          exitPages={exitPages} 
+          domain={site.domain}
+        />
         <TopReferrers referrers={topReferrers} />
       </div>
 
