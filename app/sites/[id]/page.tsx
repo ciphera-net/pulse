@@ -8,6 +8,7 @@ import { formatNumber, formatDuration, getDateRange } from '@/lib/utils/format'
 import { toast } from 'sonner'
 import LoadingOverlay from '@/components/LoadingOverlay'
 import Select from '@/components/ui/Select'
+import DatePicker from '@/components/ui/DatePicker'
 import ContentStats from '@/components/dashboard/ContentStats'
 import TopReferrers from '@/components/dashboard/TopReferrers'
 import Locations from '@/components/dashboard/Locations'
@@ -38,6 +39,7 @@ export default function SiteDashboardPage() {
   const [devices, setDevices] = useState<any[]>([])
   const [screenResolutions, setScreenResolutions] = useState<any[]>([])
   const [dateRange, setDateRange] = useState(getDateRange(30))
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -179,6 +181,9 @@ export default function SiteDashboardPage() {
                   const today = new Date().toISOString().split('T')[0]
                   setDateRange({ start: today, end: today })
                 }
+                else if (value === 'custom') {
+                  setIsDatePickerOpen(true)
+                }
               }}
               options={[
                 { value: 'today', label: 'Today' },
@@ -222,6 +227,16 @@ export default function SiteDashboardPage() {
         <Locations countries={countries} cities={cities} regions={regions} />
         <TechSpecs browsers={browsers} os={os} devices={devices} screenResolutions={screenResolutions} />
       </div>
+
+      <DatePicker
+        isOpen={isDatePickerOpen}
+        onClose={() => setIsDatePickerOpen(false)}
+        onApply={(range) => {
+          setDateRange(range)
+          setIsDatePickerOpen(false)
+        }}
+        initialRange={dateRange}
+      />
     </div>
   )
 }
