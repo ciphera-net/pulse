@@ -74,7 +74,7 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
       label: 'Unique Visitors',
       value: formatNumber(stats.visitors),
       trend: calculateTrend(stats.visitors, prevStats?.visitors),
-      color: '#4F46E5', // Indigo
+      color: '#FD5E0F', // Brand Orange
       invertTrend: false,
     },
     {
