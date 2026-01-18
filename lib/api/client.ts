@@ -27,14 +27,14 @@ export class ApiError extends Error {
 
 // * Mutex for token refresh
 let isRefreshing = false
-let refreshSubscribers: ((token: string) => void)[] = []
+let refreshSubscribers: (() => void)[] = []
 
-function subscribeToTokenRefresh(cb: (token: string) => void) {
+function subscribeToTokenRefresh(cb: () => void) {
   refreshSubscribers.push(cb)
 }
 
-function onRefreshed(token: string) {
-  refreshSubscribers.map((cb) => cb(token))
+function onRefreshed() {
+  refreshSubscribers.map((cb) => cb())
   refreshSubscribers = []
 }
 
@@ -55,40 +55,31 @@ async function apiRequest<T>(
     ...options.headers,
   }
 
-  // Inject Auth Token if available (Client-side only)
-  if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('token')
-    if (token) {
-      (headers as any)['Authorization'] = `Bearer ${token}`
-    }
-  }
+  // * We rely on HttpOnly cookies, so no manual Authorization header injection.
+  // * We MUST set credentials: 'include' for the browser to send cookies cross-origin (or same-site).
 
   const response = await fetch(url, {
     ...options,
     headers,
+    credentials: 'include', // * IMPORTANT: Send cookies
   })
 
   if (!response.ok) {
     if (response.status === 401) {
       // * Attempt Token Refresh if 401
       if (typeof window !== 'undefined') {
-        const refreshToken = localStorage.getItem('refreshToken')
-        
-        // * Prevent infinite loop: Don't refresh if the failed request WAS a refresh request
-        if (refreshToken && !endpoint.includes('/auth/refresh')) {
+        // * Prevent infinite loop: Don't refresh if the failed request WAS a refresh request (unlikely via apiRequest but safe to check)
+        if (!endpoint.includes('/auth/refresh')) {
           if (isRefreshing) {
             // * If refresh is already in progress, wait for it to complete
             return new Promise((resolve, reject) => {
-              subscribeToTokenRefresh(async (newToken) => {
-                // Retry original request with new token
-                const newHeaders = {
-                  ...headers,
-                  'Authorization': `Bearer ${newToken}`,
-                }
+              subscribeToTokenRefresh(async () => {
+                // Retry original request (browser uses new cookie)
                 try {
                   const retryResponse = await fetch(url, {
                     ...options,
-                    headers: newHeaders,
+                    headers,
+                    credentials: 'include',
                   })
                   if (retryResponse.ok) {
                     resolve(retryResponse.json())
@@ -105,30 +96,21 @@ async function apiRequest<T>(
           isRefreshing = true
 
           try {
-            const refreshRes = await fetch(`${AUTH_API_URL}/api/v1/auth/refresh`, {
+            // * Call our internal Next.js API route to handle refresh securely
+            const refreshRes = await fetch('/api/auth/refresh', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                  refresh_token: refreshToken,
-              }),
             })
 
             if (refreshRes.ok) {
-              const data = await refreshRes.json()
-              localStorage.setItem('token', data.access_token)
-              localStorage.setItem('refreshToken', data.refresh_token) // Rotation
-              
-              // Notify waiting requests
-              onRefreshed(data.access_token)
+              // * Refresh successful, cookies updated
+              onRefreshed()
 
-              // * Retry original request with new token
-              const newHeaders = {
-                ...headers,
-                'Authorization': `Bearer ${data.access_token}`,
-              }
+              // * Retry original request
               const retryResponse = await fetch(url, {
                 ...options,
-                headers: newHeaders,
+                headers,
+                credentials: 'include',
               })
               
               if (retryResponse.ok) {
@@ -136,9 +118,9 @@ async function apiRequest<T>(
               }
             } else {
               // * Refresh failed, logout
-              localStorage.removeItem('token')
-              localStorage.removeItem('refreshToken')
               localStorage.removeItem('user')
+              // * Redirect to login if needed, or let the app handle 401
+              // window.location.href = '/'
             }
           } catch (e) {
             // * Network error during refresh

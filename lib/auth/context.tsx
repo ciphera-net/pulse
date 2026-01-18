@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { useRouter } from 'next/navigation'
 import apiRequest from '@/lib/api/client'
 import LoadingOverlay from '@/components/LoadingOverlay'
+import { logoutAction, getSessionAction } from '@/app/actions/auth'
 
 interface User {
   id: string
@@ -14,7 +15,7 @@ interface User {
 interface AuthContextType {
   user: User | null
   loading: boolean
-  login: (token: string, refreshToken: string, user: User) => void
+  login: (user: User) => void
   logout: () => void
   refresh: () => Promise<void>
   refreshSession: () => Promise<void>
@@ -35,19 +36,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const router = useRouter()
 
-  const login = (token: string, refreshToken: string, userData: User) => {
-    localStorage.setItem('token', token)
-    localStorage.setItem('refreshToken', refreshToken)
+  const login = (userData: User) => {
+    // * We still store user profile in localStorage for optimistic UI, but NOT the token
     localStorage.setItem('user', JSON.stringify(userData))
     setUser(userData)
     router.refresh()
   }
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
     setIsLoggingOut(true)
+    await logoutAction()
+    localStorage.removeItem('user')
+    // * Clear legacy tokens if they exist
     localStorage.removeItem('token')
     localStorage.removeItem('refreshToken')
-    localStorage.removeItem('user')
     
     setTimeout(() => {
       window.location.href = '/'
@@ -61,13 +63,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem('user', JSON.stringify(userData))
     } catch (e) {
       console.error('Failed to refresh user data', e)
-      const savedUser = localStorage.getItem('user')
-      if (savedUser && !user) {
-         try { setUser(JSON.parse(savedUser)) } catch {}
-      }
     }
     router.refresh()
-  }, [router, user])
+  }, [router])
 
   const refreshSession = useCallback(async () => {
       await refresh()
@@ -76,28 +74,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Initial load
   useEffect(() => {
     const init = async () => {
-        const token = localStorage.getItem('token')
-        const savedUser = localStorage.getItem('user')
+        // * 1. Check server-side session (cookies)
+        const session = await getSessionAction()
         
-        if (token) {
-            // Optimistically set from local storage first
-            if (savedUser) {
-                try {
-                    setUser(JSON.parse(savedUser))
-                } catch (e) {
-                    localStorage.removeItem('user')
-                }
-            }
-            
-            // Then fetch fresh data
-            try {
-                const userData = await apiRequest<User>('/auth/user/me')
-                setUser(userData)
-                localStorage.setItem('user', JSON.stringify(userData))
-            } catch (e) {
-                console.error('Failed to fetch initial user data', e)
-            }
+        if (session) {
+            setUser(session)
+            localStorage.setItem('user', JSON.stringify(session))
+        } else {
+            // * Session invalid/expired
+            localStorage.removeItem('user')
+            setUser(null)
         }
+        
+        // * Clear legacy tokens if they exist (migration)
+        if (localStorage.getItem('token')) {
+            localStorage.removeItem('token')
+            localStorage.removeItem('refreshToken')
+        }
+
         setLoading(false)
     }
     init()

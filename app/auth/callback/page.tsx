@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth/context'
 import { AUTH_URL } from '@/lib/api/client'
+import { exchangeAuthCode, setSessionAction } from '@/app/actions/auth'
 
 function AuthCallbackContent() {
   const router = useRouter()
@@ -17,23 +18,24 @@ function AuthCallbackContent() {
     if (processedRef.current) return
     
     // * Check for direct token passing (from auth-frontend direct login)
+    // * TODO: This flow exposes tokens in URL, should be deprecated in favor of Authorization Code flow
     const token = searchParams.get('token')
     const refreshToken = searchParams.get('refresh_token')
     
     if (token && refreshToken) {
         processedRef.current = true
-        try {
-            const payload = JSON.parse(atob(token.split('.')[1]))
-            login(token, refreshToken, {
-                id: payload.sub,
-                email: payload.email || 'user@ciphera.net',
-                totp_enabled: payload.totp_enabled || false
-            })
-            const returnTo = searchParams.get('returnTo') || '/'
-            router.push(returnTo)
-        } catch (e) {
-            setError('Invalid token received')
+        
+        const handleDirectTokens = async () => {
+            const result = await setSessionAction(token, refreshToken)
+            if (result.success && result.user) {
+                login(result.user)
+                const returnTo = searchParams.get('returnTo') || '/'
+                router.push(returnTo)
+            } else {
+                setError('Invalid token received')
+            }
         }
+        handleDirectTokens()
         return
     }
 
@@ -54,43 +56,26 @@ function AuthCallbackContent() {
     }
 
     if (state !== storedState) {
-        // * Debugging: Log state mismatch to help user diagnose
         console.error('State mismatch', { received: state, stored: storedState })
         setError('Invalid state')
         return
     }
 
+    if (!codeVerifier) {
+        setError('Missing code verifier')
+        return
+    }
+
     const exchangeCode = async () => {
       try {
-        const authApiUrl = process.env.NEXT_PUBLIC_AUTH_API_URL || process.env.NEXT_PUBLIC_AUTH_URL || 'http://localhost:8081'
-        const res = await fetch(`${authApiUrl}/oauth/token`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            grant_type: 'authorization_code',
-            code,
-            client_id: 'analytics-app',
-            redirect_uri: window.location.origin + '/auth/callback',
-            code_verifier: codeVerifier,
-          }),
-        })
+        const redirectUri = window.location.origin + '/auth/callback'
+        const result = await exchangeAuthCode(code, codeVerifier, redirectUri)
 
-        if (!res.ok) {
-          const data = await res.json()
-          throw new Error(data.error || 'Failed to exchange token')
+        if (!result.success || !result.user) {
+            throw new Error(result.error || 'Failed to exchange token')
         }
-
-        const data = await res.json()
         
-        const payload = JSON.parse(atob(data.access_token.split('.')[1]))
-        
-        login(data.access_token, data.refresh_token, {
-            id: payload.sub,
-            email: payload.email || 'user@ciphera.net', // Fallback if email claim missing
-            totp_enabled: payload.totp_enabled || false
-        })
+        login(result.user)
         
         // * Cleanup
         localStorage.removeItem('oauth_state')
