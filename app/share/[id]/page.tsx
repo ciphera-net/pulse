@@ -271,9 +271,10 @@ export default function PublicDashboardPage() {
         {/* Details Grid */}
         <div className="grid gap-6 lg:grid-cols-2 mb-8">
           <TopPages 
-            pages={safeTopPages} 
+            topPages={safeTopPages} 
             entryPages={safeEntryPages}
             exitPages={safeExitPages}
+            domain={site.domain}
           />
           <TopReferrers referrers={safeTopReferrers} />
         </div>
