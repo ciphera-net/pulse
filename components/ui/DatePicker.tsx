@@ -171,7 +171,7 @@ export default function DatePicker({ isOpen, onClose, onApply, initialRange }: D
             </button>
             <button
               onClick={() => onApply({ start: formatDate(startDate), end: formatDate(endDate) })}
-              className="px-4 py-2 text-sm font-medium bg-brand-orange text-white rounded-lg shadow-sm hover:bg-orange-600 transition-colors"
+              className="px-4 py-2 text-sm font-medium bg-brand-orange text-white rounded-xl shadow-sm hover:bg-orange-600 transition-colors"
             >
               Apply
             </button>

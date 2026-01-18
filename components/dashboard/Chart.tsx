@@ -5,6 +5,16 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { formatNumber, formatDuration } from '@/lib/utils/format'
 import { ArrowTopRightIcon, ArrowBottomRightIcon, DownloadIcon } from '@radix-ui/react-icons'
 
+const COLORS = {
+  brand: '#FD5E0F',
+  success: '#10B981', // Emerald-500
+  danger: '#EF4444',  // Red-500
+  border: '#E5E5E5',  // Neutral-200
+  text: '#171717',    // Neutral-900
+  textMuted: '#737373', // Neutral-500
+  axis: '#A3A3A3',    // Neutral-400
+}
+
 interface DailyStat {
   date: string
   pageviews: number
@@ -74,7 +84,7 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
       label: 'Unique Visitors',
       value: formatNumber(stats.visitors),
       trend: calculateTrend(stats.visitors, prevStats?.visitors),
-      color: '#FD5E0F', // Brand Orange
+      color: COLORS.brand,
       invertTrend: false,
     },
     {
@@ -82,7 +92,7 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
       label: 'Total Pageviews',
       value: formatNumber(stats.pageviews),
       trend: calculateTrend(stats.pageviews, prevStats?.pageviews),
-      color: '#FD5E0F', // Orange
+      color: COLORS.brand,
       invertTrend: false,
     },
     {
@@ -90,7 +100,7 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
       label: 'Bounce Rate',
       value: `${Math.round(stats.bounce_rate)}%`,
       trend: calculateTrend(stats.bounce_rate, prevStats?.bounce_rate),
-      color: '#EF4444', // Red
+      color: COLORS.danger,
       invertTrend: true, // Lower bounce rate is better
     },
     {
@@ -98,7 +108,7 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
       label: 'Visit Duration',
       value: formatDuration(stats.avg_duration),
       trend: calculateTrend(stats.avg_duration, prevStats?.avg_duration),
-      color: '#10B981', // Emerald
+      color: COLORS.success,
       invertTrend: false,
     },
   ] as const
@@ -175,17 +185,17 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
                   <stop offset="95%" stopColor={activeMetric.color} stopOpacity={0}/>
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E5E5" />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={COLORS.border} />
               <XAxis 
                 dataKey="date" 
-                stroke="#A3A3A3" 
+                stroke={COLORS.axis} 
                 fontSize={12} 
                 tickLine={false} 
                 axisLine={false}
                 minTickGap={30}
               />
               <YAxis 
-                stroke="#A3A3A3" 
+                stroke={COLORS.axis} 
                 fontSize={12} 
                 tickLine={false} 
                 axisLine={false}
@@ -194,13 +204,13 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
               <Tooltip
                 contentStyle={{
                   backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                  border: '1px solid #E5E5E5',
+                  border: `1px solid ${COLORS.border}`,
                   borderRadius: '8px',
                   boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                   padding: '12px'
                 }}
-                itemStyle={{ color: '#171717', fontWeight: 600, fontSize: '14px' }}
-                labelStyle={{ color: '#737373', marginBottom: '8px', fontSize: '12px' }}
+                itemStyle={{ color: COLORS.text, fontWeight: 600, fontSize: '14px' }}
+                labelStyle={{ color: COLORS.textMuted, marginBottom: '8px', fontSize: '12px' }}
                 cursor={{ stroke: activeMetric.color, strokeDasharray: '4 4' }}
               />
               
@@ -209,7 +219,7 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
                 <Area
                   type="monotone"
                   dataKey={metric === 'visitors' ? 'prevVisitors' : 'prevPageviews'}
-                  stroke="#A3A3A3"
+                  stroke={COLORS.axis}
                   strokeWidth={2}
                   strokeDasharray="4 4"
                   fill="none"

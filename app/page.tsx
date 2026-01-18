@@ -57,7 +57,7 @@ export default function HomePage() {
 
           {/* Features Grid */}
           <div className="grid md:grid-cols-3 gap-8 pt-16 text-left">
-            <div className="p-6 rounded-2xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800">
+            <div className="p-6 rounded-xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800">
               <div className="w-12 h-12 bg-brand-orange/10 rounded-xl flex items-center justify-center mb-4 text-brand-orange">
                 <LockClosedIcon className="w-6 h-6" />
               </div>
@@ -66,7 +66,7 @@ export default function HomePage() {
                 We don't track personal data. No IP addresses, no fingerprints, no cookies.
               </p>
             </div>
-            <div className="p-6 rounded-2xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800">
+            <div className="p-6 rounded-xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800">
               <div className="w-12 h-12 bg-brand-orange/10 rounded-xl flex items-center justify-center mb-4 text-brand-orange">
                 <BarChartIcon className="w-6 h-6" />
               </div>
@@ -75,7 +75,7 @@ export default function HomePage() {
                 Get the metrics that matter without the clutter. Page views, visitors, and sources.
               </p>
             </div>
-            <div className="p-6 rounded-2xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800">
+            <div className="p-6 rounded-xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800">
               <div className="w-12 h-12 bg-brand-orange/10 rounded-xl flex items-center justify-center mb-4 text-brand-orange">
                 <LightningBoltIcon className="w-6 h-6" />
               </div>

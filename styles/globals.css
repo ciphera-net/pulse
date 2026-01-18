@@ -36,6 +36,16 @@
   body {
     @apply bg-white dark:bg-neutral-950 text-neutral-900 dark:text-neutral-50 transition-colors duration-300 ease-in-out;
     font-family: var(--font-plus-jakarta-sans), system-ui, sans-serif;
+    background-image: 
+      radial-gradient(at 0% 0%, hsla(20, 98%, 52%, 0.03) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, hsla(20, 98%, 52%, 0.03) 0px, transparent 50%);
+    background-attachment: fixed;
+  }
+  
+  .dark body {
+    background-image: 
+      radial-gradient(at 0% 0%, hsla(20, 98%, 52%, 0.05) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, hsla(20, 98%, 52%, 0.05) 0px, transparent 50%);
   }
 }
 
