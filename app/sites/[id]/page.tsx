@@ -217,11 +217,9 @@ export default function SiteDashboardPage() {
       </div>
 
       {/* Performance Stats */}
-      {performance.lcp > 0 && (
-        <div className="mb-8">
-          <PerformanceStats stats={performance} />
-        </div>
-      )}
+      <div className="mb-8">
+        <PerformanceStats stats={performance} />
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-2 mb-8">
         <ContentStats 
