@@ -24,8 +24,8 @@ import {
   LockClosedIcon,
 } from '@radix-ui/react-icons'
 
-/** Sampling rate steps (every 10%): 10, 20, …, 100. */
-const SAMPLING_RATE_OPTIONS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100] as const
+/** Sampling rate options: 25, 50, 75, 100. */
+const SAMPLING_RATE_OPTIONS = [25, 50, 75, 100] as const
 
 function snapSamplingRate(v: number): number {
   return (SAMPLING_RATE_OPTIONS as readonly number[]).reduce(
@@ -921,50 +921,26 @@ export default function SiteSettingsPage() {
 
                         {/* Sampling Rate */}
                         <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-xl border border-neutral-100 dark:border-neutral-800">
-                          <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center justify-between">
                             <div>
                               <h4 className="font-medium text-neutral-900 dark:text-white">Sampling Rate</h4>
                               <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
                                 Percentage of sessions to record
                               </p>
                             </div>
-                            <span className="text-lg font-semibold text-brand-orange">{formData.replay_sampling_rate}%</span>
-                          </div>
-                          <input
-                            type="range"
-                            min={-1}
-                            max={SAMPLING_RATE_OPTIONS.length - 1}
-                            step={1}
-                            list="sampling-rate-ticks"
-                            value={(() => {
-                              const i = (SAMPLING_RATE_OPTIONS as readonly number[]).indexOf(formData.replay_sampling_rate)
-                              return i >= 0 ? i : SAMPLING_RATE_OPTIONS.length - 1
-                            })()}
-                            onChange={(e) => {
-                              const v = parseInt(e.target.value, 10)
-                              const i = Math.max(0, Math.min(SAMPLING_RATE_OPTIONS.length - 1, v))
-                              setFormData({
-                                ...formData,
-                                replay_sampling_rate: SAMPLING_RATE_OPTIONS[i],
-                              })
-                            }}
-                            className="w-full h-2 bg-neutral-200 dark:bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-brand-orange"
-                          />
-                          <datalist id="sampling-rate-ticks">
-                            {SAMPLING_RATE_OPTIONS.map((_, i) => (
-                              <option key={i} value={i} />
-                            ))}
-                          </datalist>
-                          <div className="relative h-4 mt-1">
-                            {SAMPLING_RATE_OPTIONS.map((pct) => (
-                              <span
-                                key={pct}
-                                className="absolute text-xs text-neutral-500 -translate-x-1/2"
-                                style={{ left: `${pct}%` }}
-                              >
-                                {pct}%
-                              </span>
-                            ))}
+                            <Select
+                              value={String(formData.replay_sampling_rate)}
+                              onChange={(v) =>
+                                setFormData({ ...formData, replay_sampling_rate: parseInt(v, 10) })
+                              }
+                              options={SAMPLING_RATE_OPTIONS.map((pct) => ({
+                                value: String(pct),
+                                label: `${pct}%`,
+                              }))}
+                              variant="input"
+                              align="right"
+                              className="min-w-[120px]"
+                            />
                           </div>
                         </div>
 
