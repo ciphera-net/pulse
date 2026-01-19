@@ -1,5 +1,7 @@
 import apiRequest from './client'
 
+export type GeoDataLevel = 'full' | 'country' | 'none'
+
 export interface Site {
   id: string
   user_id: string
@@ -9,6 +11,12 @@ export interface Site {
   is_public?: boolean
   has_password?: boolean
   excluded_paths?: string[]
+  // Data collection settings (privacy controls)
+  collect_page_paths?: boolean
+  collect_referrers?: boolean
+  collect_device_info?: boolean
+  collect_geo_data?: GeoDataLevel
+  collect_screen_resolution?: boolean
   created_at: string
   updated_at: string
 }
@@ -25,6 +33,12 @@ export interface UpdateSiteRequest {
   password?: string
   clear_password?: boolean
   excluded_paths?: string[]
+  // Data collection settings (privacy controls)
+  collect_page_paths?: boolean
+  collect_referrers?: boolean
+  collect_device_info?: boolean
+  collect_geo_data?: GeoDataLevel
+  collect_screen_resolution?: boolean
 }
 
 export async function listSites(): Promise<Site[]> {

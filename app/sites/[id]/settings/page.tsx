@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { getSite, updateSite, resetSiteData, deleteSite, type Site } from '@/lib/api/sites'
+import { getSite, updateSite, resetSiteData, deleteSite, type Site, type GeoDataLevel } from '@/lib/api/sites'
 import { getRealtime } from '@/lib/api/stats'
 import { toast } from 'sonner'
 import LoadingOverlay from '@/components/LoadingOverlay'
@@ -52,7 +52,13 @@ export default function SiteSettingsPage() {
     timezone: 'UTC',
     is_public: false,
     password: '',
-    excluded_paths: ''
+    excluded_paths: '',
+    // Data collection settings
+    collect_page_paths: true,
+    collect_referrers: true,
+    collect_device_info: true,
+    collect_geo_data: 'full' as GeoDataLevel,
+    collect_screen_resolution: true
   })
   const [scriptCopied, setScriptCopied] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
@@ -73,7 +79,13 @@ export default function SiteSettingsPage() {
         timezone: data.timezone || 'UTC',
         is_public: data.is_public || false,
         password: '', // Don't show existing password
-        excluded_paths: (data.excluded_paths || []).join('\n')
+        excluded_paths: (data.excluded_paths || []).join('\n'),
+        // Data collection settings (default to true/full for backwards compatibility)
+        collect_page_paths: data.collect_page_paths ?? true,
+        collect_referrers: data.collect_referrers ?? true,
+        collect_device_info: data.collect_device_info ?? true,
+        collect_geo_data: data.collect_geo_data || 'full',
+        collect_screen_resolution: data.collect_screen_resolution ?? true
       })
       if (data.has_password) {
         setIsPasswordEnabled(true)
@@ -103,7 +115,13 @@ export default function SiteSettingsPage() {
         is_public: formData.is_public,
         password: isPasswordEnabled ? (formData.password || undefined) : undefined,
         clear_password: !isPasswordEnabled,
-        excluded_paths: excludedPathsArray
+        excluded_paths: excludedPathsArray,
+        // Data collection settings
+        collect_page_paths: formData.collect_page_paths,
+        collect_referrers: formData.collect_referrers,
+        collect_device_info: formData.collect_device_info,
+        collect_geo_data: formData.collect_geo_data,
+        collect_screen_resolution: formData.collect_screen_resolution
       })
       toast.success('Site updated successfully')
       loadSite()
@@ -521,10 +539,129 @@ export default function SiteSettingsPage() {
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div>
                     <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-1">Data & Privacy</h2>
-                    <p className="text-sm text-neutral-500 dark:text-neutral-400">Manage data collection and filtering.</p>
+                    <p className="text-sm text-neutral-500 dark:text-neutral-400">Control what visitor data is collected. Less data = more privacy.</p>
                   </div>
 
+                  {/* Data Collection Controls */}
                   <div className="space-y-4">
+                    <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Data Collection</h3>
+
+                    {/* Page Paths Toggle */}
+                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-xl border border-neutral-100 dark:border-neutral-800">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-medium text-neutral-900 dark:text-white">Page Paths</h4>
+                          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
+                            Track which pages visitors view
+                          </p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={formData.collect_page_paths}
+                            onChange={(e) => setFormData({ ...formData, collect_page_paths: e.target.checked })}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-orange/20 dark:peer-focus:ring-brand-orange/20 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-brand-orange"></div>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Referrers Toggle */}
+                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-xl border border-neutral-100 dark:border-neutral-800">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-medium text-neutral-900 dark:text-white">Referrers</h4>
+                          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
+                            Track where visitors come from
+                          </p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={formData.collect_referrers}
+                            onChange={(e) => setFormData({ ...formData, collect_referrers: e.target.checked })}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-orange/20 dark:peer-focus:ring-brand-orange/20 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-brand-orange"></div>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Device Info Toggle */}
+                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-xl border border-neutral-100 dark:border-neutral-800">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-medium text-neutral-900 dark:text-white">Device Info</h4>
+                          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
+                            Track browser, OS, and device type
+                          </p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={formData.collect_device_info}
+                            onChange={(e) => setFormData({ ...formData, collect_device_info: e.target.checked })}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-orange/20 dark:peer-focus:ring-brand-orange/20 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-brand-orange"></div>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Geographic Data Dropdown */}
+                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-xl border border-neutral-100 dark:border-neutral-800">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-medium text-neutral-900 dark:text-white">Geographic Data</h4>
+                          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
+                            Control location tracking granularity
+                          </p>
+                        </div>
+                        <div className="relative">
+                          <select
+                            value={formData.collect_geo_data}
+                            onChange={(e) => setFormData({ ...formData, collect_geo_data: e.target.value as GeoDataLevel })}
+                            className="px-4 py-2 border border-neutral-200 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm font-medium appearance-none pr-10 focus:outline-none focus:ring-2 focus:ring-brand-orange/20 focus:border-brand-orange"
+                          >
+                            <option value="full">Full (country, region, city)</option>
+                            <option value="country">Country only</option>
+                            <option value="none">None</option>
+                          </select>
+                          <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
+                            <svg className="w-4 h-4 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Screen Resolution Toggle */}
+                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-xl border border-neutral-100 dark:border-neutral-800">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-medium text-neutral-900 dark:text-white">Screen Resolution</h4>
+                          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
+                            Track visitor screen sizes
+                          </p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={formData.collect_screen_resolution}
+                            onChange={(e) => setFormData({ ...formData, collect_screen_resolution: e.target.checked })}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-orange/20 dark:peer-focus:ring-brand-orange/20 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-brand-orange"></div>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Excluded Paths */}
+                  <div className="space-y-4 pt-6 border-t border-neutral-100 dark:border-neutral-800">
+                    <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Path Filtering</h3>
                     <div className="space-y-1.5">
                       <label htmlFor="excludedPaths" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
                         Excluded Paths
@@ -532,16 +669,16 @@ export default function SiteSettingsPage() {
                       <div className="relative">
                         <textarea
                           id="excludedPaths"
-                          rows={6}
+                          rows={4}
                           value={formData.excluded_paths}
                           onChange={(e) => setFormData({ ...formData, excluded_paths: e.target.value })}
                           placeholder="/admin/*&#10;/staging/*"
-                          className="w-full px-4 py-3 border border-neutral-200 dark:border-neutral-800 rounded-xl bg-neutral-50/50 dark:bg-neutral-900/50 focus:bg-white dark:focus:bg-neutral-900 
+                          className="w-full px-4 py-3 border border-neutral-200 dark:border-neutral-800 rounded-xl bg-neutral-50/50 dark:bg-neutral-900/50 focus:bg-white dark:focus:bg-neutral-900
                           focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all duration-200 dark:text-white font-mono text-sm"
                         />
                       </div>
                       <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2">
-                        Enter paths to exclude from tracking (one per line). Supports simple matching (e.g., /admin/*).
+                        Enter paths to exclude from tracking (one per line). Supports wildcards (e.g., /admin/*).
                       </p>
                     </div>
                   </div>
@@ -550,7 +687,7 @@ export default function SiteSettingsPage() {
                     <button
                       type="submit"
                       disabled={saving}
-                      className="flex items-center gap-2 px-6 py-2.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-xl font-medium 
+                      className="flex items-center gap-2 px-6 py-2.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-xl font-medium
                       hover:bg-neutral-800 dark:hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                     >
                       {saving ? (
