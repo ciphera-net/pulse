@@ -43,7 +43,7 @@ export default function SiteList() {
   }
 
   if (loading) {
-    return <LoadingOverlay logoSrc="/ciphera_icon_no_margins.png" title="Ciphera Analytics" />
+    return <LoadingOverlay logoSrc="/ciphera_icon_no_margins.png" title="Ciphera Pulse" />
   }
 
   if (sites.length === 0) {

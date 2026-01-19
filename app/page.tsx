@@ -12,7 +12,7 @@ export default function HomePage() {
   const { user, loading } = useAuth()
 
   if (loading) {
-    return <LoadingOverlay logoSrc="/ciphera_icon_no_margins.png" title="Ciphera Analytics" />
+    return <LoadingOverlay logoSrc="/ciphera_icon_no_margins.png" title="Ciphera Pulse" />
   }
 
   if (!user) {
@@ -25,7 +25,7 @@ export default function HomePage() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-orange opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-orange"></span>
             </span>
-            Privacy-First Analytics
+            Privacy-First Pulse
           </div>
           
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-neutral-900 dark:text-white">

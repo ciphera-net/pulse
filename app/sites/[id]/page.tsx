@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { getSite, type Site } from '@/lib/api/sites'
-import { getStats, getRealtime, getDailyStats, getTopPages, getTopReferrers, getCountries, getCities, getRegions, getBrowsers, getOS, getDevices, getScreenResolutions, getEntryPages, getExitPages, getDashboard, type Stats, type DailyStat } from '@/lib/api/stats'
+import { getStats, getRealtime, getDailyStats, getTopPages, getTopReferrers, getCountries, getCities, getRegions, getBrowsers, getOS, getDevices, getScreenResolutions, getEntryPages, getExitPages, getDashboard, getPerformanceByPage, type Stats, type DailyStat, type PerformanceByPageStat } from '@/lib/api/stats'
 import { formatNumber, formatDuration, getDateRange } from '@/lib/utils/format'
 import { toast } from 'sonner'
 import LoadingOverlay from '@/components/LoadingOverlay'
@@ -40,6 +40,7 @@ export default function SiteDashboardPage() {
   const [devices, setDevices] = useState<any[]>([])
   const [screenResolutions, setScreenResolutions] = useState<any[]>([])
   const [performance, setPerformance] = useState<{ lcp: number, cls: number, inp: number }>({ lcp: 0, cls: 0, inp: 0 })
+  const [performanceByPage, setPerformanceByPage] = useState<PerformanceByPageStat[] | null>(null)
   const [dateRange, setDateRange] = useState(getDateRange(30))
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
   const [todayInterval, setTodayInterval] = useState<'minute' | 'hour'>('hour')
@@ -113,6 +114,7 @@ export default function SiteDashboardPage() {
       setDevices(Array.isArray(data.devices) ? data.devices : [])
       setScreenResolutions(Array.isArray(data.screen_resolutions) ? data.screen_resolutions : [])
       setPerformance(data.performance || { lcp: 0, cls: 0, inp: 0 })
+      setPerformanceByPage(data.performance_by_page ?? null)
     } catch (error: any) {
       toast.error('Failed to load data: ' + (error.message || 'Unknown error'))
     } finally {
@@ -130,7 +132,7 @@ export default function SiteDashboardPage() {
   }
 
   if (loading) {
-    return <LoadingOverlay logoSrc="/ciphera_icon_no_margins.png" title="Ciphera Analytics" />
+    return <LoadingOverlay logoSrc="/ciphera_icon_no_margins.png" title="Ciphera Pulse" />
   }
 
   if (!site) {
@@ -231,7 +233,14 @@ export default function SiteDashboardPage() {
       {/* Performance Stats - Only show if enabled */}
       {site.enable_performance_insights && (
         <div className="mb-8">
-          <PerformanceStats stats={performance} />
+          <PerformanceStats
+            stats={performance}
+            performanceByPage={performanceByPage}
+            siteId={siteId}
+            startDate={dateRange.start}
+            endDate={dateRange.end}
+            getPerformanceByPage={getPerformanceByPage}
+          />
         </div>
       )}
 

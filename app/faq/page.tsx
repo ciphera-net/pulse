@@ -1,19 +1,19 @@
 export default function FAQPage() {
   const faqs = [
     {
-      question: "Is Ciphera Analytics GDPR compliant?",
-      answer: "Yes, Ciphera Analytics is GDPR compliant by design. We don't use cookies, don't collect personal data, and process all data anonymously."
+      question: "Is Ciphera Pulse GDPR compliant?",
+      answer: "Yes, Ciphera Pulse is GDPR compliant by design. We don't use cookies, don't collect personal data, and process all data anonymously."
     },
     {
       question: "Do I need a cookie consent banner?",
-      answer: "No, you don't need a cookie consent banner. Ciphera Analytics doesn't use cookies, so it's exempt from cookie consent requirements under GDPR."
+      answer: "No, you don't need a cookie consent banner. Ciphera Pulse doesn't use cookies, so it's exempt from cookie consent requirements under GDPR."
     },
     {
-      question: "How does Ciphera Analytics track visitors?",
+      question: "How does Ciphera Pulse track visitors?",
       answer: "We use a lightweight JavaScript snippet that sends anonymous pageview events. No cookies, no cross-session identifiers (we use sessionStorage only to group events within a single visit), and no cross-site tracking."
     },
     {
-      question: "What data does Ciphera Analytics collect?",
+      question: "What data does Ciphera Pulse collect?",
       answer: "We collect anonymous pageview data including page path, referrer, device type, browser, and country (derived from IP at request time; the IP itself is not stored). No personal information is collected. If you enable optional session replay, see 'What about session replay?' below."
     },
     {

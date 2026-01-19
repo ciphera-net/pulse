@@ -99,7 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ user, loading, login, logout, refresh, refreshSession }}>
-      {isLoggingOut && <LoadingOverlay logoSrc="/ciphera_icon_no_margins.png" title="Ciphera Analytics" />}
+      {isLoggingOut && <LoadingOverlay logoSrc="/ciphera_icon_no_margins.png" title="Ciphera Pulse" />}
       {children}
     </AuthContext.Provider>
   )

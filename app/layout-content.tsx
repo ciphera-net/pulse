@@ -16,7 +16,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         appName={
           <span className="flex items-center">
             <span className="font-bold">Ciphera</span>
-            <span className="font-light">Analytics</span>
+            <span className="font-light">Pulse</span>
           </span> as any
         }
       />
@@ -25,7 +25,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
       </main>
       <Footer 
         LinkComponent={Link}
-        appName="Ciphera Analytics"
+        appName="Ciphera Pulse"
       />
     </>
   )

@@ -88,7 +88,7 @@ export default function RealtimePage() {
     }
   }
 
-  if (loading) return <LoadingOverlay logoSrc="/ciphera_icon_no_margins.png" title="Realtime Analytics" />
+  if (loading) return <LoadingOverlay logoSrc="/ciphera_icon_no_margins.png" title="Realtime" />
   if (!site) return <div className="p-8">Site not found</div>
 
   return (

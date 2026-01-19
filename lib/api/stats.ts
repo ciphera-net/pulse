@@ -25,6 +25,14 @@ export interface PerformanceStats {
   inp: number
 }
 
+export interface PerformanceByPageStat {
+  path: string
+  samples: number
+  lcp: number | null
+  cls: number | null
+  inp: number | null
+}
+
 export interface TopReferrer {
   referrer: string
   pageviews: number
@@ -180,6 +188,23 @@ export async function getScreenResolutions(siteId: string, startDate?: string, e
   return apiRequest<{ screen_resolutions: ScreenResolutionStat[] }>(`/sites/${siteId}/screen-resolutions?${params.toString()}`).then(r => r?.screen_resolutions || [])
 }
 
+export async function getPerformanceByPage(
+  siteId: string,
+  startDate?: string,
+  endDate?: string,
+  opts?: { limit?: number; sort?: 'lcp' | 'cls' | 'inp' }
+): Promise<PerformanceByPageStat[]> {
+  const params = new URLSearchParams()
+  if (startDate) params.append('start_date', startDate)
+  if (endDate) params.append('end_date', endDate)
+  if (opts?.limit != null) params.append('limit', String(opts.limit))
+  if (opts?.sort) params.append('sort', opts.sort)
+  const res = await apiRequest<{ performance_by_page: PerformanceByPageStat[] }>(
+    `/sites/${siteId}/performance-by-page?${params.toString()}`
+  )
+  return res?.performance_by_page ?? []
+}
+
 export interface DashboardData {
   site: Site
   stats: Stats
@@ -197,6 +222,7 @@ export interface DashboardData {
   devices: DeviceStat[]
   screen_resolutions: ScreenResolutionStat[]
   performance?: PerformanceStats
+  performance_by_page?: PerformanceByPageStat[]
 }
 
 export async function getDashboard(siteId: string, startDate?: string, endDate?: string, limit = 10, interval?: string): Promise<DashboardData> {

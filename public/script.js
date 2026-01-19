@@ -1,5 +1,5 @@
 /**
- * Ciphera Analytics - Privacy-First Tracking Script
+ * Ciphera Pulse - Privacy-First Tracking Script
  * Lightweight, no cookies, GDPR compliant
  * Includes optional session replay with privacy controls
  */

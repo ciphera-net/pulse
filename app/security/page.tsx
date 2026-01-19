@@ -10,7 +10,7 @@ export default function SecurityPage() {
           Data Protection
         </h2>
         <p className="text-neutral-600 dark:text-neutral-400 mb-4">
-          Ciphera Analytics is built with security and privacy as core principles:
+          Ciphera Pulse is built with security and privacy as core principles:
         </p>
         <ul className="list-disc list-inside space-y-2 text-neutral-600 dark:text-neutral-400 mb-6">
           <li>All data is encrypted in transit using TLS/SSL</li>
@@ -24,7 +24,7 @@ export default function SecurityPage() {
           Compliance
         </h2>
         <p className="text-neutral-600 dark:text-neutral-400 mb-4">
-          Ciphera Analytics is compliant with:
+          Ciphera Pulse is compliant with:
         </p>
         <ul className="list-disc list-inside space-y-2 text-neutral-600 dark:text-neutral-400 mb-6">
           <li>GDPR (General Data Protection Regulation)</li>

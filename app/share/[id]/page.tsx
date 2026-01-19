@@ -96,7 +96,7 @@ export default function PublicDashboardPage() {
   }
 
   if (loading && !data && !isPasswordProtected) {
-    return <LoadingOverlay logoSrc="/ciphera_icon_no_margins.png" title="Ciphera Analytics" />
+    return <LoadingOverlay logoSrc="/ciphera_icon_no_margins.png" title="Ciphera Pulse" />
   }
 
   if (isPasswordProtected && !data) {
@@ -140,7 +140,7 @@ export default function PublicDashboardPage() {
 
   if (!data) return null
 
-  const { site, stats, daily_stats, top_pages, entry_pages, exit_pages, top_referrers, countries, cities, regions, browsers, os, devices, screen_resolutions, performance, realtime_visitors } = data
+  const { site, stats, daily_stats, top_pages, entry_pages, exit_pages, top_referrers, countries, cities, regions, browsers, os, devices, screen_resolutions, performance, performance_by_page, realtime_visitors } = data
 
   // Provide defaults for potentially undefined data
   const safeDailyStats = daily_stats || []
@@ -274,7 +274,7 @@ export default function PublicDashboardPage() {
          {/* Performance Stats - Only show if enabled */}
         {performance && data.site?.enable_performance_insights && (
            <div className="mb-8">
-            <PerformanceStats stats={performance} />
+            <PerformanceStats stats={performance} performanceByPage={performance_by_page} />
           </div>
         )}
 

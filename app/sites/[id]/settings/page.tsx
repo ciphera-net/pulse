@@ -230,7 +230,7 @@ export default function SiteSettingsPage() {
   }
 
   if (loading) {
-    return <LoadingOverlay logoSrc="/ciphera_icon_no_margins.png" title="Ciphera Analytics" />
+    return <LoadingOverlay logoSrc="/ciphera_icon_no_margins.png" title="Ciphera Pulse" />
   }
 
   if (!site) {
@@ -785,7 +785,7 @@ export default function SiteSettingsPage() {
                       For your privacy policy
                     </h3>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                      Copy the text below into your site&apos;s Privacy Policy to describe your use of Ciphera Analytics.
+                      Copy the text below into your site&apos;s Privacy Policy to describe your use of Ciphera Pulse.
                       It updates automatically based on your saved settings above.
                     </p>
                     <p className="text-xs text-amber-600 dark:text-amber-500">

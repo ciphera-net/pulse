@@ -2,12 +2,12 @@ export default function AboutPage() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <h1 className="text-3xl font-bold mb-6 text-neutral-900 dark:text-white">
-        About Ciphera Analytics
+        About Ciphera Pulse
       </h1>
       
       <div className="prose prose-neutral dark:prose-invert max-w-none">
         <p className="text-lg text-neutral-600 dark:text-neutral-400 mb-4">
-          Ciphera Analytics is a privacy-first web analytics platform that provides simple, 
+          Ciphera Pulse is a privacy-first web analytics platform that provides simple, 
           intuitive insights without compromising your visitors' privacy.
         </p>
         

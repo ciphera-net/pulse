@@ -1,9 +1,16 @@
 'use client'
 
-import { PerformanceStats as Stats } from '@/lib/api/stats'
+import { useState, useEffect } from 'react'
+import { PerformanceStats as Stats, PerformanceByPageStat, getPerformanceByPage } from '@/lib/api/stats'
+import Select from '@/components/ui/Select'
 
 interface Props {
   stats: Stats
+  performanceByPage?: PerformanceByPageStat[] | null
+  siteId?: string
+  startDate?: string
+  endDate?: string
+  getPerformanceByPage?: typeof getPerformanceByPage
 }
 
 function MetricCard({ label, value, unit, score }: { label: string, value: number, unit: string, score: 'good' | 'needs-improvement' | 'poor' }) {
@@ -24,7 +31,7 @@ function MetricCard({ label, value, unit, score }: { label: string, value: numbe
   )
 }
 
-export default function PerformanceStats({ stats }: Props) {
+export default function PerformanceStats({ stats, performanceByPage, siteId, startDate, endDate, getPerformanceByPage }: Props) {
   // * Scoring Logic (based on Google Web Vitals)
   const getScore = (metric: 'lcp' | 'cls' | 'inp', value: number) => {
     if (metric === 'lcp') return value <= 2500 ? 'good' : value <= 4000 ? 'needs-improvement' : 'poor'
@@ -33,9 +40,47 @@ export default function PerformanceStats({ stats }: Props) {
     return 'good'
   }
 
-  // * If no data, don't show or show placeholder? 
-  // * Showing placeholder with 0s might be confusing if they actually have 0ms latency (impossible)
-  // * But we handle empty stats in parent or pass 0 here.
+  const [sortBy, setSortBy] = useState<'lcp' | 'cls' | 'inp'>('lcp')
+  const [overrideRows, setOverrideRows] = useState<PerformanceByPageStat[] | null>(null)
+  const [loadingTable, setLoadingTable] = useState(false)
+
+  // * When props.performanceByPage changes (e.g. date range), clear override so we use dashboard data
+  useEffect(() => {
+    setOverrideRows(null)
+  }, [performanceByPage])
+
+  const rows = overrideRows ?? performanceByPage ?? []
+  const canRefetch = Boolean(getPerformanceByPage && siteId && startDate && endDate)
+
+  const handleSortChange = (value: string) => {
+    const v = value as 'lcp' | 'cls' | 'inp'
+    setSortBy(v)
+    if (!getPerformanceByPage || !siteId || !startDate || !endDate) return
+    setLoadingTable(true)
+    getPerformanceByPage(siteId, startDate, endDate, { sort: v, limit: 20 })
+      .then(setOverrideRows)
+      .finally(() => setLoadingTable(false))
+  }
+
+  const cellScoreClass = (score: 'good' | 'needs-improvement' | 'poor') => {
+    const m: Record<string, string> = {
+      good: 'text-green-600 dark:text-green-400',
+      'needs-improvement': 'text-yellow-600 dark:text-yellow-400',
+      poor: 'text-red-600 dark:text-red-400',
+    }
+    return m[score] ?? ''
+  }
+
+  const formatMetric = (metric: 'lcp' | 'cls' | 'inp', val: number | null) => {
+    if (val == null) return '—'
+    if (metric === 'cls') return val.toFixed(3)
+    return `${Math.round(val)} ms`
+  }
+
+  const getCellClass = (metric: 'lcp' | 'cls' | 'inp', val: number | null) => {
+    if (val == null) return 'text-neutral-400 dark:text-neutral-500'
+    return cellScoreClass(getScore(metric, val))
+  }
 
   return (
     <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6">
@@ -43,27 +88,90 @@ export default function PerformanceStats({ stats }: Props) {
         Core Web Vitals
       </h3>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <MetricCard 
-          label="Largest Contentful Paint (LCP)" 
-          value={Math.round(stats.lcp)} 
-          unit="ms" 
-          score={getScore('lcp', stats.lcp)} 
+        <MetricCard
+          label="Largest Contentful Paint (LCP)"
+          value={Math.round(stats.lcp)}
+          unit="ms"
+          score={getScore('lcp', stats.lcp)}
         />
-        <MetricCard 
-          label="Cumulative Layout Shift (CLS)" 
-          value={Number(stats.cls.toFixed(3))} 
-          unit="" 
-          score={getScore('cls', stats.cls)} 
+        <MetricCard
+          label="Cumulative Layout Shift (CLS)"
+          value={Number(stats.cls.toFixed(3))}
+          unit=""
+          score={getScore('cls', stats.cls)}
         />
-        <MetricCard 
-          label="Interaction to Next Paint (INP)" 
-          value={Math.round(stats.inp)} 
-          unit="ms" 
-          score={getScore('inp', stats.inp)} 
+        <MetricCard
+          label="Interaction to Next Paint (INP)"
+          value={Math.round(stats.inp)}
+          unit="ms"
+          score={getScore('inp', stats.inp)}
         />
       </div>
       <div className="mt-4 text-xs text-neutral-500">
         * Averages calculated from real user sessions. Lower is better.
+      </div>
+
+      {/* * Performance by page (worst first) */}
+      <div className="mt-6 pt-6 border-t border-neutral-200 dark:border-neutral-800">
+        <div className="flex items-center justify-between gap-4 mb-3">
+          <h4 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+            Worst pages by metric
+          </h4>
+          {canRefetch && (
+            <Select
+              value={sortBy}
+              onChange={handleSortChange}
+              options={[
+                { value: 'lcp', label: 'Sort by LCP (worst)' },
+                { value: 'cls', label: 'Sort by CLS (worst)' },
+                { value: 'inp', label: 'Sort by INP (worst)' },
+              ]}
+              variant="input"
+              align="right"
+              className="min-w-[180px]"
+            />
+          )}
+        </div>
+        {loadingTable ? (
+          <div className="py-8 text-center text-neutral-500 text-sm">Loading…</div>
+        ) : rows.length === 0 ? (
+          <div className="py-6 text-center text-neutral-500 text-sm">
+            No per-page metrics yet. Data appears as visitors are tracked with performance insights enabled.
+          </div>
+        ) : (
+          <div className="overflow-x-auto -mx-1">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-neutral-200 dark:border-neutral-700">
+                  <th className="text-left py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">Path</th>
+                  <th className="text-right py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">Samples</th>
+                  <th className="text-right py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">LCP</th>
+                  <th className="text-right py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">CLS</th>
+                  <th className="text-right py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">INP</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.path} className="border-b border-neutral-100 dark:border-neutral-800/80">
+                    <td className="py-2 px-2 text-neutral-900 dark:text-white font-mono truncate max-w-[200px]" title={r.path}>
+                      {r.path || '/'}
+                    </td>
+                    <td className="py-2 px-2 text-right text-neutral-600 dark:text-neutral-400">{r.samples}</td>
+                    <td className={`py-2 px-2 text-right font-mono ${getCellClass('lcp', r.lcp)}`}>
+                      {formatMetric('lcp', r.lcp)}
+                    </td>
+                    <td className={`py-2 px-2 text-right font-mono ${getCellClass('cls', r.cls)}`}>
+                      {formatMetric('cls', r.cls)}
+                    </td>
+                    <td className={`py-2 px-2 text-right font-mono ${getCellClass('inp', r.inp)}`}>
+                      {formatMetric('inp', r.inp)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   )

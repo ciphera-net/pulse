@@ -13,7 +13,7 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 })
 
 export const metadata: Metadata = {
-  title: 'Ciphera Analytics - Privacy-First Web Analytics',
+  title: 'Ciphera Pulse - Privacy-First Web Analytics',
   description: 'Simple, privacy-focused web analytics. No cookies, no tracking. GDPR compliant.',
   keywords: ['analytics', 'privacy', 'web analytics', 'ciphera', 'GDPR'],
   authors: [{ name: 'Ciphera' }],
