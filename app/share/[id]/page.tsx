@@ -271,8 +271,8 @@ export default function PublicDashboardPage() {
           />
         </div>
 
-         {/* Performance Stats */}
-        {performance && (
+         {/* Performance Stats - Only show if enabled */}
+        {performance && data.site?.enable_performance_insights && (
            <div className="mb-8">
             <PerformanceStats stats={performance} />
           </div>

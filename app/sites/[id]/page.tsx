@@ -228,10 +228,12 @@ export default function SiteDashboardPage() {
         />
       </div>
 
-      {/* Performance Stats */}
-      <div className="mb-8">
-        <PerformanceStats stats={performance} />
-      </div>
+      {/* Performance Stats - Only show if enabled */}
+      {site.enable_performance_insights && (
+        <div className="mb-8">
+          <PerformanceStats stats={performance} />
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2 mb-8">
         <ContentStats

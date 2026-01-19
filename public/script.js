@@ -24,6 +24,7 @@
   // * Performance Monitoring (Core Web Vitals) State
   let currentEventId = null;
   let metrics = { lcp: 0, cls: 0, inp: 0 };
+  let performanceInsightsEnabled = false;
 
   // * Session Replay State
   let replayEnabled = false;
@@ -74,7 +75,8 @@
   }
 
   function sendMetrics() {
-    if (!currentEventId || (metrics.lcp === 0 && metrics.cls === 0 && metrics.inp === 0)) return;
+    // * Only send metrics if performance insights are enabled
+    if (!performanceInsightsEnabled || !currentEventId || (metrics.lcp === 0 && metrics.cls === 0 && metrics.inp === 0)) return;
 
     // * Use sendBeacon if available for reliability on unload
     const data = JSON.stringify({
@@ -96,7 +98,8 @@
     }
   }
 
-  // * Start observing immediately
+  // * Start observing metrics immediately (buffered observers will capture early metrics)
+  // * Metrics will only be sent if performance insights are enabled (checked in sendMetrics)
   observeMetrics();
 
   // * Send metrics when user leaves or hides the page
@@ -214,6 +217,9 @@
       if (res.ok) {
         replaySettings = await res.json();
         replayMode = replaySettings.replay_mode;
+        
+        // * Set performance insights enabled flag
+        performanceInsightsEnabled = replaySettings.enable_performance_insights === true;
 
         // Check sampling rate
         if (replayMode !== 'disabled') {
