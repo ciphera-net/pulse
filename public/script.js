@@ -263,9 +263,35 @@
     return false;
   }
 
+  // * Load rrweb library dynamically
+  function loadRrweb() {
+    return new Promise((resolve, reject) => {
+      if (typeof window.rrweb !== 'undefined') {
+        resolve();
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/rrweb@2.0.0-alpha.11/dist/rrweb.min.js';
+      script.onload = resolve;
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+  }
+
   // * Start recording session
   async function startReplay(isSkeletonMode) {
-    if (replayEnabled || typeof window.rrweb === 'undefined') return;
+    if (replayEnabled) return;
+
+    // Load rrweb if not already loaded
+    try {
+      await loadRrweb();
+    } catch (e) {
+      console.warn('[Ciphera] Failed to load rrweb library');
+      return;
+    }
+
+    if (typeof window.rrweb === 'undefined') return;
 
     // Initialize session on server first
     const initialized = await initReplaySession(isSkeletonMode);
