@@ -84,9 +84,13 @@ function ChartTooltip({
   colors: typeof CHART_COLORS_LIGHT
 }) {
   if (!active || !payload?.length || !label) return null
-  const d = payload[0]
-  const value = d.value as number
-  const prev = metric === 'visitors' ? d.payload.prevVisitors : d.payload.prevPageviews
+  // * Recharts sends one payload entry per Area; order can be [prevSeries, currentSeries].
+  // * Use the entry for the current metric so the tooltip shows today's value, not yesterday's.
+  type PayloadItem = { dataKey?: string; value?: number; payload: { prevPageviews?: number; prevVisitors?: number; visitors?: number; pageviews?: number } }
+  const items = payload as PayloadItem[]
+  const current = items.find((p) => p.dataKey === metric) ?? items[items.length - 1]
+  const value = Number(current?.value ?? (current?.payload as Record<string, number>)?.[metric] ?? 0)
+  const prev = metric === 'visitors' ? current?.payload?.prevVisitors : current?.payload?.prevPageviews
   const hasPrev = showComparison && prev != null
   const delta =
     hasPrev && (prev as number) > 0
