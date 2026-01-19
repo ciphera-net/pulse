@@ -7,6 +7,7 @@ import { listReplays, formatDuration, type ReplayListItem, type ReplayFilters } 
 import { toast } from 'sonner'
 import { LockClosedIcon } from '@radix-ui/react-icons'
 import LoadingOverlay from '@/components/LoadingOverlay'
+import Select from '@/components/ui/Select'
 
 function formatDate(dateString: string) {
   const date = new Date(dateString)
@@ -128,28 +129,28 @@ export default function ReplaysPage() {
 
       {/* Filters */}
       <div className="mb-6 flex gap-4 flex-wrap">
-        <select
-          className="px-3 py-2 border border-neutral-200 dark:border-neutral-700 rounded-xl bg-white dark:bg-neutral-800 text-sm"
-          value={filters.device_type || ''}
-          onChange={(e) => setFilters(prev => ({ ...prev, device_type: e.target.value || undefined, offset: 0 }))}
-        >
-          <option value="">All Devices</option>
-          <option value="desktop">Desktop</option>
-          <option value="mobile">Mobile</option>
-          <option value="tablet">Tablet</option>
-        </select>
+        <Select
+          value={filters.device_type ?? ''}
+          onChange={(v) => setFilters((prev) => ({ ...prev, device_type: v || undefined, offset: 0 }))}
+          options={[
+            { value: '', label: 'All Devices' },
+            { value: 'desktop', label: 'Desktop' },
+            { value: 'mobile', label: 'Mobile' },
+            { value: 'tablet', label: 'Tablet' },
+          ]}
+        />
 
-        <select
-          className="px-3 py-2 border border-neutral-200 dark:border-neutral-700 rounded-xl bg-white dark:bg-neutral-800 text-sm"
-          value={filters.min_duration || ''}
-          onChange={(e) => setFilters(prev => ({ ...prev, min_duration: e.target.value ? parseInt(e.target.value) : undefined, offset: 0 }))}
-        >
-          <option value="">Any Duration</option>
-          <option value="5000">5s+</option>
-          <option value="30000">30s+</option>
-          <option value="60000">1m+</option>
-          <option value="300000">5m+</option>
-        </select>
+        <Select
+          value={filters.min_duration ? String(filters.min_duration) : ''}
+          onChange={(v) => setFilters((prev) => ({ ...prev, min_duration: v ? parseInt(v, 10) : undefined, offset: 0 }))}
+          options={[
+            { value: '', label: 'Any Duration' },
+            { value: '5000', label: '5s+' },
+            { value: '30000', label: '30s+' },
+            { value: '60000', label: '1m+' },
+            { value: '300000', label: '5m+' },
+          ]}
+        />
       </div>
 
       {/* Replays List */}

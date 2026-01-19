@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import LoadingOverlay from '@/components/LoadingOverlay'
 import VerificationModal from '@/components/sites/VerificationModal'
 import PasswordInput from '@/components/PasswordInput'
+import Select from '@/components/ui/Select'
 import { APP_URL, API_URL } from '@/lib/api/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -305,26 +306,15 @@ export default function SiteSettingsPage() {
                       <label htmlFor="timezone" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
                         Timezone
                       </label>
-                      <div className="relative">
-                        <select
-                          id="timezone"
-                          value={formData.timezone}
-                          onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
-                          className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-xl bg-neutral-50/50 dark:bg-neutral-900/50 focus:bg-white dark:focus:bg-neutral-900 
-                          focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all duration-200 dark:text-white appearance-none"
-                        >
-                          {TIMEZONES.map((tz) => (
-                            <option key={tz} value={tz}>
-                              {tz}
-                            </option>
-                          ))}
-                        </select>
-                        <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none">
-                          <svg className="w-4 h-4 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </div>
-                      </div>
+                      <Select
+                        id="timezone"
+                        value={formData.timezone}
+                        onChange={(v) => setFormData({ ...formData, timezone: v })}
+                        options={TIMEZONES.map((tz) => ({ value: tz, label: tz }))}
+                        variant="input"
+                        fullWidth
+                        align="left"
+                      />
                     </div>
 
                     <div className="space-y-1.5">
@@ -649,22 +639,18 @@ export default function SiteSettingsPage() {
                             Control location tracking granularity
                           </p>
                         </div>
-                        <div className="relative">
-                          <select
-                            value={formData.collect_geo_data}
-                            onChange={(e) => setFormData({ ...formData, collect_geo_data: e.target.value as GeoDataLevel })}
-                            className="px-4 py-2 border border-neutral-200 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm font-medium appearance-none pr-10 focus:outline-none focus:ring-2 focus:ring-brand-orange/20 focus:border-brand-orange"
-                          >
-                            <option value="full">Full (country, region, city)</option>
-                            <option value="country">Country only</option>
-                            <option value="none">None</option>
-                          </select>
-                          <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
-                            <svg className="w-4 h-4 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </div>
-                        </div>
+                        <Select
+                          value={formData.collect_geo_data}
+                          onChange={(v) => setFormData({ ...formData, collect_geo_data: v as GeoDataLevel })}
+                          options={[
+                            { value: 'full', label: 'Full (country, region, city)' },
+                            { value: 'country', label: 'Country only' },
+                            { value: 'none', label: 'None' },
+                          ]}
+                          variant="input"
+                          align="right"
+                          className="min-w-[200px]"
+                        />
                       </div>
                     </div>
 
@@ -850,24 +836,20 @@ export default function SiteSettingsPage() {
                                 How long to keep recordings
                               </p>
                             </div>
-                            <div className="relative">
-                              <select
-                                value={formData.replay_retention_days}
-                                onChange={(e) => setFormData({ ...formData, replay_retention_days: parseInt(e.target.value) })}
-                                className="px-4 py-2 border border-neutral-200 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm font-medium appearance-none pr-10 focus:outline-none focus:ring-2 focus:ring-brand-orange/20 focus:border-brand-orange"
-                              >
-                                <option value={7}>7 days</option>
-                                <option value={14}>14 days</option>
-                                <option value={30}>30 days</option>
-                                <option value={60}>60 days</option>
-                                <option value={90}>90 days</option>
-                              </select>
-                              <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
-                                <svg className="w-4 h-4 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                                </svg>
-                              </div>
-                            </div>
+                            <Select
+                              value={String(formData.replay_retention_days)}
+                              onChange={(v) => setFormData({ ...formData, replay_retention_days: parseInt(v, 10) })}
+                              options={[
+                                { value: '7', label: '7 days' },
+                                { value: '14', label: '14 days' },
+                                { value: '30', label: '30 days' },
+                                { value: '60', label: '60 days' },
+                                { value: '90', label: '90 days' },
+                              ]}
+                              variant="input"
+                              align="right"
+                              className="min-w-[120px]"
+                            />
                           </div>
                         </div>
 
