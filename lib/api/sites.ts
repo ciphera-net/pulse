@@ -20,6 +20,8 @@ export interface Site {
   collect_screen_resolution?: boolean
   // Performance insights setting
   enable_performance_insights?: boolean
+  // Bot and noise filtering
+  filter_bots?: boolean
   // Session replay settings
   replay_mode?: ReplayMode
   replay_sampling_rate?: number
@@ -50,6 +52,8 @@ export interface UpdateSiteRequest {
   collect_screen_resolution?: boolean
   // Performance insights setting
   enable_performance_insights?: boolean
+  // Bot and noise filtering
+  filter_bots?: boolean
   // Session replay settings
   replay_mode?: ReplayMode
   replay_sampling_rate?: number

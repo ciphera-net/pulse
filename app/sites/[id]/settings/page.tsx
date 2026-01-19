@@ -73,6 +73,8 @@ export default function SiteSettingsPage() {
     collect_screen_resolution: true,
     // Performance insights setting
     enable_performance_insights: false,
+    // Bot and noise filtering
+    filter_bots: true,
     // Session replay settings
     replay_mode: 'disabled' as ReplayMode,
     replay_sampling_rate: 100,
@@ -108,6 +110,8 @@ export default function SiteSettingsPage() {
         collect_screen_resolution: data.collect_screen_resolution ?? true,
         // Performance insights setting (default to false)
         enable_performance_insights: data.enable_performance_insights ?? false,
+        // Bot and noise filtering (default to true)
+        filter_bots: data.filter_bots ?? true,
         // Session replay settings (legacy consent_required from API mapped to anonymous_skeleton)
         replay_mode: ((data as { replay_mode?: string }).replay_mode === 'consent_required' ? 'anonymous_skeleton' : data.replay_mode) || 'disabled',
         replay_sampling_rate: snapSamplingRate(data.replay_sampling_rate ?? 100),
@@ -152,6 +156,8 @@ export default function SiteSettingsPage() {
         collect_screen_resolution: formData.collect_screen_resolution,
         // Performance insights setting
         enable_performance_insights: formData.enable_performance_insights,
+        // Bot and noise filtering
+        filter_bots: formData.filter_bots,
         // Session replay settings
         replay_mode: formData.replay_mode,
         replay_sampling_rate: formData.replay_sampling_rate,
@@ -683,6 +689,30 @@ export default function SiteSettingsPage() {
                             type="checkbox"
                             checked={formData.collect_screen_resolution}
                             onChange={(e) => setFormData({ ...formData, collect_screen_resolution: e.target.checked })}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-orange/20 dark:peer-focus:ring-brand-orange/20 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-brand-orange"></div>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bot and noise filtering */}
+                  <div className="space-y-4 pt-6 border-t border-neutral-100 dark:border-neutral-800">
+                    <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Filtering</h3>
+                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-xl border border-neutral-100 dark:border-neutral-800">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-medium text-neutral-900 dark:text-white">Filter bots and referrer spam</h4>
+                          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
+                            Exclude known crawlers, scrapers, and referrer spam domains from your stats
+                          </p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={formData.filter_bots}
+                            onChange={(e) => setFormData({ ...formData, filter_bots: e.target.checked })}
                             className="sr-only peer"
                           />
                           <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-orange/20 dark:peer-focus:ring-brand-orange/20 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-brand-orange"></div>
