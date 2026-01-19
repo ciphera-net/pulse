@@ -20,7 +20,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
       </main>
       <Footer 
         LinkComponent={Link}
-        appName="Ciphera Pulse"
+        appName="Pulse"
       />
     </>
   )

@@ -96,7 +96,7 @@ export default function PublicDashboardPage() {
   }
 
   if (loading && !data && !isPasswordProtected) {
-    return <LoadingOverlay logoSrc="/ciphera_icon_no_margins.png" title="Ciphera Pulse" />
+    return <LoadingOverlay logoSrc="/ciphera_icon_no_margins.png" title="Pulse" />
   }
 
   if (isPasswordProtected && !data) {

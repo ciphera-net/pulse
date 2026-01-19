@@ -12,7 +12,7 @@ export default function HomePage() {
   const { user, loading } = useAuth()
 
   if (loading) {
-    return <LoadingOverlay logoSrc="/ciphera_icon_no_margins.png" title="Ciphera Pulse" />
+    return <LoadingOverlay logoSrc="/ciphera_icon_no_margins.png" title="Pulse" />
   }
 
   if (!user) {

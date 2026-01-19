@@ -6,7 +6,7 @@ const DOCS_URL =
     : 'https://pulse.ciphera.net/faq'
 
 /**
- * Generates a privacy-policy snippet for the site's use of Ciphera Pulse.
+ * Generates a privacy-policy snippet for the site's use of Pulse.
  * The text is derived from the site's data collection and filtering settings
  * and is intended to be copied into the site owner's Privacy Policy page.
  * This is for transparency (GDPR Art. 13/14); it is not a cookie banner.
@@ -40,13 +40,13 @@ export function generatePrivacySnippet(site: Site): string {
       : 'minimal anonymous data about site usage (e.g. that a page was viewed)'
 
   const p1 =
-    'We use Ciphera Pulse to understand how visitors use our site. Ciphera does not use cookies or other persistent identifiers. A cookie consent banner is not required for Ciphera Pulse. We respect Do Not Track (DNT) browser settings.'
+    'We use Pulse to understand how visitors use our site. Ciphera does not use cookies or other persistent identifiers. A cookie consent banner is not required for Pulse. We respect Do Not Track (DNT) browser settings.'
 
   let p2 = `We collect anonymous data: ${list}. `
   if (filterBots) {
     p2 += 'Known bots and referrer spam are excluded from our analytics. '
   }
-  p2 += `Data is processed in a privacy-preserving way and is not used to identify individuals. For more information, see Ciphera Pulse' documentation: ${DOCS_URL}`
+  p2 += `Data is processed in a privacy-preserving way and is not used to identify individuals. For more information, see Pulse's documentation: ${DOCS_URL}`
 
   return `${p1}\n\n${p2}`
 }

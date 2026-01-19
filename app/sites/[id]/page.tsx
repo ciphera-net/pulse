@@ -132,7 +132,7 @@ export default function SiteDashboardPage() {
   }
 
   if (loading) {
-    return <LoadingOverlay logoSrc="/ciphera_icon_no_margins.png" title="Ciphera Pulse" />
+    return <LoadingOverlay logoSrc="/ciphera_icon_no_margins.png" title="Pulse" />
   }
 
   if (!site) {

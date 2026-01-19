@@ -1,7 +1,7 @@
 import ProfileSettings from '@/components/settings/ProfileSettings'
 
 export const metadata = {
-  title: 'Settings - Ciphera Pulse',
+  title: 'Settings - Pulse',
   description: 'Manage your account settings',
 }
 

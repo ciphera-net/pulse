@@ -10,7 +10,7 @@ interface LoadingOverlayProps {
 
 export default function LoadingOverlay({ 
   logoSrc = "/ciphera_icon_no_margins.png", 
-  title = "Ciphera Pulse" 
+  title = "Pulse" 
 }: LoadingOverlayProps) {
   const [mounted, setMounted] = useState(false)
 
@@ -27,7 +27,7 @@ export default function LoadingOverlay({
         <div className="flex items-center gap-3">
           <img 
             src={logoSrc} 
-            alt={typeof title === 'string' ? title : "Ciphera Pulse"} 
+            alt={typeof title === 'string' ? title : "Pulse"} 
             className="h-12 w-auto object-contain"
           />
           <span className="text-3xl tracking-tight text-neutral-900 dark:text-white">
