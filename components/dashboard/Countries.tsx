@@ -53,6 +53,7 @@ export default function Locations({ countries, cities }: LocationProps) {
               </div>
             </div>
           ))}
+          </div>
         </div>
       )
     }
