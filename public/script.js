@@ -208,12 +208,14 @@
         // * get a value. If the user navigates away before the delay, we leave LCP unset.
         if (isSpaNav) {
           var thatId = data.id;
+          // * Run soon so we set lcpObserved before the user leaves; 500ms was too long
+          // * and we often sent metrics (next nav or visibilitychange+150ms) before it ran.
           setTimeout(function() {
             if (!lcpObserved && currentEventId === thatId) {
               metrics.lcp = Math.round(performance.now() - routeChangeTime);
               lcpObserved = true;
             }
-          }, 500);
+          }, 100);
         }
       }
     }).catch(() => {
@@ -529,15 +531,21 @@
   // * Fetch replay settings (async, doesn't block pageview)
   fetchReplaySettings();
 
-  // * Track SPA navigation (history API)
+  // * Track SPA navigation: MutationObserver (DOM updates) and history.pushState/replaceState
+  // * (some SPAs change the URL without a DOM mutation we observe)
   let lastUrl = location.href;
-  new MutationObserver(() => {
-    const url = location.href;
+  function onUrlChange() {
+    var url = location.href;
     if (url !== lastUrl) {
       lastUrl = url;
       trackPageview();
     }
-  }).observe(document, { subtree: true, childList: true });
+  }
+  new MutationObserver(onUrlChange).observe(document, { subtree: true, childList: true });
+  var _push = history.pushState;
+  var _replace = history.replaceState;
+  history.pushState = function() { _push.apply(this, arguments); onUrlChange(); };
+  history.replaceState = function() { _replace.apply(this, arguments); onUrlChange(); };
 
   // * Track popstate (browser back/forward)
   window.addEventListener('popstate', trackPageview);
