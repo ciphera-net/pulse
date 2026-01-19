@@ -1,18 +1,43 @@
 'use client'
 
-import { useState } from 'react'
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { useState, useMemo } from 'react'
+import { useTheme } from 'next-themes'
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  ReferenceLine,
+} from 'recharts'
+import type { TooltipProps } from 'recharts'
 import { formatNumber, formatDuration } from '@/lib/utils/format'
-import { ArrowTopRightIcon, ArrowBottomRightIcon, DownloadIcon } from '@radix-ui/react-icons'
+import { ArrowTopRightIcon, ArrowBottomRightIcon, DownloadIcon, BarChartIcon } from '@radix-ui/react-icons'
 
 const COLORS = {
   brand: '#FD5E0F',
   success: '#10B981', // Emerald-500
   danger: '#EF4444',  // Red-500
-  border: '#E5E5E5',  // Neutral-200
-  text: '#171717',    // Neutral-900
-  textMuted: '#737373', // Neutral-500
-  axis: '#A3A3A3',    // Neutral-400
+}
+
+const CHART_COLORS_LIGHT = {
+  border: '#E5E5E5',
+  text: '#171717',
+  textMuted: '#737373',
+  axis: '#A3A3A3',
+  tooltipBg: '#ffffff',
+  tooltipBorder: '#E5E5E5',
+}
+
+const CHART_COLORS_DARK = {
+  border: '#404040',
+  text: '#fafafa',
+  textMuted: '#a3a3a3',
+  axis: '#737373',
+  tooltipBg: '#262626',
+  tooltipBorder: '#404040',
 }
 
 interface DailyStat {
@@ -38,14 +63,96 @@ interface ChartProps {
 
 type MetricType = 'pageviews' | 'visitors' | 'bounce_rate' | 'avg_duration'
 
+// * Custom tooltip with comparison and theme-aware styling
+function ChartTooltip({
+  active,
+  payload,
+  label,
+  metric,
+  metricLabel,
+  formatNumberFn,
+  showComparison,
+  colors,
+}: {
+  active?: boolean
+  payload?: Array<{ payload: { prevPageviews?: number; prevVisitors?: number }; value: number }>
+  label?: string
+  metric: 'visitors' | 'pageviews'
+  metricLabel: string
+  formatNumberFn: (n: number) => string
+  showComparison: boolean
+  colors: typeof CHART_COLORS_LIGHT
+}) {
+  if (!active || !payload?.length || !label) return null
+  const d = payload[0]
+  const value = d.value as number
+  const prev = metric === 'visitors' ? d.payload.prevVisitors : d.payload.prevPageviews
+  const hasPrev = showComparison && prev != null
+  const delta =
+    hasPrev && (prev as number) > 0
+      ? Math.round(((value - (prev as number)) / (prev as number)) * 100)
+      : null
+
+  return (
+    <div
+      className="rounded-lg border px-4 py-3 shadow-lg"
+      style={{
+        backgroundColor: colors.tooltipBg,
+        borderColor: colors.tooltipBorder,
+      }}
+    >
+      <div className="text-xs font-medium" style={{ color: colors.textMuted, marginBottom: 6 }}>
+        {label}
+      </div>
+      <div className="flex items-baseline gap-2">
+        <span className="text-base font-bold" style={{ color: colors.text }}>
+          {formatNumberFn(value)}
+        </span>
+        <span className="text-xs" style={{ color: colors.textMuted }}>
+          {metricLabel}
+        </span>
+      </div>
+      {hasPrev && (
+        <div className="mt-1.5 flex items-center gap-1.5 text-xs" style={{ color: colors.textMuted }}>
+          <span>vs {formatNumberFn(prev as number)} prev</span>
+          {delta !== null && (
+            <span
+              className="font-medium"
+              style={{
+                color: delta > 0 ? COLORS.success : delta < 0 ? COLORS.danger : colors.textMuted,
+              }}
+            >
+              {delta > 0 ? '+' : ''}{delta}%
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// * Compact Y-axis formatter: 1.5M, 12k, 99
+function formatAxisValue(value: number): string {
+  if (value >= 1e6) return `${value / 1e6}M`
+  if (value >= 1000) return `${value / 1000}k`
+  return String(value)
+}
+
 export default function Chart({ data, prevData, stats, prevStats, interval }: ChartProps) {
   const [metric, setMetric] = useState<MetricType>('visitors')
+  const [showComparison, setShowComparison] = useState(true)
+  const { resolvedTheme } = useTheme()
+
+  const colors = useMemo(
+    () => (resolvedTheme === 'dark' ? CHART_COLORS_DARK : CHART_COLORS_LIGHT),
+    [resolvedTheme]
+  )
 
   // * Align current and previous data
   const chartData = data.map((item, i) => {
     // * Try to find matching previous item (assuming same length/order)
     // * For more robustness, we could match by relative index
-    const prevItem = prevData && prevData[i]
+    const prevItem = prevData?.[i]
     
     // * Format date based on interval
     let formattedDate: string
@@ -123,7 +230,15 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
     },
   ] as const
 
-  const activeMetric = metrics.find(m => m.id === metric) || metrics[0]
+  const activeMetric = metrics.find((m) => m.id === metric) || metrics[0]
+  const chartMetric = metric === 'visitors' || metric === 'pageviews' ? metric : 'visitors'
+  const metricLabel = chartMetric === 'pageviews' ? 'pageviews' : 'visitors'
+
+  const avg = chartData.length
+    ? chartData.reduce((s, d) => s + (d[chartMetric] as number), 0) / chartData.length
+    : 0
+
+  const hasPrev = !!(prevData?.length && showComparison)
 
   return (
     <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden shadow-sm">
@@ -177,8 +292,19 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
 
       {/* Chart Area */}
       <div className="p-6 relative">
-        <div className="absolute top-6 right-6 z-10">
-          <button 
+        <div className="absolute top-6 right-6 z-10 flex items-center gap-2">
+          {prevData?.length ? (
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300">
+              <input
+                type="checkbox"
+                checked={showComparison}
+                onChange={() => setShowComparison((s) => !s)}
+                className="h-4 w-4 rounded border-neutral-300 text-brand-orange focus:ring-brand-orange dark:border-neutral-600 dark:bg-neutral-800"
+              />
+              <span>Compare to previous</span>
+            </label>
+          ) : null}
+          <button
             onClick={handleExport}
             className="p-2 rounded-lg text-neutral-500 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
             title="Export to CSV"
@@ -186,70 +312,132 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
             <DownloadIcon className="w-5 h-5" />
           </button>
         </div>
-        <div className="h-[400px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-              <defs>
-                <linearGradient id={`gradient-${metric}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={activeMetric.color} stopOpacity={0.2}/>
-                  <stop offset="95%" stopColor={activeMetric.color} stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={COLORS.border} />
-              <XAxis 
-                dataKey="date" 
-                stroke={COLORS.axis} 
-                fontSize={12} 
-                tickLine={false} 
-                axisLine={false}
-                minTickGap={30}
-              />
-              <YAxis 
-                stroke={COLORS.axis} 
-                fontSize={12} 
-                tickLine={false} 
-                axisLine={false}
-                tickFormatter={(value) => value >= 1000 ? `${value/1000}k` : value}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                  border: `1px solid ${COLORS.border}`,
-                  borderRadius: '8px',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                  padding: '12px'
-                }}
-                itemStyle={{ color: COLORS.text, fontWeight: 600, fontSize: '14px' }}
-                labelStyle={{ color: COLORS.textMuted, marginBottom: '8px', fontSize: '12px' }}
-                cursor={{ stroke: activeMetric.color, strokeDasharray: '4 4' }}
-              />
-              
-              {/* Previous Period Line (Dashed) */}
-              {prevData && (
-                <Area
-                  type="monotone"
-                  dataKey={metric === 'visitors' ? 'prevVisitors' : 'prevPageviews'}
-                  stroke={COLORS.axis}
-                  strokeWidth={2}
-                  strokeDasharray="4 4"
-                  fill="none"
-                  animationDuration={1000}
-                />
-              )}
 
-              {/* Current Period Area */}
-              <Area
-                type="monotone"
-                dataKey={metric}
-                stroke={activeMetric.color}
-                strokeWidth={2}
-                fillOpacity={1}
-                fill={`url(#gradient-${metric})`}
-                animationDuration={1000}
+        {/* Legend when comparing */}
+        {hasPrev && (
+          <div className="mb-3 flex items-center gap-4 text-xs" style={{ color: colors.textMuted }}>
+            <span className="flex items-center gap-1.5">
+              <span
+                className="h-0.5 w-4 rounded-full"
+                style={{ backgroundColor: activeMetric.color }}
               />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
+              This period
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span
+                className="h-0.5 w-4 rounded-full border border-dashed"
+                style={{ borderColor: colors.axis }}
+              />
+              Previous period
+            </span>
+          </div>
+        )}
+
+        {data.length === 0 ? (
+          <div className="flex h-[320px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30">
+            <BarChartIcon className="h-12 w-12 text-neutral-300 dark:text-neutral-600" aria-hidden />
+            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
+              No data for this period
+            </p>
+            <p className="text-xs text-neutral-400 dark:text-neutral-500">Try a different date range</p>
+          </div>
+        ) : (
+          <div className="h-[360px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} margin={{ top: 10, right: 8, left: -16, bottom: 0 }}>
+                <defs>
+                  <linearGradient id={`gradient-${metric}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={activeMetric.color} stopOpacity={0.35} />
+                    <stop offset="50%" stopColor={activeMetric.color} stopOpacity={0.12} />
+                    <stop offset="100%" stopColor={activeMetric.color} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={colors.border} />
+                <XAxis
+                  dataKey="date"
+                  stroke={colors.axis}
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                  minTickGap={28}
+                />
+                <YAxis
+                  stroke={colors.axis}
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                  domain={[0, 'auto']}
+                  tickFormatter={formatAxisValue}
+                />
+                <Tooltip
+                  content={(p: TooltipProps<number, string>) => (
+                    <ChartTooltip
+                      active={p.active}
+                      payload={p.payload as Array<{
+                        payload: { prevPageviews?: number; prevVisitors?: number }
+                        value: number
+                      }>}
+                      label={p.label as string}
+                      metric={chartMetric}
+                      metricLabel={metricLabel}
+                      formatNumberFn={formatNumber}
+                      showComparison={hasPrev}
+                      colors={colors}
+                    />
+                  )}
+                  cursor={{ stroke: activeMetric.color, strokeDasharray: '4 4', strokeWidth: 1 }}
+                />
+
+                {avg > 0 && (
+                  <ReferenceLine
+                    y={avg}
+                    stroke={colors.axis}
+                    strokeDasharray="4 4"
+                    strokeOpacity={0.7}
+                  />
+                )}
+
+                {hasPrev && (
+                  <Area
+                    type="natural"
+                    dataKey={chartMetric === 'visitors' ? 'prevVisitors' : 'prevPageviews'}
+                    stroke={colors.axis}
+                    strokeWidth={2}
+                    strokeDasharray="5 5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    fill="none"
+                    dot={false}
+                    isAnimationActive
+                    animationDuration={500}
+                    animationEasing="ease-out"
+                  />
+                )}
+
+                <Area
+                  type="natural"
+                  dataKey={chartMetric}
+                  stroke={activeMetric.color}
+                  strokeWidth={2.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  fillOpacity={1}
+                  fill={`url(#gradient-${metric})`}
+                  dot={false}
+                  activeDot={{
+                    r: 5,
+                    strokeWidth: 2,
+                    fill: resolvedTheme === 'dark' ? '#262626' : '#ffffff',
+                    stroke: activeMetric.color,
+                  }}
+                  isAnimationActive
+                  animationDuration={500}
+                  animationEasing="ease-out"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </div>
     </div>
   )
