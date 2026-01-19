@@ -382,13 +382,22 @@
     }
   }
 
+  // * Redact common PII-like URL query/fragment parameters in replay JSON before sending
+  function redactPiiInReplayJson(jsonStr) {
+    return jsonStr.replace(
+      /([?&])(email|token|session|auth|password|secret|api_key|apikey|access_token|refresh_token)=[^&"'\s]*/gi,
+      '$1$2=***'
+    );
+  }
+
   // * Send chunk of events to server
   async function sendReplayChunk() {
     if (!replayId || replayEvents.length === 0) return;
 
     const chunk = replayEvents.splice(0, CHUNK_SIZE);
     const eventsCount = chunk.length;
-    const data = JSON.stringify(chunk);
+    let data = JSON.stringify(chunk);
+    data = redactPiiInReplayJson(data);
 
     try {
       // Try to compress if available
@@ -437,7 +446,8 @@
     // Send remaining events
     if (replayEvents.length > 0) {
       const chunk = replayEvents.splice(0);
-      const data = JSON.stringify(chunk);
+      let data = JSON.stringify(chunk);
+      data = redactPiiInReplayJson(data);
       navigator.sendBeacon(
         apiUrl + '/api/v1/replays/' + replayId + '/chunks',
         new Blob([data], { type: 'application/json' })

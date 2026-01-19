@@ -16,7 +16,7 @@ export default function SecurityPage() {
           <li>All data is encrypted in transit using TLS/SSL</li>
           <li>No personal data is collected or stored</li>
           <li>IP addresses are hashed immediately and not stored</li>
-          <li>No cookies or persistent identifiers are used</li>
+          <li>No cookies or cross-session identifiers; sessionStorage is used only to group events within a single visit</li>
           <li>Data is processed anonymously</li>
         </ul>
         

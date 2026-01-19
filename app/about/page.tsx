@@ -18,7 +18,7 @@ export default function AboutPage() {
           We believe in privacy by design. Our analytics platform:
         </p>
         <ul className="list-disc list-inside space-y-2 text-neutral-600 dark:text-neutral-400 mb-6">
-          <li>Uses no cookies or persistent identifiers</li>
+          <li>Uses no cookies or cross-session identifiers; sessionStorage is used only to group events within a single visit</li>
           <li>Respects Do Not Track preferences</li>
           <li>Complies with GDPR and CCPA regulations</li>
           <li>Does not collect personal data</li>

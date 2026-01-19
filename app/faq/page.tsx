@@ -10,11 +10,15 @@ export default function FAQPage() {
     },
     {
       question: "How does Ciphera Analytics track visitors?",
-      answer: "We use a lightweight JavaScript snippet that sends anonymous pageview events. No cookies, no persistent identifiers, and no cross-site tracking."
+      answer: "We use a lightweight JavaScript snippet that sends anonymous pageview events. No cookies, no cross-session identifiers (we use sessionStorage only to group events within a single visit), and no cross-site tracking."
     },
     {
       question: "What data does Ciphera Analytics collect?",
-      answer: "We collect anonymous pageview data including page path, referrer, device type, browser, and country (from IP, not stored). No personal information is collected."
+      answer: "We collect anonymous pageview data including page path, referrer, device type, browser, and country (derived from IP at request time; the IP itself is not stored). No personal information is collected. If you enable optional session replay, see 'What about session replay?' below."
+    },
+    {
+      question: "What about session replay?",
+      answer: "Session replay is optional and off by default. When enabled, we use Anonymous Skeleton mode: all visible text is replaced with blocks, all form inputs are hidden, and we do not record canvas or fonts. We record layout, clicks, and scrolls to help you understand how visitors use your site. Replay metadata (device, browser, OS, country) is stored; we redact common PII-like URL parameters (e.g. email=, token=) before sending. Session replay uses no cookies and does not require a consent banner. We respect Do Not Track—if it is set, replay does not run."
     },
     {
       question: "How accurate is the data?",
