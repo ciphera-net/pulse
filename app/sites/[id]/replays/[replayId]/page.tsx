@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { getSite, type Site } from '@/lib/api/sites'
 import { getReplay, getReplayData, deleteReplay, formatDuration, type SessionReplay } from '@/lib/api/replays'
 import { toast } from 'sonner'
+import { LockClosedIcon } from '@radix-ui/react-icons'
 import LoadingOverlay from '@/components/LoadingOverlay'
 import type { eventWithTime } from '@rrweb/types'
 import 'rrweb-player/dist/style.css'
@@ -207,7 +208,8 @@ export default function ReplayViewerPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {replay.is_skeleton_mode && (
-                    <span className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-2 py-0.5 rounded">
+                    <span className="inline-flex items-center gap-1.5 text-xs bg-brand-orange/10 text-brand-orange px-2 py-0.5 rounded">
+                      <LockClosedIcon className="w-3 h-3 flex-shrink-0" />
                       Skeleton Mode
                     </span>
                   )}
@@ -282,8 +284,9 @@ export default function ReplayViewerPage() {
               <div className="pt-2 border-t border-neutral-200 dark:border-neutral-800">
                 <div className="flex items-center gap-2">
                   {replay.is_skeleton_mode ? (
-                    <span className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-2 py-1 rounded">
-                      🔒 Skeleton Mode (Anonymous)
+                    <span className="inline-flex items-center gap-1.5 text-xs bg-brand-orange/10 text-brand-orange px-2 py-1 rounded">
+                      <LockClosedIcon className="w-3 h-3 flex-shrink-0" />
+                      Skeleton Mode (Anonymous)
                     </span>
                   ) : replay.consent_given ? (
                     <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-2 py-1 rounded">

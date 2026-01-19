@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { getSite, type Site } from '@/lib/api/sites'
 import { listReplays, formatDuration, type ReplayListItem, type ReplayFilters } from '@/lib/api/replays'
 import { toast } from 'sonner'
+import { LockClosedIcon } from '@radix-ui/react-icons'
 import LoadingOverlay from '@/components/LoadingOverlay'
 
 function formatDate(dateString: string) {
@@ -187,7 +188,8 @@ export default function ReplaysPage() {
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-2">
                         {replay.is_skeleton_mode && (
-                          <span className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded">
+                          <span className="inline-flex items-center gap-1 text-xs bg-brand-orange/10 text-brand-orange px-1.5 py-0.5 rounded">
+                            <LockClosedIcon className="w-3 h-3 flex-shrink-0" />
                             Skeleton
                           </span>
                         )}

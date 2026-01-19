@@ -19,6 +19,7 @@ import {
   ExclamationTriangleIcon,
   LightningBoltIcon,
   VideoIcon,
+  LockClosedIcon,
 } from '@radix-ui/react-icons'
 
 const TIMEZONES = [
@@ -816,7 +817,10 @@ export default function SiteSettingsPage() {
                           <div>
                             <div className="font-medium text-neutral-900 dark:text-white flex items-center gap-2">
                               Anonymous Skeleton
-                              <span className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-2 py-0.5 rounded">Privacy First</span>
+                              <span className="inline-flex items-center gap-1 text-xs bg-brand-orange/10 text-brand-orange px-2 py-0.5 rounded">
+                                <LockClosedIcon className="w-3 h-3 flex-shrink-0" />
+                                Privacy First
+                              </span>
                             </div>
                             <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
                               All text replaced with blocks (████), all inputs hidden. Layout and clicks preserved. No consent required.
