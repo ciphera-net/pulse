@@ -399,7 +399,7 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
 
                 {hasPrev && (
                   <Area
-                    type="natural"
+                    type="monotone"
                     dataKey={chartMetric === 'visitors' ? 'prevVisitors' : 'prevPageviews'}
                     stroke={colors.axis}
                     strokeWidth={2}
@@ -415,7 +415,8 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
                 )}
 
                 <Area
-                  type="natural"
+                  type="monotone"
+                  baseValue={0}
                   dataKey={chartMetric}
                   stroke={activeMetric.color}
                   strokeWidth={2.5}
