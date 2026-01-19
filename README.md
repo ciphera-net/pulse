@@ -1,6 +1,6 @@
 # Analytics Frontend
 
-[![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red.svg)](#)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-green.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![Built with Next.js](https://img.shields.io/badge/Built%20with-Next.js-blue.svg?logo=next.js&logoColor=white)](https://nextjs.org/)
 
 Analytics Frontend is the dashboard interface for Ciphera Analytics. It provides a simple, intuitive interface for managing sites and viewing analytics data.
@@ -73,4 +73,4 @@ The frontend follows the Ciphera design language:
 
 ## License
 
-Proprietary - All rights reserved
+AGPL-3.0
