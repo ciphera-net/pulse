@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { ChevronDownIcon } from '@radix-ui/react-icons'
 import { PerformanceStats as Stats, PerformanceByPageStat, getPerformanceByPage } from '@/lib/api/stats'
 import Select from '@/components/ui/Select'
 
@@ -43,6 +44,7 @@ export default function PerformanceStats({ stats, performanceByPage, siteId, sta
   const [sortBy, setSortBy] = useState<'lcp' | 'cls' | 'inp'>('lcp')
   const [overrideRows, setOverrideRows] = useState<PerformanceByPageStat[] | null>(null)
   const [loadingTable, setLoadingTable] = useState(false)
+  const [worstPagesOpen, setWorstPagesOpen] = useState(false)
 
   // * When props.performanceByPage changes (e.g. date range), clear override so we use dashboard data
   useEffect(() => {
@@ -111,13 +113,24 @@ export default function PerformanceStats({ stats, performanceByPage, siteId, sta
         * Averages calculated from real user sessions. Lower is better.
       </div>
 
-      {/* * Performance by page (worst first) */}
+      {/* * Performance by page (worst first) – collapsed by default */}
       <div className="mt-6 pt-6 border-t border-neutral-200 dark:border-neutral-800">
         <div className="flex items-center justify-between gap-4 mb-3">
-          <h4 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-            Worst pages by metric
-          </h4>
-          {canRefetch && (
+          <button
+            type="button"
+            onClick={() => setWorstPagesOpen((o) => !o)}
+            className="flex items-center gap-2 text-left rounded cursor-pointer hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-900"
+            aria-expanded={worstPagesOpen}
+          >
+            <ChevronDownIcon
+              className={`w-4 h-4 shrink-0 text-neutral-500 transition-transform ${worstPagesOpen ? '' : '-rotate-90'}`}
+              aria-hidden
+            />
+            <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+              Worst pages by metric
+            </span>
+          </button>
+          {worstPagesOpen && canRefetch && (
             <Select
               value={sortBy}
               onChange={handleSortChange}
@@ -132,45 +145,47 @@ export default function PerformanceStats({ stats, performanceByPage, siteId, sta
             />
           )}
         </div>
-        {loadingTable ? (
-          <div className="py-8 text-center text-neutral-500 text-sm">Loading…</div>
-        ) : rows.length === 0 ? (
-          <div className="py-6 text-center text-neutral-500 text-sm">
-            No per-page metrics yet. Data appears as visitors are tracked with performance insights enabled.
-          </div>
-        ) : (
-          <div className="overflow-x-auto -mx-1">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-neutral-200 dark:border-neutral-700">
-                  <th className="text-left py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">Path</th>
-                  <th className="text-right py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">Samples</th>
-                  <th className="text-right py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">LCP</th>
-                  <th className="text-right py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">CLS</th>
-                  <th className="text-right py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">INP</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr key={r.path} className="border-b border-neutral-100 dark:border-neutral-800/80">
-                    <td className="py-2 px-2 text-neutral-900 dark:text-white font-mono truncate max-w-[200px]" title={r.path}>
-                      {r.path || '/'}
-                    </td>
-                    <td className="py-2 px-2 text-right text-neutral-600 dark:text-neutral-400">{r.samples}</td>
-                    <td className={`py-2 px-2 text-right font-mono ${getCellClass('lcp', r.lcp)}`}>
-                      {formatMetric('lcp', r.lcp)}
-                    </td>
-                    <td className={`py-2 px-2 text-right font-mono ${getCellClass('cls', r.cls)}`}>
-                      {formatMetric('cls', r.cls)}
-                    </td>
-                    <td className={`py-2 px-2 text-right font-mono ${getCellClass('inp', r.inp)}`}>
-                      {formatMetric('inp', r.inp)}
-                    </td>
+        {worstPagesOpen && (
+          loadingTable ? (
+            <div className="py-8 text-center text-neutral-500 text-sm">Loading…</div>
+          ) : rows.length === 0 ? (
+            <div className="py-6 text-center text-neutral-500 text-sm">
+              No per-page metrics yet. Data appears as visitors are tracked with performance insights enabled.
+            </div>
+          ) : (
+            <div className="overflow-x-auto -mx-1">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-neutral-200 dark:border-neutral-700">
+                    <th className="text-left py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">Path</th>
+                    <th className="text-right py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">Samples</th>
+                    <th className="text-right py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">LCP</th>
+                    <th className="text-right py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">CLS</th>
+                    <th className="text-right py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">INP</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {rows.map((r) => (
+                    <tr key={r.path} className="border-b border-neutral-100 dark:border-neutral-800/80">
+                      <td className="py-2 px-2 text-neutral-900 dark:text-white font-mono truncate max-w-[200px]" title={r.path}>
+                        {r.path || '/'}
+                      </td>
+                      <td className="py-2 px-2 text-right text-neutral-600 dark:text-neutral-400">{r.samples}</td>
+                      <td className={`py-2 px-2 text-right font-mono ${getCellClass('lcp', r.lcp)}`}>
+                        {formatMetric('lcp', r.lcp)}
+                      </td>
+                      <td className={`py-2 px-2 text-right font-mono ${getCellClass('cls', r.cls)}`}>
+                        {formatMetric('cls', r.cls)}
+                      </td>
+                      <td className={`py-2 px-2 text-right font-mono ${getCellClass('inp', r.inp)}`}>
+                        {formatMetric('inp', r.inp)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
         )}
       </div>
     </div>
