@@ -42,7 +42,8 @@ export default function PublicDashboardPage() {
   const [dateRange, setDateRange] = useState(getDateRange(30))
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
   const [todayInterval, setTodayInterval] = useState<'minute' | 'hour'>('hour')
-  
+  const [multiDayInterval, setMultiDayInterval] = useState<'hour' | 'day'>('day')
+
   // Auto-refresh interval (for realtime)
   useEffect(() => {
     const interval = setInterval(() => {
@@ -57,7 +58,7 @@ export default function PublicDashboardPage() {
 
   useEffect(() => {
     loadDashboard()
-  }, [siteId, dateRange, todayInterval])
+  }, [siteId, dateRange, todayInterval, multiDayInterval])
 
   const loadDashboard = async (silent = false) => {
     try {
@@ -68,7 +69,7 @@ export default function PublicDashboardPage() {
         dateRange.start,
         dateRange.end,
         10,
-        dateRange.start === dateRange.end ? todayInterval : 'day',
+        dateRange.start === dateRange.end ? todayInterval : multiDayInterval,
         password
       )
       
@@ -236,6 +237,17 @@ export default function PublicDashboardPage() {
                   className="min-w-[100px]"
                 />
               )}
+              {dateRange.start !== dateRange.end && (
+                <Select
+                  value={multiDayInterval}
+                  onChange={(value) => setMultiDayInterval(value as 'hour' | 'day')}
+                  options={[
+                    { value: 'hour', label: '1 hour' },
+                    { value: 'day', label: '1 day' },
+                  ]}
+                  className="min-w-[100px]"
+                />
+              )}
               {/* Powered by Ciphera Badge */}
               <a 
                 href="https://ciphera.net" 
@@ -267,7 +279,7 @@ export default function PublicDashboardPage() {
             data={safeDailyStats} 
             prevData={[]} 
             stats={safeStats} 
-            interval={dateRange.start === dateRange.end ? todayInterval : 'day'}
+            interval={dateRange.start === dateRange.end ? todayInterval : multiDayInterval}
           />
         </div>
 

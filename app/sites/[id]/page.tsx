@@ -44,6 +44,7 @@ export default function SiteDashboardPage() {
   const [dateRange, setDateRange] = useState(getDateRange(30))
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
   const [todayInterval, setTodayInterval] = useState<'minute' | 'hour'>('hour')
+  const [multiDayInterval, setMultiDayInterval] = useState<'hour' | 'day'>('day')
 
   useEffect(() => {
     loadData()
@@ -51,7 +52,7 @@ export default function SiteDashboardPage() {
       loadRealtime()
     }, 30000) // Update every 30 seconds
     return () => clearInterval(interval)
-  }, [siteId, dateRange, todayInterval])
+  }, [siteId, dateRange, todayInterval, multiDayInterval])
 
   const getPreviousDateRange = (start: string, end: string) => {
     const startDate = new Date(start)
@@ -80,7 +81,7 @@ export default function SiteDashboardPage() {
   const loadData = async () => {
     try {
       setLoading(true)
-      const interval = dateRange.start === dateRange.end ? todayInterval : 'day'
+      const interval = dateRange.start === dateRange.end ? todayInterval : multiDayInterval
       
       const [data, prevStatsData, prevDailyStatsData] = await Promise.all([
         getDashboard(siteId, dateRange.start, dateRange.end, 10, interval),
@@ -209,6 +210,17 @@ export default function SiteDashboardPage() {
                 className="min-w-[100px]"
               />
             )}
+            {dateRange.start !== dateRange.end && (
+              <Select
+                value={multiDayInterval}
+                onChange={(value) => setMultiDayInterval(value as 'hour' | 'day')}
+                options={[
+                  { value: 'hour', label: '1 hour' },
+                  { value: 'day', label: '1 day' },
+                ]}
+                className="min-w-[100px]"
+              />
+            )}
             <button
               onClick={() => router.push(`/sites/${siteId}/settings`)}
               className="btn-secondary text-sm"
@@ -226,7 +238,7 @@ export default function SiteDashboardPage() {
           prevData={prevDailyStats}
           stats={stats} 
           prevStats={prevStats}
-          interval={dateRange.start === dateRange.end ? todayInterval : 'day'}
+          interval={dateRange.start === dateRange.end ? todayInterval : multiDayInterval}
         />
       </div>
 
