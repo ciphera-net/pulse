@@ -162,12 +162,9 @@
 
   // * Track pageview
   function trackPageview() {
-    // * Reset metrics for new pageview (SPA navigation)
-    // * We don't reset immediately on the first run, but for subsequent calls we should
-    // * However, for the very first call, metrics are already 0.
-    // * The issue is if we reset metrics here, we might lose early captured metrics (e.g. LCP) if this runs late?
-    // * No, trackPageview runs early.
-    // * BUT for SPA navigation, we want to reset.
+    var routeChangeTime = performance.now();
+    var isSpaNav = !!currentEventId;
+
     if (currentEventId) {
         // * SPA nav: visibilitychange may not fire, so send previous page's metrics now
         sendMetrics();
@@ -205,6 +202,19 @@
     .then(data => {
       if (data && data.id) {
         currentEventId = data.id;
+        // * For SPA navigations the browser never emits a new largest-contentful-paint
+        // * (LCP is only for full document loads). After the new view has had time to
+        // * paint, we record time-from-route-change as an LCP proxy so /products etc.
+        // * get a value. If the user navigates away before the delay, we leave LCP unset.
+        if (isSpaNav) {
+          var thatId = data.id;
+          setTimeout(function() {
+            if (!lcpObserved && currentEventId === thatId) {
+              metrics.lcp = Math.round(performance.now() - routeChangeTime);
+              lcpObserved = true;
+            }
+          }, 500);
+        }
       }
     }).catch(() => {
       // * Silently fail - don't interrupt user experience
