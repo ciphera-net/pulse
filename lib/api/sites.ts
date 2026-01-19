@@ -1,7 +1,7 @@
 import apiRequest from './client'
 
 export type GeoDataLevel = 'full' | 'country' | 'none'
-export type ReplayMode = 'disabled' | 'consent_required' | 'anonymous_skeleton'
+export type ReplayMode = 'disabled' | 'anonymous_skeleton'
 
 export interface Site {
   id: string

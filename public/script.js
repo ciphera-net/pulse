@@ -479,13 +479,9 @@
     return null;
   }
 
-  // * Public API for consent-based activation
+  // * Public API for replay control
   window.ciphera = window.ciphera || function(cmd) {
-    if (cmd === 'enableReplay') {
-      if (replayMode === 'consent_required' && !replayEnabled) {
-        startReplay(false);
-      }
-    } else if (cmd === 'disableReplay') {
+    if (cmd === 'disableReplay') {
       endReplaySession();
     } else if (cmd === 'getReplayMode') {
       return replayMode;

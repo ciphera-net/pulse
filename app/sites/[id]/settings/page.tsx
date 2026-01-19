@@ -94,8 +94,8 @@ export default function SiteSettingsPage() {
         collect_device_info: data.collect_device_info ?? true,
         collect_geo_data: data.collect_geo_data || 'full',
         collect_screen_resolution: data.collect_screen_resolution ?? true,
-        // Session replay settings
-        replay_mode: data.replay_mode || 'disabled',
+        // Session replay settings (legacy consent_required from API mapped to anonymous_skeleton)
+        replay_mode: ((data as { replay_mode?: string }).replay_mode === 'consent_required' ? 'anonymous_skeleton' : data.replay_mode) || 'disabled',
         replay_sampling_rate: data.replay_sampling_rate ?? 100,
         replay_retention_days: data.replay_retention_days ?? 30,
         replay_mask_all_text: data.replay_mask_all_text ?? false,
@@ -772,33 +772,6 @@ export default function SiteSettingsPage() {
                         </div>
                       </label>
 
-                      {/* Consent Required */}
-                      <label className={`block p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                        formData.replay_mode === 'consent_required'
-                          ? 'border-brand-orange bg-brand-orange/5'
-                          : 'border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700'
-                      }`}>
-                        <div className="flex items-start gap-3">
-                          <input
-                            type="radio"
-                            name="replay_mode"
-                            value="consent_required"
-                            checked={formData.replay_mode === 'consent_required'}
-                            onChange={(e) => setFormData({ ...formData, replay_mode: e.target.value as ReplayMode })}
-                            className="mt-1 accent-brand-orange"
-                          />
-                          <div>
-                            <div className="font-medium text-neutral-900 dark:text-white flex items-center gap-2">
-                              Consent Required
-                              <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-2 py-0.5 rounded">GDPR Safe</span>
-                            </div>
-                            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
-                              Only records after visitor explicitly consents. Use with your cookie consent banner.
-                            </p>
-                          </div>
-                        </div>
-                      </label>
-
                       {/* Anonymous Skeleton */}
                       <label className={`block p-4 rounded-xl border-2 cursor-pointer transition-all ${
                         formData.replay_mode === 'anonymous_skeleton'
@@ -897,68 +870,6 @@ export default function SiteSettingsPage() {
                             </div>
                           </div>
                         </div>
-
-                        {/* Masking Options - Only for consent mode */}
-                        {formData.replay_mode === 'consent_required' && (
-                          <>
-                            <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300 pt-4">Privacy Masking</h3>
-
-                            {/* Mask All Text */}
-                            <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-xl border border-neutral-100 dark:border-neutral-800">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <h4 className="font-medium text-neutral-900 dark:text-white">Mask All Text</h4>
-                                  <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
-                                    Replace all text content with asterisks
-                                  </p>
-                                </div>
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                  <input
-                                    type="checkbox"
-                                    checked={formData.replay_mask_all_text}
-                                    onChange={(e) => setFormData({ ...formData, replay_mask_all_text: e.target.checked })}
-                                    className="sr-only peer"
-                                  />
-                                  <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-orange/20 dark:peer-focus:ring-brand-orange/20 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-brand-orange"></div>
-                                </label>
-                              </div>
-                            </div>
-
-                            {/* Mask All Inputs */}
-                            <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-xl border border-neutral-100 dark:border-neutral-800">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <h4 className="font-medium text-neutral-900 dark:text-white">Mask All Inputs</h4>
-                                  <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
-                                    Hide all form input values (recommended)
-                                  </p>
-                                </div>
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                  <input
-                                    type="checkbox"
-                                    checked={formData.replay_mask_all_inputs}
-                                    onChange={(e) => setFormData({ ...formData, replay_mask_all_inputs: e.target.checked })}
-                                    className="sr-only peer"
-                                  />
-                                  <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-orange/20 dark:peer-focus:ring-brand-orange/20 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-brand-orange"></div>
-                                </label>
-                              </div>
-                            </div>
-                          </>
-                        )}
-
-                        {/* Integration Guide */}
-                        {formData.replay_mode === 'consent_required' && (
-                          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
-                            <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">Integration with Consent Managers</h4>
-                            <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
-                              Call this function when the user grants consent for analytics/functional cookies:
-                            </p>
-                            <code className="block bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 p-3 rounded-lg text-sm font-mono">
-                              window.ciphera('enableReplay')
-                            </code>
-                          </div>
-                        )}
 
                         {/* View Replays Link */}
                         <div className="pt-4">
