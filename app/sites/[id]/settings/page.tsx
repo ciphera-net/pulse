@@ -23,6 +23,15 @@ import {
   LockClosedIcon,
 } from '@radix-ui/react-icons'
 
+/** Sampling rate steps (every 10%): 10, 20, …, 100. */
+const SAMPLING_RATE_OPTIONS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100] as const
+
+function snapSamplingRate(v: number): number {
+  return (SAMPLING_RATE_OPTIONS as readonly number[]).reduce(
+    (best, x) => (Math.abs(x - v) < Math.abs(best - v) ? x : best)
+  )
+}
+
 const TIMEZONES = [
   'UTC',
   'America/New_York',
@@ -97,7 +106,7 @@ export default function SiteSettingsPage() {
         collect_screen_resolution: data.collect_screen_resolution ?? true,
         // Session replay settings (legacy consent_required from API mapped to anonymous_skeleton)
         replay_mode: ((data as { replay_mode?: string }).replay_mode === 'consent_required' ? 'anonymous_skeleton' : data.replay_mode) || 'disabled',
-        replay_sampling_rate: data.replay_sampling_rate ?? 100,
+        replay_sampling_rate: snapSamplingRate(data.replay_sampling_rate ?? 100),
         replay_retention_days: data.replay_retention_days ?? 30,
         replay_mask_all_text: data.replay_mask_all_text ?? false,
         replay_mask_all_inputs: data.replay_mask_all_inputs ?? true
@@ -814,16 +823,31 @@ export default function SiteSettingsPage() {
                           </div>
                           <input
                             type="range"
-                            min="1"
-                            max="100"
-                            value={formData.replay_sampling_rate}
-                            onChange={(e) => setFormData({ ...formData, replay_sampling_rate: parseInt(e.target.value) })}
+                            min={0}
+                            max={SAMPLING_RATE_OPTIONS.length - 1}
+                            step={1}
+                            list="sampling-rate-ticks"
+                            value={(() => {
+                              const i = (SAMPLING_RATE_OPTIONS as readonly number[]).indexOf(formData.replay_sampling_rate)
+                              return i >= 0 ? i : SAMPLING_RATE_OPTIONS.length - 1
+                            })()}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                replay_sampling_rate: SAMPLING_RATE_OPTIONS[parseInt(e.target.value, 10)],
+                              })
+                            }
                             className="w-full h-2 bg-neutral-200 dark:bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-brand-orange"
                           />
+                          <datalist id="sampling-rate-ticks">
+                            {SAMPLING_RATE_OPTIONS.map((_, i) => (
+                              <option key={i} value={i} />
+                            ))}
+                          </datalist>
                           <div className="flex justify-between text-xs text-neutral-500 mt-1">
-                            <span>1%</span>
-                            <span>50%</span>
-                            <span>100%</span>
+                            {SAMPLING_RATE_OPTIONS.map((pct) => (
+                              <span key={pct}>{pct}%</span>
+                            ))}
                           </div>
                         </div>
 
