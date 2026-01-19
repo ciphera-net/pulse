@@ -98,19 +98,25 @@ export default function ReplayViewerPage() {
           playerContainerRef.current.innerHTML = ''
         }
 
-        // Create player
+        // Calculate dimensions - use container width and maintain aspect ratio
+        const containerWidth = playerContainerRef.current!.clientWidth
+        const containerHeight = Math.max(500, Math.min(700, window.innerHeight - 300))
+
+        // Create player with proper scaling
         const player = new rrwebPlayer.default({
           target: playerContainerRef.current!,
           props: {
             events: replayData,
-            width: playerContainerRef.current!.clientWidth,
-            height: Math.min(600, window.innerHeight - 300),
+            width: containerWidth,
+            height: containerHeight,
             autoPlay: false,
             showController: true,
             speed: speed,
             skipInactive: true,
             showWarning: false,
             showDebug: false,
+            // Enable responsive scaling
+            UNSAFE_replayCanvas: false,
           },
         })
 
@@ -192,7 +198,7 @@ export default function ReplayViewerPage() {
             {/* Player Container */}
             <div
               ref={playerContainerRef}
-              className="w-full bg-neutral-100 dark:bg-neutral-800 min-h-[400px] flex items-center justify-center"
+              className="w-full bg-neutral-100 dark:bg-neutral-800 min-h-[500px] flex items-center justify-center [&_.rr-player]:!w-full [&_.rr-player]:!max-w-full [&_.rr-player__frame]:!w-full [&_.replayer-wrapper]:!mx-auto"
             >
               {loadingData ? (
                 <div className="flex flex-col items-center gap-3">
