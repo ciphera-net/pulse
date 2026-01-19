@@ -6,6 +6,7 @@ import { getSite, type Site } from '@/lib/api/sites'
 import { getReplay, getReplayData, deleteReplay, formatDuration, type SessionReplay } from '@/lib/api/replays'
 import { toast } from 'sonner'
 import LoadingOverlay from '@/components/LoadingOverlay'
+import type { eventWithTime } from '@rrweb/types'
 
 function formatDate(dateString: string) {
   const date = new Date(dateString)
@@ -36,7 +37,7 @@ export default function ReplayViewerPage() {
 
   const [site, setSite] = useState<Site | null>(null)
   const [replay, setReplay] = useState<SessionReplay | null>(null)
-  const [replayData, setReplayData] = useState<unknown[] | null>(null)
+  const [replayData, setReplayData] = useState<eventWithTime[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadingData, setLoadingData] = useState(false)
   const [playerReady, setPlayerReady] = useState(false)
@@ -101,7 +102,7 @@ export default function ReplayViewerPage() {
         const player = new rrwebPlayer.default({
           target: playerContainerRef.current!,
           props: {
-            events: replayData as unknown[],
+            events: replayData,
             width: playerContainerRef.current!.clientWidth,
             height: Math.min(600, window.innerHeight - 300),
             autoPlay: false,

@@ -1,4 +1,5 @@
 import apiRequest from './client'
+import type { eventWithTime } from '@rrweb/types'
 
 export interface ReplayListItem {
   id: string
@@ -58,8 +59,8 @@ export async function getReplay(siteId: string, replayId: string): Promise<Sessi
   return apiRequest<SessionReplay>(`/sites/${siteId}/replays/${replayId}`)
 }
 
-export async function getReplayData(siteId: string, replayId: string): Promise<unknown[]> {
-  const response = await apiRequest<unknown[]>(`/sites/${siteId}/replays/${replayId}/data`)
+export async function getReplayData(siteId: string, replayId: string): Promise<eventWithTime[]> {
+  const response = await apiRequest<eventWithTime[]>(`/sites/${siteId}/replays/${replayId}/data`)
   return response
 }
 
