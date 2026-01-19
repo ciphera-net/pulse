@@ -165,7 +165,7 @@ export default function ReplayViewerPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setShowDeleteModal(true)}
-              className="px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+              className="px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"
             >
               Delete
             </button>
@@ -312,13 +312,13 @@ export default function ReplayViewerPage() {
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setShowDeleteModal(false)}
-                className="px-4 py-2 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
+                className="px-4 py-2 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDelete}
-                className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                className="px-4 py-2 text-sm bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors"
               >
                 Delete
               </button>
@@ -361,12 +361,12 @@ export default function ReplayViewerPage() {
           border-radius: 3px !important;
         }
         .rr-progress__step {
-          background: #f97316 !important;
+          background: #FD5E0F !important;
           height: 6px !important;
           border-radius: 3px !important;
         }
         .rr-progress__handler {
-          background: #f97316 !important;
+          background: #FD5E0F !important;
           border: 2px solid #fff !important;
           width: 14px !important;
           height: 14px !important;
@@ -393,7 +393,7 @@ export default function ReplayViewerPage() {
         /* Play button */
         .rr-controller__btns button[class*="play"],
         .rr-controller__btns button:first-child {
-          background: #f97316 !important;
+          background: #FD5E0F !important;
           color: #fff !important;
           border: none !important;
           border-radius: 6px !important;
@@ -404,7 +404,7 @@ export default function ReplayViewerPage() {
         }
         .rr-controller__btns button[class*="play"]:hover,
         .rr-controller__btns button:first-child:hover {
-          background: #ea580c !important;
+          background: #E54E00 !important;
         }
 
         /* Speed buttons */
@@ -424,7 +424,7 @@ export default function ReplayViewerPage() {
         }
         .rr-controller__btns button.active,
         .rr-controller__btns button[class*="active"] {
-          background: #f97316 !important;
+          background: #FD5E0F !important;
           color: #fff !important;
         }
 
@@ -455,7 +455,7 @@ export default function ReplayViewerPage() {
           transition: transform 0.2s !important;
         }
         .switch input:checked + label {
-          background: #f97316 !important;
+          background: #FD5E0F !important;
         }
         .switch input:checked + label::after {
           transform: translateX(16px) !important;

@@ -111,7 +111,7 @@ export default function ReplaysPage() {
             </span>
           </h1>
           {site.replay_mode === 'disabled' && (
-            <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 rounded-lg text-sm">
+            <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 rounded-xl text-sm">
               <span>⚠️</span>
               <span>Session replay is disabled</span>
               <button
@@ -128,7 +128,7 @@ export default function ReplaysPage() {
       {/* Filters */}
       <div className="mb-6 flex gap-4 flex-wrap">
         <select
-          className="px-3 py-2 border border-neutral-200 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-sm"
+          className="px-3 py-2 border border-neutral-200 dark:border-neutral-700 rounded-xl bg-white dark:bg-neutral-800 text-sm"
           value={filters.device_type || ''}
           onChange={(e) => setFilters(prev => ({ ...prev, device_type: e.target.value || undefined, offset: 0 }))}
         >
@@ -139,7 +139,7 @@ export default function ReplaysPage() {
         </select>
 
         <select
-          className="px-3 py-2 border border-neutral-200 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-sm"
+          className="px-3 py-2 border border-neutral-200 dark:border-neutral-700 rounded-xl bg-white dark:bg-neutral-800 text-sm"
           value={filters.min_duration || ''}
           onChange={(e) => setFilters(prev => ({ ...prev, min_duration: e.target.value ? parseInt(e.target.value) : undefined, offset: 0 }))}
         >
@@ -250,7 +250,7 @@ export default function ReplaysPage() {
                   <button
                     onClick={() => handlePageChange((filters.offset || 0) - (filters.limit || 20))}
                     disabled={currentPage === 1}
-                    className="px-3 py-1 text-sm border border-neutral-200 dark:border-neutral-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-50 dark:hover:bg-neutral-800"
+                    className="px-3 py-1 text-sm border border-neutral-200 dark:border-neutral-700 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-50 dark:hover:bg-neutral-800"
                   >
                     Previous
                   </button>
@@ -260,7 +260,7 @@ export default function ReplaysPage() {
                   <button
                     onClick={() => handlePageChange((filters.offset || 0) + (filters.limit || 20))}
                     disabled={currentPage === totalPages}
-                    className="px-3 py-1 text-sm border border-neutral-200 dark:border-neutral-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-50 dark:hover:bg-neutral-800"
+                    className="px-3 py-1 text-sm border border-neutral-200 dark:border-neutral-700 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-50 dark:hover:bg-neutral-800"
                   >
                     Next
                   </button>
