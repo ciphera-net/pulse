@@ -165,9 +165,10 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
     } else if (interval === 'hour') {
       const d = new Date(item.date)
       const isMidnight = d.getHours() === 0 && d.getMinutes() === 0
+      // * At 12:00 AM: date only (used for X-axis ticks). Non-midnight: date + time for tooltip only.
       formattedDate = isMidnight
-        ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-        : d.toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric' })
+        ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' 12:00 AM'
+        : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ', ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric' })
     } else {
       formattedDate = new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     }
@@ -247,6 +248,20 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
     : 0
 
   const hasPrev = !!(prevData?.length && showComparison)
+
+  // * In hourly view, only show X-axis labels at 12:00 AM (date + 12:00 AM).
+  const midnightTicks =
+    interval === 'hour'
+      ? (() => {
+          const t = chartData
+            .filter((_, i) => {
+              const d = new Date(data[i].date)
+              return d.getHours() === 0 && d.getMinutes() === 0
+            })
+            .map((c) => c.date)
+          return t.length > 0 ? t : undefined
+        })()
+      : undefined
 
   return (
     <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden shadow-sm">
@@ -368,6 +383,7 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
                   tickLine={false}
                   axisLine={false}
                   minTickGap={28}
+                  ticks={midnightTicks}
                 />
                 <YAxis
                   stroke={colors.axis}
