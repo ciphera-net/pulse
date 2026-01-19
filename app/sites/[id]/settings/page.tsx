@@ -10,6 +10,7 @@ import VerificationModal from '@/components/sites/VerificationModal'
 import PasswordInput from '@/components/PasswordInput'
 import Select from '@/components/ui/Select'
 import { APP_URL, API_URL } from '@/lib/api/client'
+import { generatePrivacySnippet } from '@/lib/utils/privacySnippet'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   GearIcon,
@@ -84,6 +85,7 @@ export default function SiteSettingsPage() {
   })
   const [scriptCopied, setScriptCopied] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
+  const [snippetCopied, setSnippetCopied] = useState(false)
   const [showVerificationModal, setShowVerificationModal] = useState(false)
   const [isPasswordEnabled, setIsPasswordEnabled] = useState(false)
 
@@ -217,6 +219,14 @@ export default function SiteSettingsPage() {
     setLinkCopied(true)
     toast.success('Link copied to clipboard')
     setTimeout(() => setLinkCopied(false), 2000)
+  }
+
+  const copySnippet = () => {
+    if (!site) return
+    navigator.clipboard.writeText(generatePrivacySnippet(site))
+    setSnippetCopied(true)
+    toast.success('Privacy snippet copied to clipboard')
+    setTimeout(() => setSnippetCopied(false), 2000)
   }
 
   if (loading) {
@@ -766,6 +776,45 @@ export default function SiteSettingsPage() {
                       <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2">
                         Enter paths to exclude from tracking (one per line). Supports wildcards (e.g., /admin/*).
                       </p>
+                    </div>
+                  </div>
+
+                  {/* For your privacy policy */}
+                  <div className="space-y-4 pt-6 border-t border-neutral-100 dark:border-neutral-800">
+                    <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                      For your privacy policy
+                    </h3>
+                    <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                      Copy the text below into your site&apos;s Privacy Policy to describe your use of Ciphera Analytics.
+                      It updates automatically based on your saved settings above.
+                    </p>
+                    <p className="text-xs text-amber-600 dark:text-amber-500">
+                      This is provided for convenience and is not legal advice. You are responsible for ensuring
+                      your privacy policy is accurate and complies with applicable laws.
+                    </p>
+                    <div className="relative">
+                      <textarea
+                        readOnly
+                        rows={6}
+                        value={site ? generatePrivacySnippet(site) : ''}
+                        className="w-full px-4 py-3 pr-12 border border-neutral-200 dark:border-neutral-800 rounded-xl
+                          bg-neutral-50 dark:bg-neutral-900/50 font-sans text-sm text-neutral-700 dark:text-neutral-300
+                          focus:outline-none resize-y"
+                      />
+                      <button
+                        type="button"
+                        onClick={copySnippet}
+                        className="absolute top-3 right-3 p-2 rounded-lg bg-neutral-200 dark:bg-neutral-700
+                          hover:bg-neutral-300 dark:hover:bg-neutral-600 text-neutral-600 dark:text-neutral-300
+                          transition-colors"
+                        title="Copy snippet"
+                      >
+                        {snippetCopied ? (
+                          <CheckIcon className="w-4 h-4 text-green-600" />
+                        ) : (
+                          <CopyIcon className="w-4 h-4" />
+                        )}
+                      </button>
                     </div>
                   </div>
 
