@@ -19,7 +19,7 @@
   }
 
   const domain = script.getAttribute('data-domain');
-  const apiUrl = script.getAttribute('data-api') || 'https://analytics-api.ciphera.net';
+  const apiUrl = script.getAttribute('data-api') || 'https://pulse-api.ciphera.net';
 
   // * Performance Monitoring (Core Web Vitals) State
   let currentEventId = null;

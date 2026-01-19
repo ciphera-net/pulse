@@ -5,7 +5,7 @@ import { cookies } from 'next/headers'
 const AUTH_API_URL = process.env.NEXT_PUBLIC_AUTH_API_URL || process.env.NEXT_PUBLIC_AUTH_URL || 'http://localhost:8081'
 
 // * Determine cookie domain dynamically
-// * In production (on ciphera.net), we want to share cookies with subdomains (e.g. analytics-api.ciphera.net)
+// * In production (on ciphera.net), we want to share cookies with subdomains (e.g. pulse-api.ciphera.net)
 // * In local dev (localhost), we don't set a domain
 const getCookieDomain = () => {
   if (process.env.NODE_ENV === 'production') {
@@ -37,7 +37,7 @@ export async function exchangeAuthCode(code: string, codeVerifier: string, redir
       body: JSON.stringify({
         grant_type: 'authorization_code',
         code,
-        client_id: 'analytics-app',
+        client_id: 'pulse-app',
         redirect_uri: redirectUri,
         code_verifier: codeVerifier,
       }),

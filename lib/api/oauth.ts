@@ -52,7 +52,7 @@ export async function initiateOAuthFlow(redirectPath = '/auth/callback') {
 
   const redirectUri = encodeURIComponent(`${APP_URL}${redirectPath}`)
   
-  const loginUrl = `${AUTH_URL}/login?client_id=analytics-app&redirect_uri=${redirectUri}&response_type=code&state=${state}&code_challenge=${codeChallenge}&code_challenge_method=S256`
+  const loginUrl = `${AUTH_URL}/login?client_id=pulse-app&redirect_uri=${redirectUri}&response_type=code&state=${state}&code_challenge=${codeChallenge}&code_challenge_method=S256`
 
   window.location.href = loginUrl
 }
@@ -68,7 +68,7 @@ export async function initiateSignupFlow(redirectPath = '/auth/callback') {
   
     const redirectUri = encodeURIComponent(`${APP_URL}${redirectPath}`)
     
-    const signupUrl = `${AUTH_URL}/signup?client_id=analytics-app&redirect_uri=${redirectUri}&response_type=code&state=${state}&code_challenge=${codeChallenge}&code_challenge_method=S256`
+    const signupUrl = `${AUTH_URL}/signup?client_id=pulse-app&redirect_uri=${redirectUri}&response_type=code&state=${state}&code_challenge=${codeChallenge}&code_challenge_method=S256`
   
     window.location.href = signupUrl
   }

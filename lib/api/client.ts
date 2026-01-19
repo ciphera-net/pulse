@@ -9,12 +9,12 @@ export const AUTH_API_URL = process.env.NEXT_PUBLIC_AUTH_API_URL || 'https://aut
 
 export function getLoginUrl(redirectPath = '/auth/callback') {
   const redirectUri = encodeURIComponent(`${APP_URL}${redirectPath}`)
-  return `${AUTH_URL}/login?client_id=analytics-app&redirect_uri=${redirectUri}&response_type=code`
+  return `${AUTH_URL}/login?client_id=pulse-app&redirect_uri=${redirectUri}&response_type=code`
 }
 
 export function getSignupUrl(redirectPath = '/auth/callback') {
   const redirectUri = encodeURIComponent(`${APP_URL}${redirectPath}`)
-  return `${AUTH_URL}/signup?client_id=analytics-app&redirect_uri=${redirectUri}&response_type=code`
+  return `${AUTH_URL}/signup?client_id=pulse-app&redirect_uri=${redirectUri}&response_type=code`
 }
 
 export class ApiError extends Error {
