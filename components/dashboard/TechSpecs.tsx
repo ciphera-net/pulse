@@ -11,17 +11,24 @@ interface TechSpecsProps {
   os: Array<{ os: string; pageviews: number }>
   devices: Array<{ device: string; pageviews: number }>
   screenResolutions: Array<{ screen_resolution: string; pageviews: number }>
+  collectDeviceInfo?: boolean
+  collectScreenResolution?: boolean
 }
 
 type Tab = 'browsers' | 'os' | 'devices' | 'screens'
 
 const LIMIT = 7
 
-export default function TechSpecs({ browsers, os, devices, screenResolutions }: TechSpecsProps) {
+export default function TechSpecs({ browsers, os, devices, screenResolutions, collectDeviceInfo = true, collectScreenResolution = true }: TechSpecsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('browsers')
   const [isModalOpen, setIsModalOpen] = useState(false)
 
-  const getData = () => {
+  // Filter out "Unknown" entries that result from disabled collection
+  const filterUnknown = (items: Array<{ name: string; pageviews: number; icon: React.ReactNode }>) => {
+    return items.filter(item => item.name && item.name !== 'Unknown' && item.name !== '')
+  }
+
+  const getRawData = () => {
     switch (activeTab) {
       case 'browsers':
         return browsers.map(b => ({ name: b.browser, pageviews: b.pageviews, icon: getBrowserIcon(b.browser) }))
@@ -36,7 +43,29 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions }: 
     }
   }
 
-  const data = getData()
+  // Check if current tab is disabled by privacy settings
+  const isTabDisabled = () => {
+    if (!collectDeviceInfo && (activeTab === 'browsers' || activeTab === 'os' || activeTab === 'devices')) {
+      return true
+    }
+    if (!collectScreenResolution && activeTab === 'screens') {
+      return true
+    }
+    return false
+  }
+
+  const getDisabledMessage = () => {
+    if (!collectDeviceInfo && (activeTab === 'browsers' || activeTab === 'os' || activeTab === 'devices')) {
+      return 'Device info collection is disabled in site settings'
+    }
+    if (!collectScreenResolution && activeTab === 'screens') {
+      return 'Screen resolution collection is disabled in site settings'
+    }
+    return 'No data available'
+  }
+
+  const rawData = getRawData()
+  const data = filterUnknown(rawData)
   const hasData = data && data.length > 0
   const displayedData = hasData ? data.slice(0, LIMIT) : []
   const emptySlots = Math.max(0, LIMIT - displayedData.length)
@@ -77,13 +106,17 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions }: 
         </div>
 
         <div className="space-y-2 flex-1 min-h-[270px]">
-          {hasData ? (
+          {isTabDisabled() ? (
+            <div className="h-full flex flex-col items-center justify-center text-center px-4">
+              <p className="text-neutral-500 dark:text-neutral-400 text-sm">{getDisabledMessage()}</p>
+            </div>
+          ) : hasData ? (
             <>
               {displayedData.map((item, index) => (
                 <div key={index} className="flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
                   <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
                     {item.icon && <span className="text-lg">{item.icon}</span>}
-                    <span className="truncate">{item.name === 'Unknown' ? 'Unknown' : item.name}</span>
+                    <span className="truncate">{item.name}</span>
                   </div>
                   <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
                     {formatNumber(item.pageviews)}

@@ -234,18 +234,34 @@ export default function SiteDashboardPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2 mb-8">
-        <ContentStats 
-          topPages={topPages} 
-          entryPages={entryPages} 
-          exitPages={exitPages} 
+        <ContentStats
+          topPages={topPages}
+          entryPages={entryPages}
+          exitPages={exitPages}
           domain={site.domain}
+          collectPagePaths={site.collect_page_paths ?? true}
         />
-        <TopReferrers referrers={topReferrers} />
+        <TopReferrers
+          referrers={topReferrers}
+          collectReferrers={site.collect_referrers ?? true}
+        />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2 mb-8">
-        <Locations countries={countries} cities={cities} regions={regions} />
-        <TechSpecs browsers={browsers} os={os} devices={devices} screenResolutions={screenResolutions} />
+        <Locations
+          countries={countries}
+          cities={cities}
+          regions={regions}
+          geoDataLevel={site.collect_geo_data || 'full'}
+        />
+        <TechSpecs
+          browsers={browsers}
+          os={os}
+          devices={devices}
+          screenResolutions={screenResolutions}
+          collectDeviceInfo={site.collect_device_info ?? true}
+          collectScreenResolution={site.collect_screen_resolution ?? true}
+        />
       </div>
 
       <DatePicker

@@ -11,24 +11,32 @@ interface ContentStatsProps {
   entryPages: TopPage[]
   exitPages: TopPage[]
   domain: string
+  collectPagePaths?: boolean
 }
 
 type Tab = 'top_pages' | 'entry_pages' | 'exit_pages'
 
 const LIMIT = 7
 
-export default function ContentStats({ topPages, entryPages, exitPages, domain }: ContentStatsProps) {
+export default function ContentStats({ topPages, entryPages, exitPages, domain, collectPagePaths = true }: ContentStatsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('top_pages')
   const [isModalOpen, setIsModalOpen] = useState(false)
+
+  // Filter out generic "/" entries when page paths are disabled (all traffic shows as "/")
+  const filterGenericPaths = (pages: TopPage[]) => {
+    if (!collectPagePaths) return []
+    // Filter out pages that are just "/" with high traffic (indicator of disabled tracking)
+    return pages.filter(p => p.path && p.path !== '')
+  }
 
   const getData = () => {
     switch (activeTab) {
       case 'top_pages':
-        return topPages
+        return filterGenericPaths(topPages)
       case 'entry_pages':
-        return entryPages
+        return filterGenericPaths(entryPages)
       case 'exit_pages':
-        return exitPages
+        return filterGenericPaths(exitPages)
       default:
         return []
     }
@@ -83,7 +91,11 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain }
         </div>
 
         <div className="space-y-2 flex-1 min-h-[270px]">
-          {hasData ? (
+          {!collectPagePaths ? (
+            <div className="h-full flex flex-col items-center justify-center text-center px-4">
+              <p className="text-neutral-500 dark:text-neutral-400 text-sm">Page path tracking is disabled in site settings</p>
+            </div>
+          ) : hasData ? (
             <>
               {displayedData.map((page, index) => (
                 <div key={index} className="flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">

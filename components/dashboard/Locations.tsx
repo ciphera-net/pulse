@@ -12,13 +12,14 @@ interface LocationProps {
   countries: Array<{ country: string; pageviews: number }>
   cities: Array<{ city: string; country: string; pageviews: number }>
   regions: Array<{ region: string; country: string; pageviews: number }>
+  geoDataLevel?: 'full' | 'country' | 'none'
 }
 
 type Tab = 'map' | 'countries' | 'regions' | 'cities'
 
 const LIMIT = 7
 
-export default function Locations({ countries, cities, regions }: LocationProps) {
+export default function Locations({ countries, cities, regions, geoDataLevel = 'full' }: LocationProps) {
   const [activeTab, setActiveTab] = useState<Tab>('map')
   const [isModalOpen, setIsModalOpen] = useState(false)
 
@@ -68,11 +69,41 @@ export default function Locations({ countries, cities, regions }: LocationProps)
     }
   }
 
-  const data = activeTab === 'map' ? [] : getData()
-  const hasData = activeTab === 'map' ? (countries && countries.length > 0) : (data && data.length > 0)
+  // Check if the current tab's data is disabled by privacy settings
+  const isTabDisabled = () => {
+    if (geoDataLevel === 'none') return true
+    if (geoDataLevel === 'country' && (activeTab === 'regions' || activeTab === 'cities')) return true
+    return false
+  }
+
+  // Filter out "Unknown" entries that result from disabled collection
+  const filterUnknown = (data: any[]) => {
+    return data.filter(item => {
+      if (activeTab === 'countries') return item.country && item.country !== 'Unknown' && item.country !== ''
+      if (activeTab === 'regions') return item.region && item.region !== 'Unknown' && item.region !== ''
+      if (activeTab === 'cities') return item.city && item.city !== 'Unknown' && item.city !== ''
+      return true
+    })
+  }
+
+  const rawData = activeTab === 'map' ? [] : getData()
+  const data = filterUnknown(rawData)
+  const hasData = activeTab === 'map'
+    ? (countries && filterUnknown(countries).length > 0)
+    : (data && data.length > 0)
   const displayedData = (activeTab !== 'map' && hasData) ? (data as any[]).slice(0, LIMIT) : []
   const emptySlots = Math.max(0, LIMIT - displayedData.length)
   const showViewAll = activeTab !== 'map' && hasData && data.length > LIMIT
+
+  const getDisabledMessage = () => {
+    if (geoDataLevel === 'none') {
+      return 'Geographic data collection is disabled in site settings'
+    }
+    if (geoDataLevel === 'country' && (activeTab === 'regions' || activeTab === 'cities')) {
+      return `${activeTab === 'regions' ? 'Region' : 'City'} tracking is disabled. Only country-level data is collected.`
+    }
+    return 'No data available'
+  }
 
   return (
     <>
@@ -109,8 +140,12 @@ export default function Locations({ countries, cities, regions }: LocationProps)
         </div>
 
         <div className="space-y-2 flex-1 min-h-[270px]">
-          {activeTab === 'map' ? (
-            hasData ? <WorldMap data={countries} /> : (
+          {isTabDisabled() ? (
+            <div className="h-full flex flex-col items-center justify-center text-center px-4">
+              <p className="text-neutral-500 dark:text-neutral-400 text-sm">{getDisabledMessage()}</p>
+            </div>
+          ) : activeTab === 'map' ? (
+            hasData ? <WorldMap data={filterUnknown(countries)} /> : (
               <div className="h-full flex flex-col items-center justify-center">
                 <p className="text-neutral-600 dark:text-neutral-400">No data available</p>
               </div>
@@ -123,9 +158,9 @@ export default function Locations({ countries, cities, regions }: LocationProps)
                     <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
                       {activeTab === 'countries' && <span className="shrink-0">{getFlagComponent(item.country)}</span>}
                       {activeTab !== 'countries' && <span className="shrink-0">{getFlagComponent(item.country)}</span>}
-                      
+
                       <span className="truncate">
-                        {activeTab === 'countries' ? getCountryName(item.country) : 
+                        {activeTab === 'countries' ? getCountryName(item.country) :
                          activeTab === 'regions' ? getRegionName(item.region, item.country) :
                          (item.city === 'Unknown' ? 'Unknown' : item.city)}
                       </span>

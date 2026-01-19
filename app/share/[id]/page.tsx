@@ -280,26 +280,33 @@ export default function PublicDashboardPage() {
 
         {/* Details Grid */}
         <div className="grid gap-6 lg:grid-cols-2 mb-8">
-          <TopPages 
-            topPages={safeTopPages} 
+          <TopPages
+            topPages={safeTopPages}
             entryPages={safeEntryPages}
             exitPages={safeExitPages}
             domain={site.domain}
+            collectPagePaths={site.collect_page_paths ?? true}
           />
-          <TopReferrers referrers={safeTopReferrers} />
+          <TopReferrers
+            referrers={safeTopReferrers}
+            collectReferrers={site.collect_referrers ?? true}
+          />
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2 mb-8">
-          <Locations 
-            countries={safeCountries} 
-            cities={safeCities} 
-            regions={safeRegions} 
+          <Locations
+            countries={safeCountries}
+            cities={safeCities}
+            regions={safeRegions}
+            geoDataLevel={site.collect_geo_data || 'full'}
           />
-          <TechSpecs 
-            browsers={safeBrowsers} 
-            os={safeOS} 
+          <TechSpecs
+            browsers={safeBrowsers}
+            os={safeOS}
             devices={safeDevices}
             screenResolutions={safeScreenResolutions}
+            collectDeviceInfo={site.collect_device_info ?? true}
+            collectScreenResolution={site.collect_screen_resolution ?? true}
           />
         </div>
 

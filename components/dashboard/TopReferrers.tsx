@@ -7,17 +7,23 @@ import { Modal } from '@ciphera-net/ui'
 
 interface TopReferrersProps {
   referrers: Array<{ referrer: string; pageviews: number }>
+  collectReferrers?: boolean
 }
 
 const LIMIT = 7
 
-export default function TopReferrers({ referrers }: TopReferrersProps) {
+export default function TopReferrers({ referrers, collectReferrers = true }: TopReferrersProps) {
   const [isModalOpen, setIsModalOpen] = useState(false)
 
-  const hasData = referrers && referrers.length > 0
-  const displayedReferrers = hasData ? referrers.slice(0, LIMIT) : []
+  // Filter out empty/unknown referrers
+  const filteredReferrers = (referrers || []).filter(
+    ref => ref.referrer && ref.referrer !== 'Unknown' && ref.referrer !== ''
+  )
+
+  const hasData = filteredReferrers.length > 0
+  const displayedReferrers = hasData ? filteredReferrers.slice(0, LIMIT) : []
   const emptySlots = Math.max(0, LIMIT - displayedReferrers.length)
-  const showViewAll = hasData && referrers.length > LIMIT
+  const showViewAll = hasData && filteredReferrers.length > LIMIT
 
   return (
     <>
@@ -37,7 +43,11 @@ export default function TopReferrers({ referrers }: TopReferrersProps) {
         </div>
 
         <div className="space-y-2 flex-1 min-h-[270px]">
-          {hasData ? (
+          {!collectReferrers ? (
+            <div className="h-full flex flex-col items-center justify-center text-center px-4">
+              <p className="text-neutral-500 dark:text-neutral-400 text-sm">Referrer tracking is disabled in site settings</p>
+            </div>
+          ) : hasData ? (
             <>
               {displayedReferrers.map((ref, index) => (
                 <div key={index} className="flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
