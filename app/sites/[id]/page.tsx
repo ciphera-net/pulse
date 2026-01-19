@@ -42,6 +42,7 @@ export default function SiteDashboardPage() {
   const [performance, setPerformance] = useState<{ lcp: number, cls: number, inp: number }>({ lcp: 0, cls: 0, inp: 0 })
   const [dateRange, setDateRange] = useState(getDateRange(30))
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
+  const [todayInterval, setTodayInterval] = useState<'minute' | 'hour'>('hour')
 
   useEffect(() => {
     loadData()
@@ -49,7 +50,7 @@ export default function SiteDashboardPage() {
       loadRealtime()
     }, 30000) // Update every 30 seconds
     return () => clearInterval(interval)
-  }, [siteId, dateRange])
+  }, [siteId, dateRange, todayInterval])
 
   const getPreviousDateRange = (start: string, end: string) => {
     const startDate = new Date(start)
@@ -78,7 +79,7 @@ export default function SiteDashboardPage() {
   const loadData = async () => {
     try {
       setLoading(true)
-      const interval = dateRange.start === dateRange.end ? 'hour' : 'day'
+      const interval = dateRange.start === dateRange.end ? todayInterval : 'day'
       
       const [data, prevStatsData, prevDailyStatsData] = await Promise.all([
         getDashboard(siteId, dateRange.start, dateRange.end, 10, interval),
@@ -195,6 +196,17 @@ export default function SiteDashboardPage() {
                 { value: 'custom', label: 'Custom' },
               ]}
             />
+            {dateRange.start === new Date().toISOString().split('T')[0] && dateRange.end === new Date().toISOString().split('T')[0] && (
+              <Select
+                value={todayInterval}
+                onChange={(value) => setTodayInterval(value as 'minute' | 'hour')}
+                options={[
+                  { value: 'minute', label: '1 min' },
+                  { value: 'hour', label: '1 hour' },
+                ]}
+                className="min-w-[100px]"
+              />
+            )}
             <button
               onClick={() => router.push(`/sites/${siteId}/settings`)}
               className="btn-secondary text-sm"
@@ -212,7 +224,7 @@ export default function SiteDashboardPage() {
           prevData={prevDailyStats}
           stats={stats} 
           prevStats={prevStats}
-          interval={dateRange.start === dateRange.end ? 'hour' : 'day'}
+          interval={dateRange.start === dateRange.end ? todayInterval : 'day'}
         />
       </div>
 

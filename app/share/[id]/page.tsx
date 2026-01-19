@@ -41,6 +41,7 @@ export default function PublicDashboardPage() {
   // Date range state
   const [dateRange, setDateRange] = useState(getDateRange(30))
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
+  const [todayInterval, setTodayInterval] = useState<'minute' | 'hour'>('hour')
   
   // Auto-refresh interval (for realtime)
   useEffect(() => {
@@ -56,7 +57,7 @@ export default function PublicDashboardPage() {
 
   useEffect(() => {
     loadDashboard()
-  }, [siteId, dateRange])
+  }, [siteId, dateRange, todayInterval])
 
   const loadDashboard = async (silent = false) => {
     try {
@@ -67,7 +68,7 @@ export default function PublicDashboardPage() {
         dateRange.start,
         dateRange.end,
         10,
-        dateRange.start === dateRange.end ? 'hour' : 'day',
+        dateRange.start === dateRange.end ? todayInterval : 'day',
         password
       )
       
@@ -224,6 +225,17 @@ export default function PublicDashboardPage() {
                   { value: 'custom', label: 'Custom' },
                 ]}
               />
+              {dateRange.start === new Date().toISOString().split('T')[0] && dateRange.end === new Date().toISOString().split('T')[0] && (
+                <Select
+                  value={todayInterval}
+                  onChange={(value) => setTodayInterval(value as 'minute' | 'hour')}
+                  options={[
+                    { value: 'minute', label: '1 min' },
+                    { value: 'hour', label: '1 hour' },
+                  ]}
+                  className="min-w-[100px]"
+                />
+              )}
               {/* Powered by Ciphera Badge */}
               <a 
                 href="https://ciphera.net" 
@@ -255,7 +267,7 @@ export default function PublicDashboardPage() {
             data={safeDailyStats} 
             prevData={[]} 
             stats={safeStats} 
-            interval={dateRange.start === dateRange.end ? 'hour' : 'day'}
+            interval={dateRange.start === dateRange.end ? todayInterval : 'day'}
           />
         </div>
 

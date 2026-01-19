@@ -33,7 +33,7 @@ interface ChartProps {
   prevData?: DailyStat[]
   stats: Stats
   prevStats?: Stats
-  interval: 'hour' | 'day' | 'month'
+  interval: 'minute' | 'hour' | 'day' | 'month'
 }
 
 type MetricType = 'pageviews' | 'visitors' | 'bounce_rate' | 'avg_duration'
@@ -47,8 +47,18 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
     // * For more robustness, we could match by relative index
     const prevItem = prevData && prevData[i]
     
+    // * Format date based on interval
+    let formattedDate: string
+    if (interval === 'minute') {
+      formattedDate = new Date(item.date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+    } else if (interval === 'hour') {
+      formattedDate = new Date(item.date).toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric' })
+    } else {
+      formattedDate = new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    }
+    
     return {
-      date: new Date(item.date).toLocaleDateString('en-US', interval === 'hour' ? { hour: 'numeric', minute: 'numeric' } : { month: 'short', day: 'numeric' }),
+      date: formattedDate,
       originalDate: item.date,
       pageviews: item.pageviews,
       visitors: item.visitors,
