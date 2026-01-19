@@ -163,7 +163,11 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
     if (interval === 'minute') {
       formattedDate = new Date(item.date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
     } else if (interval === 'hour') {
-      formattedDate = new Date(item.date).toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric' })
+      const d = new Date(item.date)
+      const isMidnight = d.getHours() === 0 && d.getMinutes() === 0
+      formattedDate = isMidnight
+        ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        : d.toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric' })
     } else {
       formattedDate = new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     }
