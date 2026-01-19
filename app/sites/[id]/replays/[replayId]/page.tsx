@@ -7,6 +7,11 @@ import { getReplay, getReplayData, deleteReplay, formatDuration, type SessionRep
 import { toast } from 'sonner'
 import LoadingOverlay from '@/components/LoadingOverlay'
 import type { eventWithTime } from '@rrweb/types'
+import 'rrweb-player/dist/style.css'
+
+// Fixed player dimensions (16:9 aspect ratio)
+const PLAYER_WIDTH = 880
+const PLAYER_HEIGHT = 495
 
 function formatDate(dateString: string) {
   const date = new Date(dateString)
@@ -41,8 +46,6 @@ export default function ReplayViewerPage() {
   const [loading, setLoading] = useState(true)
   const [loadingData, setLoadingData] = useState(false)
   const [playerReady, setPlayerReady] = useState(false)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [speed, setSpeed] = useState(1)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
 
   const playerContainerRef = useRef<HTMLDivElement>(null)
@@ -52,12 +55,12 @@ export default function ReplayViewerPage() {
   useEffect(() => {
     const init = async () => {
       try {
-        const [siteData, replayData] = await Promise.all([
+        const [siteData, replayInfo] = await Promise.all([
           getSite(siteId),
           getReplay(siteId, replayId)
         ])
         setSite(siteData)
-        setReplay(replayData)
+        setReplay(replayInfo)
       } catch (error: unknown) {
         toast.error('Failed to load replay')
       } finally {
@@ -98,35 +101,22 @@ export default function ReplayViewerPage() {
           playerContainerRef.current.innerHTML = ''
         }
 
-        // Calculate dimensions - use container width and maintain aspect ratio
-        const containerWidth = playerContainerRef.current!.clientWidth
-        const containerHeight = Math.max(500, Math.min(700, window.innerHeight - 300))
-
-        // Create player with proper scaling
+        // Create player with fixed dimensions
         const player = new rrwebPlayer.default({
           target: playerContainerRef.current!,
           props: {
             events: replayData,
-            width: containerWidth,
-            height: containerHeight,
+            width: PLAYER_WIDTH,
+            height: PLAYER_HEIGHT,
             autoPlay: false,
             showController: true,
-            speed: speed,
             skipInactive: true,
             showWarning: false,
             showDebug: false,
-            // Enable responsive scaling
-            UNSAFE_replayCanvas: false,
           },
         })
 
         playerRef.current = player
-
-        // Listen for player events
-        player.addEventListener('pause', () => setIsPlaying(false))
-        player.addEventListener('start', () => setIsPlaying(true))
-        player.addEventListener('finish', () => setIsPlaying(false))
-
         setPlayerReady(true)
       } catch (error) {
         console.error('Failed to initialize player:', error)
@@ -138,18 +128,10 @@ export default function ReplayViewerPage() {
 
     return () => {
       if (playerRef.current) {
-        // Cleanup player
         playerRef.current = null
       }
     }
   }, [replayData])
-
-  // Update speed
-  useEffect(() => {
-    if (playerRef.current && typeof (playerRef.current as { setSpeed?: (s: number) => void }).setSpeed === 'function') {
-      (playerRef.current as { setSpeed: (s: number) => void }).setSpeed(speed)
-    }
-  }, [speed])
 
   const handleDelete = async () => {
     try {
@@ -193,20 +175,21 @@ export default function ReplayViewerPage() {
 
       <div className="flex gap-6">
         {/* Player */}
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <div className="border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden bg-white dark:bg-neutral-900">
-            {/* Player Container */}
+            {/* Player Container - Fixed size */}
             <div
               ref={playerContainerRef}
-              className="w-full bg-neutral-100 dark:bg-neutral-800 min-h-[500px] flex items-center justify-center [&_.rr-player]:!w-full [&_.rr-player]:!max-w-full [&_.rr-player__frame]:!w-full [&_.replayer-wrapper]:!mx-auto"
+              className="bg-neutral-900 flex items-center justify-center"
+              style={{ width: '100%', minHeight: PLAYER_HEIGHT + 80 }}
             >
               {loadingData ? (
                 <div className="flex flex-col items-center gap-3">
-                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-neutral-900 dark:border-white"></div>
-                  <span className="text-sm text-neutral-500">Loading replay data...</span>
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-white"></div>
+                  <span className="text-sm text-neutral-400">Loading replay data...</span>
                 </div>
               ) : !replayData || replayData.length === 0 ? (
-                <div className="text-center text-neutral-500 p-8">
+                <div className="text-center text-neutral-400 p-8">
                   <div className="text-4xl mb-4">🎬</div>
                   <p className="text-lg font-medium mb-2">No replay data available</p>
                   <p className="text-sm">This session may not have recorded any events.</p>
@@ -214,31 +197,20 @@ export default function ReplayViewerPage() {
               ) : null}
             </div>
 
-            {/* Custom Controls */}
+            {/* Session info bar */}
             {playerReady && (
-              <div className="p-4 border-t border-neutral-200 dark:border-neutral-800 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <span className="text-sm text-neutral-500">Playback Speed:</span>
-                  <div className="flex gap-1">
-                    {[0.5, 1, 2, 4].map((s) => (
-                      <button
-                        key={s}
-                        onClick={() => setSpeed(s)}
-                        className={`px-2 py-1 text-sm rounded ${
-                          speed === s
-                            ? 'bg-brand-orange text-white'
-                            : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'
-                        }`}
-                      >
-                        {s}x
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-neutral-500">
+              <div className="p-3 border-t border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50 flex items-center justify-between text-sm">
+                <div className="flex items-center gap-4 text-neutral-600 dark:text-neutral-400">
                   <span>{replay.events_count} events</span>
                   <span>•</span>
                   <span>{formatDuration(replay.duration_ms)}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {replay.is_skeleton_mode && (
+                    <span className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-2 py-0.5 rounded">
+                      Skeleton Mode
+                    </span>
+                  )}
                 </div>
               </div>
             )}
@@ -246,7 +218,7 @@ export default function ReplayViewerPage() {
         </div>
 
         {/* Session Info Sidebar */}
-        <div className="w-80 flex-shrink-0">
+        <div className="w-72 flex-shrink-0">
           <div className="border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden bg-white dark:bg-neutral-900">
             <div className="p-4 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50">
               <h2 className="font-semibold text-neutral-900 dark:text-white">Session Details</h2>
@@ -254,7 +226,7 @@ export default function ReplayViewerPage() {
             <div className="p-4 space-y-4">
               <div>
                 <span className="text-xs text-neutral-500 uppercase tracking-wider">Session ID</span>
-                <p className="font-mono text-sm text-neutral-900 dark:text-white mt-1">{replay.session_id}</p>
+                <p className="font-mono text-sm text-neutral-900 dark:text-white mt-1 truncate" title={replay.session_id}>{replay.session_id}</p>
               </div>
 
               <div>
@@ -354,6 +326,46 @@ export default function ReplayViewerPage() {
           </div>
         </div>
       )}
+
+      {/* Custom styles for rrweb player */}
+      <style jsx global>{`
+        .rr-player {
+          margin: 0 auto !important;
+          background: #171717 !important;
+        }
+        .rr-player__frame {
+          background: #171717 !important;
+        }
+        .replayer-wrapper {
+          margin: 0 auto !important;
+        }
+        .rr-controller {
+          background: #262626 !important;
+          border-top: 1px solid #404040 !important;
+        }
+        .rr-controller__btns button {
+          color: #e5e5e5 !important;
+        }
+        .rr-controller__btns button:hover {
+          color: #fff !important;
+        }
+        .rr-progress {
+          background: #404040 !important;
+        }
+        .rr-progress__step {
+          background: #f97316 !important;
+        }
+        .rr-progress__handler {
+          background: #f97316 !important;
+          border-color: #f97316 !important;
+        }
+        .rr-timeline__time {
+          color: #a3a3a3 !important;
+        }
+        .switch input:checked + label {
+          background: #f97316 !important;
+        }
+      `}</style>
     </div>
   )
 }
