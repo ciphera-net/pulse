@@ -35,13 +35,33 @@ function MetricCard({ label, value, unit, score }: { label: string, value: numbe
 
 export default function PerformanceStats({ stats, performanceByPage, siteId, startDate, endDate, getPerformanceByPage }: Props) {
   // * Scoring Logic (based on Google Web Vitals)
-  const getScore = (metric: 'lcp' | 'cls' | 'inp', value: number) => {
+  type Score = 'good' | 'needs-improvement' | 'poor'
+  const getScore = (metric: 'lcp' | 'cls' | 'inp', value: number): Score => {
     if (metric === 'lcp') return value <= 2500 ? 'good' : value <= 4000 ? 'needs-improvement' : 'poor'
     if (metric === 'cls') return value <= 0.1 ? 'good' : value <= 0.25 ? 'needs-improvement' : 'poor'
     if (metric === 'inp') return value <= 200 ? 'good' : value <= 500 ? 'needs-improvement' : 'poor'
     return 'good'
   }
 
+  // * Overall performance: worst of LCP, CLS, INP (matches Google’s “field” rating)
+  const getOverallScore = (s: { lcp: number; cls: number; inp: number }): Score => {
+    const lcp = getScore('lcp', s.lcp)
+    const cls = getScore('cls', s.cls)
+    const inp = getScore('inp', s.inp)
+    if (lcp === 'poor' || cls === 'poor' || inp === 'poor') return 'poor'
+    if (lcp === 'needs-improvement' || cls === 'needs-improvement' || inp === 'needs-improvement') return 'needs-improvement'
+    return 'good'
+  }
+
+  const overallScore = getOverallScore(stats)
+  const overallLabel = { good: 'Good', 'needs-improvement': 'Needs improvement', poor: 'Poor' }[overallScore]
+  const overallBadgeClass = {
+    good: 'text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/30 border-green-200 dark:border-green-800',
+    'needs-improvement': 'text-yellow-700 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-800',
+    poor: 'text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-900/30 border-red-200 dark:border-red-800',
+  }[overallScore]
+
+  const [mainExpanded, setMainExpanded] = useState(false)
   const [sortBy, setSortBy] = useState<'lcp' | 'cls' | 'inp'>('lcp')
   const [overrideRows, setOverrideRows] = useState<PerformanceByPageStat[] | null>(null)
   const [loadingTable, setLoadingTable] = useState(false)
@@ -85,118 +105,149 @@ export default function PerformanceStats({ stats, performanceByPage, siteId, sta
     return cellScoreClass(getScore(metric, val))
   }
 
-  return (
-    <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6">
-      <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">
-        Core Web Vitals
-      </h3>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <MetricCard
-          label="Largest Contentful Paint (LCP)"
-          value={Math.round(stats.lcp)}
-          unit="ms"
-          score={getScore('lcp', stats.lcp)}
-        />
-        <MetricCard
-          label="Cumulative Layout Shift (CLS)"
-          value={Number(stats.cls.toFixed(3))}
-          unit=""
-          score={getScore('cls', stats.cls)}
-        />
-        <MetricCard
-          label="Interaction to Next Paint (INP)"
-          value={Math.round(stats.inp)}
-          unit="ms"
-          score={getScore('inp', stats.inp)}
-        />
-      </div>
-      <div className="mt-4 text-xs text-neutral-500">
-        * Averages calculated from real user sessions. Lower is better.
-      </div>
+  const summaryText = `LCP ${Math.round(stats.lcp)} ms · CLS ${Number(stats.cls.toFixed(3))} · INP ${Math.round(stats.inp)} ms`
 
-      {/* * Performance by page (worst first) – collapsed by default */}
-      <div className="mt-6 pt-6 border-t border-neutral-200 dark:border-neutral-800">
-        <div className="flex items-center justify-between gap-4 mb-3">
-          <button
-            type="button"
-            onClick={() => setWorstPagesOpen((o) => !o)}
-            className="flex items-center gap-2 text-left rounded cursor-pointer hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-900"
-            aria-expanded={worstPagesOpen}
-          >
-            <ChevronDownIcon
-              className={`w-4 h-4 shrink-0 text-neutral-500 transition-transform ${worstPagesOpen ? '' : '-rotate-90'}`}
-              aria-hidden
-            />
-            <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-              Worst pages by metric
-            </span>
-          </button>
-          {worstPagesOpen && canRefetch && (
-            <Select
-              value={sortBy}
-              onChange={handleSortChange}
-              options={[
-                { value: 'lcp', label: 'Sort by LCP (worst)' },
-                { value: 'cls', label: 'Sort by CLS (worst)' },
-                { value: 'inp', label: 'Sort by INP (worst)' },
-              ]}
-              variant="input"
-              align="right"
-              className="min-w-[180px]"
-            />
-          )}
+  return (
+    <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-4">
+      {/* * One-line summary: Performance score + metric summary. Click to expand. */}
+      <button
+        type="button"
+        onClick={() => setMainExpanded((o) => !o)}
+        className="flex w-full items-center justify-between gap-4 text-left rounded cursor-pointer hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-900"
+        aria-expanded={mainExpanded}
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <ChevronDownIcon
+            className={`w-4 h-4 shrink-0 text-neutral-500 transition-transform ${mainExpanded ? '' : '-rotate-90'}`}
+            aria-hidden
+          />
+          <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Performance</span>
+          <span className={`shrink-0 rounded-md border px-2 py-0.5 text-xs font-medium ${overallBadgeClass}`}>
+            {overallLabel}
+          </span>
         </div>
-        <motion.div
-          initial={false}
-          animate={{
-            height: worstPagesOpen ? 'auto' : 0,
-            opacity: worstPagesOpen ? 1 : 0,
-          }}
-          transition={{ duration: 0.25, ease: 'easeInOut' }}
-          style={{ overflow: 'hidden' }}
-        >
-          {loadingTable ? (
-            <div className="py-8 text-center text-neutral-500 text-sm">Loading…</div>
-          ) : rows.length === 0 ? (
-            <div className="py-6 text-center text-neutral-500 text-sm">
-              No per-page metrics yet. Data appears as visitors are tracked with performance insights enabled.
+        <span className="text-xs text-neutral-500 truncate" title={summaryText}>
+          {summaryText}
+        </span>
+      </button>
+
+      {/* * Expanded: full LCP/CLS/INP cards, footnote, and Worst pages (collapsible) */}
+      <motion.div
+        initial={false}
+        animate={{ height: mainExpanded ? 'auto' : 0, opacity: mainExpanded ? 1 : 0 }}
+        transition={{ duration: 0.25, ease: 'easeInOut' }}
+        style={{ overflow: 'hidden' }}
+      >
+        <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-800">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <MetricCard
+              label="Largest Contentful Paint (LCP)"
+              value={Math.round(stats.lcp)}
+              unit="ms"
+              score={getScore('lcp', stats.lcp)}
+            />
+            <MetricCard
+              label="Cumulative Layout Shift (CLS)"
+              value={Number(stats.cls.toFixed(3))}
+              unit=""
+              score={getScore('cls', stats.cls)}
+            />
+            <MetricCard
+              label="Interaction to Next Paint (INP)"
+              value={Math.round(stats.inp)}
+              unit="ms"
+              score={getScore('inp', stats.inp)}
+            />
+          </div>
+          <div className="mt-4 text-xs text-neutral-500">
+            * Averages calculated from real user sessions. Lower is better.
+          </div>
+
+          {/* * Worst pages by metric – collapsed by default */}
+          <div className="mt-6 pt-6 border-t border-neutral-200 dark:border-neutral-800">
+            <div className="flex items-center justify-between gap-4 mb-3">
+              <button
+                type="button"
+                onClick={() => setWorstPagesOpen((o) => !o)}
+                className="flex items-center gap-2 text-left rounded cursor-pointer hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-900"
+                aria-expanded={worstPagesOpen}
+              >
+                <ChevronDownIcon
+                  className={`w-4 h-4 shrink-0 text-neutral-500 transition-transform ${worstPagesOpen ? '' : '-rotate-90'}`}
+                  aria-hidden
+                />
+                <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                  Worst pages by metric
+                </span>
+              </button>
+              {worstPagesOpen && canRefetch && (
+                <Select
+                  value={sortBy}
+                  onChange={handleSortChange}
+                  options={[
+                    { value: 'lcp', label: 'Sort by LCP (worst)' },
+                    { value: 'cls', label: 'Sort by CLS (worst)' },
+                    { value: 'inp', label: 'Sort by INP (worst)' },
+                  ]}
+                  variant="input"
+                  align="right"
+                  className="min-w-[180px]"
+                />
+              )}
             </div>
-          ) : (
-            <div className="overflow-x-auto -mx-1">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-neutral-200 dark:border-neutral-700">
-                    <th className="text-left py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">Path</th>
-                    <th className="text-right py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">Samples</th>
-                    <th className="text-right py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">LCP</th>
-                    <th className="text-right py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">CLS</th>
-                    <th className="text-right py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">INP</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((r) => (
-                    <tr key={r.path} className="border-b border-neutral-100 dark:border-neutral-800/80">
-                      <td className="py-2 px-2 text-neutral-900 dark:text-white font-mono truncate max-w-[200px]" title={r.path}>
-                        {r.path || '/'}
-                      </td>
-                      <td className="py-2 px-2 text-right text-neutral-600 dark:text-neutral-400">{r.samples}</td>
-                      <td className={`py-2 px-2 text-right font-mono ${getCellClass('lcp', r.lcp)}`}>
-                        {formatMetric('lcp', r.lcp)}
-                      </td>
-                      <td className={`py-2 px-2 text-right font-mono ${getCellClass('cls', r.cls)}`}>
-                        {formatMetric('cls', r.cls)}
-                      </td>
-                      <td className={`py-2 px-2 text-right font-mono ${getCellClass('inp', r.inp)}`}>
-                        {formatMetric('inp', r.inp)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </motion.div>
-      </div>
+            <motion.div
+              initial={false}
+              animate={{
+                height: worstPagesOpen ? 'auto' : 0,
+                opacity: worstPagesOpen ? 1 : 0,
+              }}
+              transition={{ duration: 0.25, ease: 'easeInOut' }}
+              style={{ overflow: 'hidden' }}
+            >
+              {loadingTable ? (
+                <div className="py-8 text-center text-neutral-500 text-sm">Loading…</div>
+              ) : rows.length === 0 ? (
+                <div className="py-6 text-center text-neutral-500 text-sm">
+                  No per-page metrics yet. Data appears as visitors are tracked with performance insights enabled.
+                </div>
+              ) : (
+                <div className="overflow-x-auto -mx-1">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-neutral-200 dark:border-neutral-700">
+                        <th className="text-left py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">Path</th>
+                        <th className="text-right py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">Samples</th>
+                        <th className="text-right py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">LCP</th>
+                        <th className="text-right py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">CLS</th>
+                        <th className="text-right py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">INP</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((r) => (
+                        <tr key={r.path} className="border-b border-neutral-100 dark:border-neutral-800/80">
+                          <td className="py-2 px-2 text-neutral-900 dark:text-white font-mono truncate max-w-[200px]" title={r.path}>
+                            {r.path || '/'}
+                          </td>
+                          <td className="py-2 px-2 text-right text-neutral-600 dark:text-neutral-400">{r.samples}</td>
+                          <td className={`py-2 px-2 text-right font-mono ${getCellClass('lcp', r.lcp)}`}>
+                            {formatMetric('lcp', r.lcp)}
+                          </td>
+                          <td className={`py-2 px-2 text-right font-mono ${getCellClass('cls', r.cls)}`}>
+                            {formatMetric('cls', r.cls)}
+                          </td>
+                          <td className={`py-2 px-2 text-right font-mono ${getCellClass('inp', r.inp)}`}>
+                            {formatMetric('inp', r.inp)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        </div>
+      </motion.div>
     </div>
   )
 }
