@@ -263,6 +263,9 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
         })()
       : undefined
 
+  // * In daily view, only show the date at each day (12:00 AM / start-of-day mark), no time.
+  const dayTicks = interval === 'day' && chartData.length > 0 ? chartData.map((c) => c.date) : undefined
+
   return (
     <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden shadow-sm">
       {/* Stats Header (Interactive Tabs) */}
@@ -383,7 +386,7 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
                   tickLine={false}
                   axisLine={false}
                   minTickGap={28}
-                  ticks={midnightTicks}
+                  ticks={midnightTicks ?? dayTicks}
                 />
                 <YAxis
                   stroke={colors.axis}
