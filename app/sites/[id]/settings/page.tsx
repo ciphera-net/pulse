@@ -932,7 +932,7 @@ export default function SiteSettingsPage() {
                           </div>
                           <input
                             type="range"
-                            min={0}
+                            min={-1}
                             max={SAMPLING_RATE_OPTIONS.length - 1}
                             step={1}
                             list="sampling-rate-ticks"
@@ -940,12 +940,14 @@ export default function SiteSettingsPage() {
                               const i = (SAMPLING_RATE_OPTIONS as readonly number[]).indexOf(formData.replay_sampling_rate)
                               return i >= 0 ? i : SAMPLING_RATE_OPTIONS.length - 1
                             })()}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              const v = parseInt(e.target.value, 10)
+                              const i = Math.max(0, Math.min(SAMPLING_RATE_OPTIONS.length - 1, v))
                               setFormData({
                                 ...formData,
-                                replay_sampling_rate: SAMPLING_RATE_OPTIONS[parseInt(e.target.value, 10)],
+                                replay_sampling_rate: SAMPLING_RATE_OPTIONS[i],
                               })
-                            }
+                            }}
                             className="w-full h-2 bg-neutral-200 dark:bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-brand-orange"
                           />
                           <datalist id="sampling-rate-ticks">
@@ -953,9 +955,15 @@ export default function SiteSettingsPage() {
                               <option key={i} value={i} />
                             ))}
                           </datalist>
-                          <div className="flex justify-between text-xs text-neutral-500 mt-1">
+                          <div className="relative h-4 mt-1">
                             {SAMPLING_RATE_OPTIONS.map((pct) => (
-                              <span key={pct}>{pct}%</span>
+                              <span
+                                key={pct}
+                                className="absolute text-xs text-neutral-500 -translate-x-1/2"
+                                style={{ left: `${pct}%` }}
+                              >
+                                {pct}%
+                              </span>
                             ))}
                           </div>
                         </div>
