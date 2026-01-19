@@ -1,17 +1,15 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { listSites, deleteSite, type Site } from '@/lib/api/sites'
 import { toast } from 'sonner'
 import LoadingOverlay from '../LoadingOverlay'
-import { Button } from '@ciphera-net/ui'
-import { BarChartIcon, TrashIcon, PlusIcon } from '@radix-ui/react-icons'
+import { BarChartIcon } from '@radix-ui/react-icons'
 
 export default function SiteList() {
   const [sites, setSites] = useState<Site[]>([])
   const [loading, setLoading] = useState(true)
-  const router = useRouter()
 
   useEffect(() => {
     loadSites()
@@ -50,14 +48,9 @@ export default function SiteList() {
 
   if (sites.length === 0) {
     return (
-      <div className="text-center py-12">
-        <p className="text-neutral-600 dark:text-neutral-400 mb-4">No sites yet. Create your first site to get started.</p>
-        <Button
-          onClick={() => router.push('/sites/new')}
-        >
-          <PlusIcon className="w-4 h-4 mr-2" />
-          Create Site
-        </Button>
+      <div className="rounded-lg border border-dashed border-neutral-300 dark:border-neutral-700 p-12 text-center">
+        <h3 className="text-lg font-medium text-neutral-900 dark:text-white">No sites yet</h3>
+        <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">Create your first site to get started.</p>
       </div>
     )
   }
@@ -67,41 +60,28 @@ export default function SiteList() {
       {sites.map((site) => (
         <div
           key={site.id}
-          className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 hover:shadow-lg transition-shadow"
+          className="flex flex-col rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-sm p-6 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
         >
-          <h3 className="text-xl font-semibold mb-2 text-neutral-900 dark:text-white">
-            {site.name}
-          </h3>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
-            {site.domain}
-          </p>
-          <div className="flex gap-2">
-            <Button
-              onClick={() => router.push(`/sites/${site.id}`)}
-              className="flex-1 text-sm"
+          <h3 className="text-xl font-semibold mb-2 text-neutral-900 dark:text-white">{site.name}</h3>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">{site.domain}</p>
+          <div className="flex gap-2 mt-auto">
+            <Link
+              href={`/sites/${site.id}`}
+              className="btn-primary text-sm inline-flex items-center justify-center gap-2 flex-1"
             >
-              <BarChartIcon className="w-4 h-4 mr-2" />
+              <BarChartIcon className="w-4 h-4" />
               View Dashboard
-            </Button>
-            <Button
-              variant="secondary"
+            </Link>
+            <button
+              type="button"
               onClick={() => handleDelete(site.id)}
-              className="text-sm px-4"
+              className="shrink-0 text-sm text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 py-2 px-2"
             >
-              <TrashIcon className="w-4 h-4" />
-            </Button>
+              Delete
+            </button>
           </div>
         </div>
       ))}
-      <button
-        onClick={() => router.push('/sites/new')}
-        className="bg-white dark:bg-neutral-900 border-2 border-dashed border-neutral-300 dark:border-neutral-700 rounded-xl p-6 hover:border-brand-orange transition-colors text-neutral-600 dark:text-neutral-400 w-full h-full min-h-[160px] flex items-center justify-center"
-      >
-        <div className="text-center">
-          <div className="text-2xl mb-2 mx-auto w-8 h-8 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center">+</div>
-          <div>Add New Site</div>
-        </div>
-      </button>
     </div>
   )
 }

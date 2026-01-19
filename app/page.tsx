@@ -1,16 +1,15 @@
 'use client'
 
+import Link from 'next/link'
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow, initiateSignupFlow } from '@/lib/api/oauth'
 import LoadingOverlay from '@/components/LoadingOverlay'
 import SiteList from '@/components/sites/SiteList'
 import { Button } from '@ciphera-net/ui'
 import { BarChartIcon, LockClosedIcon, LightningBoltIcon } from '@radix-ui/react-icons'
-import { useRouter } from 'next/navigation'
 
 export default function HomePage() {
   const { user, loading } = useAuth()
-  const router = useRouter()
 
   if (loading) {
     return <LoadingOverlay logoSrc="/ciphera_icon_no_margins.png" title="Ciphera Analytics" />
@@ -91,19 +90,13 @@ export default function HomePage() {
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+    <div className="mx-auto max-w-5xl p-6">
+      <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white mb-2">
-            Your Sites
-          </h1>
-          <p className="text-neutral-600 dark:text-neutral-400">
-            Manage your analytics sites and view insights
-          </p>
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Your Sites</h1>
+          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">Manage your analytics sites and view insights.</p>
         </div>
-        <Button onClick={() => router.push('/sites/new')}>
-          + Add New Site
-        </Button>
+        <Link href="/sites/new" className="btn-primary text-sm">Add New Site</Link>
       </div>
       <SiteList />
     </div>
