@@ -1,6 +1,7 @@
 import apiRequest from './client'
 
 export type GeoDataLevel = 'full' | 'country' | 'none'
+export type ReplayMode = 'disabled' | 'consent_required' | 'anonymous_skeleton'
 
 export interface Site {
   id: string
@@ -17,6 +18,12 @@ export interface Site {
   collect_device_info?: boolean
   collect_geo_data?: GeoDataLevel
   collect_screen_resolution?: boolean
+  // Session replay settings
+  replay_mode?: ReplayMode
+  replay_sampling_rate?: number
+  replay_retention_days?: number
+  replay_mask_all_text?: boolean
+  replay_mask_all_inputs?: boolean
   created_at: string
   updated_at: string
 }
@@ -39,6 +46,12 @@ export interface UpdateSiteRequest {
   collect_device_info?: boolean
   collect_geo_data?: GeoDataLevel
   collect_screen_resolution?: boolean
+  // Session replay settings
+  replay_mode?: ReplayMode
+  replay_sampling_rate?: number
+  replay_retention_days?: number
+  replay_mask_all_text?: boolean
+  replay_mask_all_inputs?: boolean
 }
 
 export async function listSites(): Promise<Site[]> {

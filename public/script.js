@@ -1,6 +1,7 @@
 /**
  * Ciphera Analytics - Privacy-First Tracking Script
  * Lightweight, no cookies, GDPR compliant
+ * Includes optional session replay with privacy controls
  */
 
 (function() {
@@ -19,10 +20,21 @@
 
   const domain = script.getAttribute('data-domain');
   const apiUrl = script.getAttribute('data-api') || 'https://analytics-api.ciphera.net';
-  
+
   // * Performance Monitoring (Core Web Vitals) State
   let currentEventId = null;
   let metrics = { lcp: 0, cls: 0, inp: 0 };
+
+  // * Session Replay State
+  let replayEnabled = false;
+  let replayMode = 'disabled';
+  let replayId = null;
+  let replaySettings = null;
+  let rrwebStopFn = null;
+  let replayEvents = [];
+  let chunkInterval = null;
+  const CHUNK_SIZE = 50;
+  const CHUNK_INTERVAL_MS = 10000;
 
   // * Minimal Web Vitals Observer
   function observeMetrics() {
@@ -55,7 +67,7 @@
            if (entry.duration > metrics.inp) metrics.inp = entry.duration;
         }
       }).observe({ type: 'event', buffered: true, durationThreshold: 16 });
-      
+
     } catch (e) {
       // * Browser doesn't support PerformanceObserver or specific entry types
     }
@@ -91,6 +103,11 @@
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
       sendMetrics();
+      // Also flush replay data
+      if (replayEnabled) {
+        sendReplayChunk();
+        endReplaySession();
+      }
     }
   });
 
@@ -107,11 +124,11 @@
     const key = 'ciphera_session_id';
     // * Legacy key support for migration (strip whitespace just in case)
     const legacyKey = 'plausible_session_' + (domain ? domain.trim() : '');
-    
+
     try {
       // * Try to get existing session ID
       cachedSessionId = sessionStorage.getItem(key);
-      
+
       // * If not found in new key, try legacy key and migrate
       if (!cachedSessionId && legacyKey) {
         cachedSessionId = sessionStorage.getItem(legacyKey);
@@ -139,9 +156,9 @@
   function trackPageview() {
     // * Reset metrics for new pageview (SPA navigation)
     // * We don't reset immediately on the first run, but for subsequent calls we should
-    // * However, for the very first call, metrics are already 0. 
+    // * However, for the very first call, metrics are already 0.
     // * The issue is if we reset metrics here, we might lose early captured metrics (e.g. LCP) if this runs late?
-    // * No, trackPageview runs early. 
+    // * No, trackPageview runs early.
     // * BUT for SPA navigation, we want to reset.
     if (currentEventId) {
         // If we already had an event ID, it means this is a subsequent navigation
@@ -149,7 +166,7 @@
         // Ideally visibilitychange handles this, but for SPA nav it might not trigger visibilitychange.
         sendMetrics();
     }
-    
+
     metrics = { lcp: 0, cls: 0, inp: 0 };
     currentEventId = null;
 
@@ -186,8 +203,276 @@
     });
   }
 
+  // ==========================================
+  // * SESSION REPLAY FUNCTIONALITY
+  // ==========================================
+
+  // * Fetch replay settings from API
+  async function fetchReplaySettings() {
+    try {
+      const res = await fetch(apiUrl + '/api/v1/replay-settings/' + encodeURIComponent(domain));
+      if (res.ok) {
+        replaySettings = await res.json();
+        replayMode = replaySettings.replay_mode;
+
+        // Check sampling rate
+        if (replayMode !== 'disabled') {
+          const shouldRecord = Math.random() * 100 < replaySettings.replay_sampling_rate;
+          if (!shouldRecord) {
+            replayMode = 'disabled';
+            return;
+          }
+        }
+
+        // Auto-start for anonymous_skeleton mode (no consent needed)
+        if (replayMode === 'anonymous_skeleton') {
+          startReplay(true);
+        }
+      }
+    } catch (e) {
+      // Silent fail - replay not critical
+    }
+  }
+
+  // * Initialize replay session on server
+  async function initReplaySession(isSkeletonMode) {
+    try {
+      const res = await fetch(apiUrl + '/api/v1/replays', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          domain: domain,
+          session_id: getSessionId(),
+          entry_page: window.location.pathname,
+          is_skeleton_mode: isSkeletonMode,
+          consent_given: !isSkeletonMode,
+          device_type: detectDeviceType(),
+          browser: detectBrowser(),
+          os: detectOS()
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        replayId = data.id;
+        return true;
+      }
+    } catch (e) {
+      // Silent fail
+    }
+    return false;
+  }
+
+  // * Start recording session
+  async function startReplay(isSkeletonMode) {
+    if (replayEnabled || typeof window.rrweb === 'undefined') return;
+
+    // Initialize session on server first
+    const initialized = await initReplaySession(isSkeletonMode);
+    if (!initialized) return;
+
+    replayEnabled = true;
+
+    // Configure masking based on mode and settings
+    const maskConfig = {
+      // Always mask sensitive inputs
+      maskInputOptions: {
+        password: true,
+        email: true,
+        tel: true,
+        // In skeleton mode, mask all text inputs
+        text: isSkeletonMode,
+        textarea: isSkeletonMode,
+        select: isSkeletonMode
+      },
+      // Mask all text in skeleton mode
+      maskAllText: isSkeletonMode || (replaySettings && replaySettings.replay_mask_all_text),
+      // Mask all inputs by default (can be overridden in settings)
+      maskAllInputs: replaySettings ? replaySettings.replay_mask_all_inputs : true,
+      // Custom classes for masking
+      maskTextClass: 'ciphera-mask',
+      blockClass: 'ciphera-block',
+      // Mask elements with data-ciphera-mask attribute
+      maskTextSelector: '[data-ciphera-mask]',
+      // Block elements with data-ciphera-block attribute
+      blockSelector: '[data-ciphera-block]',
+      // Custom input masking function for credit cards
+      maskInputFn: (text, element) => {
+        // Mask credit card patterns
+        if (/^\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}$/.test(text)) {
+          return '****-****-****-****';
+        }
+        // Mask email patterns
+        if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text)) {
+          return '***@***.***';
+        }
+        return text;
+      }
+    };
+
+    try {
+      rrwebStopFn = window.rrweb.record({
+        emit(event) {
+          replayEvents.push(event);
+
+          // Send chunk when threshold reached
+          if (replayEvents.length >= CHUNK_SIZE) {
+            sendReplayChunk();
+          }
+        },
+        ...maskConfig,
+        // Privacy: Don't record external resources
+        recordCanvas: false,
+        collectFonts: false,
+        // Sampling for mouse movement (reduce data)
+        sampling: {
+          mousemove: true,
+          mouseInteraction: true,
+          scroll: 150,
+          input: 'last'
+        },
+        // Inline styles for replay accuracy
+        inlineStylesheet: true,
+        // Slim snapshot to reduce size
+        slimDOMOptions: {
+          script: true,
+          comment: true,
+          headFavicon: true,
+          headWhitespace: true,
+          headMetaDescKeywords: true,
+          headMetaSocial: true,
+          headMetaRobots: true,
+          headMetaHttpEquiv: true,
+          headMetaAuthorship: true,
+          headMetaVerification: true
+        }
+      });
+
+      // Set up periodic chunk sending
+      chunkInterval = setInterval(sendReplayChunk, CHUNK_INTERVAL_MS);
+    } catch (e) {
+      replayEnabled = false;
+      replayId = null;
+    }
+  }
+
+  // * Send chunk of events to server
+  async function sendReplayChunk() {
+    if (!replayId || replayEvents.length === 0) return;
+
+    const chunk = replayEvents.splice(0, CHUNK_SIZE);
+    const eventsCount = chunk.length;
+    const data = JSON.stringify(chunk);
+
+    try {
+      // Try to compress if available
+      let body;
+      let headers = { 'X-Events-Count': eventsCount.toString() };
+
+      if (typeof CompressionStream !== 'undefined') {
+        const blob = new Blob([data]);
+        const stream = blob.stream().pipeThrough(new CompressionStream('gzip'));
+        body = await new Response(stream).blob();
+        headers['Content-Encoding'] = 'gzip';
+        headers['Content-Type'] = 'application/octet-stream';
+      } else {
+        body = new Blob([data], { type: 'application/json' });
+        headers['Content-Type'] = 'application/json';
+      }
+
+      await fetch(apiUrl + '/api/v1/replays/' + replayId + '/chunks', {
+        method: 'POST',
+        headers: headers,
+        body: body,
+        keepalive: true
+      });
+    } catch (e) {
+      // Re-queue events on failure
+      replayEvents.unshift(...chunk);
+    }
+  }
+
+  // * End replay session
+  function endReplaySession() {
+    if (!replayEnabled || !replayId) return;
+
+    // Clear interval
+    if (chunkInterval) {
+      clearInterval(chunkInterval);
+      chunkInterval = null;
+    }
+
+    // Stop recording
+    if (rrwebStopFn) {
+      rrwebStopFn();
+      rrwebStopFn = null;
+    }
+
+    // Send remaining events
+    if (replayEvents.length > 0) {
+      const chunk = replayEvents.splice(0);
+      const data = JSON.stringify(chunk);
+      navigator.sendBeacon(
+        apiUrl + '/api/v1/replays/' + replayId + '/chunks',
+        new Blob([data], { type: 'application/json' })
+      );
+    }
+
+    // Mark session as ended
+    navigator.sendBeacon(apiUrl + '/api/v1/replays/' + replayId + '/end');
+
+    replayEnabled = false;
+    replayId = null;
+  }
+
+  // * Device detection helpers
+  function detectDeviceType() {
+    const ua = navigator.userAgent.toLowerCase();
+    if (/mobile|android|iphone|ipod/.test(ua)) return 'mobile';
+    if (/tablet|ipad/.test(ua)) return 'tablet';
+    return 'desktop';
+  }
+
+  function detectBrowser() {
+    const ua = navigator.userAgent.toLowerCase();
+    if (ua.includes('chrome') && !ua.includes('edg')) return 'Chrome';
+    if (ua.includes('firefox')) return 'Firefox';
+    if (ua.includes('safari') && !ua.includes('chrome')) return 'Safari';
+    if (ua.includes('edg')) return 'Edge';
+    if (ua.includes('opera')) return 'Opera';
+    return null;
+  }
+
+  function detectOS() {
+    const ua = navigator.userAgent.toLowerCase();
+    if (ua.includes('windows')) return 'Windows';
+    if (ua.includes('mac os') || ua.includes('macos')) return 'macOS';
+    if (ua.includes('linux')) return 'Linux';
+    if (ua.includes('android')) return 'Android';
+    if (ua.includes('ios') || ua.includes('iphone') || ua.includes('ipad')) return 'iOS';
+    return null;
+  }
+
+  // * Public API for consent-based activation
+  window.ciphera = window.ciphera || function(cmd) {
+    if (cmd === 'enableReplay') {
+      if (replayMode === 'consent_required' && !replayEnabled) {
+        startReplay(false);
+      }
+    } else if (cmd === 'disableReplay') {
+      endReplaySession();
+    } else if (cmd === 'getReplayMode') {
+      return replayMode;
+    } else if (cmd === 'isReplayEnabled') {
+      return replayEnabled;
+    }
+  };
+
   // * Track initial pageview
   trackPageview();
+
+  // * Fetch replay settings (async, doesn't block pageview)
+  fetchReplaySettings();
 
   // * Track SPA navigation (history API)
   let lastUrl = location.href;
@@ -201,4 +486,12 @@
 
   // * Track popstate (browser back/forward)
   window.addEventListener('popstate', trackPageview);
+
+  // * Cleanup on page unload
+  window.addEventListener('beforeunload', () => {
+    if (replayEnabled) {
+      sendReplayChunk();
+      endReplaySession();
+    }
+  });
 })();
