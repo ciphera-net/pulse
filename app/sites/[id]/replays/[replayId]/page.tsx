@@ -7,6 +7,7 @@ import { getReplay, getReplayData, deleteReplay, formatDuration, type SessionRep
 import { toast } from 'sonner'
 import { LockClosedIcon } from '@radix-ui/react-icons'
 import LoadingOverlay from '@/components/LoadingOverlay'
+import ReplayPlayerControls from '@/components/ReplayPlayerControls'
 import type { eventWithTime } from '@rrweb/types'
 import 'rrweb-player/dist/style.css'
 
@@ -48,7 +49,13 @@ export default function ReplayViewerPage() {
   const [loadingData, setLoadingData] = useState(false)
   const [playerReady, setPlayerReady] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [skipInactive, setSkipInactive] = useState(true)
+  const [speed, setSpeed] = useState(1)
+  const [currentTimeMs, setCurrentTimeMs] = useState(0)
+  const [totalTimeMs, setTotalTimeMs] = useState(0)
 
+  const playerWrapperRef = useRef<HTMLDivElement>(null)
   const playerContainerRef = useRef<HTMLDivElement>(null)
   const playerRef = useRef<unknown>(null)
 
@@ -88,29 +95,29 @@ export default function ReplayViewerPage() {
     loadData()
   }, [replay, siteId, replayId])
 
-  // Initialize rrweb player when data is ready
+  // Initialize rrweb player when data is ready (no built-in controller; we use ReplayPlayerControls)
   useEffect(() => {
     if (!replayData || !playerContainerRef.current || replayData.length === 0) return
 
-    // Dynamically import rrweb-player
+    setPlayerReady(false)
+    setCurrentTimeMs(0)
+    setIsPlaying(false)
+
     const initPlayer = async () => {
       try {
         const rrwebPlayer = await import('rrweb-player')
 
-        // Clear previous player
-        if (playerContainerRef.current) {
-          playerContainerRef.current.innerHTML = ''
-        }
+        if (!playerContainerRef.current) return
+        playerContainerRef.current.innerHTML = ''
 
-        // Create player with fixed dimensions
         const player = new rrwebPlayer.default({
-          target: playerContainerRef.current!,
+          target: playerContainerRef.current,
           props: {
             events: replayData,
             width: PLAYER_WIDTH,
             height: PLAYER_HEIGHT,
             autoPlay: false,
-            showController: true,
+            showController: false,
             skipInactive: true,
             showWarning: false,
             showDebug: false,
@@ -118,6 +125,12 @@ export default function ReplayViewerPage() {
         })
 
         playerRef.current = player
+        try {
+          const meta = (player as { getMetaData?: () => { totalTime: number } }).getMetaData?.()
+          if (meta && typeof meta.totalTime === 'number') setTotalTimeMs(meta.totalTime)
+        } catch {
+          // ignore
+        }
         setPlayerReady(true)
       } catch (error) {
         console.error('Failed to initialize player:', error)
@@ -128,11 +141,43 @@ export default function ReplayViewerPage() {
     initPlayer()
 
     return () => {
-      if (playerRef.current) {
-        playerRef.current = null
-      }
+      playerRef.current = null
     }
   }, [replayData])
+
+  // Poll current time and detect end of replay
+  useEffect(() => {
+    if (!playerReady) return
+    const interval = setInterval(() => {
+      const p = playerRef.current as
+        | { getReplayer?: () => { getCurrentTime?: () => number }; getMetaData?: () => { totalTime: number }; pause?: () => void }
+        | null
+      if (!p?.getReplayer) return
+      try {
+        const t = p.getReplayer?.()?.getCurrentTime?.()
+        if (typeof t === 'number') setCurrentTimeMs(t)
+        const meta = p.getMetaData?.()
+        if (meta && typeof meta.totalTime === 'number' && typeof t === 'number' && t >= meta.totalTime) {
+          p.pause?.()
+          setIsPlaying(false)
+        }
+      } catch {
+        // ignore
+      }
+    }, 200)
+    return () => clearInterval(interval)
+  }, [playerReady])
+
+  // Trigger rrweb replayer resize when entering fullscreen so it can scale
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      if (document.fullscreenElement === playerWrapperRef.current) {
+        setTimeout(() => (playerRef.current as { triggerResize?: () => void })?.triggerResize?.(), 50)
+      }
+    }
+    document.addEventListener('fullscreenchange', onFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange)
+  }, [])
 
   const handleDelete = async () => {
     try {
@@ -177,25 +222,60 @@ export default function ReplayViewerPage() {
       <div className="flex gap-6">
         {/* Player */}
         <div className="flex-1 min-w-0">
-          <div className="border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden bg-white dark:bg-neutral-900">
-            {/* Player Container - Fixed size */}
-            <div
-              ref={playerContainerRef}
-              className="bg-neutral-900 flex items-center justify-center"
-              style={{ width: '100%', minHeight: PLAYER_HEIGHT + 80 }}
-            >
-              {loadingData ? (
-                <div className="flex flex-col items-center gap-3">
-                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-white"></div>
-                  <span className="text-sm text-neutral-400">Loading replay data...</span>
-                </div>
-              ) : !replayData || replayData.length === 0 ? (
-                <div className="text-center text-neutral-400 p-8">
-                  <div className="text-4xl mb-4">🎬</div>
-                  <p className="text-lg font-medium mb-2">No replay data available</p>
-                  <p className="text-sm">This session may not have recorded any events.</p>
-                </div>
-              ) : null}
+          <div className="border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden bg-white dark:bg-neutral-900 shadow-sm">
+            <div ref={playerWrapperRef}>
+              {/* Player container (rrweb-player mounts here when replayData is ready) */}
+              <div
+                ref={playerContainerRef}
+                className="bg-neutral-900 flex items-center justify-center"
+                style={{ width: '100%', minHeight: PLAYER_HEIGHT + 80 }}
+              >
+                {loadingData ? (
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-orange" />
+                    <span className="text-sm text-neutral-400">Loading replay data...</span>
+                  </div>
+                ) : !replayData || replayData.length === 0 ? (
+                  <div className="text-center text-neutral-400 p-8">
+                    <div className="text-4xl mb-4">🎬</div>
+                    <p className="text-lg font-medium mb-2">No replay data available</p>
+                    <p className="text-sm">This session may not have recorded any events.</p>
+                  </div>
+                ) : null}
+              </div>
+
+              {/* Custom controls (Ciphera‑branded) */}
+              {playerReady && (
+                <ReplayPlayerControls
+                  isPlaying={isPlaying}
+                  onPlayPause={() => {
+                    ;(playerRef.current as { toggle?: () => void })?.toggle?.()
+                    setIsPlaying((p) => !p)
+                  }}
+                  currentTimeMs={currentTimeMs}
+                  totalTimeMs={totalTimeMs}
+                  onSeek={(f) => {
+                    ;(playerRef.current as { goto?: (ms: number, play?: boolean) => void })?.goto?.(f * totalTimeMs, isPlaying)
+                  }}
+                  speed={speed}
+                  onSpeedChange={(s) => {
+                    ;(playerRef.current as { setSpeed?: (n: number) => void })?.setSpeed?.(s)
+                    setSpeed(s)
+                  }}
+                  skipInactive={skipInactive}
+                  onSkipInactiveChange={() => {
+                    ;(playerRef.current as { toggleSkipInactive?: () => void })?.toggleSkipInactive?.()
+                    setSkipInactive((p) => !p)
+                  }}
+                  onFullscreenRequest={() => {
+                    if (document.fullscreenElement) {
+                      document.exitFullscreen()
+                    } else {
+                      playerWrapperRef.current?.requestFullscreen?.()
+                    }
+                  }}
+                />
+              )}
             </div>
 
             {/* Session info bar */}
@@ -330,155 +410,28 @@ export default function ReplayViewerPage() {
         </div>
       )}
 
-      {/* Custom styles for rrweb player - Brand compliant */}
+      {/* * rrweb player frame and cursor – Ciphera branding (controller is custom, not rrweb) */}
       <style jsx global>{`
-        /* Player container */
         .rr-player {
           margin: 0 auto !important;
           background: #171717 !important;
           border-radius: 0 !important;
+          box-shadow: none !important;
         }
         .rr-player__frame {
           background: #171717 !important;
+          overflow: hidden !important;
         }
         .replayer-wrapper {
           margin: 0 auto !important;
           background: #0a0a0a !important;
         }
-
-        /* Controller bar */
-        .rr-controller {
-          background: #1a1a1a !important;
-          border-top: 1px solid #333 !important;
-          padding: 12px 16px !important;
-        }
-
-        /* Timeline / Progress bar */
-        .rr-timeline {
-          width: 100% !important;
-          padding: 0 16px !important;
-        }
-        .rr-progress {
-          background: #404040 !important;
-          height: 6px !important;
-          border-radius: 3px !important;
-        }
-        .rr-progress__step {
-          background: #FD5E0F !important;
-          height: 6px !important;
-          border-radius: 3px !important;
-        }
-        .rr-progress__handler {
-          background: #FD5E0F !important;
-          border: 2px solid #fff !important;
-          width: 14px !important;
-          height: 14px !important;
-          border-radius: 50% !important;
-          top: -4px !important;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
-        }
-
-        /* Time display */
-        .rr-timeline__time {
-          color: #a3a3a3 !important;
-          font-size: 12px !important;
-          font-family: ui-monospace, monospace !important;
-        }
-
-        /* Control buttons container */
-        .rr-controller__btns {
-          display: flex !important;
-          align-items: center !important;
-          gap: 8px !important;
-          margin-top: 12px !important;
-        }
-
-        /* Play button */
-        .rr-controller__btns button[class*="play"],
-        .rr-controller__btns button:first-child {
-          background: #FD5E0F !important;
-          color: #fff !important;
-          border: none !important;
-          border-radius: 6px !important;
-          padding: 6px 12px !important;
-          font-size: 13px !important;
-          cursor: pointer !important;
-          transition: background 0.2s !important;
-        }
-        .rr-controller__btns button[class*="play"]:hover,
-        .rr-controller__btns button:first-child:hover {
-          background: #E54E00 !important;
-        }
-
-        /* Speed buttons */
-        .rr-controller__btns button {
-          background: #333 !important;
-          color: #e5e5e5 !important;
-          border: none !important;
-          border-radius: 6px !important;
-          padding: 6px 10px !important;
-          font-size: 13px !important;
-          cursor: pointer !important;
-          transition: all 0.2s !important;
-        }
-        .rr-controller__btns button:hover {
-          background: #444 !important;
-          color: #fff !important;
-        }
-        .rr-controller__btns button.active,
-        .rr-controller__btns button[class*="active"] {
-          background: #FD5E0F !important;
-          color: #fff !important;
-        }
-
-        /* Skip inactive toggle */
-        .switch {
-          display: flex !important;
-          align-items: center !important;
-          gap: 6px !important;
-        }
-        .switch label {
-          background: #404040 !important;
-          border-radius: 12px !important;
-          width: 36px !important;
-          height: 20px !important;
-          position: relative !important;
-          cursor: pointer !important;
-          transition: background 0.2s !important;
-        }
-        .switch label::after {
-          content: '' !important;
-          position: absolute !important;
-          width: 16px !important;
-          height: 16px !important;
-          border-radius: 50% !important;
-          background: #fff !important;
-          top: 2px !important;
-          left: 2px !important;
-          transition: transform 0.2s !important;
-        }
-        .switch input:checked + label {
+        /* * Replay cursor – brand orange (#FD5E0F) */
+        .replayer-mouse:after {
           background: #FD5E0F !important;
         }
-        .switch input:checked + label::after {
-          transform: translateX(16px) !important;
-        }
-        .switch span {
-          color: #a3a3a3 !important;
-          font-size: 12px !important;
-        }
-
-        /* Fullscreen button */
-        .rr-controller__btns button[class*="full"],
-        .rr-controller__btns button:last-child {
-          background: transparent !important;
-          color: #a3a3a3 !important;
-          padding: 6px !important;
-        }
-        .rr-controller__btns button[class*="full"]:hover,
-        .rr-controller__btns button:last-child:hover {
-          color: #fff !important;
-          background: transparent !important;
+        .replayer-mouse.touch-device.touch-active {
+          border-color: #FD5E0F !important;
         }
       `}</style>
     </div>
