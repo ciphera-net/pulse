@@ -327,43 +327,155 @@ export default function ReplayViewerPage() {
         </div>
       )}
 
-      {/* Custom styles for rrweb player */}
+      {/* Custom styles for rrweb player - Brand compliant */}
       <style jsx global>{`
+        /* Player container */
         .rr-player {
           margin: 0 auto !important;
           background: #171717 !important;
+          border-radius: 0 !important;
         }
         .rr-player__frame {
           background: #171717 !important;
         }
         .replayer-wrapper {
           margin: 0 auto !important;
+          background: #0a0a0a !important;
         }
+
+        /* Controller bar */
         .rr-controller {
-          background: #262626 !important;
-          border-top: 1px solid #404040 !important;
+          background: #1a1a1a !important;
+          border-top: 1px solid #333 !important;
+          padding: 12px 16px !important;
         }
-        .rr-controller__btns button {
-          color: #e5e5e5 !important;
-        }
-        .rr-controller__btns button:hover {
-          color: #fff !important;
+
+        /* Timeline / Progress bar */
+        .rr-timeline {
+          width: 100% !important;
+          padding: 0 16px !important;
         }
         .rr-progress {
           background: #404040 !important;
+          height: 6px !important;
+          border-radius: 3px !important;
         }
         .rr-progress__step {
           background: #f97316 !important;
+          height: 6px !important;
+          border-radius: 3px !important;
         }
         .rr-progress__handler {
           background: #f97316 !important;
-          border-color: #f97316 !important;
+          border: 2px solid #fff !important;
+          width: 14px !important;
+          height: 14px !important;
+          border-radius: 50% !important;
+          top: -4px !important;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
         }
+
+        /* Time display */
         .rr-timeline__time {
           color: #a3a3a3 !important;
+          font-size: 12px !important;
+          font-family: ui-monospace, monospace !important;
+        }
+
+        /* Control buttons container */
+        .rr-controller__btns {
+          display: flex !important;
+          align-items: center !important;
+          gap: 8px !important;
+          margin-top: 12px !important;
+        }
+
+        /* Play button */
+        .rr-controller__btns button[class*="play"],
+        .rr-controller__btns button:first-child {
+          background: #f97316 !important;
+          color: #fff !important;
+          border: none !important;
+          border-radius: 6px !important;
+          padding: 6px 12px !important;
+          font-size: 13px !important;
+          cursor: pointer !important;
+          transition: background 0.2s !important;
+        }
+        .rr-controller__btns button[class*="play"]:hover,
+        .rr-controller__btns button:first-child:hover {
+          background: #ea580c !important;
+        }
+
+        /* Speed buttons */
+        .rr-controller__btns button {
+          background: #333 !important;
+          color: #e5e5e5 !important;
+          border: none !important;
+          border-radius: 6px !important;
+          padding: 6px 10px !important;
+          font-size: 13px !important;
+          cursor: pointer !important;
+          transition: all 0.2s !important;
+        }
+        .rr-controller__btns button:hover {
+          background: #444 !important;
+          color: #fff !important;
+        }
+        .rr-controller__btns button.active,
+        .rr-controller__btns button[class*="active"] {
+          background: #f97316 !important;
+          color: #fff !important;
+        }
+
+        /* Skip inactive toggle */
+        .switch {
+          display: flex !important;
+          align-items: center !important;
+          gap: 6px !important;
+        }
+        .switch label {
+          background: #404040 !important;
+          border-radius: 12px !important;
+          width: 36px !important;
+          height: 20px !important;
+          position: relative !important;
+          cursor: pointer !important;
+          transition: background 0.2s !important;
+        }
+        .switch label::after {
+          content: '' !important;
+          position: absolute !important;
+          width: 16px !important;
+          height: 16px !important;
+          border-radius: 50% !important;
+          background: #fff !important;
+          top: 2px !important;
+          left: 2px !important;
+          transition: transform 0.2s !important;
         }
         .switch input:checked + label {
           background: #f97316 !important;
+        }
+        .switch input:checked + label::after {
+          transform: translateX(16px) !important;
+        }
+        .switch span {
+          color: #a3a3a3 !important;
+          font-size: 12px !important;
+        }
+
+        /* Fullscreen button */
+        .rr-controller__btns button[class*="full"],
+        .rr-controller__btns button:last-child {
+          background: transparent !important;
+          color: #a3a3a3 !important;
+          padding: 6px !important;
+        }
+        .rr-controller__btns button[class*="full"]:hover,
+        .rr-controller__btns button:last-child:hover {
+          color: #fff !important;
+          background: transparent !important;
         }
       `}</style>
     </div>
