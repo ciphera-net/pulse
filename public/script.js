@@ -24,6 +24,8 @@
   // * Performance Monitoring (Core Web Vitals) State
   let currentEventId = null;
   let metrics = { lcp: 0, cls: 0, inp: 0 };
+  let lcpObserved = false;
+  let clsObserved = false;
   let performanceInsightsEnabled = false;
 
   // * Session Replay State
@@ -42,20 +44,22 @@
     try {
       if (typeof PerformanceObserver === 'undefined') return;
 
-      // * LCP (Largest Contentful Paint)
+      // * LCP (Largest Contentful Paint) - fires when the browser has determined the LCP element (often 2–4s+ after load)
       new PerformanceObserver((entryList) => {
         const entries = entryList.getEntries();
         const lastEntry = entries[entries.length - 1];
         if (lastEntry) {
-            metrics.lcp = lastEntry.startTime;
+          metrics.lcp = lastEntry.startTime;
+          lcpObserved = true;
         }
       }).observe({ type: 'largest-contentful-paint', buffered: true });
 
-      // * CLS (Cumulative Layout Shift)
+      // * CLS (Cumulative Layout Shift) - accumulates when elements shift after load
       new PerformanceObserver((entryList) => {
         for (const entry of entryList.getEntries()) {
           if (!entry.hadRecentInput) {
             metrics.cls += entry.value;
+            clsObserved = true;
           }
         }
       }).observe({ type: 'layout-shift', buffered: true });
@@ -75,16 +79,16 @@
   }
 
   function sendMetrics() {
-    // * Only send metrics if performance insights are enabled
-    if (!performanceInsightsEnabled || !currentEventId || (metrics.lcp === 0 && metrics.cls === 0 && metrics.inp === 0)) return;
+    if (!performanceInsightsEnabled || !currentEventId) return;
 
-    // * Use sendBeacon if available for reliability on unload
-    const data = JSON.stringify({
-      event_id: currentEventId,
-      lcp: metrics.lcp,
-      cls: metrics.cls,
-      inp: metrics.inp
-    });
+    // * Only include LCP/CLS when the browser actually reported them. Sending 0 overwrites
+    // * the DB before LCP/CLS have fired (they fire late). The backend does partial updates
+    // * and leaves unset fields unchanged.
+    const payload = { event_id: currentEventId, inp: metrics.inp };
+    if (lcpObserved) payload.lcp = metrics.lcp;
+    if (clsObserved) payload.cls = metrics.cls;
+
+    const data = JSON.stringify(payload);
 
     if (navigator.sendBeacon) {
       navigator.sendBeacon(apiUrl + '/api/v1/metrics', new Blob([data], {type: 'application/json'}));
@@ -105,12 +109,13 @@
   // * Send metrics when user leaves or hides the page
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
-      sendMetrics();
-      // Also flush replay data
+      // * Flush replay immediately (page may be torn down soon)
       if (replayEnabled) {
         sendReplayChunk();
         endReplaySession();
       }
+      // * Delay metrics slightly so in-flight LCP/CLS callbacks can run before we send
+      setTimeout(sendMetrics, 150);
     }
   });
 
@@ -164,13 +169,13 @@
     // * No, trackPageview runs early.
     // * BUT for SPA navigation, we want to reset.
     if (currentEventId) {
-        // If we already had an event ID, it means this is a subsequent navigation
-        // We should try to send metrics for the *previous* page before resetting?
-        // Ideally visibilitychange handles this, but for SPA nav it might not trigger visibilitychange.
+        // * SPA nav: visibilitychange may not fire, so send previous page's metrics now
         sendMetrics();
     }
 
     metrics = { lcp: 0, cls: 0, inp: 0 };
+    lcpObserved = false;
+    clsObserved = false;
     currentEventId = null;
 
     const path = window.location.pathname + window.location.search;
