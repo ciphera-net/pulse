@@ -21,6 +21,7 @@ Analytics Frontend is the dashboard interface for Ciphera Analytics. It provides
 - **Charts**: Recharts for data visualization
 - **Authentication**: OAuth flow with ciphera-auth
 - **UI Components**: @ciphera-net/ui for shared components
+- **Hosting**: Railway
 
 ## Getting Started
 
