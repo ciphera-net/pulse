@@ -495,8 +495,8 @@
     return null;
   }
 
-  // * Public API for replay control
-  window.ciphera = window.ciphera || function(cmd) {
+  // * Public API for replay control (ciphera for backward compat, pulse for Pulse branding)
+  const replayApi = function(cmd) {
     if (cmd === 'disableReplay') {
       endReplaySession();
     } else if (cmd === 'getReplayMode') {
@@ -505,6 +505,8 @@
       return replayEnabled;
     }
   };
+  window.pulse = window.pulse || replayApi;
+  window.ciphera = window.ciphera || replayApi;
 
   // * Track initial pageview
   trackPageview();
