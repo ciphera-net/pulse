@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
 import { ChevronDownIcon } from '@radix-ui/react-icons'
 import { PerformanceStats as Stats, PerformanceByPageStat, getPerformanceByPage } from '@/lib/api/stats'
 import Select from '@/components/ui/Select'
@@ -145,8 +146,16 @@ export default function PerformanceStats({ stats, performanceByPage, siteId, sta
             />
           )}
         </div>
-        {worstPagesOpen && (
-          loadingTable ? (
+        <motion.div
+          initial={false}
+          animate={{
+            height: worstPagesOpen ? 'auto' : 0,
+            opacity: worstPagesOpen ? 1 : 0,
+          }}
+          transition={{ duration: 0.25, ease: 'easeInOut' }}
+          style={{ overflow: 'hidden' }}
+        >
+          {loadingTable ? (
             <div className="py-8 text-center text-neutral-500 text-sm">Loading…</div>
           ) : rows.length === 0 ? (
             <div className="py-6 text-center text-neutral-500 text-sm">
@@ -185,8 +194,8 @@ export default function PerformanceStats({ stats, performanceByPage, siteId, sta
                 </tbody>
               </table>
             </div>
-          )
-        )}
+          )}
+        </motion.div>
       </div>
     </div>
   )
