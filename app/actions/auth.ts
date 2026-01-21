@@ -25,6 +25,8 @@ interface UserPayload {
   sub: string
   email?: string
   totp_enabled?: boolean
+  org_id?: string
+  role?: string
 }
 
 export async function exchangeAuthCode(code: string, codeVerifier: string, redirectUri: string) {
@@ -83,7 +85,9 @@ export async function exchangeAuthCode(code: string, codeVerifier: string, redir
       user: {
         id: payload.sub,
         email: payload.email || 'user@ciphera.net',
-        totp_enabled: payload.totp_enabled || false
+        totp_enabled: payload.totp_enabled || false,
+        org_id: payload.org_id,
+        role: payload.role
       }
     }
 
@@ -124,7 +128,9 @@ export async function setSessionAction(accessToken: string, refreshToken: string
             user: {
                 id: payload.sub,
                 email: payload.email || 'user@ciphera.net',
-                totp_enabled: payload.totp_enabled || false
+                totp_enabled: payload.totp_enabled || false,
+                org_id: payload.org_id,
+                role: payload.role
             }
         }
     } catch (e) {
@@ -161,7 +167,9 @@ export async function getSessionAction() {
         return {
             id: payload.sub,
             email: payload.email || 'user@ciphera.net',
-            totp_enabled: payload.totp_enabled || false
+            totp_enabled: payload.totp_enabled || false,
+            org_id: payload.org_id,
+            role: payload.role
         }
     } catch {
         return null
