@@ -1,15 +1,18 @@
 'use client'
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import apiRequest from '@/lib/api/client'
 import LoadingOverlay from '@/components/LoadingOverlay'
-import { logoutAction, getSessionAction } from '@/app/actions/auth'
+import { logoutAction, getSessionAction, setSessionAction } from '@/app/actions/auth'
+import { getUserOrganizations, switchContext } from '@/lib/api/organization'
 
 interface User {
   id: string
   email: string
   totp_enabled: boolean
+  org_id?: string
+  role?: string
 }
 
 interface AuthContextType {
@@ -35,6 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const router = useRouter()
+  const pathname = usePathname()
 
   const login = (userData: User) => {
     // * We still store user profile in localStorage for optimistic UI, but NOT the token
@@ -96,6 +100,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     init()
   }, [])
+
+  // * Organization Wall & Auto-Switch
+  useEffect(() => {
+    const checkOrg = async () => {
+      if (!loading && user) {
+        // * If we are on onboarding, skip check
+        if (pathname?.startsWith('/onboarding')) return
+
+        try {
+          const { organizations } = await getUserOrganizations()
+          
+          if (organizations.length === 0) {
+            // * No organizations -> Redirect to Onboarding
+            router.push('/onboarding')
+            return
+          }
+
+          // * If user has organizations but no context (org_id), switch to the first one
+          if (!user.org_id && organizations.length > 0) {
+             const firstOrg = organizations[0]
+             console.log('Auto-switching to organization:', firstOrg.organization_name)
+             
+             try {
+                 const { token, refresh_token } = await switchContext(firstOrg.organization_id)
+                 
+                 // * Update session cookie
+                 const result = await setSessionAction(token, refresh_token)
+                 if (result.success && result.user) {
+                     setUser(result.user)
+                     localStorage.setItem('user', JSON.stringify(result.user))
+                     router.refresh()
+                 }
+             } catch (e) {
+                 console.error('Failed to auto-switch context', e)
+             }
+          }
+        } catch (e) {
+          console.error("Failed to fetch organizations", e)
+        }
+      }
+    }
+    
+    checkOrg()
+  }, [loading, user, pathname, router])
 
   return (
     <AuthContext.Provider value={{ user, loading, login, logout, refresh, refreshSession }}>
