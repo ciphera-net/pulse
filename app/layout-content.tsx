@@ -4,9 +4,38 @@ import { Header } from '@ciphera-net/ui'
 import { Footer } from '@/components/Footer'
 import { useAuth } from '@/lib/auth/context'
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
+import { getUserOrganizations, switchContext } from '@/lib/api/organization'
+import { setSessionAction } from '@/app/actions/auth'
+import { useRouter } from 'next/navigation'
 
 export default function LayoutContent({ children }: { children: React.ReactNode }) {
   const auth = useAuth()
+  const router = useRouter()
+  const [orgs, setOrgs] = useState<any[]>([])
+  
+  // * Fetch organizations for the header workspace switcher
+  useEffect(() => {
+    if (auth.user) {
+      getUserOrganizations()
+        .then(({ organizations }) => setOrgs(organizations))
+        .catch(err => console.error('Failed to fetch orgs for header', err))
+    }
+  }, [auth.user])
+
+  const handleSwitchWorkspace = async (orgId: string) => {
+    try {
+      const { token, refresh_token } = await switchContext(orgId)
+      await setSessionAction(token, refresh_token)
+      window.location.reload()
+    } catch (err) {
+      console.error('Failed to switch workspace', err)
+    }
+  }
+
+  const handleCreateOrganization = () => {
+    router.push('/onboarding')
+  }
   
   return (
     <>
@@ -15,6 +44,10 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         LinkComponent={Link} 
         logoSrc="/ciphera_icon_no_margins.png"
         appName="Pulse"
+        orgs={orgs}
+        activeOrgId={auth.user?.org_id}
+        onSwitchWorkspace={handleSwitchWorkspace}
+        onCreateOrganization={handleCreateOrganization}
       />
       <main className="flex-1 pt-24 pb-8">
         {children}
