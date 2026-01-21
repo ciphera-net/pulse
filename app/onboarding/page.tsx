@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation'
 import { createOrganization } from '@/lib/api/organization'
 import { useAuth } from '@/lib/auth/context'
 import LoadingOverlay from '@/components/LoadingOverlay'
-import Button from '@/components/ui/Button'
-import Input from '@/components/ui/Input'
+import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
 
 export default function OnboardingPage() {
   const [name, setName] = useState('')
