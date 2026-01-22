@@ -107,6 +107,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!loading && user) {
         // * If we are on onboarding, skip check
         if (pathname?.startsWith('/onboarding')) return
+        
+        // * If we are processing auth callback, skip check to avoid redirect loops
+        if (pathname?.startsWith('/auth/callback')) return
 
         try {
           const organizations = await getUserOrganizations()
