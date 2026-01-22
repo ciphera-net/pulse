@@ -89,6 +89,11 @@ export default function HomePage() {
     )
   }
 
+  // * Wait for organization context before rendering SiteList to avoid "Organization Required" flash
+  if (user && !user.org_id) {
+    return <LoadingOverlay logoSrc="/ciphera_icon_no_margins.png" title="Switching Context..." />
+  }
+
   return (
     <div className="mx-auto max-w-5xl p-6">
       <div className="mb-8 flex items-center justify-between">
