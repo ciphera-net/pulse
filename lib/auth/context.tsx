@@ -136,7 +136,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                      
                      // * Force hard reload to ensure browser sends new cookie to backend
                      // * router.refresh() is not enough for Client Components fetching data immediately
-                     window.location.reload()
+                     // window.location.reload()
+                     router.refresh()
                  }
              } catch (e) {
                  console.error('Failed to auto-switch context', e)
