@@ -110,12 +110,12 @@ function AuthCallbackContent() {
   }
 
   // * Use standard Pulse loading screen to make transition to Home seamless
-  return <LoadingOverlay portal={false} />
+  return null
 }
 
 export default function AuthCallback() {
   return (
-    <Suspense fallback={<LoadingOverlay portal={false} />}>
+    <Suspense fallback={null}>
       <AuthCallbackContent />
     </Suspense>
   )
