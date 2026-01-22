@@ -57,15 +57,7 @@ export default function OrganizationSettings() {
   const [isSaving, setIsSaving] = useState(false)
 
   const getOrgIdFromToken = () => {
-    if (typeof window === 'undefined') return null
-    const token = localStorage.getItem('token')
-    if (!token) return null
-    try {
-        const payload = JSON.parse(atob(token.split('.')[1]))
-        return payload.org_id || null
-    } catch (e) {
-        return null
-    }
+    return user?.org_id || null
   }
 
   const currentOrgId = getOrgIdFromToken()
