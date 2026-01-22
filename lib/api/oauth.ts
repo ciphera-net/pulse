@@ -55,7 +55,7 @@ export async function initiateOAuthFlow(redirectPath = '/auth/callback') {
   const path = redirectPath.startsWith('/') ? redirectPath : `/${redirectPath}`
   const redirectUri = encodeURIComponent(`${baseUrl}${path}`)
   
-  const loginUrl = `${AUTH_URL}/login?client_id=pulse-app&redirect_uri=${redirectUri}&response_type=code&state=${state}&code_challenge=${codeChallenge}&code_challenge_method=S256`
+  const loginUrl = `${AUTH_URL}/login?client_id=pulse-app&redirect_uri=${redirectUri}&response_type=code&prompt=select_account&state=${state}&code_challenge=${codeChallenge}&code_challenge_method=S256`
 
   window.location.href = loginUrl
 }
