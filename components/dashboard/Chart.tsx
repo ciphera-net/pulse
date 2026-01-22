@@ -15,6 +15,7 @@ import {
 import type { TooltipProps } from 'recharts'
 import { formatNumber, formatDuration } from '@/lib/utils/format'
 import { ArrowTopRightIcon, ArrowBottomRightIcon, DownloadIcon, BarChartIcon } from '@radix-ui/react-icons'
+import { Button } from '@/components/ui/Button'
 
 const COLORS = {
   brand: '#FD5E0F',
@@ -317,47 +318,59 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
       </div>
 
       {/* Chart Area */}
-      <div className="p-6 relative">
-        <div className="absolute top-6 right-6 z-10 flex items-center gap-2">
-          {prevData?.length ? (
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300">
-              <input
-                type="checkbox"
-                checked={showComparison}
-                onChange={() => setShowComparison((s) => !s)}
-                className="h-4 w-4 rounded border-neutral-300 text-brand-orange focus:ring-brand-orange dark:border-neutral-600 dark:bg-neutral-800"
-              />
-              <span>Compare to previous</span>
-            </label>
-          ) : null}
-          <button
-            onClick={handleExport}
-            className="p-2 rounded-lg text-neutral-500 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-            title="Export to CSV"
-          >
-            <DownloadIcon className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Legend when comparing */}
-        {hasPrev && (
-          <div className="mb-3 flex items-center gap-4 text-xs" style={{ color: colors.textMuted }}>
-            <span className="flex items-center gap-1.5">
-              <span
-                className="h-0.5 w-4 rounded-full"
-                style={{ backgroundColor: activeMetric.color }}
-              />
-              This period
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span
-                className="h-0.5 w-4 rounded-full border border-dashed"
-                style={{ borderColor: colors.axis }}
-              />
-              Previous period
-            </span>
+      <div className="p-6">
+        {/* Toolbar Row */}
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          {/* Left side: Legend */}
+          <div className="flex items-center">
+            {hasPrev && (
+              <div className="flex items-center gap-4 text-xs font-medium" style={{ color: colors.textMuted }}>
+                <span className="flex items-center gap-2">
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: activeMetric.color }}
+                  />
+                  Current
+                </span>
+                <span className="flex items-center gap-2">
+                  <span
+                    className="h-2 w-2 rounded-full border border-dashed"
+                    style={{ borderColor: colors.axis }}
+                  />
+                  Previous
+                </span>
+              </div>
+            )}
           </div>
-        )}
+
+          {/* Right side: Controls */}
+          <div className="flex items-center gap-3 self-end sm:self-auto">
+            {prevData?.length ? (
+              <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors select-none">
+                <input
+                  type="checkbox"
+                  checked={showComparison}
+                  onChange={() => setShowComparison((s) => !s)}
+                  className="h-4 w-4 rounded border-neutral-300 text-brand-orange focus:ring-brand-orange dark:border-neutral-600 dark:bg-neutral-800 focus:ring-offset-0"
+                />
+                <span>Compare</span>
+              </label>
+            ) : null}
+
+            {/* Vertical Separator */}
+            <div className="h-4 w-px bg-neutral-200 dark:bg-neutral-800" />
+
+            <Button
+              variant="secondary"
+              onClick={handleExport}
+              className="h-8 px-3 text-xs gap-2"
+              title="Export to CSV"
+            >
+              <DownloadIcon className="w-3.5 h-3.5" />
+              Export
+            </Button>
+          </div>
+        </div>
 
         {data.length === 0 ? (
           <div className="flex h-[320px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30">
