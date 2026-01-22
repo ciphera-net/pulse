@@ -1,46 +1,102 @@
-import apiRequest from './client'
+import { authFetch } from './client'
 
 export interface Organization {
   id: string
   name: string
   slug: string
-  role: 'owner' | 'admin' | 'member'
-  joined_at: string
+  plan_tier: string
+  created_at: string
 }
 
 export interface OrganizationMember {
   organization_id: string
   user_id: string
-  role: string
+  role: 'owner' | 'admin' | 'member'
   joined_at: string
-  organization_name: string
-  organization_slug: string
+  organization_name?: string
+  organization_slug?: string
+  user_email?: string
 }
 
-// * Fetch user's organizations
-export async function getUserOrganizations(): Promise<{ organizations: OrganizationMember[] }> {
-  // * Route to Auth Service
-  // * Note: The client.ts prepends /api/v1, but the auth service routes are /api/v1/auth/organizations
-  // * We need to be careful with the prefix.
-  // * client.ts: if endpoint starts with /auth, it uses AUTH_API_URL + /api/v1 + endpoint
-  // * So if we pass /auth/organizations, it becomes AUTH_API_URL/api/v1/auth/organizations
-  // * This matches the router group in main.go: v1.Group("/auth").Group("/organizations")
-  return apiRequest<{ organizations: OrganizationMember[] }>('/auth/organizations')
+export interface OrganizationInvitation {
+  id: string
+  organization_id: string
+  email: string
+  role: 'owner' | 'admin' | 'member'
+  invited_by: string
+  expires_at: string
+  created_at: string
 }
 
-// * Create a new organization
+// Create a new organization
 export async function createOrganization(name: string, slug: string): Promise<Organization> {
-  return apiRequest<Organization>('/auth/organizations', {
+  // Use authFetch (Authenticated via Ciphera Auth)
+  // * Note: authFetch returns the parsed JSON body, not the Response object
+  return await authFetch<Organization>('/auth/organizations', {
     method: 'POST',
     body: JSON.stringify({ name, slug }),
   })
 }
 
-// * Switch context to organization (returns new token)
-export async function switchContext(organizationId: string): Promise<{ access_token: string }> {
-  // * Route in main.go is /api/v1/auth/switch-context
-  return apiRequest<{ access_token: string }>('/auth/switch-context', {
+// List organizations user belongs to
+export async function getUserOrganizations(): Promise<OrganizationMember[]> {
+  const data = await authFetch<{ organizations: OrganizationMember[] }>('/auth/organizations')
+  return data.organizations || []
+}
+
+// Switch Context (Get token for specific org)
+export async function switchContext(organizationId: string | null): Promise<{ access_token: string; expires_in: number }> {
+  const payload = { organization_id: organizationId || '' }
+  console.log('Sending switch context request:', payload)
+  return await authFetch<{ access_token: string; expires_in: number }>('/auth/switch-context', {
     method: 'POST',
-    body: JSON.stringify({ organization_id: organizationId }),
+    body: JSON.stringify(payload),
+  })
+}
+
+// Get organization details
+export async function getOrganization(organizationId: string): Promise<Organization> {
+  return await authFetch<Organization>(`/auth/organizations/${organizationId}`)
+}
+
+// Delete an organization
+export async function deleteOrganization(organizationId: string): Promise<void> {
+  await authFetch(`/auth/organizations/${organizationId}`, {
+    method: 'DELETE',
+  })
+}
+
+// Update organization details
+export async function updateOrganization(organizationId: string, name: string, slug: string): Promise<Organization> {
+  return await authFetch<Organization>(`/auth/organizations/${organizationId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ name, slug }),
+  })
+}
+
+// Get organization members
+export async function getOrganizationMembers(organizationId: string): Promise<OrganizationMember[]> {
+  const data = await authFetch<{ members: OrganizationMember[] }>(`/auth/organizations/${organizationId}/members`)
+  return data.members || []
+}
+
+// Send an invitation
+export async function sendInvitation(organizationId: string, email: string, role: string = 'member'): Promise<OrganizationInvitation> {
+  return await authFetch<OrganizationInvitation>(`/auth/organizations/${organizationId}/invites`, {
+    method: 'POST',
+    body: JSON.stringify({ email, role }),
+  })
+}
+
+// List invitations
+export async function getInvitations(organizationId: string): Promise<OrganizationInvitation[]> {
+  const data = await authFetch<{ invitations: OrganizationInvitation[] }>(`/auth/organizations/${organizationId}/invites`)
+  return data.invitations || []
+}
+
+// Revoke invitation
+export async function revokeInvitation(organizationId: string, inviteId: string): Promise<void> {
+  await authFetch(`/auth/organizations/${organizationId}/invites/${inviteId}`, {
+    method: 'DELETE',
   })
 }
