@@ -256,7 +256,7 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
       label: 'Visit Duration',
       value: formatDuration(stats.avg_duration),
       trend: calculateTrend(stats.avg_duration, prevStats?.avg_duration),
-      color: COLORS.success,
+      color: COLORS.brand,
       invertTrend: false,
     },
   ] as const
