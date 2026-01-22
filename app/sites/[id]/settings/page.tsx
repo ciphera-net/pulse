@@ -307,7 +307,7 @@ export default function SiteSettingsPage() {
         {/* Content Area */}
         <div className="flex-1 relative">
           {!canEdit && (
-            <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 rounded-xl border border-blue-200 dark:border-blue-800 flex items-center gap-3">
+            <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/10 text-amber-800 dark:text-amber-200 rounded-xl border border-amber-200 dark:border-amber-800 flex items-center gap-3">
               <ExclamationTriangleIcon className="w-5 h-5" />
               <p className="text-sm font-medium">You have read-only access to this site. Contact an admin to make changes.</p>
             </div>

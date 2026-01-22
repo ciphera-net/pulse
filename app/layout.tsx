@@ -63,7 +63,7 @@ export default function RootLayout({
                   success: 'group-[.toast]:!text-green-600 group-[.toast]:dark:!text-green-400',
                   error: 'group-[.toast]:!text-red-600 group-[.toast]:dark:!text-red-400',
                   warning: 'group-[.toast]:!text-amber-600 group-[.toast]:dark:!text-amber-400',
-                  info: 'group-[.toast]:!text-blue-600 group-[.toast]:dark:!text-blue-400',
+                  info: 'group-[.toast]:!text-brand-orange group-[.toast]:dark:!text-brand-orange',
                 },
               }}
             />
