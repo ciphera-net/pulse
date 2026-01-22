@@ -7,12 +7,19 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className = '', variant = 'primary', isLoading, children, disabled, ...props }, ref) => {
-    const baseStyles = 'inline-flex items-center justify-center rounded-xl text-sm font-medium px-5 py-2.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
+    // * Base styles common to all buttons
+    // * Removed font-medium from here to allow variants to control weight
+    const baseStyles = 'inline-flex items-center justify-center rounded-xl text-sm px-5 py-2.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-neutral-900 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none';
     
     const variants = {
-      primary: 'bg-brand-orange text-white shadow-sm hover:bg-brand-orange-hover focus:ring-brand-orange',
-      secondary: 'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-neutral-900 dark:text-white hover:bg-neutral-50 dark:hover:bg-neutral-800 shadow-sm focus:ring-neutral-200',
-      ghost: 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 focus:ring-neutral-200',
+      // * Primary: Brand orange, semibold, lift effect, colored shadow
+      primary: 'bg-brand-orange text-white font-semibold shadow-sm shadow-orange-200 dark:shadow-none hover:shadow-orange-300 dark:hover:shadow-brand-orange/20 hover:-translate-y-0.5 focus:ring-brand-orange',
+      
+      // * Secondary: White/Dark bg, medium weight, subtle border, hover shadow
+      secondary: 'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-neutral-900 dark:text-white font-medium hover:bg-neutral-50 dark:hover:bg-neutral-800 shadow-sm hover:shadow-md dark:shadow-none focus:ring-neutral-200 dark:focus:ring-neutral-700',
+      
+      // * Ghost: Transparent, medium weight, hover background
+      ghost: 'text-neutral-600 dark:text-neutral-400 font-medium hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 focus:ring-neutral-200',
     };
 
     return (
