@@ -46,6 +46,8 @@ interface DailyStat {
   date: string
   pageviews: number
   visitors: number
+  bounce_rate: number
+  avg_duration: number
 }
 
 interface Stats {
@@ -77,9 +79,9 @@ function ChartTooltip({
   colors,
 }: {
   active?: boolean
-  payload?: Array<{ payload: { prevPageviews?: number; prevVisitors?: number }; value: number }>
+  payload?: Array<{ payload: { prevPageviews?: number; prevVisitors?: number; prevBounceRate?: number; prevAvgDuration?: number }; value: number }>
   label?: string
-  metric: 'visitors' | 'pageviews'
+  metric: MetricType
   metricLabel: string
   formatNumberFn: (n: number) => string
   showComparison: boolean
@@ -88,16 +90,30 @@ function ChartTooltip({
   if (!active || !payload?.length || !label) return null
   // * Recharts sends one payload entry per Area; order can be [prevSeries, currentSeries].
   // * Use the entry for the current metric so the tooltip shows today's value, not yesterday's.
-  type PayloadItem = { dataKey?: string; value?: number; payload: { prevPageviews?: number; prevVisitors?: number; visitors?: number; pageviews?: number } }
+  type PayloadItem = { dataKey?: string; value?: number; payload: { prevPageviews?: number; prevVisitors?: number; prevBounceRate?: number; prevAvgDuration?: number; visitors?: number; pageviews?: number; bounce_rate?: number; avg_duration?: number } }
   const items = payload as PayloadItem[]
   const current = items.find((p) => p.dataKey === metric) ?? items[items.length - 1]
   const value = Number(current?.value ?? (current?.payload as Record<string, number>)?.[metric] ?? 0)
-  const prev = metric === 'visitors' ? current?.payload?.prevVisitors : current?.payload?.prevPageviews
+  
+  let prev: number | undefined
+  switch (metric) {
+    case 'visitors': prev = current?.payload?.prevVisitors; break;
+    case 'pageviews': prev = current?.payload?.prevPageviews; break;
+    case 'bounce_rate': prev = current?.payload?.prevBounceRate; break;
+    case 'avg_duration': prev = current?.payload?.prevAvgDuration; break;
+  }
+
   const hasPrev = showComparison && prev != null
   const delta =
     hasPrev && (prev as number) > 0
       ? Math.round(((value - (prev as number)) / (prev as number)) * 100)
       : null
+
+  const formatValue = (v: number) => {
+    if (metric === 'bounce_rate') return `${Math.round(v)}%`
+    if (metric === 'avg_duration') return formatDuration(v)
+    return formatNumberFn(v)
+  }
 
   return (
     <div
@@ -112,7 +128,7 @@ function ChartTooltip({
       </div>
       <div className="flex items-baseline gap-2">
         <span className="text-base font-bold" style={{ color: colors.text }}>
-          {formatNumberFn(value)}
+          {formatValue(value)}
         </span>
         <span className="text-xs" style={{ color: colors.textMuted }}>
           {metricLabel}
@@ -120,12 +136,12 @@ function ChartTooltip({
       </div>
       {hasPrev && (
         <div className="mt-1.5 flex items-center gap-1.5 text-xs" style={{ color: colors.textMuted }}>
-          <span>vs {formatNumberFn(prev as number)} prev</span>
+          <span>vs {formatValue(prev as number)} prev</span>
           {delta !== null && (
             <span
               className="font-medium"
               style={{
-                color: delta > 0 ? COLORS.success : delta < 0 ? COLORS.danger : colors.textMuted,
+                color: delta > 0 ? (metric === 'bounce_rate' ? COLORS.danger : COLORS.success) : delta < 0 ? (metric === 'bounce_rate' ? COLORS.success : COLORS.danger) : colors.textMuted,
               }}
             >
               {delta > 0 ? '+' : ''}{delta}%
@@ -180,8 +196,12 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
       originalDate: item.date,
       pageviews: item.pageviews,
       visitors: item.visitors,
+      bounce_rate: item.bounce_rate,
+      avg_duration: item.avg_duration,
       prevPageviews: prevItem?.pageviews,
       prevVisitors: prevItem?.visitors,
+      prevBounceRate: prevItem?.bounce_rate,
+      prevAvgDuration: prevItem?.avg_duration,
     }
   })
 
@@ -242,8 +262,8 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
   ] as const
 
   const activeMetric = metrics.find((m) => m.id === metric) || metrics[0]
-  const chartMetric = metric === 'visitors' || metric === 'pageviews' ? metric : 'visitors'
-  const metricLabel = chartMetric === 'pageviews' ? 'pageviews' : 'visitors'
+  const chartMetric = metric
+  const metricLabel = metrics.find(m => m.id === metric)?.label || 'visitors'
 
   const avg = chartData.length
     ? chartData.reduce((s, d) => s + (d[chartMetric] as number), 0) / chartData.length
@@ -275,16 +295,12 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
         {metrics.map((item) => (
           <button
             key={item.id}
-            onClick={() => {
-              if (item.id === 'visitors' || item.id === 'pageviews') {
-                setMetric(item.id as MetricType)
-              }
-            }}
+            onClick={() => setMetric(item.id as MetricType)}
             className={`
               p-6 text-left transition-colors relative group
               hover:bg-neutral-50 dark:hover:bg-neutral-800/50
               ${metric === item.id ? 'bg-neutral-50 dark:bg-neutral-800/50' : ''}
-              ${(item.id !== 'visitors' && item.id !== 'pageviews') ? 'cursor-default' : 'cursor-pointer'}
+              cursor-pointer
             `}
           >
             <div className={`text-xs font-semibold uppercase tracking-wider mb-1 flex items-center gap-2 ${metric === item.id ? 'text-neutral-900 dark:text-white' : 'text-neutral-500'}`}>
@@ -404,7 +420,11 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
                   tickLine={false}
                   axisLine={false}
                   domain={[0, 'auto']}
-                  tickFormatter={formatAxisValue}
+                  tickFormatter={(val) => {
+                    if (metric === 'bounce_rate') return `${val}%`
+                    if (metric === 'avg_duration') return formatDuration(val)
+                    return formatAxisValue(val)
+                  }}
                 />
                 <Tooltip
                   content={(p: TooltipProps<number, string>) => (
@@ -437,7 +457,12 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
                 {hasPrev && (
                   <Area
                     type="monotone"
-                    dataKey={chartMetric === 'visitors' ? 'prevVisitors' : 'prevPageviews'}
+                    dataKey={
+                      chartMetric === 'visitors' ? 'prevVisitors' : 
+                      chartMetric === 'pageviews' ? 'prevPageviews' :
+                      chartMetric === 'bounce_rate' ? 'prevBounceRate' :
+                      'prevAvgDuration'
+                    }
                     stroke={colors.axis}
                     strokeWidth={2}
                     strokeDasharray="5 5"
