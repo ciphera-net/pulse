@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth/context'
 import { AUTH_URL } from '@/lib/api/client'
 import { exchangeAuthCode, setSessionAction } from '@/app/actions/auth'
+import LoadingOverlay from '@/components/LoadingOverlay'
 
 function AuthCallbackContent() {
   const router = useRouter()
@@ -108,26 +109,12 @@ function AuthCallbackContent() {
     )
   }
 
-  return (
-    <div className="flex min-h-screen items-center justify-center p-4">
-      <div className="text-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-neutral-200 border-t-neutral-800 mx-auto mb-4"></div>
-        <p className="text-neutral-600 dark:text-neutral-400">Completing sign in...</p>
-      </div>
-    </div>
-  )
+  return <LoadingOverlay title="Completing sign in..." portal={false} />
 }
 
 export default function AuthCallback() {
   return (
-    <Suspense fallback={
-      <div className="flex min-h-screen items-center justify-center p-4">
-        <div className="text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-neutral-200 border-t-neutral-800 mx-auto mb-4"></div>
-          <p className="text-neutral-600 dark:text-neutral-400">Loading...</p>
-        </div>
-      </div>
-    }>
+    <Suspense fallback={<LoadingOverlay title="Loading..." portal={false} />}>
       <AuthCallbackContent />
     </Suspense>
   )

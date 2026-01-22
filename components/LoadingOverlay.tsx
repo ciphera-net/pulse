@@ -6,11 +6,13 @@ import { createPortal } from 'react-dom'
 interface LoadingOverlayProps {
   logoSrc?: string
   title?: string
+  portal?: boolean
 }
 
 export default function LoadingOverlay({ 
   logoSrc = "/ciphera_icon_no_margins.png", 
-  title = "Pulse" 
+  title = "Pulse",
+  portal = true
 }: LoadingOverlayProps) {
   const [mounted, setMounted] = useState(false)
 
@@ -19,9 +21,7 @@ export default function LoadingOverlay({
     return () => setMounted(false)
   }, [])
 
-  if (!mounted) return null
-
-  return createPortal(
+  const content = (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white dark:bg-neutral-950 animate-in fade-in duration-200">
       <div className="flex flex-col items-center gap-6">
         <div className="flex items-center gap-3">
@@ -36,7 +36,13 @@ export default function LoadingOverlay({
         </div>
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-neutral-200 border-t-brand-orange dark:border-neutral-800 dark:border-t-brand-orange" />
       </div>
-    </div>,
-    document.body
+    </div>
   )
+
+  if (portal) {
+    if (!mounted) return null
+    return createPortal(content, document.body)
+  }
+
+  return content
 }
