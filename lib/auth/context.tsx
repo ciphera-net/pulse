@@ -130,7 +130,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                  if (result.success && result.user) {
                      setUser(result.user)
                      localStorage.setItem('user', JSON.stringify(result.user))
-                     router.refresh()
+                     
+                     // * Force hard reload to ensure browser sends new cookie to backend
+                     // * router.refresh() is not enough for Client Components fetching data immediately
+                     window.location.reload()
                  }
              } catch (e) {
                  console.error('Failed to auto-switch context', e)
