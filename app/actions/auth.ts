@@ -99,12 +99,17 @@ export async function exchangeAuthCode(code: string, codeVerifier: string, redir
 
 export async function setSessionAction(accessToken: string, refreshToken: string) {
     try {
+        console.log('[setSessionAction] Decoding token...')
         const payloadPart = accessToken.split('.')[1]
         const payload: UserPayload = JSON.parse(Buffer.from(payloadPart, 'base64').toString())
         
+        console.log('[setSessionAction] Token Payload:', { sub: payload.sub, org_id: payload.org_id })
+
         const cookieStore = await cookies()
         const cookieDomain = getCookieDomain()
         
+        console.log('[setSessionAction] Setting cookies with domain:', cookieDomain)
+
         cookieStore.set('access_token', accessToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
@@ -122,6 +127,8 @@ export async function setSessionAction(accessToken: string, refreshToken: string
             domain: cookieDomain,
             maxAge: 60 * 60 * 24 * 30
         })
+        
+        console.log('[setSessionAction] Cookies set successfully')
 
         return {
             success: true,
@@ -134,6 +141,7 @@ export async function setSessionAction(accessToken: string, refreshToken: string
             }
         }
     } catch (e) {
+        console.error('[setSessionAction] Error:', e)
         return { success: false, error: 'Invalid token' }
     }
 }
