@@ -162,7 +162,7 @@ function formatAxisValue(value: number): string {
 
 export default function Chart({ data, prevData, stats, prevStats, interval }: ChartProps) {
   const [metric, setMetric] = useState<MetricType>('visitors')
-  const [showComparison, setShowComparison] = useState(true)
+  const [showComparison, setShowComparison] = useState(false)
   const { resolvedTheme } = useTheme()
 
   const colors = useMemo(
