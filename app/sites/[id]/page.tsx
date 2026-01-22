@@ -1,5 +1,6 @@
 'use client'
 
+import { useAuth } from '@/lib/auth/context'
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { getSite, type Site } from '@/lib/api/sites'
@@ -17,6 +18,9 @@ import Chart from '@/components/dashboard/Chart'
 import PerformanceStats from '@/components/dashboard/PerformanceStats'
 
 export default function SiteDashboardPage() {
+  const { user } = useAuth()
+  const canEdit = user?.role === 'owner' || user?.role === 'admin'
+
   const params = useParams()
   const router = useRouter()
   const siteId = params.id as string
@@ -221,12 +225,14 @@ export default function SiteDashboardPage() {
                 className="min-w-[100px]"
               />
             )}
+            {canEdit && (
             <button
               onClick={() => router.push(`/sites/${siteId}/settings`)}
               className="btn-secondary text-sm"
             >
               Settings
             </button>
+            )}
           </div>
         </div>
       </div>

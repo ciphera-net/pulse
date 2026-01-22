@@ -12,6 +12,7 @@ import Select from '@/components/ui/Select'
 import { APP_URL, API_URL } from '@/lib/api/client'
 import { generatePrivacySnippet } from '@/lib/utils/privacySnippet'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useAuth } from '@/lib/auth/context'
 import {
   GearIcon,
   GlobeIcon,
@@ -51,6 +52,9 @@ const TIMEZONES = [
 ]
 
 export default function SiteSettingsPage() {
+  const { user } = useAuth()
+  const canEdit = user?.role === 'owner' || user?.role === 'admin'
+
   const params = useParams()
   const router = useRouter()
   const siteId = params.id as string
@@ -302,6 +306,13 @@ export default function SiteSettingsPage() {
 
         {/* Content Area */}
         <div className="flex-1 relative">
+          {!canEdit && (
+            <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 rounded-xl border border-blue-200 dark:border-blue-800 flex items-center gap-3">
+              <ExclamationTriangleIcon className="w-5 h-5" />
+              <p className="text-sm font-medium">You have read-only access to this site. Contact an admin to make changes.</p>
+            </div>
+          )}
+
           <motion.div
             key={activeTab}
             initial={{ opacity: 0, x: 20 }}
@@ -398,28 +409,31 @@ export default function SiteSettingsPage() {
                     </div>
                   </div>
 
-                  <div className="pt-4 border-t border-neutral-100 dark:border-neutral-800 flex justify-end">
-                    <button
-                      type="submit"
-                      disabled={saving}
-                      className="flex items-center gap-2 px-6 py-2.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-xl font-medium 
-                      hover:bg-neutral-800 dark:hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-                    >
-                      {saving ? (
-                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      ) : (
-                        <>
-                          <CheckIcon className="w-4 h-4" />
-                          Save Changes
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </form>
+                    <div className="pt-4 border-t border-neutral-100 dark:border-neutral-800 flex justify-end">
+                    {canEdit && (
+                      <button
+                        type="submit"
+                        disabled={saving}
+                        className="flex items-center gap-2 px-6 py-2.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-xl font-medium 
+                        hover:bg-neutral-800 dark:hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                      >
+                        {saving ? (
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        ) : (
+                          <>
+                            <CheckIcon className="w-4 h-4" />
+                            Save Changes
+                          </>
+                        )}
+                      </button>
+                    )}
+                    </div>
+                  </form>
 
-                <div className="space-y-6">
-                  <div>
-                    <h2 className="text-xl font-semibold text-red-600 dark:text-red-500 mb-1">Danger Zone</h2>
+                  {canEdit && (
+                  <div className="space-y-6">
+                    <div>
+                      <h2 className="text-xl font-semibold text-red-600 dark:text-red-500 mb-1">Danger Zone</h2>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">Irreversible actions for your site.</p>
                   </div>
 
@@ -450,9 +464,9 @@ export default function SiteSettingsPage() {
                       </button>
                     </div>
                   </div>
+                  )}
                 </div>
-              </div>
-            )}
+              )}
 
             {activeTab === 'visibility' && (
               <div className="space-y-12">
@@ -566,21 +580,23 @@ export default function SiteSettingsPage() {
                   </div>
 
                   <div className="pt-4 border-t border-neutral-100 dark:border-neutral-800 flex justify-end">
-                    <button
-                      type="submit"
-                      disabled={saving}
-                      className="flex items-center gap-2 px-6 py-2.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-xl font-medium 
-                      hover:bg-neutral-800 dark:hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-                    >
-                      {saving ? (
-                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      ) : (
-                        <>
-                          <CheckIcon className="w-4 h-4" />
-                          Save Changes
-                        </>
-                      )}
-                    </button>
+                    {canEdit && (
+                      <button
+                        type="submit"
+                        disabled={saving}
+                        className="flex items-center gap-2 px-6 py-2.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-xl font-medium 
+                        hover:bg-neutral-800 dark:hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                      >
+                        {saving ? (
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        ) : (
+                          <>
+                            <CheckIcon className="w-4 h-4" />
+                            Save Changes
+                          </>
+                        )}
+                      </button>
+                    )}
                   </div>
                 </form>
               </div>
@@ -819,21 +835,23 @@ export default function SiteSettingsPage() {
                   </div>
 
                   <div className="pt-4 border-t border-neutral-100 dark:border-neutral-800 flex justify-end">
-                    <button
-                      type="submit"
-                      disabled={saving}
-                      className="flex items-center gap-2 px-6 py-2.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-xl font-medium
-                      hover:bg-neutral-800 dark:hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-                    >
-                      {saving ? (
-                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      ) : (
-                        <>
-                          <CheckIcon className="w-4 h-4" />
-                          Save Changes
-                        </>
-                      )}
-                    </button>
+                    {canEdit && (
+                      <button
+                        type="submit"
+                        disabled={saving}
+                        className="flex items-center gap-2 px-6 py-2.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-xl font-medium
+                        hover:bg-neutral-800 dark:hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                      >
+                        {saving ? (
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        ) : (
+                          <>
+                            <CheckIcon className="w-4 h-4" />
+                            Save Changes
+                          </>
+                        )}
+                      </button>
+                    )}
                   </div>
                 </form>
               </div>
@@ -985,21 +1003,23 @@ export default function SiteSettingsPage() {
                   </AnimatePresence>
 
                   <div className="pt-4 border-t border-neutral-100 dark:border-neutral-800 flex justify-end">
-                    <button
-                      type="submit"
-                      disabled={saving}
-                      className="flex items-center gap-2 px-6 py-2.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-xl font-medium
-                      hover:bg-neutral-800 dark:hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-                    >
-                      {saving ? (
-                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      ) : (
-                        <>
-                          <CheckIcon className="w-4 h-4" />
-                          Save Changes
-                        </>
-                      )}
-                    </button>
+                    {canEdit && (
+                      <button
+                        type="submit"
+                        disabled={saving}
+                        className="flex items-center gap-2 px-6 py-2.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-xl font-medium
+                        hover:bg-neutral-800 dark:hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                      >
+                        {saving ? (
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        ) : (
+                          <>
+                            <CheckIcon className="w-4 h-4" />
+                            Save Changes
+                          </>
+                        )}
+                      </button>
+                    )}
                   </div>
                 </form>
               </div>
