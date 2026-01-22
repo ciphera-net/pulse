@@ -63,8 +63,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refresh = useCallback(async () => {
     try {
       const userData = await apiRequest<User>('/auth/user/me')
-      setUser(userData)
-      localStorage.setItem('user', JSON.stringify(userData))
+      
+      setUser(prev => {
+        const merged = {
+          ...userData,
+          org_id: prev?.org_id,
+          role: prev?.role
+        }
+        localStorage.setItem('user', JSON.stringify(merged))
+        return merged
+      })
     } catch (e) {
       console.error('Failed to refresh user data', e)
     }

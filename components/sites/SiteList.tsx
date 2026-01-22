@@ -5,9 +5,11 @@ import Link from 'next/link'
 import { listSites, deleteSite, type Site } from '@/lib/api/sites'
 import { toast } from 'sonner'
 import LoadingOverlay from '../LoadingOverlay'
+import { useAuth } from '@/lib/auth/context'
 import { BarChartIcon } from '@radix-ui/react-icons'
 
 export default function SiteList() {
+  const { user } = useAuth()
   const [sites, setSites] = useState<Site[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -72,13 +74,15 @@ export default function SiteList() {
               <BarChartIcon className="w-4 h-4" />
               View Dashboard
             </Link>
-            <button
-              type="button"
-              onClick={() => handleDelete(site.id)}
-              className="shrink-0 text-sm text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 py-2 px-2"
-            >
-              Delete
-            </button>
+            {(user?.role === 'owner' || user?.role === 'admin') && (
+              <button
+                type="button"
+                onClick={() => handleDelete(site.id)}
+                className="shrink-0 text-sm text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 py-2 px-2"
+              >
+                Delete
+              </button>
+            )}
           </div>
         </div>
       ))}
