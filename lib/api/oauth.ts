@@ -50,7 +50,10 @@ export async function initiateOAuthFlow(redirectPath = '/auth/callback') {
   localStorage.setItem('oauth_state', state)
   localStorage.setItem('oauth_code_verifier', codeVerifier)
 
-  const redirectUri = encodeURIComponent(`${APP_URL}${redirectPath}`)
+  // * Ensure clean URL construction without double slashes
+  const baseUrl = APP_URL.endsWith('/') ? APP_URL.slice(0, -1) : APP_URL
+  const path = redirectPath.startsWith('/') ? redirectPath : `/${redirectPath}`
+  const redirectUri = encodeURIComponent(`${baseUrl}${path}`)
   
   const loginUrl = `${AUTH_URL}/login?client_id=pulse-app&redirect_uri=${redirectUri}&response_type=code&state=${state}&code_challenge=${codeChallenge}&code_challenge_method=S256`
 
@@ -66,7 +69,10 @@ export async function initiateSignupFlow(redirectPath = '/auth/callback') {
     localStorage.setItem('oauth_state', state)
     localStorage.setItem('oauth_code_verifier', codeVerifier)
   
-    const redirectUri = encodeURIComponent(`${APP_URL}${redirectPath}`)
+    // * Ensure clean URL construction without double slashes
+    const baseUrl = APP_URL.endsWith('/') ? APP_URL.slice(0, -1) : APP_URL
+    const path = redirectPath.startsWith('/') ? redirectPath : `/${redirectPath}`
+    const redirectUri = encodeURIComponent(`${baseUrl}${path}`)
     
     const signupUrl = `${AUTH_URL}/signup?client_id=pulse-app&redirect_uri=${redirectUri}&response_type=code&state=${state}&code_challenge=${codeChallenge}&code_challenge_method=S256`
   
