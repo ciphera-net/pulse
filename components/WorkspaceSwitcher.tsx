@@ -28,10 +28,11 @@ export default function WorkspaceSwitcher({ orgs, activeOrgId }: { orgs: Organiz
           return
       }
 
-      const { token, refresh_token } = await switchContext(orgId)
+      const { access_token } = await switchContext(orgId)
       
       // * Update session cookie via server action
-      await setSessionAction(token, refresh_token)
+      // * Note: switchContext only returns access_token, we keep existing refresh token
+      await setSessionAction(access_token)
       
       // Force reload to pick up new permissions
       window.location.reload() 

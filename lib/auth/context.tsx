@@ -123,10 +123,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
              console.log('Auto-switching to organization:', firstOrg.organization_name)
              
              try {
-                 const { token, refresh_token } = await switchContext(firstOrg.organization_id)
+                 const { access_token } = await switchContext(firstOrg.organization_id)
                  
                  // * Update session cookie
-                 const result = await setSessionAction(token, refresh_token)
+                 const result = await setSessionAction(access_token)
                  if (result.success && result.user) {
                      setUser(result.user)
                      localStorage.setItem('user', JSON.stringify(result.user))

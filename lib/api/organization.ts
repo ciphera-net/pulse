@@ -37,9 +37,9 @@ export async function createOrganization(name: string, slug: string): Promise<Or
 }
 
 // * Switch context to organization (returns new token)
-export async function switchContext(organizationId: string): Promise<{ token: string, refresh_token: string }> {
+export async function switchContext(organizationId: string): Promise<{ access_token: string }> {
   // * Route in main.go is /api/v1/auth/switch-context
-  return apiRequest<{ token: string, refresh_token: string }>('/auth/switch-context', {
+  return apiRequest<{ access_token: string }>('/auth/switch-context', {
     method: 'POST',
     body: JSON.stringify({ organization_id: organizationId }),
   })
