@@ -18,7 +18,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
   useEffect(() => {
     if (auth.user) {
       getUserOrganizations()
-        .then(({ organizations }) => setOrgs(organizations))
+        .then((organizations) => setOrgs(organizations))
         .catch(err => console.error('Failed to fetch orgs for header', err))
     }
   }, [auth.user])
