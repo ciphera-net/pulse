@@ -109,7 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (pathname?.startsWith('/onboarding')) return
 
         try {
-          const { organizations } = await getUserOrganizations()
+          const organizations = await getUserOrganizations()
           
           if (organizations.length === 0) {
             // * No organizations -> Redirect to Onboarding
