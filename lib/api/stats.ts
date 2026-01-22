@@ -74,6 +74,8 @@ export interface DailyStat {
   date: string
   pageviews: number
   visitors: number
+  bounce_rate: number
+  avg_duration: number
 }
 
 export interface RealtimeStats {
