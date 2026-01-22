@@ -248,7 +248,7 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
       label: 'Bounce Rate',
       value: `${Math.round(stats.bounce_rate)}%`,
       trend: calculateTrend(stats.bounce_rate, prevStats?.bounce_rate),
-      color: COLORS.danger,
+      color: COLORS.brand,
       invertTrend: true, // Lower bounce rate is better
     },
     {
