@@ -97,9 +97,11 @@ export async function exchangeAuthCode(code: string, codeVerifier: string, redir
   }
 }
 
-export async function setSessionAction(accessToken: string, refreshToken: string) {
+export async function setSessionAction(accessToken: string, refreshToken?: string) {
     try {
         console.log('[setSessionAction] Decoding token...')
+        if (!accessToken) throw new Error('Access token is missing')
+        
         const payloadPart = accessToken.split('.')[1]
         const payload: UserPayload = JSON.parse(Buffer.from(payloadPart, 'base64').toString())
         
@@ -119,14 +121,17 @@ export async function setSessionAction(accessToken: string, refreshToken: string
             maxAge: 60 * 15
         })
 
-        cookieStore.set('refresh_token', refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            path: '/',
-            domain: cookieDomain,
-            maxAge: 60 * 60 * 24 * 30
-        })
+        // * Only update refresh token if provided
+        if (refreshToken) {
+            cookieStore.set('refresh_token', refreshToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'lax',
+                path: '/',
+                domain: cookieDomain,
+                maxAge: 60 * 60 * 24 * 30
+            })
+        }
         
         console.log('[setSessionAction] Cookies set successfully')
 

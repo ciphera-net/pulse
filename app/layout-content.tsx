@@ -25,8 +25,8 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
 
   const handleSwitchWorkspace = async (orgId: string) => {
     try {
-      const { token, refresh_token } = await switchContext(orgId)
-      await setSessionAction(token, refresh_token)
+      const { access_token } = await switchContext(orgId)
+      await setSessionAction(access_token)
       window.location.reload()
     } catch (err) {
       console.error('Failed to switch workspace', err)
