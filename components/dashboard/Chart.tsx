@@ -16,6 +16,7 @@ import type { TooltipProps } from 'recharts'
 import { formatNumber, formatDuration } from '@/lib/utils/format'
 import { ArrowTopRightIcon, ArrowBottomRightIcon, DownloadIcon, BarChartIcon } from '@radix-ui/react-icons'
 import { Button } from '@/components/ui/Button'
+import { Checkbox } from '@/components/ui/Checkbox'
 
 const COLORS = {
   brand: '#FD5E0F',
@@ -346,15 +347,11 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
           {/* Right side: Controls */}
           <div className="flex items-center gap-3 self-end sm:self-auto">
             {prevData?.length ? (
-              <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors select-none">
-                <input
-                  type="checkbox"
-                  checked={showComparison}
-                  onChange={() => setShowComparison((s) => !s)}
-                  className="h-4 w-4 rounded border-neutral-300 text-brand-orange focus:ring-brand-orange dark:border-neutral-600 dark:bg-neutral-800 focus:ring-offset-0"
-                />
-                <span>Compare</span>
-              </label>
+              <Checkbox
+                checked={showComparison}
+                onCheckedChange={setShowComparison}
+                label="Compare"
+              />
             ) : null}
 
             {/* Vertical Separator */}
