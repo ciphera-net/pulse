@@ -464,9 +464,10 @@ export default function SiteSettingsPage() {
                       </button>
                     </div>
                   </div>
-                  )}
                 </div>
-              )}
+                )}
+              </div>
+            )}
 
             {activeTab === 'visibility' && (
               <div className="space-y-12">
