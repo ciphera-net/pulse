@@ -1,7 +1,7 @@
 import { ThemeProviders } from '@ciphera-net/ui'
 import { AuthProvider } from '@/lib/auth/context'
 import { Toaster } from 'sonner'
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Plus_Jakarta_Sans } from 'next/font/google'
 import LayoutContent from './layout-content'
 import '../styles/globals.css'
@@ -11,6 +11,14 @@ const plusJakartaSans = Plus_Jakarta_Sans({
   variable: '--font-plus-jakarta-sans',
   display: 'swap',
 })
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  themeColor: '#FD5E0F',
+}
 
 export const metadata: Metadata = {
   title: 'Pulse - Privacy-First Web Analytics',
@@ -28,7 +36,6 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
-  themeColor: '#FD5E0F',
 }
 
 export default function RootLayout({
