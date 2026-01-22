@@ -7,6 +7,7 @@ import * as Flags from 'country-flag-icons/react/3x2'
 import iso3166 from 'iso-3166-2'
 import WorldMap from './WorldMap'
 import { Modal } from '@ciphera-net/ui'
+import { SiTorproject } from 'react-icons/si'
 
 interface LocationProps {
   countries: Array<{ country: string; pageviews: number }>
@@ -25,12 +26,19 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
 
   const getFlagComponent = (countryCode: string) => {
     if (!countryCode || countryCode === 'Unknown') return null
+    
+    if (countryCode === 'T1') {
+      return <SiTorproject className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+    }
+
     const FlagComponent = (Flags as any)[countryCode]
     return FlagComponent ? <FlagComponent className="w-5 h-5 rounded-sm shadow-sm" /> : null
   }
 
   const getCountryName = (code: string) => {
     if (!code || code === 'Unknown') return 'Unknown'
+    if (code === 'T1') return 'Tor Network'
+    
     try {
       const regionNames = new Intl.DisplayNames(['en'], { type: 'region' })
       return regionNames.of(code) || code
@@ -40,6 +48,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
   }
 
   const getRegionName = (regionCode: string, countryCode: string) => {
+    if (regionCode === 'T1') return 'Tor Network'
     if (!regionCode || regionCode === 'Unknown' || !countryCode || countryCode === 'Unknown') return 'Unknown'
     
     try {
@@ -58,6 +67,12 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
     } catch (e) {
       return regionCode
     }
+  }
+
+  const getCityName = (city: string) => {
+    if (city === 'T1') return 'Tor Network'
+    if (!city || city === 'Unknown') return 'Unknown'
+    return city
   }
 
   const getData = () => {
@@ -162,7 +177,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
                       <span className="truncate">
                         {activeTab === 'countries' ? getCountryName(item.country) :
                          activeTab === 'regions' ? getRegionName(item.region, item.country) :
-                         (item.city === 'Unknown' ? 'Unknown' : item.city)}
+                         getCityName(item.city)}
                       </span>
                     </div>
                     <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
@@ -196,7 +211,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
                 <span className="truncate">
                   {activeTab === 'countries' ? getCountryName(item.country) : 
                    activeTab === 'regions' ? getRegionName(item.region, item.country) :
-                   (item.city === 'Unknown' ? 'Unknown' : item.city)}
+                   getCityName(item.city)}
                 </span>
               </div>
               <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
