@@ -8,6 +8,7 @@ import iso3166 from 'iso-3166-2'
 import WorldMap from './WorldMap'
 import { Modal } from '@ciphera-net/ui'
 import { SiTorproject } from 'react-icons/si'
+import { FaUserSecret, FaSatellite, FaGlobe } from 'react-icons/fa'
 
 interface LocationProps {
   countries: Array<{ country: string; pageviews: number }>
@@ -27,8 +28,17 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
   const getFlagComponent = (countryCode: string) => {
     if (!countryCode || countryCode === 'Unknown') return null
     
-    if (countryCode === 'T1') {
-      return <SiTorproject className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+    switch (countryCode) {
+      case 'T1':
+        return <SiTorproject className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+      case 'A1':
+        return <FaUserSecret className="w-5 h-5 text-neutral-600 dark:text-neutral-400" />
+      case 'A2':
+        return <FaSatellite className="w-5 h-5 text-blue-500 dark:text-blue-400" />
+      case 'O1':
+      case 'EU':
+      case 'AP':
+        return <FaGlobe className="w-5 h-5 text-neutral-500 dark:text-neutral-400" />
     }
 
     const FlagComponent = (Flags as any)[countryCode]
@@ -37,7 +47,15 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
 
   const getCountryName = (code: string) => {
     if (!code || code === 'Unknown') return 'Unknown'
-    if (code === 'T1') return 'Tor Network'
+    
+    switch (code) {
+      case 'T1': return 'Tor Network'
+      case 'A1': return 'Anonymous Proxy'
+      case 'A2': return 'Satellite Provider'
+      case 'O1': return 'Other'
+      case 'EU': return 'Europe'
+      case 'AP': return 'Asia/Pacific'
+    }
     
     try {
       const regionNames = new Intl.DisplayNames(['en'], { type: 'region' })
@@ -48,7 +66,16 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
   }
 
   const getRegionName = (regionCode: string, countryCode: string) => {
-    if (regionCode === 'T1') return 'Tor Network'
+    // Check for special country codes first
+    switch (countryCode) {
+      case 'T1': return 'Tor Network'
+      case 'A1': return 'Anonymous Proxy'
+      case 'A2': return 'Satellite Provider'
+      case 'O1': return 'Other'
+      case 'EU': return 'Europe'
+      case 'AP': return 'Asia/Pacific'
+    }
+
     if (!regionCode || regionCode === 'Unknown' || !countryCode || countryCode === 'Unknown') return 'Unknown'
     
     try {
@@ -70,7 +97,14 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
   }
 
   const getCityName = (city: string) => {
-    if (city === 'T1') return 'Tor Network'
+    // Check for special codes that might appear in city field
+    switch (city) {
+      case 'T1': return 'Tor Network'
+      case 'A1': return 'Anonymous Proxy'
+      case 'A2': return 'Satellite Provider'
+      case 'O1': return 'Other'
+    }
+    
     if (!city || city === 'Unknown') return 'Unknown'
     return city
   }
