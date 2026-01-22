@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createSite } from '@/lib/api/sites'
 import { toast } from 'sonner'
+import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
 
 export default function NewSitePage() {
   const router = useRouter()
@@ -39,13 +41,11 @@ export default function NewSitePage() {
           <label htmlFor="name" className="block text-sm font-medium mb-2 text-neutral-900 dark:text-white">
             Site Name
           </label>
-          <input
-            type="text"
+          <Input
             id="name"
             required
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className="w-full px-4 py-2 border border-neutral-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-brand-orange focus:border-transparent"
             placeholder="My Website"
           />
         </div>
@@ -54,13 +54,11 @@ export default function NewSitePage() {
           <label htmlFor="domain" className="block text-sm font-medium mb-2 text-neutral-900 dark:text-white">
             Domain
           </label>
-          <input
-            type="text"
+          <Input
             id="domain"
             required
             value={formData.domain}
             onChange={(e) => setFormData({ ...formData, domain: e.target.value.toLowerCase().trim() })}
-            className="w-full px-4 py-2 border border-neutral-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-brand-orange focus:border-transparent"
             placeholder="example.com"
           />
           <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
@@ -69,20 +67,20 @@ export default function NewSitePage() {
         </div>
 
         <div className="flex gap-4">
-          <button
+          <Button
             type="submit"
             disabled={loading}
-            className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            isLoading={loading}
           >
-            {loading ? 'Creating...' : 'Create Site'}
-          </button>
-          <button
+            Create Site
+          </Button>
+          <Button
             type="button"
+            variant="secondary"
             onClick={() => router.back()}
-            className="btn-secondary"
           >
             Cancel
-          </button>
+          </Button>
         </div>
       </form>
     </div>

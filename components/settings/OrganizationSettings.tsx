@@ -345,7 +345,7 @@ export default function OrganizationSettings() {
                       </div>
                       <div className="w-32">
                         <select 
-                          className="w-full h-10 px-3 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
+                          className="w-full h-10 px-3 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm outline-none focus:ring-2 focus:ring-brand-orange dark:text-white"
                           value={inviteRole}
                           onChange={(e) => setInviteRole(e.target.value)}
                         >
@@ -394,7 +394,7 @@ export default function OrganizationSettings() {
                               member.role === 'owner' 
                                 ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
                                 : member.role === 'admin'
-                                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                                ? 'bg-brand-orange/10 text-brand-orange'
                                 : 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300'
                             }`}>
                               {member.role}

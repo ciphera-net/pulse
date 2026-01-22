@@ -16,7 +16,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             ${icon ? 'pl-11 pr-4' : 'px-4'}
             ${error
               ? 'border-red-300 dark:border-red-800 focus:border-red-500 focus:ring-4 focus:ring-red-500/10'
-              : 'border-neutral-200 dark:border-neutral-800 hover:border-blue-500/50 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10'}
+              : 'border-neutral-200 dark:border-neutral-800 hover:border-brand-orange/50 focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10'}
             ${className}
           `}
           {...props}
