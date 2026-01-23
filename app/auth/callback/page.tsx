@@ -19,7 +19,8 @@ function AuthCallbackContent() {
     if (processedRef.current) return
     
     // * Check for direct token passing (from auth-frontend direct login)
-    // * TODO: This flow exposes tokens in URL, should be deprecated in favor of Authorization Code flow
+    // * This flow exposes tokens in URL, kept for legacy support.
+    // * Recommended: Use Authorization Code flow (below)
     const token = searchParams.get('token')
     const refreshToken = searchParams.get('refresh_token')
     
