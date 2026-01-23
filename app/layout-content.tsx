@@ -42,7 +42,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
       <Header 
         auth={auth} 
         LinkComponent={Link} 
-        logoSrc="/ciphera_icon_no_margins.png"
+        logoSrc="/pulse_icon_no_margins.png"
         appName="Pulse"
         orgs={orgs}
         activeOrgId={auth.user?.org_id}

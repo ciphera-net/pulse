@@ -189,7 +189,7 @@ export default function ReplayViewerPage() {
     }
   }
 
-  if (loading) return <LoadingOverlay logoSrc="/ciphera_icon_no_margins.png" title="Loading Replay" />
+  if (loading) return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Loading Replay" />
   if (!site || !replay) return <div className="p-8">Replay not found</div>
 
   return (

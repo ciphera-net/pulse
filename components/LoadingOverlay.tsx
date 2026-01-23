@@ -10,7 +10,7 @@ interface LoadingOverlayProps {
 }
 
 export default function LoadingOverlay({ 
-  logoSrc = "/ciphera_icon_no_margins.png", 
+  logoSrc = "/pulse_icon_no_margins.png", 
   title = "Pulse",
   portal = true
 }: LoadingOverlayProps) {

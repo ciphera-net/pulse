@@ -12,7 +12,7 @@ export default function HomePage() {
   const { user, loading } = useAuth()
 
   if (loading) {
-    return <LoadingOverlay logoSrc="/ciphera_icon_no_margins.png" title="Pulse" portal={false} />
+    return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" portal={false} />
   }
 
   if (!user) {
@@ -91,7 +91,7 @@ export default function HomePage() {
 
   // * Wait for organization context before rendering SiteList to avoid "Organization Required" flash
   if (user && !user.org_id) {
-    return <LoadingOverlay logoSrc="/ciphera_icon_no_margins.png" title="Pulse" portal={false} />
+    return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" portal={false} />
   }
 
   return (
