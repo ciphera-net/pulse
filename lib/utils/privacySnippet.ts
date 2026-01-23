@@ -21,7 +21,6 @@ export function generatePrivacySnippet(site: Site): string {
   const geo = site.collect_geo_data || 'full'
   const screen = site.collect_screen_resolution ?? true
   const perf = site.enable_performance_insights ?? false
-  const replay = site.replay_mode === 'anonymous_skeleton'
   const filterBots = site.filter_bots ?? true
 
   const parts: string[] = []
@@ -32,7 +31,6 @@ export function generatePrivacySnippet(site: Site): string {
   else if (geo === 'country') parts.push('country')
   if (screen) parts.push('screen resolution')
   if (perf) parts.push('Core Web Vitals (e.g. page load performance)')
-  if (replay) parts.push('anonymised session replays (e.g. clicks and layout; no text you type is stored)')
 
   const list =
     parts.length > 0
