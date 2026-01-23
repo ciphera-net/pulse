@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth/context'
 import { AUTH_URL } from '@/lib/api/client'
 import { exchangeAuthCode, setSessionAction } from '@/app/actions/auth'
-import LoadingOverlay from '@/components/LoadingOverlay'
+import { LoadingOverlay } from '@ciphera-net/ui'
 
 function AuthCallbackContent() {
   const router = useRouter()
@@ -111,12 +111,12 @@ function AuthCallbackContent() {
   }
 
   // * Use standard Pulse loading screen to make transition to Home seamless
-  return <LoadingOverlay portal={false} />
+  return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" portal={false} />
 }
 
 export default function AuthCallback() {
   return (
-    <Suspense fallback={<LoadingOverlay portal={false} />}>
+    <Suspense fallback={<LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" portal={false} />}>
       <AuthCallbackContent />
     </Suspense>
   )

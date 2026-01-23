@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { initiateSignupFlow } from '@/lib/api/oauth'
-import LoadingOverlay from '@/components/LoadingOverlay'
+import { LoadingOverlay } from '@ciphera-net/ui'
 
 export default function SignupPage() {
   useEffect(() => {

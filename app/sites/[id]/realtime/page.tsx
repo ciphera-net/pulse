@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { getSite, type Site } from '@/lib/api/sites'
 import { getRealtimeVisitors, getSessionDetails, type Visitor, type SessionEvent } from '@/lib/api/realtime'
 import { toast } from 'sonner'
-import LoadingOverlay from '@/components/LoadingOverlay'
+import { LoadingOverlay } from '@ciphera-net/ui'
 
 function formatTimeAgo(dateString: string) {
   const date = new Date(dateString)

@@ -47,6 +47,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         activeOrgId={auth.user?.org_id}
         onSwitchWorkspace={handleSwitchWorkspace}
         onCreateOrganization={handleCreateOrganization}
+        allowPersonalWorkspace={false}
       />
       <main className="flex-1 pt-24 pb-8">
         {children}
