@@ -626,20 +626,20 @@ export default function ProfileSettings() {
                     <PasswordInput
                       label="Current Password"
                       value={currentPassword}
-                      onChange={setCurrentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
                       required
                     />
                     <hr className="border-neutral-100 dark:border-neutral-800 my-4" />
                     <PasswordInput
                       label="New Password"
                       value={newPassword}
-                      onChange={setNewPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
                       required
                     />
                     <PasswordInput
                       label="Confirm New Password"
                       value={confirmPassword}
-                      onChange={setConfirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
                       required
                     />
                   </div>
@@ -771,7 +771,7 @@ export default function ProfileSettings() {
                       <PasswordInput
                         label="Password"
                         value={emailConfirmPassword}
-                        onChange={setEmailConfirmPassword}
+                        onChange={(e) => setEmailConfirmPassword(e.target.value)}
                         required
                         className="mb-2"
                       />
@@ -845,7 +845,7 @@ export default function ProfileSettings() {
                       <PasswordInput
                         label="Verify Password"
                         value={deletePassword}
-                        onChange={setDeletePassword}
+                        onChange={(e) => setDeletePassword(e.target.value)}
                         required
                         className="mb-2"
                       />
