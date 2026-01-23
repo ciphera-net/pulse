@@ -2,7 +2,7 @@ import type { Config } from 'tailwindcss'
 
 const config: Config = {
   presets: [
-    require('@ciphera-net/ui/dist/tailwind-preset'),
+    require('@ciphera-net/ui/dist/tailwind-preset').default,
   ],
   darkMode: 'class',
   content: [
