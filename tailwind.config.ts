@@ -1,6 +1,9 @@
 import type { Config } from 'tailwindcss'
 
 const config: Config = {
+  presets: [
+    require('@ciphera-net/ui/dist/tailwind-preset'),
+  ],
   darkMode: 'class',
   content: [
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
@@ -10,15 +13,6 @@ const config: Config = {
   ],
   theme: {
     extend: {
-      colors: {
-        // * Brand color: Orange (#FD5E0F) - used as accent only
-        brand: {
-          orange: {
-            DEFAULT: '#FD5E0F',
-            hover: '#E54E00',
-          },
-        },
-      },
       fontFamily: {
         sans: ['var(--font-plus-jakarta-sans)', 'system-ui', 'sans-serif'],
       },
