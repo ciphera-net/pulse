@@ -56,5 +56,7 @@
 
 @layer components {
   /* * Reusable component styles */
-  /* * Button styles are now managed directly in the Button.tsx component to ensure consistency */
+  .btn-primary {
+    @apply bg-brand-orange text-white px-5 py-2.5 rounded-xl font-semibold shadow-sm shadow-orange-200 dark:shadow-none hover:shadow-orange-300 dark:hover:shadow-brand-orange/20 hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2 dark:focus:ring-offset-neutral-900;
+  }
 }
