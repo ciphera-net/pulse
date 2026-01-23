@@ -1,7 +1,6 @@
 'use client'
 
-import { Header } from '@ciphera-net/ui'
-import { Footer } from '@/components/Footer'
+import { Header, Footer } from '@ciphera-net/ui'
 import { useAuth } from '@/lib/auth/context'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
