@@ -234,7 +234,7 @@ export default function SiteSettingsPage() {
   }
 
   if (loading) {
-    return <LoadingOverlay logoSrc="/ciphera_icon_no_margins.png" title="Pulse" />
+    return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" />
   }
 
   if (!site) {

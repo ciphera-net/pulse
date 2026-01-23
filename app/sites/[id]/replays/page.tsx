@@ -88,7 +88,7 @@ export default function ReplaysPage() {
     setFilters(prev => ({ ...prev, offset: newOffset }))
   }
 
-  if (loading) return <LoadingOverlay logoSrc="/ciphera_icon_no_margins.png" title="Session Replays" />
+  if (loading) return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Session Replays" />
   if (!site) return <div className="p-8">Site not found</div>
 
   const currentPage = Math.floor((filters.offset || 0) / (filters.limit || 20)) + 1
