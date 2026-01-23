@@ -99,7 +99,7 @@ async function apiRequest<T>(
           isRefreshing = true
 
           try {
-            // * Call our internal Next.js API route to handle refresh securely
+            // * Call our Next.js API route to handle refresh securely
             const refreshRes = await fetch('/api/auth/refresh', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
