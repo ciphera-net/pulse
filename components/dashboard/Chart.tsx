@@ -15,7 +15,7 @@ import {
 import type { TooltipProps } from 'recharts'
 import { formatNumber, formatDuration } from '@/lib/utils/format'
 import { ArrowTopRightIcon, ArrowBottomRightIcon, DownloadIcon, BarChartIcon } from '@radix-ui/react-icons'
-import { Button } from '@/components/ui/Button'
+import { Button } from '@ciphera-net/ui'
 import { Checkbox } from '@/components/ui/Checkbox'
 
 const COLORS = {

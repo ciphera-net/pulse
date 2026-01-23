@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { PersonIcon, LockClosedIcon, EnvelopeClosedIcon, CheckIcon, ExclamationTriangleIcon, Cross2Icon, GearIcon, MobileIcon, FileTextIcon, CopyIcon } from '@radix-ui/react-icons'
 // @ts-ignore
 import { Button, Input } from '@ciphera-net/ui'
-import PasswordInput from '../PasswordInput'
+import { PasswordInput } from '@ciphera-net/ui'
 import { toast } from 'sonner'
 import api from '@/lib/api/client'
 import { deriveAuthKey } from '@/lib/crypto/password'

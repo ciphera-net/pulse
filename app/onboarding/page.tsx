@@ -4,9 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createOrganization } from '@/lib/api/organization'
 import { useAuth } from '@/lib/auth/context'
-import LoadingOverlay from '@/components/LoadingOverlay'
-import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
+import { LoadingOverlay } from '@ciphera-net/ui'
+import { Button, Input } from '@ciphera-net/ui'
 
 export default function OnboardingPage() {
   const [name, setName] = useState('')
@@ -41,7 +40,7 @@ export default function OnboardingPage() {
     }
   }
 
-  if (loading) return <LoadingOverlay title="Creating Organization..." />
+  if (loading) return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Creating Organization..." />
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-neutral-900 px-4">

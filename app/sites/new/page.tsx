@@ -4,8 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createSite } from '@/lib/api/sites'
 import { toast } from 'sonner'
-import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
+import { Button, Input } from '@ciphera-net/ui'
 
 export default function NewSitePage() {
   const router = useRouter()

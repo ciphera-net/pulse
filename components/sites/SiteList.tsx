@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { listSites, deleteSite, type Site } from '@/lib/api/sites'
 import { toast } from 'sonner'
-import LoadingOverlay from '../LoadingOverlay'
+import { LoadingOverlay } from '@ciphera-net/ui'
 import { useAuth } from '@/lib/auth/context'
 import { BarChartIcon } from '@radix-ui/react-icons'
 
