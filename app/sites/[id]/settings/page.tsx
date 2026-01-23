@@ -524,7 +524,7 @@ export default function SiteSettingsPage() {
                                   <PasswordInput
                                     id="password"
                                     value={formData.password}
-                                    onChange={(value) => setFormData({ ...formData, password: value })}
+                                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                     placeholder={site.has_password ? "Change password (leave empty to keep current)" : "Set a password"}
                                   />
                                   <p className="mt-2 text-xs text-neutral-500">
