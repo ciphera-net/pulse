@@ -28,8 +28,8 @@ export const metadata: Metadata = {
   creator: 'Ciphera',
   publisher: 'Ciphera',
   icons: {
-    icon: '/pulse_icon_no_margins.png',
-    shortcut: '/pulse_icon_no_margins.png',
+    icon: '/favicon.ico',
+    shortcut: '/favicon.ico',
     apple: '/pulse_icon_no_margins.png',
   },
   robots: {
