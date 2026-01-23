@@ -22,7 +22,8 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     }
   }, [auth.user])
 
-  const handleSwitchWorkspace = async (orgId: string) => {
+  const handleSwitchWorkspace = async (orgId: string | null) => {
+    if (!orgId) return // Pulse doesn't support personal workspace
     try {
       const { access_token } = await switchContext(orgId)
       await setSessionAction(access_token)
