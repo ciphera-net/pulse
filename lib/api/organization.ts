@@ -87,15 +87,17 @@ export async function sendInvitation(
   role: string = 'member',
   captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
 ): Promise<OrganizationInvitation> {
+  const body = {
+    email,
+    role,
+    ...(captcha?.captcha_id ? { captcha_id: captcha.captcha_id } : {}),
+    ...(captcha?.captcha_solution ? { captcha_solution: captcha.captcha_solution } : {}),
+    ...(captcha?.captcha_token ? { captcha_token: captcha.captcha_token } : {})
+  }
+  
   return await authFetch<OrganizationInvitation>(`/auth/organizations/${organizationId}/invites`, {
     method: 'POST',
-    body: JSON.stringify({ 
-      email, 
-      role,
-      captcha_id: captcha?.captcha_id,
-      captcha_solution: captcha?.captcha_solution,
-      captcha_token: captcha?.captcha_token
-    }),
+    body: JSON.stringify(body),
   })
 }
 
