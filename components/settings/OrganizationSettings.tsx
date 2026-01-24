@@ -25,7 +25,6 @@ import {
   UserIcon,
   CheckIcon,
   XIcon,
-  CopyIcon
 } from '@ciphera-net/ui'
 // @ts-ignore
 import { Button, Input } from '@ciphera-net/ui'
