@@ -12,7 +12,7 @@ import Locations from '@/components/dashboard/Locations'
 import TechSpecs from '@/components/dashboard/TechSpecs'
 import PerformanceStats from '@/components/dashboard/PerformanceStats'
 import { Select, DatePicker as DatePickerModal } from '@ciphera-net/ui'
-import { LightningIcon } from '@ciphera-net/ui'
+import { ZapIcon } from '@ciphera-net/ui'
 
 // Helper to get date ranges
 const getDateRange = (days: number) => {
@@ -105,7 +105,7 @@ export default function PublicDashboardPage() {
         <div className="max-w-md w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-8 shadow-lg">
           <div className="text-center mb-6">
              <div className="w-12 h-12 bg-brand-orange/10 rounded-xl flex items-center justify-center mx-auto mb-4 text-brand-orange">
-              <LightningIcon className="w-6 h-6" />
+              <ZapIcon className="w-6 h-6" />
             </div>
             <h1 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
               Protected Dashboard
@@ -254,7 +254,7 @@ export default function PublicDashboardPage() {
                 rel="noopener noreferrer"
                 className="hidden md:flex items-center gap-2 px-3 py-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors"
               >
-                <LightningIcon className="w-4 h-4" />
+                <ZapIcon className="w-4 h-4" />
                 <span>Powered by Ciphera</span>
               </a>
             </div>

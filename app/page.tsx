@@ -6,7 +6,7 @@ import { initiateOAuthFlow, initiateSignupFlow } from '@/lib/api/oauth'
 import { LoadingOverlay } from '@ciphera-net/ui'
 import SiteList from '@/components/sites/SiteList'
 import { Button } from '@ciphera-net/ui'
-import { BarChartIcon, LockIcon, LightningIcon } from '@ciphera-net/ui'
+import { BarChartIcon, LockIcon, ZapIcon } from '@ciphera-net/ui'
 
 export default function HomePage() {
   const { user, loading } = useAuth()
@@ -76,7 +76,7 @@ export default function HomePage() {
             </div>
             <div className="p-6 rounded-xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800">
               <div className="w-12 h-12 bg-brand-orange/10 rounded-xl flex items-center justify-center mb-4 text-brand-orange">
-                <LightningIcon className="w-6 h-6" />
+                <ZapIcon className="w-6 h-6" />
               </div>
               <h3 className="text-xl font-bold text-neutral-900 dark:text-white mb-2">Lightweight</h3>
               <p className="text-neutral-600 dark:text-neutral-400">
