@@ -15,7 +15,6 @@ import { useAuth } from '@/lib/auth/context'
 import {
   SettingsIcon,
   GlobeIcon,
-  FileTextIcon,
   CheckIcon,
   CopyIcon,
   AlertTriangleIcon,
@@ -258,7 +257,7 @@ export default function SiteSettingsPage() {
                 : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
             }`}
           >
-            <FileTextIcon className="w-5 h-5" />
+            <SettingsIcon className="w-5 h-5" />
             Data & Privacy
           </button>
         </nav>
