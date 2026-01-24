@@ -5,7 +5,6 @@ import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   XIcon, 
-  ExternalLinkIcon, 
   CheckCircleIcon, 
   AlertTriangleIcon,
   ZapIcon 
@@ -136,7 +135,9 @@ export default function VerificationModal({ isOpen, onClose, site }: Verificatio
                       className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-xl font-medium hover:opacity-90 transition-opacity"
                     >
                       Open Website & Verify
-                      <ExternalLinkIcon className="w-4 h-4" />
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
                     </button>
                   </div>
                 )}
