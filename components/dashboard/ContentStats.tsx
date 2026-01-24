@@ -142,7 +142,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
                   className="hover:underline flex items-center"
                 >
                   {page.path}
-                  <FiExternalLink className="w-3 h-3 ml-2 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <ArrowUpRightIcon className="w-3 h-3 ml-2 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </a>
               </div>
               <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
