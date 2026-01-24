@@ -236,12 +236,24 @@ export async function getDashboard(siteId: string, startDate?: string, endDate?:
   return apiRequest<DashboardData>(`/sites/${siteId}/dashboard?${params.toString()}`)
 }
 
-export async function getPublicDashboard(siteId: string, startDate?: string, endDate?: string, limit = 10, interval?: string, password?: string): Promise<DashboardData> {
+export async function getPublicDashboard(
+  siteId: string, 
+  startDate?: string, 
+  endDate?: string, 
+  limit = 10, 
+  interval?: string, 
+  password?: string,
+  captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
+): Promise<DashboardData> {
   const params = new URLSearchParams()
   if (startDate) params.append('start_date', startDate)
   if (endDate) params.append('end_date', endDate)
   if (interval) params.append('interval', interval)
   if (password) params.append('password', password)
+  if (captcha?.captcha_id) params.append('captcha_id', captcha.captcha_id)
+  if (captcha?.captcha_solution) params.append('captcha_solution', captcha.captcha_solution)
+  if (captcha?.captcha_token) params.append('captcha_token', captcha.captcha_token)
+  
   params.append('limit', limit.toString())
   return apiRequest<DashboardData>(`/public/sites/${siteId}/dashboard?${params.toString()}`)
 }

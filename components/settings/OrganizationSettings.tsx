@@ -22,9 +22,10 @@ import {
   AlertTriangleIcon, 
   PlusIcon, 
   BoxIcon, 
-  UserIcon,
-  CheckIcon,
+  UserIcon, 
+  CheckIcon, 
   XIcon,
+  Captcha
 } from '@ciphera-net/ui'
 // @ts-ignore
 import { Button, Input } from '@ciphera-net/ui'
@@ -47,6 +48,11 @@ export default function OrganizationSettings() {
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState('member')
   const [isInviting, setIsInviting] = useState(false)
+  
+  // Captcha State
+  const [captchaId, setCaptchaId] = useState('')
+  const [captchaSolution, setCaptchaSolution] = useState('')
+  const [captchaToken, setCaptchaToken] = useState('')
 
   // Org Update State
   const [orgDetails, setOrgDetails] = useState<Organization | null>(null)
@@ -358,6 +364,16 @@ export default function OrganizationSettings() {
                         Invite
                       </Button>
                     </form>
+                    <div className="mt-4">
+                        <Captcha
+                            onVerify={(id, solution, token) => {
+                                setCaptchaId(id)
+                                setCaptchaSolution(solution)
+                                setCaptchaToken(token || '')
+                            }}
+                            apiUrl={process.env.NEXT_PUBLIC_CAPTCHA_API_URL}
+                        />
+                    </div>
                   </div>
                 </div>
 

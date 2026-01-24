@@ -11,7 +11,7 @@ import TopReferrers from '@/components/dashboard/TopReferrers'
 import Locations from '@/components/dashboard/Locations'
 import TechSpecs from '@/components/dashboard/TechSpecs'
 import PerformanceStats from '@/components/dashboard/PerformanceStats'
-import { Select, DatePicker as DatePickerModal } from '@ciphera-net/ui'
+import { Select, DatePicker as DatePickerModal, Captcha } from '@ciphera-net/ui'
 import { ZapIcon } from '@ciphera-net/ui'
 
 // Helper to get date ranges
@@ -36,6 +36,11 @@ export default function PublicDashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [password, setPassword] = useState(passwordParam || '')
   const [isPasswordProtected, setIsPasswordProtected] = useState(false)
+  
+  // Captcha State
+  const [captchaId, setCaptchaId] = useState('')
+  const [captchaSolution, setCaptchaSolution] = useState('')
+  const [captchaToken, setCaptchaToken] = useState('')
   
   // Date range state
   const [dateRange, setDateRange] = useState(getDateRange(30))
@@ -69,16 +74,29 @@ export default function PublicDashboardPage() {
         dateRange.end,
         10,
         dateRange.start === dateRange.end ? todayInterval : multiDayInterval,
-        password
+        password,
+        {
+            captcha_id: captchaId,
+            captcha_solution: captchaSolution,
+            captcha_token: captchaToken
+        }
       )
       
       setData(dashboardData)
       setIsPasswordProtected(false)
+      // Reset captcha
+      setCaptchaId('')
+      setCaptchaSolution('')
+      setCaptchaToken('')
     } catch (error: any) {
       if ((error.status === 401 || error.response?.status === 401) && (error.data?.is_protected || error.response?.data?.is_protected)) {
         setIsPasswordProtected(true)
         if (password) {
-          toast.error('Invalid password')
+          toast.error('Invalid password or captcha')
+          // Reset captcha on failure
+          setCaptchaId('')
+          setCaptchaSolution('')
+          setCaptchaToken('')
         }
       } else if (error.status === 404 || error.response?.status === 404) {
         toast.error('Site not found')
@@ -125,6 +143,16 @@ export default function PublicDashboardPage() {
                 className="w-full px-4 py-2 border border-neutral-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-brand-orange focus:border-transparent"
                 autoFocus
               />
+            </div>
+            <div className="mb-4">
+                <Captcha
+                    onVerify={(id, solution, token) => {
+                        setCaptchaId(id)
+                        setCaptchaSolution(solution)
+                        setCaptchaToken(token || '')
+                    }}
+                    apiUrl={process.env.NEXT_PUBLIC_CAPTCHA_API_URL}
+                />
             </div>
             <button
               type="submit"
