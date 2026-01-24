@@ -92,7 +92,9 @@ export async function sendInvitation(
     body: JSON.stringify({ 
       email, 
       role,
-      ...captcha
+      captcha_id: captcha?.captcha_id,
+      captcha_solution: captcha?.captcha_solution,
+      captcha_token: captcha?.captcha_token
     }),
   })
 }
