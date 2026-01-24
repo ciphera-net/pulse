@@ -10,7 +10,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@ciphera-net/ui": "^0.0.14",
+    "@ciphera-net/ui": "^0.0.16",
     "@radix-ui/react-icons": "^1.3.2",
     "axios": "^1.13.2",
     "country-flag-icons": "^1.6.4",
