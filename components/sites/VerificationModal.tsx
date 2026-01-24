@@ -8,7 +8,7 @@ import {
   ExternalLinkIcon, 
   CheckCircleIcon, 
   AlertTriangleIcon,
-  LightningIcon 
+  ZapIcon 
 } from '@ciphera-net/ui'
 import { Site } from '@/lib/api/sites'
 import { getRealtime } from '@/lib/api/stats'
@@ -121,7 +121,7 @@ export default function VerificationModal({ isOpen, onClose, site }: Verificatio
                   <div className="space-y-4">
                     <div className="p-4 rounded-xl bg-brand-orange/5 border border-brand-orange/10 flex gap-4">
                       <div className="p-2 bg-brand-orange/10 rounded-lg h-fit text-brand-orange">
-                        <LightningIcon className="w-5 h-5" />
+                        <ZapIcon className="w-5 h-5" />
                       </div>
                       <div className="space-y-1">
                         <h4 className="font-medium text-brand-orange">How this works</h4>

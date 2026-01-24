@@ -19,7 +19,7 @@ import {
   CheckIcon,
   CopyIcon,
   AlertTriangleIcon,
-  LightningIcon,
+  ZapIcon,
 } from '@ciphera-net/ui'
 
 const TIMEZONES = [
@@ -359,7 +359,7 @@ export default function SiteSettingsPage() {
                         onClick={() => setShowVerificationModal(true)}
                         className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-all text-sm font-medium"
                       >
-                        <LightningIcon className="w-4 h-4" />
+                        <ZapIcon className="w-4 h-4" />
                         Verify Installation
                       </button>
                       <p className="text-xs text-neutral-500 dark:text-neutral-500">
