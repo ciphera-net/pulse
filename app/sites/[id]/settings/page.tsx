@@ -13,14 +13,14 @@ import { generatePrivacySnippet } from '@/lib/utils/privacySnippet'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@/lib/auth/context'
 import {
-  GearIcon,
+  SettingsIcon,
   GlobeIcon,
   FileTextIcon,
   CheckIcon,
   CopyIcon,
-  ExclamationTriangleIcon,
-  LightningBoltIcon,
-} from '@radix-ui/react-icons'
+  AlertTriangleIcon,
+  LightningIcon,
+} from '@ciphera-net/ui'
 
 const TIMEZONES = [
   'UTC',
@@ -236,7 +236,7 @@ export default function SiteSettingsPage() {
                 : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
             }`}
           >
-            <GearIcon className="w-5 h-5" />
+            <SettingsIcon className="w-5 h-5" />
             General
           </button>
           <button
@@ -267,7 +267,7 @@ export default function SiteSettingsPage() {
         <div className="flex-1 relative">
           {!canEdit && (
             <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/10 text-amber-800 dark:text-amber-200 rounded-xl border border-amber-200 dark:border-amber-800 flex items-center gap-3">
-              <ExclamationTriangleIcon className="w-5 h-5" />
+              <AlertTriangleIcon className="w-5 h-5" />
               <p className="text-sm font-medium">You have read-only access to this site. Contact an admin to make changes.</p>
             </div>
           )}
@@ -359,7 +359,7 @@ export default function SiteSettingsPage() {
                         onClick={() => setShowVerificationModal(true)}
                         className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-all text-sm font-medium"
                       >
-                        <LightningBoltIcon className="w-4 h-4" />
+                        <LightningIcon className="w-4 h-4" />
                         Verify Installation
                       </button>
                       <p className="text-xs text-neutral-500 dark:text-neutral-500">

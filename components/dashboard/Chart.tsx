@@ -14,7 +14,7 @@ import {
 } from 'recharts'
 import type { TooltipProps } from 'recharts'
 import { formatNumber, formatDuration } from '@/lib/utils/format'
-import { ArrowTopRightIcon, ArrowBottomRightIcon, DownloadIcon, BarChartIcon } from '@radix-ui/react-icons'
+import { ArrowUpRightIcon, ArrowDownRightIcon, DownloadIcon, BarChartIcon } from '@ciphera-net/ui'
 import { Button } from '@ciphera-net/ui'
 import { Checkbox } from '@ciphera-net/ui'
 
@@ -319,9 +319,9 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
                       : 'text-neutral-500'
                 }`}>
                   {(item.invertTrend ? -item.trend : item.trend) > 0 ? (
-                     <ArrowTopRightIcon className="w-3 h-3 mr-0.5" />
+                     <ArrowUpRightIcon className="w-3 h-3 mr-0.5" />
                   ) : (item.invertTrend ? -item.trend : item.trend) < 0 ? (
-                     <ArrowBottomRightIcon className="w-3 h-3 mr-0.5" />
+                     <ArrowDownRightIcon className="w-3 h-3 mr-0.5" />
                   ) : null}
                   {Math.abs(item.trend)}%
                 </span>
