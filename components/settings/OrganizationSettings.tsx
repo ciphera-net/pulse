@@ -19,14 +19,14 @@ import {
 import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
-  ExclamationTriangleIcon, 
+  AlertTriangleIcon, 
   PlusIcon, 
-  CubeIcon, 
-  PersonIcon,
+  BoxIcon, 
+  UserIcon,
   CheckIcon,
-  Cross2Icon,
+  XIcon,
   CopyIcon
-} from '@radix-ui/react-icons'
+} from '@ciphera-net/ui'
 // @ts-ignore
 import { Button, Input } from '@ciphera-net/ui'
 
@@ -198,7 +198,7 @@ export default function OrganizationSettings() {
                 : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
             }`}
           >
-            <CubeIcon className="w-5 h-5" />
+            <BoxIcon className="w-5 h-5" />
             General
           </button>
           <button
@@ -209,7 +209,7 @@ export default function OrganizationSettings() {
                 : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
             }`}
           >
-            <PersonIcon className="w-5 h-5" />
+            <UserIcon className="w-5 h-5" />
             Members
           </button>
         </nav>
@@ -462,7 +462,7 @@ export default function OrganizationSettings() {
               <div className="flex justify-between items-center mb-4">
                 <div className="flex items-center gap-3 text-red-600">
                   <div className="h-10 w-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
-                    <ExclamationTriangleIcon className="h-5 w-5" />
+                    <AlertTriangleIcon className="h-5 w-5" />
                   </div>
                   <h3 className="text-lg font-semibold">Delete Organization?</h3>
                 </div>
@@ -473,7 +473,7 @@ export default function OrganizationSettings() {
                   }}
                   className="text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-white"
                 >
-                  <Cross2Icon className="w-5 h-5" />
+                  <XIcon className="w-5 h-5" />
                 </button>
               </div>
               

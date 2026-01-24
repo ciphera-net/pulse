@@ -6,7 +6,7 @@ import { initiateOAuthFlow, initiateSignupFlow } from '@/lib/api/oauth'
 import { LoadingOverlay } from '@ciphera-net/ui'
 import SiteList from '@/components/sites/SiteList'
 import { Button } from '@ciphera-net/ui'
-import { BarChartIcon, LockClosedIcon, LightningBoltIcon } from '@radix-ui/react-icons'
+import { BarChartIcon, LockIcon, LightningIcon } from '@ciphera-net/ui'
 
 export default function HomePage() {
   const { user, loading } = useAuth()
@@ -58,7 +58,7 @@ export default function HomePage() {
           <div className="grid md:grid-cols-3 gap-8 pt-16 text-left">
             <div className="p-6 rounded-xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800">
               <div className="w-12 h-12 bg-brand-orange/10 rounded-xl flex items-center justify-center mb-4 text-brand-orange">
-                <LockClosedIcon className="w-6 h-6" />
+                <LockIcon className="w-6 h-6" />
               </div>
               <h3 className="text-xl font-bold text-neutral-900 dark:text-white mb-2">Privacy First</h3>
               <p className="text-neutral-600 dark:text-neutral-400">
@@ -76,7 +76,7 @@ export default function HomePage() {
             </div>
             <div className="p-6 rounded-xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800">
               <div className="w-12 h-12 bg-brand-orange/10 rounded-xl flex items-center justify-center mb-4 text-brand-orange">
-                <LightningBoltIcon className="w-6 h-6" />
+                <LightningIcon className="w-6 h-6" />
               </div>
               <h3 className="text-xl font-bold text-neutral-900 dark:text-white mb-2">Lightweight</h3>
               <p className="text-neutral-600 dark:text-neutral-400">

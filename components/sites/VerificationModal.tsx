@@ -4,12 +4,12 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
-  Cross2Icon, 
+  XIcon, 
   ExternalLinkIcon, 
-  CheckCircledIcon, 
-  ExclamationTriangleIcon,
-  LightningBoltIcon 
-} from '@radix-ui/react-icons'
+  CheckCircleIcon, 
+  AlertTriangleIcon,
+  LightningIcon 
+} from '@ciphera-net/ui'
 import { Site } from '@/lib/api/sites'
 import { getRealtime } from '@/lib/api/stats'
 import { toast } from 'sonner'
@@ -111,7 +111,7 @@ export default function VerificationModal({ isOpen, onClose, site }: Verificatio
                   onClick={onClose}
                   className="p-1 rounded-lg text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
                 >
-                  <Cross2Icon className="w-5 h-5" />
+                  <XIcon className="w-5 h-5" />
                 </button>
               </div>
 
@@ -121,7 +121,7 @@ export default function VerificationModal({ isOpen, onClose, site }: Verificatio
                   <div className="space-y-4">
                     <div className="p-4 rounded-xl bg-brand-orange/5 border border-brand-orange/10 flex gap-4">
                       <div className="p-2 bg-brand-orange/10 rounded-lg h-fit text-brand-orange">
-                        <LightningBoltIcon className="w-5 h-5" />
+                        <LightningIcon className="w-5 h-5" />
                       </div>
                       <div className="space-y-1">
                         <h4 className="font-medium text-brand-orange">How this works</h4>
@@ -161,7 +161,7 @@ export default function VerificationModal({ isOpen, onClose, site }: Verificatio
                 {status === 'success' && (
                   <div className="flex flex-col items-center justify-center py-6 space-y-6">
                     <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center text-green-600 dark:text-green-400">
-                      <CheckCircledIcon className="w-8 h-8" />
+                      <CheckCircleIcon className="w-8 h-8" />
                     </div>
                     <div className="text-center space-y-1">
                       <h4 className="text-xl font-bold text-neutral-900 dark:text-white">
@@ -184,7 +184,7 @@ export default function VerificationModal({ isOpen, onClose, site }: Verificatio
                   <div className="space-y-6">
                     <div className="flex flex-col items-center justify-center space-y-2 text-center">
                       <div className="w-12 h-12 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center text-red-600 dark:text-red-400">
-                        <ExclamationTriangleIcon className="w-6 h-6" />
+                        <AlertTriangleIcon className="w-6 h-6" />
                       </div>
                       <h4 className="font-medium text-red-600 dark:text-red-400">
                         Connection Timed Out
