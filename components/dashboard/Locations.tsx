@@ -6,9 +6,9 @@ import * as Flags from 'country-flag-icons/react/3x2'
 // @ts-ignore
 import iso3166 from 'iso-3166-2'
 import WorldMap from './WorldMap'
-import { Modal } from '@ciphera-net/ui'
+import { Modal, GlobeIcon } from '@ciphera-net/ui'
 import { SiTorproject } from 'react-icons/si'
-import { FaUserSecret, FaSatellite, FaGlobe } from 'react-icons/fa'
+import { FaUserSecret, FaSatellite } from 'react-icons/fa'
 
 interface LocationProps {
   countries: Array<{ country: string; pageviews: number }>
@@ -38,7 +38,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
       case 'O1':
       case 'EU':
       case 'AP':
-        return <FaGlobe className="w-5 h-5 text-neutral-500 dark:text-neutral-400" />
+        return <GlobeIcon className="w-5 h-5 text-neutral-500 dark:text-neutral-400" />
     }
 
     const FlagComponent = (Flags as any)[countryCode]
