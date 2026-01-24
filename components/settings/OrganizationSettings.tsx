@@ -138,11 +138,24 @@ export default function OrganizationSettings() {
     e.preventDefault()
     if (!inviteEmail) return
 
+    if (!captchaToken) {
+        toast.error('Please complete the security check')
+        return
+    }
+
     setIsInviting(true)
     try {
-      await sendInvitation(currentOrgId, inviteEmail, inviteRole)
+      await sendInvitation(currentOrgId, inviteEmail, inviteRole, {
+        captcha_id: captchaId,
+        captcha_solution: captchaSolution,
+        captcha_token: captchaToken
+      })
       toast.success(`Invitation sent to ${inviteEmail}`)
       setInviteEmail('')
+      // Reset captcha
+      setCaptchaId('')
+      setCaptchaSolution('')
+      setCaptchaToken('')
       loadMembers() // Refresh list
     } catch (error: any) {
       toast.error(error.message || 'Failed to send invitation')
