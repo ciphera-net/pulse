@@ -11,9 +11,8 @@ import TopReferrers from '@/components/dashboard/TopReferrers'
 import Locations from '@/components/dashboard/Locations'
 import TechSpecs from '@/components/dashboard/TechSpecs'
 import PerformanceStats from '@/components/dashboard/PerformanceStats'
-import Select from '@/components/ui/Select'
+import { Select, DatePicker as DatePickerModal } from '@ciphera-net/ui'
 import { LightningBoltIcon } from '@radix-ui/react-icons'
-import DatePickerModal from '@/components/ui/DatePicker'
 
 // Helper to get date ranges
 const getDateRange = (days: number) => {
