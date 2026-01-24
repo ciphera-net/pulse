@@ -81,10 +81,19 @@ export async function getOrganizationMembers(organizationId: string): Promise<Or
 }
 
 // Send an invitation
-export async function sendInvitation(organizationId: string, email: string, role: string = 'member'): Promise<OrganizationInvitation> {
+export async function sendInvitation(
+  organizationId: string, 
+  email: string, 
+  role: string = 'member',
+  captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
+): Promise<OrganizationInvitation> {
   return await authFetch<OrganizationInvitation>(`/auth/organizations/${organizationId}/invites`, {
     method: 'POST',
-    body: JSON.stringify({ email, role }),
+    body: JSON.stringify({ 
+      email, 
+      role,
+      ...captcha
+    }),
   })
 }
 
