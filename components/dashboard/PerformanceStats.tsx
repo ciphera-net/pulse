@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { ChevronDownIcon } from '@radix-ui/react-icons'
 import { PerformanceStats as Stats, PerformanceByPageStat, getPerformanceByPage } from '@/lib/api/stats'
-import Select from '@/components/ui/Select'
+import { Select } from '@ciphera-net/ui'
 
 interface Props {
   stats: Stats
