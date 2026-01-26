@@ -1,51 +1,27 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { listSites, deleteSite, type Site } from '@/lib/api/sites'
-import { toast } from 'sonner'
-import { LoadingOverlay } from '@ciphera-net/ui'
+import { Site } from '@/lib/api/sites'
+import { BarChartIcon, SettingsIcon, BookOpenIcon, ExternalLinkIcon } from '@ciphera-net/ui'
 import { useAuth } from '@/lib/auth/context'
-import { BarChartIcon } from '@ciphera-net/ui'
 
-export default function SiteList() {
+interface SiteListProps {
+  sites: Site[]
+  loading: boolean
+  onDelete: (id: string) => void
+}
+
+export default function SiteList({ sites, loading, onDelete }: SiteListProps) {
   const { user } = useAuth()
-  const [sites, setSites] = useState<Site[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    loadSites()
-  }, [])
-
-  const loadSites = async () => {
-    try {
-      setLoading(true)
-      const data = await listSites()
-      setSites(Array.isArray(data) ? data : [])
-    } catch (error: any) {
-      toast.error('Failed to load sites: ' + (error.message || 'Unknown error'))
-      setSites([]) // Ensure sites is always an array
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this site? This action cannot be undone.')) {
-      return
-    }
-
-    try {
-      await deleteSite(id)
-      toast.success('Site deleted successfully')
-      loadSites()
-    } catch (error: any) {
-      toast.error('Failed to delete site: ' + (error.message || 'Unknown error'))
-    }
-  }
 
   if (loading) {
-    return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" />
+    return (
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-48 animate-pulse rounded-xl bg-neutral-100 dark:bg-neutral-800" />
+        ))}
+      </div>
+    )
   }
 
   if (sites.length === 0) {
@@ -58,18 +34,67 @@ export default function SiteList() {
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
       {sites.map((site) => (
         <div
           key={site.id}
-          className="flex flex-col rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-sm p-6 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
+          className="group relative flex flex-col rounded-xl border border-neutral-200 bg-white p-6 shadow-sm transition-all hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900"
         >
-          <h3 className="text-xl font-semibold mb-2 text-neutral-900 dark:text-white">{site.name}</h3>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">{site.domain}</p>
-          <div className="flex gap-2 mt-auto">
+          {/* Header: Icon + Name + Live Status */}
+          <div className="flex items-start justify-between mb-6">
+            <div className="flex items-center gap-4">
+              {/* Auto-fetch favicon */}
+              <div className="h-12 w-12 overflow-hidden rounded-lg border border-neutral-100 bg-neutral-50 p-1 dark:border-neutral-800 dark:bg-neutral-800">
+                <img 
+                  src={`https://www.google.com/s2/favicons?domain=${site.domain}&sz=64`} 
+                  alt={site.name}
+                  className="h-full w-full object-contain"
+                />
+              </div>
+              <div>
+                <h3 className="font-semibold text-neutral-900 dark:text-white">{site.name}</h3>
+                <div className="flex items-center gap-1 text-sm text-neutral-500 dark:text-neutral-400">
+                  {site.domain}
+                  <a 
+                    href={`https://${site.domain}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <ExternalLinkIcon className="h-3 w-3" />
+                  </a>
+                </div>
+              </div>
+            </div>
+            
+            {/* "Live" Indicator */}
+            <div className="flex items-center gap-2 rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700 dark:bg-green-900/20 dark:text-green-400">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+              </span>
+              Active
+            </div>
+          </div>
+
+          {/* Mini Stats Grid */}
+          <div className="mb-6 grid grid-cols-2 gap-4 rounded-lg bg-neutral-50 p-3 dark:bg-neutral-800/50">
+            <div>
+              <p className="text-xs text-neutral-500">Visitors (24h)</p>
+              <p className="font-mono text-lg font-medium text-neutral-900 dark:text-white">--</p>
+            </div>
+            <div>
+              <p className="text-xs text-neutral-500">Pageviews</p>
+              <p className="font-mono text-lg font-medium text-neutral-900 dark:text-white">--</p>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="mt-auto flex gap-2">
             <Link
               href={`/sites/${site.id}`}
-              className="btn-primary text-sm inline-flex items-center justify-center gap-2 flex-1"
+              className="btn-primary flex-1 justify-center text-center text-sm inline-flex items-center gap-2"
             >
               <BarChartIcon className="w-4 h-4" />
               View Dashboard
@@ -77,15 +102,28 @@ export default function SiteList() {
             {(user?.role === 'owner' || user?.role === 'admin') && (
               <button
                 type="button"
-                onClick={() => handleDelete(site.id)}
-                className="shrink-0 text-sm text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 py-2 px-2"
+                onClick={() => onDelete(site.id)}
+                className="flex items-center justify-center rounded-lg border border-neutral-200 px-3 hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800 text-neutral-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                title="Delete Site"
               >
-                Delete
+                <SettingsIcon className="h-4 w-4" />
               </button>
             )}
           </div>
         </div>
       ))}
+
+      {/* Resources Card */}
+      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-neutral-300 bg-neutral-50 p-6 text-center dark:border-neutral-700 dark:bg-neutral-900/50">
+        <div className="mb-3 rounded-full bg-neutral-200 p-3 dark:bg-neutral-800">
+          <BookOpenIcon className="h-6 w-6 text-neutral-500" />
+        </div>
+        <h3 className="font-semibold text-neutral-900 dark:text-white">Need help setup?</h3>
+        <p className="mb-4 text-sm text-neutral-500 dark:text-neutral-400">Check our documentation for installation guides.</p>
+        <Link href="/docs" className="text-sm font-medium text-brand-orange hover:underline">
+          Read Documentation &rarr;
+        </Link>
+      </div>
     </div>
   )
 }

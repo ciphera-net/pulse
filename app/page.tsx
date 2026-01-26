@@ -1,17 +1,55 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow, initiateSignupFlow } from '@/lib/api/oauth'
+import { listSites, deleteSite, type Site } from '@/lib/api/sites'
 import { LoadingOverlay } from '@ciphera-net/ui'
 import SiteList from '@/components/sites/SiteList'
 import { Button } from '@ciphera-net/ui'
 import { BarChartIcon, LockIcon, ZapIcon } from '@ciphera-net/ui'
+import { toast } from 'sonner'
 
 export default function HomePage() {
-  const { user, loading } = useAuth()
+  const { user, loading: authLoading } = useAuth()
+  const [sites, setSites] = useState<Site[]>([])
+  const [sitesLoading, setSitesLoading] = useState(true)
 
-  if (loading) {
+  useEffect(() => {
+    if (user) {
+      loadSites()
+    }
+  }, [user])
+
+  const loadSites = async () => {
+    try {
+      setSitesLoading(true)
+      const data = await listSites()
+      setSites(Array.isArray(data) ? data : [])
+    } catch (error: any) {
+      toast.error('Failed to load sites: ' + (error.message || 'Unknown error'))
+      setSites([])
+    } finally {
+      setSitesLoading(false)
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this site? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      await deleteSite(id)
+      toast.success('Site deleted successfully')
+      loadSites()
+    } catch (error: any) {
+      toast.error('Failed to delete site: ' + (error.message || 'Unknown error'))
+    }
+  }
+
+  if (authLoading) {
     return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" portal={false} />
   }
 
@@ -95,7 +133,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl p-6">
+    <div className="mx-auto max-w-7xl p-6">
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Your Sites</h1>
@@ -103,7 +141,24 @@ export default function HomePage() {
         </div>
         <Link href="/sites/new" className="btn-primary text-sm">Add New Site</Link>
       </div>
-      <SiteList />
+
+      {/* Global Overview */}
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">Total Sites</p>
+          <p className="text-2xl font-bold text-neutral-900 dark:text-white">{sites.length}</p>
+        </div>
+        <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">Total Visitors (24h)</p>
+          <p className="text-2xl font-bold text-neutral-900 dark:text-white">--</p>
+        </div>
+        <div className="rounded-xl border border-neutral-200 bg-brand-orange/10 p-4 dark:border-neutral-800">
+          <p className="text-sm text-brand-orange">Plan Status</p>
+          <p className="text-lg font-bold text-brand-orange">Pro Plan</p>
+        </div>
+      </div>
+
+      <SiteList sites={sites} loading={sitesLoading} onDelete={handleDelete} />
     </div>
   )
 }
