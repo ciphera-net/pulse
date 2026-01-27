@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
-import { getPublicDashboard, type DashboardData } from '@/lib/api/stats'
+import { getPublicDashboard, getPublicStats, getPublicDailyStats, getPublicRealtime, getPublicPerformanceByPage, type DashboardData, type Stats, type DailyStat, type PerformanceByPageStat } from '@/lib/api/stats'
 import { toast } from 'sonner'
 import { LoadingOverlay } from '@ciphera-net/ui'
 import Chart from '@/components/dashboard/Chart'
@@ -48,14 +48,42 @@ export default function PublicDashboardPage() {
   const [todayInterval, setTodayInterval] = useState<'minute' | 'hour'>('hour')
   const [multiDayInterval, setMultiDayInterval] = useState<'hour' | 'day'>('day')
 
+  // Previous period data
+  const [prevStats, setPrevStats] = useState<Stats | undefined>(undefined)
+  const [prevDailyStats, setPrevDailyStats] = useState<DailyStat[] | undefined>(undefined)
+
+  const getPreviousDateRange = (start: string, end: string) => {
+    const startDate = new Date(start)
+    const endDate = new Date(end)
+    const duration = endDate.getTime() - startDate.getTime()
+    
+    // * If duration is 0 (Today), set previous range to yesterday
+    if (duration === 0) {
+      const prevEnd = new Date(startDate.getTime() - 24 * 60 * 60 * 1000)
+      const prevStart = prevEnd
+      return {
+        start: prevStart.toISOString().split('T')[0],
+        end: prevEnd.toISOString().split('T')[0]
+      }
+    }
+
+    const prevEnd = new Date(startDate.getTime() - 24 * 60 * 60 * 1000)
+    const prevStart = new Date(prevEnd.getTime() - duration)
+    
+    return {
+      start: prevStart.toISOString().split('T')[0],
+      end: prevEnd.toISOString().split('T')[0]
+    }
+  }
+
   // Auto-refresh interval (for realtime)
   useEffect(() => {
     const interval = setInterval(() => {
       // Only refresh realtime count if we have data
       if (data && !isPasswordProtected) {
-        loadDashboard(true)
+        loadRealtime()
       }
-    }, 10000) // 10 seconds
+    }, 30000) // 30 seconds
 
     return () => clearInterval(interval)
   }, [data, isPasswordProtected, dateRange, password])
@@ -64,25 +92,66 @@ export default function PublicDashboardPage() {
     loadDashboard()
   }, [siteId, dateRange, todayInterval, multiDayInterval])
 
+  const loadRealtime = async () => {
+    try {
+      const auth = {
+        password,
+        captcha: {
+          captcha_id: captchaId,
+          captcha_solution: captchaSolution,
+          captcha_token: captchaToken
+        }
+      }
+      const realtimeData = await getPublicRealtime(siteId, auth)
+      if (data) {
+        setData({
+          ...data,
+          realtime_visitors: realtimeData.visitors
+        })
+      }
+    } catch (error) {
+      // Silently fail for realtime updates
+    }
+  }
+
   const loadDashboard = async (silent = false) => {
     try {
       if (!silent) setLoading(true)
       
-      const dashboardData = await getPublicDashboard(
-        siteId,
-        dateRange.start,
-        dateRange.end,
-        10,
-        dateRange.start === dateRange.end ? todayInterval : multiDayInterval,
+      const interval = dateRange.start === dateRange.end ? todayInterval : multiDayInterval
+      const auth = {
         password,
-        {
+        captcha: {
             captcha_id: captchaId,
             captcha_solution: captchaSolution,
             captcha_token: captchaToken
         }
-      )
+      }
+
+      const [dashboardData, prevStatsData, prevDailyStatsData] = await Promise.all([
+        getPublicDashboard(
+            siteId,
+            dateRange.start,
+            dateRange.end,
+            10,
+            interval,
+            password,
+            auth.captcha
+        ),
+        (async () => {
+            const prevRange = getPreviousDateRange(dateRange.start, dateRange.end)
+            return getPublicStats(siteId, prevRange.start, prevRange.end, auth)
+        })(),
+        (async () => {
+            const prevRange = getPreviousDateRange(dateRange.start, dateRange.end)
+            return getPublicDailyStats(siteId, prevRange.start, prevRange.end, interval, auth)
+        })()
+      ])
       
       setData(dashboardData)
+      setPrevStats(prevStatsData)
+      setPrevDailyStats(prevDailyStatsData)
+
       setIsPasswordProtected(false)
       // Reset captcha
       setCaptchaId('')
@@ -304,8 +373,9 @@ export default function PublicDashboardPage() {
         <div className="mb-8">
           <Chart 
             data={safeDailyStats} 
-            prevData={[]} 
+            prevData={prevDailyStats} 
             stats={safeStats} 
+            prevStats={prevStats}
             interval={dateRange.start === dateRange.end ? todayInterval : multiDayInterval}
           />
         </div>
@@ -313,7 +383,23 @@ export default function PublicDashboardPage() {
          {/* Performance Stats - Only show if enabled */}
         {performance && data.site?.enable_performance_insights && (
            <div className="mb-8">
-            <PerformanceStats stats={performance} performanceByPage={performance_by_page} />
+            <PerformanceStats 
+                stats={performance} 
+                performanceByPage={performance_by_page} 
+                siteId={siteId}
+                startDate={dateRange.start}
+                endDate={dateRange.end}
+                getPerformanceByPage={(siteId, startDate, endDate, opts) => {
+                    return getPublicPerformanceByPage(siteId, startDate, endDate, opts, {
+                        password,
+                        captcha: {
+                            captcha_id: captchaId,
+                            captcha_solution: captchaSolution,
+                            captcha_token: captchaToken
+                        }
+                    })
+                }}
+            />
           </div>
         )}
 
