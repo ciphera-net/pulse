@@ -9,7 +9,7 @@ import { LoadingOverlay } from '@ciphera-net/ui'
 import SiteList from '@/components/sites/SiteList'
 import { Button } from '@ciphera-net/ui'
 import { BarChartIcon, LockIcon, ZapIcon } from '@ciphera-net/ui'
-import { toast } from 'sonner'
+import { toast } from '@ciphera-net/ui'
 
 export default function HomePage() {
   const { user, loading: authLoading } = useAuth()

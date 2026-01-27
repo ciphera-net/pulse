@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { getPublicDashboard, getPublicStats, getPublicDailyStats, getPublicRealtime, getPublicPerformanceByPage, type DashboardData, type Stats, type DailyStat, type PerformanceByPageStat } from '@/lib/api/stats'
-import { toast } from 'sonner'
+import { toast } from '@ciphera-net/ui'
 import { LoadingOverlay } from '@ciphera-net/ui'
 import Chart from '@/components/dashboard/Chart'
 import TopPages from '@/components/dashboard/ContentStats'

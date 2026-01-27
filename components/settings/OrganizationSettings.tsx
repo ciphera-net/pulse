@@ -16,7 +16,7 @@ import {
   OrganizationInvitation,
   Organization
 } from '@/lib/api/organization'
-import { toast } from 'sonner'
+import { toast } from '@ciphera-net/ui'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   AlertTriangleIcon, 
