@@ -4,7 +4,7 @@ import React, { memo, useMemo, useState } from 'react'
 import { ComposableMap, Geographies, Geography } from 'react-simple-maps'
 import countries from 'i18n-iso-countries'
 import enLocale from 'i18n-iso-countries/langs/en.json'
-import { useTheme } from 'next-themes'
+import { useTheme } from '@ciphera-net/ui'
 
 countries.registerLocale(enLocale)
 
