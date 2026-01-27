@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { getSite, type Site } from '@/lib/api/sites'
 import { getRealtimeVisitors, getSessionDetails, type Visitor, type SessionEvent } from '@/lib/api/realtime'
-import { toast } from 'sonner'
+import { toast } from '@ciphera-net/ui'
 import { LoadingOverlay } from '@ciphera-net/ui'
 
 function formatTimeAgo(dateString: string) {

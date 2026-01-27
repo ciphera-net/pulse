@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { getSite, updateSite, resetSiteData, deleteSite, type Site, type GeoDataLevel } from '@/lib/api/sites'
-import { toast } from 'sonner'
+import { toast } from '@ciphera-net/ui'
 import { LoadingOverlay } from '@ciphera-net/ui'
 import VerificationModal from '@/components/sites/VerificationModal'
 import { PasswordInput } from '@ciphera-net/ui'

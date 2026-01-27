@@ -11,7 +11,7 @@ import {
 } from '@ciphera-net/ui'
 import { Site } from '@/lib/api/sites'
 import { getRealtime } from '@/lib/api/stats'
-import { toast } from 'sonner'
+import { toast } from '@ciphera-net/ui'
 
 interface VerificationModalProps {
   isOpen: boolean

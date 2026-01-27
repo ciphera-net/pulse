@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createSite } from '@/lib/api/sites'
-import { toast } from 'sonner'
+import { toast } from '@ciphera-net/ui'
 import { Button, Input } from '@ciphera-net/ui'
 
 export default function NewSitePage() {
