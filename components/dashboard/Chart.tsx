@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { useTheme } from 'next-themes'
+import { useTheme } from '@ciphera-net/ui'
 import {
   AreaChart,
   Area,
