@@ -82,6 +82,18 @@ export interface RealtimeStats {
   visitors: number
 }
 
+export interface AuthParams {
+  password?: string
+  captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
+}
+
+function appendAuthParams(params: URLSearchParams, auth?: AuthParams) {
+  if (auth?.password) params.append('password', auth.password)
+  if (auth?.captcha?.captcha_id) params.append('captcha_id', auth.captcha.captcha_id)
+  if (auth?.captcha?.captcha_solution) params.append('captcha_solution', auth.captcha.captcha_solution)
+  if (auth?.captcha?.captcha_token) params.append('captcha_token', auth.captcha.captcha_token)
+}
+
 export async function getStats(siteId: string, startDate?: string, endDate?: string): Promise<Stats> {
   const params = new URLSearchParams()
   if (startDate) params.append('start_date', startDate)
@@ -90,8 +102,23 @@ export async function getStats(siteId: string, startDate?: string, endDate?: str
   return apiRequest<Stats>(`/sites/${siteId}/stats${query ? `?${query}` : ''}`)
 }
 
+export async function getPublicStats(siteId: string, startDate?: string, endDate?: string, auth?: AuthParams): Promise<Stats> {
+  const params = new URLSearchParams()
+  if (startDate) params.append('start_date', startDate)
+  if (endDate) params.append('end_date', endDate)
+  appendAuthParams(params, auth)
+  const query = params.toString()
+  return apiRequest<Stats>(`/public/sites/${siteId}/stats${query ? `?${query}` : ''}`)
+}
+
 export async function getRealtime(siteId: string): Promise<RealtimeStats> {
   return apiRequest<RealtimeStats>(`/sites/${siteId}/realtime`)
+}
+
+export async function getPublicRealtime(siteId: string, auth?: AuthParams): Promise<RealtimeStats> {
+  const params = new URLSearchParams()
+  appendAuthParams(params, auth)
+  return apiRequest<RealtimeStats>(`/public/sites/${siteId}/realtime?${params.toString()}`)
 }
 
 export async function getTopPages(siteId: string, startDate?: string, endDate?: string, limit = 10): Promise<TopPage[]> {
@@ -166,6 +193,15 @@ export async function getDailyStats(siteId: string, startDate?: string, endDate?
   return apiRequest<{ stats: DailyStat[] }>(`/sites/${siteId}/daily?${params.toString()}`).then(r => r?.stats || [])
 }
 
+export async function getPublicDailyStats(siteId: string, startDate?: string, endDate?: string, interval?: string, auth?: AuthParams): Promise<DailyStat[]> {
+  const params = new URLSearchParams()
+  if (startDate) params.append('start_date', startDate)
+  if (endDate) params.append('end_date', endDate)
+  if (interval) params.append('interval', interval)
+  appendAuthParams(params, auth)
+  return apiRequest<{ stats: DailyStat[] }>(`/public/sites/${siteId}/daily?${params.toString()}`).then(r => r?.stats || [])
+}
+
 export async function getEntryPages(siteId: string, startDate?: string, endDate?: string, limit = 10): Promise<TopPage[]> {
   const params = new URLSearchParams()
   if (startDate) params.append('start_date', startDate)
@@ -203,6 +239,25 @@ export async function getPerformanceByPage(
   if (opts?.sort) params.append('sort', opts.sort)
   const res = await apiRequest<{ performance_by_page: PerformanceByPageStat[] }>(
     `/sites/${siteId}/performance-by-page?${params.toString()}`
+  )
+  return res?.performance_by_page ?? []
+}
+
+export async function getPublicPerformanceByPage(
+  siteId: string,
+  startDate?: string,
+  endDate?: string,
+  opts?: { limit?: number; sort?: 'lcp' | 'cls' | 'inp' },
+  auth?: AuthParams
+): Promise<PerformanceByPageStat[]> {
+  const params = new URLSearchParams()
+  if (startDate) params.append('start_date', startDate)
+  if (endDate) params.append('end_date', endDate)
+  if (opts?.limit != null) params.append('limit', String(opts.limit))
+  if (opts?.sort) params.append('sort', opts.sort)
+  appendAuthParams(params, auth)
+  const res = await apiRequest<{ performance_by_page: PerformanceByPageStat[] }>(
+    `/public/sites/${siteId}/performance-by-page?${params.toString()}`
   )
   return res?.performance_by_page ?? []
 }
@@ -249,10 +304,8 @@ export async function getPublicDashboard(
   if (startDate) params.append('start_date', startDate)
   if (endDate) params.append('end_date', endDate)
   if (interval) params.append('interval', interval)
-  if (password) params.append('password', password)
-  if (captcha?.captcha_id) params.append('captcha_id', captcha.captcha_id)
-  if (captcha?.captcha_solution) params.append('captcha_solution', captcha.captcha_solution)
-  if (captcha?.captcha_token) params.append('captcha_token', captcha.captcha_token)
+  
+  appendAuthParams(params, { password, captcha })
   
   params.append('limit', limit.toString())
   return apiRequest<DashboardData>(`/public/sites/${siteId}/dashboard?${params.toString()}`)
