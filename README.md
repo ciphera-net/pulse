@@ -2,7 +2,7 @@
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-green.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![Built with Next.js](https://img.shields.io/badge/Built%20with-Next.js-blue.svg?logo=next.js&logoColor=white)](https://nextjs.org/)
-[![Hosted on Railway](https://img.shields.io/badge/Hosted%20on-Railway-orange.svg?logo=railway&logoColor=white)](https://railway.app/)
+[![Hosted in Switzerland](https://img.shields.io/badge/Hosted%20in-Switzerland-red.svg)](https://en.wikipedia.org/wiki/Switzerland)
 
 Pulse is the dashboard interface for the Pulse analytics platform. It provides a simple, intuitive interface for managing sites and viewing analytics data.
 
@@ -22,7 +22,7 @@ Pulse is the dashboard interface for the Pulse analytics platform. It provides a
 - **Charts**: Recharts for data visualization
 - **Authentication**: OAuth flow with ciphera-auth
 - **UI Components**: @ciphera-net/ui for shared components
-- **Hosting**: Railway
+- **Hosting**: Swiss infrastructure
 
 ## Getting Started
 
