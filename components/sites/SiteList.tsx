@@ -120,7 +120,7 @@ export default function SiteList({ sites, loading, onDelete }: SiteListProps) {
         </div>
         <h3 className="font-semibold text-neutral-900 dark:text-white">Need help setup?</h3>
         <p className="mb-4 text-sm text-neutral-500 dark:text-neutral-400">Check our documentation for installation guides.</p>
-        <Link href="/docs" className="text-sm font-medium text-brand-orange hover:underline">
+        <Link href="https://docs.ciphera.net" target="_blank" className="text-sm font-medium text-brand-orange hover:underline">
           Read Documentation &rarr;
         </Link>
       </div>

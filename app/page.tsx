@@ -17,7 +17,7 @@ export default function HomePage() {
   const [sitesLoading, setSitesLoading] = useState(true)
 
   useEffect(() => {
-    if (user) {
+    if (user?.org_id) {
       loadSites()
     }
   }, [user])
