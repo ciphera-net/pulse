@@ -36,7 +36,7 @@ export default function ExportModal({ isOpen, onClose, data }: ExportModalProps)
     const exportData = data.map((item) => {
       const filteredItem: Partial<DailyStat> = {}
       fields.forEach((field) => {
-        filteredItem[field] = item[field]
+        (filteredItem as any)[field] = item[field]
       })
       return filteredItem
     })
