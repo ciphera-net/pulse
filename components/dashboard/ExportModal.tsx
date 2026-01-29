@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Modal, Button, Checkbox, Input, Select } from '@ciphera-net/ui'
+import * as XLSX from 'xlsx'
 import type { DailyStat } from './Chart'
 
 interface ExportModalProps {
@@ -10,7 +11,7 @@ interface ExportModalProps {
   data: DailyStat[]
 }
 
-type ExportFormat = 'csv' | 'json'
+type ExportFormat = 'csv' | 'json' | 'xlsx'
 
 export default function ExportModal({ isOpen, onClose, data }: ExportModalProps) {
   const [format, setFormat] = useState<ExportFormat>('csv')
@@ -59,6 +60,22 @@ export default function ExportModal({ isOpen, onClose, data }: ExportModalProps)
       content = (includeHeader ? header + '\n' : '') + rows.join('\n')
       mimeType = 'text/csv;charset=utf-8;'
       extension = 'csv'
+    } else if (format === 'xlsx') {
+      const ws = XLSX.utils.json_to_sheet(exportData)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, "Data")
+      const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+      const blob = new Blob([wbout], { type: 'application/octet-stream' })
+      
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.setAttribute('href', url)
+      link.setAttribute('download', `${filename || 'export'}.${extension || 'xlsx'}`)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      onClose()
+      return
     } else {
       content = JSON.stringify(exportData, null, 2)
       mimeType = 'application/json;charset=utf-8;'
@@ -104,6 +121,7 @@ export default function ExportModal({ isOpen, onClose, data }: ExportModalProps)
               options={[
                 { value: 'csv', label: 'CSV' },
                 { value: 'json', label: 'JSON' },
+                { value: 'xlsx', label: 'Excel' },
               ]}
               variant="input"
               fullWidth
