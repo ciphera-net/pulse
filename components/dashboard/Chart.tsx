@@ -17,6 +17,7 @@ import { formatNumber, formatDuration } from '@/lib/utils/format'
 import { ArrowUpRightIcon, ArrowDownRightIcon, DownloadIcon, BarChartIcon } from '@ciphera-net/ui'
 import { Button } from '@ciphera-net/ui'
 import { Checkbox } from '@ciphera-net/ui'
+import ExportModal from './ExportModal'
 
 const COLORS = {
   brand: '#FD5E0F',
@@ -42,7 +43,7 @@ const CHART_COLORS_DARK = {
   tooltipBorder: '#404040',
 }
 
-interface DailyStat {
+export interface DailyStat {
   date: string
   pageviews: number
   visitors: number
@@ -163,6 +164,7 @@ function formatAxisValue(value: number): string {
 export default function Chart({ data, prevData, stats, prevStats, interval }: ChartProps) {
   const [metric, setMetric] = useState<MetricType>('visitors')
   const [showComparison, setShowComparison] = useState(false)
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const { resolvedTheme } = useTheme()
 
   const colors = useMemo(
@@ -213,17 +215,7 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
   }
 
   const handleExport = () => {
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + "Date,Pageviews,Visitors\n"
-      + data.map(row => `${new Date(row.date).toISOString()},${row.pageviews},${row.visitors}`).join("\n")
-    
-    const encodedUri = encodeURI(csvContent)
-    const link = document.createElement("a")
-    link.setAttribute("href", encodedUri)
-    link.setAttribute("download", `pulse_export_${new Date().toISOString().split('T')[0]}.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    setIsExportModalOpen(true)
   }
 
   const metrics = [
@@ -502,6 +494,11 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
           </div>
         )}
       </div>
+      <ExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        data={data}
+      />
     </div>
   )
 }
