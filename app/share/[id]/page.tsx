@@ -411,10 +411,14 @@ export default function PublicDashboardPage() {
             exitPages={safeExitPages}
             domain={site.domain}
             collectPagePaths={site.collect_page_paths ?? true}
+            siteId={siteId}
+            dateRange={dateRange}
           />
           <TopReferrers
             referrers={safeTopReferrers}
             collectReferrers={site.collect_referrers ?? true}
+            siteId={siteId}
+            dateRange={dateRange}
           />
         </div>
 
@@ -424,6 +428,8 @@ export default function PublicDashboardPage() {
             cities={safeCities}
             regions={safeRegions}
             geoDataLevel={site.collect_geo_data || 'full'}
+            siteId={siteId}
+            dateRange={dateRange}
           />
           <TechSpecs
             browsers={safeBrowsers}
@@ -432,6 +438,8 @@ export default function PublicDashboardPage() {
             screenResolutions={safeScreenResolutions}
             collectDeviceInfo={site.collect_device_info ?? true}
             collectScreenResolution={site.collect_screen_resolution ?? true}
+            siteId={siteId}
+            dateRange={dateRange}
           />
         </div>
 
