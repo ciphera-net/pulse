@@ -46,17 +46,17 @@ const TRAFFIC_TIERS = [
   { 
     label: '10k', 
     value: 10000, 
-    prices: { solo: 7, team: 12, business: 19 } 
+    prices: { solo: 7, team: 11, business: 15 } 
   },
   { 
     label: '50k', 
     value: 50000, 
-    prices: { solo: 11, team: 19, business: 29 } 
+    prices: { solo: 11, team: 19, business: 27 } 
   },
   { 
     label: '100k', 
     value: 100000, 
-    prices: { solo: 15, team: 25, business: 39 } 
+    prices: { solo: 15, team: 23, business: 31 } 
   },
   { 
     label: '250k', 
@@ -66,12 +66,12 @@ const TRAFFIC_TIERS = [
   { 
     label: '500k', 
     value: 500000, 
-    prices: { solo: 39, team: 59, business: 89 } 
+    prices: { solo: 39, team: 59, business: 79 } 
   },
   { 
     label: '1M', 
     value: 1000000, 
-    prices: { solo: 55, team: 79, business: 119 } 
+    prices: { solo: 55, team: 79, business: 111 } 
   },
   { 
     label: '2.5M', 
@@ -81,11 +81,16 @@ const TRAFFIC_TIERS = [
   { 
     label: '5M', 
     value: 5000000, 
-    prices: { solo: 109, team: 159, business: 219 } 
+    prices: { solo: 103, team: 155, business: 207 } 
+  },
+  { 
+    label: '10M', 
+    value: 10000000, 
+    prices: { solo: 135, team: 199, business: 269 } 
   },
   { 
     label: '10M+', 
-    value: 10000000, 
+    value: 10000001, 
     prices: { solo: null, team: null, business: null } 
   },
 ]
