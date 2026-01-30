@@ -1,7 +1,6 @@
 'use client'
 
 import { Header, Footer } from '@ciphera-net/ui'
-import WebsiteFooter from '@/components/WebsiteFooter'
 import { useAuth } from '@/lib/auth/context'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
@@ -54,15 +53,10 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
       <main className="flex-1 pt-24 pb-8">
         {children}
       </main>
-      {auth.user ? (
-        <Footer 
-          LinkComponent={Link}
-          appName="Pulse"
-          year="2024-2026"
-        />
-      ) : (
-        <WebsiteFooter />
-      )}
+      <Footer 
+        LinkComponent={Link}
+        appName="Pulse"
+      />
     </>
   )
 }

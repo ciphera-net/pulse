@@ -26,9 +26,6 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse' }: FooterProps)
             <Component href="/faq" className="hover:text-brand-orange transition-colors">
               FAQ
             </Component>
-            <Component href="/installation" className="hover:text-brand-orange transition-colors">
-              Installation
-            </Component>
           </div>
         </div>
       </div>
