@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { motion } from 'framer-motion'
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow, initiateSignupFlow } from '@/lib/api/oauth'
 import { listSites, deleteSite, type Site } from '@/lib/api/sites'
@@ -13,30 +14,34 @@ import { toast } from '@ciphera-net/ui'
 
 function DashboardPreview() {
   return (
-    <div className="relative w-full max-w-5xl mx-auto mt-20 mb-32 perspective-1000">
+    <div className="relative w-full max-w-5xl mx-auto mt-20 mb-32">
       {/* * Glow behind the image */}
       <div className="absolute inset-0 bg-brand-orange/20 blur-[100px] -z-10 rounded-full opacity-50" />
       
-      {/* * Floating Wrapper */}
-      <div className="animate-float">
-        {/* * The Dashboard Image Container */}
-        <div className="relative rounded-xl border border-neutral-200/50 dark:border-neutral-800/50 bg-neutral-900/50 backdrop-blur-sm shadow-2xl transform rotate-x-12 hover:rotate-x-0 transition-transform duration-700 ease-out overflow-hidden">
-          {/* * Header of the fake browser window */}
-          <div className="h-8 bg-neutral-800/50 border-b border-white/5 flex items-center px-4 gap-2">
-            <div className="w-3 h-3 rounded-full bg-red-500/50" />
-            <div className="w-3 h-3 rounded-full bg-yellow-500/50" />
-            <div className="w-3 h-3 rounded-full bg-green-500/50" />
-          </div>
-          
-          {/* * Placeholder for actual dashboard screenshot - replace src with real image later */}
-          <div className="aspect-video bg-neutral-900 flex items-center justify-center text-neutral-700">
-             <div className="text-center">
-               <BarChartIcon className="w-16 h-16 mx-auto mb-4 opacity-20" />
-               <p>Dashboard Preview</p>
-             </div>
-          </div>
+      {/* * Animated Container */}
+      <motion.div
+        initial={{ opacity: 0, rotateX: 20, scale: 0.9, y: 50 }}
+        whileInView={{ opacity: 1, rotateX: 0, scale: 1, y: 0 }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
+        style={{ perspective: '1000px' }}
+        className="relative rounded-xl border border-neutral-200/50 dark:border-neutral-800/50 bg-neutral-900/50 backdrop-blur-sm shadow-2xl overflow-hidden"
+      >
+        {/* * Header of the fake browser window */}
+        <div className="h-8 bg-neutral-800/50 border-b border-white/5 flex items-center px-4 gap-2">
+          <div className="w-3 h-3 rounded-full bg-red-500/50" />
+          <div className="w-3 h-3 rounded-full bg-yellow-500/50" />
+          <div className="w-3 h-3 rounded-full bg-green-500/50" />
         </div>
-      </div>
+        
+        {/* * Placeholder for actual dashboard screenshot - replace src with real image later */}
+        <div className="aspect-video bg-neutral-900 flex items-center justify-center text-neutral-700">
+           <div className="text-center">
+             <BarChartIcon className="w-16 h-16 mx-auto mb-4 opacity-20" />
+             <p>Dashboard Preview</p>
+           </div>
+        </div>
+      </motion.div>
     </div>
   )
 }
