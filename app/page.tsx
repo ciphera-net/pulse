@@ -133,7 +133,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl p-6">
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Your Sites</h1>
