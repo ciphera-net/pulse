@@ -14,7 +14,7 @@ import {
 } from 'recharts'
 import type { TooltipProps } from 'recharts'
 import { formatNumber, formatDuration } from '@/lib/utils/format'
-import { ArrowUpRightIcon, ArrowDownRightIcon, BarChartIcon } from '@ciphera-net/ui'
+import { ArrowUpRightIcon, ArrowDownRightIcon, BarChartIcon, Select } from '@ciphera-net/ui'
 import { Checkbox } from '@ciphera-net/ui'
 
 const COLORS = {
@@ -62,6 +62,11 @@ interface ChartProps {
   stats: Stats
   prevStats?: Stats
   interval: 'minute' | 'hour' | 'day' | 'month'
+  dateRange: { start: string, end: string }
+  todayInterval: 'minute' | 'hour'
+  setTodayInterval: (interval: 'minute' | 'hour') => void
+  multiDayInterval: 'hour' | 'day'
+  setMultiDayInterval: (interval: 'hour' | 'day') => void
 }
 
 type MetricType = 'pageviews' | 'visitors' | 'bounce_rate' | 'avg_duration'
@@ -159,7 +164,18 @@ function formatAxisValue(value: number): string {
   return String(value)
 }
 
-export default function Chart({ data, prevData, stats, prevStats, interval }: ChartProps) {
+export default function Chart({ 
+  data, 
+  prevData, 
+  stats, 
+  prevStats, 
+  interval,
+  dateRange,
+  todayInterval,
+  setTodayInterval,
+  multiDayInterval,
+  setMultiDayInterval
+}: ChartProps) {
   const [metric, setMetric] = useState<MetricType>('visitors')
   const [showComparison, setShowComparison] = useState(false)
   const { resolvedTheme } = useTheme()
@@ -347,6 +363,29 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
 
           {/* Right side: Controls */}
           <div className="flex items-center gap-3 self-end sm:self-auto">
+            {dateRange.start === dateRange.end && (
+              <Select
+                value={todayInterval}
+                onChange={(value) => setTodayInterval(value as 'minute' | 'hour')}
+                options={[
+                  { value: 'minute', label: '1 min' },
+                  { value: 'hour', label: '1 hour' },
+                ]}
+                className="min-w-[100px]"
+              />
+            )}
+            {dateRange.start !== dateRange.end && (
+              <Select
+                value={multiDayInterval}
+                onChange={(value) => setMultiDayInterval(value as 'hour' | 'day')}
+                options={[
+                  { value: 'hour', label: '1 hour' },
+                  { value: 'day', label: '1 day' },
+                ]}
+                className="min-w-[100px]"
+              />
+            )}
+
             {prevData?.length ? (
               <Checkbox
                 checked={showComparison}
