@@ -101,18 +101,22 @@ export default function PricingSection() {
 
   const currentTraffic = TRAFFIC_TIERS[sliderIndex]
 
-  const calculatePrice = (planId: string) => {
+  // Helper to get all price details
+  const getPriceDetails = (planId: string) => {
     // @ts-ignore
     const basePrice = currentTraffic.prices[planId]
     
-    // Handle "Custom" or missing prices
-    if (basePrice === null || basePrice === undefined) return 'Custom'
+    // Handle "Custom"
+    if (basePrice === null || basePrice === undefined) return null
     
-    let price = basePrice
-    if (isYearly) {
-      price = price * 0.8 // 20% discount
+    const yearlyTotal = basePrice * 11 // 1 month free (pay for 11)
+    const effectiveMonthly = Math.round(yearlyTotal / 12)
+    
+    return {
+      baseMonthly: basePrice,
+      yearlyTotal: yearlyTotal,
+      effectiveMonthly: effectiveMonthly
     }
-    return '€' + Math.round(price)
   }
 
   return (
@@ -163,44 +167,80 @@ export default function PricingSection() {
             />
           </button>
           <span className={isYearly ? 'text-neutral-900 dark:text-white font-medium' : 'text-neutral-500'}>
-            Yearly <span className="text-xs text-brand-orange bg-brand-orange/10 px-2 py-0.5 rounded-full ml-1">2 months free</span>
+            Yearly <span className="text-xs text-brand-orange bg-brand-orange/10 px-2 py-0.5 rounded-full ml-1">1 month free</span>
           </span>
         </div>
       </div>
 
       {/* Pricing Cards Grid */}
       <div className="grid md:grid-cols-4 gap-6">
-        {PLANS.map((plan) => (
-          <div key={plan.id} className="card-glass p-8 flex flex-col relative overflow-hidden">
-            <div className="mb-8">
-              <h3 className="text-lg font-medium text-neutral-900 dark:text-white mb-2">{plan.name}</h3>
-              <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-bold text-neutral-900 dark:text-white">
-                  {calculatePrice(plan.id)}
-                </span>
-                {calculatePrice(plan.id) !== 'Custom' && (
-                  <span className="text-neutral-500">/{isYearly ? 'mo' : 'month'}</span>
+        {PLANS.map((plan) => {
+          const priceDetails = getPriceDetails(plan.id)
+
+          return (
+            <div key={plan.id} className="card-glass p-8 flex flex-col relative overflow-hidden">
+              <div className="mb-8">
+                <h3 className="text-lg font-medium text-neutral-900 dark:text-white mb-2">{plan.name}</h3>
+                
+                {priceDetails ? (
+                  isYearly ? (
+                    // YEARLY VIEW
+                    <div>
+                      {/* 1. Effective Monthly Price */}
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-4xl font-bold text-neutral-900 dark:text-white">
+                          €{priceDetails.effectiveMonthly}
+                        </span>
+                        <span className="text-neutral-500">/mo</span>
+                      </div>
+                      
+                      {/* 2. Yearly Total */}
+                      <p className="text-sm text-neutral-500 mt-2 font-medium">
+                        Billed €{priceDetails.yearlyTotal} yearly
+                      </p>
+
+                      {/* 3. Comparison (Original -> Discounted) */}
+                      <div className="flex items-center gap-2 mt-1 text-sm">
+                        <span className="text-neutral-400 line-through decoration-neutral-400">
+                          €{priceDetails.baseMonthly}/mo
+                        </span>
+                        <span className="text-brand-orange font-medium">
+                          → €{priceDetails.effectiveMonthly}/mo
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    // MONTHLY VIEW
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-4xl font-bold text-neutral-900 dark:text-white">
+                        €{priceDetails.baseMonthly}
+                      </span>
+                      <span className="text-neutral-500">/mo</span>
+                    </div>
+                  )
+                ) : (
+                  // CUSTOM VIEW
+                  <div className="text-4xl font-bold text-neutral-900 dark:text-white">
+                    Custom
+                  </div>
                 )}
               </div>
-              {isYearly && calculatePrice(plan.id) !== 'Custom' && (
-                <p className="text-xs text-brand-orange mt-2">Billed yearly</p>
-              )}
+
+              <Button className="w-full mb-8 bg-brand-orange hover:bg-brand-orange/90 text-white">
+                Start free trial
+              </Button>
+
+              <ul className="space-y-4 flex-grow">
+                {plan.features.map((feature) => (
+                  <li key={feature} className="flex items-start gap-3 text-sm text-neutral-600 dark:text-neutral-400">
+                    <CheckCircleIcon className="w-5 h-5 text-brand-orange shrink-0" />
+                    <span>{feature}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
-
-            <Button className="w-full mb-8 bg-brand-orange hover:bg-brand-orange/90 text-white">
-              Start free trial
-            </Button>
-
-            <ul className="space-y-4 flex-grow">
-              {plan.features.map((feature) => (
-                <li key={feature} className="flex items-start gap-3 text-sm text-neutral-600 dark:text-neutral-400">
-                  <CheckCircleIcon className="w-5 h-5 text-brand-orange shrink-0" />
-                  <span>{feature}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
+          )
+        })}
 
         {/* Enterprise Card (Dark Style) */}
         <div className="p-8 rounded-2xl bg-neutral-900 text-white border border-neutral-800 flex flex-col shadow-2xl">
