@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { formatNumber } from '@/lib/utils/format'
 import * as Flags from 'country-flag-icons/react/3x2'
 // @ts-ignore
@@ -9,21 +9,52 @@ import WorldMap from './WorldMap'
 import { Modal, GlobeIcon } from '@ciphera-net/ui'
 import { SiTorproject } from 'react-icons/si'
 import { FaUserSecret, FaSatellite } from 'react-icons/fa'
+import { getCountries, getCities, getRegions } from '@/lib/api/stats'
 
 interface LocationProps {
   countries: Array<{ country: string; pageviews: number }>
   cities: Array<{ city: string; country: string; pageviews: number }>
   regions: Array<{ region: string; country: string; pageviews: number }>
   geoDataLevel?: 'full' | 'country' | 'none'
+  siteId: string
+  dateRange: { start: string, end: string }
 }
 
 type Tab = 'map' | 'countries' | 'regions' | 'cities'
 
 const LIMIT = 7
 
-export default function Locations({ countries, cities, regions, geoDataLevel = 'full' }: LocationProps) {
+export default function Locations({ countries, cities, regions, geoDataLevel = 'full', siteId, dateRange }: LocationProps) {
   const [activeTab, setActiveTab] = useState<Tab>('map')
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [fullData, setFullData] = useState<any[]>([])
+  const [isLoadingFull, setIsLoadingFull] = useState(false)
+
+  useEffect(() => {
+    if (isModalOpen) {
+      const fetchData = async () => {
+        setIsLoadingFull(true)
+        try {
+          let data: any[] = []
+          if (activeTab === 'countries') {
+            data = await getCountries(siteId, dateRange.start, dateRange.end, 250)
+          } else if (activeTab === 'regions') {
+            data = await getRegions(siteId, dateRange.start, dateRange.end, 250)
+          } else if (activeTab === 'cities') {
+            data = await getCities(siteId, dateRange.start, dateRange.end, 250)
+          }
+          setFullData(data)
+        } catch (e) {
+          console.error(e)
+        } finally {
+          setIsLoadingFull(false)
+        }
+      }
+      fetchData()
+    } else {
+      setFullData([])
+    }
+  }, [isModalOpen, activeTab, siteId, dateRange])
 
   const getFlagComponent = (countryCode: string) => {
     if (!countryCode || countryCode === 'Unknown') return null
@@ -238,21 +269,25 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
         title={`Locations - ${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}`}
       >
         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
-          {(data as any[]).map((item, index) => (
-            <div key={index} className="flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
-              <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
-                <span className="shrink-0">{getFlagComponent(item.country)}</span>
-                <span className="truncate">
-                  {activeTab === 'countries' ? getCountryName(item.country) : 
-                   activeTab === 'regions' ? getRegionName(item.region, item.country) :
-                   getCityName(item.city)}
-                </span>
+          {isLoadingFull ? (
+            <div className="py-4 text-center text-neutral-500">Loading...</div>
+          ) : (
+            (fullData.length > 0 ? fullData : data as any[]).map((item, index) => (
+              <div key={index} className="flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
+                <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
+                  <span className="shrink-0">{getFlagComponent(item.country)}</span>
+                  <span className="truncate">
+                    {activeTab === 'countries' ? getCountryName(item.country) : 
+                     activeTab === 'regions' ? getRegionName(item.region, item.country) :
+                     getCityName(item.city)}
+                  </span>
+                </div>
+                <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
+                  {formatNumber(item.pageviews)}
+                </div>
               </div>
-              <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
-                {formatNumber(item.pageviews)}
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </Modal>
     </>

@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { formatNumber } from '@/lib/utils/format'
 import { getBrowserIcon, getOSIcon, getDeviceIcon } from '@/lib/utils/icons'
 import { MdMonitor } from 'react-icons/md'
 import { Modal } from '@ciphera-net/ui'
+import { getBrowsers, getOS, getDevices, getScreenResolutions } from '@/lib/api/stats'
 
 interface TechSpecsProps {
   browsers: Array<{ browser: string; pageviews: number }>
@@ -13,20 +14,56 @@ interface TechSpecsProps {
   screenResolutions: Array<{ screen_resolution: string; pageviews: number }>
   collectDeviceInfo?: boolean
   collectScreenResolution?: boolean
+  siteId: string
+  dateRange: { start: string, end: string }
 }
 
 type Tab = 'browsers' | 'os' | 'devices' | 'screens'
 
 const LIMIT = 7
 
-export default function TechSpecs({ browsers, os, devices, screenResolutions, collectDeviceInfo = true, collectScreenResolution = true }: TechSpecsProps) {
+export default function TechSpecs({ browsers, os, devices, screenResolutions, collectDeviceInfo = true, collectScreenResolution = true, siteId, dateRange }: TechSpecsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('browsers')
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [fullData, setFullData] = useState<any[]>([])
+  const [isLoadingFull, setIsLoadingFull] = useState(false)
 
   // Filter out "Unknown" entries that result from disabled collection
   const filterUnknown = (items: Array<{ name: string; pageviews: number; icon: React.ReactNode }>) => {
     return items.filter(item => item.name && item.name !== 'Unknown' && item.name !== '')
   }
+
+  useEffect(() => {
+    if (isModalOpen) {
+      const fetchData = async () => {
+        setIsLoadingFull(true)
+        try {
+          let data: any[] = []
+          if (activeTab === 'browsers') {
+            const res = await getBrowsers(siteId, dateRange.start, dateRange.end, 100)
+            data = res.map(b => ({ name: b.browser, pageviews: b.pageviews, icon: getBrowserIcon(b.browser) }))
+          } else if (activeTab === 'os') {
+            const res = await getOS(siteId, dateRange.start, dateRange.end, 100)
+            data = res.map(o => ({ name: o.os, pageviews: o.pageviews, icon: getOSIcon(o.os) }))
+          } else if (activeTab === 'devices') {
+            const res = await getDevices(siteId, dateRange.start, dateRange.end, 100)
+            data = res.map(d => ({ name: d.device, pageviews: d.pageviews, icon: getDeviceIcon(d.device) }))
+          } else if (activeTab === 'screens') {
+            const res = await getScreenResolutions(siteId, dateRange.start, dateRange.end, 100)
+            data = res.map(s => ({ name: s.screen_resolution, pageviews: s.pageviews, icon: <MdMonitor className="text-neutral-500" /> }))
+          }
+          setFullData(filterUnknown(data))
+        } catch (e) {
+          console.error(e)
+        } finally {
+          setIsLoadingFull(false)
+        }
+      }
+      fetchData()
+    } else {
+      setFullData([])
+    }
+  }, [isModalOpen, activeTab, siteId, dateRange])
 
   const getRawData = () => {
     switch (activeTab) {
@@ -141,17 +178,21 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
         title={`Technology - ${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}`}
       >
         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
-          {data.map((item, index) => (
-            <div key={index} className="flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
-              <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
-                {item.icon && <span className="text-lg">{item.icon}</span>}
-                <span className="truncate">{item.name === 'Unknown' ? 'Unknown' : item.name}</span>
+          {isLoadingFull ? (
+            <div className="py-4 text-center text-neutral-500">Loading...</div>
+          ) : (
+            (fullData.length > 0 ? fullData : data).map((item, index) => (
+              <div key={index} className="flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
+                <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
+                  {item.icon && <span className="text-lg">{item.icon}</span>}
+                  <span className="truncate">{item.name === 'Unknown' ? 'Unknown' : item.name}</span>
+                </div>
+                <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
+                  {formatNumber(item.pageviews)}
+                </div>
               </div>
-              <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
-                {formatNumber(item.pageviews)}
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </Modal>
     </>

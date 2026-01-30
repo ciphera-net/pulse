@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { formatNumber } from '@/lib/utils/format'
-import { TopPage } from '@/lib/api/stats'
+import { TopPage, getTopPages, getEntryPages, getExitPages } from '@/lib/api/stats'
 import { Modal, ArrowUpRightIcon } from '@ciphera-net/ui'
 
 interface ContentStatsProps {
@@ -11,15 +11,19 @@ interface ContentStatsProps {
   exitPages: TopPage[]
   domain: string
   collectPagePaths?: boolean
+  siteId: string
+  dateRange: { start: string, end: string }
 }
 
 type Tab = 'top_pages' | 'entry_pages' | 'exit_pages'
 
 const LIMIT = 7
 
-export default function ContentStats({ topPages, entryPages, exitPages, domain, collectPagePaths = true }: ContentStatsProps) {
+export default function ContentStats({ topPages, entryPages, exitPages, domain, collectPagePaths = true, siteId, dateRange }: ContentStatsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('top_pages')
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [fullData, setFullData] = useState<TopPage[]>([])
+  const [isLoadingFull, setIsLoadingFull] = useState(false)
 
   // Filter out generic "/" entries when page paths are disabled (all traffic shows as "/")
   const filterGenericPaths = (pages: TopPage[]) => {
@@ -27,6 +31,32 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
     // Filter out pages that are just "/" with high traffic (indicator of disabled tracking)
     return pages.filter(p => p.path && p.path !== '')
   }
+
+  useEffect(() => {
+    if (isModalOpen) {
+      const fetchData = async () => {
+        setIsLoadingFull(true)
+        try {
+          let data: TopPage[] = []
+          if (activeTab === 'top_pages') {
+            data = await getTopPages(siteId, dateRange.start, dateRange.end, 100)
+          } else if (activeTab === 'entry_pages') {
+            data = await getEntryPages(siteId, dateRange.start, dateRange.end, 100)
+          } else if (activeTab === 'exit_pages') {
+            data = await getExitPages(siteId, dateRange.start, dateRange.end, 100)
+          }
+          setFullData(filterGenericPaths(data))
+        } catch (e) {
+          console.error(e)
+        } finally {
+          setIsLoadingFull(false)
+        }
+      }
+      fetchData()
+    } else {
+      setFullData([])
+    }
+  }, [isModalOpen, activeTab, siteId, dateRange, collectPagePaths])
 
   const getData = () => {
     switch (activeTab) {
@@ -132,24 +162,28 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
         title={`Content - ${getTabLabel(activeTab)}`}
       >
         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
-          {data.map((page, index) => (
-            <div key={index} className="flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
-              <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center">
-                <a
-                  href={`https://${domain.replace(/^https?:\/\//, '')}${page.path}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:underline flex items-center"
-                >
-                  {page.path}
-                  <ArrowUpRightIcon className="w-3 h-3 ml-2 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </a>
+          {isLoadingFull ? (
+            <div className="py-4 text-center text-neutral-500">Loading...</div>
+          ) : (
+            (fullData.length > 0 ? fullData : data).map((page, index) => (
+              <div key={index} className="flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
+                <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center">
+                  <a
+                    href={`https://${domain.replace(/^https?:\/\//, '')}${page.path}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:underline flex items-center"
+                  >
+                    {page.path}
+                    <ArrowUpRightIcon className="w-3 h-3 ml-2 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </a>
+                </div>
+                <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
+                  {formatNumber(page.pageviews)}
+                </div>
               </div>
-              <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
-                {formatNumber(page.pageviews)}
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </Modal>
     </>
