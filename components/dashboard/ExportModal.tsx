@@ -87,13 +87,13 @@ export default function ExportModal({ isOpen, onClose, data }: ExportModalProps)
           if (field === 'date' && typeof val === 'string') {
             return new Date(val).toLocaleDateString()
           }
-          return val
+          return val ?? ''
         })
       )
 
       autoTable(doc, {
         head: [fields.map(f => f.charAt(0).toUpperCase() + f.slice(1).replace('_', ' '))],
-        body: tableData,
+        body: tableData as any[][],
       })
 
       doc.save(`${filename || 'export'}.pdf`)
