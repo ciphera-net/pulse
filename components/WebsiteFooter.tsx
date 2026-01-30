@@ -20,6 +20,7 @@ const footerLinks = {
   resources: [
     { name: 'Documentation', href: '#', external: false },
     { name: 'Installation', href: '/installation', external: false },
+    { name: 'Integrations', href: '/integrations', external: false },
     { name: 'GitHub', href: 'https://github.com/ciphera-net', external: true },
   ],
   legal: [
