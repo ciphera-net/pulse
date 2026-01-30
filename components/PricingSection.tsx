@@ -186,26 +186,21 @@ export default function PricingSection() {
                   isYearly ? (
                     // YEARLY VIEW
                     <div>
-                      {/* 1. Effective Monthly Price */}
+                      {/* 1. Big Price = Yearly Total */}
                       <div className="flex items-baseline gap-1">
                         <span className="text-4xl font-bold text-neutral-900 dark:text-white">
-                          €{priceDetails.effectiveMonthly}
+                          €{priceDetails.yearlyTotal}
                         </span>
-                        <span className="text-neutral-500">/mo</span>
+                        <span className="text-neutral-500">/year</span>
                       </div>
                       
-                      {/* 2. Yearly Total */}
-                      <p className="text-sm text-neutral-500 mt-2 font-medium">
-                        Billed €{priceDetails.yearlyTotal} yearly
-                      </p>
-
-                      {/* 3. Comparison (Original -> Discounted) */}
-                      <div className="flex items-center gap-2 mt-1 text-sm">
+                      {/* 2. Subtext = Monthly Breakdown Comparison */}
+                      <div className="flex items-center gap-2 mt-2 text-sm font-medium">
                         <span className="text-neutral-400 line-through decoration-neutral-400">
                           €{priceDetails.baseMonthly}/mo
                         </span>
-                        <span className="text-brand-orange font-medium">
-                          → €{priceDetails.effectiveMonthly}/mo
+                        <span className="text-brand-orange">
+                          €{priceDetails.effectiveMonthly}/mo
                         </span>
                       </div>
                     </div>
