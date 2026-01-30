@@ -190,7 +190,12 @@ export default function PricingSection() {
             return (
               <div key={plan.id} className={`p-8 flex flex-col relative transition-colors ${isTeam ? 'bg-brand-orange/[0.02]' : 'hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50'}`}>
                 {isTeam && (
-                  <div className="absolute top-0 left-0 w-full h-1 bg-brand-orange" />
+                  <>
+                    <div className="absolute top-0 left-0 w-full h-1 bg-brand-orange" />
+                    <div className="absolute top-4 right-4 bg-brand-orange/10 text-brand-orange text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wide">
+                      Most Popular
+                    </div>
+                  </>
                 )}
                 
                 <div className="mb-8">
