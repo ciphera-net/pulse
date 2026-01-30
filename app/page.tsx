@@ -91,38 +91,6 @@ function ComparisonSection() {
   )
 }
 
-function IntegrationSection() {
-  return (
-    <div className="w-full max-w-4xl mx-auto mb-32 text-center">
-      <h2 className="text-3xl font-bold mb-8 text-neutral-900 dark:text-white">Install in seconds</h2>
-      <p className="text-neutral-500 mb-8">Just add this snippet to your &lt;head&gt; tag.</p>
-      
-      <div className="max-w-2xl mx-auto bg-[#1e1e1e] rounded-xl overflow-hidden shadow-2xl text-left border border-neutral-800">
-        <div className="flex items-center px-4 py-3 bg-[#252526] border-b border-neutral-800">
-          <div className="flex gap-2">
-            <div className="w-3 h-3 rounded-full bg-red-500/20" />
-            <div className="w-3 h-3 rounded-full bg-yellow-500/20" />
-            <div className="w-3 h-3 rounded-full bg-green-500/20" />
-          </div>
-          <span className="ml-4 text-xs text-neutral-500 font-mono">layout.tsx / index.html</span>
-        </div>
-        <div className="p-6 overflow-x-auto">
-          <code className="font-mono text-sm text-neutral-300">
-            <span className="text-blue-400">&lt;script</span>{' '}
-            <span className="text-sky-300">defer</span>{' '}
-            <span className="text-sky-300">data-domain</span>
-            <span className="text-white">=</span>
-            <span className="text-orange-300">"your-site.com"</span>{' '}
-            <span className="text-sky-300">src</span>
-            <span className="text-white">=</span>
-            <span className="text-orange-300">"https://pulse.ciphera.net/script.js"</span>
-            <span className="text-blue-400">&gt;&lt;/script&gt;</span>
-          </code>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 export default function HomePage() {
   const { user, loading: authLoading } = useAuth()
@@ -247,9 +215,6 @@ export default function HomePage() {
 
           {/* * NEW: COMPARISON SECTION */}
           <ComparisonSection />
-
-          {/* * NEW: INTEGRATION SECTION */}
-          <IntegrationSection />
 
           {/* * NEW: CTA BOTTOM */}
           <div className="text-center mb-20">
