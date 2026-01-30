@@ -52,4 +52,31 @@
   .glow-orange {
     box-shadow: 0 0 40px -10px rgba(253, 94, 15, 0.5);
   }
+
+  /* * 3D Transform Utilities */
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+  
+  .rotate-x-12 {
+    transform: rotateX(12deg);
+  }
+  
+  .rotate-x-0 {
+    transform: rotateX(0deg);
+  }
+  
+  .transform-style-3d {
+    transform-style: preserve-3d;
+  }
+
+  /* * Animations */
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
 }
