@@ -268,10 +268,14 @@ export default function SiteDashboardPage() {
           exitPages={exitPages}
           domain={site.domain}
           collectPagePaths={site.collect_page_paths ?? true}
+          siteId={siteId}
+          dateRange={dateRange}
         />
         <TopReferrers
           referrers={topReferrers}
           collectReferrers={site.collect_referrers ?? true}
+          siteId={siteId}
+          dateRange={dateRange}
         />
       </div>
 
@@ -281,6 +285,8 @@ export default function SiteDashboardPage() {
           cities={cities}
           regions={regions}
           geoDataLevel={site.collect_geo_data || 'full'}
+          siteId={siteId}
+          dateRange={dateRange}
         />
         <TechSpecs
           browsers={browsers}
@@ -289,6 +295,8 @@ export default function SiteDashboardPage() {
           screenResolutions={screenResolutions}
           collectDeviceInfo={site.collect_device_info ?? true}
           collectScreenResolution={site.collect_screen_resolution ?? true}
+          siteId={siteId}
+          dateRange={dateRange}
         />
       </div>
 
