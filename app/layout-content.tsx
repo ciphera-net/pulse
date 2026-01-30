@@ -49,6 +49,8 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         onSwitchWorkspace={handleSwitchWorkspace}
         onCreateOrganization={handleCreateOrganization}
         allowPersonalWorkspace={false}
+        showFaq={false}
+        showSecurity={false}
       />
       <main className="flex-1 pt-24 pb-8">
         {children}
