@@ -7,6 +7,7 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import type { DailyStat } from './Chart'
 import { formatNumber, formatDuration } from '@/lib/utils/format'
+import type { TopPage, TopReferrer } from '@/lib/api/stats'
 
 interface ExportModalProps {
   isOpen: boolean
@@ -18,6 +19,8 @@ interface ExportModalProps {
     bounce_rate: number
     avg_duration: number
   }
+  topPages?: TopPage[]
+  topReferrers?: TopReferrer[]
 }
 
 type ExportFormat = 'csv' | 'json' | 'xlsx' | 'pdf'
@@ -40,7 +43,7 @@ const loadImage = (src: string): Promise<string> => {
   })
 }
 
-export default function ExportModal({ isOpen, onClose, data, stats }: ExportModalProps) {
+export default function ExportModal({ isOpen, onClose, data, stats, topPages, topReferrers }: ExportModalProps) {
   const [format, setFormat] = useState<ExportFormat>('csv')
   const [filename, setFilename] = useState(`pulse_export_${new Date().toISOString().split('T')[0]}`)
   const [includeHeader, setIncludeHeader] = useState(true)
@@ -171,11 +174,17 @@ export default function ExportModal({ isOpen, onClose, data, stats }: ExportModa
         startY = 65 // Move table down
       }
 
+      // Check if data is hourly (same date for multiple rows)
+      const isHourly = data.length > 1 && data[0].date.split('T')[0] === data[1].date.split('T')[0]
+
       const tableData = exportData.map(row => 
         fields.map(field => {
           const val = row[field]
           if (field === 'date' && typeof val === 'string') {
-            return new Date(val).toLocaleDateString()
+            const date = new Date(val)
+            return isHourly 
+                ? date.toLocaleString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+                : date.toLocaleDateString()
           }
           if (typeof val === 'number') {
              if (field === 'bounce_rate') return `${Math.round(val)}%`
@@ -225,6 +234,62 @@ export default function ExportModal({ isOpen, onClose, data, stats }: ExportModa
             doc.text(str, pageSize.width - 14, pageHeight - 10, { align: 'right' })
         }
       })
+
+      let finalY = (doc as any).lastAutoTable.finalY + 10
+
+      // Top Pages Table
+      if (topPages && topPages.length > 0) {
+        // Check if we need a new page
+        if (finalY + 40 > doc.internal.pageSize.height) {
+            doc.addPage()
+            finalY = 20
+        }
+
+        doc.setFontSize(14)
+        doc.setTextColor(23, 23, 23)
+        doc.text('Top Pages', 14, finalY)
+        finalY += 5
+
+        const pagesData = topPages.slice(0, 10).map(p => [p.path, formatNumber(p.pageviews)])
+        
+        autoTable(doc, {
+            startY: finalY,
+            head: [['Path', 'Pageviews']],
+            body: pagesData,
+            styles: { font: 'helvetica', fontSize: 9, cellPadding: 3 },
+            headStyles: { fillColor: [249, 115, 22], textColor: [255, 255, 255], fontStyle: 'bold' },
+            columnStyles: { 1: { halign: 'right' } },
+            alternateRowStyles: { fillColor: [255, 250, 245] },
+        })
+        
+        finalY = (doc as any).lastAutoTable.finalY + 10
+      }
+
+      // Top Referrers Table
+      if (topReferrers && topReferrers.length > 0) {
+         // Check if we need a new page
+         if (finalY + 40 > doc.internal.pageSize.height) {
+            doc.addPage()
+            finalY = 20
+        }
+
+        doc.setFontSize(14)
+        doc.setTextColor(23, 23, 23)
+        doc.text('Top Referrers', 14, finalY)
+        finalY += 5
+
+        const referrersData = topReferrers.slice(0, 10).map(r => [r.referrer, formatNumber(r.pageviews)])
+        
+        autoTable(doc, {
+            startY: finalY,
+            head: [['Referrer', 'Pageviews']],
+            body: referrersData,
+            styles: { font: 'helvetica', fontSize: 9, cellPadding: 3 },
+            headStyles: { fillColor: [249, 115, 22], textColor: [255, 255, 255], fontStyle: 'bold' },
+            columnStyles: { 1: { halign: 'right' } },
+            alternateRowStyles: { fillColor: [255, 250, 245] },
+        })
+      }
 
       doc.save(`${filename || 'export'}.pdf`)
       onClose()

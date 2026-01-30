@@ -14,10 +14,8 @@ import {
 } from 'recharts'
 import type { TooltipProps } from 'recharts'
 import { formatNumber, formatDuration } from '@/lib/utils/format'
-import { ArrowUpRightIcon, ArrowDownRightIcon, DownloadIcon, BarChartIcon } from '@ciphera-net/ui'
-import { Button } from '@ciphera-net/ui'
+import { ArrowUpRightIcon, ArrowDownRightIcon, BarChartIcon } from '@ciphera-net/ui'
 import { Checkbox } from '@ciphera-net/ui'
-import ExportModal from './ExportModal'
 
 const COLORS = {
   brand: '#FD5E0F',
@@ -164,7 +162,6 @@ function formatAxisValue(value: number): string {
 export default function Chart({ data, prevData, stats, prevStats, interval }: ChartProps) {
   const [metric, setMetric] = useState<MetricType>('visitors')
   const [showComparison, setShowComparison] = useState(false)
-  const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const { resolvedTheme } = useTheme()
 
   const colors = useMemo(
@@ -212,10 +209,6 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
     if (!previous) return null
     if (previous === 0) return current > 0 ? 100 : 0
     return Math.round(((current - previous) / previous) * 100)
-  }
-
-  const handleExport = () => {
-    setIsExportModalOpen(true)
   }
 
   const metrics = [
@@ -364,16 +357,6 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
 
             {/* Vertical Separator */}
             <div className="h-4 w-px bg-neutral-200 dark:bg-neutral-800" />
-
-            <Button
-              variant="secondary"
-              onClick={handleExport}
-              className="h-8 px-3 text-xs gap-2"
-              title="Export to CSV"
-            >
-              <DownloadIcon className="w-3.5 h-3.5" />
-              Export
-            </Button>
           </div>
         </div>
 
@@ -494,12 +477,6 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
           </div>
         )}
       </div>
-      <ExportModal
-        isOpen={isExportModalOpen}
-        onClose={() => setIsExportModalOpen(false)}
-        data={data}
-        stats={stats}
-      />
     </div>
   )
 }

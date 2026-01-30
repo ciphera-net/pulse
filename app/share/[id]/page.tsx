@@ -11,8 +11,8 @@ import TopReferrers from '@/components/dashboard/TopReferrers'
 import Locations from '@/components/dashboard/Locations'
 import TechSpecs from '@/components/dashboard/TechSpecs'
 import PerformanceStats from '@/components/dashboard/PerformanceStats'
-import { Select, DatePicker as DatePickerModal, Captcha } from '@ciphera-net/ui'
-import { ZapIcon } from '@ciphera-net/ui'
+import { Select, DatePicker as DatePickerModal, Captcha, DownloadIcon, ZapIcon } from '@ciphera-net/ui'
+import ExportModal from '@/components/dashboard/ExportModal'
 
 // Helper to get date ranges
 const getDateRange = (days: number) => {
@@ -45,6 +45,7 @@ export default function PublicDashboardPage() {
   // Date range state
   const [dateRange, setDateRange] = useState(getDateRange(30))
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const [todayInterval, setTodayInterval] = useState<'minute' | 'hour'>('hour')
   const [multiDayInterval, setMultiDayInterval] = useState<'hour' | 'day'>('day')
 
@@ -294,6 +295,14 @@ export default function PublicDashboardPage() {
             </div>
 
             <div className="flex gap-2">
+              <button
+                onClick={() => setIsExportModalOpen(true)}
+                className="hidden md:flex items-center gap-2 px-3 py-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors"
+              >
+                <DownloadIcon className="w-4 h-4" />
+                <span>Export</span>
+              </button>
+
               <Select
                 value={
                   dateRange.start === new Date().toISOString().split('T')[0] && dateRange.end === new Date().toISOString().split('T')[0] 
@@ -454,6 +463,17 @@ export default function PublicDashboardPage() {
           setIsDatePickerOpen(false)
         }}
       />
+      
+      {data && (
+        <ExportModal
+          isOpen={isExportModalOpen}
+          onClose={() => setIsExportModalOpen(false)}
+          data={data.daily_stats || []}
+          stats={data.stats}
+          topPages={data.top_pages}
+          topReferrers={data.top_referrers}
+        />
+      )}
     </div>
   )
 }
