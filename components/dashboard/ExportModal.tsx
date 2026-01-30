@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { Modal, Button, Checkbox, Input, Select } from '@ciphera-net/ui'
 import * as XLSX from 'xlsx'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 import type { DailyStat } from './Chart'
 
 interface ExportModalProps {
@@ -11,7 +13,7 @@ interface ExportModalProps {
   data: DailyStat[]
 }
 
-type ExportFormat = 'csv' | 'json' | 'xlsx'
+type ExportFormat = 'csv' | 'json' | 'xlsx' | 'pdf'
 
 export default function ExportModal({ isOpen, onClose, data }: ExportModalProps) {
   const [format, setFormat] = useState<ExportFormat>('csv')
@@ -76,6 +78,27 @@ export default function ExportModal({ isOpen, onClose, data }: ExportModalProps)
       document.body.removeChild(link)
       onClose()
       return
+    } else if (format === 'pdf') {
+      const doc = new jsPDF()
+      
+      const tableData = exportData.map(row => 
+        fields.map(field => {
+          const val = row[field]
+          if (field === 'date' && typeof val === 'string') {
+            return new Date(val).toLocaleDateString()
+          }
+          return val
+        })
+      )
+
+      autoTable(doc, {
+        head: [fields.map(f => f.charAt(0).toUpperCase() + f.slice(1).replace('_', ' '))],
+        body: tableData,
+      })
+
+      doc.save(`${filename || 'export'}.pdf`)
+      onClose()
+      return
     } else {
       content = JSON.stringify(exportData, null, 2)
       mimeType = 'application/json;charset=utf-8;'
@@ -122,6 +145,7 @@ export default function ExportModal({ isOpen, onClose, data }: ExportModalProps)
                 { value: 'csv', label: 'CSV' },
                 { value: 'json', label: 'JSON' },
                 { value: 'xlsx', label: 'Excel' },
+                { value: 'pdf', label: 'PDF' },
               ]}
               variant="input"
               fullWidth
