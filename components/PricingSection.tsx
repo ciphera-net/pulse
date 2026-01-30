@@ -3,12 +3,12 @@
 import { useState } from 'react'
 import { Button, CheckCircleIcon } from '@ciphera-net/ui'
 
-// Pricing Tiers Configuration
-const TIERS = [
+// 1. Define Plans with IDs and Site Limits
+const PLANS = [
   {
-    name: 'Starter',
-    description: 'For personal sites and startups',
-    basePrice: 9, // Base price for lowest tier
+    id: 'solo',
+    name: 'Solo',
+    description: 'For personal sites and freelancers',
     features: [
       '1 site',
       '1 year data retention',
@@ -17,20 +17,20 @@ const TIERS = [
     ]
   },
   {
-    name: 'Growth',
-    description: 'For growing businesses',
-    basePrice: 19,
+    id: 'team',
+    name: 'Team',
+    description: 'For startups and growing agencies',
     features: [
-      'Up to 3 sites',
+      'Up to 5 sites',
       '3 years data retention',
       'Team dashboard',
       'Shared links'
     ]
   },
   {
+    id: 'business',
     name: 'Business',
     description: 'For large organizations',
-    basePrice: 49,
     features: [
       'Up to 10 sites',
       'Unlimited data retention',
@@ -40,27 +40,74 @@ const TIERS = [
   }
 ]
 
-// Slider Steps (Pageviews)
+// 2. Define Explicit Pricing per Tier (approx 20% cheaper than Plausible)
+// Includes intermediate steps: 50k, 250k, 2.5M
 const TRAFFIC_TIERS = [
-  { label: '10k', value: 10000, multiplier: 1 },
-  { label: '100k', value: 100000, multiplier: 2 },
-  { label: '500k', value: 500000, multiplier: 5 },
-  { label: '1M', value: 1000000, multiplier: 8 },
-  { label: '10M+', value: 10000000, multiplier: 15 },
+  { 
+    label: '10k', 
+    value: 10000, 
+    prices: { solo: 7, team: 12, business: 19 } 
+  },
+  { 
+    label: '50k', 
+    value: 50000, 
+    prices: { solo: 11, team: 19, business: 29 } 
+  },
+  { 
+    label: '100k', 
+    value: 100000, 
+    prices: { solo: 15, team: 25, business: 39 } 
+  },
+  { 
+    label: '250k', 
+    value: 250000, 
+    prices: { solo: 25, team: 39, business: 59 } 
+  },
+  { 
+    label: '500k', 
+    value: 500000, 
+    prices: { solo: 39, team: 59, business: 89 } 
+  },
+  { 
+    label: '1M', 
+    value: 1000000, 
+    prices: { solo: 55, team: 79, business: 119 } 
+  },
+  { 
+    label: '2.5M', 
+    value: 2500000, 
+    prices: { solo: 79, team: 119, business: 169 } 
+  },
+  { 
+    label: '5M', 
+    value: 5000000, 
+    prices: { solo: 109, team: 159, business: 219 } 
+  },
+  { 
+    label: '10M+', 
+    value: 10000000, 
+    prices: { solo: null, team: null, business: null } 
+  },
 ]
 
 export default function PricingSection() {
   const [isYearly, setIsYearly] = useState(false)
-  const [sliderIndex, setSliderIndex] = useState(2) // Default to middle tier (500k)
+  const [sliderIndex, setSliderIndex] = useState(2) // Default to 100k (index 2)
 
   const currentTraffic = TRAFFIC_TIERS[sliderIndex]
 
-  const calculatePrice = (basePrice: number, multiplier: number) => {
-    let price = basePrice * multiplier
+  const calculatePrice = (planId: string) => {
+    // @ts-ignore
+    const basePrice = currentTraffic.prices[planId]
+    
+    // Handle "Custom" or missing prices
+    if (basePrice === null || basePrice === undefined) return 'Custom'
+    
+    let price = basePrice
     if (isYearly) {
-      price = price * 0.8 // 20% discount (approx 2 months free)
+      price = price * 0.8 // 20% discount
     }
-    return Math.round(price)
+    return '€' + Math.round(price)
   }
 
   return (
@@ -118,17 +165,19 @@ export default function PricingSection() {
 
       {/* Pricing Cards Grid */}
       <div className="grid md:grid-cols-4 gap-6">
-        {TIERS.map((tier) => (
-          <div key={tier.name} className="card-glass p-8 flex flex-col relative overflow-hidden">
+        {PLANS.map((plan) => (
+          <div key={plan.id} className="card-glass p-8 flex flex-col relative overflow-hidden">
             <div className="mb-8">
-              <h3 className="text-lg font-medium text-neutral-900 dark:text-white mb-2">{tier.name}</h3>
+              <h3 className="text-lg font-medium text-neutral-900 dark:text-white mb-2">{plan.name}</h3>
               <div className="flex items-baseline gap-1">
                 <span className="text-4xl font-bold text-neutral-900 dark:text-white">
-                  €{calculatePrice(tier.basePrice, currentTraffic.multiplier)}
+                  {calculatePrice(plan.id)}
                 </span>
-                <span className="text-neutral-500">/{isYearly ? 'mo' : 'month'}</span>
+                {calculatePrice(plan.id) !== 'Custom' && (
+                  <span className="text-neutral-500">/{isYearly ? 'mo' : 'month'}</span>
+                )}
               </div>
-              {isYearly && (
+              {isYearly && calculatePrice(plan.id) !== 'Custom' && (
                 <p className="text-xs text-brand-orange mt-2">Billed yearly</p>
               )}
             </div>
@@ -138,7 +187,7 @@ export default function PricingSection() {
             </Button>
 
             <ul className="space-y-4 flex-grow">
-              {tier.features.map((feature) => (
+              {plan.features.map((feature) => (
                 <li key={feature} className="flex items-start gap-3 text-sm text-neutral-600 dark:text-neutral-400">
                   <CheckCircleIcon className="w-5 h-5 text-brand-orange shrink-0" />
                   <span>{feature}</span>
