@@ -331,28 +331,6 @@ export default function PublicDashboardPage() {
                   { value: 'custom', label: 'Custom' },
                 ]}
               />
-              {dateRange.start === new Date().toISOString().split('T')[0] && dateRange.end === new Date().toISOString().split('T')[0] && (
-                <Select
-                  value={todayInterval}
-                  onChange={(value) => setTodayInterval(value as 'minute' | 'hour')}
-                  options={[
-                    { value: 'minute', label: '1 min' },
-                    { value: 'hour', label: '1 hour' },
-                  ]}
-                  className="min-w-[100px]"
-                />
-              )}
-              {dateRange.start !== dateRange.end && (
-                <Select
-                  value={multiDayInterval}
-                  onChange={(value) => setMultiDayInterval(value as 'hour' | 'day')}
-                  options={[
-                    { value: 'hour', label: '1 hour' },
-                    { value: 'day', label: '1 day' },
-                  ]}
-                  className="min-w-[100px]"
-                />
-              )}
               {/* Powered by Ciphera Badge */}
               <a 
                 href="https://ciphera.net" 
@@ -386,6 +364,11 @@ export default function PublicDashboardPage() {
             stats={safeStats} 
             prevStats={prevStats}
             interval={dateRange.start === dateRange.end ? todayInterval : multiDayInterval}
+            dateRange={dateRange}
+            todayInterval={todayInterval}
+            setTodayInterval={setTodayInterval}
+            multiDayInterval={multiDayInterval}
+            setMultiDayInterval={setMultiDayInterval}
           />
         </div>
 
