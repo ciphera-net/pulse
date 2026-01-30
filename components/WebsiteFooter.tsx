@@ -44,10 +44,10 @@ export default function WebsiteFooter() {
               <Image
                 src="/pulse_icon_no_margins.png"
                 alt="Pulse privacy-first analytics logo"
-                width={36}
+                width={24}
                 height={36}
                 loading="lazy"
-                className="w-9 h-9 group-hover:scale-105 transition-transform duration-300"
+                className="h-9 w-auto group-hover:scale-105 transition-transform duration-300"
               />
               <span className="text-xl font-bold text-neutral-900 dark:text-white group-hover:text-brand-orange transition-colors duration-300">
                 Pulse
