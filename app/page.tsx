@@ -1,8 +1,7 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { motion, useScroll, useTransform } from 'framer-motion'
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow, initiateSignupFlow } from '@/lib/api/oauth'
 import { listSites, deleteSite, type Site } from '@/lib/api/sites'
@@ -13,32 +12,14 @@ import { BarChartIcon, LockIcon, ZapIcon, CheckCircleIcon, XIcon } from '@cipher
 import { toast } from '@ciphera-net/ui'
 
 function DashboardPreview() {
-  const containerRef = useRef<HTMLDivElement>(null)
-  
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start end", "end end"]
-  })
-
-  const rotateX = useTransform(scrollYProgress, [0, 1], [30, 0])
-  const scale = useTransform(scrollYProgress, [0, 1], [0.8, 1])
-  const opacity = useTransform(scrollYProgress, [0, 0.8], [0.5, 1])
-
   return (
-    <div ref={containerRef} className="relative w-full max-w-5xl mx-auto mt-20 mb-32 h-[600px] flex items-center justify-center">
+    <div className="relative w-full max-w-7xl mx-auto mt-20 mb-32 h-[600px] flex items-center justify-center">
       {/* * Glow behind the image */}
       <div className="absolute inset-0 bg-brand-orange/20 blur-[100px] -z-10 rounded-full opacity-50" />
       
-      {/* * Animated Container */}
-      <motion.div
-        style={{ 
-          rotateX, 
-          scale, 
-          opacity,
-          perspective: '1000px',
-          transformStyle: 'preserve-3d'
-        }}
-        className="relative w-full rounded-xl border border-neutral-200/50 dark:border-neutral-800/50 bg-neutral-900/50 backdrop-blur-sm shadow-2xl overflow-hidden"
+      {/* * Static Container */}
+      <div
+        className="relative w-full h-full rounded-xl border border-neutral-200/50 dark:border-neutral-800/50 bg-neutral-900/50 backdrop-blur-sm shadow-2xl overflow-hidden"
       >
         {/* * Header of the fake browser window */}
         <div className="h-8 bg-neutral-800/50 border-b border-white/5 flex items-center px-4 gap-2">
@@ -48,13 +29,13 @@ function DashboardPreview() {
         </div>
         
         {/* * Placeholder for actual dashboard screenshot - replace src with real image later */}
-        <div className="aspect-video bg-neutral-900 flex items-center justify-center text-neutral-700">
+        <div className="w-full h-[calc(100%-2rem)] bg-neutral-900 flex items-center justify-center text-neutral-700">
            <div className="text-center">
              <BarChartIcon className="w-16 h-16 mx-auto mb-4 opacity-20" />
              <p>Dashboard Preview</p>
            </div>
         </div>
-      </motion.div>
+      </div>
     </div>
   )
 }

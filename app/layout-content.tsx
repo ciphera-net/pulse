@@ -56,6 +56,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
       <Footer 
         LinkComponent={Link}
         appName="Pulse"
+        year={`2024-${new Date().getFullYear()}`}
       />
     </>
   )
