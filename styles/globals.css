@@ -18,3 +18,38 @@
     @apply bg-ciphera-gradient-dark;
   }
 }
+
+@layer components {
+  /* * Glass Card Effect - Crucial for the "Premium" feel */
+  .card-glass {
+    @apply bg-white/80 dark:bg-neutral-900/80;
+    @apply backdrop-blur-xl;
+    @apply border border-neutral-200/50 dark:border-neutral-800/50;
+    @apply rounded-2xl;
+    @apply transition-all duration-300 ease-out;
+  }
+
+  /* * Gradient Text for Headlines */
+  .gradient-text {
+    @apply bg-gradient-to-r from-brand-orange to-[#E54E00] bg-clip-text text-transparent;
+  }
+
+  /* * The "Pulse" Badge */
+  .badge-primary {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider;
+    @apply bg-brand-orange/10 text-brand-orange border border-brand-orange/20;
+  }
+}
+
+@layer utilities {
+  /* * The Background Grid */
+  .bg-grid-pattern {
+    background-image: radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0);
+    background-size: 32px 32px;
+  }
+
+  /* * Glow Effects */
+  .glow-orange {
+    box-shadow: 0 0 40px -10px rgba(253, 94, 15, 0.5);
+  }
+}

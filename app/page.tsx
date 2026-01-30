@@ -55,73 +55,78 @@ export default function HomePage() {
 
   if (!user) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] py-12 px-4">
-        {/* Hero Section */}
-        <div className="max-w-4xl mx-auto text-center space-y-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-orange/10 text-brand-orange text-sm font-medium mb-4">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-orange opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-orange"></span>
+      <div className="relative min-h-[calc(100vh-64px)] flex flex-col items-center justify-center overflow-hidden">
+        
+        {/* * --- 1. ATMOSPHERE (Background) --- */}
+        <div className="absolute inset-0 -z-10 pointer-events-none">
+          {/* * Top-left Orange Glow */}
+          <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-brand-orange/10 rounded-full blur-[128px] opacity-60" />
+          {/* * Bottom-right Neutral Glow */}
+          <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-neutral-500/10 dark:bg-neutral-400/10 rounded-full blur-[128px] opacity-40" />
+          {/* * Grid Pattern with Radial Mask */}
+          <div 
+            className="absolute inset-0 bg-grid-pattern opacity-[0.02] dark:opacity-[0.05]"
+            style={{ maskImage: 'radial-gradient(ellipse at center, black 0%, transparent 70%)' }}
+          />
+        </div>
+
+        <div className="w-full max-w-6xl mx-auto px-4 py-20 text-center z-10">
+          
+          {/* * --- 2. BADGE --- */}
+          <div className="inline-flex justify-center mb-8 animate-fade-in">
+            <span className="badge-primary">
+              <span className="w-1.5 h-1.5 rounded-full bg-brand-orange animate-pulse" />
+              Privacy-First Analytics
             </span>
-            Privacy-First Pulse
           </div>
-          
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-neutral-900 dark:text-white">
+
+          {/* * --- 3. HEADLINE --- */}
+          <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-neutral-900 dark:text-white mb-6">
             Simple analytics for <br />
-            <span className="text-brand-orange">privacy-conscious</span> apps.
+            <span className="relative inline-block">
+              <span className="gradient-text">privacy-conscious</span>
+              {/* * SVG Underline from Main Site */}
+              <svg className="absolute -bottom-2 left-0 w-full h-3 text-brand-orange/30" viewBox="0 0 200 12" preserveAspectRatio="none">
+                <path d="M0 9C50 3 150 3 200 9" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+              </svg>
+            </span>
+            {' '}apps.
           </h1>
-          
-          <p className="text-xl text-neutral-600 dark:text-neutral-400 max-w-2xl mx-auto leading-relaxed">
+
+          <p className="text-xl text-neutral-600 dark:text-neutral-400 max-w-2xl mx-auto mb-10 leading-relaxed">
             Respect your users' privacy while getting the insights you need. 
             No cookies, no IP tracking, fully GDPR compliant.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
-            <Button
-              onClick={() => initiateOAuthFlow()}
-              className="px-8 py-6 text-lg min-w-[200px]"
-            >
+          {/* * --- 4. CTAs --- */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-20">
+            <Button onClick={() => initiateOAuthFlow()} className="btn-primary px-8 py-4 text-lg shadow-lg shadow-brand-orange/20">
               Get Started
             </Button>
-            <Button
-              variant="secondary"
-              onClick={() => initiateSignupFlow()}
-              className="px-8 py-6 text-lg min-w-[200px]"
-            >
+            <Button variant="secondary" onClick={() => initiateSignupFlow()} className="btn-secondary px-8 py-4 text-lg backdrop-blur-sm">
               Create Account
             </Button>
           </div>
 
-          {/* Features Grid */}
-          <div className="grid md:grid-cols-3 gap-8 pt-16 text-left">
-            <div className="p-6 rounded-xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800">
-              <div className="w-12 h-12 bg-brand-orange/10 rounded-xl flex items-center justify-center mb-4 text-brand-orange">
-                <LockIcon className="w-6 h-6" />
+          {/* * --- 5. GLASS CARDS --- */}
+          <div className="grid md:grid-cols-3 gap-6 text-left">
+            {[
+              { icon: LockIcon, title: "Privacy First", desc: "We don't track personal data. No IP addresses, no fingerprints, no cookies." },
+              { icon: BarChartIcon, title: "Simple Insights", desc: "Get the metrics that matter without the clutter. Page views, visitors, and sources." },
+              { icon: ZapIcon, title: "Lightweight", desc: "Our script is less than 1kb. It won't slow down your site or affect your SEO." }
+            ].map((feature, i) => (
+              <div key={i} className="card-glass p-8 hover:-translate-y-1 hover:shadow-xl transition-all duration-300 group">
+                <div className="w-12 h-12 rounded-xl bg-brand-orange/10 flex items-center justify-center mb-6 text-brand-orange group-hover:scale-110 transition-transform duration-300">
+                  <feature.icon className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold text-neutral-900 dark:text-white mb-3">{feature.title}</h3>
+                <p className="text-neutral-600 dark:text-neutral-400 leading-relaxed">
+                  {feature.desc}
+                </p>
               </div>
-              <h3 className="text-xl font-bold text-neutral-900 dark:text-white mb-2">Privacy First</h3>
-              <p className="text-neutral-600 dark:text-neutral-400">
-                We don't track personal data. No IP addresses, no fingerprints, no cookies.
-              </p>
-            </div>
-            <div className="p-6 rounded-xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800">
-              <div className="w-12 h-12 bg-brand-orange/10 rounded-xl flex items-center justify-center mb-4 text-brand-orange">
-                <BarChartIcon className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-bold text-neutral-900 dark:text-white mb-2">Simple Insights</h3>
-              <p className="text-neutral-600 dark:text-neutral-400">
-                Get the metrics that matter without the clutter. Page views, visitors, and sources.
-              </p>
-            </div>
-            <div className="p-6 rounded-xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800">
-              <div className="w-12 h-12 bg-brand-orange/10 rounded-xl flex items-center justify-center mb-4 text-brand-orange">
-                <ZapIcon className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-bold text-neutral-900 dark:text-white mb-2">Lightweight</h3>
-              <p className="text-neutral-600 dark:text-neutral-400">
-                Our script is less than 1kb. It won't slow down your site or affect your SEO.
-              </p>
-            </div>
+            ))}
           </div>
+
         </div>
       </div>
     )
@@ -142,7 +147,7 @@ export default function HomePage() {
         <Link href="/sites/new" className="btn-primary text-sm">Add New Site</Link>
       </div>
 
-      {/* Global Overview */}
+      {/* * Global Overview */}
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
           <p className="text-sm text-neutral-500 dark:text-neutral-400">Total Sites</p>
