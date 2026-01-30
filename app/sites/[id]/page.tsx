@@ -50,14 +50,84 @@ export default function SiteDashboardPage() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const [todayInterval, setTodayInterval] = useState<'minute' | 'hour'>('hour')
   const [multiDayInterval, setMultiDayInterval] = useState<'hour' | 'day'>('day')
+  const [isSettingsLoaded, setIsSettingsLoaded] = useState(false)
+
+  // Load settings from localStorage
+  useEffect(() => {
+    try {
+      const savedSettings = localStorage.getItem('pulse_dashboard_settings')
+      if (savedSettings) {
+        const settings = JSON.parse(savedSettings)
+        
+        // Restore date range
+        if (settings.type === 'today') {
+          const today = new Date().toISOString().split('T')[0]
+          setDateRange({ start: today, end: today })
+        } else if (settings.type === '7') {
+          setDateRange(getDateRange(7))
+        } else if (settings.type === '30') {
+          setDateRange(getDateRange(30))
+        } else if (settings.type === 'custom' && settings.dateRange) {
+          setDateRange(settings.dateRange)
+        }
+
+        // Restore intervals
+        if (settings.todayInterval) setTodayInterval(settings.todayInterval)
+        if (settings.multiDayInterval) setMultiDayInterval(settings.multiDayInterval)
+      }
+    } catch (e) {
+      console.error('Failed to load dashboard settings', e)
+    } finally {
+      setIsSettingsLoaded(true)
+    }
+  }, [])
+
+  // Save settings to localStorage
+  const saveSettings = (type: string, newDateRange?: { start: string, end: string }) => {
+    try {
+      const settings = {
+        type,
+        dateRange: newDateRange || dateRange,
+        todayInterval,
+        multiDayInterval,
+        lastUpdated: Date.now()
+      }
+      localStorage.setItem('pulse_dashboard_settings', JSON.stringify(settings))
+    } catch (e) {
+      console.error('Failed to save dashboard settings', e)
+    }
+  }
+
+  // Save intervals when they change
+  useEffect(() => {
+    if (!isSettingsLoaded) return
+    
+    // Determine current type
+    let type = 'custom'
+    const today = new Date().toISOString().split('T')[0]
+    if (dateRange.start === today && dateRange.end === today) type = 'today'
+    else if (dateRange.start === getDateRange(7).start) type = '7'
+    else if (dateRange.start === getDateRange(30).start) type = '30'
+
+    const settings = {
+      type,
+      dateRange,
+      todayInterval,
+      multiDayInterval,
+      lastUpdated: Date.now()
+    }
+    localStorage.setItem('pulse_dashboard_settings', JSON.stringify(settings))
+  }, [todayInterval, multiDayInterval, isSettingsLoaded]) // dateRange is handled in saveSettings/onChange
 
   useEffect(() => {
-    loadData()
+    if (isSettingsLoaded) {
+      loadData()
+    }
     const interval = setInterval(() => {
       loadRealtime()
     }, 30000) // Update every 30 seconds
     return () => clearInterval(interval)
-  }, [siteId, dateRange, todayInterval, multiDayInterval])
+  }, [siteId, dateRange, todayInterval, multiDayInterval, isSettingsLoaded])
 
   const getPreviousDateRange = (start: string, end: string) => {
     const startDate = new Date(start)
@@ -195,11 +265,21 @@ export default function SiteDashboardPage() {
                 : 'custom'
               }
               onChange={(value) => {
-                if (value === '7') setDateRange(getDateRange(7))
-                else if (value === '30') setDateRange(getDateRange(30))
+                if (value === '7') {
+                  const range = getDateRange(7)
+                  setDateRange(range)
+                  saveSettings('7', range)
+                }
+                else if (value === '30') {
+                  const range = getDateRange(30)
+                  setDateRange(range)
+                  saveSettings('30', range)
+                }
                 else if (value === 'today') {
                   const today = new Date().toISOString().split('T')[0]
-                  setDateRange({ start: today, end: today })
+                  const range = { start: today, end: today }
+                  setDateRange(range)
+                  saveSettings('today', range)
                 }
                 else if (value === 'custom') {
                   setIsDatePickerOpen(true)
@@ -298,6 +378,7 @@ export default function SiteDashboardPage() {
         onClose={() => setIsDatePickerOpen(false)}
         onApply={(range) => {
           setDateRange(range)
+          saveSettings('custom', range)
           setIsDatePickerOpen(false)
         }}
         initialRange={dateRange}
