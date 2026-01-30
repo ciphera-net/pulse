@@ -120,7 +120,7 @@ export default function PricingSection() {
   }
 
   return (
-    <section className="py-24 px-4 max-w-5xl mx-auto">
+    <section className="py-24 px-4 max-w-6xl mx-auto">
       <div className="text-center mb-12">
         <h2 className="text-4xl md:text-5xl font-bold text-neutral-900 dark:text-white mb-6 tracking-tight">
           Transparent Pricing
@@ -131,7 +131,7 @@ export default function PricingSection() {
       </div>
 
       {/* Unified Container */}
-      <div className="max-w-5xl mx-auto border border-neutral-200 dark:border-neutral-800 rounded-3xl bg-white/50 dark:bg-neutral-900/50 backdrop-blur-xl shadow-sm overflow-hidden mb-20">
+      <div className="max-w-6xl mx-auto border border-neutral-200 dark:border-neutral-800 rounded-3xl bg-white/50 dark:bg-neutral-900/50 backdrop-blur-xl shadow-sm overflow-hidden mb-20">
         
         {/* Top Toolbar */}
         <div className="p-8 border-b border-neutral-200 dark:border-neutral-800 flex flex-col md:flex-row items-center justify-between gap-8 bg-neutral-50/50 dark:bg-neutral-900/50">
