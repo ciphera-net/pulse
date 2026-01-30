@@ -89,27 +89,6 @@ function ComparisonSection() {
   )
 }
 
-function Footer() {
-  return (
-    <footer className="border-t border-neutral-200 dark:border-neutral-800 mt-20 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md">
-      <div className="max-w-6xl mx-auto px-4 py-12 flex flex-col md:flex-row justify-between items-center gap-6">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-brand-orange flex items-center justify-center text-white font-bold">P</div>
-          <span className="font-bold text-neutral-900 dark:text-white">Pulse</span>
-        </div>
-        <div className="text-sm text-neutral-500">
-          © {new Date().getFullYear()} Ciphera. All rights reserved.
-        </div>
-        <div className="flex gap-6 text-sm text-neutral-500">
-          <Link href="#" className="hover:text-brand-orange transition-colors">Privacy</Link>
-          <Link href="#" className="hover:text-brand-orange transition-colors">Terms</Link>
-          <Link href="#" className="hover:text-brand-orange transition-colors">GitHub</Link>
-        </div>
-      </div>
-    </footer>
-  )
-}
-
 export default function HomePage() {
   const { user, loading: authLoading } = useAuth()
   const [sites, setSites] = useState<Site[]>([])
@@ -244,9 +223,6 @@ export default function HomePage() {
           </div>
 
         </div>
-
-        {/* * NEW: FOOTER */}
-        <Footer />
       </div>
     )
   }
