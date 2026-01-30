@@ -8,7 +8,8 @@ import { getStats, getRealtime, getDailyStats, getTopPages, getTopReferrers, get
 import { formatNumber, formatDuration, getDateRange } from '@/lib/utils/format'
 import { toast } from '@ciphera-net/ui'
 import { LoadingOverlay } from '@ciphera-net/ui'
-import { Select, DatePicker } from '@ciphera-net/ui'
+import { Select, DatePicker, DownloadIcon } from '@ciphera-net/ui'
+import ExportModal from '@/components/dashboard/ExportModal'
 import ContentStats from '@/components/dashboard/ContentStats'
 import TopReferrers from '@/components/dashboard/TopReferrers'
 import Locations from '@/components/dashboard/Locations'
@@ -46,6 +47,7 @@ export default function SiteDashboardPage() {
   const [performanceByPage, setPerformanceByPage] = useState<PerformanceByPageStat[] | null>(null)
   const [dateRange, setDateRange] = useState(getDateRange(30))
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const [todayInterval, setTodayInterval] = useState<'minute' | 'hour'>('hour')
   const [multiDayInterval, setMultiDayInterval] = useState<'hour' | 'day'>('day')
 
@@ -173,8 +175,16 @@ export default function SiteDashboardPage() {
             </div>
           </div>
 
-          <div className="flex gap-2">
-            <Select
+            <div className="flex gap-2">
+              <button
+                onClick={() => setIsExportModalOpen(true)}
+                className="hidden md:flex items-center gap-2 px-3 py-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors"
+              >
+                <DownloadIcon className="w-4 h-4" />
+                <span>Export</span>
+              </button>
+
+              <Select
               value={
                 dateRange.start === new Date().toISOString().split('T')[0] && dateRange.end === new Date().toISOString().split('T')[0] 
                 ? 'today' 
@@ -308,6 +318,15 @@ export default function SiteDashboardPage() {
           setIsDatePickerOpen(false)
         }}
         initialRange={dateRange}
+      />
+
+      <ExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        data={dailyStats}
+        stats={stats}
+        topPages={topPages}
+        topReferrers={topReferrers}
       />
     </div>
   )
