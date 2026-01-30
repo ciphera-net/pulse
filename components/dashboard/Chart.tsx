@@ -498,6 +498,7 @@ export default function Chart({ data, prevData, stats, prevStats, interval }: Ch
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
         data={data}
+        stats={stats}
       />
     </div>
   )

@@ -6,11 +6,18 @@ import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import type { DailyStat } from './Chart'
+import { formatNumber, formatDuration } from '@/lib/utils/format'
 
 interface ExportModalProps {
   isOpen: boolean
   onClose: () => void
   data: DailyStat[]
+  stats?: {
+    pageviews: number
+    visitors: number
+    bounce_rate: number
+    avg_duration: number
+  }
 }
 
 type ExportFormat = 'csv' | 'json' | 'xlsx' | 'pdf'
@@ -33,7 +40,7 @@ const loadImage = (src: string): Promise<string> => {
   })
 }
 
-export default function ExportModal({ isOpen, onClose, data }: ExportModalProps) {
+export default function ExportModal({ isOpen, onClose, data, stats }: ExportModalProps) {
   const [format, setFormat] = useState<ExportFormat>('csv')
   const [filename, setFilename] = useState(`pulse_export_${new Date().toISOString().split('T')[0]}`)
   const [includeHeader, setIncludeHeader] = useState(true)
@@ -99,28 +106,70 @@ export default function ExportModal({ isOpen, onClose, data }: ExportModalProps)
     } else if (format === 'pdf') {
       const doc = new jsPDF()
       
-      // Add Logo
+      // Header Section
       try {
-        const logoData = await loadImage('/pulse_logo_no_margins.png')
-        doc.addImage(logoData, 'PNG', 14, 10, 10, 10) // x, y, w, h
-        doc.setFontSize(20)
+        // Logo
+        const logoData = await loadImage('/pulse_icon_no_margins.png')
+        doc.addImage(logoData, 'PNG', 14, 12, 12, 12) // x, y, w, h
+        
+        // Title
+        doc.setFontSize(22)
         doc.setTextColor(249, 115, 22) // Brand Orange #F97316
-        doc.text('Pulse', 28, 17)
+        doc.text('Pulse', 32, 20)
         
         doc.setFontSize(12)
         doc.setTextColor(100, 100, 100)
-        doc.text('Analytics Export', 28, 22)
+        doc.text('Analytics Export', 32, 25)
       } catch (e) {
         // Fallback if logo fails
-        doc.setFontSize(20)
+        doc.setFontSize(22)
         doc.setTextColor(249, 115, 22)
         doc.text('Pulse Analytics', 14, 20)
       }
 
-      // Add Date Range info if available
-      doc.setFontSize(10)
+      // Metadata (Top Right)
+      doc.setFontSize(9)
       doc.setTextColor(150, 150, 150)
-      doc.text(`Generated on ${new Date().toLocaleDateString()}`, 14, 30)
+      const generatedDate = new Date().toLocaleDateString()
+      const dateRange = data.length > 0 
+        ? `${new Date(data[0].date).toLocaleDateString()} - ${new Date(data[data.length - 1].date).toLocaleDateString()}`
+        : generatedDate
+      
+      const pageWidth = doc.internal.pageSize.width
+      doc.text(`Generated: ${generatedDate}`, pageWidth - 14, 18, { align: 'right' })
+      doc.text(`Range: ${dateRange}`, pageWidth - 14, 23, { align: 'right' })
+
+      let startY = 35
+
+      // Summary Section
+      if (stats) {
+        const summaryY = 35
+        const cardWidth = (pageWidth - 28 - 15) / 4 // 4 cards with 5mm gap
+        const cardHeight = 20
+        
+        const drawCard = (x: number, label: string, value: string) => {
+            doc.setFillColor(255, 247, 237) // Very light orange
+            doc.setDrawColor(254, 215, 170) // Light orange border
+            doc.roundedRect(x, summaryY, cardWidth, cardHeight, 2, 2, 'FD')
+            
+            doc.setFontSize(8)
+            doc.setTextColor(150, 150, 150)
+            doc.text(label, x + 3, summaryY + 6)
+            
+            doc.setFontSize(12)
+            doc.setTextColor(23, 23, 23) // Neutral 900
+            doc.setFont('helvetica', 'bold')
+            doc.text(value, x + 3, summaryY + 14)
+            doc.setFont('helvetica', 'normal')
+        }
+
+        drawCard(14, 'Unique Visitors', formatNumber(stats.visitors))
+        drawCard(14 + cardWidth + 5, 'Total Pageviews', formatNumber(stats.pageviews))
+        drawCard(14 + (cardWidth + 5) * 2, 'Bounce Rate', `${Math.round(stats.bounce_rate)}%`)
+        drawCard(14 + (cardWidth + 5) * 3, 'Avg Duration', formatDuration(stats.avg_duration))
+        
+        startY = 65 // Move table down
+      }
 
       const tableData = exportData.map(row => 
         fields.map(field => {
@@ -128,26 +177,41 @@ export default function ExportModal({ isOpen, onClose, data }: ExportModalProps)
           if (field === 'date' && typeof val === 'string') {
             return new Date(val).toLocaleDateString()
           }
+          if (typeof val === 'number') {
+             if (field === 'bounce_rate') return `${Math.round(val)}%`
+             if (field === 'avg_duration') return formatDuration(val)
+             if (field === 'pageviews' || field === 'visitors') return formatNumber(val)
+          }
           return val ?? ''
         })
       )
 
       autoTable(doc, {
-        startY: 35,
+        startY: startY,
         head: [fields.map(f => f.charAt(0).toUpperCase() + f.slice(1).replace('_', ' '))],
         body: tableData as any[][],
         styles: {
             font: 'helvetica',
-            fontSize: 10,
-            cellPadding: 3,
+            fontSize: 9,
+            cellPadding: 4,
+            lineColor: [229, 231, 235], // Neutral 200
+            lineWidth: 0.1,
         },
         headStyles: {
             fillColor: [249, 115, 22], // Brand Orange
             textColor: [255, 255, 255],
             fontStyle: 'bold',
+            halign: 'left'
+        },
+        columnStyles: {
+            0: { halign: 'left' }, // Date
+            1: { halign: 'right' }, // Pageviews
+            2: { halign: 'right' }, // Visitors
+            3: { halign: 'right' }, // Bounce Rate
+            4: { halign: 'right' }, // Avg Duration
         },
         alternateRowStyles: {
-            fillColor: [255, 247, 237], // Very light orange/gray
+            fillColor: [255, 250, 245], // Very very light orange
         },
         didDrawPage: (data) => {
             // Footer
@@ -158,7 +222,7 @@ export default function ExportModal({ isOpen, onClose, data }: ExportModalProps)
             doc.text('Powered by Ciphera', 14, pageHeight - 10)
             
             const str = 'Page ' + doc.getNumberOfPages()
-            doc.text(str, pageSize.width - 25, pageHeight - 10)
+            doc.text(str, pageSize.width - 14, pageHeight - 10, { align: 'right' })
         }
       })
 
