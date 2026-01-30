@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button, CheckCircleIcon } from '@ciphera-net/ui'
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
@@ -104,6 +104,34 @@ export default function PricingSection() {
   const [sliderIndex, setSliderIndex] = useState(2) // Default to 100k (index 2)
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
   const { user } = useAuth()
+  
+  // * Check for pending checkout on mount/auth
+  useEffect(() => {
+    if (!user) return
+
+    const pendingCheckout = localStorage.getItem('pulse_pending_checkout')
+    if (pendingCheckout) {
+      try {
+        const intent = JSON.parse(pendingCheckout)
+        
+        // Restore UI state
+        if (typeof intent.sliderIndex === 'number') setSliderIndex(intent.sliderIndex)
+        if (typeof intent.isYearly === 'boolean') setIsYearly(intent.isYearly)
+        
+        // Trigger checkout
+        handleSubscribe(intent.planId, {
+          interval: intent.interval,
+          limit: intent.limit
+        })
+        
+        // Clear intent
+        localStorage.removeItem('pulse_pending_checkout')
+      } catch (e) {
+        console.error('Failed to parse pending checkout', e)
+        localStorage.removeItem('pulse_pending_checkout')
+      }
+    }
+  }, [user])
 
   const currentTraffic = TRAFFIC_TIERS[sliderIndex]
 
@@ -125,20 +153,30 @@ export default function PricingSection() {
     }
   }
 
-  const handleSubscribe = async (planId: string) => {
+  const handleSubscribe = async (planId: string, options?: { interval?: string, limit?: number }) => {
     try {
       setLoadingPlan(planId)
       
       // 1. If not logged in, redirect to login/signup
       if (!user) {
-        initiateOAuthFlow() // Or redirect to /signup?plan=...
+        // Store checkout intent
+        const intent = {
+          planId,
+          interval: isYearly ? 'year' : 'month',
+          limit: currentTraffic.value,
+          sliderIndex, // Store UI state to restore it
+          isYearly     // Store UI state to restore it
+        }
+        localStorage.setItem('pulse_pending_checkout', JSON.stringify(intent))
+        
+        initiateOAuthFlow() 
         return
       }
 
       // 2. Call backend to create checkout session
       const client = getClient()
-      const interval = isYearly ? 'year' : 'month'
-      const limit = currentTraffic.value
+      const interval = options?.interval || (isYearly ? 'year' : 'month')
+      const limit = options?.limit || currentTraffic.value
 
       const res = await client.post('/api/billing/checkout', {
         plan_id: planId,
