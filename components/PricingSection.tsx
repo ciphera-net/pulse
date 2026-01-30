@@ -2,6 +2,10 @@
 
 import { useState } from 'react'
 import { Button, CheckCircleIcon } from '@ciphera-net/ui'
+import { useAuth } from '@/lib/auth/context'
+import { initiateOAuthFlow } from '@/lib/api/oauth'
+import { toast } from 'sonner'
+import { getClient } from '@/lib/api/client'
 
 // 1. Define Plans with IDs and Site Limits
 const PLANS = [
@@ -98,6 +102,8 @@ const TRAFFIC_TIERS = [
 export default function PricingSection() {
   const [isYearly, setIsYearly] = useState(false)
   const [sliderIndex, setSliderIndex] = useState(2) // Default to 100k (index 2)
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
+  const { user } = useAuth()
 
   const currentTraffic = TRAFFIC_TIERS[sliderIndex]
 
@@ -116,6 +122,42 @@ export default function PricingSection() {
       baseMonthly: basePrice,
       yearlyTotal: yearlyTotal,
       effectiveMonthly: effectiveMonthly
+    }
+  }
+
+  const handleSubscribe = async (planId: string) => {
+    try {
+      setLoadingPlan(planId)
+      
+      // 1. If not logged in, redirect to login/signup
+      if (!user) {
+        initiateOAuthFlow() // Or redirect to /signup?plan=...
+        return
+      }
+
+      // 2. Call backend to create checkout session
+      const client = getClient()
+      const interval = isYearly ? 'year' : 'month'
+      const limit = currentTraffic.value
+
+      const res = await client.post('/api/billing/checkout', {
+        plan_id: planId,
+        interval: interval,
+        limit: limit
+      })
+
+      // 3. Redirect to Stripe Checkout
+      if (res.data.url) {
+        window.location.href = res.data.url
+      } else {
+        throw new Error('No checkout URL returned')
+      }
+
+    } catch (error: any) {
+      console.error('Checkout error:', error)
+      toast.error('Failed to start checkout. Please try again.')
+    } finally {
+      setLoadingPlan(null)
     }
   }
 
@@ -236,13 +278,15 @@ export default function PricingSection() {
                 </div>
 
                 <Button 
+                  onClick={() => handleSubscribe(plan.id)}
+                  disabled={loadingPlan === plan.id || !!loadingPlan}
                   className={`w-full mb-8 ${
                     isTeam 
                       ? 'bg-brand-orange hover:bg-brand-orange/90 text-white shadow-lg shadow-brand-orange/20' 
                       : 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100'
                   }`}
                 >
-                  Start free trial
+                  {loadingPlan === plan.id ? 'Loading...' : 'Start free trial'}
                 </Button>
 
                 <ul className="space-y-4 flex-grow">
