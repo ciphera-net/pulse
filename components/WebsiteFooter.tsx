@@ -6,29 +6,28 @@ import { GithubIcon, TwitterIcon } from '@ciphera-net/ui'
 import SwissFlagIcon from './SwissFlagIcon'
 
 const footerLinks = {
-  products: [
-    { name: 'Drop', href: 'https://drop.ciphera.net', external: true },
-    { name: 'Pulse', href: 'https://pulse.ciphera.net', external: true },
-    { name: 'Ciphera Auth', href: 'https://ciphera.net/products#auth', external: true },
-    { name: 'Ciphera Captcha', href: 'https://ciphera.net/products#captcha', external: true },
-    { name: 'Ciphera Relay', href: 'https://ciphera.net/products#relay', external: true },
+  features: [
+    { name: 'Analytics', href: '/#features', external: false },
+    { name: 'Security', href: '/security', external: false },
+    { name: 'FAQ', href: '/faq', external: false },
+    { name: 'Get Started', href: '/signup', external: false },
   ],
   company: [
-    { name: 'About', href: 'https://ciphera.net/about', external: true },
-    { name: 'For Companies', href: 'https://ciphera.net/companies', external: true },
-    { name: 'Contact', href: 'https://ciphera.net/contact', external: true },
+    { name: 'About Pulse', href: '/about', external: false },
+    { name: 'Ciphera', href: 'https://ciphera.net', external: true },
+    { name: 'Drop', href: 'https://drop.ciphera.net', external: true },
   ],
   resources: [
     { name: 'Documentation', href: '#', external: false },
     { name: 'GitHub', href: 'https://github.com/ciphera-net', external: true },
   ],
   legal: [
-    { name: 'Privacy Policy', href: '#', external: false },
-    { name: 'Terms of Service', href: '#', external: false },
+    { name: 'Privacy Policy', href: 'https://ciphera.net/privacy', external: true },
+    { name: 'Terms of Service', href: 'https://ciphera.net/terms', external: true },
   ],
 }
 
-// * Ciphera website footer - ciphera-ui style with comprehensive content
+// * Pulse website footer - customized for Pulse branding
 export default function WebsiteFooter() {
   const year = new Date().getFullYear()
 
@@ -41,19 +40,19 @@ export default function WebsiteFooter() {
           <div className="col-span-1 sm:col-span-2 md:col-span-4 lg:col-span-1 lg:pr-8">
             <Link href="/" className="flex items-center gap-3 mb-4 group">
               <Image
-                src="/ciphera_icon_no_margins.png"
-                alt="Ciphera privacy-first platform logo"
+                src="/pulse_icon_no_margins.png"
+                alt="Pulse privacy-first analytics logo"
                 width={36}
                 height={36}
                 loading="lazy"
                 className="w-9 h-9 group-hover:scale-105 transition-transform duration-300"
               />
               <span className="text-xl font-bold text-neutral-900 dark:text-white group-hover:text-brand-orange transition-colors duration-300">
-                Ciphera
+                Pulse
               </span>
             </Link>
             <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4 leading-relaxed">
-              Privacy-first infrastructure and applications built on zero-knowledge principles.
+              Simple, privacy-first web analytics that doesn't compromise your users' data.
             </p>
             <div className="inline-flex items-center gap-2.5 text-sm text-neutral-600 dark:text-neutral-400 mb-4">
               <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-neutral-100 dark:bg-neutral-800 shrink-0 overflow-hidden ring-1 ring-neutral-200 dark:ring-neutral-700" aria-hidden>
@@ -81,11 +80,11 @@ export default function WebsiteFooter() {
             </div>
           </div>
 
-          {/* * Products */}
+          {/* * Features */}
           <div>
-            <h4 className="font-semibold text-neutral-900 dark:text-white mb-4">Products</h4>
+            <h4 className="font-semibold text-neutral-900 dark:text-white mb-4">Platform</h4>
             <ul className="space-y-3">
-              {footerLinks.products.map((link) => (
+              {footerLinks.features.map((link) => (
                 <li key={link.name}>
                   {link.external ? (
                     <a
