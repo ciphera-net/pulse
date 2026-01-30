@@ -8,8 +8,107 @@ import { listSites, deleteSite, type Site } from '@/lib/api/sites'
 import { LoadingOverlay } from '@ciphera-net/ui'
 import SiteList from '@/components/sites/SiteList'
 import { Button } from '@ciphera-net/ui'
-import { BarChartIcon, LockIcon, ZapIcon } from '@ciphera-net/ui'
+import { BarChartIcon, LockIcon, ZapIcon, CheckCircleIcon, XIcon } from '@ciphera-net/ui'
 import { toast } from '@ciphera-net/ui'
+
+function DashboardPreview() {
+  return (
+    <div className="relative w-full max-w-5xl mx-auto mt-20 mb-32 perspective-1000">
+      {/* * Glow behind the image */}
+      <div className="absolute inset-0 bg-brand-orange/20 blur-[100px] -z-10 rounded-full opacity-50" />
+      
+      {/* * The Dashboard Image Container */}
+      <div className="relative rounded-xl border border-neutral-200/50 dark:border-neutral-800/50 bg-neutral-900/50 backdrop-blur-sm shadow-2xl transform rotate-x-12 hover:rotate-x-0 transition-transform duration-700 ease-out overflow-hidden">
+        {/* * Header of the fake browser window */}
+        <div className="h-8 bg-neutral-800/50 border-b border-white/5 flex items-center px-4 gap-2">
+          <div className="w-3 h-3 rounded-full bg-red-500/50" />
+          <div className="w-3 h-3 rounded-full bg-yellow-500/50" />
+          <div className="w-3 h-3 rounded-full bg-green-500/50" />
+        </div>
+        
+        {/* * Placeholder for actual dashboard screenshot - replace src with real image later */}
+        <div className="aspect-video bg-neutral-900 flex items-center justify-center text-neutral-700">
+           <div className="text-center">
+             <BarChartIcon className="w-16 h-16 mx-auto mb-4 opacity-20" />
+             <p>Dashboard Preview</p>
+           </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ComparisonSection() {
+  return (
+    <div className="w-full max-w-4xl mx-auto mb-32">
+      <div className="text-center mb-12">
+        <h2 className="text-3xl font-bold text-neutral-900 dark:text-white mb-4">Why choose Pulse?</h2>
+        <p className="text-neutral-500">The lightweight, privacy-friendly alternative.</p>
+      </div>
+
+      <div className="overflow-hidden rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-sm">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="border-b border-neutral-200 dark:border-neutral-800">
+              <th className="p-6 text-sm font-medium text-neutral-500">Feature</th>
+              <th className="p-6 text-sm font-bold text-brand-orange">Pulse</th>
+              <th className="p-6 text-sm font-medium text-neutral-500">Google Analytics</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
+            {[
+              { feature: "Cookie Banner Required", pulse: false, ga: true },
+              { feature: "GDPR Compliant", pulse: true, ga: "Complex" },
+              { feature: "Script Size", pulse: "< 1 KB", ga: "45 KB+" },
+              { feature: "Data Ownership", pulse: "Yours", ga: "Google's" },
+            ].map((row, i) => (
+              <tr key={i} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
+                <td className="p-6 text-neutral-900 dark:text-white font-medium">{row.feature}</td>
+                <td className="p-6">
+                  {row.pulse === true ? (
+                    <CheckCircleIcon className="w-5 h-5 text-green-500" />
+                  ) : row.pulse === false ? (
+                    <span className="text-green-500 font-medium">No</span>
+                  ) : (
+                    <span className="text-green-500 font-medium">{row.pulse}</span>
+                  )}
+                </td>
+                <td className="p-6 text-neutral-500">
+                   {row.ga === true ? (
+                    <span className="text-red-500 font-medium">Yes</span>
+                  ) : (
+                    <span>{row.ga}</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+function Footer() {
+  return (
+    <footer className="border-t border-neutral-200 dark:border-neutral-800 mt-20 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md">
+      <div className="max-w-6xl mx-auto px-4 py-12 flex flex-col md:flex-row justify-between items-center gap-6">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-brand-orange flex items-center justify-center text-white font-bold">P</div>
+          <span className="font-bold text-neutral-900 dark:text-white">Pulse</span>
+        </div>
+        <div className="text-sm text-neutral-500">
+          © {new Date().getFullYear()} Ciphera. All rights reserved.
+        </div>
+        <div className="flex gap-6 text-sm text-neutral-500">
+          <Link href="#" className="hover:text-brand-orange transition-colors">Privacy</Link>
+          <Link href="#" className="hover:text-brand-orange transition-colors">Terms</Link>
+          <Link href="#" className="hover:text-brand-orange transition-colors">GitHub</Link>
+        </div>
+      </div>
+    </footer>
+  )
+}
 
 export default function HomePage() {
   const { user, loading: authLoading } = useAuth()
@@ -55,7 +154,7 @@ export default function HomePage() {
 
   if (!user) {
     return (
-      <div className="relative min-h-[calc(100vh-64px)] flex flex-col items-center justify-center overflow-hidden">
+      <div className="relative min-h-screen flex flex-col overflow-hidden selection:bg-brand-orange/20">
         
         {/* * --- 1. ATMOSPHERE (Background) --- */}
         <div className="absolute inset-0 -z-10 pointer-events-none">
@@ -70,10 +169,10 @@ export default function HomePage() {
           />
         </div>
 
-        <div className="w-full max-w-6xl mx-auto px-4 py-20 text-center z-10">
+        <div className="flex-grow w-full max-w-6xl mx-auto px-4 pt-20 pb-10 z-10">
           
           {/* * --- 2. BADGE --- */}
-          <div className="inline-flex justify-center mb-8 animate-fade-in">
+          <div className="inline-flex justify-center mb-8 animate-fade-in w-full">
             <span className="badge-primary">
               <span className="w-1.5 h-1.5 rounded-full bg-brand-orange animate-pulse" />
               Privacy-First Analytics
@@ -81,35 +180,40 @@ export default function HomePage() {
           </div>
 
           {/* * --- 3. HEADLINE --- */}
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-neutral-900 dark:text-white mb-6">
-            Simple analytics for <br />
-            <span className="relative inline-block">
-              <span className="gradient-text">privacy-conscious</span>
-              {/* * SVG Underline from Main Site */}
-              <svg className="absolute -bottom-2 left-0 w-full h-3 text-brand-orange/30" viewBox="0 0 200 12" preserveAspectRatio="none">
-                <path d="M0 9C50 3 150 3 200 9" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
-              </svg>
-            </span>
-            {' '}apps.
-          </h1>
+          <div className="text-center mb-20">
+            <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-neutral-900 dark:text-white mb-6">
+              Simple analytics for <br />
+              <span className="relative inline-block">
+                <span className="gradient-text">privacy-conscious</span>
+                {/* * SVG Underline from Main Site */}
+                <svg className="absolute -bottom-2 left-0 w-full h-3 text-brand-orange/30" viewBox="0 0 200 12" preserveAspectRatio="none">
+                  <path d="M0 9C50 3 150 3 200 9" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+                </svg>
+              </span>
+              {' '}apps.
+            </h1>
 
-          <p className="text-xl text-neutral-600 dark:text-neutral-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Respect your users' privacy while getting the insights you need. 
-            No cookies, no IP tracking, fully GDPR compliant.
-          </p>
+            <p className="text-xl text-neutral-600 dark:text-neutral-400 max-w-2xl mx-auto mb-10 leading-relaxed">
+              Respect your users' privacy while getting the insights you need. 
+              No cookies, no IP tracking, fully GDPR compliant.
+            </p>
 
-          {/* * --- 4. CTAs --- */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-20">
-            <Button onClick={() => initiateOAuthFlow()} className="btn-primary px-8 py-4 text-lg shadow-lg shadow-brand-orange/20">
-              Get Started
-            </Button>
-            <Button variant="secondary" onClick={() => initiateSignupFlow()} className="btn-secondary px-8 py-4 text-lg backdrop-blur-sm">
-              Create Account
-            </Button>
+            {/* * --- 4. CTAs --- */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-20">
+              <Button onClick={() => initiateOAuthFlow()} className="btn-primary px-8 py-4 text-lg shadow-lg shadow-brand-orange/20">
+                Get Started
+              </Button>
+              <Button variant="secondary" onClick={() => initiateSignupFlow()} className="btn-secondary px-8 py-4 text-lg backdrop-blur-sm">
+                Create Account
+              </Button>
+            </div>
           </div>
 
+          {/* * NEW: DASHBOARD PREVIEW */}
+          <DashboardPreview />
+
           {/* * --- 5. GLASS CARDS --- */}
-          <div className="grid md:grid-cols-3 gap-6 text-left">
+          <div className="grid md:grid-cols-3 gap-6 text-left mb-32">
             {[
               { icon: LockIcon, title: "Privacy First", desc: "We don't track personal data. No IP addresses, no fingerprints, no cookies." },
               { icon: BarChartIcon, title: "Simple Insights", desc: "Get the metrics that matter without the clutter. Page views, visitors, and sources." },
@@ -127,7 +231,22 @@ export default function HomePage() {
             ))}
           </div>
 
+          {/* * NEW: COMPARISON SECTION */}
+          <ComparisonSection />
+
+          {/* * NEW: CTA BOTTOM */}
+          <div className="text-center mb-20">
+            <h2 className="text-3xl font-bold text-neutral-900 dark:text-white mb-6">Ready to switch?</h2>
+            <Button onClick={() => initiateOAuthFlow()} className="btn-primary px-8 py-4 text-lg shadow-lg shadow-brand-orange/20">
+              Start your free trial
+            </Button>
+            <p className="mt-4 text-sm text-neutral-500">No credit card required • Cancel anytime</p>
+          </div>
+
         </div>
+
+        {/* * NEW: FOOTER */}
+        <Footer />
       </div>
     )
   }
