@@ -262,7 +262,7 @@ export default function PricingSection() {
               </div>
             </div>
 
-            <Button variant="outline" className="w-full mb-8 border-neutral-200 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800">
+            <Button variant="secondary" className="w-full mb-8 border-neutral-200 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800">
               Contact us
             </Button>
 
