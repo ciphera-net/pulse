@@ -51,6 +51,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         allowPersonalWorkspace={false}
         showFaq={false}
         showSecurity={false}
+        showPricing={true}
       />
       <main className="flex-1 pt-24 pb-8">
         {children}
@@ -58,6 +59,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
       <Footer 
         LinkComponent={Link}
         appName="Pulse"
+        showPricing={true}
       />
     </>
   )
