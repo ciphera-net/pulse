@@ -15,6 +15,24 @@ interface ExportModalProps {
 
 type ExportFormat = 'csv' | 'json' | 'xlsx' | 'pdf'
 
+const loadImage = (src: string): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'Anonymous'
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = img.width
+      canvas.height = img.height
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return reject('Could not get canvas context')
+      ctx.drawImage(img, 0, 0)
+      resolve(canvas.toDataURL('image/png'))
+    }
+    img.onerror = reject
+    img.src = src
+  })
+}
+
 export default function ExportModal({ isOpen, onClose, data }: ExportModalProps) {
   const [format, setFormat] = useState<ExportFormat>('csv')
   const [filename, setFilename] = useState(`pulse_export_${new Date().toISOString().split('T')[0]}`)
@@ -31,7 +49,7 @@ export default function ExportModal({ isOpen, onClose, data }: ExportModalProps)
     setSelectedFields((prev) => ({ ...prev, [field]: checked }))
   }
 
-  const handleExport = () => {
+  const handleExport = async () => {
     // Filter fields
     const fields = (Object.keys(selectedFields) as Array<keyof DailyStat>).filter((k) => selectedFields[k])
     
@@ -81,6 +99,29 @@ export default function ExportModal({ isOpen, onClose, data }: ExportModalProps)
     } else if (format === 'pdf') {
       const doc = new jsPDF()
       
+      // Add Logo
+      try {
+        const logoData = await loadImage('/pulse_logo_no_margins.png')
+        doc.addImage(logoData, 'PNG', 14, 10, 10, 10) // x, y, w, h
+        doc.setFontSize(20)
+        doc.setTextColor(249, 115, 22) // Brand Orange #F97316
+        doc.text('Pulse', 28, 17)
+        
+        doc.setFontSize(12)
+        doc.setTextColor(100, 100, 100)
+        doc.text('Analytics Export', 28, 22)
+      } catch (e) {
+        // Fallback if logo fails
+        doc.setFontSize(20)
+        doc.setTextColor(249, 115, 22)
+        doc.text('Pulse Analytics', 14, 20)
+      }
+
+      // Add Date Range info if available
+      doc.setFontSize(10)
+      doc.setTextColor(150, 150, 150)
+      doc.text(`Generated on ${new Date().toLocaleDateString()}`, 14, 30)
+
       const tableData = exportData.map(row => 
         fields.map(field => {
           const val = row[field]
@@ -92,8 +133,33 @@ export default function ExportModal({ isOpen, onClose, data }: ExportModalProps)
       )
 
       autoTable(doc, {
+        startY: 35,
         head: [fields.map(f => f.charAt(0).toUpperCase() + f.slice(1).replace('_', ' '))],
         body: tableData as any[][],
+        styles: {
+            font: 'helvetica',
+            fontSize: 10,
+            cellPadding: 3,
+        },
+        headStyles: {
+            fillColor: [249, 115, 22], // Brand Orange
+            textColor: [255, 255, 255],
+            fontStyle: 'bold',
+        },
+        alternateRowStyles: {
+            fillColor: [255, 247, 237], // Very light orange/gray
+        },
+        didDrawPage: (data) => {
+            // Footer
+            const pageSize = doc.internal.pageSize
+            const pageHeight = pageSize.height ? pageSize.height : pageSize.getHeight()
+            doc.setFontSize(8)
+            doc.setTextColor(150, 150, 150)
+            doc.text('Powered by Ciphera', 14, pageHeight - 10)
+            
+            const str = 'Page ' + doc.getNumberOfPages()
+            doc.text(str, pageSize.width - 25, pageHeight - 10)
+        }
       })
 
       doc.save(`${filename || 'export'}.pdf`)
