@@ -259,7 +259,18 @@ export default function HomePage() {
           <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Your Sites</h1>
           <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">Manage your analytics sites and view insights.</p>
         </div>
-        <Link href="/sites/new" className="btn-primary text-sm">Add New Site</Link>
+        {subscription?.plan_id === 'solo' && sites.length >= 1 ? (
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700">
+              Limit reached (1/1)
+            </span>
+            <Link href="/pricing" className="btn-primary text-sm bg-brand-orange hover:bg-brand-orange/90 border-transparent text-white shadow-lg shadow-brand-orange/20">
+              Upgrade
+            </Link>
+          </div>
+        ) : (
+          <Link href="/sites/new" className="btn-primary text-sm">Add New Site</Link>
+        )}
       </div>
 
       {/* * Global Overview */}
