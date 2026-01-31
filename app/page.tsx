@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow, initiateSignupFlow } from '@/lib/api/oauth'
 import { listSites, deleteSite, type Site } from '@/lib/api/sites'
+import { getSubscription, type SubscriptionDetails } from '@/lib/api/billing'
 import { LoadingOverlay } from '@ciphera-net/ui'
 import SiteList from '@/components/sites/SiteList'
 import { Button } from '@ciphera-net/ui'
@@ -97,10 +98,13 @@ export default function HomePage() {
   const { user, loading: authLoading } = useAuth()
   const [sites, setSites] = useState<Site[]>([])
   const [sitesLoading, setSitesLoading] = useState(true)
+  const [subscription, setSubscription] = useState<SubscriptionDetails | null>(null)
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false)
 
   useEffect(() => {
     if (user?.org_id) {
       loadSites()
+      loadSubscription()
     }
   }, [user])
 
@@ -114,6 +118,18 @@ export default function HomePage() {
       setSites([])
     } finally {
       setSitesLoading(false)
+    }
+  }
+
+  const loadSubscription = async () => {
+    try {
+      setSubscriptionLoading(true)
+      const sub = await getSubscription()
+      setSubscription(sub)
+    } catch {
+      setSubscription(null)
+    } finally {
+      setSubscriptionLoading(false)
     }
   }
 
@@ -258,7 +274,21 @@ export default function HomePage() {
         </div>
         <div className="rounded-xl border border-neutral-200 bg-brand-orange/10 p-4 dark:border-neutral-800">
           <p className="text-sm text-brand-orange">Plan Status</p>
-          <p className="text-lg font-bold text-brand-orange">Pro Plan</p>
+          <p className="text-lg font-bold text-brand-orange">
+            {subscriptionLoading
+              ? '...'
+              : (() => {
+                  if (!subscription) return 'Free Plan'
+                  const raw =
+                    subscription.plan_id?.startsWith('price_')
+                      ? 'Pro'
+                      : subscription.plan_id === 'free' || !subscription.plan_id
+                        ? 'Free'
+                        : subscription.plan_id
+                  const label = raw === 'Free' || raw === 'Pro' ? raw : raw.charAt(0).toUpperCase() + raw.slice(1)
+                  return `${label} Plan`
+                })()}
+          </p>
         </div>
       </div>
 
