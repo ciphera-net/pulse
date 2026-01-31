@@ -60,6 +60,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         LinkComponent={Link}
         appName="Pulse"
         showPricing={true}
+        showSecurity={false}
       />
     </>
   )
