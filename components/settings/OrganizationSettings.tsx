@@ -594,9 +594,12 @@ export default function OrganizationSettings() {
                         <div>
                           <div className="text-sm text-neutral-500 mb-1">Renews On</div>
                           <div className="font-medium text-neutral-900 dark:text-white">
-                            {subscription.current_period_end
-                              ? new Date(subscription.current_period_end).toLocaleDateString()
-                              : '—'}
+                            {(() => {
+                              const raw = subscription.current_period_end
+                              const d = raw ? new Date(raw as string) : null
+                              const ts = d ? d.getTime() : NaN
+                              return raw && !Number.isNaN(ts) && ts !== 0 ? (d as Date).toLocaleDateString() : '—'
+                            })()}
                           </div>
                         </div>
                       </div>
