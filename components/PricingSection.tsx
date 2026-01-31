@@ -245,30 +245,32 @@ export default function PricingSection() {
             />
           </div>
 
-          <div className="bg-neutral-200 dark:bg-neutral-800 p-1 rounded-lg flex shrink-0">
-            <button
-              onClick={() => setIsYearly(false)}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                !isYearly 
-                  ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm' 
-                  : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
-              }`}
-            >
-              Monthly
-            </button>
-            <button
-              onClick={() => setIsYearly(true)}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
-                isYearly 
-                  ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm' 
-                  : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
-              }`}
-            >
-              Yearly
-              <span className="text-[10px] bg-brand-orange/10 text-brand-orange px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wide">
-                1 month free
-              </span>
-            </button>
+          <div className="flex flex-col items-end gap-2 shrink-0">
+            <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-medium uppercase tracking-wide">
+              Get 1 month free with yearly
+            </span>
+            <div className="bg-neutral-200 dark:bg-neutral-800 p-1 rounded-lg flex">
+              <button
+                onClick={() => setIsYearly(false)}
+                className={`min-w-[88px] px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  !isYearly
+                    ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
+                    : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
+                }`}
+              >
+                Monthly
+              </button>
+              <button
+                onClick={() => setIsYearly(true)}
+                className={`min-w-[88px] px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  isYearly
+                    ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
+                    : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
+                }`}
+              >
+                Yearly
+              </button>
+            </div>
           </div>
         </div>
 
