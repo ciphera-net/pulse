@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { Button, CheckCircleIcon } from '@ciphera-net/ui'
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
-import { toast } from 'sonner'
+import { toast } from '@ciphera-net/ui'
 import { createCheckoutSession } from '@/lib/api/billing'
 
 // 1. Define Plans with IDs and Site Limits
