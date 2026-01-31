@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { createSite } from '@/lib/api/sites'
+import { createSite, listSites } from '@/lib/api/sites'
+import { getSubscription } from '@/lib/api/billing'
 import { toast } from '@ciphera-net/ui'
 import { Button, Input } from '@ciphera-net/ui'
 
@@ -13,6 +14,28 @@ export default function NewSitePage() {
     name: '',
     domain: '',
   })
+
+  // * Check for plan limits on mount
+  useEffect(() => {
+    const checkLimits = async () => {
+      try {
+        const [sites, subscription] = await Promise.all([
+          listSites(),
+          getSubscription()
+        ])
+
+        if (subscription?.plan_id === 'solo' && sites.length >= 1) {
+          toast.error('Solo plan limit reached (1 site). Please upgrade to add more sites.')
+          router.replace('/')
+        }
+      } catch (error) {
+        // Ignore errors here, let the backend handle the hard check on submit
+        console.error('Failed to check limits', error)
+      }
+    }
+
+    checkLimits()
+  }, [router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
