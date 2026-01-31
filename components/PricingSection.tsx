@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Button, CheckCircleIcon } from '@ciphera-net/ui'
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
 import { toast } from 'sonner'
-import { getClient } from '@/lib/api/client'
+import { createCheckoutSession } from '@/lib/api/billing'
 
 // 1. Define Plans with IDs and Site Limits
 const PLANS = [
@@ -100,11 +101,22 @@ const TRAFFIC_TIERS = [
 ]
 
 export default function PricingSection() {
+  const searchParams = useSearchParams()
   const [isYearly, setIsYearly] = useState(false)
   const [sliderIndex, setSliderIndex] = useState(2) // Default to 100k (index 2)
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
   const { user } = useAuth()
-  
+
+  // * Show toast when redirected from Stripe Checkout with canceled=true
+  useEffect(() => {
+    if (searchParams.get('canceled') === 'true') {
+      toast.info('Checkout was canceled. You can try again whenever you’re ready.')
+      const url = new URL(window.location.href)
+      url.searchParams.delete('canceled')
+      window.history.replaceState({}, '', url.pathname + url.search)
+    }
+  }, [searchParams])
+
   // * Check for pending checkout on mount/auth
   useEffect(() => {
     if (!user) return
@@ -174,19 +186,18 @@ export default function PricingSection() {
       }
 
       // 2. Call backend to create checkout session
-      const client = getClient()
       const interval = options?.interval || (isYearly ? 'year' : 'month')
       const limit = options?.limit || currentTraffic.value
 
-      const res = await client.post('/api/billing/checkout', {
+      const { url } = await createCheckoutSession({
         plan_id: planId,
-        interval: interval,
-        limit: limit
+        interval,
+        limit,
       })
 
       // 3. Redirect to Stripe Checkout
-      if (res.data.url) {
-        window.location.href = res.data.url
+      if (url) {
+        window.location.href = url
       } else {
         throw new Error('No checkout URL returned')
       }
@@ -317,14 +328,14 @@ export default function PricingSection() {
 
                 <Button 
                   onClick={() => handleSubscribe(plan.id)}
-                  disabled={loadingPlan === plan.id || !!loadingPlan}
+                  disabled={loadingPlan === plan.id || !!loadingPlan || !priceDetails}
                   className={`w-full mb-8 ${
                     isTeam 
                       ? 'bg-brand-orange hover:bg-brand-orange/90 text-white shadow-lg shadow-brand-orange/20' 
                       : 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100'
                   }`}
                 >
-                  {loadingPlan === plan.id ? 'Loading...' : 'Start free trial'}
+                  {loadingPlan === plan.id ? 'Loading...' : !priceDetails ? 'Contact us' : 'Start free trial'}
                 </Button>
 
                 <ul className="space-y-4 flex-grow">
