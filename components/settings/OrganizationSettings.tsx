@@ -549,14 +549,14 @@ export default function OrganizationSettings() {
                           <h3 className="text-sm font-medium text-neutral-500 uppercase tracking-wider mb-1">Current Plan</h3>
                           <div className="flex items-center gap-3">
                             <span className="text-2xl font-bold text-neutral-900 dark:text-white capitalize">
-                              {subscription.plan_id === 'price_1Q...' ? 'Pro' : subscription.plan_id || 'Free'} Plan
+                              {subscription.plan_id?.startsWith('price_') ? 'Pro' : (subscription.plan_id === 'free' || !subscription.plan_id ? 'Free' : subscription.plan_id)} Plan
                             </span>
                             <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${
                               subscription.subscription_status === 'active'
                                 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
                                 : 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300'
                             }`}>
-                              {subscription.subscription_status}
+                              {subscription.subscription_status || 'Free'}
                             </span>
                           </div>
                         </div>
@@ -575,7 +575,7 @@ export default function OrganizationSettings() {
                         <div>
                           <div className="text-sm text-neutral-500 mb-1">Billing Interval</div>
                           <div className="font-medium text-neutral-900 dark:text-white capitalize">
-                            {subscription.billing_interval}ly
+                            {subscription.billing_interval ? `${subscription.billing_interval}ly` : '—'}
                           </div>
                         </div>
                         <div>
@@ -587,7 +587,9 @@ export default function OrganizationSettings() {
                         <div>
                           <div className="text-sm text-neutral-500 mb-1">Renews On</div>
                           <div className="font-medium text-neutral-900 dark:text-white">
-                            {new Date(subscription.current_period_end).toLocaleDateString()}
+                            {subscription.current_period_end
+                              ? new Date(subscription.current_period_end).toLocaleDateString()
+                              : '—'}
                           </div>
                         </div>
                       </div>
