@@ -45,3 +45,16 @@ export async function createPortalSession(): Promise<{ url: string }> {
     method: 'POST',
   })
 }
+
+export interface CreateCheckoutParams {
+  plan_id: string
+  interval: string
+  limit: number
+}
+
+export async function createCheckoutSession(params: CreateCheckoutParams): Promise<{ url: string }> {
+  return await billingFetch<{ url: string }>('/api/billing/checkout', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  })
+}
