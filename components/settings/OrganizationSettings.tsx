@@ -554,9 +554,11 @@ export default function OrganizationSettings() {
                             <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${
                               subscription.subscription_status === 'active'
                                 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                                : subscription.subscription_status === 'trialing'
+                                ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'
                                 : 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300'
                             }`}>
-                              {subscription.subscription_status || 'Free'}
+                              {subscription.subscription_status === 'trialing' ? 'Trial Active' : (subscription.subscription_status || 'Free')}
                             </span>
                           </div>
                         </div>
@@ -585,7 +587,9 @@ export default function OrganizationSettings() {
                           </div>
                         </div>
                         <div>
-                          <div className="text-sm text-neutral-500 mb-1">Renews On</div>
+                          <div className="text-sm text-neutral-500 mb-1">
+                            {subscription.subscription_status === 'trialing' ? 'Trial Ends On' : 'Renews On'}
+                          </div>
                           <div className="font-medium text-neutral-900 dark:text-white">
                             {(() => {
                               const raw = subscription.current_period_end
