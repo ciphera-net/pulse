@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { toast } from 'sonner'
+import { toast } from '@ciphera-net/ui'
 
 /**
  * Shows a success toast when redirected from Stripe Checkout with success=true,
