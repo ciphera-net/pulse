@@ -99,13 +99,6 @@ export default function OrganizationSettings() {
     setIsLoadingSubscription(true)
     try {
       const sub = await getSubscription()
-      // #region agent log
-      try {
-        const raw = (sub as { current_period_end?: unknown }).current_period_end
-        const parsed = raw != null ? new Date(raw as string | number).getTime() : null
-        fetch('http://127.0.0.1:7243/ingest/50587964-c1c6-436a-a7ce-ff2cde3c5b63', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hypothesisId: 'H3,H5', location: 'OrganizationSettings.tsx:loadSubscription', message: 'subscription.current_period_end received', data: { type: typeof raw, raw, parsed, display: raw != null ? new Date(raw as string | number).toLocaleDateString() : null }, timestamp: Date.now(), sessionId: 'debug-session' }) }).catch(() => {})
-      } catch (_) {}
-      // #endregion
       setSubscription(sub)
     } catch (error) {
       console.error('Failed to load subscription:', error)
