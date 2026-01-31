@@ -20,9 +20,6 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse' }: FooterProps)
             <Component href="/about" className="hover:text-brand-orange transition-colors">
               Why {appName}
             </Component>
-            <Component href="/security" className="hover:text-brand-orange transition-colors">
-              Security
-            </Component>
             <Component href="/faq" className="hover:text-brand-orange transition-colors">
               FAQ
             </Component>
