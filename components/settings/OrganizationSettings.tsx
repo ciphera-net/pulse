@@ -16,6 +16,7 @@ import {
   OrganizationInvitation,
   Organization
 } from '@/lib/api/organization'
+import { getSubscription, createPortalSession, SubscriptionDetails } from '@/lib/api/billing'
 import { toast } from '@ciphera-net/ui'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
@@ -33,7 +34,7 @@ import { Button, Input } from '@ciphera-net/ui'
 export default function OrganizationSettings() {
   const { user } = useAuth()
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<'general' | 'members'>('general')
+  const [activeTab, setActiveTab] = useState<'general' | 'members' | 'billing'>('general')
 
   const [showDeletePrompt, setShowDeletePrompt] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState('')
@@ -44,6 +45,11 @@ export default function OrganizationSettings() {
   const [invitations, setInvitations] = useState<OrganizationInvitation[]>([])
   const [isLoadingMembers, setIsLoadingMembers] = useState(true)
   
+  // Billing State
+  const [subscription, setSubscription] = useState<SubscriptionDetails | null>(null)
+  const [isLoadingSubscription, setIsLoadingSubscription] = useState(false)
+  const [isRedirectingToPortal, setIsRedirectingToPortal] = useState(false)
+
   // Invite State
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState('member')
@@ -88,6 +94,20 @@ export default function OrganizationSettings() {
     }
   }, [currentOrgId])
 
+  const loadSubscription = useCallback(async () => {
+    if (!currentOrgId) return
+    setIsLoadingSubscription(true)
+    try {
+      const sub = await getSubscription()
+      setSubscription(sub)
+    } catch (error) {
+      console.error('Failed to load subscription:', error)
+      // toast.error('Failed to load subscription details')
+    } finally {
+      setIsLoadingSubscription(false)
+    }
+  }, [currentOrgId])
+
   useEffect(() => {
     if (currentOrgId) {
       loadMembers()
@@ -96,6 +116,12 @@ export default function OrganizationSettings() {
     }
   }, [currentOrgId, loadMembers])
 
+  useEffect(() => {
+    if (activeTab === 'billing' && currentOrgId) {
+      loadSubscription()
+    }
+  }, [activeTab, currentOrgId, loadSubscription])
+
   // If no org ID, we are in personal workspace, so don't show org settings
   if (!currentOrgId) {
     return (
@@ -103,6 +129,17 @@ export default function OrganizationSettings() {
             <p>You are in your Personal Workspace. Switch to an Organization to manage its settings.</p>
         </div>
     )
+  }
+
+  const handleManageSubscription = async () => {
+    setIsRedirectingToPortal(true)
+    try {
+      const { url } = await createPortalSession()
+      window.location.href = url
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to redirect to billing portal')
+      setIsRedirectingToPortal(false)
+    }
   }
 
   const handleDelete = async () => {
@@ -229,6 +266,17 @@ export default function OrganizationSettings() {
           >
             <UserIcon className="w-5 h-5" />
             Members
+          </button>
+          <button
+            onClick={() => setActiveTab('billing')}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
+              activeTab === 'billing'
+                ? 'bg-brand-orange/10 text-brand-orange'
+                : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+            }`}
+          >
+            <BoxIcon className="w-5 h-5" />
+            Billing
           </button>
         </nav>
 
@@ -464,6 +512,98 @@ export default function OrganizationSettings() {
                         </div>
                       ))}
                     </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'billing' && (
+              <div className="space-y-12">
+                <div>
+                  <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-1">Billing & Subscription</h2>
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400">Manage your subscription plan and payment methods.</p>
+                </div>
+
+                {isLoadingSubscription ? (
+                  <div className="p-12 text-center text-neutral-500">
+                    <div className="animate-spin w-6 h-6 border-2 border-neutral-400 border-t-transparent rounded-full mx-auto mb-3"></div>
+                    Loading subscription details...
+                  </div>
+                ) : !subscription ? (
+                  <div className="p-8 text-center bg-neutral-50 dark:bg-neutral-900/50 rounded-xl border border-neutral-200 dark:border-neutral-800">
+                    <p className="text-neutral-500">Could not load subscription details.</p>
+                    <Button 
+                      variant="ghost" 
+                      onClick={loadSubscription}
+                      className="mt-4"
+                    >
+                      Retry
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-8">
+                    {/* Current Plan */}
+                    <div className="bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6">
+                      <div className="flex items-start justify-between mb-6">
+                        <div>
+                          <h3 className="text-sm font-medium text-neutral-500 uppercase tracking-wider mb-1">Current Plan</h3>
+                          <div className="flex items-center gap-3">
+                            <span className="text-2xl font-bold text-neutral-900 dark:text-white capitalize">
+                              {subscription.plan_id === 'price_1Q...' ? 'Pro' : subscription.plan_id || 'Free'} Plan
+                            </span>
+                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${
+                              subscription.subscription_status === 'active'
+                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                                : 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300'
+                            }`}>
+                              {subscription.subscription_status}
+                            </span>
+                          </div>
+                        </div>
+                        {subscription.has_payment_method && (
+                          <Button 
+                            onClick={handleManageSubscription}
+                            isLoading={isRedirectingToPortal}
+                            disabled={isRedirectingToPortal}
+                          >
+                            Manage Subscription
+                          </Button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-neutral-200 dark:border-neutral-800">
+                        <div>
+                          <div className="text-sm text-neutral-500 mb-1">Billing Interval</div>
+                          <div className="font-medium text-neutral-900 dark:text-white capitalize">
+                            {subscription.billing_interval}ly
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-sm text-neutral-500 mb-1">Pageview Limit</div>
+                          <div className="font-medium text-neutral-900 dark:text-white">
+                            {subscription.pageview_limit.toLocaleString()} / month
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-sm text-neutral-500 mb-1">Renews On</div>
+                          <div className="font-medium text-neutral-900 dark:text-white">
+                            {new Date(subscription.current_period_end).toLocaleDateString()}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {!subscription.has_payment_method && (
+                      <div className="p-6 bg-brand-orange/5 border border-brand-orange/20 rounded-xl">
+                        <h3 className="font-medium text-brand-orange mb-2">Upgrade to Pro</h3>
+                        <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
+                          Get higher limits, more data retention, and priority support.
+                        </p>
+                        <Button onClick={() => router.push('/pricing')}>
+                          View Plans
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
