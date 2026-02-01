@@ -30,14 +30,26 @@ export class ApiError extends Error {
 
 // * Mutex for token refresh
 let isRefreshing = false
-let refreshSubscribers: (() => void)[] = []
+type RefreshSubscriber = { onSuccess: () => void; onFailure: (err: unknown) => void }
+let refreshSubscribers: RefreshSubscriber[] = []
 
-function subscribeToTokenRefresh(cb: () => void) {
-  refreshSubscribers.push(cb)
+function subscribeToTokenRefresh(onSuccess: () => void, onFailure: (err: unknown) => void) {
+  refreshSubscribers.push({ onSuccess, onFailure })
 }
 
 function onRefreshed() {
-  refreshSubscribers.map((cb) => cb())
+  refreshSubscribers.forEach((s) => s.onSuccess())
+  refreshSubscribers = []
+}
+
+function onRefreshFailed(err: unknown) {
+  refreshSubscribers.forEach((s) => {
+    try {
+      s.onFailure(err)
+    } catch {
+      // ignore
+    }
+  })
   refreshSubscribers = []
 }
 
@@ -74,25 +86,27 @@ async function apiRequest<T>(
         // * Prevent infinite loop: Don't refresh if the failed request WAS a refresh request (unlikely via apiRequest but safe to check)
         if (!endpoint.includes('/auth/refresh')) {
           if (isRefreshing) {
-            // * If refresh is already in progress, wait for it to complete
-            return new Promise((resolve, reject) => {
-              subscribeToTokenRefresh(async () => {
-                // Retry original request (browser uses new cookie)
-                try {
-                  const retryResponse = await fetch(url, {
-                    ...options,
-                    headers,
-                    credentials: 'include',
-                  })
-                  if (retryResponse.ok) {
-                    resolve(retryResponse.json())
-                  } else {
-                    reject(new ApiError('Retry failed', retryResponse.status))
+            // * If refresh is already in progress, wait for it to complete (or fail)
+            return new Promise<T>((resolve, reject) => {
+              subscribeToTokenRefresh(
+                async () => {
+                  try {
+                    const retryResponse = await fetch(url, {
+                      ...options,
+                      headers,
+                      credentials: 'include',
+                    })
+                    if (retryResponse.ok) {
+                      resolve(await retryResponse.json())
+                    } else {
+                      reject(new ApiError('Retry failed', retryResponse.status))
+                    }
+                  } catch (e) {
+                    reject(e)
                   }
-                } catch (e) {
-                  reject(e)
-                }
-              })
+                },
+                (err) => reject(err)
+              )
             })
           }
 
@@ -103,6 +117,7 @@ async function apiRequest<T>(
             const refreshRes = await fetch('/api/auth/refresh', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
             })
 
             if (refreshRes.ok) {
@@ -120,13 +135,11 @@ async function apiRequest<T>(
                 return retryResponse.json()
               }
             } else {
-              // * Refresh failed, logout
+              onRefreshFailed(new ApiError('Refresh failed', 401))
               localStorage.removeItem('user')
-              // * Redirect to login if needed, or let the app handle 401
-              // window.location.href = '/'
             }
           } catch (e) {
-            // * Network error during refresh
+            onRefreshFailed(e)
             throw e
           } finally {
             isRefreshing = false

@@ -51,9 +51,14 @@ export async function exchangeAuthCode(code: string, codeVerifier: string, redir
     }
 
     const data: AuthResponse = await res.json()
-    
+    if (!data?.access_token || typeof data.access_token !== 'string') {
+      throw new Error('Invalid token response')
+    }
     // * Decode payload (without verification, we trust the direct channel to Auth Server)
     const payloadPart = data.access_token.split('.')[1]
+    if (!payloadPart) {
+      throw new Error('Invalid token format')
+    }
     const payload: UserPayload = JSON.parse(Buffer.from(payloadPart, 'base64').toString())
 
     // * Set Cookies
