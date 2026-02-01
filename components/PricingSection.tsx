@@ -27,7 +27,7 @@ const PLANS = [
     description: 'For startups and growing agencies',
     features: [
       'Up to 5 sites',
-      '3 years data retention',
+      '2 year data retention',
       'Team dashboard',
       'Shared links'
     ]
@@ -38,7 +38,7 @@ const PLANS = [
     description: 'For large organizations',
     features: [
       'Up to 10 sites',
-      'Unlimited data retention',
+      '3 years data retention',
       'Priority support',
       'Custom events'
     ]
