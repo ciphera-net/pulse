@@ -43,30 +43,24 @@ function AuthCallbackContent() {
 
     const code = searchParams.get('code')
     const state = searchParams.get('state')
-    
+
     // * Skip if params are missing (might be initial render before params are ready)
     if (!code || !state) return
-
-    processedRef.current = true
 
     const storedState = localStorage.getItem('oauth_state')
     const codeVerifier = localStorage.getItem('oauth_code_verifier')
 
-    if (!code || !state) {
-      setError('Missing code or state')
+    if (!codeVerifier) {
+      setError('Missing code verifier')
+      return
+    }
+    if (state !== storedState) {
+      console.error('State mismatch', { received: state, stored: storedState })
+      setError('Invalid state')
       return
     }
 
-    if (state !== storedState) {
-        console.error('State mismatch', { received: state, stored: storedState })
-        setError('Invalid state')
-        return
-    }
-
-    if (!codeVerifier) {
-        setError('Missing code verifier')
-        return
-    }
+    processedRef.current = true
 
     const exchangeCode = async () => {
       try {
