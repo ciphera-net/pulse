@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState, Suspense, useRef } from 'react'
+import { useEffect, useState, Suspense, useRef, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth/context'
 import { AUTH_URL } from '@/lib/api/client'
 import { exchangeAuthCode, setSessionAction } from '@/app/actions/auth'
+import { authMessageFromErrorType, type AuthErrorType } from '@/lib/utils/authErrors'
 import { LoadingOverlay } from '@ciphera-net/ui'
 
 function AuthCallbackContent() {
@@ -12,39 +13,58 @@ function AuthCallbackContent() {
   const searchParams = useSearchParams()
   const { login } = useAuth()
   const [error, setError] = useState<string | null>(null)
+  const [isRetrying, setIsRetrying] = useState(false)
   const processedRef = useRef(false)
+
+  const runCodeExchange = useCallback(async () => {
+    const code = searchParams.get('code')
+    const codeVerifier = localStorage.getItem('oauth_code_verifier')
+    const redirectUri = typeof window !== 'undefined' ? window.location.origin + '/auth/callback' : ''
+    if (!code || !codeVerifier) return
+    const result = await exchangeAuthCode(code, codeVerifier, redirectUri)
+    if (result.success && result.user) {
+      login(result.user)
+      localStorage.removeItem('oauth_state')
+      localStorage.removeItem('oauth_code_verifier')
+      if (localStorage.getItem('pulse_pending_checkout')) {
+        router.push('/pricing')
+      } else {
+        router.push('/')
+      }
+    } else {
+      setError(authMessageFromErrorType(result.error as AuthErrorType))
+    }
+  }, [searchParams, login, router])
 
   useEffect(() => {
     // * Prevent double execution (React Strict Mode or fast re-renders)
-    if (processedRef.current) return
-    
+    if (processedRef.current && !isRetrying) return
+
     // * Check for direct token passing (from auth-frontend direct login)
     // * This flow exposes tokens in URL, kept for legacy support.
     // * Recommended: Use Authorization Code flow (below)
     const token = searchParams.get('token')
     const refreshToken = searchParams.get('refresh_token')
-    
+
     if (token && refreshToken) {
-        processedRef.current = true
-        
-        const handleDirectTokens = async () => {
-            const result = await setSessionAction(token, refreshToken)
-            if (result.success && result.user) {
-                login(result.user)
-                const returnTo = searchParams.get('returnTo') || '/'
-                router.push(returnTo)
-            } else {
-                setError('Invalid token received')
-            }
+      processedRef.current = true
+      const handleDirectTokens = async () => {
+        const result = await setSessionAction(token, refreshToken)
+        if (result.success && result.user) {
+          login(result.user)
+          const returnTo = searchParams.get('returnTo') || '/'
+          router.push(returnTo)
+        } else {
+          setError(authMessageFromErrorType('invalid'))
         }
-        handleDirectTokens()
-        return
+      }
+      handleDirectTokens()
+      return
     }
 
     const code = searchParams.get('code')
     const state = searchParams.get('state')
 
-    // * Skip if params are missing (might be initial render before params are ready)
     if (!code || !state) return
 
     const storedState = localStorage.getItem('oauth_state')
@@ -61,47 +81,33 @@ function AuthCallbackContent() {
     }
 
     processedRef.current = true
+    if (isRetrying) setIsRetrying(false)
+    runCodeExchange()
+  }, [searchParams, login, router, isRetrying, runCodeExchange])
 
-    const exchangeCode = async () => {
-      try {
-        const redirectUri = window.location.origin + '/auth/callback'
-        const result = await exchangeAuthCode(code, codeVerifier, redirectUri)
-
-        if (!result.success || !result.user) {
-            throw new Error(result.error || 'Failed to exchange token')
-        }
-        
-        login(result.user)
-        
-        // * Cleanup
-        localStorage.removeItem('oauth_state')
-        localStorage.removeItem('oauth_code_verifier')
-        
-        // * Check for pending checkout
-        if (localStorage.getItem('pulse_pending_checkout')) {
-            router.push('/pricing')
-        } else {
-            router.push('/')
-        }
-      } catch (err: any) {
-        setError(err.message)
-      }
-    }
-
-    exchangeCode()
-  }, [searchParams, login, router])
+  const handleRetry = () => {
+    setError(null)
+    setIsRetrying(true)
+  }
 
   if (error) {
+    const isNetworkError = error.includes('Network error')
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-4 text-red-500">
-          Error: {error}
-          <div className="mt-4">
-            <button 
-                onClick={() => window.location.href = `${AUTH_URL}/login`}
-                className="text-sm underline"
+          {error}
+          <div className="mt-4 flex flex-col gap-2">
+            {isNetworkError && (
+              <button type="button" onClick={handleRetry} className="text-sm underline text-left">
+                Try again
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => { window.location.href = `${AUTH_URL}/login` }}
+              className="text-sm underline text-left"
             >
-                Back to Login
+              Back to Login
             </button>
           </div>
         </div>

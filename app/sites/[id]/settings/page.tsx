@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { getSite, updateSite, resetSiteData, deleteSite, type Site, type GeoDataLevel } from '@/lib/api/sites'
 import { toast } from '@ciphera-net/ui'
+import { getAuthErrorMessage } from '@/lib/utils/authErrors'
 import { LoadingOverlay } from '@ciphera-net/ui'
 import VerificationModal from '@/components/sites/VerificationModal'
 import { PasswordInput } from '@ciphera-net/ui'
@@ -105,7 +106,7 @@ export default function SiteSettingsPage() {
         setIsPasswordEnabled(false)
       }
     } catch (error: any) {
-      toast.error('Failed to load site: ' + (error.message || 'Unknown error'))
+      toast.error(getAuthErrorMessage(error) || 'Failed to load site: ' + ((error as Error)?.message || 'Unknown error'))
     } finally {
       setLoading(false)
     }
@@ -142,7 +143,7 @@ export default function SiteSettingsPage() {
       toast.success('Site updated successfully')
       loadSite()
     } catch (error: any) {
-      toast.error('Failed to update site: ' + (error.message || 'Unknown error'))
+      toast.error(getAuthErrorMessage(error) || 'Failed to update site: ' + ((error as Error)?.message || 'Unknown error'))
     } finally {
       setSaving(false)
     }
@@ -157,7 +158,7 @@ export default function SiteSettingsPage() {
       await resetSiteData(siteId)
       toast.success('All site data has been reset')
     } catch (error: any) {
-      toast.error('Failed to reset data: ' + (error.message || 'Unknown error'))
+      toast.error(getAuthErrorMessage(error) || 'Failed to reset data: ' + ((error as Error)?.message || 'Unknown error'))
     }
   }
 
@@ -173,7 +174,7 @@ export default function SiteSettingsPage() {
       toast.success('Site deleted successfully')
       router.push('/')
     } catch (error: any) {
-      toast.error('Failed to delete site: ' + (error.message || 'Unknown error'))
+      toast.error(getAuthErrorMessage(error) || 'Failed to delete site: ' + ((error as Error)?.message || 'Unknown error'))
     }
   }
 
