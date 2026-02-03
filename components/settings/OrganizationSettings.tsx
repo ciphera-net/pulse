@@ -18,6 +18,7 @@ import {
 } from '@/lib/api/organization'
 import { getSubscription, createPortalSession, SubscriptionDetails } from '@/lib/api/billing'
 import { toast } from '@ciphera-net/ui'
+import { getAuthErrorMessage } from '@/lib/utils/authErrors'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   AlertTriangleIcon, 
@@ -137,7 +138,7 @@ export default function OrganizationSettings() {
       const { url } = await createPortalSession()
       window.location.href = url
     } catch (error: any) {
-      toast.error(error.message || 'Failed to redirect to billing portal')
+      toast.error(getAuthErrorMessage(error) || error.message || 'Failed to redirect to billing portal')
       setIsRedirectingToPortal(false)
     }
   }
@@ -166,7 +167,7 @@ export default function OrganizationSettings() {
       
     } catch (err: any) {
       console.error(err)
-      toast.error(err.message || 'Failed to delete organization')
+      toast.error(getAuthErrorMessage(err) || err.message || 'Failed to delete organization')
       setIsDeleting(false)
     }
   }
@@ -195,7 +196,7 @@ export default function OrganizationSettings() {
       setCaptchaToken('')
       loadMembers() // Refresh list
     } catch (error: any) {
-      toast.error(error.message || 'Failed to send invitation')
+      toast.error(getAuthErrorMessage(error) || error.message || 'Failed to send invitation')
     } finally {
       setIsInviting(false)
     }
@@ -207,7 +208,7 @@ export default function OrganizationSettings() {
       toast.success('Invitation revoked')
       loadMembers() // Refresh list
     } catch (error: any) {
-      toast.error(error.message || 'Failed to revoke invitation')
+      toast.error(getAuthErrorMessage(error) || error.message || 'Failed to revoke invitation')
     }
   }
 
@@ -222,7 +223,7 @@ export default function OrganizationSettings() {
       setIsEditing(false)
       loadMembers() 
     } catch (error: any) {
-      toast.error(error.message || 'Failed to update organization')
+      toast.error(getAuthErrorMessage(error) || error.message || 'Failed to update organization')
     } finally {
       setIsSaving(false)
     }

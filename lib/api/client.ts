@@ -2,6 +2,11 @@
  * HTTP client wrapper for API calls
  */
 
+import { authMessageFromStatus, AUTH_ERROR_MESSAGES } from '@/lib/utils/authErrors'
+
+/** Request timeout in ms; network errors surface as user-facing "Network error, please try again." */
+const FETCH_TIMEOUT_MS = 30_000
+
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8082'
 export const AUTH_URL = process.env.NEXT_PUBLIC_AUTH_URL || 'http://localhost:3000'
 export const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3003'
@@ -73,11 +78,26 @@ async function apiRequest<T>(
   // * We rely on HttpOnly cookies, so no manual Authorization header injection.
   // * We MUST set credentials: 'include' for the browser to send cookies cross-origin (or same-site).
 
-  const response = await fetch(url, {
-    ...options,
-    headers,
-    credentials: 'include', // * IMPORTANT: Send cookies
-  })
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+  const signal = options.signal ?? controller.signal
+
+  let response: Response
+  try {
+    response = await fetch(url, {
+      ...options,
+      headers,
+      credentials: 'include', // * IMPORTANT: Send cookies
+      signal,
+    })
+    clearTimeout(timeoutId)
+  } catch (e) {
+    clearTimeout(timeoutId)
+    if (e instanceof Error && (e.name === 'AbortError' || e.name === 'TypeError')) {
+      throw new ApiError(AUTH_ERROR_MESSAGES.NETWORK, 0)
+    }
+    throw e
+  }
 
   if (!response.ok) {
     if (response.status === 401) {
@@ -99,7 +119,7 @@ async function apiRequest<T>(
                     if (retryResponse.ok) {
                       resolve(await retryResponse.json())
                     } else {
-                      reject(new ApiError('Retry failed', retryResponse.status))
+                      reject(new ApiError(authMessageFromStatus(retryResponse.status), retryResponse.status))
                     }
                   } catch (e) {
                     reject(e)
@@ -135,12 +155,16 @@ async function apiRequest<T>(
                 return retryResponse.json()
               }
             } else {
-              onRefreshFailed(new ApiError('Refresh failed', 401))
+              const sessionExpiredMsg = authMessageFromStatus(401)
+              onRefreshFailed(new ApiError(sessionExpiredMsg, 401))
               localStorage.removeItem('user')
             }
           } catch (e) {
-            onRefreshFailed(e)
-            throw e
+            const err = e instanceof Error && (e.name === 'AbortError' || e.name === 'TypeError')
+              ? new ApiError(AUTH_ERROR_MESSAGES.NETWORK, 0)
+              : e
+            onRefreshFailed(err)
+            throw err
           } finally {
             isRefreshing = false
           }
@@ -148,11 +172,9 @@ async function apiRequest<T>(
       }
     }
 
-    const errorBody = await response.json().catch(() => ({
-      error: 'Unknown error',
-      message: `HTTP ${response.status}: ${response.statusText}`,
-    }))
-    throw new ApiError(errorBody.message || errorBody.error || 'Request failed', response.status, errorBody)
+    const errorBody = await response.json().catch(() => ({}))
+    const message = authMessageFromStatus(response.status)
+    throw new ApiError(message, response.status, errorBody)
   }
 
   return response.json()
