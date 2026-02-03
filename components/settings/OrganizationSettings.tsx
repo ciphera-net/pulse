@@ -16,7 +16,7 @@ import {
   OrganizationInvitation,
   Organization
 } from '@/lib/api/organization'
-import { getSubscription, createPortalSession, SubscriptionDetails } from '@/lib/api/billing'
+import { getSubscription, createPortalSession, getInvoices, SubscriptionDetails, Invoice } from '@/lib/api/billing'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@/lib/utils/authErrors'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -27,7 +27,10 @@ import {
   UserIcon, 
   CheckIcon, 
   XIcon,
-  Captcha
+  Captcha,
+  FileTextIcon,
+  DownloadIcon,
+  ExternalLinkIcon
 } from '@ciphera-net/ui'
 // @ts-ignore
 import { Button, Input } from '@ciphera-net/ui'
@@ -50,6 +53,8 @@ export default function OrganizationSettings() {
   const [subscription, setSubscription] = useState<SubscriptionDetails | null>(null)
   const [isLoadingSubscription, setIsLoadingSubscription] = useState(false)
   const [isRedirectingToPortal, setIsRedirectingToPortal] = useState(false)
+  const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [isLoadingInvoices, setIsLoadingInvoices] = useState(false)
 
   // Invite State
   const [inviteEmail, setInviteEmail] = useState('')
@@ -109,6 +114,19 @@ export default function OrganizationSettings() {
     }
   }, [currentOrgId])
 
+  const loadInvoices = useCallback(async () => {
+    if (!currentOrgId) return
+    setIsLoadingInvoices(true)
+    try {
+      const invs = await getInvoices()
+      setInvoices(invs)
+    } catch (error) {
+      console.error('Failed to load invoices:', error)
+    } finally {
+      setIsLoadingInvoices(false)
+    }
+  }, [currentOrgId])
+
   useEffect(() => {
     if (currentOrgId) {
       loadMembers()
@@ -120,8 +138,9 @@ export default function OrganizationSettings() {
   useEffect(() => {
     if (activeTab === 'billing' && currentOrgId) {
       loadSubscription()
+      loadInvoices()
     }
-  }, [activeTab, currentOrgId, loadSubscription])
+  }, [activeTab, currentOrgId, loadSubscription, loadInvoices])
 
   // If no org ID, we are in personal workspace, so don't show org settings
   if (!currentOrgId) {
@@ -614,6 +633,74 @@ export default function OrganizationSettings() {
                         </Button>
                       </div>
                     )}
+
+                    {/* Invoice History */}
+                    <div>
+                      <h3 className="text-sm font-medium text-neutral-500 uppercase tracking-wider mb-4">Invoice History</h3>
+                      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden">
+                        {isLoadingInvoices ? (
+                          <div className="p-8 text-center text-neutral-500">
+                            <div className="animate-spin w-5 h-5 border-2 border-neutral-400 border-t-transparent rounded-full mx-auto mb-2"></div>
+                            Loading invoices...
+                          </div>
+                        ) : invoices.length === 0 ? (
+                          <div className="p-8 text-center text-neutral-500">No invoices found.</div>
+                        ) : (
+                          <div className="divide-y divide-neutral-200 dark:divide-neutral-800">
+                            {invoices.map((invoice) => (
+                              <div key={invoice.id} className="p-4 flex items-center justify-between hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors">
+                                <div className="flex items-center gap-4">
+                                  <div className="h-10 w-10 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-neutral-500">
+                                    <FileTextIcon className="w-5 h-5" />
+                                  </div>
+                                  <div>
+                                    <div className="font-medium text-neutral-900 dark:text-white">
+                                      {(invoice.amount_paid / 100).toLocaleString('en-US', { style: 'currency', currency: invoice.currency.toUpperCase() })}
+                                    </div>
+                                    <div className="text-xs text-neutral-500">
+                                      {new Date(invoice.created * 1000).toLocaleDateString()}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${
+                                    invoice.status === 'paid'
+                                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                                      : invoice.status === 'open'
+                                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                                      : 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300'
+                                  }`}>
+                                    {invoice.status}
+                                  </span>
+                                  {invoice.invoice_pdf && (
+                                    <a 
+                                      href={invoice.invoice_pdf} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="p-2 text-neutral-500 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
+                                      title="Download PDF"
+                                    >
+                                      <DownloadIcon className="w-5 h-5" />
+                                    </a>
+                                  )}
+                                  {invoice.hosted_invoice_url && (
+                                    <a 
+                                      href={invoice.hosted_invoice_url} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="p-2 text-neutral-500 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
+                                      title="View Invoice"
+                                    >
+                                      <ExternalLinkIcon className="w-5 h-5" />
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
