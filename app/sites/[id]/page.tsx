@@ -7,6 +7,7 @@ import { getSite, type Site } from '@/lib/api/sites'
 import { getStats, getRealtime, getDailyStats, getTopPages, getTopReferrers, getCountries, getCities, getRegions, getBrowsers, getOS, getDevices, getScreenResolutions, getEntryPages, getExitPages, getDashboard, getPerformanceByPage, type Stats, type DailyStat, type PerformanceByPageStat } from '@/lib/api/stats'
 import { formatNumber, formatDuration, getDateRange } from '@/lib/utils/format'
 import { toast } from '@ciphera-net/ui'
+import { getAuthErrorMessage } from '@/lib/utils/authErrors'
 import { LoadingOverlay } from '@ciphera-net/ui'
 import { Select, DatePicker, DownloadIcon } from '@ciphera-net/ui'
 import ExportModal from '@/components/dashboard/ExportModal'
@@ -191,8 +192,8 @@ export default function SiteDashboardPage() {
       setScreenResolutions(Array.isArray(data.screen_resolutions) ? data.screen_resolutions : [])
       setPerformance(data.performance || { lcp: 0, cls: 0, inp: 0 })
       setPerformanceByPage(data.performance_by_page ?? null)
-    } catch (error: any) {
-      toast.error('Failed to load data: ' + (error.message || 'Unknown error'))
+    } catch (error: unknown) {
+      toast.error(getAuthErrorMessage(error) || 'Failed to load data: ' + ((error as Error)?.message || 'Unknown error'))
     } finally {
       setLoading(false)
     }

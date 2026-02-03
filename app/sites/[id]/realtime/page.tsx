@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { getSite, type Site } from '@/lib/api/sites'
 import { getRealtimeVisitors, getSessionDetails, type Visitor, type SessionEvent } from '@/lib/api/realtime'
 import { toast } from '@ciphera-net/ui'
+import { getAuthErrorMessage } from '@/lib/utils/authErrors'
 import { LoadingOverlay } from '@ciphera-net/ui'
 
 function formatTimeAgo(dateString: string) {
@@ -44,8 +45,8 @@ export default function RealtimePage() {
         if (visitorsData && visitorsData.length > 0) {
           handleSelectVisitor(visitorsData[0])
         }
-      } catch (error: any) {
-        toast.error('Failed to load data')
+      } catch (error: unknown) {
+        toast.error(getAuthErrorMessage(error) || 'Failed to load data')
       } finally {
         setLoading(false)
       }
@@ -81,8 +82,8 @@ export default function RealtimePage() {
     try {
       const events = await getSessionDetails(siteId, visitor.session_id)
       setSessionEvents(events || [])
-    } catch (error) {
-      toast.error('Failed to load session details')
+    } catch (error: unknown) {
+      toast.error(getAuthErrorMessage(error) || 'Failed to load session details')
     } finally {
       setLoadingEvents(false)
     }

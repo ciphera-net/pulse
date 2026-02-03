@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createSite, listSites } from '@/lib/api/sites'
 import { getSubscription } from '@/lib/api/billing'
 import { toast } from '@ciphera-net/ui'
+import { getAuthErrorMessage } from '@/lib/utils/authErrors'
 import { Button, Input } from '@ciphera-net/ui'
 
 export default function NewSitePage() {
@@ -46,7 +47,7 @@ export default function NewSitePage() {
       toast.success('Site created successfully')
       router.push(`/sites/${site.id}`)
     } catch (error: any) {
-      toast.error('Failed to create site: ' + (error.message || 'Unknown error'))
+      toast.error(getAuthErrorMessage(error) || 'Failed to create site: ' + ((error as Error)?.message || 'Unknown error'))
     } finally {
       setLoading(false)
     }
