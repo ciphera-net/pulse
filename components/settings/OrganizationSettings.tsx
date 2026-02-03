@@ -20,15 +20,15 @@ import { getSubscription, createPortalSession, getInvoices, SubscriptionDetails,
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@/lib/utils/authErrors'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  AlertTriangleIcon, 
-  PlusIcon, 
-  BoxIcon, 
-  UserIcon, 
-  CheckIcon, 
+import {
+  AlertTriangleIcon,
+  PlusIcon,
+  BoxIcon,
+  UserIcon,
+  CheckIcon,
   XIcon,
   Captcha,
-  FileTextIcon,
+  BookOpenIcon,
   DownloadIcon,
   ExternalLinkIcon
 } from '@ciphera-net/ui'
@@ -651,7 +651,7 @@ export default function OrganizationSettings() {
                               <div key={invoice.id} className="p-4 flex items-center justify-between hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors">
                                 <div className="flex items-center gap-4">
                                   <div className="h-10 w-10 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-neutral-500">
-                                    <FileTextIcon className="w-5 h-5" />
+                                    <BookOpenIcon className="w-5 h-5" />
                                   </div>
                                   <div>
                                     <div className="font-medium text-neutral-900 dark:text-white">
