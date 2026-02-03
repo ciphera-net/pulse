@@ -29,6 +29,9 @@ interface UserPayload {
   role?: string
 }
 
+/** Error type returned to client for mapping to user-facing copy (no sensitive details). */
+export type AuthExchangeErrorType = 'network' | 'expired' | 'invalid' | 'server'
+
 export async function exchangeAuthCode(code: string, codeVerifier: string, redirectUri: string) {
   try {
     const res = await fetch(`${AUTH_API_URL}/oauth/token`, {
@@ -46,8 +49,10 @@ export async function exchangeAuthCode(code: string, codeVerifier: string, redir
     })
 
     if (!res.ok) {
-      const data = await res.json()
-      throw new Error(data.error || 'Failed to exchange token')
+      const status = res.status
+      const errorType: AuthExchangeErrorType =
+        status === 401 ? 'expired' : status === 403 ? 'invalid' : 'server'
+      return { success: false as const, error: errorType }
     }
 
     const data: AuthResponse = await res.json()
@@ -96,9 +101,12 @@ export async function exchangeAuthCode(code: string, codeVerifier: string, redir
       }
     }
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Auth Exchange Error:', error)
-    return { success: false, error: error.message }
+    const isNetwork =
+      error instanceof TypeError ||
+      (error instanceof Error && (error.name === 'AbortError' || /fetch|network|ECONNREFUSED|ETIMEDOUT/i.test(error.message)))
+    return { success: false as const, error: isNetwork ? 'network' : 'server' }
   }
 }
 
@@ -152,7 +160,7 @@ export async function setSessionAction(accessToken: string, refreshToken?: strin
         }
     } catch (e) {
         console.error('[setSessionAction] Error:', e)
-        return { success: false, error: 'Invalid token' }
+        return { success: false as const, error: 'invalid' }
     }
 }
 

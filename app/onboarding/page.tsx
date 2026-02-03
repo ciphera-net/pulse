@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createOrganization } from '@/lib/api/organization'
 import { useAuth } from '@/lib/auth/context'
+import { getAuthErrorMessage } from '@/lib/utils/authErrors'
 import { LoadingOverlay } from '@ciphera-net/ui'
 import { Button, Input } from '@ciphera-net/ui'
 
@@ -24,8 +25,8 @@ export default function OnboardingPage() {
       await createOrganization(name, slug)
       // * Redirect to home, AuthContext will detect the new org and auto-switch
       router.push('/')
-    } catch (err: any) {
-      setError(err.message || 'Failed to create organization')
+    } catch (err: unknown) {
+      setError(getAuthErrorMessage(err) || (err as Error)?.message || 'Failed to create organization')
     } finally {
       setLoading(false)
     }

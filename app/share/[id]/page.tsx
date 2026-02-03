@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { getPublicDashboard, getPublicStats, getPublicDailyStats, getPublicRealtime, getPublicPerformanceByPage, type DashboardData, type Stats, type DailyStat, type PerformanceByPageStat } from '@/lib/api/stats'
 import { toast } from '@ciphera-net/ui'
+import { getAuthErrorMessage } from '@/lib/utils/authErrors'
 import { LoadingOverlay } from '@ciphera-net/ui'
 import Chart from '@/components/dashboard/Chart'
 import TopPages from '@/components/dashboard/ContentStats'
@@ -171,7 +172,7 @@ export default function PublicDashboardPage() {
       } else if (error.status === 404 || error.response?.status === 404) {
         toast.error('Site not found')
       } else if (!silent) {
-        toast.error('Failed to load dashboard: ' + (error.message || 'Unknown error'))
+        toast.error(getAuthErrorMessage(error) || 'Failed to load dashboard: ' + ((error as Error)?.message || 'Unknown error'))
       }
     } finally {
       if (!silent) setLoading(false)

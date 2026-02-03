@@ -11,6 +11,7 @@ import SiteList from '@/components/sites/SiteList'
 import { Button } from '@ciphera-net/ui'
 import { BarChartIcon, LockIcon, ZapIcon, CheckCircleIcon, XIcon } from '@ciphera-net/ui'
 import { toast } from '@ciphera-net/ui'
+import { getAuthErrorMessage } from '@/lib/utils/authErrors'
 
 function DashboardPreview() {
   return (
@@ -114,7 +115,7 @@ export default function HomePage() {
       const data = await listSites()
       setSites(Array.isArray(data) ? data : [])
     } catch (error: any) {
-      toast.error('Failed to load sites: ' + (error.message || 'Unknown error'))
+      toast.error(getAuthErrorMessage(error) || 'Failed to load sites: ' + ((error as Error)?.message || 'Unknown error'))
       setSites([])
     } finally {
       setSitesLoading(false)
@@ -143,7 +144,7 @@ export default function HomePage() {
       toast.success('Site deleted successfully')
       loadSites()
     } catch (error: any) {
-      toast.error('Failed to delete site: ' + (error.message || 'Unknown error'))
+      toast.error(getAuthErrorMessage(error) || 'Failed to delete site: ' + ((error as Error)?.message || 'Unknown error'))
     }
   }
 
