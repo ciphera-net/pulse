@@ -58,3 +58,20 @@ export async function createCheckoutSession(params: CreateCheckoutParams): Promi
     body: JSON.stringify(params),
   })
 }
+
+export interface Invoice {
+  id: string
+  amount_paid: number
+  amount_due: number
+  currency: string
+  status: string
+  created: number
+  hosted_invoice_url: string
+  invoice_pdf: string
+}
+
+export async function getInvoices(): Promise<Invoice[]> {
+  return await billingFetch<Invoice[]>('/api/billing/invoices', {
+    method: 'GET',
+  })
+}
