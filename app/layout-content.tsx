@@ -3,6 +3,7 @@
 import { OfflineBanner } from '@/components/OfflineBanner'
 import { Header, Footer } from '@ciphera-net/ui'
 import { useAuth } from '@/lib/auth/context'
+import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { getUserOrganizations, switchContext } from '@/lib/api/organization'
@@ -12,6 +13,7 @@ import { useRouter } from 'next/navigation'
 export default function LayoutContent({ children }: { children: React.ReactNode }) {
   const auth = useAuth()
   const router = useRouter()
+  const isOnline = useOnlineStatus()
   const [orgs, setOrgs] = useState<any[]>([])
   
   // * Fetch organizations for the header workspace switcher
@@ -53,11 +55,9 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         showFaq={false}
         showSecurity={false}
         showPricing={true}
+        bottomContent={<OfflineBanner />}
       />
-      <div className="pt-24">
-        <OfflineBanner />
-      </div>
-      <main className="flex-1 pt-24 pb-8">
+      <main className={`flex-1 pb-8 ${isOnline ? 'pt-24' : 'pt-32'}`}>
         {children}
       </main>
       <Footer 
