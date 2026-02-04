@@ -164,6 +164,13 @@ export default function SiteSettingsPage() {
       toast.error('Event name can only contain letters, numbers, and underscores')
       return
     }
+    const duplicateEventName = editingGoal
+      ? goals.some((g) => g.id !== editingGoal.id && g.event_name === eventName)
+      : goals.some((g) => g.event_name === eventName)
+    if (duplicateEventName) {
+      toast.error('A goal with this event name already exists')
+      return
+    }
     setGoalSaving(true)
     try {
       if (editingGoal) {
@@ -1002,6 +1009,9 @@ export default function SiteSettingsPage() {
               required
             />
             <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">Spaces become underscores; max 64 characters after formatting.</p>
+            {editingGoal && goalForm.event_name.trim().toLowerCase().replace(/\s+/g, '_') !== editingGoal.event_name && (
+              <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">Changing event name does not reassign events already tracked under the previous name.</p>
+            )}
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="secondary" onClick={() => setGoalModalOpen(false)}>

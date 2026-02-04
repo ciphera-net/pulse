@@ -261,6 +261,7 @@
   }
 
   // * Expose pulse.track() for custom events (e.g. pulse.track('signup_click'))
-  window.pulse = { track: trackCustomEvent };
+  window.pulse = window.pulse || {};
+  window.pulse.track = trackCustomEvent;
 
 })();
