@@ -33,6 +33,11 @@ export interface PerformanceByPageStat {
   inp: number | null
 }
 
+export interface GoalCountStat {
+  event_name: string
+  count: number
+}
+
 export interface TopReferrer {
   referrer: string
   pageviews: number
@@ -280,6 +285,7 @@ export interface DashboardData {
   screen_resolutions: ScreenResolutionStat[]
   performance?: PerformanceStats
   performance_by_page?: PerformanceByPageStat[]
+  goal_counts?: GoalCountStat[]
 }
 
 export async function getDashboard(siteId: string, startDate?: string, endDate?: string, limit = 10, interval?: string): Promise<DashboardData> {
