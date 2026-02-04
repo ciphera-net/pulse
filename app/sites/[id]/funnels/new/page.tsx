@@ -53,6 +53,11 @@ export default function CreateFunnelPage() {
       return
     }
 
+    if (steps.some(s => !s.name.trim())) {
+      toast.error('Please enter a name for all steps')
+      return
+    }
+
     if (steps.some(s => !s.value.trim())) {
       toast.error('Please enter a path for all steps')
       return

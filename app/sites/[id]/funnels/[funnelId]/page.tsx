@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import { ApiError } from '@/lib/api/client'
 import { getFunnel, getFunnelStats, deleteFunnel, type Funnel, type FunnelStats } from '@/lib/api/funnels'
 import { toast, LoadingOverlay, Select, DatePicker, ChevronLeftIcon, ArrowRightIcon, TrashIcon, useTheme } from '@ciphera-net/ui'
 import Link from 'next/link'
@@ -45,8 +46,10 @@ export default function FunnelReportPage() {
   const [dateRange, setDateRange] = useState(getDateRange(30))
   const [datePreset, setDatePreset] = useState<'7' | '30' | 'custom'>('30')
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
+  const [loadError, setLoadError] = useState<'not_found' | 'error' | null>(null)
 
   const loadData = useCallback(async () => {
+    setLoadError(null)
     try {
       setLoading(true)
       const [funnelData, statsData] = await Promise.all([
@@ -56,7 +59,9 @@ export default function FunnelReportPage() {
       setFunnel(funnelData)
       setStats(statsData)
     } catch (error) {
-      toast.error('Failed to load funnel data')
+      const is404 = error instanceof ApiError && error.status === 404
+      setLoadError(is404 ? 'not_found' : 'error')
+      if (!is404) toast.error('Failed to load funnel data')
     } finally {
       setLoading(false)
     }
@@ -86,6 +91,25 @@ export default function FunnelReportPage() {
 
   if (loading && !funnel) {
     return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" />
+  }
+
+  if (loadError === 'not_found' || (!funnel && !stats && !loadError)) {
+    return (
+      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
+        <p className="text-neutral-600 dark:text-neutral-400">Funnel not found</p>
+      </div>
+    )
+  }
+
+  if (loadError === 'error') {
+    return (
+      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
+        <p className="text-neutral-600 dark:text-neutral-400 mb-4">Failed to load funnel data</p>
+        <button type="button" onClick={() => loadData()} className="btn-primary">
+          Try again
+        </button>
+      </div>
+    )
   }
 
   if (!funnel || !stats) {
