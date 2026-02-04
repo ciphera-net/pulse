@@ -1,7 +1,7 @@
 'use client'
 
 import { OfflineBanner } from '@/components/OfflineBanner'
-import { Header, Footer } from '@ciphera-net/ui'
+import { Header, Footer, GridIcon } from '@ciphera-net/ui'
 import { useAuth } from '@/lib/auth/context'
 import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus'
 import Link from 'next/link'
@@ -62,6 +62,15 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         showSecurity={false}
         showPricing={true}
         topOffset={showOfflineBar ? `${barHeightRem}rem` : undefined}
+        userMenuCustomItems={
+          <Link
+            href="/tools"
+            className="group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+          >
+            <GridIcon className="h-4 w-4 text-neutral-500 group-hover:text-neutral-900 dark:text-neutral-400 dark:group-hover:text-white" />
+            Tools
+          </Link>
+        }
       />
       <main
         className={`flex-1 pb-8 ${showOfflineBar ? '' : 'pt-24'}`}

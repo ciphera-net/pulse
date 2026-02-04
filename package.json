@@ -1,6 +1,6 @@
 {
   "name": "pulse-frontend",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -10,7 +10,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@ciphera-net/ui": "^0.0.42",
+    "@ciphera-net/ui": "^0.0.43",
     "@ducanh2912/next-pwa": "^10.2.9",
     "axios": "^1.13.2",
     "country-flag-icons": "^1.6.4",
