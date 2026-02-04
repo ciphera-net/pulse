@@ -284,17 +284,19 @@ export async function getGoalStats(siteId: string, startDate?: string, endDate?:
   return apiRequest<{ goal_counts: GoalCountStat[] }>(`/sites/${siteId}/goals/stats?${params.toString()}`).then(r => r?.goal_counts || [])
 }
 
-export async function getCampaigns(siteId: string, startDate?: string, endDate?: string): Promise<CampaignStat[]> {
+export async function getCampaigns(siteId: string, startDate?: string, endDate?: string, limit = 10): Promise<CampaignStat[]> {
   const params = new URLSearchParams()
   if (startDate) params.append('start_date', startDate)
   if (endDate) params.append('end_date', endDate)
+  params.append('limit', limit.toString())
   return apiRequest<{ campaigns: CampaignStat[] }>(`/sites/${siteId}/campaigns?${params.toString()}`).then(r => r?.campaigns || [])
 }
 
-export async function getPublicCampaigns(siteId: string, startDate?: string, endDate?: string, auth?: AuthParams): Promise<CampaignStat[]> {
+export async function getPublicCampaigns(siteId: string, startDate?: string, endDate?: string, limit = 10, auth?: AuthParams): Promise<CampaignStat[]> {
   const params = new URLSearchParams()
   if (startDate) params.append('start_date', startDate)
   if (endDate) params.append('end_date', endDate)
+  params.append('limit', limit.toString())
   appendAuthParams(params, auth)
   return apiRequest<{ campaigns: CampaignStat[] }>(`/public/sites/${siteId}/campaigns?${params.toString()}`).then(r => r?.campaigns || [])
 }

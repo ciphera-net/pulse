@@ -25,7 +25,7 @@ export default function Campaigns({ siteId, dateRange }: CampaignsProps) {
     const fetchData = async () => {
       setIsLoading(true)
       try {
-        const result = await getCampaigns(siteId, dateRange.start, dateRange.end)
+        const result = await getCampaigns(siteId, dateRange.start, dateRange.end, 10)
         setData(result)
       } catch (e) {
         console.error(e)
@@ -41,7 +41,7 @@ export default function Campaigns({ siteId, dateRange }: CampaignsProps) {
       const fetchFullData = async () => {
         setIsLoadingFull(true)
         try {
-          const result = await getCampaigns(siteId, dateRange.start, dateRange.end)
+          const result = await getCampaigns(siteId, dateRange.start, dateRange.end, 100)
           setFullData(result)
         } catch (e) {
           console.error(e)
