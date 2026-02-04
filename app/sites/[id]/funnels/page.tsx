@@ -1,14 +1,12 @@
 'use client'
 
-import { useAuth } from '@/lib/auth/context'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { listFunnels, deleteFunnel, type Funnel } from '@/lib/api/funnels'
 import { toast, LoadingOverlay, PlusIcon, ArrowRightIcon, ChevronLeftIcon, TrashIcon } from '@ciphera-net/ui'
 import Link from 'next/link'
 
 export default function FunnelsPage() {
-  const { user } = useAuth()
   const params = useParams()
   const router = useRouter()
   const siteId = params.id as string
@@ -16,7 +14,7 @@ export default function FunnelsPage() {
   const [funnels, setFunnels] = useState<Funnel[]>([])
   const [loading, setLoading] = useState(true)
 
-  const loadFunnels = async () => {
+  const loadFunnels = useCallback(async () => {
     try {
       setLoading(true)
       const data = await listFunnels(siteId)
@@ -26,11 +24,11 @@ export default function FunnelsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [siteId])
 
   useEffect(() => {
     loadFunnels()
-  }, [siteId])
+  }, [loadFunnels])
 
   const handleDelete = async (e: React.MouseEvent, funnelId: string) => {
     e.preventDefault() // Prevent navigation

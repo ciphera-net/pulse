@@ -1,6 +1,5 @@
 'use client'
 
-import { useAuth } from '@/lib/auth/context'
 import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createFunnel, type CreateFunnelRequest, type FunnelStep } from '@/lib/api/funnels'
