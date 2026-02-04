@@ -1,12 +1,10 @@
 'use client'
 
-import { useAuth } from '@/lib/auth/context'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { getFunnel, getFunnelStats, deleteFunnel, type Funnel, type FunnelStats } from '@/lib/api/funnels'
 import { toast, LoadingOverlay, Select, DatePicker, ChevronLeftIcon, ArrowRightIcon, TrashIcon, useTheme } from '@ciphera-net/ui'
 import Link from 'next/link'
-import { useMemo } from 'react'
 import {
   BarChart,
   Bar,
@@ -45,9 +43,10 @@ export default function FunnelReportPage() {
   const [stats, setStats] = useState<FunnelStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [dateRange, setDateRange] = useState(getDateRange(30))
+  const [datePreset, setDatePreset] = useState<'7' | '30' | 'custom'>('30')
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true)
       const [funnelData, statsData] = await Promise.all([
@@ -61,11 +60,11 @@ export default function FunnelReportPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [siteId, funnelId, dateRange])
 
   useEffect(() => {
     loadData()
-  }, [siteId, funnelId, dateRange])
+  }, [loadData])
 
   const { resolvedTheme } = useTheme()
   const chartColors = useMemo(
@@ -129,17 +128,17 @@ export default function FunnelReportPage() {
           
           <div className="flex items-center gap-2">
             <Select
-              value={
-                dateRange.start === getDateRange(7).start 
-                ? '7' 
-                : dateRange.start === getDateRange(30).start 
-                ? '30' 
-                : 'custom'
-              }
+              value={datePreset}
               onChange={(value) => {
-                if (value === '7') setDateRange(getDateRange(7))
-                else if (value === '30') setDateRange(getDateRange(30))
-                else if (value === 'custom') setIsDatePickerOpen(true)
+                if (value === '7') {
+                  setDateRange(getDateRange(7))
+                  setDatePreset('7')
+                } else if (value === '30') {
+                  setDateRange(getDateRange(30))
+                  setDatePreset('30')
+                } else if (value === 'custom') {
+                  setIsDatePickerOpen(true)
+                }
               }}
               options={[
                 { value: '7', label: 'Last 7 days' },
@@ -215,7 +214,7 @@ export default function FunnelReportPage() {
                 />
                 <Bar dataKey="visitors" radius={[4, 4, 0, 0]} barSize={60}>
                   {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={BRAND_ORANGE} fillOpacity={1 - (index * 0.15)} />
+                    <Cell key={`cell-${index}`} fill={BRAND_ORANGE} fillOpacity={Math.max(0.1, 1 - index * 0.15)} />
                   ))}
                 </Bar>
               </BarChart>
@@ -285,6 +284,7 @@ export default function FunnelReportPage() {
         onClose={() => setIsDatePickerOpen(false)}
         onApply={(range) => {
           setDateRange(range)
+          setDatePreset('custom')
           setIsDatePickerOpen(false)
         }}
         initialRange={dateRange}
