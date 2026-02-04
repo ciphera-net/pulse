@@ -68,7 +68,7 @@ export default function FunnelReportPage() {
 
   if (!funnel || !stats) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
         <p className="text-neutral-600 dark:text-neutral-400">Funnel not found</p>
       </div>
     )
@@ -88,7 +88,7 @@ export default function FunnelReportPage() {
           <div className="flex items-center gap-4">
             <Link 
               href={`/sites/${siteId}/funnels`}
-              className="p-2 -ml-2 text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+              className="p-2 -ml-2 text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
             >
               <ChevronLeftIcon className="w-5 h-5" />
             </Link>
@@ -127,7 +127,8 @@ export default function FunnelReportPage() {
             
             <button
               onClick={handleDelete}
-              className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+              className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"
+              aria-label="Delete funnel"
             >
               <TrashIcon className="w-5 h-5" />
             </button>
@@ -136,7 +137,7 @@ export default function FunnelReportPage() {
 
         {/* Chart */}
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 mb-8">
-          <h3 className="text-lg font-medium text-neutral-900 dark:text-white mb-6">
+          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-6">
             Funnel Visualization
           </h3>
           <div className="h-[400px] w-full">
@@ -162,7 +163,7 @@ export default function FunnelReportPage() {
                     if (active && payload && payload.length) {
                       const data = payload[0].payload;
                       return (
-                        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-3 rounded-lg shadow-lg">
+                        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-3 rounded-xl shadow-lg">
                           <p className="font-medium text-neutral-900 dark:text-white mb-1">{label}</p>
                           <p className="text-brand-orange font-bold text-lg">
                             {data.visitors.toLocaleString()} visitors
