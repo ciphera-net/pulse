@@ -31,6 +31,7 @@ export const metadata: Metadata = {
     shortcut: '/favicon.ico',
     apple: '/pulse_icon_no_margins.png',
   },
+  manifest: '/manifest.json',
   robots: {
     index: true,
     follow: true,
