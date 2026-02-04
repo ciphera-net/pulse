@@ -4,8 +4,9 @@ import { useAuth } from '@/lib/auth/context'
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { getFunnel, getFunnelStats, deleteFunnel, type Funnel, type FunnelStats } from '@/lib/api/funnels'
-import { toast, LoadingOverlay, Select, DatePicker, ChevronLeftIcon, ArrowRightIcon, TrashIcon } from '@ciphera-net/ui'
+import { toast, LoadingOverlay, Select, DatePicker, ChevronLeftIcon, ArrowRightIcon, TrashIcon, useTheme } from '@ciphera-net/ui'
 import Link from 'next/link'
+import { useMemo } from 'react'
 import {
   BarChart,
   Bar,
@@ -17,6 +18,22 @@ import {
   Cell
 } from 'recharts'
 import { getDateRange } from '@/lib/utils/format'
+
+const CHART_COLORS_LIGHT = {
+  border: '#E5E5E5',
+  axis: '#A3A3A3',
+  tooltipBg: '#ffffff',
+  tooltipBorder: '#E5E5E5',
+}
+
+const CHART_COLORS_DARK = {
+  border: '#404040',
+  axis: '#737373',
+  tooltipBg: '#262626',
+  tooltipBorder: '#404040',
+}
+
+const BRAND_ORANGE = '#FD5E0F'
 
 export default function FunnelReportPage() {
   const params = useParams()
@@ -81,6 +98,12 @@ export default function FunnelReportPage() {
     conversion: s.conversion
   }))
 
+  const { resolvedTheme } = useTheme()
+  const chartColors = useMemo(
+    () => (resolvedTheme === 'dark' ? CHART_COLORS_DARK : CHART_COLORS_LIGHT),
+    [resolvedTheme]
+  )
+
   return (
     <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
       <div className="mb-8">
@@ -136,23 +159,23 @@ export default function FunnelReportPage() {
         </div>
 
         {/* Chart */}
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 mb-8">
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden shadow-sm p-6 mb-8">
           <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-6">
             Funnel Visualization
           </h3>
           <div className="h-[400px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E5E5" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartColors.border} />
                 <XAxis 
                   dataKey="name" 
-                  stroke="#A3A3A3" 
+                  stroke={chartColors.axis} 
                   fontSize={12} 
                   tickLine={false} 
                   axisLine={false} 
                 />
                 <YAxis 
-                  stroke="#A3A3A3" 
+                  stroke={chartColors.axis} 
                   fontSize={12} 
                   tickLine={false} 
                   axisLine={false} 
@@ -163,7 +186,13 @@ export default function FunnelReportPage() {
                     if (active && payload && payload.length) {
                       const data = payload[0].payload;
                       return (
-                        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-3 rounded-xl shadow-lg">
+                        <div
+                          className="p-3 rounded-xl shadow-lg border"
+                          style={{
+                            backgroundColor: chartColors.tooltipBg,
+                            borderColor: chartColors.tooltipBorder,
+                          }}
+                        >
                           <p className="font-medium text-neutral-900 dark:text-white mb-1">{label}</p>
                           <p className="text-brand-orange font-bold text-lg">
                             {data.visitors.toLocaleString()} visitors
@@ -186,7 +215,7 @@ export default function FunnelReportPage() {
                 />
                 <Bar dataKey="visitors" radius={[4, 4, 0, 0]} barSize={60}>
                   {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill="#FD5E0F" fillOpacity={1 - (index * 0.15)} />
+                    <Cell key={`cell-${index}`} fill={BRAND_ORANGE} fillOpacity={1 - (index * 0.15)} />
                   ))}
                 </Bar>
               </BarChart>
