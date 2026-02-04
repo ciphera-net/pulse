@@ -86,6 +86,32 @@ export default function UtmBuilder({ initialSiteId }: UtmBuilderProps) {
     setValues({ ...values, [e.target.name]: e.target.value })
   }
 
+  // Helper to handle path changes when a site is selected
+  const handlePathChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const site = sites.find(s => s.id === selectedSiteId)
+    if (!site) return
+
+    const path = e.target.value
+    // Ensure path starts with / if not empty
+    const safePath = path.startsWith('/') || path === '' ? path : `/${path}`
+    setValues(v => ({ ...v, url: `https://${site.domain}${safePath}` }))
+  }
+
+  // Extract path from current URL if site is selected
+  const getCurrentPath = () => {
+    const site = sites.find(s => s.id === selectedSiteId)
+    if (!site || !values.url) return ''
+    
+    try {
+      const urlObj = new URL(values.url)
+      return urlObj.pathname === '/' ? '' : urlObj.pathname
+    } catch {
+      return ''
+    }
+  }
+
+  const selectedSite = sites.find(s => s.id === selectedSiteId)
+
   return (
     <div className="space-y-4">
       <div className="grid gap-4">
@@ -107,13 +133,28 @@ export default function UtmBuilder({ initialSiteId }: UtmBuilderProps) {
 
         <div>
           <label className="block text-sm font-medium mb-1 text-neutral-900 dark:text-white">Website URL *</label>
-          <input
-            name="url"
-            placeholder="https://example.com/landing-page"
-            className="w-full p-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50 focus:ring-2 focus:ring-brand-orange/20 outline-none transition-all text-neutral-900 dark:text-white"
-            value={values.url}
-            onChange={handleChange}
-          />
+          {selectedSite ? (
+            <div className="flex rounded-xl shadow-sm">
+              <span className="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-neutral-200 dark:border-neutral-800 bg-neutral-100 dark:bg-neutral-800 text-neutral-500 text-sm">
+                https://{selectedSite.domain}
+              </span>
+              <input
+                type="text"
+                className="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50 focus:ring-2 focus:ring-brand-orange/20 outline-none transition-all text-neutral-900 dark:text-white sm:text-sm"
+                placeholder="/blog/post-1"
+                value={getCurrentPath()}
+                onChange={handlePathChange}
+              />
+            </div>
+          ) : (
+            <input
+              name="url"
+              placeholder="https://example.com/landing-page"
+              className="w-full p-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50 focus:ring-2 focus:ring-brand-orange/20 outline-none transition-all text-neutral-900 dark:text-white"
+              value={values.url}
+              onChange={handleChange}
+            />
+          )}
           <p className="text-xs text-neutral-500 mt-1">
             You can add specific paths (e.g., /blog/post-1) to the URL above.
           </p>
