@@ -51,6 +51,12 @@ export default function FunnelReportPage() {
     loadData()
   }, [siteId, funnelId, dateRange])
 
+  const { resolvedTheme } = useTheme()
+  const chartColors = useMemo(
+    () => (resolvedTheme === 'dark' ? CHART_COLORS_DARK : CHART_COLORS_LIGHT),
+    [resolvedTheme]
+  )
+
   const loadData = async () => {
     try {
       setLoading(true)
@@ -97,12 +103,6 @@ export default function FunnelReportPage() {
     dropoff: s.dropoff,
     conversion: s.conversion
   }))
-
-  const { resolvedTheme } = useTheme()
-  const chartColors = useMemo(
-    () => (resolvedTheme === 'dark' ? CHART_COLORS_DARK : CHART_COLORS_LIGHT),
-    [resolvedTheme]
-  )
 
   return (
     <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
