@@ -41,7 +41,9 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
   }
   
   const showOfflineBar = Boolean(auth.user && !isOnline);
-  const barHeightRem = '2.5rem';
+  const barHeightRem = 2.5;
+  const headerHeightRem = 6;
+  const mainTopPaddingRem = barHeightRem + headerHeightRem;
 
   return (
     <>
@@ -59,9 +61,12 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         showFaq={false}
         showSecurity={false}
         showPricing={true}
-        topOffset={showOfflineBar ? barHeightRem : undefined}
+        topOffset={showOfflineBar ? `${barHeightRem}rem` : undefined}
       />
-      <main className={`flex-1 pb-8 ${showOfflineBar ? 'pt-[8.5rem]' : 'pt-24'}`}>
+      <main
+        className={`flex-1 pb-8 ${showOfflineBar ? '' : 'pt-24'}`}
+        style={showOfflineBar ? { paddingTop: `${mainTopPaddingRem}rem` } : undefined}
+      >
         {children}
       </main>
       <Footer 
