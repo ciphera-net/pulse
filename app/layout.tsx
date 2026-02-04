@@ -1,4 +1,3 @@
-import { OfflineBanner } from '@/components/OfflineBanner'
 import { ThemeProviders, Toaster } from '@ciphera-net/ui'
 import { AuthProvider } from '@/lib/auth/context'
 import type { Metadata, Viewport } from 'next'
@@ -47,7 +46,6 @@ export default function RootLayout({
   return (
     <html lang="en" className={plusJakartaSans.variable} suppressHydrationWarning>
       <body className="antialiased min-h-screen flex flex-col bg-white dark:bg-neutral-950 text-neutral-900 dark:text-neutral-50">
-        <OfflineBanner />
         <ThemeProviders>
           <AuthProvider>
             <LayoutContent>{children}</LayoutContent>
