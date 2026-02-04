@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { formatNumber } from '@/lib/utils/format'
-import { Modal } from '@ciphera-net/ui'
+import { Modal, ArrowRightIcon } from '@ciphera-net/ui'
 import { getCampaigns, CampaignStat } from '@/lib/api/stats'
+import { FaBullhorn } from 'react-icons/fa'
 
 interface CampaignsProps {
   siteId: string
@@ -75,45 +77,58 @@ export default function Campaigns({ siteId, dateRange }: CampaignsProps) {
           )}
         </div>
 
-        <div className="space-y-2 flex-1 min-h-[270px]">
-          {isLoading ? (
-            <div className="h-full flex flex-col items-center justify-center">
-              <p className="text-neutral-500">Loading...</p>
+        {isLoading ? (
+          <div className="space-y-2 flex-1 min-h-[270px] flex flex-col items-center justify-center">
+            <p className="text-neutral-500">Loading...</p>
+          </div>
+        ) : hasData ? (
+          <div className="space-y-2 flex-1 min-h-[270px]">
+            <div className="grid grid-cols-12 gap-2 text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-2 px-2">
+              <div className="col-span-4">Source</div>
+              <div className="col-span-3">Medium</div>
+              <div className="col-span-3">Campaign</div>
+              <div className="col-span-2 text-right">Visitors</div>
             </div>
-          ) : hasData ? (
-            <>
-              <div className="grid grid-cols-12 gap-2 text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-2 px-2">
-                <div className="col-span-4">Source</div>
-                <div className="col-span-3">Medium</div>
-                <div className="col-span-3">Campaign</div>
-                <div className="col-span-2 text-right">Visitors</div>
-              </div>
-              {displayedData.map((item, index) => (
-                <div key={index} className="grid grid-cols-12 gap-2 items-center h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors text-sm">
-                  <div className="col-span-4 truncate text-neutral-900 dark:text-white font-medium" title={item.source}>
-                    {item.source}
-                  </div>
-                  <div className="col-span-3 truncate text-neutral-600 dark:text-neutral-400" title={item.medium}>
-                    {item.medium || '-'}
-                  </div>
-                  <div className="col-span-3 truncate text-neutral-600 dark:text-neutral-400" title={item.campaign}>
-                    {item.campaign || '-'}
-                  </div>
-                  <div className="col-span-2 text-right font-semibold text-neutral-900 dark:text-white">
-                    {formatNumber(item.visitors)}
-                  </div>
+            {displayedData.map((item, index) => (
+              <div key={index} className="grid grid-cols-12 gap-2 items-center h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors text-sm">
+                <div className="col-span-4 truncate text-neutral-900 dark:text-white font-medium" title={item.source}>
+                  {item.source}
                 </div>
-              ))}
-              {Array.from({ length: emptySlots }).map((_, i) => (
-                <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
-              ))}
-            </>
-          ) : (
-            <div className="h-full flex flex-col items-center justify-center">
-              <p className="text-neutral-600 dark:text-neutral-400">No campaign data available</p>
+                <div className="col-span-3 truncate text-neutral-600 dark:text-neutral-400" title={item.medium}>
+                  {item.medium || '-'}
+                </div>
+                <div className="col-span-3 truncate text-neutral-600 dark:text-neutral-400" title={item.campaign}>
+                  {item.campaign || '-'}
+                </div>
+                <div className="col-span-2 text-right font-semibold text-neutral-900 dark:text-white">
+                  {formatNumber(item.visitors)}
+                </div>
+              </div>
+            ))}
+            {Array.from({ length: emptySlots }).map((_, i) => (
+              <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
+            ))}
+          </div>
+        ) : (
+          <div className="flex-1 min-h-[270px] flex flex-col items-center justify-center text-center px-6 py-8 gap-4">
+            <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
+              <FaBullhorn className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
             </div>
-          )}
-        </div>
+            <h4 className="font-semibold text-neutral-900 dark:text-white">
+              Track your marketing campaigns
+            </h4>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400 max-w-md">
+              Add <code className="px-1.5 py-0.5 rounded bg-neutral-200 dark:bg-neutral-700 text-xs font-mono">utm_source</code>, <code className="px-1.5 py-0.5 rounded bg-neutral-200 dark:bg-neutral-700 text-xs font-mono">utm_medium</code>, and <code className="px-1.5 py-0.5 rounded bg-neutral-200 dark:bg-neutral-700 text-xs font-mono">utm_campaign</code> parameters to your links to see them here.
+            </p>
+            <Link
+              href="/installation"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-orange hover:text-brand-orange/90 hover:underline focus:outline-none focus:ring-2 focus:ring-brand-orange/20 rounded"
+            >
+              Read documentation
+              <ArrowRightIcon className="w-4 h-4" />
+            </Link>
+          </div>
+        )}
       </div>
 
       <Modal
