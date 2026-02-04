@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { formatNumber } from '@/lib/utils/format'
-import { Modal, ArrowRightIcon } from '@ciphera-net/ui'
+import { Modal, ArrowRightIcon, Button } from '@ciphera-net/ui'
 import { getCampaigns, CampaignStat } from '@/lib/api/stats'
 import { FaBullhorn } from 'react-icons/fa'
+import { PlusIcon } from '@radix-ui/react-icons'
+import UtmBuilder from '@/components/tools/UtmBuilder'
 
 interface CampaignsProps {
   siteId: string
@@ -18,6 +20,7 @@ export default function Campaigns({ siteId, dateRange }: CampaignsProps) {
   const [data, setData] = useState<CampaignStat[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isBuilderOpen, setIsBuilderOpen] = useState(false)
   const [fullData, setFullData] = useState<CampaignStat[]>([])
   const [isLoadingFull, setIsLoadingFull] = useState(false)
 
@@ -67,14 +70,25 @@ export default function Campaigns({ siteId, dateRange }: CampaignsProps) {
           <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
             Campaigns
           </h3>
-          {showViewAll && (
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="text-xs font-medium text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white transition-colors"
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              onClick={() => setIsBuilderOpen(true)}
+              className="h-8 px-3 text-xs gap-1.5"
             >
-              View All
-            </button>
-          )}
+              <PlusIcon className="w-3.5 h-3.5" />
+              Build URL
+            </Button>
+            {showViewAll && (
+              <Button
+                variant="ghost"
+                onClick={() => setIsModalOpen(true)}
+                className="h-8 px-3 text-xs"
+              >
+                View All
+              </Button>
+            )}
+          </div>
         </div>
 
         {isLoading ? (
@@ -165,6 +179,16 @@ export default function Campaigns({ siteId, dateRange }: CampaignsProps) {
               ))}
             </>
           )}
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={isBuilderOpen}
+        onClose={() => setIsBuilderOpen(false)}
+        title="Campaign URL Builder"
+      >
+        <div className="p-1">
+          <UtmBuilder initialSiteId={siteId} />
         </div>
       </Modal>
     </>
