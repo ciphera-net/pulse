@@ -4,9 +4,8 @@ import { useAuth } from '@/lib/auth/context'
 import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createFunnel, type CreateFunnelRequest, type FunnelStep } from '@/lib/api/funnels'
-import { toast, Card, Input, Button } from '@ciphera-net/ui'
+import { toast, Input, Button, ChevronLeftIcon, PlusIcon, TrashIcon } from '@ciphera-net/ui'
 import Link from 'next/link'
-import { LuChevronLeft as ChevronLeftIcon, LuPlus as PlusIcon, LuTrash as TrashIcon, LuGripVertical as GripVerticalIcon } from 'react-icons/lu'
 
 export default function CreateFunnelPage() {
   const params = useParams()
@@ -92,7 +91,7 @@ export default function CreateFunnelPage() {
       </div>
 
       <form onSubmit={handleSubmit}>
-        <Card className="p-6 mb-6">
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 mb-6">
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
@@ -116,7 +115,7 @@ export default function CreateFunnelPage() {
               />
             </div>
           </div>
-        </Card>
+        </div>
 
         <div className="space-y-4 mb-8">
           <div className="flex items-center justify-between">
@@ -126,7 +125,7 @@ export default function CreateFunnelPage() {
           </div>
 
           {steps.map((step, index) => (
-            <Card key={index} className="p-4">
+            <div key={index} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-4">
               <div className="flex items-start gap-4">
                 <div className="mt-3 text-neutral-400">
                   <div className="w-6 h-6 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-sm font-medium text-neutral-600 dark:text-neutral-400">
@@ -182,7 +181,7 @@ export default function CreateFunnelPage() {
                   <TrashIcon className="w-5 h-5" />
                 </button>
               </div>
-            </Card>
+            </div>
           ))}
 
           <button

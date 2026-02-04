@@ -4,9 +4,8 @@ import { useAuth } from '@/lib/auth/context'
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { getFunnel, getFunnelStats, deleteFunnel, type Funnel, type FunnelStats } from '@/lib/api/funnels'
-import { toast, LoadingOverlay, Card, Select, DatePicker } from '@ciphera-net/ui'
+import { toast, LoadingOverlay, Select, DatePicker, ChevronLeftIcon, ArrowRightIcon, TrashIcon } from '@ciphera-net/ui'
 import Link from 'next/link'
-import { LuChevronLeft as ChevronLeftIcon, LuTrash as TrashIcon, LuEdit as EditIcon, LuArrowRight as ArrowRightIcon } from 'react-icons/lu'
 import {
   BarChart,
   Bar,
@@ -136,7 +135,7 @@ export default function FunnelReportPage() {
         </div>
 
         {/* Chart */}
-        <Card className="p-6 mb-8">
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 mb-8">
           <h3 className="text-lg font-medium text-neutral-900 dark:text-white mb-6">
             Funnel Visualization
           </h3>
@@ -192,10 +191,10 @@ export default function FunnelReportPage() {
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </Card>
+        </div>
 
         {/* Detailed Stats Table */}
-        <Card className="overflow-hidden">
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="bg-neutral-50 dark:bg-neutral-800/50 border-b border-neutral-200 dark:border-neutral-800">
@@ -248,7 +247,7 @@ export default function FunnelReportPage() {
               </tbody>
             </table>
           </div>
-        </Card>
+        </div>
       </div>
 
       <DatePicker
