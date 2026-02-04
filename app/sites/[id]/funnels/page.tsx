@@ -4,9 +4,8 @@ import { useAuth } from '@/lib/auth/context'
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { listFunnels, deleteFunnel, type Funnel } from '@/lib/api/funnels'
-import { toast, LoadingOverlay, Card } from '@ciphera-net/ui'
+import { toast, LoadingOverlay, PlusIcon, ArrowRightIcon, ChevronLeftIcon, TrashIcon } from '@ciphera-net/ui'
 import Link from 'next/link'
-import { LuPlus as PlusIcon, LuTrash as TrashIcon, LuArrowRight as ArrowRightIcon, LuChevronLeft as ChevronLeftIcon } from 'react-icons/lu'
 
 export default function FunnelsPage() {
   const { user } = useAuth()
@@ -80,7 +79,7 @@ export default function FunnelsPage() {
         </div>
 
         {funnels.length === 0 ? (
-          <Card className="p-12 text-center">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-12 text-center">
             <div className="w-16 h-16 mx-auto mb-4 bg-neutral-100 dark:bg-neutral-800 rounded-full flex items-center justify-center">
               <ArrowRightIcon className="w-8 h-8 text-neutral-400" />
             </div>
@@ -97,7 +96,7 @@ export default function FunnelsPage() {
               <PlusIcon className="w-4 h-4" />
               <span>Create Funnel</span>
             </Link>
-          </Card>
+          </div>
         ) : (
           <div className="grid gap-4">
             {funnels.map((funnel) => (
@@ -106,7 +105,7 @@ export default function FunnelsPage() {
                 href={`/sites/${siteId}/funnels/${funnel.id}`}
                 className="block group"
               >
-                <Card className="p-6 hover:border-brand-orange/50 transition-colors">
+                <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 hover:border-brand-orange/50 transition-colors">
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-lg font-medium text-neutral-900 dark:text-white group-hover:text-brand-orange transition-colors">
@@ -140,7 +139,7 @@ export default function FunnelsPage() {
                       <ChevronLeftIcon className="w-5 h-5 text-neutral-300 rotate-180" />
                     </div>
                   </div>
-                </Card>
+                </div>
               </Link>
             ))}
           </div>
