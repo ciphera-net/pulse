@@ -80,8 +80,8 @@ export default function FunnelsPage() {
 
         {funnels.length === 0 ? (
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-12 text-center">
-            <div className="w-16 h-16 mx-auto mb-4 bg-neutral-100 dark:bg-neutral-800 rounded-full flex items-center justify-center">
-              <ArrowRightIcon className="w-8 h-8 text-neutral-400" />
+            <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4 mx-auto mb-4 w-fit">
+              <ArrowRightIcon className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
             </div>
             <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-2">
               No funnels yet
@@ -119,7 +119,7 @@ export default function FunnelsPage() {
                       <div className="flex items-center gap-2 mt-4">
                         {funnel.steps.map((step, i) => (
                           <div key={i} className="flex items-center text-sm text-neutral-500">
-                            <span className="px-2 py-1 bg-neutral-100 dark:bg-neutral-800 rounded text-neutral-700 dark:text-neutral-300">
+                            <span className="px-2 py-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg text-neutral-700 dark:text-neutral-300">
                               {step.name}
                             </span>
                             {i < funnel.steps.length - 1 && (
