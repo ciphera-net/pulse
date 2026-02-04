@@ -40,8 +40,12 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     router.push('/onboarding')
   }
   
+  const showOfflineBar = Boolean(auth.user && !isOnline);
+  const barHeightRem = '2.5rem';
+
   return (
     <>
+      {auth.user && <OfflineBanner />}
       <Header 
         auth={auth} 
         LinkComponent={Link} 
@@ -55,9 +59,9 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         showFaq={false}
         showSecurity={false}
         showPricing={true}
-        bottomContent={auth.user ? <OfflineBanner /> : undefined}
+        topOffset={showOfflineBar ? barHeightRem : undefined}
       />
-      <main className={`flex-1 pb-8 ${auth.user && !isOnline ? 'pt-32' : 'pt-24'}`}>
+      <main className={`flex-1 pb-8 ${showOfflineBar ? 'pt-[8.5rem]' : 'pt-24'}`}>
         {children}
       </main>
       <Footer 
