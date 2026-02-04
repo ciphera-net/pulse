@@ -62,14 +62,15 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         showSecurity={false}
         showPricing={true}
         topOffset={showOfflineBar ? `${barHeightRem}rem` : undefined}
-        userMenuCustomItems={
-          <Link
-            href="/tools"
-            className="group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
-          >
-            <GridIcon className="h-4 w-4 text-neutral-500 group-hover:text-neutral-900 dark:text-neutral-400 dark:group-hover:text-white" />
-            Tools
-          </Link>
+        customNavItems={
+          auth.user ? (
+            <Link
+              href="/tools"
+              className="px-4 py-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-lg hover:bg-neutral-100/50 dark:hover:bg-neutral-800/50 transition-all duration-200"
+            >
+              Tools
+            </Link>
+          ) : null
         }
       />
       <main
