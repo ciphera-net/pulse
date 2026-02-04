@@ -64,11 +64,27 @@ export async function deleteFunnel(siteId: string, funnelId: string): Promise<vo
   })
 }
 
+const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/
+
+/** Normalize date-only (YYYY-MM-DD) to RFC3339 for backend funnel stats API. */
+function toRFC3339Range(from: string, to: string): { from: string; to: string } {
+  return {
+    from: DATE_ONLY_REGEX.test(from) ? `${from}T00:00:00.000Z` : from,
+    to: DATE_ONLY_REGEX.test(to) ? `${to}T23:59:59.999Z` : to,
+  }
+}
+
 export async function getFunnelStats(siteId: string, funnelId: string, from?: string, to?: string): Promise<FunnelStats> {
   const params = new URLSearchParams()
-  if (from) params.append('from', from)
-  if (to) params.append('to', to)
-  
+  if (from && to) {
+    const { from: fromRfc, to: toRfc } = toRFC3339Range(from, to)
+    params.append('from', fromRfc)
+    params.append('to', toRfc)
+  } else if (from) {
+    params.append('from', DATE_ONLY_REGEX.test(from) ? `${from}T00:00:00.000Z` : from)
+  } else if (to) {
+    params.append('to', DATE_ONLY_REGEX.test(to) ? `${to}T23:59:59.999Z` : to)
+  }
   const queryString = params.toString() ? `?${params.toString()}` : ''
   return apiRequest<FunnelStats>(`/sites/${siteId}/funnels/${funnelId}/stats${queryString}`)
 }
