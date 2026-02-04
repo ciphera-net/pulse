@@ -36,6 +36,7 @@ export interface PerformanceByPageStat {
 export interface GoalCountStat {
   event_name: string
   count: number
+  display_name?: string | null
 }
 
 export interface TopReferrer {

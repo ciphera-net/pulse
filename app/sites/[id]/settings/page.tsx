@@ -1001,6 +1001,7 @@ export default function SiteSettingsPage() {
               className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-xl bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white"
               required
             />
+            <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">Spaces become underscores; max 64 characters after formatting.</p>
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="secondary" onClick={() => setGoalModalOpen(false)}>
