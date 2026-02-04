@@ -39,6 +39,14 @@ export interface GoalCountStat {
   display_name?: string | null
 }
 
+export interface CampaignStat {
+  source: string
+  medium: string
+  campaign: string
+  visitors: number
+  pageviews: number
+}
+
 export interface TopReferrer {
   referrer: string
   pageviews: number
@@ -266,6 +274,29 @@ export async function getPublicPerformanceByPage(
     `/public/sites/${siteId}/performance-by-page?${params.toString()}`
   )
   return res?.performance_by_page ?? []
+}
+
+export async function getGoalStats(siteId: string, startDate?: string, endDate?: string, limit = 20): Promise<GoalCountStat[]> {
+  const params = new URLSearchParams()
+  if (startDate) params.append('start_date', startDate)
+  if (endDate) params.append('end_date', endDate)
+  params.append('limit', limit.toString())
+  return apiRequest<{ goal_counts: GoalCountStat[] }>(`/sites/${siteId}/goals/stats?${params.toString()}`).then(r => r?.goal_counts || [])
+}
+
+export async function getCampaigns(siteId: string, startDate?: string, endDate?: string): Promise<CampaignStat[]> {
+  const params = new URLSearchParams()
+  if (startDate) params.append('start_date', startDate)
+  if (endDate) params.append('end_date', endDate)
+  return apiRequest<{ campaigns: CampaignStat[] }>(`/sites/${siteId}/campaigns?${params.toString()}`).then(r => r?.campaigns || [])
+}
+
+export async function getPublicCampaigns(siteId: string, startDate?: string, endDate?: string, auth?: AuthParams): Promise<CampaignStat[]> {
+  const params = new URLSearchParams()
+  if (startDate) params.append('start_date', startDate)
+  if (endDate) params.append('end_date', endDate)
+  appendAuthParams(params, auth)
+  return apiRequest<{ campaigns: CampaignStat[] }>(`/public/sites/${siteId}/campaigns?${params.toString()}`).then(r => r?.campaigns || [])
 }
 
 export interface DashboardData {
