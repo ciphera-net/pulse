@@ -156,6 +156,10 @@ export default function SiteSettingsPage() {
       return
     }
     const eventName = goalForm.event_name.trim().toLowerCase().replace(/\s+/g, '_')
+    if (eventName.length > 64) {
+      toast.error('Event name must be 64 characters or less')
+      return
+    }
     if (!/^[a-zA-Z0-9_]+$/.test(eventName)) {
       toast.error('Event name can only contain letters, numbers, and underscores')
       return
