@@ -1008,7 +1008,7 @@ export default function SiteSettingsPage() {
               className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-xl bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white"
               required
             />
-            <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">Spaces become underscores; max 64 characters after formatting.</p>
+            <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">Only letters, numbers, and underscores; spaces become underscores. Invalid characters cannot be used. Max 64 characters after formatting.</p>
             {editingGoal && goalForm.event_name.trim().toLowerCase().replace(/\s+/g, '_') !== editingGoal.event_name && (
               <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">Changing event name does not reassign events already tracked under the previous name.</p>
             )}
