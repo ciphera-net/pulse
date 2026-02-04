@@ -16,10 +16,6 @@ export default function FunnelsPage() {
   const [funnels, setFunnels] = useState<Funnel[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    loadFunnels()
-  }, [siteId])
-
   const loadFunnels = async () => {
     try {
       setLoading(true)
@@ -31,6 +27,10 @@ export default function FunnelsPage() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    loadFunnels()
+  }, [siteId])
 
   const handleDelete = async (e: React.MouseEvent, funnelId: string) => {
     e.preventDefault() // Prevent navigation

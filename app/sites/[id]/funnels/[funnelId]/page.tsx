@@ -47,16 +47,6 @@ export default function FunnelReportPage() {
   const [dateRange, setDateRange] = useState(getDateRange(30))
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
 
-  useEffect(() => {
-    loadData()
-  }, [siteId, funnelId, dateRange])
-
-  const { resolvedTheme } = useTheme()
-  const chartColors = useMemo(
-    () => (resolvedTheme === 'dark' ? CHART_COLORS_DARK : CHART_COLORS_LIGHT),
-    [resolvedTheme]
-  )
-
   const loadData = async () => {
     try {
       setLoading(true)
@@ -72,6 +62,16 @@ export default function FunnelReportPage() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    loadData()
+  }, [siteId, funnelId, dateRange])
+
+  const { resolvedTheme } = useTheme()
+  const chartColors = useMemo(
+    () => (resolvedTheme === 'dark' ? CHART_COLORS_DARK : CHART_COLORS_LIGHT),
+    [resolvedTheme]
+  )
 
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this funnel?')) return
