@@ -1,7 +1,9 @@
 'use client'
 
+import { OfflineBanner } from '@/components/OfflineBanner'
 import { Header, Footer } from '@ciphera-net/ui'
 import { useAuth } from '@/lib/auth/context'
+import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { getUserOrganizations, switchContext } from '@/lib/api/organization'
@@ -11,6 +13,7 @@ import { useRouter } from 'next/navigation'
 export default function LayoutContent({ children }: { children: React.ReactNode }) {
   const auth = useAuth()
   const router = useRouter()
+  const isOnline = useOnlineStatus()
   const [orgs, setOrgs] = useState<any[]>([])
   
   // * Fetch organizations for the header workspace switcher
@@ -37,8 +40,14 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     router.push('/onboarding')
   }
   
+  const showOfflineBar = Boolean(auth.user && !isOnline);
+  const barHeightRem = 2.5;
+  const headerHeightRem = 6;
+  const mainTopPaddingRem = barHeightRem + headerHeightRem;
+
   return (
     <>
+      {auth.user && <OfflineBanner isOnline={isOnline} />}
       <Header 
         auth={auth} 
         LinkComponent={Link} 
@@ -52,8 +61,12 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         showFaq={false}
         showSecurity={false}
         showPricing={true}
+        topOffset={showOfflineBar ? `${barHeightRem}rem` : undefined}
       />
-      <main className="flex-1 pt-24 pb-8">
+      <main
+        className={`flex-1 pb-8 ${showOfflineBar ? '' : 'pt-24'}`}
+        style={showOfflineBar ? { paddingTop: `${mainTopPaddingRem}rem` } : undefined}
+      >
         {children}
       </main>
       <Footer 
