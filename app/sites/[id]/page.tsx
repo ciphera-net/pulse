@@ -18,6 +18,7 @@ import TechSpecs from '@/components/dashboard/TechSpecs'
 import Chart from '@/components/dashboard/Chart'
 import PerformanceStats from '@/components/dashboard/PerformanceStats'
 import GoalStats from '@/components/dashboard/GoalStats'
+import Campaigns from '@/components/dashboard/Campaigns'
 
 export default function SiteDashboardPage() {
   const { user } = useAuth()
@@ -375,6 +376,11 @@ export default function SiteDashboardPage() {
           siteId={siteId}
           dateRange={dateRange}
         />
+      </div>
+
+      {/* Campaigns Report */}
+      <div className="mb-8">
+        <Campaigns siteId={siteId} dateRange={dateRange} />
       </div>
 
       <div className="mb-8">
