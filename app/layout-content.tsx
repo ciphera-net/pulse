@@ -45,7 +45,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
 
   return (
     <>
-      {auth.user && <OfflineBanner />}
+      {auth.user && <OfflineBanner isOnline={isOnline} />}
       <Header 
         auth={auth} 
         LinkComponent={Link} 

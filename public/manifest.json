@@ -5,15 +5,15 @@
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#000000",
+  "theme_color": "#FD5E0F",
   "icons": [
     {
-      "src": "/Icon%20Padding%20left%20%26%20right%20192x192.png",
+      "src": "/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/Icon%20Padding%20left%20%26%20right%20512x512.png",
+      "src": "/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
