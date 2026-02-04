@@ -4,10 +4,9 @@ export function useOnlineStatus() {
   const [isOnline, setIsOnline] = useState(true);
 
   useEffect(() => {
-    // Check initial status
-    if (typeof window !== 'undefined') {
-      setIsOnline(navigator.onLine);
-    }
+    if (typeof window === 'undefined') return;
+
+    setIsOnline(navigator.onLine);
 
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);

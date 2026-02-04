@@ -1,11 +1,8 @@
 'use client';
 
-import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus';
 import { FiWifiOff } from 'react-icons/fi';
 
-export function OfflineBanner() {
-  const isOnline = useOnlineStatus();
-
+export function OfflineBanner({ isOnline }: { isOnline: boolean }) {
   if (isOnline) return null;
 
   return (
