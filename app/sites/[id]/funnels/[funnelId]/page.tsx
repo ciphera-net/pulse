@@ -46,7 +46,7 @@ export default function FunnelReportPage() {
   const [dateRange, setDateRange] = useState(getDateRange(30))
   const [datePreset, setDatePreset] = useState<'7' | '30' | 'custom'>('30')
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
-  const [loadError, setLoadError] = useState<'not_found' | 'error' | null>(null)
+  const [loadError, setLoadError] = useState<'not_found' | 'forbidden' | 'error' | null>(null)
 
   const loadData = useCallback(async () => {
     setLoadError(null)
@@ -59,9 +59,11 @@ export default function FunnelReportPage() {
       setFunnel(funnelData)
       setStats(statsData)
     } catch (error) {
-      const is404 = error instanceof ApiError && error.status === 404
-      setLoadError(is404 ? 'not_found' : 'error')
-      if (!is404) toast.error('Failed to load funnel data')
+      const status = error instanceof ApiError ? error.status : 0
+      if (status === 404) setLoadError('not_found')
+      else if (status === 403) setLoadError('forbidden')
+      else setLoadError('error')
+      if (status !== 404 && status !== 403) toast.error('Failed to load funnel data')
     } finally {
       setLoading(false)
     }
@@ -101,10 +103,21 @@ export default function FunnelReportPage() {
     )
   }
 
+  if (loadError === 'forbidden') {
+    return (
+      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
+        <p className="text-neutral-600 dark:text-neutral-400">Access denied</p>
+        <Link href={`/sites/${siteId}/funnels`} className="btn-primary mt-4 inline-block">
+          Back to Funnels
+        </Link>
+      </div>
+    )
+  }
+
   if (loadError === 'error') {
     return (
       <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
-        <p className="text-neutral-600 dark:text-neutral-400 mb-4">Failed to load funnel data</p>
+        <p className="text-neutral-600 dark:text-neutral-400 mb-4">Unable to load funnel</p>
         <button type="button" onClick={() => loadData()} className="btn-primary">
           Try again
         </button>
