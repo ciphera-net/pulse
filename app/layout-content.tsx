@@ -55,9 +55,9 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         showFaq={false}
         showSecurity={false}
         showPricing={true}
-        bottomContent={<OfflineBanner />}
+        bottomContent={auth.user ? <OfflineBanner /> : undefined}
       />
-      <main className={`flex-1 pb-8 ${isOnline ? 'pt-24' : 'pt-32'}`}>
+      <main className={`flex-1 pb-8 ${auth.user && !isOnline ? 'pt-32' : 'pt-24'}`}>
         {children}
       </main>
       <Footer 
