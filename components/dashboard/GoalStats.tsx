@@ -1,6 +1,8 @@
 'use client'
 
+import Link from 'next/link'
 import { formatNumber } from '@/lib/utils/format'
+import { BookOpenIcon, ArrowRightIcon } from '@ciphera-net/ui'
 import type { GoalCountStat } from '@/lib/api/stats'
 
 interface GoalStatsProps {
@@ -39,10 +41,25 @@ export default function GoalStats({ goalCounts, siteId, dateRange }: GoalStatsPr
             </div>
           ))
         ) : (
-          <div className="h-full flex flex-col items-center justify-center text-center px-4">
-            <p className="text-neutral-500 dark:text-neutral-400 text-sm">
-              No custom events in this period. Track goals with <code className="px-1.5 py-0.5 rounded bg-neutral-200 dark:bg-neutral-700 text-xs">pulse.track(&apos;event_name&apos;)</code> in your snippet.
-            </p>
+          <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8">
+            <div className="max-w-sm w-full rounded-xl border-2 border-dashed border-neutral-200 dark:border-neutral-700 p-8 flex flex-col items-center gap-4">
+              <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
+                <BookOpenIcon className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
+              </div>
+              <h4 className="font-semibold text-neutral-900 dark:text-white">
+                Need help tracking goals?
+              </h4>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                Add <code className="px-1.5 py-0.5 rounded bg-neutral-200 dark:bg-neutral-700 text-xs font-mono">pulse.track(&apos;event_name&apos;)</code> where actions happen on your site, then see counts here. Check our guide for step-by-step instructions.
+              </p>
+              <Link
+                href="/installation"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-orange hover:text-brand-orange/90 hover:underline focus:outline-none focus:ring-2 focus:ring-brand-orange/20 rounded"
+              >
+                Read documentation
+                <ArrowRightIcon className="w-4 h-4" />
+              </Link>
+            </div>
           </div>
         )}
       </div>
