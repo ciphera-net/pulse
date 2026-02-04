@@ -29,24 +29,29 @@ export default function UtmBuilder({ initialSiteId }: UtmBuilderProps) {
       try {
         const data = await listSites()
         setSites(data)
-        
-        // If we have an initialSiteId, try to find it and set the URL
-        if (initialSiteId) {
-          const site = data.find(s => s.id === initialSiteId)
-          if (site) {
-            setValues(v => ({ ...v, url: `https://${site.domain}` }))
-          }
-        } else if (data.length > 0 && !values.url) {
-          // Optional: Default to first site if no initial ID provided
-          setSelectedSiteId(data[0].id)
-          setValues(v => ({ ...v, url: `https://${data[0].domain}` }))
-        }
       } catch (e) {
         console.error('Failed to load sites for UTM builder', e)
       }
     }
     fetchSites()
-  }, [initialSiteId])
+  }, [])
+
+  // 2. Initialize default selection
+  useEffect(() => {
+    if (sites.length === 0) return
+
+    if (initialSiteId) {
+      const site = sites.find(s => s.id === initialSiteId)
+      if (site && selectedSiteId !== site.id) {
+        setSelectedSiteId(site.id)
+        setValues(v => ({ ...v, url: `https://${site.domain}` }))
+      }
+    } else if (!selectedSiteId && !values.url) {
+      const firstSite = sites[0]
+      setSelectedSiteId(firstSite.id)
+      setValues(v => ({ ...v, url: `https://${firstSite.domain}` }))
+    }
+  }, [sites, initialSiteId, selectedSiteId, values.url])
 
   // 2. Handle Site Selection
   const handleSiteChange = (siteId: string) => {
