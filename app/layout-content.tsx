@@ -54,7 +54,9 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         showSecurity={false}
         showPricing={true}
       />
-      <OfflineBanner />
+      <div className="pt-24">
+        <OfflineBanner />
+      </div>
       <main className="flex-1 pt-24 pb-8">
         {children}
       </main>
