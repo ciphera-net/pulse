@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { CopyIcon, CheckIcon } from '@radix-ui/react-icons'
 import { listSites, Site } from '@/lib/api/sites'
-import { Select } from '@ciphera-net/ui'
+import { Select, Input, Button } from '@ciphera-net/ui'
 
 interface UtmBuilderProps {
   initialSiteId?: string
@@ -132,62 +132,58 @@ export default function UtmBuilder({ initialSiteId }: UtmBuilderProps) {
         )}
 
         <div>
-          <label className="block text-sm font-medium mb-1 text-neutral-900 dark:text-white">Website URL *</label>
+          <label className="block text-sm font-medium mb-1.5 text-neutral-900 dark:text-white">Website URL *</label>
           {selectedSite ? (
-            <div className="flex rounded-xl shadow-sm">
-              <span className="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-neutral-200 dark:border-neutral-800 bg-neutral-100 dark:bg-neutral-800 text-neutral-500 text-sm">
+            <div className="flex rounded-xl shadow-sm transition-all duration-200 focus-within:ring-4 focus-within:ring-brand-orange/10 focus-within:border-brand-orange hover:border-brand-orange/50 border border-neutral-200 dark:border-neutral-800">
+              <span className="inline-flex items-center px-4 rounded-l-xl border-r border-neutral-200 dark:border-neutral-800 bg-neutral-100 dark:bg-neutral-900 text-neutral-500 text-sm select-none">
                 https://{selectedSite.domain}
               </span>
               <input
                 type="text"
-                className="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50 focus:ring-2 focus:ring-brand-orange/20 outline-none transition-all text-neutral-900 dark:text-white sm:text-sm"
+                className="flex-1 min-w-0 block w-full px-4 py-3 rounded-none rounded-r-xl bg-neutral-50/50 dark:bg-neutral-900/50 outline-none transition-all text-neutral-900 dark:text-white text-sm placeholder:text-neutral-400"
                 placeholder="/blog/post-1"
                 value={getCurrentPath()}
                 onChange={handlePathChange}
               />
             </div>
           ) : (
-            <input
+            <Input
               name="url"
               placeholder="https://example.com/landing-page"
-              className="w-full p-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50 focus:ring-2 focus:ring-brand-orange/20 outline-none transition-all text-neutral-900 dark:text-white"
               value={values.url}
               onChange={handleChange}
             />
           )}
-          <p className="text-xs text-neutral-500 mt-1">
+          <p className="text-xs text-neutral-500 mt-1.5">
             You can add specific paths (e.g., /blog/post-1) to the URL above.
           </p>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-1 text-neutral-900 dark:text-white">Source *</label>
-            <input
+            <label className="block text-sm font-medium mb-1.5 text-neutral-900 dark:text-white">Source *</label>
+            <Input
               name="source"
               placeholder="google, newsletter"
-              className="w-full p-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50 focus:ring-2 focus:ring-brand-orange/20 outline-none transition-all text-neutral-900 dark:text-white"
               value={values.source}
               onChange={handleChange}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1 text-neutral-900 dark:text-white">Medium *</label>
-            <input
+            <label className="block text-sm font-medium mb-1.5 text-neutral-900 dark:text-white">Medium *</label>
+            <Input
               name="medium"
               placeholder="cpc, email"
-              className="w-full p-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50 focus:ring-2 focus:ring-brand-orange/20 outline-none transition-all text-neutral-900 dark:text-white"
               value={values.medium}
               onChange={handleChange}
             />
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1 text-neutral-900 dark:text-white">Campaign Name *</label>
-          <input
+          <label className="block text-sm font-medium mb-1.5 text-neutral-900 dark:text-white">Campaign Name *</label>
+          <Input
             name="campaign"
             placeholder="spring_sale"
-            className="w-full p-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50 focus:ring-2 focus:ring-brand-orange/20 outline-none transition-all text-neutral-900 dark:text-white"
             value={values.campaign}
             onChange={handleChange}
           />
@@ -197,13 +193,14 @@ export default function UtmBuilder({ initialSiteId }: UtmBuilderProps) {
       {generatedUrl && (
         <div className="mt-6 p-4 bg-neutral-50 dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 flex items-center justify-between group">
           <code className="text-sm break-all text-brand-orange font-mono">{generatedUrl}</code>
-          <button
+          <Button
+            variant="secondary"
             onClick={copyToClipboard}
-            className="ml-2 p-2 hover:bg-neutral-200 dark:hover:bg-neutral-800 rounded-lg transition-colors text-neutral-500 hover:text-neutral-900 dark:hover:text-white"
+            className="ml-4 shrink-0 h-9 w-9 p-0 rounded-lg"
             title="Copy to clipboard"
           >
-            {copied ? <CheckIcon className="w-5 h-5 text-green-500" /> : <CopyIcon className="w-5 h-5" />}
-          </button>
+            {copied ? <CheckIcon className="w-4 h-4 text-green-500" /> : <CopyIcon className="w-4 h-4" />}
+          </Button>
         </div>
       )}
     </div>

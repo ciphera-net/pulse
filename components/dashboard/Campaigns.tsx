@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { formatNumber } from '@/lib/utils/format'
-import { Modal, ArrowRightIcon } from '@ciphera-net/ui'
+import { Modal, ArrowRightIcon, Button } from '@ciphera-net/ui'
 import { getCampaigns, CampaignStat } from '@/lib/api/stats'
 import { FaBullhorn } from 'react-icons/fa'
 import { PlusIcon } from '@radix-ui/react-icons'
@@ -70,21 +70,23 @@ export default function Campaigns({ siteId, dateRange }: CampaignsProps) {
           <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
             Campaigns
           </h3>
-          <div className="flex items-center gap-3">
-            <button
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
               onClick={() => setIsBuilderOpen(true)}
-              className="flex items-center gap-1.5 text-xs font-medium text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white transition-colors"
+              className="h-8 px-3 text-xs gap-1.5"
             >
               <PlusIcon className="w-3.5 h-3.5" />
               Build URL
-            </button>
+            </Button>
             {showViewAll && (
-              <button
+              <Button
+                variant="ghost"
                 onClick={() => setIsModalOpen(true)}
-                className="text-xs font-medium text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white transition-colors"
+                className="h-8 px-3 text-xs"
               >
                 View All
-              </button>
+              </Button>
             )}
           </div>
         </div>
