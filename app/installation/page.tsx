@@ -57,6 +57,33 @@ export default function InstallationPage() {
             </div>
           </div>
         </div>
+
+        <div className="w-full mt-16 text-center">
+          <h2 className="text-2xl font-bold mb-4 text-neutral-900 dark:text-white">Custom events (goals)</h2>
+          <p className="text-neutral-500 mb-6 max-w-xl mx-auto">
+            Track custom events (e.g. signup, purchase) with <code className="px-1.5 py-0.5 rounded bg-neutral-200 dark:bg-neutral-700 text-sm font-mono">pulse.track(&apos;event_name&apos;)</code>. Use letters, numbers, and underscores only. Define goals in your site Settings → Goals & Events to see counts in the dashboard.
+          </p>
+          <div className="max-w-2xl mx-auto bg-[#1e1e1e] rounded-xl overflow-hidden shadow-2xl text-left border border-neutral-800">
+            <div className="flex items-center px-4 py-3 bg-[#252526] border-b border-neutral-800">
+              <div className="flex gap-2">
+                <div className="w-3 h-3 rounded-full bg-red-500/20" />
+                <div className="w-3 h-3 rounded-full bg-yellow-500/20" />
+                <div className="w-3 h-3 rounded-full bg-green-500/20" />
+              </div>
+              <span className="ml-4 text-xs text-neutral-500 font-mono">e.g. button click handler</span>
+            </div>
+            <div className="p-6 overflow-x-auto">
+              <code className="font-mono text-sm text-neutral-300">
+                <span className="text-purple-400">pulse</span>
+                <span className="text-white">.</span>
+                <span className="text-yellow-300">track</span>
+                <span className="text-white">(</span>
+                <span className="text-green-400">&apos;signup_click&apos;</span>
+                <span className="text-white">);</span>
+              </code>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )
