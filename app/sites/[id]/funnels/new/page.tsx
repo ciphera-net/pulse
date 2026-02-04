@@ -76,7 +76,7 @@ export default function CreateFunnelPage() {
       <div className="mb-8">
         <Link 
           href={`/sites/${siteId}/funnels`}
-          className="inline-flex items-center gap-2 text-sm text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white mb-6 transition-colors"
+          className="inline-flex items-center gap-2 text-sm text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white mb-6 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 px-2 py-1.5 -ml-2 transition-colors"
         >
           <ChevronLeftIcon className="w-4 h-4" />
           Back to Funnels
@@ -119,7 +119,7 @@ export default function CreateFunnelPage() {
 
         <div className="space-y-4 mb-8">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-medium text-neutral-900 dark:text-white">
+            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
               Funnel Steps
             </h3>
           </div>
@@ -152,7 +152,7 @@ export default function CreateFunnelPage() {
                       <select
                         value={step.type}
                         onChange={(e) => handleUpdateStep(index, 'type', e.target.value)}
-                        className="w-24 px-2 py-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg text-sm focus:ring-2 focus:ring-brand-orange/20 focus:border-brand-orange outline-none"
+                        className="w-24 px-2 py-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl text-sm focus:ring-2 focus:ring-brand-orange/20 focus:border-brand-orange outline-none"
                       >
                         <option value="exact">Exact</option>
                         <option value="contains">Contains</option>
@@ -172,7 +172,8 @@ export default function CreateFunnelPage() {
                   type="button"
                   onClick={() => handleRemoveStep(index)}
                   disabled={steps.length <= 1}
-                  className={`mt-3 p-2 rounded-lg transition-colors ${
+                  aria-label="Remove step"
+                  className={`mt-3 p-2 rounded-xl transition-colors ${
                     steps.length <= 1 
                       ? 'text-neutral-300 cursor-not-allowed' 
                       : 'text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'
@@ -197,14 +198,14 @@ export default function CreateFunnelPage() {
         <div className="flex justify-end gap-4">
           <Link
             href={`/sites/${siteId}/funnels`}
-            className="px-4 py-2 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white font-medium"
+            className="btn-secondary"
           >
             Cancel
           </Link>
           <Button
             type="submit"
             disabled={saving}
-            className="bg-brand-orange hover:bg-brand-orange/90 text-white"
+            className="btn-primary"
           >
             {saving ? 'Creating...' : 'Create Funnel'}
           </Button>

@@ -55,7 +55,7 @@ export default function FunnelsPage() {
         <div className="flex items-center gap-4 mb-6">
           <Link 
             href={`/sites/${siteId}`}
-            className="p-2 -ml-2 text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+            className="p-2 -ml-2 text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
           >
             <ChevronLeftIcon className="w-5 h-5" />
           </Link>
@@ -70,7 +70,7 @@ export default function FunnelsPage() {
           <div className="ml-auto">
             <Link
               href={`/sites/${siteId}/funnels/new`}
-              className="flex items-center gap-2 px-4 py-2 bg-brand-orange text-white rounded-lg hover:bg-brand-orange/90 transition-colors font-medium"
+              className="btn-primary inline-flex items-center gap-2"
             >
               <PlusIcon className="w-4 h-4" />
               <span>Create Funnel</span>
@@ -83,7 +83,7 @@ export default function FunnelsPage() {
             <div className="w-16 h-16 mx-auto mb-4 bg-neutral-100 dark:bg-neutral-800 rounded-full flex items-center justify-center">
               <ArrowRightIcon className="w-8 h-8 text-neutral-400" />
             </div>
-            <h3 className="text-lg font-medium text-neutral-900 dark:text-white mb-2">
+            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-2">
               No funnels yet
             </h3>
             <p className="text-neutral-600 dark:text-neutral-400 mb-6 max-w-md mx-auto">
@@ -91,7 +91,7 @@ export default function FunnelsPage() {
             </p>
             <Link
               href={`/sites/${siteId}/funnels/new`}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-brand-orange text-white rounded-lg hover:bg-brand-orange/90 transition-colors font-medium"
+              className="btn-primary inline-flex items-center gap-2"
             >
               <PlusIcon className="w-4 h-4" />
               <span>Create Funnel</span>
@@ -132,7 +132,8 @@ export default function FunnelsPage() {
                     <div className="flex items-center gap-4">
                       <button
                         onClick={(e) => handleDelete(e, funnel.id)}
-                        className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                        className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"
+                        aria-label="Delete funnel"
                       >
                         <TrashIcon className="w-5 h-5" />
                       </button>
