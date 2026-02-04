@@ -228,4 +228,39 @@
   // * Track popstate (browser back/forward)
   window.addEventListener('popstate', trackPageview);
 
+  // * Custom events / goals: validate event name (letters, numbers, underscores only; max 64 chars)
+  var EVENT_NAME_MAX = 64;
+  var EVENT_NAME_REGEX = /^[a-zA-Z0-9_]+$/;
+
+  function trackCustomEvent(eventName) {
+    if (typeof eventName !== 'string' || !eventName.trim()) return;
+    var name = eventName.trim().toLowerCase();
+    if (name.length > EVENT_NAME_MAX || !EVENT_NAME_REGEX.test(name)) {
+      if (typeof console !== 'undefined' && console.warn) {
+        console.warn('Pulse: event name must contain only letters, numbers, and underscores (max ' + EVENT_NAME_MAX + ' chars).');
+      }
+      return;
+    }
+    var path = window.location.pathname + window.location.search;
+    var referrer = document.referrer || '';
+    var screenSize = { width: window.innerWidth || 0, height: window.innerHeight || 0 };
+    var payload = {
+      domain: domain,
+      path: path,
+      referrer: referrer,
+      screen: screenSize,
+      session_id: getSessionId(),
+      name: name,
+    };
+    fetch(apiUrl + '/api/v1/events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      keepalive: true,
+    }).catch(function() {});
+  }
+
+  // * Expose pulse.track() for custom events (e.g. pulse.track('signup_click'))
+  window.pulse = { track: trackCustomEvent };
+
 })();

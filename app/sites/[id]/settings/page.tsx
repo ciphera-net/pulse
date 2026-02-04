@@ -3,12 +3,13 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { getSite, updateSite, resetSiteData, deleteSite, type Site, type GeoDataLevel } from '@/lib/api/sites'
+import { listGoals, createGoal, updateGoal, deleteGoal, type Goal } from '@/lib/api/goals'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@/lib/utils/authErrors'
 import { LoadingOverlay } from '@ciphera-net/ui'
 import VerificationModal from '@/components/sites/VerificationModal'
 import { PasswordInput } from '@ciphera-net/ui'
-import { Select } from '@ciphera-net/ui'
+import { Select, Modal, Button } from '@ciphera-net/ui'
 import { APP_URL, API_URL } from '@/lib/api/client'
 import { generatePrivacySnippet } from '@/lib/utils/privacySnippet'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -49,7 +50,7 @@ export default function SiteSettingsPage() {
   const [site, setSite] = useState<Site | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [activeTab, setActiveTab] = useState<'general' | 'visibility' | 'data'>('general')
+  const [activeTab, setActiveTab] = useState<'general' | 'visibility' | 'data' | 'goals'>('general')
 
   const [formData, setFormData] = useState({
     name: '',
@@ -73,10 +74,22 @@ export default function SiteSettingsPage() {
   const [snippetCopied, setSnippetCopied] = useState(false)
   const [showVerificationModal, setShowVerificationModal] = useState(false)
   const [isPasswordEnabled, setIsPasswordEnabled] = useState(false)
+  const [goals, setGoals] = useState<Goal[]>([])
+  const [goalsLoading, setGoalsLoading] = useState(false)
+  const [goalModalOpen, setGoalModalOpen] = useState(false)
+  const [editingGoal, setEditingGoal] = useState<Goal | null>(null)
+  const [goalForm, setGoalForm] = useState({ name: '', event_name: '' })
+  const [goalSaving, setGoalSaving] = useState(false)
 
   useEffect(() => {
     loadSite()
   }, [siteId])
+
+  useEffect(() => {
+    if (activeTab === 'goals' && siteId) {
+      loadGoals()
+    }
+  }, [activeTab, siteId])
 
   const loadSite = async () => {
     try {
@@ -109,6 +122,70 @@ export default function SiteSettingsPage() {
       toast.error(getAuthErrorMessage(error) || 'Failed to load site: ' + ((error as Error)?.message || 'Unknown error'))
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadGoals = async () => {
+    try {
+      setGoalsLoading(true)
+      const data = await listGoals(siteId)
+      setGoals(data ?? [])
+    } catch (e) {
+      toast.error(getAuthErrorMessage(e as Error) || 'Failed to load goals')
+    } finally {
+      setGoalsLoading(false)
+    }
+  }
+
+  const openAddGoal = () => {
+    setEditingGoal(null)
+    setGoalForm({ name: '', event_name: '' })
+    setGoalModalOpen(true)
+  }
+
+  const openEditGoal = (goal: Goal) => {
+    setEditingGoal(goal)
+    setGoalForm({ name: goal.name, event_name: goal.event_name })
+    setGoalModalOpen(true)
+  }
+
+  const handleGoalSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!goalForm.name.trim() || !goalForm.event_name.trim()) {
+      toast.error('Name and event name are required')
+      return
+    }
+    const eventName = goalForm.event_name.trim().toLowerCase().replace(/\s+/g, '_')
+    if (!/^[a-zA-Z0-9_]+$/.test(eventName)) {
+      toast.error('Event name can only contain letters, numbers, and underscores')
+      return
+    }
+    setGoalSaving(true)
+    try {
+      if (editingGoal) {
+        await updateGoal(siteId, editingGoal.id, { name: goalForm.name.trim(), event_name: eventName })
+        toast.success('Goal updated')
+      } else {
+        await createGoal(siteId, { name: goalForm.name.trim(), event_name: eventName })
+        toast.success('Goal created')
+      }
+      setGoalModalOpen(false)
+      loadGoals()
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to save goal')
+    } finally {
+      setGoalSaving(false)
+    }
+  }
+
+  const handleDeleteGoal = async (goal: Goal) => {
+    if (!confirm(`Delete goal "${goal.name}"?`)) return
+    try {
+      await deleteGoal(siteId, goal.id)
+      toast.success('Goal deleted')
+      loadGoals()
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to delete goal')
     }
   }
 
@@ -259,6 +336,17 @@ export default function SiteSettingsPage() {
           >
             <SettingsIcon className="w-5 h-5" />
             Data & Privacy
+          </button>
+          <button
+            onClick={() => setActiveTab('goals')}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
+              activeTab === 'goals'
+                ? 'bg-brand-orange/10 text-brand-orange'
+                : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+            }`}
+          >
+            <ZapIcon className="w-5 h-5" />
+            Goals & Events
           </button>
         </nav>
 
@@ -818,10 +906,108 @@ export default function SiteSettingsPage() {
                 </form>
               </div>
             )}
+
+            {activeTab === 'goals' && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-1">Goals & Events</h2>
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                    Define goals to label custom events (e.g. signup, purchase). Track with <code className="px-1.5 py-0.5 rounded bg-neutral-200 dark:bg-neutral-700 text-xs">pulse.track(&apos;event_name&apos;)</code> in your snippet.
+                  </p>
+                </div>
+                {goalsLoading ? (
+                  <div className="py-8 text-center text-neutral-500 dark:text-neutral-400">Loading goals…</div>
+                ) : (
+                  <>
+                    {canEdit && (
+                      <Button onClick={openAddGoal} variant="primary">
+                        Add goal
+                      </Button>
+                    )}
+                    <div className="space-y-2">
+                      {goals.length === 0 ? (
+                        <div className="p-6 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50 text-center text-neutral-500 dark:text-neutral-400 text-sm">
+                          No goals yet. Add a goal to give custom events a display name in the dashboard.
+                        </div>
+                      ) : (
+                        goals.map((goal) => (
+                          <div
+                            key={goal.id}
+                            className="flex items-center justify-between py-3 px-4 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50"
+                          >
+                            <div>
+                              <span className="font-medium text-neutral-900 dark:text-white">{goal.name}</span>
+                              <span className="text-neutral-500 dark:text-neutral-400 text-sm ml-2">({goal.event_name})</span>
+                            </div>
+                            {canEdit && (
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => openEditGoal(goal)}
+                                  className="text-sm text-brand-orange hover:underline"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteGoal(goal)}
+                                  className="text-sm text-red-600 dark:text-red-400 hover:underline"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </motion.div>
         </div>
       </div>
     </div>
+
+      <Modal
+        isOpen={goalModalOpen}
+        onClose={() => setGoalModalOpen(false)}
+        title={editingGoal ? 'Edit goal' : 'Add goal'}
+      >
+        <form onSubmit={handleGoalSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Display name</label>
+            <input
+              type="text"
+              value={goalForm.name}
+              onChange={(e) => setGoalForm({ ...goalForm, name: e.target.value })}
+              placeholder="e.g. Signups"
+              className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-xl bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Event name</label>
+            <input
+              type="text"
+              value={goalForm.event_name}
+              onChange={(e) => setGoalForm({ ...goalForm, event_name: e.target.value })}
+              placeholder="e.g. signup_click (letters, numbers, underscores only)"
+              className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-xl bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white"
+              required
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="secondary" onClick={() => setGoalModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary" disabled={goalSaving}>
+              {goalSaving ? 'Saving…' : editingGoal ? 'Update' : 'Create'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
       <VerificationModal
         isOpen={showVerificationModal}

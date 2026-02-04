@@ -17,6 +17,7 @@ import Locations from '@/components/dashboard/Locations'
 import TechSpecs from '@/components/dashboard/TechSpecs'
 import Chart from '@/components/dashboard/Chart'
 import PerformanceStats from '@/components/dashboard/PerformanceStats'
+import GoalStats from '@/components/dashboard/GoalStats'
 
 export default function SiteDashboardPage() {
   const { user } = useAuth()
@@ -46,6 +47,7 @@ export default function SiteDashboardPage() {
   const [screenResolutions, setScreenResolutions] = useState<any[]>([])
   const [performance, setPerformance] = useState<{ lcp: number, cls: number, inp: number }>({ lcp: 0, cls: 0, inp: 0 })
   const [performanceByPage, setPerformanceByPage] = useState<PerformanceByPageStat[] | null>(null)
+  const [goalCounts, setGoalCounts] = useState<Array<{ event_name: string; count: number }>>([])
   const [dateRange, setDateRange] = useState(getDateRange(30))
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
@@ -192,6 +194,7 @@ export default function SiteDashboardPage() {
       setScreenResolutions(Array.isArray(data.screen_resolutions) ? data.screen_resolutions : [])
       setPerformance(data.performance || { lcp: 0, cls: 0, inp: 0 })
       setPerformanceByPage(data.performance_by_page ?? null)
+      setGoalCounts(Array.isArray(data.goal_counts) ? data.goal_counts : [])
     } catch (error: unknown) {
       toast.error(getAuthErrorMessage(error) || 'Failed to load data: ' + ((error as Error)?.message || 'Unknown error'))
     } finally {
@@ -372,6 +375,10 @@ export default function SiteDashboardPage() {
           siteId={siteId}
           dateRange={dateRange}
         />
+      </div>
+
+      <div className="mb-8">
+        <GoalStats goalCounts={goalCounts} siteId={siteId} dateRange={dateRange} />
       </div>
 
       <DatePicker
