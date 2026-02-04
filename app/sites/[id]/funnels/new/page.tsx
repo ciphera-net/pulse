@@ -57,8 +57,9 @@ export default function CreateFunnelPage() {
       toast.error('Please enter a path for all steps')
       return
     }
-    if (steps.some(s => s.type === 'regex' && !isValidRegex(s.value))) {
-      toast.error('Invalid regex in one or more steps. Check the pattern for steps with type "regex".')
+    const invalidRegexStep = steps.find(s => s.type === 'regex' && !isValidRegex(s.value))
+    if (invalidRegexStep) {
+      toast.error(`Invalid regex pattern in step: ${invalidRegexStep.name}`)
       return
     }
 
