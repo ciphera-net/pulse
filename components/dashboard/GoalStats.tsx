@@ -33,7 +33,7 @@ export default function GoalStats({ goalCounts, siteId, dateRange }: GoalStatsPr
               className="flex items-center justify-between py-2 px-3 rounded-lg bg-neutral-50 dark:bg-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
             >
               <span className="text-sm font-medium text-neutral-900 dark:text-white truncate">
-                {row.event_name.replace(/_/g, ' ')}
+                {row.display_name ?? row.event_name.replace(/_/g, ' ')}
               </span>
               <span className="text-sm font-semibold text-brand-orange tabular-nums">
                 {formatNumber(row.count)}
