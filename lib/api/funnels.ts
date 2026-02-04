@@ -66,7 +66,7 @@ export async function deleteFunnel(siteId: string, funnelId: string): Promise<vo
 
 const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/
 
-/** Normalize date-only (YYYY-MM-DD) to RFC3339 for backend funnel stats API. */
+/** Normalize date-only (YYYY-MM-DD) to RFC3339 for backend funnel stats API. Uses UTC for boundaries (API/server timestamps are UTC). */
 function toRFC3339Range(from: string, to: string): { from: string; to: string } {
   return {
     from: DATE_ONLY_REGEX.test(from) ? `${from}T00:00:00.000Z` : from,

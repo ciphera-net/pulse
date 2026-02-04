@@ -6,6 +6,15 @@ import { createFunnel, type CreateFunnelRequest, type FunnelStep } from '@/lib/a
 import { toast, Input, Button, ChevronLeftIcon, PlusIcon, TrashIcon } from '@ciphera-net/ui'
 import Link from 'next/link'
 
+function isValidRegex(pattern: string): boolean {
+  try {
+    new RegExp(pattern)
+    return true
+  } catch {
+    return false
+  }
+}
+
 export default function CreateFunnelPage() {
   const params = useParams()
   const router = useRouter()
@@ -13,6 +22,7 @@ export default function CreateFunnelPage() {
 
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  // * Backend requires at least one step (API binding min=1, DB rejects empty steps)
   const [steps, setSteps] = useState<Omit<FunnelStep, 'order'>[]>([
     { name: 'Step 1', value: '/', type: 'exact' },
     { name: 'Step 2', value: '', type: 'exact' }
@@ -45,6 +55,10 @@ export default function CreateFunnelPage() {
 
     if (steps.some(s => !s.value.trim())) {
       toast.error('Please enter a path for all steps')
+      return
+    }
+    if (steps.some(s => s.type === 'regex' && !isValidRegex(s.value))) {
+      toast.error('Invalid regex in one or more steps. Check the pattern for steps with type "regex".')
       return
     }
 
