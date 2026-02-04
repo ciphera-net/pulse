@@ -378,7 +378,7 @@ export default function SiteDashboardPage() {
       </div>
 
       <div className="mb-8">
-        <GoalStats goalCounts={goalCounts} siteId={siteId} dateRange={dateRange} />
+        <GoalStats goalCounts={goalCounts} />
       </div>
 
       <DatePicker

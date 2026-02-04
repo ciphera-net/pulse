@@ -7,13 +7,11 @@ import type { GoalCountStat } from '@/lib/api/stats'
 
 interface GoalStatsProps {
   goalCounts: GoalCountStat[]
-  siteId: string
-  dateRange: { start: string; end: string }
 }
 
 const LIMIT = 10
 
-export default function GoalStats({ goalCounts, siteId, dateRange }: GoalStatsProps) {
+export default function GoalStats({ goalCounts }: GoalStatsProps) {
   const list = (goalCounts || []).slice(0, LIMIT)
   const hasData = list.length > 0
 
