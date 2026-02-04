@@ -1,0 +1,265 @@
+'use client'
+
+import { useAuth } from '@/lib/auth/context'
+import { useEffect, useState } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import { getFunnel, getFunnelStats, deleteFunnel, type Funnel, type FunnelStats } from '@/lib/api/funnels'
+import { toast, LoadingOverlay, Card, Select, DatePicker } from '@ciphera-net/ui'
+import Link from 'next/link'
+import { LuChevronLeft as ChevronLeftIcon, LuTrash as TrashIcon, LuEdit as EditIcon, LuArrowRight as ArrowRightIcon } from 'react-icons/lu'
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Cell
+} from 'recharts'
+import { getDateRange } from '@/lib/utils/format'
+
+export default function FunnelReportPage() {
+  const params = useParams()
+  const router = useRouter()
+  const siteId = params.id as string
+  const funnelId = params.funnelId as string
+
+  const [funnel, setFunnel] = useState<Funnel | null>(null)
+  const [stats, setStats] = useState<FunnelStats | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [dateRange, setDateRange] = useState(getDateRange(30))
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
+
+  useEffect(() => {
+    loadData()
+  }, [siteId, funnelId, dateRange])
+
+  const loadData = async () => {
+    try {
+      setLoading(true)
+      const [funnelData, statsData] = await Promise.all([
+        getFunnel(siteId, funnelId),
+        getFunnelStats(siteId, funnelId, dateRange.start, dateRange.end)
+      ])
+      setFunnel(funnelData)
+      setStats(statsData)
+    } catch (error) {
+      toast.error('Failed to load funnel data')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this funnel?')) return
+
+    try {
+      await deleteFunnel(siteId, funnelId)
+      toast.success('Funnel deleted')
+      router.push(`/sites/${siteId}/funnels`)
+    } catch (error) {
+      toast.error('Failed to delete funnel')
+    }
+  }
+
+  if (loading && !funnel) {
+    return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" />
+  }
+
+  if (!funnel || !stats) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <p className="text-neutral-600 dark:text-neutral-400">Funnel not found</p>
+      </div>
+    )
+  }
+
+  const chartData = stats.steps.map(s => ({
+    name: s.step.name,
+    visitors: s.visitors,
+    dropoff: s.dropoff,
+    conversion: s.conversion
+  }))
+
+  return (
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <Link 
+              href={`/sites/${siteId}/funnels`}
+              className="p-2 -ml-2 text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+            >
+              <ChevronLeftIcon className="w-5 h-5" />
+            </Link>
+            <div>
+              <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
+                {funnel.name}
+              </h1>
+              {funnel.description && (
+                <p className="text-neutral-600 dark:text-neutral-400">
+                  {funnel.description}
+                </p>
+              )}
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Select
+              value={
+                dateRange.start === getDateRange(7).start 
+                ? '7' 
+                : dateRange.start === getDateRange(30).start 
+                ? '30' 
+                : 'custom'
+              }
+              onChange={(value) => {
+                if (value === '7') setDateRange(getDateRange(7))
+                else if (value === '30') setDateRange(getDateRange(30))
+                else if (value === 'custom') setIsDatePickerOpen(true)
+              }}
+              options={[
+                { value: '7', label: 'Last 7 days' },
+                { value: '30', label: 'Last 30 days' },
+                { value: 'custom', label: 'Custom' },
+              ]}
+            />
+            
+            <button
+              onClick={handleDelete}
+              className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+            >
+              <TrashIcon className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Chart */}
+        <Card className="p-6 mb-8">
+          <h3 className="text-lg font-medium text-neutral-900 dark:text-white mb-6">
+            Funnel Visualization
+          </h3>
+          <div className="h-[400px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E5E5" />
+                <XAxis 
+                  dataKey="name" 
+                  stroke="#A3A3A3" 
+                  fontSize={12} 
+                  tickLine={false} 
+                  axisLine={false} 
+                />
+                <YAxis 
+                  stroke="#A3A3A3" 
+                  fontSize={12} 
+                  tickLine={false} 
+                  axisLine={false} 
+                />
+                <Tooltip 
+                  cursor={{ fill: 'transparent' }}
+                  content={({ active, payload, label }) => {
+                    if (active && payload && payload.length) {
+                      const data = payload[0].payload;
+                      return (
+                        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-3 rounded-lg shadow-lg">
+                          <p className="font-medium text-neutral-900 dark:text-white mb-1">{label}</p>
+                          <p className="text-brand-orange font-bold text-lg">
+                            {data.visitors.toLocaleString()} visitors
+                          </p>
+                          {data.dropoff > 0 && (
+                            <p className="text-red-500 text-sm">
+                              {Math.round(data.dropoff)}% drop-off
+                            </p>
+                          )}
+                          {data.conversion > 0 && (
+                            <p className="text-green-500 text-sm">
+                              {Math.round(data.conversion)}% conversion (overall)
+                            </p>
+                          )}
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+                <Bar dataKey="visitors" radius={[4, 4, 0, 0]} barSize={60}>
+                  {chartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill="#FD5E0F" fillOpacity={1 - (index * 0.15)} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
+        {/* Detailed Stats Table */}
+        <Card className="overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-neutral-50 dark:bg-neutral-800/50 border-b border-neutral-200 dark:border-neutral-800">
+                <tr>
+                  <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider">Step</th>
+                  <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-right">Visitors</th>
+                  <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-right">Drop-off</th>
+                  <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-right">Conversion</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
+                {stats.steps.map((step, i) => (
+                  <tr key={i} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/30 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <span className="w-6 h-6 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-xs font-medium text-neutral-600 dark:text-neutral-400">
+                          {i + 1}
+                        </span>
+                        <div>
+                          <p className="font-medium text-neutral-900 dark:text-white">{step.step.name}</p>
+                          <p className="text-neutral-500 text-xs font-mono mt-0.5">{step.step.value}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <span className="font-medium text-neutral-900 dark:text-white">
+                        {step.visitors.toLocaleString()}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      {i > 0 ? (
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          step.dropoff > 50 
+                            ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                            : 'bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-300'
+                        }`}>
+                          {Math.round(step.dropoff)}%
+                        </span>
+                      ) : (
+                        <span className="text-neutral-400">-</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <span className="text-green-600 dark:text-green-400 font-medium">
+                        {Math.round(step.conversion)}%
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </div>
+
+      <DatePicker
+        isOpen={isDatePickerOpen}
+        onClose={() => setIsDatePickerOpen(false)}
+        onApply={(range) => {
+          setDateRange(range)
+          setIsDatePickerOpen(false)
+        }}
+        initialRange={dateRange}
+      />
+    </div>
+  )
+}

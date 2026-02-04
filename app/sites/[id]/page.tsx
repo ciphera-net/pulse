@@ -297,6 +297,12 @@ export default function SiteDashboardPage() {
                 { value: 'custom', label: 'Custom' },
               ]}
             />
+            <button
+              onClick={() => router.push(`/sites/${siteId}/funnels`)}
+              className="btn-secondary text-sm"
+            >
+              Funnels
+            </button>
             {canEdit && (
             <button
               onClick={() => router.push(`/sites/${siteId}/settings`)}
