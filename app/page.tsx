@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { motion } from 'framer-motion'
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow, initiateSignupFlow } from '@/lib/api/oauth'
 import { listSites, deleteSite, type Site } from '@/lib/api/sites'
@@ -172,16 +173,26 @@ export default function HomePage() {
         <div className="flex-grow w-full max-w-6xl mx-auto px-4 pt-20 pb-10 z-10">
           
           {/* * --- 2. BADGE --- */}
-          <div className="inline-flex justify-center mb-8 animate-fade-in w-full">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="inline-flex justify-center mb-8 w-full"
+          >
             <span className="badge-primary">
               <span className="w-1.5 h-1.5 rounded-full bg-brand-orange animate-pulse" />
               Privacy-First Analytics
             </span>
-          </div>
+          </motion.div>
 
           {/* * --- 3. HEADLINE --- */}
           <div className="text-center mb-20">
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-neutral-900 dark:text-white mb-6">
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="text-5xl md:text-7xl font-bold tracking-tight text-neutral-900 dark:text-white mb-6"
+            >
               Simple analytics for <br />
               <span className="relative inline-block">
                 <span className="gradient-text">privacy-conscious</span>
@@ -191,22 +202,32 @@ export default function HomePage() {
                 </svg>
               </span>
               {' '}apps.
-            </h1>
+            </motion.h1>
 
-            <p className="text-xl text-neutral-600 dark:text-neutral-400 max-w-2xl mx-auto mb-10 leading-relaxed">
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="text-xl text-neutral-600 dark:text-neutral-400 max-w-2xl mx-auto mb-10 leading-relaxed"
+            >
               Respect your users' privacy while getting the insights you need. 
               No cookies, no IP tracking, fully GDPR compliant.
-            </p>
+            </motion.p>
 
             {/* * --- 4. CTAs --- */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-20">
-              <Button onClick={() => initiateOAuthFlow()} className="btn-primary px-8 py-4 text-lg shadow-lg shadow-brand-orange/20">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-20"
+            >
+              <Button onClick={() => initiateOAuthFlow()} variant="primary" className="px-8 py-4 text-lg shadow-lg shadow-brand-orange/20">
                 Get Started
               </Button>
-              <Button variant="secondary" onClick={() => initiateSignupFlow()} className="btn-secondary px-8 py-4 text-lg backdrop-blur-sm">
+              <Button onClick={() => initiateSignupFlow()} variant="secondary" className="px-8 py-4 text-lg">
                 Create Account
               </Button>
-            </div>
+            </motion.div>
           </div>
 
           {/* * NEW: DASHBOARD PREVIEW */}
@@ -219,7 +240,14 @@ export default function HomePage() {
               { icon: BarChartIcon, title: "Simple Insights", desc: "Get the metrics that matter without the clutter. Page views, visitors, and sources." },
               { icon: ZapIcon, title: "Lightweight", desc: "Our script is less than 1kb. It won't slow down your site or affect your SEO." }
             ].map((feature, i) => (
-              <div key={i} className="card-glass p-8 hover:-translate-y-1 hover:shadow-xl transition-all duration-300 group">
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: i * 0.1 }}
+                className="card-glass p-8 hover:-translate-y-1 hover:shadow-xl transition-all duration-300 group"
+              >
                 <div className="w-12 h-12 rounded-xl bg-brand-orange/10 flex items-center justify-center mb-6 text-brand-orange group-hover:scale-110 transition-transform duration-300">
                   <feature.icon className="w-6 h-6" />
                 </div>
@@ -227,7 +255,7 @@ export default function HomePage() {
                 <p className="text-neutral-600 dark:text-neutral-400 leading-relaxed">
                   {feature.desc}
                 </p>
-              </div>
+              </motion.div>
             ))}
           </div>
 
@@ -235,13 +263,19 @@ export default function HomePage() {
           <ComparisonSection />
 
           {/* * NEW: CTA BOTTOM */}
-          <div className="text-center mb-20">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="text-center mb-20"
+          >
             <h2 className="text-3xl font-bold text-neutral-900 dark:text-white mb-6">Ready to switch?</h2>
-            <Button onClick={() => initiateOAuthFlow()} className="btn-primary px-8 py-4 text-lg shadow-lg shadow-brand-orange/20">
+            <Button onClick={() => initiateOAuthFlow()} variant="primary" className="px-8 py-4 text-lg shadow-lg shadow-brand-orange/20">
               Start your free trial
             </Button>
             <p className="mt-4 text-sm text-neutral-500">No credit card required • Cancel anytime</p>
-          </div>
+          </motion.div>
 
         </div>
       </div>
@@ -265,26 +299,32 @@ export default function HomePage() {
             <span className="text-sm font-medium text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700">
               Limit reached (1/1)
             </span>
-            <Link href="/pricing" className="btn-primary text-sm bg-brand-orange hover:bg-brand-orange/90 border-transparent text-white shadow-lg shadow-brand-orange/20">
-              Upgrade
+            <Link href="/pricing">
+              <Button variant="primary" className="text-sm">
+                Upgrade
+              </Button>
             </Link>
           </div>
         ) : (
-          <Link href="/sites/new" className="btn-primary text-sm">Add New Site</Link>
+          <Link href="/sites/new">
+            <Button variant="primary" className="text-sm">
+              Add New Site
+            </Button>
+          </Link>
         )}
       </div>
 
       {/* * Global Overview */}
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+        <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
           <p className="text-sm text-neutral-500 dark:text-neutral-400">Total Sites</p>
           <p className="text-2xl font-bold text-neutral-900 dark:text-white">{sites.length}</p>
         </div>
-        <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+        <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
           <p className="text-sm text-neutral-500 dark:text-neutral-400">Total Visitors (24h)</p>
           <p className="text-2xl font-bold text-neutral-900 dark:text-white">--</p>
         </div>
-        <div className="rounded-xl border border-neutral-200 bg-brand-orange/10 p-4 dark:border-neutral-800">
+        <div className="rounded-2xl border border-neutral-200 bg-brand-orange/10 p-4 dark:border-neutral-800">
           <p className="text-sm text-brand-orange">Plan & usage</p>
           {subscriptionLoading ? (
             <p className="text-lg font-bold text-brand-orange">...</p>

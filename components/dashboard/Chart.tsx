@@ -290,7 +290,7 @@ export default function Chart({
   const dayTicks = interval === 'day' && chartData.length > 0 ? chartData.map((c) => c.date) : undefined
 
   return (
-    <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden shadow-sm">
+    <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm">
       {/* Stats Header (Interactive Tabs) */}
       <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-neutral-200 dark:divide-neutral-800 border-b border-neutral-200 dark:border-neutral-800">
         {metrics.map((item) => (

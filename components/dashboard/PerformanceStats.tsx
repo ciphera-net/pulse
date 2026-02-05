@@ -108,7 +108,7 @@ export default function PerformanceStats({ stats, performanceByPage, siteId, sta
   const summaryText = `LCP ${Math.round(stats.lcp)} ms · CLS ${Number(stats.cls.toFixed(3))} · INP ${Math.round(stats.inp)} ms`
 
   return (
-    <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-4">
+    <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4">
       {/* * One-line summary: Performance score + metric summary. Click to expand. */}
       <button
         type="button"

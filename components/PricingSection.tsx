@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { motion } from 'framer-motion'
 import { Button, CheckCircleIcon } from '@ciphera-net/ui'
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
@@ -212,17 +213,27 @@ export default function PricingSection() {
 
   return (
     <section className="py-24 px-4 max-w-6xl mx-auto">
-      <div className="text-center mb-12">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="text-center mb-12"
+      >
         <h2 className="text-4xl md:text-5xl font-bold text-neutral-900 dark:text-white mb-6 tracking-tight">
           Transparent Pricing
         </h2>
         <p className="text-xl text-neutral-600 dark:text-neutral-400">
           Scale with your traffic. No hidden fees.
         </p>
-      </div>
+      </motion.div>
 
       {/* Unified Container */}
-      <div className="max-w-6xl mx-auto border border-neutral-200 dark:border-neutral-800 rounded-3xl bg-white/50 dark:bg-neutral-900/50 backdrop-blur-xl shadow-sm overflow-hidden mb-20">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.1 }}
+        className="max-w-6xl mx-auto border border-neutral-200 dark:border-neutral-800 rounded-3xl bg-white/50 dark:bg-neutral-900/50 backdrop-blur-xl shadow-sm overflow-hidden mb-20"
+      >
         
         {/* Top Toolbar */}
         <div className="p-8 border-b border-neutral-200 dark:border-neutral-800 flex flex-col md:flex-row items-center justify-between gap-8 bg-neutral-50/50 dark:bg-neutral-900/50">
@@ -252,7 +263,7 @@ export default function PricingSection() {
             <div className="bg-neutral-200 dark:bg-neutral-800 p-1 rounded-lg flex">
               <button
                 onClick={() => setIsYearly(false)}
-                className={`min-w-[88px] px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                className={`min-w-[88px] px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                   !isYearly
                     ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
                     : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
@@ -262,7 +273,7 @@ export default function PricingSection() {
               </button>
               <button
                 onClick={() => setIsYearly(true)}
-                className={`min-w-[88px] px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                className={`min-w-[88px] px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                   isYearly
                     ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
                     : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
@@ -285,9 +296,9 @@ export default function PricingSection() {
                 {isTeam && (
                   <>
                     <div className="absolute top-0 left-0 w-full h-1 bg-brand-orange" />
-                    <div className="absolute top-4 right-4 bg-brand-orange/10 text-brand-orange text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wide">
+                    <span className="absolute top-4 right-4 badge-primary">
                       Most Popular
-                    </div>
+                    </span>
                   </>
                 )}
                 
@@ -331,11 +342,8 @@ export default function PricingSection() {
                 <Button 
                   onClick={() => handleSubscribe(plan.id)}
                   disabled={loadingPlan === plan.id || !!loadingPlan || !priceDetails}
-                  className={`w-full mb-8 ${
-                    isTeam 
-                      ? 'bg-brand-orange hover:bg-brand-orange/90 text-white shadow-lg shadow-brand-orange/20' 
-                      : 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100'
-                  }`}
+                  variant={isTeam ? 'primary' : 'secondary'}
+                  className="w-full mb-8"
                 >
                   {loadingPlan === plan.id ? 'Loading...' : !priceDetails ? 'Contact us' : 'Start free trial'}
                 </Button>
@@ -383,7 +391,7 @@ export default function PricingSection() {
             </ul>
           </div>
         </div>
-      </div>
+      </motion.div>
     </section>
   )
 }

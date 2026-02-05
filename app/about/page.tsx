@@ -1,5 +1,6 @@
 'use client'
 
+import { motion } from 'framer-motion'
 import { CheckCircleIcon, XIcon } from '@ciphera-net/ui'
 
 function ComparisonTable({ title, competitors }: { title: string, competitors: { name: string, isPulse: boolean, features: Record<string, boolean | string> }[] }) {
@@ -68,7 +69,12 @@ export default function AboutPage() {
       </div>
 
       <div className="flex-grow w-full max-w-4xl mx-auto px-4 pt-20 pb-10 z-10">
-        <div className="text-center mb-16">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="text-center mb-16"
+        >
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-neutral-900 dark:text-white mb-6">
             Why Pulse?
           </h1>
@@ -76,14 +82,19 @@ export default function AboutPage() {
             We built Pulse because we were tired of complex, invasive analytics tools.
             Here is how we stack up against the giants.
           </p>
-        </div>
+        </motion.div>
 
-        <div className="prose prose-neutral dark:prose-invert max-w-none mb-16">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="prose prose-neutral dark:prose-invert max-w-none mb-16"
+        >
           <p className="text-lg text-neutral-600 dark:text-neutral-400">
             Most analytics tools are overkill. They track everything, slow down your site, and require annoying cookie banners. 
             Pulse is different. We focus on the metrics that actually matter—visitors, pageviews, and sources—while respecting user privacy.
           </p>
-        </div>
+        </motion.div>
 
         {/* * Comparison: Pulse vs Google Analytics */}
         <ComparisonTable 
@@ -147,14 +158,20 @@ export default function AboutPage() {
           ]}
         />
         
-        <div className="mt-8 p-6 bg-neutral-100 dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-800">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+          className="mt-8 p-6 bg-neutral-100 dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-800"
+        >
           <h3 className="text-lg font-bold mb-2 text-neutral-900 dark:text-white">What about Plausible?</h3>
           <p className="text-neutral-600 dark:text-neutral-400 text-sm">
             We love Plausible! They paved the way for privacy-friendly analytics. 
             Pulse offers a similar philosophy but with a focus on even deeper integration with the Ciphera ecosystem 
             and more flexible pricing for developers.
           </p>
-        </div>
+        </motion.div>
 
       </div>
     </div>

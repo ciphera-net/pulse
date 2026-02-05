@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { formatNumber } from '@/lib/utils/format'
 import { getReferrerIcon } from '@/lib/utils/icons'
-import { Modal } from '@ciphera-net/ui'
+import { Modal, GlobeIcon } from '@ciphera-net/ui'
 import { getTopReferrers, TopReferrer } from '@/lib/api/stats'
 
 interface TopReferrersProps {
@@ -55,7 +55,7 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
 
   return (
     <>
-      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 h-full flex flex-col">
+      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
             Top Referrers
@@ -93,8 +93,16 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
               ))}
             </>
           ) : (
-            <div className="h-full flex flex-col items-center justify-center">
-              <p className="text-neutral-600 dark:text-neutral-400">No data available</p>
+            <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
+              <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
+                <GlobeIcon className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
+              </div>
+              <h4 className="font-semibold text-neutral-900 dark:text-white">
+                No referrers yet
+              </h4>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400 max-w-xs">
+                Traffic sources will appear here when visitors come from external sites.
+              </p>
             </div>
           )}
         </div>
@@ -107,7 +115,10 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
       >
         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
           {isLoadingFull ? (
-            <div className="py-4 text-center text-neutral-500">Loading...</div>
+            <div className="py-8 flex flex-col items-center gap-2">
+              <div className="animate-spin w-6 h-6 border-2 border-neutral-300 dark:border-neutral-700 border-t-brand-orange rounded-full" />
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading...</p>
+            </div>
           ) : (
             (fullData.length > 0 ? fullData : filteredReferrers).map((ref, index) => (
               <div key={index} className="flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">

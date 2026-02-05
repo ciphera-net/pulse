@@ -196,7 +196,7 @@ export default function UtmBuilder({ initialSiteId }: UtmBuilderProps) {
       </div>
 
       {generatedUrl && (
-        <div className="mt-6 p-4 bg-neutral-50 dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 flex items-center justify-between group">
+        <div className="mt-6 p-4 bg-neutral-50 dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800 flex items-center justify-between group">
           <code className="text-sm break-all text-brand-orange font-mono">{generatedUrl}</code>
           <Button
             variant="secondary"

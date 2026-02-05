@@ -20,6 +20,8 @@
 }
 
 @layer components {
+  /* * TODO: Move these shared utilities to @ciphera-net/ui to avoid duplication with website */
+  
   /* * Glass Card Effect - Crucial for the "Premium" feel */
   .card-glass {
     @apply bg-white/80 dark:bg-neutral-900/80;
