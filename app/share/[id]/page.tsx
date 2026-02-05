@@ -5,7 +5,7 @@ import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { getPublicDashboard, getPublicStats, getPublicDailyStats, getPublicRealtime, getPublicPerformanceByPage, type DashboardData, type Stats, type DailyStat, type PerformanceByPageStat } from '@/lib/api/stats'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@/lib/utils/authErrors'
-import { LoadingOverlay } from '@ciphera-net/ui'
+import { LoadingOverlay, Button } from '@ciphera-net/ui'
 import Chart from '@/components/dashboard/Chart'
 import TopPages from '@/components/dashboard/ContentStats'
 import TopReferrers from '@/components/dashboard/TopReferrers'
@@ -225,12 +225,13 @@ export default function PublicDashboardPage() {
                     apiUrl={process.env.NEXT_PUBLIC_CAPTCHA_API_URL}
                 />
             </div>
-            <button
+            <Button
               type="submit"
-              className="w-full btn-primary"
+              variant="primary"
+              className="w-full"
             >
               Access Dashboard
-            </button>
+            </Button>
           </form>
         </div>
       </div>

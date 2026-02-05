@@ -28,12 +28,12 @@ export default function NotFound() {
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
           <Link href="/">
-            <Button className="btn-primary px-8 py-3 shadow-lg shadow-brand-orange/20">
+            <Button variant="primary" className="px-8 py-3 shadow-lg shadow-brand-orange/20">
               Go back home
             </Button>
           </Link>
           <Link href="/faq">
-            <Button variant="secondary" className="btn-secondary px-8 py-3 backdrop-blur-sm">
+            <Button variant="secondary" className="px-8 py-3">
               View FAQ
             </Button>
           </Link>

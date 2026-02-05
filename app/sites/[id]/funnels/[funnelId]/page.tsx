@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ApiError } from '@/lib/api/client'
 import { getFunnel, getFunnelStats, deleteFunnel, type Funnel, type FunnelStats } from '@/lib/api/funnels'
-import { toast, LoadingOverlay, Select, DatePicker, ChevronLeftIcon, ArrowRightIcon, TrashIcon, useTheme } from '@ciphera-net/ui'
+import { toast, LoadingOverlay, Select, DatePicker, ChevronLeftIcon, ArrowRightIcon, TrashIcon, useTheme, Button } from '@ciphera-net/ui'
 import Link from 'next/link'
 import {
   BarChart,
@@ -107,8 +107,10 @@ export default function FunnelReportPage() {
     return (
       <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
         <p className="text-neutral-600 dark:text-neutral-400">Access denied</p>
-        <Link href={`/sites/${siteId}/funnels`} className="btn-primary mt-4 inline-block">
-          Back to Funnels
+        <Link href={`/sites/${siteId}/funnels`}>
+          <Button variant="primary" className="mt-4">
+            Back to Funnels
+          </Button>
         </Link>
       </div>
     )
@@ -118,9 +120,9 @@ export default function FunnelReportPage() {
     return (
       <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
         <p className="text-neutral-600 dark:text-neutral-400 mb-4">Unable to load funnel</p>
-        <button type="button" onClick={() => loadData()} className="btn-primary">
+        <Button type="button" onClick={() => loadData()} variant="primary">
           Try again
-        </button>
+        </Button>
       </div>
     )
   }

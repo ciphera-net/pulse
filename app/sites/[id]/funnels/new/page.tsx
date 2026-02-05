@@ -215,16 +215,15 @@ export default function CreateFunnelPage() {
         </div>
 
         <div className="flex justify-end gap-4">
-          <Link
-            href={`/sites/${siteId}/funnels`}
-            className="btn-secondary"
-          >
-            Cancel
+          <Link href={`/sites/${siteId}/funnels`}>
+            <Button variant="secondary">
+              Cancel
+            </Button>
           </Link>
           <Button
             type="submit"
             disabled={saving}
-            className="btn-primary"
+            variant="primary"
           >
             {saving ? 'Creating...' : 'Create Funnel'}
           </Button>

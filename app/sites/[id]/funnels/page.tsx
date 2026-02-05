@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { listFunnels, deleteFunnel, type Funnel } from '@/lib/api/funnels'
-import { toast, LoadingOverlay, PlusIcon, ArrowRightIcon, ChevronLeftIcon, TrashIcon } from '@ciphera-net/ui'
+import { toast, LoadingOverlay, PlusIcon, ArrowRightIcon, ChevronLeftIcon, TrashIcon, Button } from '@ciphera-net/ui'
 import Link from 'next/link'
 
 export default function FunnelsPage() {
@@ -66,12 +66,11 @@ export default function FunnelsPage() {
             </p>
           </div>
           <div className="ml-auto">
-            <Link
-              href={`/sites/${siteId}/funnels/new`}
-              className="btn-primary inline-flex items-center gap-2"
-            >
-              <PlusIcon className="w-4 h-4" />
-              <span>Create Funnel</span>
+            <Link href={`/sites/${siteId}/funnels/new`}>
+              <Button variant="primary" className="inline-flex items-center gap-2">
+                <PlusIcon className="w-4 h-4" />
+                <span>Create Funnel</span>
+              </Button>
             </Link>
           </div>
         </div>
@@ -87,12 +86,11 @@ export default function FunnelsPage() {
             <p className="text-neutral-600 dark:text-neutral-400 mb-6 max-w-md mx-auto">
               Create a funnel to track how users move through your site and where they drop off.
             </p>
-            <Link
-              href={`/sites/${siteId}/funnels/new`}
-              className="btn-primary inline-flex items-center gap-2"
-            >
-              <PlusIcon className="w-4 h-4" />
-              <span>Create Funnel</span>
+            <Link href={`/sites/${siteId}/funnels/new`}>
+              <Button variant="primary" className="inline-flex items-center gap-2">
+                <PlusIcon className="w-4 h-4" />
+                <span>Create Funnel</span>
+              </Button>
             </Link>
           </div>
         ) : (
