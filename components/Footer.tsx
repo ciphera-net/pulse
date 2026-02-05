@@ -71,25 +71,25 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
           <div className="col-span-1 sm:col-span-2 md:col-span-4 lg:col-span-1 lg:pr-8">
             <Link href="/" className="flex items-center gap-3 mb-4 group">
               <Image
-                src="/ciphera_icon_no_margins.png"
-                alt="Ciphera privacy-first platform logo"
+                src="/pulse_icon_no_margins.png"
+                alt="Pulse privacy-first analytics logo"
                 width={36}
                 height={36}
                 loading="lazy"
                 className="w-9 h-9 group-hover:scale-105 transition-transform duration-300"
               />
               <span className="text-xl font-bold text-neutral-900 dark:text-white group-hover:text-brand-orange transition-colors duration-300">
-                Ciphera
+                Pulse
               </span>
             </Link>
             <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4 leading-relaxed">
-              Privacy-first infrastructure and applications built on zero-knowledge principles.
+              Simple analytics for privacy-conscious apps.
             </p>
             <div className="inline-flex items-center gap-2.5 text-sm text-neutral-600 dark:text-neutral-400 mb-4">
               <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-neutral-100 dark:bg-neutral-800 shrink-0 overflow-hidden ring-1 ring-neutral-200 dark:ring-neutral-700" aria-hidden>
                 <SwissFlagIcon className="w-5 h-5" />
               </span>
-              <span>Swiss infrastructure (Zurich).</span>
+              <span>Swiss infrastructure</span>
             </div>
             <div className="flex items-center gap-3">
               <a
@@ -212,12 +212,9 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
         <div className="h-px w-full bg-gradient-to-r from-transparent via-neutral-200 dark:via-neutral-800 to-transparent my-8" />
 
         {/* * Bottom bar */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <p className="text-sm text-neutral-500 dark:text-neutral-400">
             © 2024-{year} Ciphera. All rights reserved.
-          </p>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">
-            Where Privacy Still Exists
           </p>
         </div>
       </div>
