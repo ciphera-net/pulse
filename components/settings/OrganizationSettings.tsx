@@ -632,7 +632,7 @@ export default function OrganizationSettings() {
                         <div>
                           <div className="text-sm text-neutral-500 mb-1">Pageview Limit</div>
                           <div className="font-medium text-neutral-900 dark:text-white">
-                            {subscription.pageview_limit.toLocaleString()} / month
+                            {subscription.pageview_limit > 0 ? `${subscription.pageview_limit.toLocaleString()} / month` : 'Unlimited'}
                           </div>
                         </div>
                         <div>
