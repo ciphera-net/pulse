@@ -802,7 +802,7 @@ export default function OrganizationSettings() {
                       <label className="block text-xs font-medium text-neutral-500 uppercase">Log ID</label>
                       <input
                         type="text"
-                        placeholder="e.g. 9629cf39..."
+                        placeholder="e.g. 8a2b3c"
                         value={auditLogIdFilter}
                         onChange={(e) => setAuditLogIdFilter(e.target.value)}
                         className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm text-neutral-900 dark:text-white focus:ring-2 focus:ring-brand-orange outline-none transition-all"
@@ -879,7 +879,7 @@ export default function OrganizationSettings() {
                           {(auditEntries ?? []).map((entry) => (
                             <tr key={entry.id} className="border-b border-neutral-100 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800/30">
                               <td className="px-4 py-3 text-neutral-500 dark:text-neutral-500 font-mono text-xs" title={entry.id}>
-                                {entry.id.slice(0, 8)}…
+                                {entry.id}
                               </td>
                               <td className="px-4 py-3 text-neutral-600 dark:text-neutral-400 whitespace-nowrap">
                                 {new Date(entry.occurred_at).toLocaleString()}
