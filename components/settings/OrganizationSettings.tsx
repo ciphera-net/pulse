@@ -408,8 +408,8 @@ export default function OrganizationSettings() {
           </button>
         </nav>
 
-        {/* Content Area */}
-        <div className="flex-1 min-w-0 relative">
+        {/* Content Area - no min-w-0 so it uses full available width and table doesn't get cramped */}
+        <div className="flex-1 relative">
           <motion.div
             key={activeTab}
             initial={{ opacity: 0, x: 20 }}
@@ -906,29 +906,29 @@ export default function OrganizationSettings() {
                     <div className="p-8 text-center text-neutral-500">No audit events found.</div>
                   ) : (
                     <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
+                      <table className="w-full text-sm min-w-full">
                         <thead>
                           <tr className="border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50">
-                            <th className="text-left px-4 py-3 font-medium text-neutral-700 dark:text-neutral-300">Log ID</th>
-                            <th className="text-left px-4 py-3 font-medium text-neutral-700 dark:text-neutral-300">Time</th>
-                            <th className="text-left px-4 py-3 font-medium text-neutral-700 dark:text-neutral-300">Actor</th>
-                            <th className="text-left px-4 py-3 font-medium text-neutral-700 dark:text-neutral-300">Action</th>
-                            <th className="text-left px-4 py-3 font-medium text-neutral-700 dark:text-neutral-300">Resource</th>
+                            <th className="text-left px-4 py-3 font-medium text-neutral-700 dark:text-neutral-300 whitespace-nowrap">Log ID</th>
+                            <th className="text-left px-4 py-3 font-medium text-neutral-700 dark:text-neutral-300 whitespace-nowrap">Time</th>
+                            <th className="text-left px-4 py-3 font-medium text-neutral-700 dark:text-neutral-300 whitespace-nowrap">Actor</th>
+                            <th className="text-left px-4 py-3 font-medium text-neutral-700 dark:text-neutral-300 whitespace-nowrap">Action</th>
+                            <th className="text-left px-4 py-3 font-medium text-neutral-700 dark:text-neutral-300 whitespace-nowrap">Resource</th>
                           </tr>
                         </thead>
                         <tbody>
                           {(auditEntries ?? []).map((entry) => (
                             <tr key={entry.id} className="border-b border-neutral-100 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800/30">
-                              <td className="px-4 py-3 text-neutral-500 dark:text-neutral-500 font-mono text-xs" title={entry.id}>
+                              <td className="px-4 py-3 text-neutral-500 dark:text-neutral-500 font-mono text-xs whitespace-nowrap" title={entry.id}>
                                 {entry.id}
                               </td>
                               <td className="px-4 py-3 text-neutral-600 dark:text-neutral-400 whitespace-nowrap">
                                 {new Date(entry.occurred_at).toLocaleString()}
                               </td>
-                              <td className="px-4 py-3 text-neutral-900 dark:text-white">
+                              <td className="px-4 py-3 text-neutral-900 dark:text-white whitespace-nowrap" title={entry.actor_email || entry.actor_id || 'System'}>
                                 {entry.actor_email || entry.actor_id || 'System'}
                               </td>
-                              <td className="px-4 py-3 font-medium text-neutral-900 dark:text-white">{entry.action}</td>
+                              <td className="px-4 py-3 font-medium text-neutral-900 dark:text-white whitespace-nowrap" title={entry.action}>{entry.action}</td>
                               <td className="px-4 py-3 text-neutral-600 dark:text-neutral-400">{entry.resource_type}</td>
                             </tr>
                           ))}
