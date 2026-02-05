@@ -285,12 +285,13 @@ export default function HomePage() {
           <p className="text-2xl font-bold text-neutral-900 dark:text-white">--</p>
         </div>
         <div className="rounded-xl border border-neutral-200 bg-brand-orange/10 p-4 dark:border-neutral-800">
-          <p className="text-sm text-brand-orange">Plan Status</p>
-          <p className="text-lg font-bold text-brand-orange">
-            {subscriptionLoading
-              ? '...'
-              : (() => {
-                  if (!subscription) return 'Free Plan'
+          <p className="text-sm text-brand-orange">Plan & usage</p>
+          {subscriptionLoading ? (
+            <p className="text-lg font-bold text-brand-orange">...</p>
+          ) : subscription ? (
+            <>
+              <p className="text-lg font-bold text-brand-orange">
+                {(() => {
                   const raw =
                     subscription.plan_id?.startsWith('price_')
                       ? 'Pro'
@@ -300,7 +301,33 @@ export default function HomePage() {
                   const label = raw === 'Free' || raw === 'Pro' ? raw : raw.charAt(0).toUpperCase() + raw.slice(1)
                   return `${label} Plan`
                 })()}
-          </p>
+              </p>
+              {(typeof subscription.sites_count === 'number' || (subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number')) && (
+                <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
+                  {typeof subscription.sites_count === 'number' && (
+                    <span>Sites: {subscription.plan_id === 'solo' && subscription.sites_count > 0 ? `${subscription.sites_count}/1` : subscription.sites_count}</span>
+                  )}
+                  {typeof subscription.sites_count === 'number' && subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number' && ' · '}
+                  {subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number' && (
+                    <span>Pageviews: {subscription.pageview_usage.toLocaleString()}/{subscription.pageview_limit.toLocaleString()}</span>
+                  )}
+                </p>
+              )}
+              <div className="mt-2 flex gap-2">
+                {subscription.has_payment_method ? (
+                  <Link href="/org-settings?tab=billing" className="text-sm font-medium text-brand-orange hover:underline">
+                    Manage billing
+                  </Link>
+                ) : (
+                  <Link href="/pricing" className="text-sm font-medium text-brand-orange hover:underline">
+                    Upgrade
+                  </Link>
+                )}
+              </div>
+            </>
+          ) : (
+            <p className="text-lg font-bold text-brand-orange">Free Plan</p>
+          )}
         </div>
       </div>
 

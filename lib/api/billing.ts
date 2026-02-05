@@ -7,6 +7,10 @@ export interface SubscriptionDetails {
   billing_interval: string
   pageview_limit: number
   has_payment_method: boolean
+  /** Number of sites for the org (billing usage). Present when backend supports usage API. */
+  sites_count?: number
+  /** Pageviews in current billing period (when pageview_limit > 0). Present when backend supports usage API. */
+  pageview_usage?: number
 }
 
 async function billingFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
