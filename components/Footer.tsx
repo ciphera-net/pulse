@@ -41,8 +41,8 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
   // * Simple footer for authenticated users
   if (isAuthenticated) {
     return (
-      <footer className="border-t border-neutral-200 dark:border-neutral-800 mt-auto bg-white dark:bg-neutral-950">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <footer className="w-full py-8 mt-auto border-t border-neutral-100 dark:border-neutral-800 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="text-sm text-neutral-500 dark:text-neutral-400">
               © {year} Ciphera. All rights reserved.
