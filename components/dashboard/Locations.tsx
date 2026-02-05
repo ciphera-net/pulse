@@ -226,8 +226,16 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
             </div>
           ) : activeTab === 'map' ? (
             hasData ? <WorldMap data={filterUnknown(countries)} /> : (
-              <div className="h-full flex flex-col items-center justify-center">
-                <p className="text-neutral-600 dark:text-neutral-400">No data available</p>
+              <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
+                <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
+                  <GlobeIcon className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
+                </div>
+                <h4 className="font-semibold text-neutral-900 dark:text-white">
+                  No location data yet
+                </h4>
+                <p className="text-sm text-neutral-500 dark:text-neutral-400 max-w-xs">
+                  Visitor locations will appear here based on anonymous geographic data.
+                </p>
               </div>
             )
           ) : (
@@ -252,14 +260,22 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
                 ))}
                 {Array.from({ length: emptySlots }).map((_, i) => (
                   <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
-                ))}
-              </>
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center">
-                <p className="text-neutral-600 dark:text-neutral-400">No data available</p>
+              ))}
+            </>
+          ) : (
+            <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
+              <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
+                <GlobeIcon className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
               </div>
-            )
-          )}
+              <h4 className="font-semibold text-neutral-900 dark:text-white">
+                No location data yet
+              </h4>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400 max-w-xs">
+                Visitor locations will appear here based on anonymous geographic data.
+              </p>
+            </div>
+          )
+        )}
         </div>
       </div>
 

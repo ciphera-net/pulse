@@ -285,9 +285,9 @@ export default function PricingSection() {
                 {isTeam && (
                   <>
                     <div className="absolute top-0 left-0 w-full h-1 bg-brand-orange" />
-                    <div className="absolute top-4 right-4 bg-brand-orange/10 text-brand-orange text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wide">
+                    <span className="absolute top-4 right-4 badge-primary">
                       Most Popular
-                    </div>
+                    </span>
                   </>
                 )}
                 

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { formatNumber } from '@/lib/utils/format'
 import { getBrowserIcon, getOSIcon, getDeviceIcon } from '@/lib/utils/icons'
 import { MdMonitor } from 'react-icons/md'
-import { Modal } from '@ciphera-net/ui'
+import { Modal, GridIcon } from '@ciphera-net/ui'
 import { getBrowsers, getOS, getDevices, getScreenResolutions } from '@/lib/api/stats'
 
 interface TechSpecsProps {
@@ -165,8 +165,16 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
               ))}
             </>
           ) : (
-            <div className="h-full flex flex-col items-center justify-center">
-              <p className="text-neutral-600 dark:text-neutral-400">No data available</p>
+            <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
+              <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
+                <GridIcon className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
+              </div>
+              <h4 className="font-semibold text-neutral-900 dark:text-white">
+                No technology data yet
+              </h4>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400 max-w-xs">
+                Browser, OS, and device information will appear as visitors arrive.
+              </p>
             </div>
           )}
         </div>
