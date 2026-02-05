@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth/context'
 import { 
   deleteOrganization, 
@@ -38,7 +38,11 @@ import { Button, Input } from '@ciphera-net/ui'
 export default function OrganizationSettings() {
   const { user } = useAuth()
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<'general' | 'members' | 'billing'>('general')
+  const searchParams = useSearchParams()
+  const [activeTab, setActiveTab] = useState<'general' | 'members' | 'billing'>(() => {
+    const tab = searchParams.get('tab')
+    return tab === 'billing' || tab === 'members' ? tab : 'general'
+  })
 
   const [showDeletePrompt, setShowDeletePrompt] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState('')
@@ -134,6 +138,13 @@ export default function OrganizationSettings() {
       setIsLoadingMembers(false)
     }
   }, [currentOrgId, loadMembers])
+
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if ((tab === 'billing' || tab === 'members') && tab !== activeTab) {
+      setActiveTab(tab)
+    }
+  }, [searchParams, activeTab])
 
   useEffect(() => {
     if (activeTab === 'billing' && currentOrgId) {
@@ -593,7 +604,25 @@ export default function OrganizationSettings() {
                         )}
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-neutral-200 dark:border-neutral-800">
+                      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 pt-6 border-t border-neutral-200 dark:border-neutral-800">
+                        <div>
+                          <div className="text-sm text-neutral-500 mb-1">Sites</div>
+                          <div className="font-medium text-neutral-900 dark:text-white">
+                            {typeof subscription.sites_count === 'number'
+                              ? subscription.plan_id === 'solo'
+                                ? `${subscription.sites_count} / 1`
+                                : `${subscription.sites_count}`
+                              : '—'}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-sm text-neutral-500 mb-1">Pageviews this period</div>
+                          <div className="font-medium text-neutral-900 dark:text-white">
+                            {subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number'
+                              ? `${subscription.pageview_usage.toLocaleString()} / ${subscription.pageview_limit.toLocaleString()}`
+                              : '—'}
+                          </div>
+                        </div>
                         <div>
                           <div className="text-sm text-neutral-500 mb-1">Billing Interval</div>
                           <div className="font-medium text-neutral-900 dark:text-white capitalize">
@@ -603,7 +632,7 @@ export default function OrganizationSettings() {
                         <div>
                           <div className="text-sm text-neutral-500 mb-1">Pageview Limit</div>
                           <div className="font-medium text-neutral-900 dark:text-white">
-                            {subscription.pageview_limit.toLocaleString()} / month
+                            {subscription.pageview_limit > 0 ? `${subscription.pageview_limit.toLocaleString()} / month` : 'Unlimited'}
                           </div>
                         </div>
                         <div>
