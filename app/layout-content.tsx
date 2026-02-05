@@ -1,7 +1,8 @@
 'use client'
 
 import { OfflineBanner } from '@/components/OfflineBanner'
-import { Header, Footer, GridIcon } from '@ciphera-net/ui'
+import { Footer } from '@/components/Footer'
+import { Header, GridIcon } from '@ciphera-net/ui'
 import { useAuth } from '@/lib/auth/context'
 import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus'
 import Link from 'next/link'
@@ -82,8 +83,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
       <Footer 
         LinkComponent={Link}
         appName="Pulse"
-        showPricing={true}
-        showSecurity={false}
+        isAuthenticated={!!auth.user}
       />
     </>
   )
