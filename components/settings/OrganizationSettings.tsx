@@ -490,7 +490,7 @@ export default function OrganizationSettings() {
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">Irreversible actions for this organization.</p>
                   </div>
 
-                  <div className="p-4 border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/10 rounded-xl flex items-center justify-between">
+                  <div className="p-4 border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/10 rounded-2xl flex items-center justify-between">
                     <div>
                       <h3 className="font-medium text-red-900 dark:text-red-200">Delete Organization</h3>
                       <p className="text-sm text-red-700 dark:text-red-300 mt-1">Permanently delete this organization and all its data.</p>
@@ -513,7 +513,7 @@ export default function OrganizationSettings() {
                   <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-1">Organization Members</h2>
                   <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6">Manage who has access to this organization.</p>
                   
-                  <div className="bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-xl p-4">
+                  <div className="bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4">
                     <h3 className="text-sm font-medium text-neutral-900 dark:text-white mb-3">Invite New Member</h3>
                     <form onSubmit={handleSendInvite} className="flex gap-3 items-end">
                       <div className="flex-1">
@@ -647,7 +647,7 @@ export default function OrganizationSettings() {
                     Loading subscription details...
                   </div>
                 ) : !subscription ? (
-                  <div className="p-8 text-center bg-neutral-50 dark:bg-neutral-900/50 rounded-xl border border-neutral-200 dark:border-neutral-800">
+                  <div className="p-8 text-center bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-200 dark:border-neutral-800">
                     <p className="text-neutral-500">Could not load subscription details.</p>
                     <Button 
                       variant="ghost" 
@@ -660,7 +660,7 @@ export default function OrganizationSettings() {
                 ) : (
                   <div className="space-y-8">
                     {/* Current Plan */}
-                    <div className="bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6">
+                    <div className="bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6">
                       <div className="flex items-start justify-between mb-6">
                         <div>
                           <h3 className="text-sm font-medium text-neutral-500 uppercase tracking-wider mb-1">Current Plan</h3>
@@ -738,7 +738,7 @@ export default function OrganizationSettings() {
                     </div>
 
                     {!subscription.has_payment_method && (
-                      <div className="p-6 bg-brand-orange/5 border border-brand-orange/20 rounded-xl">
+                      <div className="p-6 bg-brand-orange/5 border border-brand-orange/20 rounded-2xl">
                         <h3 className="font-medium text-brand-orange mb-2">Upgrade to Pro</h3>
                         <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
                           Get higher limits, more data retention, and priority support.
@@ -829,7 +829,7 @@ export default function OrganizationSettings() {
                 </div>
 
                 {/* Advanced Filters */}
-                <div className="bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-xl p-4 mb-6">
+                <div className="bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 mb-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="space-y-1">
                       <label className="block text-xs font-medium text-neutral-500 uppercase">Log ID</label>

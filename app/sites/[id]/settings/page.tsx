@@ -396,7 +396,7 @@ export default function SiteSettingsPage() {
                         required
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-xl bg-neutral-50/50 dark:bg-neutral-900/50 focus:bg-white dark:focus:bg-neutral-900 
+                        className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-lg bg-neutral-50/50 dark:bg-neutral-900/50 focus:bg-white dark:focus:bg-neutral-900 
                         focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all duration-200 dark:text-white"
                       />
                     </div>
@@ -424,7 +424,7 @@ export default function SiteSettingsPage() {
                         type="text"
                         value={site.domain}
                         disabled
-                        className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-xl bg-neutral-100 dark:bg-neutral-800/50 text-neutral-500 dark:text-neutral-400 cursor-not-allowed"
+                        className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-lg bg-neutral-100 dark:bg-neutral-800/50 text-neutral-500 dark:text-neutral-400 cursor-not-allowed"
                       />
                       <p className="text-xs text-neutral-500 dark:text-neutral-400">
                         Domain cannot be changed after creation
@@ -495,7 +495,7 @@ export default function SiteSettingsPage() {
                   </div>
 
                   <div className="space-y-4">
-                    <div className="p-4 border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/10 rounded-xl flex items-center justify-between">
+                    <div className="p-4 border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/10 rounded-2xl flex items-center justify-between">
                       <div>
                         <h3 className="font-medium text-red-900 dark:text-red-200">Reset Data</h3>
                         <p className="text-sm text-red-700 dark:text-red-300 mt-1">Delete all stats and events. This cannot be undone.</p>
@@ -508,7 +508,7 @@ export default function SiteSettingsPage() {
                       </button>
                     </div>
 
-                    <div className="p-4 border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/10 rounded-xl flex items-center justify-between">
+                    <div className="p-4 border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/10 rounded-2xl flex items-center justify-between">
                       <div>
                         <h3 className="font-medium text-red-900 dark:text-red-200">Delete Site</h3>
                         <p className="text-sm text-red-700 dark:text-red-300 mt-1">Permanently delete this site and all data.</p>
@@ -534,7 +534,7 @@ export default function SiteSettingsPage() {
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">Manage who can view your dashboard.</p>
                   </div>
 
-                  <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-xl border border-neutral-100 dark:border-neutral-800">
+                  <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="p-2 bg-white dark:bg-neutral-800 rounded-lg text-neutral-400">
@@ -576,7 +576,7 @@ export default function SiteSettingsPage() {
                                 type="text"
                                 readOnly
                                 value={`${APP_URL}/share/${siteId}`}
-                                className="flex-1 px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-xl bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 font-mono text-sm"
+                                className="flex-1 px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-lg bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 font-mono text-sm"
                               />
                               <button
                                 type="button"
@@ -673,7 +673,7 @@ export default function SiteSettingsPage() {
                     <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Data Collection</h3>
 
                     {/* Page Paths Toggle */}
-                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-xl border border-neutral-100 dark:border-neutral-800">
+                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="font-medium text-neutral-900 dark:text-white">Page Paths</h4>
@@ -694,7 +694,7 @@ export default function SiteSettingsPage() {
                     </div>
 
                     {/* Referrers Toggle */}
-                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-xl border border-neutral-100 dark:border-neutral-800">
+                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="font-medium text-neutral-900 dark:text-white">Referrers</h4>
@@ -715,7 +715,7 @@ export default function SiteSettingsPage() {
                     </div>
 
                     {/* Device Info Toggle */}
-                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-xl border border-neutral-100 dark:border-neutral-800">
+                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="font-medium text-neutral-900 dark:text-white">Device Info</h4>
@@ -736,7 +736,7 @@ export default function SiteSettingsPage() {
                     </div>
 
                     {/* Geographic Data Dropdown */}
-                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-xl border border-neutral-100 dark:border-neutral-800">
+                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="font-medium text-neutral-900 dark:text-white">Geographic Data</h4>
@@ -760,7 +760,7 @@ export default function SiteSettingsPage() {
                     </div>
 
                     {/* Screen Resolution Toggle */}
-                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-xl border border-neutral-100 dark:border-neutral-800">
+                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="font-medium text-neutral-900 dark:text-white">Screen Resolution</h4>
@@ -784,7 +784,7 @@ export default function SiteSettingsPage() {
                   {/* Bot and noise filtering */}
                   <div className="space-y-4 pt-6 border-t border-neutral-100 dark:border-neutral-800">
                     <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Filtering</h3>
-                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-xl border border-neutral-100 dark:border-neutral-800">
+                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="font-medium text-neutral-900 dark:text-white">Filter bots and referrer spam</h4>
@@ -808,7 +808,7 @@ export default function SiteSettingsPage() {
                   {/* Performance Insights Toggle */}
                   <div className="space-y-4 pt-6 border-t border-neutral-100 dark:border-neutral-800">
                     <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Performance Insights</h3>
-                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-xl border border-neutral-100 dark:border-neutral-800">
+                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="font-medium text-neutral-900 dark:text-white">Performance Insights (Add-on)</h4>
@@ -843,7 +843,7 @@ export default function SiteSettingsPage() {
                           value={formData.excluded_paths}
                           onChange={(e) => setFormData({ ...formData, excluded_paths: e.target.value })}
                           placeholder="/admin/*&#10;/staging/*"
-                          className="w-full px-4 py-3 border border-neutral-200 dark:border-neutral-800 rounded-xl bg-neutral-50/50 dark:bg-neutral-900/50 focus:bg-white dark:focus:bg-neutral-900
+                          className="w-full px-4 py-3 border border-neutral-200 dark:border-neutral-800 rounded-lg bg-neutral-50/50 dark:bg-neutral-900/50 focus:bg-white dark:focus:bg-neutral-900
                           focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all duration-200 dark:text-white font-mono text-sm"
                         />
                       </div>
@@ -937,14 +937,14 @@ export default function SiteSettingsPage() {
                     )}
                     <div className="space-y-2">
                       {goals.length === 0 ? (
-                        <div className="p-6 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50 text-center text-neutral-500 dark:text-neutral-400 text-sm">
+                        <div className="p-6 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50 text-center text-neutral-500 dark:text-neutral-400 text-sm">
                           No goals yet. Add a goal to give custom events a display name in the dashboard.
                         </div>
                       ) : (
                         goals.map((goal) => (
                           <div
                             key={goal.id}
-                            className="flex items-center justify-between py-3 px-4 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50"
+                            className="flex items-center justify-between py-3 px-4 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50"
                           >
                             <div>
                               <span className="font-medium text-neutral-900 dark:text-white">{goal.name}</span>
@@ -994,7 +994,7 @@ export default function SiteSettingsPage() {
               value={goalForm.name}
               onChange={(e) => setGoalForm({ ...goalForm, name: e.target.value })}
               placeholder="e.g. Signups"
-              className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-xl bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white"
+              className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white"
               required
             />
           </div>
@@ -1005,7 +1005,7 @@ export default function SiteSettingsPage() {
               value={goalForm.event_name}
               onChange={(e) => setGoalForm({ ...goalForm, event_name: e.target.value })}
               placeholder="e.g. signup_click (letters, numbers, underscores only)"
-              className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-xl bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white"
+              className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white"
               required
             />
             <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">Only letters, numbers, and underscores; spaces become underscores. Invalid characters cannot be used. Max 64 characters after formatting.</p>
