@@ -177,8 +177,8 @@ export default function OrganizationSettings() {
       if (auditStartDate) params.start_date = auditStartDate
       if (auditEndDate) params.end_date = auditEndDate
       const { entries, total } = await getAuditLog(params)
-      setAuditEntries(entries)
-      setAuditTotal(total)
+      setAuditEntries(Array.isArray(entries) ? entries : [])
+      setAuditTotal(typeof total === 'number' ? total : 0)
     } catch (error) {
       console.error('Failed to load audit log', error)
       toast.error(getAuthErrorMessage(error as Error) || 'Failed to load audit log')
@@ -842,7 +842,7 @@ export default function OrganizationSettings() {
                       <div className="animate-spin w-6 h-6 border-2 border-neutral-400 border-t-transparent rounded-full mx-auto mb-3"></div>
                       Loading audit log...
                     </div>
-                  ) : auditEntries.length === 0 ? (
+                  ) : (auditEntries ?? []).length === 0 ? (
                     <div className="p-8 text-center text-neutral-500">No audit events found.</div>
                   ) : (
                     <div className="overflow-x-auto">
@@ -857,7 +857,7 @@ export default function OrganizationSettings() {
                           </tr>
                         </thead>
                         <tbody>
-                          {auditEntries.map((entry) => (
+                          {(auditEntries ?? []).map((entry) => (
                             <tr key={entry.id} className="border-b border-neutral-100 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800/30">
                               <td className="px-4 py-3 text-neutral-600 dark:text-neutral-400 whitespace-nowrap">
                                 {new Date(entry.occurred_at).toLocaleString()}
