@@ -141,10 +141,10 @@ export default function OrganizationSettings() {
 
   useEffect(() => {
     const tab = searchParams.get('tab')
-    if (tab === 'billing' || tab === 'members') {
+    if ((tab === 'billing' || tab === 'members') && tab !== activeTab) {
       setActiveTab(tab)
     }
-  }, [searchParams])
+  }, [searchParams, activeTab])
 
   useEffect(() => {
     if (activeTab === 'billing' && currentOrgId) {

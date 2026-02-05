@@ -305,7 +305,7 @@ export default function HomePage() {
               {(typeof subscription.sites_count === 'number' || (subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number')) && (
                 <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
                   {typeof subscription.sites_count === 'number' && (
-                    <span>Sites: {subscription.plan_id === 'solo' ? `${subscription.sites_count}/1` : subscription.sites_count}</span>
+                    <span>Sites: {subscription.plan_id === 'solo' && subscription.sites_count > 0 ? `${subscription.sites_count}/1` : subscription.sites_count}</span>
                   )}
                   {typeof subscription.sites_count === 'number' && subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number' && ' · '}
                   {subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number' && (
