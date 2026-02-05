@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth/context'
 import { 
@@ -90,6 +90,24 @@ export default function OrganizationSettings() {
   const [auditStartDate, setAuditStartDate] = useState('')
   const [auditEndDate, setAuditEndDate] = useState('')
 
+  // Refs for filters to keep loadAudit stable and avoid rapid re-renders
+  const filtersRef = useRef({
+    action: auditActionFilter,
+    logId: auditLogIdFilter,
+    startDate: auditStartDate,
+    endDate: auditEndDate
+  })
+
+  // Update refs when state changes
+  useEffect(() => {
+    filtersRef.current = {
+      action: auditActionFilter,
+      logId: auditLogIdFilter,
+      startDate: auditStartDate,
+      endDate: auditEndDate
+    }
+  }, [auditActionFilter, auditLogIdFilter, auditStartDate, auditEndDate])
+
   const getOrgIdFromToken = () => {
     return user?.org_id || null
   }
@@ -174,10 +192,10 @@ export default function OrganizationSettings() {
         limit: auditPageSize,
         offset: auditPage * auditPageSize,
       }
-      if (auditActionFilter) params.action = auditActionFilter
-      if (auditLogIdFilter) params.log_id = auditLogIdFilter
-      if (auditStartDate) params.start_date = auditStartDate
-      if (auditEndDate) params.end_date = auditEndDate
+      if (filtersRef.current.action) params.action = filtersRef.current.action
+      if (filtersRef.current.logId) params.log_id = filtersRef.current.logId
+      if (filtersRef.current.startDate) params.start_date = filtersRef.current.startDate
+      if (filtersRef.current.endDate) params.end_date = filtersRef.current.endDate
       const { entries, total } = await getAuditLog(params)
       setAuditEntries(Array.isArray(entries) ? entries : [])
       setAuditTotal(typeof total === 'number' ? total : 0)
@@ -187,7 +205,18 @@ export default function OrganizationSettings() {
     } finally {
       setIsLoadingAudit(false)
     }
-  }, [currentOrgId, auditPage, auditActionFilter, auditLogIdFilter, auditStartDate, auditEndDate])
+  }, [currentOrgId, auditPage])
+
+  // Debounced filter change handler
+  useEffect(() => {
+    if (activeTab !== 'audit') return
+    
+    const timer = setTimeout(() => {
+        setAuditPage(0) // Reset page on filter change
+        loadAudit()
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [auditActionFilter, auditLogIdFilter, auditStartDate, auditEndDate, loadAudit])
 
   useEffect(() => {
     if (activeTab === 'audit' && currentOrgId) {
@@ -306,6 +335,11 @@ export default function OrganizationSettings() {
   // We can find the current user's membership entry which has org name.
   const currentOrgName = members.find(m => m.user_id === user?.id)?.organization_name || 'Organization'
 
+  const handleTabChange = (tab: 'general' | 'members' | 'billing' | 'audit') => {
+    setActiveTab(tab)
+    router.push(`?tab=${tab}`)
+  }
+
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <div>
@@ -319,7 +353,7 @@ export default function OrganizationSettings() {
         {/* Sidebar Navigation */}
         <nav className="w-full md:w-64 flex-shrink-0 space-y-1">
           <button
-            onClick={() => setActiveTab('general')}
+            onClick={() => handleTabChange('general')}
             className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
               activeTab === 'general'
                 ? 'bg-brand-orange/10 text-brand-orange'
@@ -330,7 +364,7 @@ export default function OrganizationSettings() {
             General
           </button>
           <button
-            onClick={() => setActiveTab('members')}
+            onClick={() => handleTabChange('members')}
             className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
               activeTab === 'members'
                 ? 'bg-brand-orange/10 text-brand-orange'
@@ -341,7 +375,7 @@ export default function OrganizationSettings() {
             Members
           </button>
           <button
-            onClick={() => setActiveTab('billing')}
+            onClick={() => handleTabChange('billing')}
             className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
               activeTab === 'billing'
                 ? 'bg-brand-orange/10 text-brand-orange'
@@ -352,7 +386,7 @@ export default function OrganizationSettings() {
             Billing
           </button>
           <button
-            onClick={() => setActiveTab('audit')}
+            onClick={() => handleTabChange('audit')}
             className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
               activeTab === 'audit'
                 ? 'bg-brand-orange/10 text-brand-orange'
