@@ -99,15 +99,13 @@ export default function OrganizationSettings() {
     endDate: auditEndDate
   })
 
-  // Update refs when state changes
-  useEffect(() => {
-    filtersRef.current = {
-      action: auditActionFilter,
-      logId: auditLogIdFilter,
-      startDate: auditStartDate,
-      endDate: auditEndDate
-    }
-  }, [auditActionFilter, auditLogIdFilter, auditStartDate, auditEndDate])
+  // Update refs when state changes (no useEffect needed)
+  filtersRef.current = {
+    action: auditActionFilter,
+    logId: auditLogIdFilter,
+    startDate: auditStartDate,
+    endDate: auditEndDate
+  }
 
   const getOrgIdFromToken = () => {
     return user?.org_id || null
@@ -881,6 +879,7 @@ export default function OrganizationSettings() {
                             setAuditStartDate('')
                             setAuditEndDate('')
                             setAuditPage(0)
+                            setAuditFetchTrigger(prev => prev + 1)
                         }}
                         disabled={isLoadingAudit}
                     >
