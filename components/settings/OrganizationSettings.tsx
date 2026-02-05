@@ -171,8 +171,9 @@ export default function OrganizationSettings() {
 
   useEffect(() => {
     const tab = searchParams.get('tab')
-    if ((tab === 'billing' || tab === 'members' || tab === 'audit') && tab !== activeTab) {
-      setActiveTab(tab)
+    const validTab = (tab === 'billing' || tab === 'members' || tab === 'audit') ? tab : 'general'
+    if (validTab !== activeTab) {
+      setActiveTab(validTab)
     }
   }, [searchParams, activeTab])
 
