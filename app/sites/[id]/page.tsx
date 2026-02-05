@@ -8,7 +8,7 @@ import { getStats, getRealtime, getDailyStats, getTopPages, getTopReferrers, get
 import { formatNumber, formatDuration, getDateRange } from '@/lib/utils/format'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@/lib/utils/authErrors'
-import { LoadingOverlay } from '@ciphera-net/ui'
+import { LoadingOverlay, Button } from '@ciphera-net/ui'
 import { Select, DatePicker, DownloadIcon } from '@ciphera-net/ui'
 import ExportModal from '@/components/dashboard/ExportModal'
 import ContentStats from '@/components/dashboard/ContentStats'
@@ -297,19 +297,21 @@ export default function SiteDashboardPage() {
                 { value: 'custom', label: 'Custom' },
               ]}
             />
-            <button
+            <Button
               onClick={() => router.push(`/sites/${siteId}/funnels`)}
-              className="btn-secondary text-sm"
+              variant="secondary"
+              className="text-sm"
             >
               Funnels
-            </button>
+            </Button>
             {canEdit && (
-            <button
+            <Button
               onClick={() => router.push(`/sites/${siteId}/settings`)}
-              className="btn-secondary text-sm"
+              variant="secondary"
+              className="text-sm"
             >
               Settings
-            </button>
+            </Button>
             )}
           </div>
         </div>
