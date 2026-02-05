@@ -11,7 +11,6 @@ export interface AuditLogEntry {
   actor_email?: string
   action: string
   resource_type: string
-  resource_id?: string
   occurred_at: string
   payload?: Record<string, unknown>
 }
