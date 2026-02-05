@@ -92,8 +92,9 @@ export default function Campaigns({ siteId, dateRange }: CampaignsProps) {
         </div>
 
         {isLoading ? (
-          <div className="space-y-2 flex-1 min-h-[270px] flex flex-col items-center justify-center">
-            <p className="text-neutral-500">Loading...</p>
+          <div className="space-y-2 flex-1 min-h-[270px] flex flex-col items-center justify-center gap-2">
+            <div className="animate-spin w-6 h-6 border-2 border-neutral-300 dark:border-neutral-700 border-t-brand-orange rounded-full" />
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading...</p>
           </div>
         ) : hasData ? (
           <div className="space-y-2 flex-1 min-h-[270px]">
@@ -152,7 +153,10 @@ export default function Campaigns({ siteId, dateRange }: CampaignsProps) {
       >
         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
           {isLoadingFull ? (
-            <div className="py-4 text-center text-neutral-500">Loading...</div>
+            <div className="py-8 flex flex-col items-center gap-2">
+              <div className="animate-spin w-6 h-6 border-2 border-neutral-300 dark:border-neutral-700 border-t-brand-orange rounded-full" />
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading...</p>
+            </div>
           ) : (
             <>
               <div className="grid grid-cols-12 gap-2 text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-2 px-2 sticky top-0 bg-white dark:bg-neutral-900 py-2 z-10">

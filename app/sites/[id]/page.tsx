@@ -3,6 +3,7 @@
 import { useAuth } from '@/lib/auth/context'
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import { motion } from 'framer-motion'
 import { getSite, type Site } from '@/lib/api/sites'
 import { getStats, getRealtime, getDailyStats, getTopPages, getTopReferrers, getCountries, getCities, getRegions, getBrowsers, getOS, getDevices, getScreenResolutions, getEntryPages, getExitPages, getDashboard, getPerformanceByPage, type Stats, type DailyStat, type PerformanceByPageStat } from '@/lib/api/stats'
 import { formatNumber, formatDuration, getDateRange } from '@/lib/utils/format'
@@ -225,7 +226,12 @@ export default function SiteDashboardPage() {
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2 }}
+      className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8"
+    >
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">
@@ -417,6 +423,6 @@ export default function SiteDashboardPage() {
         topPages={topPages}
         topReferrers={topReferrers}
       />
-    </div>
+    </motion.div>
   )
 }

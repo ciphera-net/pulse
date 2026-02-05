@@ -115,7 +115,10 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
       >
         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
           {isLoadingFull ? (
-            <div className="py-4 text-center text-neutral-500">Loading...</div>
+            <div className="py-8 flex flex-col items-center gap-2">
+              <div className="animate-spin w-6 h-6 border-2 border-neutral-300 dark:border-neutral-700 border-t-brand-orange rounded-full" />
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading...</p>
+            </div>
           ) : (
             (fullData.length > 0 ? fullData : filteredReferrers).map((ref, index) => (
               <div key={index} className="flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
