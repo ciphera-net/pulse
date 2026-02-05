@@ -116,7 +116,7 @@ export default function RealtimePage() {
 
       <div className="flex flex-1 gap-6 min-h-0">
         {/* Visitors List */}
-        <div className="w-1/3 border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden flex flex-col bg-white dark:bg-neutral-900">
+        <div className="w-1/3 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden flex flex-col bg-white dark:bg-neutral-900">
           <div className="p-4 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50">
             <h2 className="font-semibold text-neutral-900 dark:text-white">Active Sessions</h2>
           </div>
@@ -164,7 +164,7 @@ export default function RealtimePage() {
         </div>
 
         {/* Session Details */}
-        <div className="flex-1 border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden flex flex-col bg-white dark:bg-neutral-900">
+        <div className="flex-1 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden flex flex-col bg-white dark:bg-neutral-900">
             <div className="p-4 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50 flex justify-between items-center">
                 <h2 className="font-semibold text-neutral-900 dark:text-white">
                     {selectedVisitor ? 'Session Journey' : 'Select a visitor'}

@@ -252,7 +252,7 @@ export default function PricingSection() {
             <div className="bg-neutral-200 dark:bg-neutral-800 p-1 rounded-lg flex">
               <button
                 onClick={() => setIsYearly(false)}
-                className={`min-w-[88px] px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                className={`min-w-[88px] px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                   !isYearly
                     ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
                     : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
@@ -262,7 +262,7 @@ export default function PricingSection() {
               </button>
               <button
                 onClick={() => setIsYearly(true)}
-                className={`min-w-[88px] px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                className={`min-w-[88px] px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                   isYearly
                     ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
                     : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white'

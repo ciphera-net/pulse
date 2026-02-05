@@ -197,7 +197,7 @@ export default function FunnelReportPage() {
         </div>
 
         {/* Chart */}
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden shadow-sm p-6 mb-8">
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm p-6 mb-8">
           <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-6">
             Funnel Visualization
           </h3>
@@ -262,7 +262,7 @@ export default function FunnelReportPage() {
         </div>
 
         {/* Detailed Stats Table */}
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden">
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="bg-neutral-50 dark:bg-neutral-800/50 border-b border-neutral-200 dark:border-neutral-800">

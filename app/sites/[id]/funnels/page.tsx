@@ -76,7 +76,7 @@ export default function FunnelsPage() {
         </div>
 
         {funnels.length === 0 ? (
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-12 text-center">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-12 text-center">
             <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4 mx-auto mb-4 w-fit">
               <ArrowRightIcon className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
             </div>
@@ -101,7 +101,7 @@ export default function FunnelsPage() {
                 href={`/sites/${siteId}/funnels/${funnel.id}`}
                 className="block group"
               >
-                <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 hover:border-brand-orange/50 transition-colors">
+                <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 hover:border-brand-orange/50 transition-colors">
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-lg font-medium text-neutral-900 dark:text-white group-hover:text-brand-orange transition-colors">
