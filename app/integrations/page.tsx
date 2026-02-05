@@ -107,10 +107,17 @@ export default function IntegrationsPage() {
                 View Guide <span aria-hidden="true">&rarr;</span>
               </span>
             </Link>
+            </motion.div>
           ))}
           
           {/* * Request Integration Card */}
-          <div className="p-8 border border-dashed border-neutral-300 dark:border-neutral-700 rounded-2xl flex flex-col items-center justify-center text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: integrations.length * 0.1 }}
+            className="p-8 border border-dashed border-neutral-300 dark:border-neutral-700 rounded-2xl flex flex-col items-center justify-center text-center"
+          >
             <h3 className="text-lg font-bold text-neutral-900 dark:text-white mb-2">
               Missing something?
             </h3>
