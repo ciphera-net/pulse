@@ -76,7 +76,7 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
                 width={36}
                 height={36}
                 loading="lazy"
-                className="w-9 h-9 group-hover:scale-105 transition-transform duration-300"
+                className="w-9 h-9 object-contain group-hover:scale-105 transition-transform duration-300"
               />
               <span className="text-xl font-bold text-neutral-900 dark:text-white group-hover:text-brand-orange transition-colors duration-300">
                 Pulse
@@ -212,9 +212,12 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
         <div className="h-px w-full bg-gradient-to-r from-transparent via-neutral-200 dark:via-neutral-800 to-transparent my-8" />
 
         {/* * Bottom bar */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-sm text-neutral-500 dark:text-neutral-400">
             © 2024-{year} Ciphera. All rights reserved.
+          </p>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+            Where Privacy Still Exists
           </p>
         </div>
       </div>
