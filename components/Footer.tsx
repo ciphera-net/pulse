@@ -25,7 +25,10 @@ const footerLinks = {
     { name: 'Contact', href: 'https://ciphera.net/contact', external: true },
   ],
   resources: [
+    { name: 'Installation', href: '/installation', external: false },
+    { name: 'Integrations', href: '/integrations', external: false },
     { name: 'Documentation', href: 'https://docs.ciphera.net', external: true },
+    { name: 'Status', href: 'https://status.ciphera.net', external: true },
     { name: 'GitHub', href: 'https://github.com/ciphera-net', external: true },
   ],
   legal: [
@@ -50,6 +53,9 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
             <div className="flex gap-6 text-sm font-medium text-neutral-600 dark:text-neutral-300">
               <Component href="/about" className="hover:text-brand-orange transition-colors">
                 Why {appName}
+              </Component>
+              <Component href="/pricing" className="hover:text-brand-orange transition-colors">
+                Pricing
               </Component>
               <Component href="/faq" className="hover:text-brand-orange transition-colors">
                 FAQ
@@ -91,7 +97,7 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
               </span>
               <span>Swiss infrastructure</span>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 mb-6">
               <a
                 href="https://github.com/ciphera-net"
                 target="_blank"
@@ -110,6 +116,27 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
               >
                 <TwitterIcon className="w-5 h-5" />
               </a>
+            </div>
+            
+            {/* * Newsletter signup */}
+            <div>
+              <p className="text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-2">
+                Stay updated
+              </p>
+              <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); /* TODO: Implement newsletter signup */ }}>
+                <input
+                  type="email"
+                  placeholder="your@email.com"
+                  className="flex-1 min-w-0 px-3 py-1.5 text-xs rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:ring-2 focus:ring-brand-orange/20 focus:border-brand-orange outline-none"
+                  required
+                />
+                <button
+                  type="submit"
+                  className="px-3 py-1.5 text-xs font-medium bg-brand-orange text-white rounded-lg hover:bg-brand-orange/90 transition-colors"
+                >
+                  Subscribe
+                </button>
+              </form>
             </div>
           </div>
 
@@ -175,14 +202,23 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
             <ul className="space-y-3">
               {footerLinks.resources.map((link) => (
                 <li key={link.name}>
-                  <a
-                    href={link.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors"
-                  >
-                    {link.name}
-                  </a>
+                  {link.external ? (
+                    <a
+                      href={link.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors"
+                    >
+                      {link.name}
+                    </a>
+                  ) : (
+                    <Component
+                      href={link.href}
+                      className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors"
+                    >
+                      {link.name}
+                    </Component>
+                  )}
                 </li>
               ))}
             </ul>
