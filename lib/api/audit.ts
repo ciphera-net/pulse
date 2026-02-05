@@ -20,6 +20,7 @@ export interface GetAuditLogParams {
   limit?: number
   offset?: number
   action?: string
+  log_id?: string
   start_date?: string
   end_date?: string
 }
@@ -63,6 +64,7 @@ export async function getAuditLog(params: GetAuditLogParams = {}): Promise<GetAu
   if (params.limit != null) search.set('limit', String(params.limit))
   if (params.offset != null) search.set('offset', String(params.offset))
   if (params.action) search.set('action', params.action)
+  if (params.log_id) search.set('log_id', params.log_id)
   if (params.start_date) search.set('start_date', params.start_date)
   if (params.end_date) search.set('end_date', params.end_date)
   const qs = search.toString()
