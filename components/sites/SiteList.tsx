@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { Site } from '@/lib/api/sites'
-import { BarChartIcon, SettingsIcon, BookOpenIcon, ExternalLinkIcon } from '@ciphera-net/ui'
+import { BarChartIcon, SettingsIcon, BookOpenIcon, ExternalLinkIcon, Button } from '@ciphera-net/ui'
 import { useAuth } from '@/lib/auth/context'
 
 interface SiteListProps {
@@ -94,10 +94,12 @@ export default function SiteList({ sites, loading, onDelete }: SiteListProps) {
           <div className="mt-auto flex gap-2">
             <Link
               href={`/sites/${site.id}`}
-              className="btn-primary flex-1 justify-center text-center text-sm inline-flex items-center gap-2"
+              className="flex-1"
             >
-              <BarChartIcon className="w-4 h-4" />
-              View Dashboard
+              <Button variant="primary" className="w-full justify-center text-sm">
+                <BarChartIcon className="w-4 h-4" />
+                View Dashboard
+              </Button>
             </Link>
             {(user?.role === 'owner' || user?.role === 'admin') && (
               <button

@@ -200,10 +200,10 @@ export default function HomePage() {
 
             {/* * --- 4. CTAs --- */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-20">
-              <Button onClick={() => initiateOAuthFlow()} className="btn-primary px-8 py-4 text-lg shadow-lg shadow-brand-orange/20">
+              <Button onClick={() => initiateOAuthFlow()} variant="primary" className="px-8 py-4 text-lg shadow-lg shadow-brand-orange/20">
                 Get Started
               </Button>
-              <Button variant="secondary" onClick={() => initiateSignupFlow()} className="btn-secondary px-8 py-4 text-lg backdrop-blur-sm">
+              <Button onClick={() => initiateSignupFlow()} variant="secondary" className="px-8 py-4 text-lg">
                 Create Account
               </Button>
             </div>
@@ -237,7 +237,7 @@ export default function HomePage() {
           {/* * NEW: CTA BOTTOM */}
           <div className="text-center mb-20">
             <h2 className="text-3xl font-bold text-neutral-900 dark:text-white mb-6">Ready to switch?</h2>
-            <Button onClick={() => initiateOAuthFlow()} className="btn-primary px-8 py-4 text-lg shadow-lg shadow-brand-orange/20">
+            <Button onClick={() => initiateOAuthFlow()} variant="primary" className="px-8 py-4 text-lg shadow-lg shadow-brand-orange/20">
               Start your free trial
             </Button>
             <p className="mt-4 text-sm text-neutral-500">No credit card required • Cancel anytime</p>
@@ -265,12 +265,18 @@ export default function HomePage() {
             <span className="text-sm font-medium text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700">
               Limit reached (1/1)
             </span>
-            <Link href="/pricing" className="btn-primary text-sm bg-brand-orange hover:bg-brand-orange/90 border-transparent text-white shadow-lg shadow-brand-orange/20">
-              Upgrade
+            <Link href="/pricing">
+              <Button variant="primary" className="text-sm">
+                Upgrade
+              </Button>
             </Link>
           </div>
         ) : (
-          <Link href="/sites/new" className="btn-primary text-sm">Add New Site</Link>
+          <Link href="/sites/new">
+            <Button variant="primary" className="text-sm">
+              Add New Site
+            </Button>
+          </Link>
         )}
       </div>
 

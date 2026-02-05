@@ -331,11 +331,8 @@ export default function PricingSection() {
                 <Button 
                   onClick={() => handleSubscribe(plan.id)}
                   disabled={loadingPlan === plan.id || !!loadingPlan || !priceDetails}
-                  className={`w-full mb-8 ${
-                    isTeam 
-                      ? 'bg-brand-orange hover:bg-brand-orange/90 text-white shadow-lg shadow-brand-orange/20' 
-                      : 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100'
-                  }`}
+                  variant={isTeam ? 'primary' : 'secondary'}
+                  className="w-full mb-8"
                 >
                   {loadingPlan === plan.id ? 'Loading...' : !priceDetails ? 'Contact us' : 'Start free trial'}
                 </Button>
