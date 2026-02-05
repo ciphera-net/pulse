@@ -215,7 +215,7 @@ export default function OrganizationSettings() {
         setAuditFetchTrigger(prev => prev + 1) // Trigger fetch
     }, 500)
     return () => clearTimeout(timer)
-  }, [auditActionFilter, auditLogIdFilter, auditStartDate, auditEndDate, activeTab])
+  }, [auditActionFilter, auditLogIdFilter, auditStartDate, auditEndDate])
 
   useEffect(() => {
     if (activeTab === 'audit' && currentOrgId) {
@@ -335,7 +335,7 @@ export default function OrganizationSettings() {
   const currentOrgName = members.find(m => m.user_id === user?.id)?.organization_name || 'Organization'
 
   const handleTabChange = (tab: 'general' | 'members' | 'billing' | 'audit') => {
-    setActiveTab(tab)
+    // setActiveTab(tab) // Let the useEffect handle the state update based on URL
     router.push(`?tab=${tab}`)
   }
 
