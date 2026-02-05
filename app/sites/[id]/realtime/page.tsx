@@ -6,7 +6,7 @@ import { getSite, type Site } from '@/lib/api/sites'
 import { getRealtimeVisitors, getSessionDetails, type Visitor, type SessionEvent } from '@/lib/api/realtime'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@/lib/utils/authErrors'
-import { LoadingOverlay } from '@ciphera-net/ui'
+import { LoadingOverlay, UserIcon } from '@ciphera-net/ui'
 
 function formatTimeAgo(dateString: string) {
   const date = new Date(dateString)
@@ -122,8 +122,16 @@ export default function RealtimePage() {
           </div>
           <div className="overflow-y-auto flex-1">
             {visitors.length === 0 ? (
-              <div className="p-8 text-center text-neutral-500">
-                No active visitors right now.
+              <div className="p-8 flex flex-col items-center justify-center text-center gap-3">
+                <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-3">
+                  <UserIcon className="w-6 h-6 text-neutral-500 dark:text-neutral-400" />
+                </div>
+                <p className="text-sm font-medium text-neutral-900 dark:text-white">
+                  No active visitors right now
+                </p>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                  New visitors will appear here in real-time
+                </p>
               </div>
             ) : (
               <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
