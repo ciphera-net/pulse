@@ -7,6 +7,7 @@ import { getRealtimeVisitors, getSessionDetails, type Visitor, type SessionEvent
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@/lib/utils/authErrors'
 import { LoadingOverlay, UserIcon } from '@ciphera-net/ui'
+import { motion, AnimatePresence } from 'framer-motion'
 
 function formatTimeAgo(dateString: string) {
   const date = new Date(dateString)
@@ -135,14 +136,19 @@ export default function RealtimePage() {
               </div>
             ) : (
               <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
-                {visitors.map((visitor) => (
-                  <button
-                    key={visitor.session_id}
-                    onClick={() => handleSelectVisitor(visitor)}
-                    className={`w-full text-left p-4 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors ${
-                      selectedVisitor?.session_id === visitor.session_id ? 'bg-neutral-50 dark:bg-neutral-800/50 ring-1 ring-inset ring-neutral-200 dark:ring-neutral-700' : ''
-                    }`}
-                  >
+                <AnimatePresence mode="popLayout">
+                  {visitors.map((visitor) => (
+                    <motion.button
+                      key={visitor.session_id}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -10 }}
+                      transition={{ duration: 0.2 }}
+                      onClick={() => handleSelectVisitor(visitor)}
+                      className={`w-full text-left p-4 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors ${
+                        selectedVisitor?.session_id === visitor.session_id ? 'bg-neutral-50 dark:bg-neutral-800/50 ring-1 ring-inset ring-neutral-200 dark:ring-neutral-700' : ''
+                      }`}
+                    >
                     <div className="flex justify-between items-start mb-1">
                         <div className="font-medium text-neutral-900 dark:text-white truncate pr-2">
                              {visitor.country ? `${getFlagEmoji(visitor.country)} ${visitor.city || 'Unknown City'}` : 'Unknown Location'}
@@ -164,8 +170,9 @@ export default function RealtimePage() {
                             {visitor.pageviews} views
                         </span>
                     </div>
-                  </button>
-                ))}
+                  </motion.button>
+                  ))}
+                </AnimatePresence>
               </div>
             )}
           </div>

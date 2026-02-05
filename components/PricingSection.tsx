@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { motion } from 'framer-motion'
 import { Button, CheckCircleIcon } from '@ciphera-net/ui'
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
@@ -212,17 +213,27 @@ export default function PricingSection() {
 
   return (
     <section className="py-24 px-4 max-w-6xl mx-auto">
-      <div className="text-center mb-12">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="text-center mb-12"
+      >
         <h2 className="text-4xl md:text-5xl font-bold text-neutral-900 dark:text-white mb-6 tracking-tight">
           Transparent Pricing
         </h2>
         <p className="text-xl text-neutral-600 dark:text-neutral-400">
           Scale with your traffic. No hidden fees.
         </p>
-      </div>
+      </motion.div>
 
       {/* Unified Container */}
-      <div className="max-w-6xl mx-auto border border-neutral-200 dark:border-neutral-800 rounded-3xl bg-white/50 dark:bg-neutral-900/50 backdrop-blur-xl shadow-sm overflow-hidden mb-20">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.1 }}
+        className="max-w-6xl mx-auto border border-neutral-200 dark:border-neutral-800 rounded-3xl bg-white/50 dark:bg-neutral-900/50 backdrop-blur-xl shadow-sm overflow-hidden mb-20"
+      >
         
         {/* Top Toolbar */}
         <div className="p-8 border-b border-neutral-200 dark:border-neutral-800 flex flex-col md:flex-row items-center justify-between gap-8 bg-neutral-50/50 dark:bg-neutral-900/50">
@@ -380,7 +391,7 @@ export default function PricingSection() {
             </ul>
           </div>
         </div>
-      </div>
+      </motion.div>
     </section>
   )
 }
