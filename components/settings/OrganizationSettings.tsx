@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth/context'
 import { 
@@ -17,6 +17,7 @@ import {
   Organization
 } from '@/lib/api/organization'
 import { getSubscription, createPortalSession, getInvoices, SubscriptionDetails, Invoice } from '@/lib/api/billing'
+import { getAuditLog, AuditLogEntry, GetAuditLogParams } from '@/lib/api/audit'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@/lib/utils/authErrors'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -30,7 +31,8 @@ import {
   Captcha,
   BookOpenIcon,
   DownloadIcon,
-  ExternalLinkIcon
+  ExternalLinkIcon,
+  LayoutDashboardIcon
 } from '@ciphera-net/ui'
 // @ts-ignore
 import { Button, Input } from '@ciphera-net/ui'
@@ -39,9 +41,9 @@ export default function OrganizationSettings() {
   const { user } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [activeTab, setActiveTab] = useState<'general' | 'members' | 'billing'>(() => {
+  const [activeTab, setActiveTab] = useState<'general' | 'members' | 'billing' | 'audit'>(() => {
     const tab = searchParams.get('tab')
-    return tab === 'billing' || tab === 'members' ? tab : 'general'
+    return tab === 'billing' || tab === 'members' || tab === 'audit' ? tab : 'general'
   })
 
   const [showDeletePrompt, setShowDeletePrompt] = useState(false)
@@ -76,6 +78,34 @@ export default function OrganizationSettings() {
   const [orgName, setOrgName] = useState('')
   const [orgSlug, setOrgSlug] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+
+  // Audit log State
+  const [auditEntries, setAuditEntries] = useState<AuditLogEntry[]>([])
+  const [auditTotal, setAuditTotal] = useState(0)
+  const [isLoadingAudit, setIsLoadingAudit] = useState(false)
+  const [auditPage, setAuditPage] = useState(0)
+  const [auditFetchTrigger, setAuditFetchTrigger] = useState(0)
+  const auditPageSize = 20
+  const [auditActionFilter, setAuditActionFilter] = useState('')
+  const [auditLogIdFilter, setAuditLogIdFilter] = useState('')
+  const [auditStartDate, setAuditStartDate] = useState('')
+  const [auditEndDate, setAuditEndDate] = useState('')
+
+  // Refs for filters to keep loadAudit stable and avoid rapid re-renders
+  const filtersRef = useRef({
+    action: auditActionFilter,
+    logId: auditLogIdFilter,
+    startDate: auditStartDate,
+    endDate: auditEndDate
+  })
+
+  // Update refs when state changes (no useEffect needed)
+  filtersRef.current = {
+    action: auditActionFilter,
+    logId: auditLogIdFilter,
+    startDate: auditStartDate,
+    endDate: auditEndDate
+  }
 
   const getOrgIdFromToken = () => {
     return user?.org_id || null
@@ -141,7 +171,7 @@ export default function OrganizationSettings() {
 
   useEffect(() => {
     const tab = searchParams.get('tab')
-    if ((tab === 'billing' || tab === 'members') && tab !== activeTab) {
+    if ((tab === 'billing' || tab === 'members' || tab === 'audit') && tab !== activeTab) {
       setActiveTab(tab)
     }
   }, [searchParams, activeTab])
@@ -152,6 +182,46 @@ export default function OrganizationSettings() {
       loadInvoices()
     }
   }, [activeTab, currentOrgId, loadSubscription, loadInvoices])
+
+  const loadAudit = useCallback(async () => {
+    if (!currentOrgId) return
+    setIsLoadingAudit(true)
+    try {
+      const params: GetAuditLogParams = {
+        limit: auditPageSize,
+        offset: auditPage * auditPageSize,
+      }
+      if (filtersRef.current.action) params.action = filtersRef.current.action
+      if (filtersRef.current.logId) params.log_id = filtersRef.current.logId
+      if (filtersRef.current.startDate) params.start_date = filtersRef.current.startDate
+      if (filtersRef.current.endDate) params.end_date = filtersRef.current.endDate
+      const { entries, total } = await getAuditLog(params)
+      setAuditEntries(Array.isArray(entries) ? entries : [])
+      setAuditTotal(typeof total === 'number' ? total : 0)
+    } catch (error) {
+      console.error('Failed to load audit log', error)
+      toast.error(getAuthErrorMessage(error as Error) || 'Failed to load audit log')
+    } finally {
+      setIsLoadingAudit(false)
+    }
+  }, [currentOrgId, auditPage])
+
+  // Debounced filter change handler
+  useEffect(() => {
+    if (activeTab !== 'audit') return
+    
+    const timer = setTimeout(() => {
+        setAuditPage(0) // Reset page on filter change
+        setAuditFetchTrigger(prev => prev + 1) // Trigger fetch
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [auditActionFilter, auditLogIdFilter, auditStartDate, auditEndDate, activeTab])
+
+  useEffect(() => {
+    if (activeTab === 'audit' && currentOrgId) {
+      loadAudit()
+    }
+  }, [activeTab, currentOrgId, loadAudit, auditFetchTrigger])
 
   // If no org ID, we are in personal workspace, so don't show org settings
   if (!currentOrgId) {
@@ -264,6 +334,11 @@ export default function OrganizationSettings() {
   // We can find the current user's membership entry which has org name.
   const currentOrgName = members.find(m => m.user_id === user?.id)?.organization_name || 'Organization'
 
+  const handleTabChange = (tab: 'general' | 'members' | 'billing' | 'audit') => {
+    setActiveTab(tab)
+    router.push(`?tab=${tab}`)
+  }
+
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <div>
@@ -277,7 +352,7 @@ export default function OrganizationSettings() {
         {/* Sidebar Navigation */}
         <nav className="w-full md:w-64 flex-shrink-0 space-y-1">
           <button
-            onClick={() => setActiveTab('general')}
+            onClick={() => handleTabChange('general')}
             className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
               activeTab === 'general'
                 ? 'bg-brand-orange/10 text-brand-orange'
@@ -288,7 +363,7 @@ export default function OrganizationSettings() {
             General
           </button>
           <button
-            onClick={() => setActiveTab('members')}
+            onClick={() => handleTabChange('members')}
             className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
               activeTab === 'members'
                 ? 'bg-brand-orange/10 text-brand-orange'
@@ -299,7 +374,7 @@ export default function OrganizationSettings() {
             Members
           </button>
           <button
-            onClick={() => setActiveTab('billing')}
+            onClick={() => handleTabChange('billing')}
             className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
               activeTab === 'billing'
                 ? 'bg-brand-orange/10 text-brand-orange'
@@ -308,6 +383,17 @@ export default function OrganizationSettings() {
           >
             <BoxIcon className="w-5 h-5" />
             Billing
+          </button>
+          <button
+            onClick={() => handleTabChange('audit')}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
+              activeTab === 'audit'
+                ? 'bg-brand-orange/10 text-brand-orange'
+                : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+            }`}
+          >
+            <LayoutDashboardIcon className="w-5 h-5" />
+            Audit log
           </button>
         </nav>
 
@@ -732,6 +818,145 @@ export default function OrganizationSettings() {
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {activeTab === 'audit' && (
+              <div className="space-y-12">
+                <div>
+                  <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-1">Audit log</h2>
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400">Who did what and when for this organization.</p>
+                </div>
+
+                {/* Advanced Filters */}
+                <div className="bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-xl p-4 mb-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-neutral-500 uppercase">Log ID</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 8a2b3c"
+                        value={auditLogIdFilter}
+                        onChange={(e) => setAuditLogIdFilter(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm text-neutral-900 dark:text-white focus:ring-2 focus:ring-brand-orange outline-none transition-all"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-neutral-500 uppercase">Action</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. site_created"
+                        value={auditActionFilter}
+                        onChange={(e) => setAuditActionFilter(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm text-neutral-900 dark:text-white focus:ring-2 focus:ring-brand-orange outline-none transition-all"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-neutral-500 uppercase">From date</label>
+                      <input
+                        type="date"
+                        value={auditStartDate}
+                        onChange={(e) => setAuditStartDate(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm text-neutral-900 dark:text-white focus:ring-2 focus:ring-brand-orange outline-none transition-all"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-neutral-500 uppercase">To date</label>
+                      <input
+                        type="date"
+                        value={auditEndDate}
+                        onChange={(e) => setAuditEndDate(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm text-neutral-900 dark:text-white focus:ring-2 focus:ring-brand-orange outline-none transition-all"
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-4 flex justify-end gap-2">
+                    <Button
+                        variant="ghost"
+                        onClick={() => {
+                            setAuditLogIdFilter('')
+                            setAuditActionFilter('')
+                            setAuditStartDate('')
+                            setAuditEndDate('')
+                            setAuditPage(0)
+                            setAuditFetchTrigger(prev => prev + 1)
+                        }}
+                        disabled={isLoadingAudit}
+                    >
+                        Clear Filters
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Table */}
+                <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden">
+                  {isLoadingAudit ? (
+                    <div className="p-12 text-center text-neutral-500">
+                      <div className="animate-spin w-6 h-6 border-2 border-neutral-400 border-t-transparent rounded-full mx-auto mb-3"></div>
+                      Loading audit log...
+                    </div>
+                  ) : (auditEntries ?? []).length === 0 ? (
+                    <div className="p-8 text-center text-neutral-500">No audit events found.</div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50">
+                            <th className="text-left px-4 py-3 font-medium text-neutral-700 dark:text-neutral-300">Log ID</th>
+                            <th className="text-left px-4 py-3 font-medium text-neutral-700 dark:text-neutral-300">Time</th>
+                            <th className="text-left px-4 py-3 font-medium text-neutral-700 dark:text-neutral-300">Actor</th>
+                            <th className="text-left px-4 py-3 font-medium text-neutral-700 dark:text-neutral-300">Action</th>
+                            <th className="text-left px-4 py-3 font-medium text-neutral-700 dark:text-neutral-300">Resource</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(auditEntries ?? []).map((entry) => (
+                            <tr key={entry.id} className="border-b border-neutral-100 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800/30">
+                              <td className="px-4 py-3 text-neutral-500 dark:text-neutral-500 font-mono text-xs" title={entry.id}>
+                                {entry.id}
+                              </td>
+                              <td className="px-4 py-3 text-neutral-600 dark:text-neutral-400 whitespace-nowrap">
+                                {new Date(entry.occurred_at).toLocaleString()}
+                              </td>
+                              <td className="px-4 py-3 text-neutral-900 dark:text-white">
+                                {entry.actor_email || entry.actor_id || 'System'}
+                              </td>
+                              <td className="px-4 py-3 font-medium text-neutral-900 dark:text-white">{entry.action}</td>
+                              <td className="px-4 py-3 text-neutral-600 dark:text-neutral-400">{entry.resource_type}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {/* Pagination */}
+                  {auditTotal > auditPageSize && (
+                    <div className="flex items-center justify-between px-4 py-3 border-t border-neutral-200 dark:border-neutral-800">
+                      <span className="text-sm text-neutral-500">
+                        {auditPage * auditPageSize + 1}–{Math.min((auditPage + 1) * auditPageSize, auditTotal)} of {auditTotal}
+                      </span>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          onClick={() => setAuditPage((p) => Math.max(0, p - 1))}
+                          disabled={auditPage === 0 || isLoadingAudit}
+                          className="text-sm py-2 px-3"
+                        >
+                          Previous
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          onClick={() => setAuditPage((p) => p + 1)}
+                          disabled={(auditPage + 1) * auditPageSize >= auditTotal || isLoadingAudit}
+                          className="text-sm py-2 px-3"
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </motion.div>
