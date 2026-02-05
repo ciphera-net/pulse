@@ -97,7 +97,7 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
               </span>
               <span>Swiss infrastructure</span>
             </div>
-            <div className="flex items-center gap-3 mb-6">
+            <div className="flex items-center gap-3">
               <a
                 href="https://github.com/ciphera-net"
                 target="_blank"
@@ -116,27 +116,6 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
               >
                 <TwitterIcon className="w-5 h-5" />
               </a>
-            </div>
-            
-            {/* * Newsletter signup */}
-            <div>
-              <p className="text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-2">
-                Stay updated
-              </p>
-              <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); /* TODO: Implement newsletter signup */ }}>
-                <input
-                  type="email"
-                  placeholder="your@email.com"
-                  className="flex-1 min-w-0 px-3 py-1.5 text-xs rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:ring-2 focus:ring-brand-orange/20 focus:border-brand-orange outline-none"
-                  required
-                />
-                <button
-                  type="submit"
-                  className="px-3 py-1.5 text-xs font-medium bg-brand-orange text-white rounded-lg hover:bg-brand-orange/90 transition-colors"
-                >
-                  Subscribe
-                </button>
-              </form>
             </div>
           </div>
 
