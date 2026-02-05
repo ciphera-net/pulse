@@ -282,15 +282,15 @@ export default function HomePage() {
 
       {/* * Global Overview */}
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+        <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
           <p className="text-sm text-neutral-500 dark:text-neutral-400">Total Sites</p>
           <p className="text-2xl font-bold text-neutral-900 dark:text-white">{sites.length}</p>
         </div>
-        <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+        <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
           <p className="text-sm text-neutral-500 dark:text-neutral-400">Total Visitors (24h)</p>
           <p className="text-2xl font-bold text-neutral-900 dark:text-white">--</p>
         </div>
-        <div className="rounded-xl border border-neutral-200 bg-brand-orange/10 p-4 dark:border-neutral-800">
+        <div className="rounded-2xl border border-neutral-200 bg-brand-orange/10 p-4 dark:border-neutral-800">
           <p className="text-sm text-brand-orange">Plan & usage</p>
           {subscriptionLoading ? (
             <p className="text-lg font-bold text-brand-orange">...</p>

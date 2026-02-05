@@ -110,7 +110,7 @@ export default function CreateFunnelPage() {
       </div>
 
       <form onSubmit={handleSubmit}>
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 mb-6">
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 mb-6">
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
@@ -144,7 +144,7 @@ export default function CreateFunnelPage() {
           </div>
 
           {steps.map((step, index) => (
-            <div key={index} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-4">
+            <div key={index} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4">
               <div className="flex items-start gap-4">
                 <div className="mt-3 text-neutral-400">
                   <div className="w-6 h-6 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-sm font-medium text-neutral-600 dark:text-neutral-400">

@@ -558,7 +558,7 @@ export default function OrganizationSettings() {
                 {/* Members List */}
                 <div className="space-y-4">
                   <h3 className="text-sm font-medium text-neutral-500 uppercase tracking-wider">Active Members</h3>
-                  <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden divide-y divide-neutral-200 dark:divide-neutral-800">
+                  <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden divide-y divide-neutral-200 dark:divide-neutral-800">
                     {isLoadingMembers ? (
                       <div className="p-8 text-center text-neutral-500">
                         <div className="animate-spin w-5 h-5 border-2 border-neutral-400 border-t-transparent rounded-full mx-auto mb-2"></div>
@@ -603,7 +603,7 @@ export default function OrganizationSettings() {
                 {invitations.length > 0 && (
                   <div className="space-y-4">
                     <h3 className="text-sm font-medium text-neutral-500 uppercase tracking-wider">Pending Invitations</h3>
-                    <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden divide-y divide-neutral-200 dark:divide-neutral-800">
+                    <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden divide-y divide-neutral-200 dark:divide-neutral-800">
                       {invitations.map((invite) => (
                         <div key={invite.id} className="p-4 flex items-center justify-between">
                           <div className="flex items-center gap-3">
@@ -752,7 +752,7 @@ export default function OrganizationSettings() {
                     {/* Invoice History */}
                     <div>
                       <h3 className="text-sm font-medium text-neutral-500 uppercase tracking-wider mb-4">Invoice History</h3>
-                      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden">
+                      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden">
                         {isLoadingInvoices ? (
                           <div className="p-8 text-center text-neutral-500">
                             <div className="animate-spin w-5 h-5 border-2 border-neutral-400 border-t-transparent rounded-full mx-auto mb-2"></div>
@@ -889,7 +889,7 @@ export default function OrganizationSettings() {
                 </div>
 
                 {/* Table */}
-                <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden">
+                <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden">
                   {isLoadingAudit ? (
                     <div className="p-12 text-center text-neutral-500">
                       <div className="animate-spin w-6 h-6 border-2 border-neutral-400 border-t-transparent rounded-full mx-auto mb-3"></div>
