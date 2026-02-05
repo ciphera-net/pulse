@@ -68,7 +68,11 @@ async function apiRequest<T>(
   // * Determine base URL
   const isAuthRequest = endpoint.startsWith('/auth')
   const baseUrl = isAuthRequest ? AUTH_API_URL : API_URL
-  const url = `${baseUrl}/api/v1${endpoint}`
+  
+  // * Handle legacy endpoints that already include /api/ prefix
+  const url = endpoint.startsWith('/api/') 
+    ? `${baseUrl}${endpoint}`
+    : `${baseUrl}/api/v1${endpoint}`
   
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
