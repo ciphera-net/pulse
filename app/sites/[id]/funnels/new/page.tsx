@@ -171,7 +171,7 @@ export default function CreateFunnelPage() {
                       <select
                         value={step.type}
                         onChange={(e) => handleUpdateStep(index, 'type', e.target.value)}
-                        className="w-24 px-2 py-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl text-sm focus:ring-2 focus:ring-brand-orange/20 focus:border-brand-orange outline-none"
+                        className="w-24 px-2 py-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg text-sm focus:ring-2 focus:ring-brand-orange/20 focus:border-brand-orange outline-none"
                       >
                         <option value="exact">Exact</option>
                         <option value="contains">Contains</option>
