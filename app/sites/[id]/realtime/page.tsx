@@ -93,7 +93,7 @@ export default function RealtimePage() {
   if (!site) return <div className="p-8">Site not found</div>
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-8 h-[calc(100vh-64px)] flex flex-col">
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8 h-[calc(100vh-64px)] flex flex-col">
       <div className="mb-6 flex items-center justify-between">
         <div>
             <div className="flex items-center gap-2 mb-1">

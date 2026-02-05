@@ -239,7 +239,10 @@ export default function SiteDashboardPage() {
             </div>
             
             {/* Realtime Indicator */}
-            <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded-full border border-green-500/20">
+            <button
+              onClick={() => router.push(`/sites/${siteId}/realtime`)}
+              className="flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded-full border border-green-500/20 hover:bg-green-500/20 transition-colors cursor-pointer"
+            >
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
@@ -247,7 +250,7 @@ export default function SiteDashboardPage() {
               <span className="text-sm font-medium text-green-700 dark:text-green-400">
                 {realtime} current visitors
               </span>
-            </div>
+            </button>
           </div>
 
             <div className="flex gap-2">
