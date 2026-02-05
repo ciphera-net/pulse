@@ -84,6 +84,7 @@ export default function OrganizationSettings() {
   const [auditTotal, setAuditTotal] = useState(0)
   const [isLoadingAudit, setIsLoadingAudit] = useState(false)
   const [auditPage, setAuditPage] = useState(0)
+  const [auditFetchTrigger, setAuditFetchTrigger] = useState(0)
   const auditPageSize = 20
   const [auditActionFilter, setAuditActionFilter] = useState('')
   const [auditLogIdFilter, setAuditLogIdFilter] = useState('')
@@ -213,16 +214,16 @@ export default function OrganizationSettings() {
     
     const timer = setTimeout(() => {
         setAuditPage(0) // Reset page on filter change
-        loadAudit()
+        setAuditFetchTrigger(prev => prev + 1) // Trigger fetch
     }, 500)
     return () => clearTimeout(timer)
-  }, [auditActionFilter, auditLogIdFilter, auditStartDate, auditEndDate, loadAudit])
+  }, [auditActionFilter, auditLogIdFilter, auditStartDate, auditEndDate, activeTab])
 
   useEffect(() => {
     if (activeTab === 'audit' && currentOrgId) {
       loadAudit()
     }
-  }, [activeTab, currentOrgId, loadAudit])
+  }, [activeTab, currentOrgId, loadAudit, auditFetchTrigger])
 
   // If no org ID, we are in personal workspace, so don't show org settings
   if (!currentOrgId) {
