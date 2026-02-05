@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { formatNumber } from '@/lib/utils/format'
 import { getBrowserIcon, getOSIcon, getDeviceIcon } from '@/lib/utils/icons'
 import { MdMonitor } from 'react-icons/md'
-import { Modal } from '@ciphera-net/ui'
+import { Modal, GridIcon } from '@ciphera-net/ui'
 import { getBrowsers, getOS, getDevices, getScreenResolutions } from '@/lib/api/stats'
 
 interface TechSpecsProps {
@@ -110,7 +110,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
 
   return (
     <>
-      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 h-full flex flex-col">
+      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
@@ -130,7 +130,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors capitalize ${
+                className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors capitalize ${
                   activeTab === tab
                     ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
                     : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
@@ -165,8 +165,16 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
               ))}
             </>
           ) : (
-            <div className="h-full flex flex-col items-center justify-center">
-              <p className="text-neutral-600 dark:text-neutral-400">No data available</p>
+            <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
+              <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
+                <GridIcon className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
+              </div>
+              <h4 className="font-semibold text-neutral-900 dark:text-white">
+                No technology data yet
+              </h4>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400 max-w-xs">
+                Browser, OS, and device information will appear as visitors arrive.
+              </p>
             </div>
           )}
         </div>
@@ -179,7 +187,10 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
       >
         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
           {isLoadingFull ? (
-            <div className="py-4 text-center text-neutral-500">Loading...</div>
+            <div className="py-8 flex flex-col items-center gap-2">
+              <div className="animate-spin w-6 h-6 border-2 border-neutral-300 dark:border-neutral-700 border-t-brand-orange rounded-full" />
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading...</p>
+            </div>
           ) : (
             (fullData.length > 0 ? fullData : data).map((item, index) => (
               <div key={index} className="flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">

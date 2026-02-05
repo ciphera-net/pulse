@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { formatNumber } from '@/lib/utils/format'
 import * as Flags from 'country-flag-icons/react/3x2'
 import WorldMap from './WorldMap'
+import { GlobeIcon } from '@ciphera-net/ui'
 
 interface LocationProps {
   countries: Array<{ country: string; pageviews: number }>
@@ -36,7 +37,19 @@ export default function Locations({ countries, cities }: LocationProps) {
   const renderContent = () => {
     if (activeTab === 'countries') {
       if (!countries || countries.length === 0) {
-        return <p className="text-neutral-600 dark:text-neutral-400">No data available</p>
+        return (
+          <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
+            <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
+              <GlobeIcon className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
+            </div>
+            <h4 className="font-semibold text-neutral-900 dark:text-white">
+              No location data yet
+            </h4>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400 max-w-xs">
+              Visitor locations will appear here based on anonymous geographic data.
+            </p>
+          </div>
+        )
       }
       return (
         <div className="space-y-4">
@@ -60,7 +73,19 @@ export default function Locations({ countries, cities }: LocationProps) {
 
     if (activeTab === 'cities') {
       if (!cities || cities.length === 0) {
-        return <p className="text-neutral-600 dark:text-neutral-400">No data available</p>
+        return (
+          <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
+            <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
+              <GlobeIcon className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
+            </div>
+            <h4 className="font-semibold text-neutral-900 dark:text-white">
+              No city data yet
+            </h4>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400 max-w-xs">
+              City-level visitor data will appear as traffic grows.
+            </p>
+          </div>
+        )
       }
       return (
         <div className="space-y-3">
@@ -81,7 +106,7 @@ export default function Locations({ countries, cities }: LocationProps) {
   }
 
   return (
-    <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 h-full">
+    <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
           Locations
@@ -89,7 +114,7 @@ export default function Locations({ countries, cities }: LocationProps) {
         <div className="flex p-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg">
           <button
             onClick={() => setActiveTab('countries')}
-            className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+            className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
               activeTab === 'countries'
                 ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
                 : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
@@ -99,7 +124,7 @@ export default function Locations({ countries, cities }: LocationProps) {
           </button>
           <button
             onClick={() => setActiveTab('cities')}
-            className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+            className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
               activeTab === 'cities'
                 ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
                 : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'

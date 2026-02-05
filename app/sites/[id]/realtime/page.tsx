@@ -6,7 +6,8 @@ import { getSite, type Site } from '@/lib/api/sites'
 import { getRealtimeVisitors, getSessionDetails, type Visitor, type SessionEvent } from '@/lib/api/realtime'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@/lib/utils/authErrors'
-import { LoadingOverlay } from '@ciphera-net/ui'
+import { LoadingOverlay, UserIcon } from '@ciphera-net/ui'
+import { motion, AnimatePresence } from 'framer-motion'
 
 function formatTimeAgo(dateString: string) {
   const date = new Date(dateString)
@@ -93,7 +94,7 @@ export default function RealtimePage() {
   if (!site) return <div className="p-8">Site not found</div>
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-8 h-[calc(100vh-64px)] flex flex-col">
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8 h-[calc(100vh-64px)] flex flex-col">
       <div className="mb-6 flex items-center justify-between">
         <div>
             <div className="flex items-center gap-2 mb-1">
@@ -116,25 +117,38 @@ export default function RealtimePage() {
 
       <div className="flex flex-1 gap-6 min-h-0">
         {/* Visitors List */}
-        <div className="w-1/3 border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden flex flex-col bg-white dark:bg-neutral-900">
+        <div className="w-1/3 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden flex flex-col bg-white dark:bg-neutral-900">
           <div className="p-4 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50">
             <h2 className="font-semibold text-neutral-900 dark:text-white">Active Sessions</h2>
           </div>
           <div className="overflow-y-auto flex-1">
             {visitors.length === 0 ? (
-              <div className="p-8 text-center text-neutral-500">
-                No active visitors right now.
+              <div className="p-8 flex flex-col items-center justify-center text-center gap-3">
+                <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-3">
+                  <UserIcon className="w-6 h-6 text-neutral-500 dark:text-neutral-400" />
+                </div>
+                <p className="text-sm font-medium text-neutral-900 dark:text-white">
+                  No active visitors right now
+                </p>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                  New visitors will appear here in real-time
+                </p>
               </div>
             ) : (
               <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
-                {visitors.map((visitor) => (
-                  <button
-                    key={visitor.session_id}
-                    onClick={() => handleSelectVisitor(visitor)}
-                    className={`w-full text-left p-4 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors ${
-                      selectedVisitor?.session_id === visitor.session_id ? 'bg-neutral-50 dark:bg-neutral-800/50 ring-1 ring-inset ring-neutral-200 dark:ring-neutral-700' : ''
-                    }`}
-                  >
+                <AnimatePresence mode="popLayout">
+                  {visitors.map((visitor) => (
+                    <motion.button
+                      key={visitor.session_id}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -10 }}
+                      transition={{ duration: 0.2 }}
+                      onClick={() => handleSelectVisitor(visitor)}
+                      className={`w-full text-left p-4 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors ${
+                        selectedVisitor?.session_id === visitor.session_id ? 'bg-neutral-50 dark:bg-neutral-800/50 ring-1 ring-inset ring-neutral-200 dark:ring-neutral-700' : ''
+                      }`}
+                    >
                     <div className="flex justify-between items-start mb-1">
                         <div className="font-medium text-neutral-900 dark:text-white truncate pr-2">
                              {visitor.country ? `${getFlagEmoji(visitor.country)} ${visitor.city || 'Unknown City'}` : 'Unknown Location'}
@@ -156,15 +170,16 @@ export default function RealtimePage() {
                             {visitor.pageviews} views
                         </span>
                     </div>
-                  </button>
-                ))}
+                  </motion.button>
+                  ))}
+                </AnimatePresence>
               </div>
             )}
           </div>
         </div>
 
         {/* Session Details */}
-        <div className="flex-1 border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden flex flex-col bg-white dark:bg-neutral-900">
+        <div className="flex-1 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden flex flex-col bg-white dark:bg-neutral-900">
             <div className="p-4 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50 flex justify-between items-center">
                 <h2 className="font-semibold text-neutral-900 dark:text-white">
                     {selectedVisitor ? 'Session Journey' : 'Select a visitor'}

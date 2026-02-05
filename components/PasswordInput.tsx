@@ -62,7 +62,7 @@ export default function PasswordInput({
           onBlur={onBlur}
           aria-invalid={!!error}
           aria-describedby={error ? errorId : undefined}
-          className={`w-full pl-11 pr-12 py-3 border rounded-xl bg-neutral-50/50 dark:bg-neutral-900/50 focus:bg-white dark:focus:bg-neutral-900 
+          className={`w-full pl-11 pr-12 py-3 border rounded-lg bg-neutral-50/50 dark:bg-neutral-900/50 focus:bg-white dark:focus:bg-neutral-900 
             transition-all duration-200 outline-none disabled:opacity-50 disabled:cursor-not-allowed dark:text-white
             ${error 
               ? 'border-red-300 dark:border-red-800 focus:border-red-500 focus:ring-4 focus:ring-red-500/10' 

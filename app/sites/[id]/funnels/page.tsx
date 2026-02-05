@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { listFunnels, deleteFunnel, type Funnel } from '@/lib/api/funnels'
-import { toast, LoadingOverlay, PlusIcon, ArrowRightIcon, ChevronLeftIcon, TrashIcon } from '@ciphera-net/ui'
+import { toast, LoadingOverlay, PlusIcon, ArrowRightIcon, ChevronLeftIcon, TrashIcon, Button } from '@ciphera-net/ui'
 import Link from 'next/link'
 
 export default function FunnelsPage() {
@@ -66,18 +66,17 @@ export default function FunnelsPage() {
             </p>
           </div>
           <div className="ml-auto">
-            <Link
-              href={`/sites/${siteId}/funnels/new`}
-              className="btn-primary inline-flex items-center gap-2"
-            >
-              <PlusIcon className="w-4 h-4" />
-              <span>Create Funnel</span>
+            <Link href={`/sites/${siteId}/funnels/new`}>
+              <Button variant="primary" className="inline-flex items-center gap-2">
+                <PlusIcon className="w-4 h-4" />
+                <span>Create Funnel</span>
+              </Button>
             </Link>
           </div>
         </div>
 
         {funnels.length === 0 ? (
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-12 text-center">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-12 text-center">
             <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4 mx-auto mb-4 w-fit">
               <ArrowRightIcon className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
             </div>
@@ -87,12 +86,11 @@ export default function FunnelsPage() {
             <p className="text-neutral-600 dark:text-neutral-400 mb-6 max-w-md mx-auto">
               Create a funnel to track how users move through your site and where they drop off.
             </p>
-            <Link
-              href={`/sites/${siteId}/funnels/new`}
-              className="btn-primary inline-flex items-center gap-2"
-            >
-              <PlusIcon className="w-4 h-4" />
-              <span>Create Funnel</span>
+            <Link href={`/sites/${siteId}/funnels/new`}>
+              <Button variant="primary" className="inline-flex items-center gap-2">
+                <PlusIcon className="w-4 h-4" />
+                <span>Create Funnel</span>
+              </Button>
             </Link>
           </div>
         ) : (
@@ -103,7 +101,7 @@ export default function FunnelsPage() {
                 href={`/sites/${siteId}/funnels/${funnel.id}`}
                 className="block group"
               >
-                <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 hover:border-brand-orange/50 transition-colors">
+                <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 hover:border-brand-orange/50 transition-colors">
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-lg font-medium text-neutral-900 dark:text-white group-hover:text-brand-orange transition-colors">

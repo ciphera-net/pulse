@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { Site } from '@/lib/api/sites'
-import { BarChartIcon, SettingsIcon, BookOpenIcon, ExternalLinkIcon } from '@ciphera-net/ui'
+import { BarChartIcon, SettingsIcon, BookOpenIcon, ExternalLinkIcon, Button } from '@ciphera-net/ui'
 import { useAuth } from '@/lib/auth/context'
 
 interface SiteListProps {
@@ -18,7 +18,7 @@ export default function SiteList({ sites, loading, onDelete }: SiteListProps) {
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-48 animate-pulse rounded-xl bg-neutral-100 dark:bg-neutral-800" />
+          <div key={i} className="h-48 animate-pulse rounded-2xl bg-neutral-100 dark:bg-neutral-800" />
         ))}
       </div>
     )
@@ -38,7 +38,7 @@ export default function SiteList({ sites, loading, onDelete }: SiteListProps) {
       {sites.map((site) => (
         <div
           key={site.id}
-          className="group relative flex flex-col rounded-xl border border-neutral-200 bg-white p-6 shadow-sm transition-all hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900"
+          className="group relative flex flex-col rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm transition-all hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900"
         >
           {/* Header: Icon + Name + Live Status */}
           <div className="flex items-start justify-between mb-6">
@@ -94,10 +94,12 @@ export default function SiteList({ sites, loading, onDelete }: SiteListProps) {
           <div className="mt-auto flex gap-2">
             <Link
               href={`/sites/${site.id}`}
-              className="btn-primary flex-1 justify-center text-center text-sm inline-flex items-center gap-2"
+              className="flex-1"
             >
-              <BarChartIcon className="w-4 h-4" />
-              View Dashboard
+              <Button variant="primary" className="w-full justify-center text-sm">
+                <BarChartIcon className="w-4 h-4" />
+                View Dashboard
+              </Button>
             </Link>
             {(user?.role === 'owner' || user?.role === 'admin') && (
               <button
@@ -114,7 +116,7 @@ export default function SiteList({ sites, loading, onDelete }: SiteListProps) {
       ))}
 
       {/* Resources Card */}
-      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-neutral-300 bg-neutral-50 p-6 text-center dark:border-neutral-700 dark:bg-neutral-900/50">
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 p-6 text-center dark:border-neutral-700 dark:bg-neutral-900/50">
         <div className="mb-3 rounded-full bg-neutral-200 p-3 dark:bg-neutral-800">
           <BookOpenIcon className="h-6 w-6 text-neutral-500" />
         </div>

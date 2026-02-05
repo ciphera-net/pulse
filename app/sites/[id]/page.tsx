@@ -3,12 +3,13 @@
 import { useAuth } from '@/lib/auth/context'
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import { motion } from 'framer-motion'
 import { getSite, type Site } from '@/lib/api/sites'
 import { getStats, getRealtime, getDailyStats, getTopPages, getTopReferrers, getCountries, getCities, getRegions, getBrowsers, getOS, getDevices, getScreenResolutions, getEntryPages, getExitPages, getDashboard, getPerformanceByPage, type Stats, type DailyStat, type PerformanceByPageStat } from '@/lib/api/stats'
 import { formatNumber, formatDuration, getDateRange } from '@/lib/utils/format'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@/lib/utils/authErrors'
-import { LoadingOverlay } from '@ciphera-net/ui'
+import { LoadingOverlay, Button } from '@ciphera-net/ui'
 import { Select, DatePicker, DownloadIcon } from '@ciphera-net/ui'
 import ExportModal from '@/components/dashboard/ExportModal'
 import ContentStats from '@/components/dashboard/ContentStats'
@@ -225,7 +226,12 @@ export default function SiteDashboardPage() {
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2 }}
+      className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8"
+    >
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">
@@ -239,7 +245,10 @@ export default function SiteDashboardPage() {
             </div>
             
             {/* Realtime Indicator */}
-            <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded-full border border-green-500/20">
+            <button
+              onClick={() => router.push(`/sites/${siteId}/realtime`)}
+              className="flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded-full border border-green-500/20 hover:bg-green-500/20 transition-colors cursor-pointer"
+            >
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
@@ -247,7 +256,7 @@ export default function SiteDashboardPage() {
               <span className="text-sm font-medium text-green-700 dark:text-green-400">
                 {realtime} current visitors
               </span>
-            </div>
+            </button>
           </div>
 
             <div className="flex gap-2">
@@ -297,19 +306,21 @@ export default function SiteDashboardPage() {
                 { value: 'custom', label: 'Custom' },
               ]}
             />
-            <button
+            <Button
               onClick={() => router.push(`/sites/${siteId}/funnels`)}
-              className="btn-secondary text-sm"
+              variant="secondary"
+              className="text-sm"
             >
               Funnels
-            </button>
+            </Button>
             {canEdit && (
-            <button
+            <Button
               onClick={() => router.push(`/sites/${siteId}/settings`)}
-              className="btn-secondary text-sm"
+              variant="secondary"
+              className="text-sm"
             >
               Settings
-            </button>
+            </Button>
             )}
           </div>
         </div>
@@ -412,6 +423,6 @@ export default function SiteDashboardPage() {
         topPages={topPages}
         topReferrers={topReferrers}
       />
-    </div>
+    </motion.div>
   )
 }

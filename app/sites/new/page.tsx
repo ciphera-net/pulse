@@ -59,7 +59,7 @@ export default function NewSitePage() {
         Create New Site
       </h1>
 
-      <form onSubmit={handleSubmit} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6">
+      <form onSubmit={handleSubmit} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6">
         <div className="mb-4">
           <label htmlFor="name" className="block text-sm font-medium mb-2 text-neutral-900 dark:text-white">
             Site Name

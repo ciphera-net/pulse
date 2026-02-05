@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { motion } from 'framer-motion'
 import { ArrowRightIcon } from '@ciphera-net/ui'
 
 const integrations = [
@@ -62,22 +63,33 @@ export default function IntegrationsPage() {
       </div>
 
       <div className="flex-grow w-full max-w-6xl mx-auto px-4 pt-20 pb-10 z-10">
-        <div className="text-center mb-16">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="text-center mb-16"
+        >
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-neutral-900 dark:text-white mb-6">
             Integrations
           </h1>
           <p className="text-xl text-neutral-600 dark:text-neutral-400 max-w-2xl mx-auto leading-relaxed">
             Connect Pulse with your favorite frameworks and platforms in minutes.
           </p>
-        </div>
+        </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {integrations.map((integration) => (
-            <Link 
-              key={integration.id} 
-              href={`/integrations/${integration.id}`}
-              className="group relative p-8 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-sm border border-neutral-200 dark:border-neutral-800 rounded-2xl hover:border-brand-orange/50 dark:hover:border-brand-orange/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+          {integrations.map((integration, i) => (
+            <motion.div
+              key={integration.id}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: i * 0.1 }}
             >
+              <Link 
+                href={`/integrations/${integration.id}`}
+                className="group relative p-8 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-sm border border-neutral-200 dark:border-neutral-800 rounded-2xl hover:border-brand-orange/50 dark:hover:border-brand-orange/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl block"
+              >
               <div className="flex items-start justify-between mb-6">
                 <div className="p-3 bg-neutral-100 dark:bg-neutral-800 rounded-xl group-hover:scale-110 transition-transform duration-300">
                   {integration.icon}
@@ -95,10 +107,17 @@ export default function IntegrationsPage() {
                 View Guide <span aria-hidden="true">&rarr;</span>
               </span>
             </Link>
+            </motion.div>
           ))}
           
           {/* * Request Integration Card */}
-          <div className="p-8 border border-dashed border-neutral-300 dark:border-neutral-700 rounded-2xl flex flex-col items-center justify-center text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: integrations.length * 0.1 }}
+            className="p-8 border border-dashed border-neutral-300 dark:border-neutral-700 rounded-2xl flex flex-col items-center justify-center text-center"
+          >
             <h3 className="text-lg font-bold text-neutral-900 dark:text-white mb-2">
               Missing something?
             </h3>
@@ -111,7 +130,7 @@ export default function IntegrationsPage() {
             >
               Request Integration
             </a>
-          </div>
+          </motion.div>
         </div>
       </div>
     </div>
