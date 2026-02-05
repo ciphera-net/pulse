@@ -45,7 +45,7 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="text-sm text-neutral-500 dark:text-neutral-400">
-              © {year} Ciphera. All rights reserved.
+              © 2024-{year} Ciphera. All rights reserved.
             </div>
             <div className="flex gap-6 text-sm font-medium text-neutral-600 dark:text-neutral-300">
               <Component href="/about" className="hover:text-brand-orange transition-colors">
