@@ -8,6 +8,7 @@ export interface AuditLogEntry {
   id: string
   org_id: string
   actor_id?: string
+  actor_email?: string
   action: string
   resource_type: string
   resource_id?: string
