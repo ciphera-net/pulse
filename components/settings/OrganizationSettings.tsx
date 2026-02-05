@@ -41,10 +41,19 @@ export default function OrganizationSettings() {
   const { user } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
+  // Initialize from URL, default to 'general'
   const [activeTab, setActiveTab] = useState<'general' | 'members' | 'billing' | 'audit'>(() => {
     const tab = searchParams.get('tab')
-    return tab === 'billing' || tab === 'members' || tab === 'audit' ? tab : 'general'
+    return (tab === 'billing' || tab === 'members' || tab === 'audit') ? tab : 'general'
   })
+
+  // Sync URL with state without triggering navigation/reload
+  const handleTabChange = (tab: 'general' | 'members' | 'billing' | 'audit') => {
+    setActiveTab(tab)
+    const url = new URL(window.location.href)
+    url.searchParams.set('tab', tab)
+    window.history.replaceState({}, '', url)
+  }
 
   const [showDeletePrompt, setShowDeletePrompt] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState('')
@@ -169,6 +178,9 @@ export default function OrganizationSettings() {
     }
   }, [currentOrgId, loadMembers])
 
+  // Removed useEffect that syncs searchParams to activeTab to prevent flickering
+  // The initial state is already set from searchParams, and handleTabChange updates the URL manually
+  /* 
   useEffect(() => {
     const tab = searchParams.get('tab')
     const validTab = (tab === 'billing' || tab === 'members' || tab === 'audit') ? tab : 'general'
@@ -176,6 +188,7 @@ export default function OrganizationSettings() {
       setActiveTab(validTab)
     }
   }, [searchParams, activeTab])
+  */
 
   useEffect(() => {
     if (activeTab === 'billing' && currentOrgId) {
@@ -335,10 +348,7 @@ export default function OrganizationSettings() {
   // We can find the current user's membership entry which has org name.
   const currentOrgName = members.find(m => m.user_id === user?.id)?.organization_name || 'Organization'
 
-  const handleTabChange = (tab: 'general' | 'members' | 'billing' | 'audit') => {
-    // setActiveTab(tab) // Let the useEffect handle the state update based on URL
-    router.push(`?tab=${tab}`)
-  }
+  // handleTabChange is defined above
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -561,9 +571,8 @@ export default function OrganizationSettings() {
                   <h3 className="text-sm font-medium text-neutral-500 uppercase tracking-wider">Active Members</h3>
                   <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden divide-y divide-neutral-200 dark:divide-neutral-800">
                     {isLoadingMembers ? (
-                      <div className="p-8 text-center text-neutral-500">
-                        <div className="animate-spin w-5 h-5 border-2 border-neutral-400 border-t-transparent rounded-full mx-auto mb-2"></div>
-                        Loading members...
+                      <div className="flex items-center justify-center py-8">
+                        <div className="w-6 h-6 border-2 border-brand-orange/30 border-t-brand-orange rounded-full animate-spin" />
                       </div>
                     ) : members.length === 0 ? (
                       <div className="p-8 text-center text-neutral-500">No members found.</div>
@@ -643,9 +652,8 @@ export default function OrganizationSettings() {
                 </div>
 
                 {isLoadingSubscription ? (
-                  <div className="p-12 text-center text-neutral-500">
-                    <div className="animate-spin w-6 h-6 border-2 border-neutral-400 border-t-transparent rounded-full mx-auto mb-3"></div>
-                    Loading subscription details...
+                  <div className="flex items-center justify-center py-12">
+                    <div className="w-6 h-6 border-2 border-brand-orange/30 border-t-brand-orange rounded-full animate-spin" />
                   </div>
                 ) : !subscription ? (
                   <div className="p-8 text-center bg-neutral-50 dark:bg-neutral-900/50 rounded-xl border border-neutral-200 dark:border-neutral-800">
@@ -755,9 +763,8 @@ export default function OrganizationSettings() {
                       <h3 className="text-sm font-medium text-neutral-500 uppercase tracking-wider mb-4">Invoice History</h3>
                       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden">
                         {isLoadingInvoices ? (
-                          <div className="p-8 text-center text-neutral-500">
-                            <div className="animate-spin w-5 h-5 border-2 border-neutral-400 border-t-transparent rounded-full mx-auto mb-2"></div>
-                            Loading invoices...
+                          <div className="flex items-center justify-center py-8">
+                            <div className="w-6 h-6 border-2 border-brand-orange/30 border-t-brand-orange rounded-full animate-spin" />
                           </div>
                         ) : invoices.length === 0 ? (
                           <div className="p-8 text-center text-neutral-500">No invoices found.</div>
@@ -892,9 +899,8 @@ export default function OrganizationSettings() {
                 {/* Table */}
                 <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden">
                   {isLoadingAudit ? (
-                    <div className="p-12 text-center text-neutral-500">
-                      <div className="animate-spin w-6 h-6 border-2 border-neutral-400 border-t-transparent rounded-full mx-auto mb-3"></div>
-                      Loading audit log...
+                    <div className="flex items-center justify-center py-12">
+                      <div className="w-6 h-6 border-2 border-brand-orange/30 border-t-brand-orange rounded-full animate-spin" />
                     </div>
                   ) : (auditEntries ?? []).length === 0 ? (
                     <div className="p-8 text-center text-neutral-500">No audit events found.</div>
