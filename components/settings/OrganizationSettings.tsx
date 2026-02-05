@@ -409,13 +409,13 @@ export default function OrganizationSettings() {
         </nav>
 
         {/* Content Area */}
-        <div className="flex-1 relative">
+        <div className="flex-1 min-w-0 relative">
           <motion.div
             key={activeTab}
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.2 }}
-            className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-6 md:p-8 shadow-sm"
+            className="w-full bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-6 md:p-8 shadow-sm"
           >
             {activeTab === 'general' && (
               <div className="space-y-12">
