@@ -86,6 +86,7 @@ export default function OrganizationSettings() {
   const [auditPage, setAuditPage] = useState(0)
   const auditPageSize = 20
   const [auditActionFilter, setAuditActionFilter] = useState('')
+  const [auditLogIdFilter, setAuditLogIdFilter] = useState('')
   const [auditStartDate, setAuditStartDate] = useState('')
   const [auditEndDate, setAuditEndDate] = useState('')
 
@@ -174,6 +175,7 @@ export default function OrganizationSettings() {
         offset: auditPage * auditPageSize,
       }
       if (auditActionFilter) params.action = auditActionFilter
+      if (auditLogIdFilter) params.log_id = auditLogIdFilter
       if (auditStartDate) params.start_date = auditStartDate
       if (auditEndDate) params.end_date = auditEndDate
       const { entries, total } = await getAuditLog(params)
@@ -185,7 +187,7 @@ export default function OrganizationSettings() {
     } finally {
       setIsLoadingAudit(false)
     }
-  }, [currentOrgId, auditPage, auditActionFilter, auditStartDate, auditEndDate])
+  }, [currentOrgId, auditPage, auditActionFilter, auditLogIdFilter, auditStartDate, auditEndDate])
 
   useEffect(() => {
     if (activeTab === 'audit' && currentOrgId) {
@@ -793,46 +795,63 @@ export default function OrganizationSettings() {
                   <p className="text-sm text-neutral-500 dark:text-neutral-400">Who did what and when for this organization.</p>
                 </div>
 
-                {/* Filters */}
-                <div className="flex flex-wrap gap-4 items-end">
-                  <div className="space-y-1">
-                    <label className="block text-xs font-medium text-neutral-500 uppercase">Action</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. site_created"
-                      value={auditActionFilter}
-                      onChange={(e) => setAuditActionFilter(e.target.value)}
-                      className="w-40 px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm text-neutral-900 dark:text-white"
-                    />
+                {/* Advanced Filters */}
+                <div className="bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-xl p-4 mb-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-neutral-500 uppercase">Log ID</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 9629cf39..."
+                        value={auditLogIdFilter}
+                        onChange={(e) => setAuditLogIdFilter(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm text-neutral-900 dark:text-white focus:ring-2 focus:ring-brand-orange outline-none transition-all"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-neutral-500 uppercase">Action</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. site_created"
+                        value={auditActionFilter}
+                        onChange={(e) => setAuditActionFilter(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm text-neutral-900 dark:text-white focus:ring-2 focus:ring-brand-orange outline-none transition-all"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-neutral-500 uppercase">From date</label>
+                      <input
+                        type="date"
+                        value={auditStartDate}
+                        onChange={(e) => setAuditStartDate(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm text-neutral-900 dark:text-white focus:ring-2 focus:ring-brand-orange outline-none transition-all"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-neutral-500 uppercase">To date</label>
+                      <input
+                        type="date"
+                        value={auditEndDate}
+                        onChange={(e) => setAuditEndDate(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm text-neutral-900 dark:text-white focus:ring-2 focus:ring-brand-orange outline-none transition-all"
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <label className="block text-xs font-medium text-neutral-500 uppercase">From date</label>
-                    <input
-                      type="date"
-                      value={auditStartDate}
-                      onChange={(e) => setAuditStartDate(e.target.value)}
-                      className="px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm text-neutral-900 dark:text-white"
-                    />
+                  <div className="mt-4 flex justify-end gap-2">
+                    <Button
+                        variant="ghost"
+                        onClick={() => {
+                            setAuditLogIdFilter('')
+                            setAuditActionFilter('')
+                            setAuditStartDate('')
+                            setAuditEndDate('')
+                            setAuditPage(0)
+                        }}
+                        disabled={isLoadingAudit}
+                    >
+                        Clear Filters
+                    </Button>
                   </div>
-                  <div className="space-y-1">
-                    <label className="block text-xs font-medium text-neutral-500 uppercase">To date</label>
-                    <input
-                      type="date"
-                      value={auditEndDate}
-                      onChange={(e) => setAuditEndDate(e.target.value)}
-                      className="px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm text-neutral-900 dark:text-white"
-                    />
-                  </div>
-                  <Button
-                    variant="secondary"
-                    onClick={() => {
-                      setAuditPage(0)
-                      loadAudit()
-                    }}
-                    disabled={isLoadingAudit}
-                  >
-                    Apply
-                  </Button>
                 </div>
 
                 {/* Table */}
@@ -854,7 +873,6 @@ export default function OrganizationSettings() {
                             <th className="text-left px-4 py-3 font-medium text-neutral-700 dark:text-neutral-300">Actor</th>
                             <th className="text-left px-4 py-3 font-medium text-neutral-700 dark:text-neutral-300">Action</th>
                             <th className="text-left px-4 py-3 font-medium text-neutral-700 dark:text-neutral-300">Resource</th>
-                            <th className="text-left px-4 py-3 font-medium text-neutral-700 dark:text-neutral-300">Resource ID</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -871,7 +889,6 @@ export default function OrganizationSettings() {
                               </td>
                               <td className="px-4 py-3 font-medium text-neutral-900 dark:text-white">{entry.action}</td>
                               <td className="px-4 py-3 text-neutral-600 dark:text-neutral-400">{entry.resource_type}</td>
-                              <td className="px-4 py-3 text-neutral-500 dark:text-neutral-500 font-mono text-xs">{entry.resource_id || '—'}</td>
                             </tr>
                           ))}
                         </tbody>
