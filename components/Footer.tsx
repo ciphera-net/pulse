@@ -1,29 +1,224 @@
+'use client'
+
 import Link from 'next/link'
-import React from 'react'
+import Image from 'next/image'
+import { GithubIcon, TwitterIcon } from '@ciphera-net/ui'
+import SwissFlagIcon from './SwissFlagIcon'
 
 interface FooterProps {
   LinkComponent?: any
   appName?: string
+  isAuthenticated?: boolean
 }
 
-export function Footer({ LinkComponent = Link, appName = 'Pulse' }: FooterProps) {
-  const Component = LinkComponent
+const footerLinks = {
+  products: [
+    { name: 'Drop', href: 'https://drop.ciphera.net', external: true },
+    { name: 'Pulse', href: 'https://pulse.ciphera.net', external: true },
+    { name: 'Ciphera Auth', href: 'https://ciphera.net/products#auth', external: true },
+    { name: 'Ciphera Captcha', href: 'https://ciphera.net/products#captcha', external: true },
+    { name: 'Ciphera Relay', href: 'https://ciphera.net/products#relay', external: true },
+  ],
+  company: [
+    { name: 'About', href: '/about', external: false },
+    { name: 'Pricing', href: '/pricing', external: false },
+    { name: 'Contact', href: 'https://ciphera.net/contact', external: true },
+  ],
+  resources: [
+    { name: 'Documentation', href: 'https://docs.ciphera.net', external: true },
+    { name: 'GitHub', href: 'https://github.com/ciphera-net', external: true },
+  ],
+  legal: [
+    { name: 'Privacy Policy', href: 'https://ciphera.net/#privacy', external: true },
+    { name: 'Terms of Service', href: 'https://ciphera.net/#terms', external: true },
+  ],
+}
 
+export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticated = false }: FooterProps) {
+  const Component = LinkComponent
+  const year = new Date().getFullYear()
+
+  // * Simple footer for authenticated users
+  if (isAuthenticated) {
+    return (
+      <footer className="border-t border-neutral-200 dark:border-neutral-800 mt-auto bg-white dark:bg-neutral-950">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="text-sm text-neutral-500 dark:text-neutral-400">
+              © {year} Ciphera. All rights reserved.
+            </div>
+            <div className="flex gap-6 text-sm font-medium text-neutral-600 dark:text-neutral-300">
+              <Component href="/about" className="hover:text-brand-orange transition-colors">
+                Why {appName}
+              </Component>
+              <Component href="/faq" className="hover:text-brand-orange transition-colors">
+                FAQ
+              </Component>
+            </div>
+          </div>
+        </div>
+      </footer>
+    )
+  }
+
+  // * Comprehensive footer for unauthenticated users
   return (
-    <footer className="border-t border-neutral-200 dark:border-neutral-800 mt-auto bg-white dark:bg-neutral-950">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="text-sm text-neutral-500 dark:text-neutral-400">
-            © {new Date().getFullYear()} Ciphera. All rights reserved.
+    <footer className="w-full mt-auto border-t border-neutral-100 dark:border-neutral-800 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-sm">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12 lg:py-16">
+        {/* * Main footer content */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6 sm:gap-8 lg:gap-12">
+          {/* * Brand column */}
+          <div className="col-span-1 sm:col-span-2 md:col-span-4 lg:col-span-1 lg:pr-8">
+            <Link href="/" className="flex items-center gap-3 mb-4 group">
+              <Image
+                src="/ciphera_icon_no_margins.png"
+                alt="Ciphera privacy-first platform logo"
+                width={36}
+                height={36}
+                loading="lazy"
+                className="w-9 h-9 group-hover:scale-105 transition-transform duration-300"
+              />
+              <span className="text-xl font-bold text-neutral-900 dark:text-white group-hover:text-brand-orange transition-colors duration-300">
+                Ciphera
+              </span>
+            </Link>
+            <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4 leading-relaxed">
+              Privacy-first infrastructure and applications built on zero-knowledge principles.
+            </p>
+            <div className="inline-flex items-center gap-2.5 text-sm text-neutral-600 dark:text-neutral-400 mb-4">
+              <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-neutral-100 dark:bg-neutral-800 shrink-0 overflow-hidden ring-1 ring-neutral-200 dark:ring-neutral-700" aria-hidden>
+                <SwissFlagIcon className="w-5 h-5" />
+              </span>
+              <span>Swiss infrastructure (Zurich).</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <a
+                href="https://github.com/ciphera-net"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-9 h-9 rounded-lg bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
+                aria-label="GitHub"
+              >
+                <GithubIcon className="w-5 h-5" />
+              </a>
+              <a
+                href="https://x.com/cipheranet"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-9 h-9 rounded-lg bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
+                aria-label="X (Twitter)"
+              >
+                <TwitterIcon className="w-5 h-5" />
+              </a>
+            </div>
           </div>
-          <div className="flex gap-6 text-sm font-medium text-neutral-600 dark:text-neutral-300">
-            <Component href="/about" className="hover:text-brand-orange transition-colors">
-              Why {appName}
-            </Component>
-            <Component href="/faq" className="hover:text-brand-orange transition-colors">
-              FAQ
-            </Component>
+
+          {/* * Products */}
+          <div>
+            <h4 className="font-semibold text-neutral-900 dark:text-white mb-4">Products</h4>
+            <ul className="space-y-3">
+              {footerLinks.products.map((link) => (
+                <li key={link.name}>
+                  {link.external ? (
+                    <a
+                      href={link.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors"
+                    >
+                      {link.name}
+                    </a>
+                  ) : (
+                    <Component
+                      href={link.href}
+                      className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors"
+                    >
+                      {link.name}
+                    </Component>
+                  )}
+                </li>
+              ))}
+            </ul>
           </div>
+
+          {/* * Company */}
+          <div>
+            <h4 className="font-semibold text-neutral-900 dark:text-white mb-4">Company</h4>
+            <ul className="space-y-3">
+              {footerLinks.company.map((link) => (
+                <li key={link.name}>
+                  {link.external ? (
+                    <a
+                      href={link.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors"
+                    >
+                      {link.name}
+                    </a>
+                  ) : (
+                    <Component
+                      href={link.href}
+                      className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors"
+                    >
+                      {link.name}
+                    </Component>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* * Resources */}
+          <div>
+            <h4 className="font-semibold text-neutral-900 dark:text-white mb-4">Resources</h4>
+            <ul className="space-y-3">
+              {footerLinks.resources.map((link) => (
+                <li key={link.name}>
+                  <a
+                    href={link.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors"
+                  >
+                    {link.name}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* * Legal */}
+          <div>
+            <h4 className="font-semibold text-neutral-900 dark:text-white mb-4">Legal</h4>
+            <ul className="space-y-3">
+              {footerLinks.legal.map((link) => (
+                <li key={link.name}>
+                  <a
+                    href={link.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors"
+                  >
+                    {link.name}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        {/* * Divider */}
+        <div className="h-px w-full bg-gradient-to-r from-transparent via-neutral-200 dark:via-neutral-800 to-transparent my-8" />
+
+        {/* * Bottom bar */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+            © 2024-{year} Ciphera. All rights reserved.
+          </p>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+            Where Privacy Still Exists
+          </p>
         </div>
       </div>
     </footer>
