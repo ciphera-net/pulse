@@ -104,7 +104,7 @@ export default function FAQPage() {
           className="text-center mb-16"
         >
           <span className="badge-primary mb-4 inline-flex">FAQ</span>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-neutral-900 dark:text-white mb-4">
+          <h1 className="text-4xl md:text-5xl font-bold text-neutral-900 dark:text-white mb-4">
             Frequently asked questions
           </h1>
           <p className="text-lg text-neutral-600 dark:text-neutral-400 max-w-2xl mx-auto">

@@ -104,7 +104,7 @@ export default function FunnelsPage() {
                 <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 hover:border-brand-orange/50 transition-colors">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-lg font-medium text-neutral-900 dark:text-white group-hover:text-brand-orange transition-colors">
+                      <h3 className="text-xl font-bold text-neutral-900 dark:text-white group-hover:text-brand-orange transition-colors">
                         {funnel.name}
                       </h3>
                       {funnel.description && (

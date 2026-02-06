@@ -47,7 +47,7 @@ export default function OnboardingPage() {
     <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-900 px-4">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <h2 className="mt-6 text-3xl font-bold text-neutral-900 dark:text-white">
+          <h2 className="mt-6 text-2xl font-bold text-neutral-900 dark:text-white">
             Welcome to Pulse
           </h2>
           <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">

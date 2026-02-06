@@ -342,7 +342,7 @@ export default function OrganizationSettings() {
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">Organization Settings</h1>
+        <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Organization Settings</h1>
         <p className="mt-2 text-neutral-600 dark:text-neutral-400">
           Manage your organization workspace and members.
         </p>
@@ -409,9 +409,9 @@ export default function OrganizationSettings() {
             {activeTab === 'general' && (
               <div className="space-y-12">
                  <div>
-                    <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-1">General Information</h2>
+                    <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">General Information</h2>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">Basic details about your organization.</p>
-                 </div>
+                  </div>
 
                  <form onSubmit={handleUpdateOrg} className="space-y-4">
                     <div className="space-y-1.5">
@@ -486,7 +486,7 @@ export default function OrganizationSettings() {
 
                  <div className="space-y-6">
                   <div>
-                    <h2 className="text-xl font-semibold text-red-600 dark:text-red-500 mb-1">Danger Zone</h2>
+                    <h2 className="text-2xl font-bold text-red-600 dark:text-red-500 mb-1">Danger Zone</h2>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">Irreversible actions for this organization.</p>
                   </div>
 
@@ -510,7 +510,7 @@ export default function OrganizationSettings() {
               <div className="space-y-12">
                 {/* Invite Section */}
                 <div>
-                  <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-1">Organization Members</h2>
+                  <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">Organization Members</h2>
                   <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6">Manage who has access to this organization.</p>
                   
                   <div className="bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4">
@@ -637,7 +637,7 @@ export default function OrganizationSettings() {
             {activeTab === 'billing' && (
               <div className="space-y-12">
                 <div>
-                  <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-1">Billing & Subscription</h2>
+                  <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">Billing & Subscription</h2>
                   <p className="text-sm text-neutral-500 dark:text-neutral-400">Manage your subscription plan and payment methods.</p>
                 </div>
 
@@ -824,7 +824,7 @@ export default function OrganizationSettings() {
             {activeTab === 'audit' && (
               <div className="space-y-12">
                 <div>
-                  <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-1">Audit log</h2>
+                  <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">Audit log</h2>
                   <p className="text-sm text-neutral-500 dark:text-neutral-400">Who did what and when for this organization.</p>
                 </div>
 

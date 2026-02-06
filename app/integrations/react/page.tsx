@@ -32,7 +32,7 @@ export default function ReactIntegrationPage() {
               <circle cx="64" cy="64" r="10.6" />
             </svg>
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white">
+          <h1 className="text-4xl md:text-5xl font-bold text-neutral-900 dark:text-white">
             React Integration
           </h1>
         </div>

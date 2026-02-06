@@ -119,7 +119,7 @@ export default function RealtimePage() {
         {/* Visitors List */}
         <div className="w-full md:w-1/3 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden flex flex-col bg-white dark:bg-neutral-900">
           <div className="p-4 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50">
-            <h2 className="font-semibold text-neutral-900 dark:text-white">Active Sessions</h2>
+            <h2 className="text-xl font-semibold text-neutral-900 dark:text-white">Active Sessions</h2>
           </div>
           <div className="overflow-y-auto flex-1">
             {visitors.length === 0 ? (
@@ -181,7 +181,7 @@ export default function RealtimePage() {
         {/* Session Details */}
         <div className="flex-1 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden flex flex-col bg-white dark:bg-neutral-900">
             <div className="p-4 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50 flex justify-between items-center">
-                <h2 className="font-semibold text-neutral-900 dark:text-white">
+                <h2 className="text-xl font-semibold text-neutral-900 dark:text-white">
                     {selectedVisitor ? 'Session Journey' : 'Select a visitor'}
                 </h2>
                 {selectedVisitor && (
