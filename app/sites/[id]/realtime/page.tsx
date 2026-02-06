@@ -98,7 +98,7 @@ export default function RealtimePage() {
       <div className="mb-6 flex items-center justify-between">
         <div>
             <div className="flex items-center gap-2 mb-1">
-                <button onClick={() => router.push(`/sites/${siteId}`)} className="text-sm text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors">
+                <button onClick={() => router.push(`/sites/${siteId}`)} className="text-sm text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange focus:rounded">
                     &larr; Back to Dashboard
                 </button>
             </div>
@@ -115,9 +115,9 @@ export default function RealtimePage() {
         </div>
       </div>
 
-      <div className="flex flex-1 gap-6 min-h-0">
+      <div className="flex flex-col md:flex-row flex-1 gap-6 min-h-0">
         {/* Visitors List */}
-        <div className="w-1/3 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden flex flex-col bg-white dark:bg-neutral-900">
+        <div className="w-full md:w-1/3 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden flex flex-col bg-white dark:bg-neutral-900">
           <div className="p-4 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50">
             <h2 className="font-semibold text-neutral-900 dark:text-white">Active Sessions</h2>
           </div>
@@ -145,7 +145,7 @@ export default function RealtimePage() {
                       exit={{ opacity: 0, x: -10 }}
                       transition={{ duration: 0.2 }}
                       onClick={() => handleSelectVisitor(visitor)}
-                      className={`w-full text-left p-4 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors ${
+                      className={`w-full text-left p-4 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-inset ${
                         selectedVisitor?.session_id === visitor.session_id ? 'bg-neutral-50 dark:bg-neutral-800/50 ring-1 ring-inset ring-neutral-200 dark:ring-neutral-700' : ''
                       }`}
                     >

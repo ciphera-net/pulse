@@ -58,7 +58,7 @@ function FAQItem({ faq, index }: { faq: typeof faqs[0]; index: number }) {
     >
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full py-6 flex items-center justify-between text-left hover:text-brand-orange transition-colors"
+        className="w-full py-6 flex items-center justify-between text-left hover:text-brand-orange transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2"
       >
         <h3 className="text-lg font-semibold text-neutral-900 dark:text-white pr-4">
           {faq.question}

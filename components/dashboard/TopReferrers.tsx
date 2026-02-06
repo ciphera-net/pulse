@@ -63,7 +63,7 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
           {showViewAll && (
             <button
               onClick={() => setIsModalOpen(true)}
-              className="text-xs font-medium text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white transition-colors"
+              className="text-xs font-medium text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange focus:rounded"
             >
               View All
             </button>

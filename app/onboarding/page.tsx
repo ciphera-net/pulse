@@ -44,13 +44,13 @@ export default function OnboardingPage() {
   if (loading) return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Creating Organization..." />
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-neutral-900 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-900 px-4">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <h2 className="mt-6 text-3xl font-bold text-gray-900 dark:text-white">
+          <h2 className="mt-6 text-3xl font-bold text-neutral-900 dark:text-white">
             Welcome to Pulse
           </h2>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+          <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
             To get started, please create an organization for your team.
           </p>
         </div>
@@ -80,7 +80,7 @@ export default function OnboardingPage() {
                 value={slug}
                 onChange={(e) => setSlug(e.target.value)}
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-neutral-500 mt-1">
                 This will be used in your organization's URL.
               </p>
             </div>

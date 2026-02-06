@@ -355,11 +355,11 @@ export default function HomePage() {
               )}
               <div className="mt-2 flex gap-2">
                 {subscription.has_payment_method ? (
-                  <Link href="/org-settings?tab=billing" className="text-sm font-medium text-brand-orange hover:underline">
+                  <Link href="/org-settings?tab=billing" className="text-sm font-medium text-brand-orange hover:underline focus:outline-none focus:ring-2 focus:ring-brand-orange focus:rounded">
                     Manage billing
                   </Link>
                 ) : (
-                  <Link href="/pricing" className="text-sm font-medium text-brand-orange hover:underline">
+                  <Link href="/pricing" className="text-sm font-medium text-brand-orange hover:underline focus:outline-none focus:ring-2 focus:ring-brand-orange focus:rounded">
                     Upgrade
                   </Link>
                 )}

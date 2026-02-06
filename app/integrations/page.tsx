@@ -88,7 +88,7 @@ export default function IntegrationsPage() {
             >
               <Link 
                 href={`/integrations/${integration.id}`}
-                className="group relative p-8 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-sm border border-neutral-200 dark:border-neutral-800 rounded-2xl hover:border-brand-orange/50 dark:hover:border-brand-orange/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl block"
+                className="group relative p-8 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-sm border border-neutral-200 dark:border-neutral-800 rounded-2xl hover:border-brand-orange/50 dark:hover:border-brand-orange/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl block focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2"
               >
               <div className="flex items-start justify-between mb-6">
                 <div className="p-3 bg-neutral-100 dark:bg-neutral-800 rounded-xl group-hover:scale-110 transition-transform duration-300">
@@ -126,7 +126,7 @@ export default function IntegrationsPage() {
             </p>
             <a 
               href="mailto:support@ciphera.net" 
-              className="text-sm font-medium text-brand-orange hover:underline"
+              className="text-sm font-medium text-brand-orange hover:underline focus:outline-none focus:ring-2 focus:ring-brand-orange focus:rounded"
             >
               Request Integration
             </a>

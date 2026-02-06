@@ -51,13 +51,13 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
               © 2024-{year} Ciphera. All rights reserved.
             </div>
             <div className="flex gap-6 text-sm font-medium text-neutral-600 dark:text-neutral-300">
-              <Component href="/about" className="hover:text-brand-orange transition-colors">
+              <Component href="/about" className="hover:text-brand-orange transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange focus:rounded">
                 Why {appName}
               </Component>
-              <Component href="/pricing" className="hover:text-brand-orange transition-colors">
+              <Component href="/pricing" className="hover:text-brand-orange transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange focus:rounded">
                 Pricing
               </Component>
-              <Component href="/faq" className="hover:text-brand-orange transition-colors">
+              <Component href="/faq" className="hover:text-brand-orange transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange focus:rounded">
                 FAQ
               </Component>
             </div>
@@ -102,7 +102,7 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
                 href="https://github.com/ciphera-net"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-9 h-9 rounded-lg bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
+                className="w-9 h-9 rounded-lg bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange"
                 aria-label="GitHub"
               >
                 <GithubIcon className="w-5 h-5" />
@@ -111,7 +111,7 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
                 href="https://x.com/cipheranet"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-9 h-9 rounded-lg bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
+                className="w-9 h-9 rounded-lg bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange"
                 aria-label="X (Twitter)"
               >
                 <TwitterIcon className="w-5 h-5" />
@@ -130,14 +130,14 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
                       href={link.href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors"
+                      className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange focus:rounded"
                     >
                       {link.name}
                     </a>
                   ) : (
                     <Component
                       href={link.href}
-                      className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors"
+                      className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange focus:rounded"
                     >
                       {link.name}
                     </Component>
@@ -158,14 +158,14 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
                       href={link.href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors"
+                      className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange focus:rounded"
                     >
                       {link.name}
                     </a>
                   ) : (
                     <Component
                       href={link.href}
-                      className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors"
+                      className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange focus:rounded"
                     >
                       {link.name}
                     </Component>
@@ -186,14 +186,14 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
                       href={link.href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors"
+                      className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange focus:rounded"
                     >
                       {link.name}
                     </a>
                   ) : (
                     <Component
                       href={link.href}
-                      className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors"
+                      className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange focus:rounded"
                     >
                       {link.name}
                     </Component>
