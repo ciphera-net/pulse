@@ -1,5 +1,3 @@
-'use client'
-
 /**
  * @file Reusable code block component for integration guide pages.
  *
