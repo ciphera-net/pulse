@@ -118,7 +118,7 @@ export default function IntegrationsPage() {
             transition={{ duration: 0.5, delay: integrations.length * 0.1 }}
             className="p-8 border border-dashed border-neutral-300 dark:border-neutral-700 rounded-2xl flex flex-col items-center justify-center text-center"
           >
-            <h3 className="text-lg font-bold text-neutral-900 dark:text-white mb-2">
+            <h3 className="text-xl font-bold text-neutral-900 dark:text-white mb-2">
               Missing something?
             </h3>
             <p className="text-neutral-600 dark:text-neutral-400 text-sm mb-4">

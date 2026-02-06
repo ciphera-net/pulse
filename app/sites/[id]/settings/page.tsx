@@ -306,7 +306,7 @@ export default function SiteSettingsPage() {
     <div className="min-h-screen pt-12 pb-12 px-4 sm:px-6">
       <div className="max-w-4xl mx-auto space-y-8">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">Site Settings</h1>
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Site Settings</h1>
           <p className="mt-2 text-neutral-600 dark:text-neutral-400">
             Manage settings for <span className="font-medium text-neutral-900 dark:text-white">{site.domain}</span>
           </p>
@@ -381,7 +381,7 @@ export default function SiteSettingsPage() {
               <div className="space-y-12">
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div>
-                    <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-1">General Configuration</h2>
+                    <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">General Configuration</h2>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">Update your site details and tracking script.</p>
                   </div>
 
@@ -433,7 +433,7 @@ export default function SiteSettingsPage() {
                   </div>
 
                   <div className="pt-4 border-t border-neutral-100 dark:border-neutral-800">
-                    <h3 className="text-lg font-medium text-neutral-900 dark:text-white mb-2">Tracking Script</h3>
+                    <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-2">Tracking Script</h3>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
                       Add this script to your website to start tracking visitors.
                     </p>
@@ -490,9 +490,9 @@ export default function SiteSettingsPage() {
                   {canEdit && (
                   <div className="space-y-6">
                     <div>
-                      <h2 className="text-xl font-semibold text-red-600 dark:text-red-500 mb-1">Danger Zone</h2>
+                      <h2 className="text-2xl font-bold text-red-600 dark:text-red-500 mb-1">Danger Zone</h2>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">Irreversible actions for your site.</p>
-                  </div>
+                    </div>
 
                   <div className="space-y-4">
                     <div className="p-4 border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/10 rounded-2xl flex items-center justify-between">
@@ -530,7 +530,7 @@ export default function SiteSettingsPage() {
               <div className="space-y-12">
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div>
-                    <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-1">Visibility Settings</h2>
+                    <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">Visibility Settings</h2>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">Manage who can view your dashboard.</p>
                   </div>
 
@@ -664,7 +664,7 @@ export default function SiteSettingsPage() {
               <div className="space-y-12">
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div>
-                    <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-1">Data & Privacy</h2>
+                    <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">Data & Privacy</h2>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">Control what visitor data is collected. Less data = more privacy.</p>
                   </div>
 
@@ -921,7 +921,7 @@ export default function SiteSettingsPage() {
             {activeTab === 'goals' && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-1">Goals & Events</h2>
+                  <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">Goals & Events</h2>
                   <p className="text-sm text-neutral-500 dark:text-neutral-400">
                     Define goals to label custom events (e.g. signup, purchase). Track with <code className="px-1.5 py-0.5 rounded bg-neutral-200 dark:bg-neutral-700 text-xs">pulse.track(&apos;event_name&apos;)</code> in your snippet.
                   </p>

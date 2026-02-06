@@ -270,7 +270,7 @@ export default function PublicDashboardPage() {
                         <div className="w-2 h-2 rounded-full bg-brand-orange animate-pulse" />
                         <span className="text-sm font-medium text-brand-orange uppercase tracking-wider">Public Dashboard</span>
                     </div>
-                    <h1 className="text-3xl font-bold text-neutral-900 dark:text-white flex items-center gap-3">
+                    <h1 className="text-2xl font-bold text-neutral-900 dark:text-white flex items-center gap-3">
                     <img 
                         src={`https://www.google.com/s2/favicons?domain=${site.domain}&sz=64`}
                         alt={site.name}

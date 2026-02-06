@@ -19,7 +19,7 @@ export default function NotFound() {
         <h1 className="text-9xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-neutral-900 to-neutral-500 dark:from-white dark:to-neutral-500 mb-4">
           404
         </h1>
-        <h2 className="text-2xl md:text-3xl font-bold text-neutral-900 dark:text-white mb-6">
+        <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-6">
           Page not found
         </h2>
         <p className="text-lg text-neutral-600 dark:text-neutral-400 max-w-md mx-auto mb-10 leading-relaxed">
