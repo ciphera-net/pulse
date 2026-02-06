@@ -350,9 +350,11 @@ export default function OrganizationSettings() {
 
       <div className="flex flex-col md:flex-row gap-8">
         {/* Sidebar Navigation */}
-        <nav className="w-full md:w-64 flex-shrink-0 space-y-1">
+        <nav className="w-full md:w-64 flex-shrink-0 space-y-1" role="tablist" aria-label="Organization settings sections">
           <button
             onClick={() => handleTabChange('general')}
+            role="tab"
+            aria-selected={activeTab === 'general'}
             className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2 ${
               activeTab === 'general'
                 ? 'bg-brand-orange/10 text-brand-orange'
@@ -364,6 +366,8 @@ export default function OrganizationSettings() {
           </button>
           <button
             onClick={() => handleTabChange('members')}
+            role="tab"
+            aria-selected={activeTab === 'members'}
             className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2 ${
               activeTab === 'members'
                 ? 'bg-brand-orange/10 text-brand-orange'
@@ -375,6 +379,8 @@ export default function OrganizationSettings() {
           </button>
           <button
             onClick={() => handleTabChange('billing')}
+            role="tab"
+            aria-selected={activeTab === 'billing'}
             className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2 ${
               activeTab === 'billing'
                 ? 'bg-brand-orange/10 text-brand-orange'
@@ -386,6 +392,8 @@ export default function OrganizationSettings() {
           </button>
           <button
             onClick={() => handleTabChange('audit')}
+            role="tab"
+            aria-selected={activeTab === 'audit'}
             className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2 ${
               activeTab === 'audit'
                 ? 'bg-brand-orange/10 text-brand-orange'

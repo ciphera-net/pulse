@@ -314,9 +314,11 @@ export default function SiteSettingsPage() {
 
         <div className="flex flex-col md:flex-row gap-8">
         {/* Sidebar Navigation */}
-        <nav className="w-full md:w-64 flex-shrink-0 space-y-1">
+        <nav className="w-full md:w-64 flex-shrink-0 space-y-1" role="tablist" aria-label="Site settings sections">
           <button
             onClick={() => setActiveTab('general')}
+            role="tab"
+            aria-selected={activeTab === 'general'}
             className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2 ${
               activeTab === 'general'
                 ? 'bg-brand-orange/10 text-brand-orange'
@@ -328,6 +330,8 @@ export default function SiteSettingsPage() {
           </button>
           <button
             onClick={() => setActiveTab('visibility')}
+            role="tab"
+            aria-selected={activeTab === 'visibility'}
             className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2 ${
               activeTab === 'visibility'
                 ? 'bg-brand-orange/10 text-brand-orange'
@@ -339,6 +343,8 @@ export default function SiteSettingsPage() {
           </button>
           <button
             onClick={() => setActiveTab('data')}
+            role="tab"
+            aria-selected={activeTab === 'data'}
             className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2 ${
               activeTab === 'data'
                 ? 'bg-brand-orange/10 text-brand-orange'
@@ -350,6 +356,8 @@ export default function SiteSettingsPage() {
           </button>
           <button
             onClick={() => setActiveTab('goals')}
+            role="tab"
+            aria-selected={activeTab === 'goals'}
             className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2 ${
               activeTab === 'goals'
                 ? 'bg-brand-orange/10 text-brand-orange'

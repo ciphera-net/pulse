@@ -102,11 +102,13 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
               </button>
             )}
           </div>
-          <div className="flex p-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg">
+          <div className="flex p-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg" role="tablist" aria-label="Content view tabs">
             {(['top_pages', 'entry_pages', 'exit_pages'] as Tab[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
+                role="tab"
+                aria-selected={activeTab === tab}
                 className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange ${
                   activeTab === tab
                     ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
