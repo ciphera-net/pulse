@@ -306,7 +306,7 @@ export default function SiteSettingsPage() {
     <div className="min-h-screen pt-12 pb-12 px-4 sm:px-6">
       <div className="max-w-4xl mx-auto space-y-8">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">Site Settings</h1>
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Site Settings</h1>
           <p className="mt-2 text-neutral-600 dark:text-neutral-400">
             Manage settings for <span className="font-medium text-neutral-900 dark:text-white">{site.domain}</span>
           </p>
@@ -314,10 +314,12 @@ export default function SiteSettingsPage() {
 
         <div className="flex flex-col md:flex-row gap-8">
         {/* Sidebar Navigation */}
-        <nav className="w-full md:w-64 flex-shrink-0 space-y-1">
+        <nav className="w-full md:w-64 flex-shrink-0 space-y-1" role="tablist" aria-label="Site settings sections">
           <button
             onClick={() => setActiveTab('general')}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
+            role="tab"
+            aria-selected={activeTab === 'general'}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2 ${
               activeTab === 'general'
                 ? 'bg-brand-orange/10 text-brand-orange'
                 : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
@@ -328,7 +330,9 @@ export default function SiteSettingsPage() {
           </button>
           <button
             onClick={() => setActiveTab('visibility')}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
+            role="tab"
+            aria-selected={activeTab === 'visibility'}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2 ${
               activeTab === 'visibility'
                 ? 'bg-brand-orange/10 text-brand-orange'
                 : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
@@ -339,7 +343,9 @@ export default function SiteSettingsPage() {
           </button>
           <button
             onClick={() => setActiveTab('data')}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
+            role="tab"
+            aria-selected={activeTab === 'data'}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2 ${
               activeTab === 'data'
                 ? 'bg-brand-orange/10 text-brand-orange'
                 : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
@@ -350,7 +356,9 @@ export default function SiteSettingsPage() {
           </button>
           <button
             onClick={() => setActiveTab('goals')}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
+            role="tab"
+            aria-selected={activeTab === 'goals'}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2 ${
               activeTab === 'goals'
                 ? 'bg-brand-orange/10 text-brand-orange'
                 : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
@@ -381,7 +389,7 @@ export default function SiteSettingsPage() {
               <div className="space-y-12">
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div>
-                    <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-1">General Configuration</h2>
+                    <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">General Configuration</h2>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">Update your site details and tracking script.</p>
                   </div>
 
@@ -433,7 +441,7 @@ export default function SiteSettingsPage() {
                   </div>
 
                   <div className="pt-4 border-t border-neutral-100 dark:border-neutral-800">
-                    <h3 className="text-lg font-medium text-neutral-900 dark:text-white mb-2">Tracking Script</h3>
+                    <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-2">Tracking Script</h3>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
                       Add this script to your website to start tracking visitors.
                     </p>
@@ -455,7 +463,7 @@ export default function SiteSettingsPage() {
                       <button
                         type="button"
                         onClick={() => setShowVerificationModal(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-all text-sm font-medium"
+                        className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-all text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2"
                       >
                         <ZapIcon className="w-4 h-4" />
                         Verify Installation
@@ -490,9 +498,9 @@ export default function SiteSettingsPage() {
                   {canEdit && (
                   <div className="space-y-6">
                     <div>
-                      <h2 className="text-xl font-semibold text-red-600 dark:text-red-500 mb-1">Danger Zone</h2>
+                      <h2 className="text-2xl font-bold text-red-600 dark:text-red-500 mb-1">Danger Zone</h2>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">Irreversible actions for your site.</p>
-                  </div>
+                    </div>
 
                   <div className="space-y-4">
                     <div className="p-4 border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/10 rounded-2xl flex items-center justify-between">
@@ -502,7 +510,7 @@ export default function SiteSettingsPage() {
                       </div>
                       <button
                         onClick={handleResetData}
-                        className="px-4 py-2 bg-white dark:bg-neutral-900 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-sm font-medium"
+                        className="px-4 py-2 bg-white dark:bg-neutral-900 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
                       >
                         Reset Data
                       </button>
@@ -515,7 +523,7 @@ export default function SiteSettingsPage() {
                       </div>
                       <button
                         onClick={handleDeleteSite}
-                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
                       >
                         Delete Site
                       </button>
@@ -530,7 +538,7 @@ export default function SiteSettingsPage() {
               <div className="space-y-12">
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div>
-                    <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-1">Visibility Settings</h2>
+                    <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">Visibility Settings</h2>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">Manage who can view your dashboard.</p>
                   </div>
 
@@ -555,7 +563,7 @@ export default function SiteSettingsPage() {
                           onChange={(e) => setFormData({ ...formData, is_public: e.target.checked })}
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-orange/20 dark:peer-focus:ring-brand-orange/20 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-brand-orange"></div>
+                        <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-orange/20 dark:peer-focus:ring-brand-orange/20 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-neutral-600 peer-checked:bg-brand-orange"></div>
                       </label>
                     </div>
 
@@ -581,7 +589,7 @@ export default function SiteSettingsPage() {
                               <button
                                 type="button"
                                 onClick={copyLink}
-                                className="px-4 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-white rounded-xl font-medium hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
+                                className="px-4 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-white rounded-xl font-medium hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2"
                               >
                                 {linkCopied ? 'Copied!' : 'Copy Link'}
                               </button>
@@ -607,7 +615,7 @@ export default function SiteSettingsPage() {
                                   }}
                                   className="sr-only peer"
                                 />
-                                <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-orange/20 dark:peer-focus:ring-brand-orange/20 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-brand-orange"></div>
+                                <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-orange/20 dark:peer-focus:ring-brand-orange/20 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-neutral-600 peer-checked:bg-brand-orange"></div>
                               </label>
                             </div>
 
@@ -664,7 +672,7 @@ export default function SiteSettingsPage() {
               <div className="space-y-12">
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div>
-                    <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-1">Data & Privacy</h2>
+                    <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">Data & Privacy</h2>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">Control what visitor data is collected. Less data = more privacy.</p>
                   </div>
 
@@ -688,7 +696,7 @@ export default function SiteSettingsPage() {
                             onChange={(e) => setFormData({ ...formData, collect_page_paths: e.target.checked })}
                             className="sr-only peer"
                           />
-                          <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-orange/20 dark:peer-focus:ring-brand-orange/20 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-brand-orange"></div>
+                          <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-orange/20 dark:peer-focus:ring-brand-orange/20 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-neutral-600 peer-checked:bg-brand-orange"></div>
                         </label>
                       </div>
                     </div>
@@ -709,7 +717,7 @@ export default function SiteSettingsPage() {
                             onChange={(e) => setFormData({ ...formData, collect_referrers: e.target.checked })}
                             className="sr-only peer"
                           />
-                          <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-orange/20 dark:peer-focus:ring-brand-orange/20 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-brand-orange"></div>
+                          <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-orange/20 dark:peer-focus:ring-brand-orange/20 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-neutral-600 peer-checked:bg-brand-orange"></div>
                         </label>
                       </div>
                     </div>
@@ -730,7 +738,7 @@ export default function SiteSettingsPage() {
                             onChange={(e) => setFormData({ ...formData, collect_device_info: e.target.checked })}
                             className="sr-only peer"
                           />
-                          <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-orange/20 dark:peer-focus:ring-brand-orange/20 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-brand-orange"></div>
+                          <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-orange/20 dark:peer-focus:ring-brand-orange/20 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-neutral-600 peer-checked:bg-brand-orange"></div>
                         </label>
                       </div>
                     </div>
@@ -775,7 +783,7 @@ export default function SiteSettingsPage() {
                             onChange={(e) => setFormData({ ...formData, collect_screen_resolution: e.target.checked })}
                             className="sr-only peer"
                           />
-                          <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-orange/20 dark:peer-focus:ring-brand-orange/20 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-brand-orange"></div>
+                          <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-orange/20 dark:peer-focus:ring-brand-orange/20 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-neutral-600 peer-checked:bg-brand-orange"></div>
                         </label>
                       </div>
                     </div>
@@ -799,7 +807,7 @@ export default function SiteSettingsPage() {
                             onChange={(e) => setFormData({ ...formData, filter_bots: e.target.checked })}
                             className="sr-only peer"
                           />
-                          <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-orange/20 dark:peer-focus:ring-brand-orange/20 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-brand-orange"></div>
+                          <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-orange/20 dark:peer-focus:ring-brand-orange/20 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-neutral-600 peer-checked:bg-brand-orange"></div>
                         </label>
                       </div>
                     </div>
@@ -823,7 +831,7 @@ export default function SiteSettingsPage() {
                             onChange={(e) => setFormData({ ...formData, enable_performance_insights: e.target.checked })}
                             className="sr-only peer"
                           />
-                          <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-orange/20 dark:peer-focus:ring-brand-orange/20 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-brand-orange"></div>
+                          <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-orange/20 dark:peer-focus:ring-brand-orange/20 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-neutral-600 peer-checked:bg-brand-orange"></div>
                         </label>
                       </div>
                     </div>
@@ -921,7 +929,7 @@ export default function SiteSettingsPage() {
             {activeTab === 'goals' && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-1">Goals & Events</h2>
+                  <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">Goals & Events</h2>
                   <p className="text-sm text-neutral-500 dark:text-neutral-400">
                     Define goals to label custom events (e.g. signup, purchase). Track with <code className="px-1.5 py-0.5 rounded bg-neutral-200 dark:bg-neutral-700 text-xs">pulse.track(&apos;event_name&apos;)</code> in your snippet.
                   </p>

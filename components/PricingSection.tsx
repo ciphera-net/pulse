@@ -219,7 +219,7 @@ export default function PricingSection() {
         transition={{ duration: 0.5 }}
         className="text-center mb-12"
       >
-        <h2 className="text-4xl md:text-5xl font-bold text-neutral-900 dark:text-white mb-6 tracking-tight">
+        <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-6">
           Transparent Pricing
         </h2>
         <p className="text-xl text-neutral-600 dark:text-neutral-400">

@@ -55,7 +55,7 @@ export default function NewSitePage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <h1 className="text-3xl font-bold mb-8 text-neutral-900 dark:text-white">
+      <h1 className="text-2xl font-bold mb-8 text-neutral-900 dark:text-white">
         Create New Site
       </h1>
 
