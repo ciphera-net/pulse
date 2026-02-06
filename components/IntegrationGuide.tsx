@@ -1,16 +1,14 @@
-'use client'
-
 /**
  * @file Shared layout component for individual integration guide pages.
  *
  * Provides the background atmosphere, back-link, header (logo + title),
- * and prose-styled content area used by every integration sub-page.
+ * prose-styled content area, and a related integrations section.
  */
 
 import Link from 'next/link'
-import { ArrowLeftIcon } from '@ciphera-net/ui'
+import { ArrowLeftIcon, ArrowRightIcon } from '@ciphera-net/ui'
 import { type ReactNode } from 'react'
-import { type Integration } from '@/lib/integrations'
+import { type Integration, getIntegration } from '@/lib/integrations'
 
 interface IntegrationGuideProps {
   /** Integration metadata (name, icon, etc.) */
@@ -20,7 +18,8 @@ interface IntegrationGuideProps {
 }
 
 /**
- * Renders the full-page layout for a single integration guide.
+ * Renders the full-page layout for a single integration guide,
+ * including related integrations at the bottom.
  */
 export function IntegrationGuide({ integration, children }: IntegrationGuideProps) {
   // * Scale the icon up for the detail-page header (w-10 h-10)
@@ -29,6 +28,12 @@ export function IntegrationGuide({ integration, children }: IntegrationGuideProp
       {integration.icon}
     </div>
   )
+
+  // * Resolve related integrations from IDs
+  const relatedIntegrations = integration.relatedIds
+    .map((id) => getIntegration(id))
+    .filter((i): i is Integration => i !== undefined)
+    .slice(0, 4)
 
   return (
     <div className="relative min-h-screen flex flex-col overflow-hidden selection:bg-brand-orange/20">
@@ -63,6 +68,37 @@ export function IntegrationGuide({ integration, children }: IntegrationGuideProp
         <div className="prose prose-neutral dark:prose-invert max-w-none">
           {children}
         </div>
+
+        {/* * --- Related Integrations --- */}
+        {relatedIntegrations.length > 0 && (
+          <div className="mt-16 pt-10 border-t border-neutral-200 dark:border-neutral-800">
+            <h2 className="text-xl font-bold text-neutral-900 dark:text-white mb-6">
+              Related Integrations
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {relatedIntegrations.map((related) => (
+                <Link
+                  key={related.id}
+                  href={`/integrations/${related.id}`}
+                  className="group flex items-center gap-4 p-4 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-sm border border-neutral-200 dark:border-neutral-800 rounded-xl hover:border-brand-orange/50 dark:hover:border-brand-orange/50 transition-all duration-300"
+                >
+                  <div className="p-2 bg-neutral-100 dark:bg-neutral-800 rounded-lg shrink-0 [&_svg]:w-6 [&_svg]:h-6">
+                    {related.icon}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="font-semibold text-neutral-900 dark:text-white block">
+                      {related.name}
+                    </span>
+                    <span className="text-sm text-neutral-500 dark:text-neutral-400 truncate block">
+                      {related.description}
+                    </span>
+                  </div>
+                  <ArrowRightIcon className="w-4 h-4 text-neutral-400 group-hover:text-brand-orange shrink-0 transition-colors" />
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
