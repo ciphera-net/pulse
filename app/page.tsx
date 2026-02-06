@@ -48,7 +48,7 @@ function ComparisonSection() {
   return (
     <div className="w-full max-w-4xl mx-auto mb-32">
       <div className="text-center mb-12">
-        <h2 className="text-3xl font-bold text-neutral-900 dark:text-white mb-4">Why choose Pulse?</h2>
+        <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-4">Why choose Pulse?</h2>
         <p className="text-neutral-500">The lightweight, privacy-friendly alternative.</p>
       </div>
 
@@ -270,7 +270,7 @@ export default function HomePage() {
             transition={{ duration: 0.5 }}
             className="text-center mb-20"
           >
-            <h2 className="text-3xl font-bold text-neutral-900 dark:text-white mb-6">Ready to switch?</h2>
+            <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-6">Ready to switch?</h2>
             <Button onClick={() => initiateOAuthFlow()} variant="primary" className="px-8 py-4 text-lg shadow-lg shadow-brand-orange/20">
               Start your free trial
             </Button>
@@ -355,11 +355,11 @@ export default function HomePage() {
               )}
               <div className="mt-2 flex gap-2">
                 {subscription.has_payment_method ? (
-                  <Link href="/org-settings?tab=billing" className="text-sm font-medium text-brand-orange hover:underline">
+                  <Link href="/org-settings?tab=billing" className="text-sm font-medium text-brand-orange hover:underline focus:outline-none focus:ring-2 focus:ring-brand-orange focus:rounded">
                     Manage billing
                   </Link>
                 ) : (
-                  <Link href="/pricing" className="text-sm font-medium text-brand-orange hover:underline">
+                  <Link href="/pricing" className="text-sm font-medium text-brand-orange hover:underline focus:outline-none focus:ring-2 focus:ring-brand-orange focus:rounded">
                     Upgrade
                   </Link>
                 )}

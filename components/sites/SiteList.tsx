@@ -27,7 +27,7 @@ export default function SiteList({ sites, loading, onDelete }: SiteListProps) {
   if (sites.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-neutral-300 dark:border-neutral-700 p-12 text-center">
-        <h3 className="text-lg font-medium text-neutral-900 dark:text-white">No sites yet</h3>
+        <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">No sites yet</h3>
         <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">Create your first site to get started.</p>
       </div>
     )
@@ -105,7 +105,7 @@ export default function SiteList({ sites, loading, onDelete }: SiteListProps) {
               <button
                 type="button"
                 onClick={() => onDelete(site.id)}
-                className="flex items-center justify-center rounded-lg border border-neutral-200 px-3 hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800 text-neutral-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                className="flex items-center justify-center rounded-lg border border-neutral-200 px-3 hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800 text-neutral-500 hover:text-red-600 dark:hover:text-red-400 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
                 title="Delete Site"
               >
                 <SettingsIcon className="h-4 w-4" />

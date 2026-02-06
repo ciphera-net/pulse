@@ -165,7 +165,7 @@ export default function AboutPage() {
           transition={{ duration: 0.5 }}
           className="mt-8 p-6 bg-neutral-100 dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-800"
         >
-          <h3 className="text-lg font-bold mb-2 text-neutral-900 dark:text-white">What about Plausible?</h3>
+          <h3 className="text-xl font-bold mb-2 text-neutral-900 dark:text-white">What about Plausible?</h3>
           <p className="text-neutral-600 dark:text-neutral-400 text-sm">
             We love Plausible! They paved the way for privacy-friendly analytics. 
             Pulse offers a similar philosophy but with a focus on even deeper integration with the Ciphera ecosystem 

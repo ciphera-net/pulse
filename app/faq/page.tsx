@@ -58,7 +58,7 @@ function FAQItem({ faq, index }: { faq: typeof faqs[0]; index: number }) {
     >
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full py-6 flex items-center justify-between text-left hover:text-brand-orange transition-colors"
+        className="w-full py-6 flex items-center justify-between text-left hover:text-brand-orange transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2"
       >
         <h3 className="text-lg font-semibold text-neutral-900 dark:text-white pr-4">
           {faq.question}
@@ -104,7 +104,7 @@ export default function FAQPage() {
           className="text-center mb-16"
         >
           <span className="badge-primary mb-4 inline-flex">FAQ</span>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-neutral-900 dark:text-white mb-4">
+          <h1 className="text-4xl md:text-5xl font-bold text-neutral-900 dark:text-white mb-4">
             Frequently asked questions
           </h1>
           <p className="text-lg text-neutral-600 dark:text-neutral-400 max-w-2xl mx-auto">

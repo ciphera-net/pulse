@@ -32,7 +32,7 @@ export default function VueIntegrationPage() {
               <path d="M64 24.6H39L64 67.4l25-42.8H64z" fill="#35495E" />
             </svg>
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white">
+          <h1 className="text-4xl md:text-5xl font-bold text-neutral-900 dark:text-white">
             Vue.js Integration
           </h1>
         </div>
