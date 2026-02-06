@@ -353,7 +353,7 @@ export default function OrganizationSettings() {
         <nav className="w-full md:w-64 flex-shrink-0 space-y-1">
           <button
             onClick={() => handleTabChange('general')}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2 ${
               activeTab === 'general'
                 ? 'bg-brand-orange/10 text-brand-orange'
                 : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
@@ -364,7 +364,7 @@ export default function OrganizationSettings() {
           </button>
           <button
             onClick={() => handleTabChange('members')}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2 ${
               activeTab === 'members'
                 ? 'bg-brand-orange/10 text-brand-orange'
                 : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
@@ -375,7 +375,7 @@ export default function OrganizationSettings() {
           </button>
           <button
             onClick={() => handleTabChange('billing')}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2 ${
               activeTab === 'billing'
                 ? 'bg-brand-orange/10 text-brand-orange'
                 : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
@@ -386,7 +386,7 @@ export default function OrganizationSettings() {
           </button>
           <button
             onClick={() => handleTabChange('audit')}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2 ${
               activeTab === 'audit'
                 ? 'bg-brand-orange/10 text-brand-orange'
                 : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'

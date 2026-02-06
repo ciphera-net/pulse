@@ -196,7 +196,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
             {showViewAll && (
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="text-xs font-medium text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white transition-colors"
+                className="text-xs font-medium text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange focus:rounded"
               >
                 View All
               </button>
@@ -207,7 +207,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors capitalize ${
+                className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors capitalize focus:outline-none focus:ring-2 focus:ring-brand-orange ${
                   activeTab === tab
                     ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
                     : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
