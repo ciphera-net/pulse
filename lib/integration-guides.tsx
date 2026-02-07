@@ -4,7 +4,7 @@
  * Each guide is keyed by the integration slug and rendered on the
  * `/integrations/[slug]` page.
  *
- * * 50 guides across 7 categories.
+ * * 75 guides across 7 categories.
  */
 
 import { type ReactNode } from 'react'
@@ -2620,6 +2620,964 @@ export default defineConfig({
         <a href="/integrations/jekyll" className="text-brand-orange hover:underline">Jekyll</a>,{' '}
         <a href="/integrations/hugo" className="text-brand-orange hover:underline">Hugo</a>,{' '}
         <a href="/integrations/netlify" className="text-brand-orange hover:underline">Netlify</a>
+      </p>
+    </>
+  ),
+
+  /* ────────────────────────────────────────────────────────────────────────────
+   * 51. Craft CMS
+   * ──────────────────────────────────────────────────────────────────────────── */
+  'craftcms': (
+    <>
+      <p className="lead text-xl text-neutral-600 dark:text-neutral-400">
+        Add Pulse to your Craft CMS site by editing your Twig layout template.
+      </p>
+
+      <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
+
+      <h3>Add the Pulse Script to Your Layout</h3>
+      <p>
+        Edit your main Twig layout template at{' '}
+        <code>templates/_layout.twig</code> and add the Pulse script inside the{' '}
+        <code>&lt;head&gt;</code> section.
+      </p>
+      <CodeBlock filename="templates/_layout.twig">{`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <script
+      defer
+      data-domain="your-site.com"
+      src="https://pulse.ciphera.net/script.js"
+    ></script>
+
+    <title>{{ siteName }}</title>
+</head>
+<body>
+    {% block content %}{% endblock %}
+</body>
+</html>`}</CodeBlock>
+
+      <p>
+        For more details, see the{' '}
+        <a href="https://craftcms.com/docs/5.x/system/elements.html" target="_blank" rel="noopener noreferrer" className="text-brand-orange hover:underline">
+          Craft CMS docs
+        </a>.
+      </p>
+    </>
+  ),
+
+  /* ────────────────────────────────────────────────────────────────────────────
+   * 52. Statamic
+   * ──────────────────────────────────────────────────────────────────────────── */
+  'statamic': (
+    <>
+      <p className="lead text-xl text-neutral-600 dark:text-neutral-400">
+        Statamic is a Laravel-based CMS. Add Pulse to your Antlers or Blade
+        layout.
+      </p>
+
+      <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
+
+      <h3>Add the Pulse Script to Your Layout</h3>
+      <p>
+        Edit your Antlers layout at{' '}
+        <code>resources/views/layout.antlers.html</code> and add the Pulse
+        script inside the <code>&lt;head&gt;</code> section.
+      </p>
+      <CodeBlock filename="resources/views/layout.antlers.html">{`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <script
+      defer
+      data-domain="your-site.com"
+      src="https://pulse.ciphera.net/script.js"
+    ></script>
+
+    <title>{{ title }}</title>
+</head>
+<body>
+    {{ template_content }}
+</body>
+</html>`}</CodeBlock>
+
+      <p>
+        For more details, see the{' '}
+        <a href="https://statamic.dev/views" target="_blank" rel="noopener noreferrer" className="text-brand-orange hover:underline">
+          Statamic views docs
+        </a>.
+      </p>
+    </>
+  ),
+
+  /* ────────────────────────────────────────────────────────────────────────────
+   * 53. TYPO3
+   * ──────────────────────────────────────────────────────────────────────────── */
+  'typo3': (
+    <>
+      <p className="lead text-xl text-neutral-600 dark:text-neutral-400">
+        Add Pulse to your TYPO3 site via TypoScript setup.
+      </p>
+
+      <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
+
+      <h3>Add the Pulse Script via TypoScript</h3>
+      <p>
+        Add the following to your <code>setup.typoscript</code> file to inject
+        the Pulse script into the page header.
+      </p>
+      <CodeBlock filename="setup.typoscript">{`page.headerData.999 = TEXT
+page.headerData.999.value = <script defer data-domain="your-site.com" src="https://pulse.ciphera.net/script.js"></script>`}</CodeBlock>
+
+      <p>
+        For more details, see the{' '}
+        <a href="https://docs.typo3.org/m/typo3/reference-typoscript/main/en-us/" target="_blank" rel="noopener noreferrer" className="text-brand-orange hover:underline">
+          TypoScript reference
+        </a>.
+      </p>
+    </>
+  ),
+
+  /* ────────────────────────────────────────────────────────────────────────────
+   * 54. Kirby
+   * ──────────────────────────────────────────────────────────────────────────── */
+  'kirby': (
+    <>
+      <p className="lead text-xl text-neutral-600 dark:text-neutral-400">
+        Add Pulse to your Kirby site via a PHP snippet.
+      </p>
+
+      <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
+
+      <h3>Add the Pulse Script to Your Header Snippet</h3>
+      <p>
+        Edit <code>site/snippets/header.php</code> or{' '}
+        <code>site/templates/default.php</code> and add the Pulse script before
+        the closing <code>&lt;/head&gt;</code> tag.
+      </p>
+      <CodeBlock filename="site/snippets/header.php">{`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <script
+      defer
+      data-domain="your-site.com"
+      src="https://pulse.ciphera.net/script.js"
+    ></script>
+
+    <title><?= $page->title() ?></title>
+</head>`}</CodeBlock>
+
+      <p>
+        For more details, see the{' '}
+        <a href="https://getkirby.com/docs/guide/templates/snippets" target="_blank" rel="noopener noreferrer" className="text-brand-orange hover:underline">
+          Kirby snippets docs
+        </a>.
+      </p>
+    </>
+  ),
+
+  /* ────────────────────────────────────────────────────────────────────────────
+   * 55. Grav
+   * ──────────────────────────────────────────────────────────────────────────── */
+  'grav': (
+    <>
+      <p className="lead text-xl text-neutral-600 dark:text-neutral-400">
+        Add Pulse to your Grav site via Twig templates.
+      </p>
+
+      <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
+
+      <h3>Add the Pulse Script to Your Base Template</h3>
+      <p>
+        Edit your theme&apos;s base template at{' '}
+        <code>templates/partials/base.html.twig</code> and add the Pulse script
+        inside the head block.
+      </p>
+      <CodeBlock filename="templates/partials/base.html.twig">{`<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% block head %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <script
+      defer
+      data-domain="your-site.com"
+      src="https://pulse.ciphera.net/script.js"
+    ></script>
+
+    <title>{{ page.title }}</title>
+    {% endblock %}
+</head>
+<body>
+    {% block content %}{% endblock %}
+</body>
+</html>`}</CodeBlock>
+
+      <p>
+        For more details, see the{' '}
+        <a href="https://learn.getgrav.org/17/themes/twig-primer" target="_blank" rel="noopener noreferrer" className="text-brand-orange hover:underline">
+          Grav Twig docs
+        </a>.
+      </p>
+    </>
+  ),
+
+  /* ────────────────────────────────────────────────────────────────────────────
+   * 56. Umbraco
+   * ──────────────────────────────────────────────────────────────────────────── */
+  'umbraco': (
+    <>
+      <p className="lead text-xl text-neutral-600 dark:text-neutral-400">
+        Add Pulse to your Umbraco site via a Razor layout view.
+      </p>
+
+      <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
+
+      <h3>Add the Pulse Script to Your Layout</h3>
+      <p>
+        Edit <code>Views/Shared/_Layout.cshtml</code> and add the Pulse script
+        before the closing <code>&lt;/head&gt;</code> tag. Use an environment
+        tag guard to only load in production.
+      </p>
+      <CodeBlock filename="Views/Shared/_Layout.cshtml">{`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <environment include="Production">
+        <script
+          defer
+          data-domain="your-site.com"
+          src="https://pulse.ciphera.net/script.js"
+        ></script>
+    </environment>
+
+    <title>@ViewData["Title"]</title>
+</head>
+<body>
+    @RenderBody()
+</body>
+</html>`}</CodeBlock>
+
+      <p>
+        For more details, see the{' '}
+        <a href="https://docs.umbraco.com/umbraco-cms/fundamentals/design/templates" target="_blank" rel="noopener noreferrer" className="text-brand-orange hover:underline">
+          Umbraco templates docs
+        </a>.
+      </p>
+    </>
+  ),
+
+  /* ────────────────────────────────────────────────────────────────────────────
+   * 57. Storyblok
+   * ──────────────────────────────────────────────────────────────────────────── */
+  'storyblok': (
+    <>
+      <p className="lead text-xl text-neutral-600 dark:text-neutral-400">
+        Storyblok is a headless CMS — add Pulse to the frontend that renders
+        your Storyblok content.
+      </p>
+
+      <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
+
+      <h3>Add Pulse to Your Frontend</h3>
+      <p>
+        Since Storyblok is a headless CMS, the analytics script goes in your
+        frontend framework. Follow the guide for your framework:
+      </p>
+      <ul>
+        <li><a href="/integrations/nextjs" className="text-brand-orange hover:underline">Next.js</a></li>
+        <li><a href="/integrations/nuxt" className="text-brand-orange hover:underline">Nuxt</a></li>
+        <li><a href="/integrations/gatsby" className="text-brand-orange hover:underline">Gatsby</a></li>
+        <li><a href="/integrations/astro" className="text-brand-orange hover:underline">Astro</a></li>
+        <li><a href="/integrations/svelte" className="text-brand-orange hover:underline">SvelteKit</a></li>
+      </ul>
+
+      <p>
+        For more details, see the{' '}
+        <a href="https://www.storyblok.com/docs/guide/introduction" target="_blank" rel="noopener noreferrer" className="text-brand-orange hover:underline">
+          Storyblok docs
+        </a>.
+      </p>
+    </>
+  ),
+
+  /* ────────────────────────────────────────────────────────────────────────────
+   * 58. Prismic
+   * ──────────────────────────────────────────────────────────────────────────── */
+  'prismic': (
+    <>
+      <p className="lead text-xl text-neutral-600 dark:text-neutral-400">
+        Prismic is a headless CMS — add Pulse to the frontend that displays
+        your Prismic content.
+      </p>
+
+      <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
+
+      <h3>Add Pulse to Your Frontend</h3>
+      <p>
+        Since Prismic is a headless CMS, the analytics script goes in your
+        frontend framework. Follow the guide for your framework:
+      </p>
+      <ul>
+        <li><a href="/integrations/nextjs" className="text-brand-orange hover:underline">Next.js</a></li>
+        <li><a href="/integrations/nuxt" className="text-brand-orange hover:underline">Nuxt</a></li>
+        <li><a href="/integrations/gatsby" className="text-brand-orange hover:underline">Gatsby</a></li>
+        <li><a href="/integrations/astro" className="text-brand-orange hover:underline">Astro</a></li>
+        <li><a href="/integrations/svelte" className="text-brand-orange hover:underline">SvelteKit</a></li>
+      </ul>
+
+      <p>
+        For more details, see the{' '}
+        <a href="https://prismic.io/docs" target="_blank" rel="noopener noreferrer" className="text-brand-orange hover:underline">
+          Prismic docs
+        </a>.
+      </p>
+    </>
+  ),
+
+  /* ────────────────────────────────────────────────────────────────────────────
+   * 59. Shopware
+   * ──────────────────────────────────────────────────────────────────────────── */
+  'shopware': (
+    <>
+      <p className="lead text-xl text-neutral-600 dark:text-neutral-400">
+        Add Pulse to your Shopware 6 store via theme template.
+      </p>
+
+      <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
+
+      <h3>Add the Pulse Script to Your Theme</h3>
+      <p>
+        Edit{' '}
+        <code>Resources/views/storefront/layout/meta.html.twig</code> in your
+        theme and add the Pulse script in the <code>base_header</code> block.
+      </p>
+      <CodeBlock filename="Resources/views/storefront/layout/meta.html.twig">{`{% sw_extends '@Storefront/storefront/layout/meta.html.twig' %}
+
+{% block base_header %}
+    {{ parent() }}
+
+    <script
+      defer
+      data-domain="your-site.com"
+      src="https://pulse.ciphera.net/script.js"
+    ></script>
+{% endblock %}`}</CodeBlock>
+
+      <p>
+        For more details, see the{' '}
+        <a href="https://developer.shopware.com/docs/guides/plugins/themes/" target="_blank" rel="noopener noreferrer" className="text-brand-orange hover:underline">
+          Shopware themes docs
+        </a>.
+      </p>
+    </>
+  ),
+
+  /* ────────────────────────────────────────────────────────────────────────────
+   * 60. Magento / Adobe Commerce
+   * ──────────────────────────────────────────────────────────────────────────── */
+  'magento': (
+    <>
+      <p className="lead text-xl text-neutral-600 dark:text-neutral-400">
+        Add Pulse to your Magento / Adobe Commerce store via layout XML.
+      </p>
+
+      <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
+
+      <h3>Method 1: Layout XML</h3>
+      <p>
+        Add the Pulse script to your theme&apos;s layout XML at{' '}
+        <code>app/design/frontend/YOUR_THEME/default/Magento_Theme/layout/default_head_blocks.xml</code>.
+      </p>
+      <CodeBlock filename="default_head_blocks.xml">{`<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <head>
+        <script src="https://pulse.ciphera.net/script.js"
+                src_type="url"
+                defer="true" />
+    </head>
+</page>`}</CodeBlock>
+
+      <h3>Method 2: Admin Panel</h3>
+      <p>
+        Go to <strong>Content &rarr; Design &rarr; Configuration &rarr; HTML
+        Head &rarr; Scripts and Style Sheets</strong> and paste the Pulse
+        script.
+      </p>
+      <CodeBlock filename="Admin → HTML Head">{`<script
+  defer
+  data-domain="your-site.com"
+  src="https://pulse.ciphera.net/script.js"
+></script>`}</CodeBlock>
+
+      <p>
+        For more details, see the{' '}
+        <a href="https://developer.adobe.com/commerce/frontend-core/guide/layouts/" target="_blank" rel="noopener noreferrer" className="text-brand-orange hover:underline">
+          Magento layout docs
+        </a>.
+      </p>
+    </>
+  ),
+
+  /* ────────────────────────────────────────────────────────────────────────────
+   * 61. Bubble
+   * ──────────────────────────────────────────────────────────────────────────── */
+  'bubble': (
+    <>
+      <p className="lead text-xl text-neutral-600 dark:text-neutral-400">
+        Add Pulse to your Bubble app via the SEO / Meta tags section.
+      </p>
+
+      <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
+
+      <h3>Add the Pulse Script via Settings</h3>
+      <p>
+        Go to <strong>Settings &rarr; SEO / Metatags &rarr; Script/meta tags in
+        header</strong> and paste the Pulse script.
+      </p>
+      <CodeBlock filename="Bubble → SEO / Metatags → Header">{`<script
+  defer
+  data-domain="your-site.com"
+  src="https://pulse.ciphera.net/script.js"
+></script>`}</CodeBlock>
+
+      <p>
+        For more details, see the{' '}
+        <a href="https://manual.bubble.io/help-guides/getting-started/application-settings" target="_blank" rel="noopener noreferrer" className="text-brand-orange hover:underline">
+          Bubble settings docs
+        </a>.
+      </p>
+    </>
+  ),
+
+  /* ────────────────────────────────────────────────────────────────────────────
+   * 62. Discourse
+   * ──────────────────────────────────────────────────────────────────────────── */
+  'discourse': (
+    <>
+      <p className="lead text-xl text-neutral-600 dark:text-neutral-400">
+        Add Pulse to your Discourse forum via admin customization.
+      </p>
+
+      <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
+
+      <h3>Add the Pulse Script via Theme Customization</h3>
+      <p>
+        Go to <strong>Admin &rarr; Customize &rarr; Themes &rarr; Edit
+        CSS/HTML</strong> and add the Pulse script in the{' '}
+        <code>&lt;/head&gt;</code> section.
+      </p>
+      <CodeBlock filename="Discourse → Theme → </head>">{`<script
+  defer
+  data-domain="your-site.com"
+  src="https://pulse.ciphera.net/script.js"
+></script>`}</CodeBlock>
+
+      <p>
+        For more details, see the{' '}
+        <a href="https://meta.discourse.org/t/developer-s-guide-to-discourse-themes/93648" target="_blank" rel="noopener noreferrer" className="text-brand-orange hover:underline">
+          Discourse themes guide
+        </a>.
+      </p>
+    </>
+  ),
+
+  /* ────────────────────────────────────────────────────────────────────────────
+   * 63. HubSpot
+   * ──────────────────────────────────────────────────────────────────────────── */
+  'hubspot': (
+    <>
+      <p className="lead text-xl text-neutral-600 dark:text-neutral-400">
+        Add Pulse to your HubSpot-hosted pages via site settings.
+      </p>
+
+      <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
+
+      <h3>Add the Pulse Script via Site Settings</h3>
+      <p>
+        Go to <strong>Settings &rarr; Website &rarr; Pages &rarr; Site Header
+        HTML</strong> and paste the Pulse script.
+      </p>
+      <CodeBlock filename="HubSpot → Site Header HTML">{`<script
+  defer
+  data-domain="your-site.com"
+  src="https://pulse.ciphera.net/script.js"
+></script>`}</CodeBlock>
+
+      <p>
+        Works for HubSpot CMS Free, Starter, Pro, and Enterprise.
+      </p>
+
+      <p>
+        For more details, see the{' '}
+        <a href="https://knowledge.hubspot.com/website-pages/add-code-snippets-to-the-head-and-footer-html-of-your-pages" target="_blank" rel="noopener noreferrer" className="text-brand-orange hover:underline">
+          HubSpot header code docs
+        </a>.
+      </p>
+    </>
+  ),
+
+  /* ────────────────────────────────────────────────────────────────────────────
+   * 64. Substack
+   * ──────────────────────────────────────────────────────────────────────────── */
+  'substack': (
+    <>
+      <p className="lead text-xl text-neutral-600 dark:text-neutral-400">
+        Substack supports custom domains. Add Pulse tracking for your custom
+        domain.
+      </p>
+
+      <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
+
+      <h3>Track Your Substack via a Custom Domain</h3>
+      <p>
+        Substack doesn&apos;t allow custom scripts directly. You can track your
+        Substack via your custom domain by configuring Pulse to track the custom
+        domain.
+      </p>
+      <ol>
+        <li>Set up your custom domain in Substack.</li>
+        <li>Add your custom domain in the Pulse dashboard.</li>
+        <li>Pulse will automatically track page views on your custom domain.</li>
+      </ol>
+
+      <p>
+        For more details, see the{' '}
+        <a href="https://support.substack.com/hc/en-us/articles/360037645932-How-do-I-set-up-a-custom-domain-" target="_blank" rel="noopener noreferrer" className="text-brand-orange hover:underline">
+          Substack custom domain docs
+        </a>.
+      </p>
+    </>
+  ),
+
+  /* ────────────────────────────────────────────────────────────────────────────
+   * 65. Linktree
+   * ──────────────────────────────────────────────────────────────────────────── */
+  'linktree': (
+    <>
+      <p className="lead text-xl text-neutral-600 dark:text-neutral-400">
+        Add Pulse to your Linktree page via custom code (Business plan
+        required).
+      </p>
+
+      <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
+
+      <h3>Add the Pulse Script via Custom Meta Tags</h3>
+      <p>
+        Go to <strong>Settings &rarr; SEO &rarr; Custom Meta Tags</strong> and
+        add the Pulse script to the head.
+      </p>
+      <CodeBlock filename="Linktree → SEO → Head">{`<script
+  defer
+  data-domain="your-site.com"
+  src="https://pulse.ciphera.net/script.js"
+></script>`}</CodeBlock>
+
+      <p>
+        <strong>Note:</strong> Requires Linktree Business or Enterprise plan.
+      </p>
+
+      <p>
+        For more details, see{' '}
+        <a href="https://linktr.ee/s/business/" target="_blank" rel="noopener noreferrer" className="text-brand-orange hover:underline">
+          Linktree Business
+        </a>.
+      </p>
+    </>
+  ),
+
+  /* ────────────────────────────────────────────────────────────────────────────
+   * 66. Weebly
+   * ──────────────────────────────────────────────────────────────────────────── */
+  'weebly': (
+    <>
+      <p className="lead text-xl text-neutral-600 dark:text-neutral-400">
+        Add Pulse to your Weebly site via the header code settings.
+      </p>
+
+      <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
+
+      <h3>Add the Pulse Script via SEO Settings</h3>
+      <p>
+        Go to <strong>Settings &rarr; SEO &rarr; Header Code</strong> and paste
+        the Pulse script.
+      </p>
+      <CodeBlock filename="Weebly → SEO → Header Code">{`<script
+  defer
+  data-domain="your-site.com"
+  src="https://pulse.ciphera.net/script.js"
+></script>`}</CodeBlock>
+
+      <p>
+        For more details, see the{' '}
+        <a href="https://www.weebly.com/app/help/us/en/topics/descriptions-and-keywords" target="_blank" rel="noopener noreferrer" className="text-brand-orange hover:underline">
+          Weebly SEO docs
+        </a>.
+      </p>
+    </>
+  ),
+
+  /* ────────────────────────────────────────────────────────────────────────────
+   * 67. GitBook
+   * ──────────────────────────────────────────────────────────────────────────── */
+  'gitbook': (
+    <>
+      <p className="lead text-xl text-neutral-600 dark:text-neutral-400">
+        Add Pulse to your GitBook documentation site.
+      </p>
+
+      <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
+
+      <h3>Add the Pulse Script via Custom Scripts</h3>
+      <p>
+        GitBook supports custom header integrations. Go to{' '}
+        <strong>Space settings &rarr; Integrations &rarr; Custom
+        scripts</strong> and add the Pulse script.
+      </p>
+      <CodeBlock filename="GitBook → Custom Scripts">{`<script
+  defer
+  data-domain="your-site.com"
+  src="https://pulse.ciphera.net/script.js"
+></script>`}</CodeBlock>
+
+      <p>
+        For more details, see the{' '}
+        <a href="https://docs.gitbook.com/published-documentation/customization/space-customization" target="_blank" rel="noopener noreferrer" className="text-brand-orange hover:underline">
+          GitBook customization docs
+        </a>.
+      </p>
+    </>
+  ),
+
+  /* ────────────────────────────────────────────────────────────────────────────
+   * 68. Gridsome
+   * ──────────────────────────────────────────────────────────────────────────── */
+  'gridsome': (
+    <>
+      <p className="lead text-xl text-neutral-600 dark:text-neutral-400">
+        Add Pulse to your Gridsome site via the HTML template or a plugin.
+      </p>
+
+      <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
+
+      <h3>Method 1: HTML Template</h3>
+      <p>
+        Edit <code>src/index.html</code> and add the Pulse script to the head
+        section.
+      </p>
+      <CodeBlock filename="src/index.html">{`<!DOCTYPE html>
+<html \${htmlAttrs}>
+<head>
+    \${head}
+
+    <script
+      defer
+      data-domain="your-site.com"
+      src="https://pulse.ciphera.net/script.js"
+    ></script>
+</head>
+<body \${bodyAttrs}>
+    \${app}
+</body>
+</html>`}</CodeBlock>
+
+      <h3>Method 2: Server Configuration</h3>
+      <p>
+        Use <code>gridsome.server.js</code> to inject the script
+        programmatically.
+      </p>
+      <CodeBlock filename="gridsome.server.js">{`module.exports = function (api) {
+  api.afterBuild(({ queue }) => {
+    // Script injection logic
+  })
+}`}</CodeBlock>
+
+      <p>
+        For more details, see the{' '}
+        <a href="https://gridsome.org/docs/head/" target="_blank" rel="noopener noreferrer" className="text-brand-orange hover:underline">
+          Gridsome head management docs
+        </a>.
+      </p>
+    </>
+  ),
+
+  /* ────────────────────────────────────────────────────────────────────────────
+   * 69. Read the Docs
+   * ──────────────────────────────────────────────────────────────────────────── */
+  'readthedocs': (
+    <>
+      <p className="lead text-xl text-neutral-600 dark:text-neutral-400">
+        Add Pulse to your Read the Docs documentation.
+      </p>
+
+      <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
+
+      <h3>Add the Pulse Script via Sphinx Configuration</h3>
+      <p>
+        Create a custom template override. In your Sphinx{' '}
+        <code>conf.py</code>, add the Pulse script as a JavaScript file.
+      </p>
+      <CodeBlock filename="conf.py">{`html_js_files = [
+    ('https://pulse.ciphera.net/script.js', {'defer': 'defer', 'data-domain': 'your-site.com'}),
+]`}</CodeBlock>
+
+      <p>
+        For more details, see the{' '}
+        <a href="https://docs.readthedocs.io/en/stable/guides/adding-custom-css.html" target="_blank" rel="noopener noreferrer" className="text-brand-orange hover:underline">
+          Read the Docs customization
+        </a>.
+      </p>
+    </>
+  ),
+
+  /* ────────────────────────────────────────────────────────────────────────────
+   * 70. Sphinx
+   * ──────────────────────────────────────────────────────────────────────────── */
+  'sphinx': (
+    <>
+      <p className="lead text-xl text-neutral-600 dark:text-neutral-400">
+        Add Pulse to your Sphinx documentation via <code>conf.py</code>.
+      </p>
+
+      <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
+
+      <h3>Add the Pulse Script via Configuration</h3>
+      <p>
+        In your <code>conf.py</code>, add the Pulse script using{' '}
+        <code>html_js_files</code>.
+      </p>
+      <CodeBlock filename="conf.py">{`html_js_files = [
+    ('https://pulse.ciphera.net/script.js', {'defer': 'defer', 'data-domain': 'your-site.com'}),
+]`}</CodeBlock>
+
+      <p>
+        For more details, see the{' '}
+        <a href="https://www.sphinx-doc.org/en/master/usage/configuration.html#confval-html_js_files" target="_blank" rel="noopener noreferrer" className="text-brand-orange hover:underline">
+          Sphinx html_js_files docs
+        </a>.
+      </p>
+    </>
+  ),
+
+  /* ────────────────────────────────────────────────────────────────────────────
+   * 71. ReadMe
+   * ──────────────────────────────────────────────────────────────────────────── */
+  'readme': (
+    <>
+      <p className="lead text-xl text-neutral-600 dark:text-neutral-400">
+        Add Pulse to your ReadMe API documentation portal.
+      </p>
+
+      <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
+
+      <h3>Add the Pulse Script via Custom JavaScript</h3>
+      <p>
+        Go to <strong>Project Settings &rarr; Custom JavaScript</strong> and
+        paste the Pulse script.
+      </p>
+      <CodeBlock filename="ReadMe → Custom JavaScript">{`<script
+  defer
+  data-domain="your-site.com"
+  src="https://pulse.ciphera.net/script.js"
+></script>`}</CodeBlock>
+
+      <p>
+        For more details, see the{' '}
+        <a href="https://docs.readme.com/main/docs/custom-javascript" target="_blank" rel="noopener noreferrer" className="text-brand-orange hover:underline">
+          ReadMe custom JavaScript docs
+        </a>.
+      </p>
+    </>
+  ),
+
+  /* ────────────────────────────────────────────────────────────────────────────
+   * 72. Flutter Web
+   * ──────────────────────────────────────────────────────────────────────────── */
+  'flutter': (
+    <>
+      <p className="lead text-xl text-neutral-600 dark:text-neutral-400">
+        Add Pulse to your Flutter web application via{' '}
+        <code>web/index.html</code>.
+      </p>
+
+      <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
+
+      <h3>Add the Pulse Script to Your HTML Template</h3>
+      <p>
+        Edit <code>web/index.html</code> in your Flutter project and add the
+        Pulse script to the <code>&lt;head&gt;</code> section.
+      </p>
+      <CodeBlock filename="web/index.html">{`<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <script
+      defer
+      data-domain="your-site.com"
+      src="https://pulse.ciphera.net/script.js"
+    ></script>
+
+    <title>My Flutter App</title>
+</head>
+<body>
+    <script src="main.dart.js" type="application/javascript"></script>
+</body>
+</html>`}</CodeBlock>
+
+      <p>
+        <strong>Note:</strong> This only applies to Flutter Web. For Flutter
+        mobile apps, Pulse tracks web views only.
+      </p>
+
+      <p>
+        For more details, see the{' '}
+        <a href="https://docs.flutter.dev/platform-integration/web/building" target="_blank" rel="noopener noreferrer" className="text-brand-orange hover:underline">
+          Flutter Web docs
+        </a>.
+      </p>
+    </>
+  ),
+
+  /* ────────────────────────────────────────────────────────────────────────────
+   * 73. Render
+   * ──────────────────────────────────────────────────────────────────────────── */
+  'render': (
+    <>
+      <p className="lead text-xl text-neutral-600 dark:text-neutral-400">
+        Add Pulse via your framework setup. Render deploys framework projects.
+      </p>
+
+      <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
+
+      <h3>Follow Your Framework&apos;s Guide</h3>
+      <p>
+        The analytics script goes in your source code, not in Render&apos;s
+        dashboard. Follow your framework&apos;s integration guide:
+      </p>
+      <ul>
+        <li><a href="/integrations/nextjs" className="text-brand-orange hover:underline">Next.js</a></li>
+        <li><a href="/integrations/astro" className="text-brand-orange hover:underline">Astro</a></li>
+        <li><a href="/integrations/remix" className="text-brand-orange hover:underline">Remix</a></li>
+        <li><a href="/integrations/gatsby" className="text-brand-orange hover:underline">Gatsby</a></li>
+        <li><a href="/integrations/eleventy" className="text-brand-orange hover:underline">Eleventy</a></li>
+      </ul>
+
+      <p>
+        For more details, see the{' '}
+        <a href="https://docs.render.com/deploy-an-app" target="_blank" rel="noopener noreferrer" className="text-brand-orange hover:underline">
+          Render deployment docs
+        </a>.
+      </p>
+    </>
+  ),
+
+  /* ────────────────────────────────────────────────────────────────────────────
+   * 74. Firebase Hosting
+   * ──────────────────────────────────────────────────────────────────────────── */
+  'firebase': (
+    <>
+      <p className="lead text-xl text-neutral-600 dark:text-neutral-400">
+        Add Pulse to sites deployed on Firebase Hosting.
+      </p>
+
+      <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
+
+      <h3>Add the Pulse Script to Your Source Code</h3>
+      <p>
+        Follow your framework&apos;s integration guide. The analytics script
+        goes in your source code. Firebase Hosting serves static files, so add
+        the script to your <code>index.html</code> or framework layout.
+      </p>
+      <CodeBlock filename="public/index.html">{`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <script
+      defer
+      data-domain="your-site.com"
+      src="https://pulse.ciphera.net/script.js"
+    ></script>
+
+    <title>My App</title>
+</head>
+<body>
+    <div id="app"></div>
+</body>
+</html>`}</CodeBlock>
+
+      <p>
+        For more details, see the{' '}
+        <a href="https://firebase.google.com/docs/hosting" target="_blank" rel="noopener noreferrer" className="text-brand-orange hover:underline">
+          Firebase Hosting docs
+        </a>.
+      </p>
+    </>
+  ),
+
+  /* ────────────────────────────────────────────────────────────────────────────
+   * 75. AMP
+   * ──────────────────────────────────────────────────────────────────────────── */
+  'amp': (
+    <>
+      <p className="lead text-xl text-neutral-600 dark:text-neutral-400">
+        Add Pulse to your AMP pages using the <code>amp-analytics</code>{' '}
+        component.
+      </p>
+
+      <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
+
+      <h3>Add Pulse via amp-analytics</h3>
+      <p>
+        AMP pages have restrictions on JavaScript. The{' '}
+        <code>amp-analytics</code> component is the standard way to add
+        analytics. Add the following to your AMP page.
+      </p>
+      <CodeBlock filename="amp-page.html">{`<amp-analytics>
+  <script type="application/json">
+  {
+    "requests": {
+      "pageview": "https://pulse.ciphera.net/api/event"
+    },
+    "triggers": {
+      "trackPageview": {
+        "on": "visible",
+        "request": "pageview",
+        "extraUrlParams": {
+          "domain": "your-site.com",
+          "name": "pageview",
+          "url": "\${canonicalUrl}"
+        }
+      }
+    }
+  }
+  </script>
+</amp-analytics>`}</CodeBlock>
+
+      <p>
+        <strong>Note:</strong> AMP pages have restrictions on JavaScript. The{' '}
+        <code>amp-analytics</code> component is the standard way to add
+        analytics.
+      </p>
+
+      <p>
+        For more details, see the{' '}
+        <a href="https://amp.dev/documentation/components/amp-analytics/" target="_blank" rel="noopener noreferrer" className="text-brand-orange hover:underline">
+          amp-analytics docs
+        </a>.
       </p>
     </>
   ),
