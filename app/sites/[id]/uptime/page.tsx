@@ -252,7 +252,10 @@ function UptimeStatusBar({
   }
 
   return (
-    <div className="relative">
+    <div
+      className="relative"
+      onMouseLeave={() => setHoveredDay(null)}
+    >
       <div className="flex items-center gap-[2px] w-full">
         {dateRange.map((date) => {
           const stat = statsMap.get(date)
@@ -704,7 +707,7 @@ export default function UptimePage() {
   if (loading) return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Uptime" />
   if (!site) return <div className="p-8 text-neutral-500">Site not found</div>
 
-  const monitors = uptimeData?.monitors ?? []
+  const monitors = Array.isArray(uptimeData?.monitors) ? uptimeData.monitors : []
   const overallUptime = uptimeData?.overall_uptime ?? 100
   const overallStatus = uptimeData?.status ?? 'operational'
 
