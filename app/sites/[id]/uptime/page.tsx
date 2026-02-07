@@ -1,7 +1,7 @@
 'use client'
 
 import { useAuth } from '@/lib/auth/context'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getSite, type Site } from '@/lib/api/sites'
@@ -18,8 +18,37 @@ import {
   type CreateMonitorRequest,
 } from '@/lib/api/uptime'
 import { toast } from '@ciphera-net/ui'
+import { useTheme } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@/lib/utils/authErrors'
 import { LoadingOverlay, Button, Modal } from '@ciphera-net/ui'
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+} from 'recharts'
+import type { TooltipProps } from 'recharts'
+
+// * Chart theme colors (consistent with main Pulse chart)
+const CHART_COLORS_LIGHT = {
+  border: '#E5E5E5',
+  text: '#171717',
+  textMuted: '#737373',
+  axis: '#A3A3A3',
+  tooltipBg: '#ffffff',
+  tooltipBorder: '#E5E5E5',
+}
+const CHART_COLORS_DARK = {
+  border: '#404040',
+  text: '#fafafa',
+  textMuted: '#a3a3a3',
+  axis: '#737373',
+  tooltipBg: '#262626',
+  tooltipBorder: '#404040',
+}
 
 // * Status color mapping
 function getStatusColor(status: string): string {
@@ -64,15 +93,37 @@ function getStatusLabel(status: string): string {
   }
 }
 
-function getDayStatus(stat: UptimeDailyStat | undefined): string {
-  if (!stat) return 'no_data'
-  if (stat.failed_checks > 0) return 'down'
-  if (stat.degraded_checks > 0) return 'degraded'
-  return 'up'
+// * Overall status text for the top card
+function getOverallStatusText(status: string): string {
+  switch (status) {
+    case 'up':
+    case 'operational':
+      return 'All Systems Operational'
+    case 'degraded':
+      return 'Partial Outage'
+    case 'down':
+      return 'Major Outage'
+    default:
+      return 'Unknown Status'
+  }
+}
+
+function getOverallStatusTextColor(status: string): string {
+  switch (status) {
+    case 'up':
+    case 'operational':
+      return 'text-emerald-600 dark:text-emerald-400'
+    case 'degraded':
+      return 'text-amber-600 dark:text-amber-400'
+    case 'down':
+      return 'text-red-600 dark:text-red-400'
+    default:
+      return 'text-neutral-500 dark:text-neutral-400'
+  }
 }
 
 function getDayBarColor(stat: UptimeDailyStat | undefined): string {
-  if (!stat) return 'bg-neutral-200 dark:bg-neutral-700'
+  if (!stat || stat.total_checks === 0) return 'bg-neutral-300 dark:bg-neutral-600'
   if (stat.failed_checks > 0) return 'bg-red-500'
   if (stat.degraded_checks > 0) return 'bg-amber-500'
   return 'bg-emerald-500'
@@ -113,6 +164,68 @@ function generateDateRange(days: number): string[] {
   return dates
 }
 
+// * Component: Styled tooltip for status bar
+function StatusBarTooltip({
+  stat,
+  date,
+  visible,
+  position,
+}: {
+  stat: UptimeDailyStat | undefined
+  date: string
+  visible: boolean
+  position: { x: number; y: number }
+}) {
+  if (!visible) return null
+
+  const formattedDate = new Date(date + 'T00:00:00').toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  })
+
+  return (
+    <div
+      className="fixed z-50 pointer-events-none"
+      style={{ left: position.x, top: position.y - 10, transform: 'translate(-50%, -100%)' }}
+    >
+      <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-lg px-3 py-2.5 text-xs min-w-[160px]">
+        <div className="font-semibold text-neutral-900 dark:text-white mb-1.5">{formattedDate}</div>
+        {stat && stat.total_checks > 0 ? (
+          <div className="space-y-1">
+            <div className="flex justify-between gap-4">
+              <span className="text-neutral-500 dark:text-neutral-400">Uptime</span>
+              <span className="font-medium text-neutral-900 dark:text-white">
+                {formatUptime(stat.uptime_percentage)}
+              </span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className="text-neutral-500 dark:text-neutral-400">Checks</span>
+              <span className="font-medium text-neutral-900 dark:text-white">{stat.total_checks}</span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className="text-neutral-500 dark:text-neutral-400">Avg Response</span>
+              <span className="font-medium text-neutral-900 dark:text-white">
+                {formatMs(Math.round(stat.avg_response_time_ms))}
+              </span>
+            </div>
+            {stat.failed_checks > 0 && (
+              <div className="flex justify-between gap-4">
+                <span className="text-red-500">Failed</span>
+                <span className="font-medium text-red-500">{stat.failed_checks}</span>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="text-neutral-400 dark:text-neutral-500">No data</div>
+        )}
+        {/* Tooltip arrow */}
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-[-5px] w-2.5 h-2.5 bg-white dark:bg-neutral-800 border-r border-b border-neutral-200 dark:border-neutral-700 rotate-45" />
+      </div>
+    </div>
+  )
+}
+
 // * Component: Uptime status bar (the colored bars visualization)
 function UptimeStatusBar({
   dailyStats,
@@ -129,24 +242,127 @@ function UptimeStatusBar({
     }
   }
 
-  return (
-    <div className="flex items-center gap-[2px] w-full">
-      {dateRange.map((date) => {
-        const stat = statsMap.get(date)
-        const barColor = getDayBarColor(stat)
-        const dayStatus = getDayStatus(stat)
-        const tooltipText = stat
-          ? `${new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}: ${formatUptime(stat.uptime_percentage)} uptime (${stat.total_checks} checks)`
-          : `${new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}: No data`
+  const [hoveredDay, setHoveredDay] = useState<{ date: string; stat: UptimeDailyStat | undefined } | null>(null)
+  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 })
 
-        return (
-          <div
-            key={date}
-            className={`flex-1 h-8 rounded-[2px] ${barColor} transition-all duration-150 hover:opacity-80 cursor-pointer group relative min-w-[3px]`}
-            title={tooltipText}
-          />
-        )
-      })}
+  const handleMouseEnter = (e: React.MouseEvent, date: string, stat: UptimeDailyStat | undefined) => {
+    const rect = (e.target as HTMLElement).getBoundingClientRect()
+    setTooltipPos({ x: rect.left + rect.width / 2, y: rect.top })
+    setHoveredDay({ date, stat })
+  }
+
+  return (
+    <div className="relative">
+      <div className="flex items-center gap-[2px] w-full">
+        {dateRange.map((date) => {
+          const stat = statsMap.get(date)
+          const barColor = getDayBarColor(stat)
+
+          return (
+            <div
+              key={date}
+              className={`flex-1 h-8 rounded-[2px] ${barColor} transition-all duration-150 hover:opacity-80 cursor-pointer min-w-[3px]`}
+              onMouseEnter={(e) => handleMouseEnter(e, date, stat)}
+              onMouseLeave={() => setHoveredDay(null)}
+            />
+          )
+        })}
+      </div>
+      <StatusBarTooltip
+        stat={hoveredDay?.stat}
+        date={hoveredDay?.date ?? ''}
+        visible={hoveredDay !== null}
+        position={tooltipPos}
+      />
+    </div>
+  )
+}
+
+// * Component: Response time chart (Recharts area chart)
+function ResponseTimeChart({ checks }: { checks: UptimeCheck[] }) {
+  const { theme } = useTheme()
+  const colors = theme === 'dark' ? CHART_COLORS_DARK : CHART_COLORS_LIGHT
+
+  // * Prepare data in chronological order (oldest first)
+  const data = [...checks]
+    .reverse()
+    .filter((c) => c.response_time_ms !== null)
+    .map((c) => ({
+      time: new Date(c.checked_at).toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+      ms: c.response_time_ms as number,
+      status: c.status,
+    }))
+
+  if (data.length < 2) return null
+
+  const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
+    if (!active || !payload?.length) return null
+    return (
+      <div
+        className="rounded-xl px-3 py-2 text-xs shadow-lg border"
+        style={{
+          background: colors.tooltipBg,
+          borderColor: colors.tooltipBorder,
+          color: colors.text,
+        }}
+      >
+        <div className="font-medium mb-0.5">{label}</div>
+        <div style={{ color: '#FD5E0F' }} className="font-semibold">
+          {payload[0].value}ms
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mt-4">
+      <h4 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">
+        Response Time
+      </h4>
+      <div className="h-40">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+            <defs>
+              <linearGradient id="responseTimeGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#FD5E0F" stopOpacity={0.3} />
+                <stop offset="100%" stopColor="#FD5E0F" stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke={colors.border}
+              strokeOpacity={0.5}
+              vertical={false}
+            />
+            <XAxis
+              dataKey="time"
+              tick={{ fontSize: 10, fill: colors.axis }}
+              tickLine={false}
+              axisLine={false}
+              interval="preserveStartEnd"
+            />
+            <YAxis
+              tick={{ fontSize: 10, fill: colors.axis }}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(v: number) => `${v}ms`}
+            />
+            <RechartsTooltip content={<CustomTooltip />} />
+            <Area
+              type="monotone"
+              dataKey="ms"
+              stroke="#FD5E0F"
+              strokeWidth={2}
+              fill="url(#responseTimeGradient)"
+              dot={false}
+              activeDot={{ r: 4, fill: '#FD5E0F', strokeWidth: 0 }}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   )
 }
@@ -178,7 +394,7 @@ function MonitorCard({
       const fetchChecks = async () => {
         setLoadingChecks(true)
         try {
-          const data = await getMonitorChecks(siteId, monitor.id, 20)
+          const data = await getMonitorChecks(siteId, monitor.id, 50)
           setChecks(data)
         } catch {
           // * Silent fail for check details
@@ -289,47 +505,52 @@ function MonitorCard({
                 </div>
               </div>
 
-              {/* Recent checks */}
+              {/* Response time chart */}
               {loadingChecks ? (
                 <div className="text-center py-4 text-neutral-500 dark:text-neutral-400 text-sm">
-                  Loading recent checks...
+                  Loading checks...
                 </div>
               ) : checks.length > 0 ? (
-                <div>
-                  <h4 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">
-                    Recent Checks
-                  </h4>
-                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                    {checks.map((check) => (
-                      <div
-                        key={check.id}
-                        className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800 text-sm"
-                      >
-                        <div className="flex items-center gap-2">
-                          <div className={`w-2 h-2 rounded-full ${getStatusDotColor(check.status)}`} />
-                          <span className="text-neutral-600 dark:text-neutral-300 text-xs">
-                            {new Date(check.checked_at).toLocaleString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          {check.status_code && (
-                            <span className="text-xs text-neutral-500 dark:text-neutral-400">
-                              {check.status_code}
+                <>
+                  <ResponseTimeChart checks={checks} />
+
+                  {/* Recent checks */}
+                  <div className="mt-5">
+                    <h4 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">
+                      Recent Checks
+                    </h4>
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                      {checks.slice(0, 20).map((check) => (
+                        <div
+                          key={check.id}
+                          className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800 text-sm"
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full ${getStatusDotColor(check.status)}`} />
+                            <span className="text-neutral-600 dark:text-neutral-300 text-xs">
+                              {new Date(check.checked_at).toLocaleString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
                             </span>
-                          )}
-                          <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
-                            {formatMs(check.response_time_ms)}
-                          </span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            {check.status_code && (
+                              <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                                {check.status_code}
+                              </span>
+                            )}
+                            <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
+                              {formatMs(check.response_time_ms)}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
+                </>
               ) : null}
 
               {/* Actions */}
@@ -535,14 +756,19 @@ export default function UptimePage() {
                 <span className="font-semibold text-neutral-900 dark:text-white text-lg">
                   {site.name}
                 </span>
-                <span className="text-sm text-neutral-500 dark:text-neutral-400 ml-3">
-                  {monitors.length} {monitors.length === 1 ? 'component' : 'components'}
+                <span className={`text-sm font-medium ml-3 ${getOverallStatusTextColor(overallStatus)}`}>
+                  {getOverallStatusText(overallStatus)}
                 </span>
               </div>
             </div>
-            <span className="text-sm font-semibold text-neutral-900 dark:text-white">
-              {formatUptime(overallUptime)} uptime
-            </span>
+            <div className="text-right">
+              <span className="text-sm font-semibold text-neutral-900 dark:text-white">
+                {formatUptime(overallUptime)} uptime
+              </span>
+              <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                {monitors.length} {monitors.length === 1 ? 'component' : 'components'}
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -639,6 +865,62 @@ function MonitorForm({
   submitLabel: string
   siteDomain: string
 }) {
+  const [protocol, setProtocol] = useState<'https://' | 'http://'>(() => {
+    if (formData.url.startsWith('http://')) return 'http://'
+    return 'https://'
+  })
+  const [showProtocolDropdown, setShowProtocolDropdown] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // * Extract the path portion from the full URL
+  const getPath = (): string => {
+    const url = formData.url
+    if (!url) return ''
+    try {
+      const parsed = new URL(url)
+      const pathAndRest = parsed.pathname + parsed.search + parsed.hash
+      return pathAndRest === '/' ? '' : pathAndRest
+    } catch {
+      // ? If not a valid full URL, try stripping the protocol prefix
+      if (url.startsWith('https://')) return url.slice(8 + siteDomain.length)
+      if (url.startsWith('http://')) return url.slice(7 + siteDomain.length)
+      return url
+    }
+  }
+
+  const handlePathChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const path = e.target.value
+    const safePath = path.startsWith('/') || path === '' ? path : `/${path}`
+    setFormData({ ...formData, url: `${protocol}${siteDomain}${safePath}` })
+  }
+
+  const handleProtocolChange = (proto: 'https://' | 'http://') => {
+    setProtocol(proto)
+    setShowProtocolDropdown(false)
+    // * Rebuild URL with new protocol
+    const path = getPath()
+    setFormData({ ...formData, url: `${proto}${siteDomain}${path}` })
+  }
+
+  // * Initialize URL if empty
+  useEffect(() => {
+    if (!formData.url) {
+      setFormData({ ...formData, url: `${protocol}${siteDomain}` })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // * Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowProtocolDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
   return (
     <div className="space-y-4">
       {/* Name */}
@@ -655,20 +937,58 @@ function MonitorForm({
         />
       </div>
 
-      {/* URL */}
+      {/* URL with protocol dropdown + domain prefix */}
       <div>
         <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
           URL
         </label>
-        <input
-          type="url"
-          value={formData.url}
-          onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-          placeholder={`https://${siteDomain}`}
-          className="w-full px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:border-transparent text-sm"
-        />
+        <div className="flex rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 focus-within:ring-2 focus-within:ring-brand-orange focus-within:border-transparent overflow-hidden">
+          {/* Protocol dropdown */}
+          <div ref={dropdownRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setShowProtocolDropdown(!showProtocolDropdown)}
+              className="h-full px-3 flex items-center gap-1 bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 text-sm border-r border-neutral-300 dark:border-neutral-600 hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-colors select-none whitespace-nowrap"
+            >
+              {protocol}
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {showProtocolDropdown && (
+              <div className="absolute top-full left-0 mt-1 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-lg z-10 min-w-[100px]">
+                <button
+                  type="button"
+                  onClick={() => handleProtocolChange('https://')}
+                  className={`w-full text-left px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors rounded-t-lg ${protocol === 'https://' ? 'text-brand-orange font-medium' : 'text-neutral-700 dark:text-neutral-300'}`}
+                >
+                  https://
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleProtocolChange('http://')}
+                  className={`w-full text-left px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors rounded-b-lg ${protocol === 'http://' ? 'text-brand-orange font-medium' : 'text-neutral-700 dark:text-neutral-300'}`}
+                >
+                  http://
+                </button>
+              </div>
+            )}
+          </div>
+          {/* Domain prefix */}
+          <span className="flex items-center px-1.5 text-sm text-neutral-500 dark:text-neutral-400 select-none whitespace-nowrap bg-neutral-100 dark:bg-neutral-700 border-r border-neutral-300 dark:border-neutral-600">
+            {siteDomain}
+          </span>
+          {/* Path input */}
+          <input
+            type="text"
+            value={getPath()}
+            onChange={handlePathChange}
+            placeholder="/api/health"
+            className="flex-1 min-w-0 px-3 py-2 bg-transparent text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none text-sm"
+          />
+        </div>
         <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-          Must be on <span className="font-medium">{siteDomain}</span> or a subdomain (e.g. api.{siteDomain})
+          Add a specific path (e.g. /api/health) or leave empty for the root domain
         </p>
       </div>
 
@@ -703,7 +1023,7 @@ function MonitorForm({
           onChange={(e) => setFormData({ ...formData, expected_status_code: parseInt(e.target.value) || 200 })}
           min={100}
           max={599}
-          className="w-full px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-orange focus:border-transparent text-sm"
+          className="w-full px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-orange focus:border-transparent text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
         />
       </div>
 
@@ -718,7 +1038,7 @@ function MonitorForm({
           onChange={(e) => setFormData({ ...formData, timeout_seconds: parseInt(e.target.value) || 30 })}
           min={5}
           max={60}
-          className="w-full px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-orange focus:border-transparent text-sm"
+          className="w-full px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-orange focus:border-transparent text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
         />
       </div>
 
