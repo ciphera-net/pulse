@@ -1,62 +1,101 @@
 'use client'
 
-import Link from 'next/link'
-import { motion } from 'framer-motion'
-import { ArrowRightIcon } from '@ciphera-net/ui'
+/**
+ * @file Integrations overview page with search, category filters, and grouped grid.
+ *
+ * Displays all 75+ integrations in a filterable, searchable grid.
+ * Features: search with result count, category chips, popular section,
+ * keyboard shortcut (/ to focus search), and "Missing something?" card.
+ */
 
-const integrations = [
-  {
-    id: 'nextjs',
-    name: 'Next.js',
-    description: 'Add privacy-friendly analytics to your Next.js application using next/script.',
-    icon: (
-      <svg viewBox="0 0 128 128" className="w-8 h-8 dark:invert">
-        <path d="M64 0C28.7 0 0 28.7 0 64s28.7 64 64 64 64-28.7 64-64S99.3 0 64 0zm27.6 93.9c-.8.9-2.2 1-3.1.2L42.8 52.8V88c0 1.3-1.1 2.3-2.3 2.3h-7.4c-1.3 0-2.3-1.1-2.3-2.3V40c0-1.3 1.1-2.3 2.3-2.3h7.4c1 0 1.9.6 2.2 1.5l48.6 44.8V40c0-1.3 1.1-2.3 2.3-2.3h7.4c1.3 0 2.3 1.1 2.3 2.3v48c0 1.3-1.1 2.3-2.3 2.3h-6.8c-.9 0-1.7-.5-2.1-1.3z" />
-      </svg>
-    ),
-  },
-  {
-    id: 'react',
-    name: 'React',
-    description: 'Integrate Pulse with any React SPA (Create React App, Vite, etc).',
-    icon: (
-      <svg viewBox="0 0 128 128" className="w-8 h-8 text-[#61DAFB] fill-current">
-        <path d="M64 10.6c18.4 0 34.6 5.8 44.6 14.8 6.4 5.8 10.2 12.8 10.2 20.6 0 21.6-28.6 41.2-64 41.2-1.6 0-3.2-.1-4.8-.2-1.2 10.8-6.2 20.2-13.8 27.6-8.8 8.6-20.6 13.4-33.2 13.4-2.2 0-4.4-.2-6.4-.4 10.2-12.8 15.6-29.2 15.6-46.2 0-2.6-.2-5.2-.4-7.8 13.6-1.6 26.2-5.4 37.4-11 11.2-5.6 20.2-13 26.2-21.4-6.4-5.8-15.4-10-25.6-12.2-10.2-2.2-21.4-3.4-33-3.4-1.6 0-3.2.1-4.8.2 1.2-10.8 6.2-20.2 13.8-27.6 8.8-8.6 20.6-13.4 33.2-13.4 2.2 0 4.4.2 6.4.4-10.2 12.8-15.6 29.2-15.6 46.2 0 2.6.2 5.2.4 7.8-13.6 1.6-26.2 5.4-37.4 11-11.2 5.6-20.2 13-26.2 21.4 6.4 5.8 15.4 10 25.6 12.2 10.2 2.2 21.4 3.4 33 3.4zm-33.4 62c-11.2 5.6-20.2 13-26.2 21.4 6.4 5.8 15.4 10 25.6 12.2 10.2 2.2 21.4 3.4 33 3.4 1.6 0 3.2-.1 4.8-.2-1.2 10.8-6.2 20.2-13.8 27.6-8.8 8.6-20.6 13.4-33.2 13.4-2.2 0-4.4-.2-6.4-.4 10.2-12.8 15.6-29.2 15.6-46.2 0-2.6-.2-5.2-.4-7.8 13.6-1.6 26.2-5.4 37.4-11zm-15.2-16.6c-6.4-5.8-10.2-12.8-10.2-20.6 0-21.6 28.6-41.2 64-41.2 1.6 0 3.2.1 4.8.2 1.2-10.8 6.2-20.2 13.8-27.6 8.8-8.6 20.6-13.4 33.2-13.4 2.2 0 4.4.2 6.4.4-10.2 12.8-15.6 29.2-15.6 46.2 0 2.6.2 5.2.4 7.8-13.6 1.6-26.2 5.4-37.4 11-11.2 5.6-20.2 13-26.2 21.4 6.4 5.8 15.4 10 25.6 12.2 10.2 2.2 21.4 3.4 33 3.4 1.6 0 3.2-.1 4.8-.2-1.2 10.8-6.2 20.2-13.8 27.6-8.8 8.6-20.6 13.4-33.2 13.4-2.2 0-4.4-.2-6.4-.4 10.2-12.8 15.6-29.2 15.6-46.2 0-2.6-.2-5.2-.4-7.8z" />
-        <circle cx="64" cy="64" r="10.6" />
-      </svg>
-    ),
-  },
-  {
-    id: 'vue',
-    name: 'Vue.js',
-    description: 'Simple setup for Vue 2 and Vue 3 applications.',
-    icon: (
-      <svg viewBox="0 0 128 128" className="w-8 h-8 text-[#4FC08D] fill-current">
-        <path d="M82.8 24.6h27.8L64 103.4 17.4 24.6h27.8L64 59.4l18.8-34.8z" />
-        <path d="M64 24.6H39L64 67.4l25-42.8H64z" fill="#35495E" />
-      </svg>
-    ),
-  },
-  {
-    id: 'wordpress',
-    name: 'WordPress',
-    description: 'Add the tracking script to your WordPress header or use a plugin.',
-    icon: (
-      <svg viewBox="0 0 128 128" className="w-8 h-8 text-[#21759B] fill-current">
-        <path d="M116.6 64c0-19.2-10.4-36-26-45.2l28.6 78.4c-1 3.2-2.2 6.2-3.6 9.2-11.4 12.4-27.8 20.2-46 20.2-6.2 0-12.2-.8-17.8-2.4l26.2-76.4c1.2.2 2.4.4 3.6.4 5.4 0 13.8-.8 13.8-.8 2.8-.2 3.2 4 .4 4.2 0 0-2.8.2-6 .4l19 56.6 5.4-18c2.4-7.4 4.2-12.8 4.2-17.4 0-6-2.2-10.2-7.6-12.6-2.8-1.2-2.2-5.4 1.4-5.4h4.4zM64 121.2c-15.8 0-30.2-6.4-40.8-16.8L46.6 36.8c-2.8-.2-5.8-.4-5.8-.4-2.8-.2-2.4-4.4.4-4.2 0 0 8.4.8 13.6.8 5.4 0 13.6-.8 13.6-.8 2.8-.2 3.2 4 .4 4.2 0 0-2.8.2-5.8.4l18.2 54.4 10.6-31.8L64 121.2zM11.4 64c0 17 8.2 32.2 20.8 41.8L18.8 66.8c-.8-3.4-1.2-6.6-1.2-9.2 0-6.8 2.6-13 6.2-17.8C15.6 47.4 11.4 55.2 11.4 64zM64 6.8c16.2 0 30.8 6.8 41.4 17.6-1.4-.2-2.8-.2-4.2-.2-7.8 0-14.2 1.4-14.2 1.4-2.8.6-2.2 4.8.6 4.2 0 0 5-1 10.6-1 2.2 0 4.6.2 6.6.4L88.2 53 71.4 6.8h-7.4z" />
-      </svg>
-    ),
-  },
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
+import Link from 'next/link'
+import { motion, AnimatePresence } from 'framer-motion'
+import { ArrowRightIcon } from '@ciphera-net/ui'
+import {
+  integrations,
+  categoryLabels,
+  categoryOrder,
+  type IntegrationCategory,
+} from '@/lib/integrations'
+
+// * IDs of popular integrations shown in the pinned "Popular" row
+const POPULAR_IDS = [
+  'nextjs', 'react', 'wordpress', 'shopify', 'webflow', 'vue', 'astro', 'vercel',
 ]
 
 export default function IntegrationsPage() {
+  const [query, setQuery] = useState('')
+  const [activeCategory, setActiveCategory] = useState<IntegrationCategory | 'all'>('all')
+  const searchRef = useRef<HTMLInputElement>(null)
+
+  // * Keyboard shortcut: "/" to focus search
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (
+        e.key === '/' &&
+        !['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement).tagName)
+      ) {
+        e.preventDefault()
+        searchRef.current?.focus()
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
+  // * Filter integrations by search query + active category
+  const { filteredGroups, totalResults, popularIntegrations } = useMemo(() => {
+    const q = query.toLowerCase().trim()
+    const isSearching = q.length > 0
+    const isCategoryFiltered = activeCategory !== 'all'
+
+    let filtered = integrations
+
+    if (isSearching) {
+      filtered = filtered.filter(
+        (i) =>
+          i.name.toLowerCase().includes(q) ||
+          i.description.toLowerCase().includes(q) ||
+          categoryLabels[i.category].toLowerCase().includes(q),
+      )
+    }
+
+    if (isCategoryFiltered) {
+      filtered = filtered.filter((i) => i.category === activeCategory)
+    }
+
+    const groups = categoryOrder
+      .map((cat) => ({
+        category: cat as IntegrationCategory,
+        label: categoryLabels[cat],
+        items: filtered.filter((i) => i.category === cat),
+      }))
+      .filter((g) => g.items.length > 0)
+
+    // * Only show popular row when not searching/filtering
+    const popular =
+      !isSearching && !isCategoryFiltered
+        ? POPULAR_IDS.map((id) => integrations.find((i) => i.id === id)).filter(Boolean)
+        : []
+
+    return { filteredGroups: groups, totalResults: filtered.length, popularIntegrations: popular }
+  }, [query, activeCategory])
+
+  const hasResults = filteredGroups.length > 0
+  const isFiltering = query.length > 0 || activeCategory !== 'all'
+
+  const handleCategoryClick = useCallback((cat: IntegrationCategory | 'all') => {
+    setActiveCategory(cat)
+  }, [])
+
   return (
     <div className="relative min-h-screen flex flex-col overflow-hidden selection:bg-brand-orange/20">
       {/* * --- ATMOSPHERE (Background) --- */}
       <div className="absolute inset-0 -z-10 pointer-events-none">
         <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-brand-orange/10 rounded-full blur-[128px] opacity-60" />
         <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-neutral-500/10 dark:bg-neutral-400/10 rounded-full blur-[128px] opacity-40" />
-        <div 
+        <div
           className="absolute inset-0 bg-grid-pattern opacity-[0.02] dark:opacity-[0.05]"
           style={{ maskImage: 'radial-gradient(ellipse at center, black 0%, transparent 70%)' }}
         />
@@ -67,71 +106,267 @@ export default function IntegrationsPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="text-center mb-16"
+          className="text-center mb-10"
         >
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-neutral-900 dark:text-white mb-6">
-            Integrations
-          </h1>
-          <p className="text-xl text-neutral-600 dark:text-neutral-400 max-w-2xl mx-auto leading-relaxed">
-            Connect Pulse with your favorite frameworks and platforms in minutes.
+          {/* * --- Title with count badge --- */}
+          <div className="flex items-center justify-center gap-3 mb-6">
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-neutral-900 dark:text-white">
+              Integrations
+            </h1>
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-brand-orange/10 text-brand-orange border border-brand-orange/20">
+              {integrations.length}+
+            </span>
+          </div>
+          <p className="text-xl text-neutral-600 dark:text-neutral-400 max-w-2xl mx-auto leading-relaxed mb-8">
+            Connect Pulse with {integrations.length}+ frameworks and platforms in minutes.
           </p>
+
+          {/* * --- Search Input with "/" hint --- */}
+          <div className="relative max-w-md mx-auto">
+            <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+              <svg
+                className="w-5 h-5 text-neutral-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
+                />
+              </svg>
+            </div>
+            <input
+              ref={searchRef}
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search integrations..."
+              className="w-full pl-12 pr-16 py-3 bg-white/70 dark:bg-neutral-900/70 backdrop-blur-sm border border-neutral-200 dark:border-neutral-800 rounded-xl text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-orange/50 focus:border-brand-orange/50 transition-all"
+            />
+            {query ? (
+              <button
+                onClick={() => setQuery('')}
+                className="absolute inset-y-0 right-0 flex items-center pr-4 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+                aria-label="Clear search"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
+            ) : (
+              <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
+                <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-mono font-medium bg-neutral-200/80 dark:bg-neutral-700/80 text-neutral-500 dark:text-neutral-400 border border-neutral-300 dark:border-neutral-600">
+                  /
+                </kbd>
+              </div>
+            )}
+          </div>
+
+          {/* * --- Result count (shown when filtering) --- */}
+          {isFiltering && (
+            <motion.p
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-sm text-neutral-500 dark:text-neutral-400 mt-3"
+            >
+              {totalResults} {totalResults === 1 ? 'integration' : 'integrations'} found
+              {query && <> for &ldquo;{query}&rdquo;</>}
+            </motion.p>
+          )}
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {integrations.map((integration, i) => (
-            <motion.div
-              key={integration.id}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: i * 0.1 }}
+        {/* * --- Category Filter Chips --- */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.15 }}
+          className="flex flex-wrap justify-center gap-2 mb-10"
+        >
+          <button
+            onClick={() => handleCategoryClick('all')}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+              activeCategory === 'all'
+                ? 'bg-brand-orange text-white shadow-sm'
+                : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'
+            }`}
+          >
+            All
+          </button>
+          {categoryOrder.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => handleCategoryClick(cat)}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+                activeCategory === cat
+                  ? 'bg-brand-orange text-white shadow-sm'
+                  : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'
+              }`}
             >
-              <Link 
-                href={`/integrations/${integration.id}`}
-                className="group relative p-8 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-sm border border-neutral-200 dark:border-neutral-800 rounded-2xl hover:border-brand-orange/50 dark:hover:border-brand-orange/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl block focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2"
-              >
-              <div className="flex items-start justify-between mb-6">
-                <div className="p-3 bg-neutral-100 dark:bg-neutral-800 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                  {integration.icon}
-                </div>
-                <ArrowRightIcon className="w-5 h-5 text-neutral-400 group-hover:text-brand-orange transition-colors" />
-              </div>
-              
-              <h3 className="text-xl font-bold text-neutral-900 dark:text-white mb-3">
-                {integration.name}
-              </h3>
-              <p className="text-neutral-600 dark:text-neutral-400 leading-relaxed mb-4">
-                {integration.description}
-              </p>
-              <span className="text-sm font-medium text-brand-orange opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                View Guide <span aria-hidden="true">&rarr;</span>
-              </span>
-            </Link>
-            </motion.div>
+              {categoryLabels[cat]}
+            </button>
           ))}
-          
-          {/* * Request Integration Card */}
+        </motion.div>
+
+        <AnimatePresence mode="wait">
+          {hasResults ? (
+            <motion.div
+              key="results"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              {/* * --- Popular Integrations (pinned row) --- */}
+              {popularIntegrations.length > 0 && (
+                <div className="mb-12">
+                  <motion.h2
+                    initial={{ opacity: 0, y: 10 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.4 }}
+                    className="text-lg font-semibold text-neutral-500 dark:text-neutral-400 mb-6 tracking-wide uppercase flex items-center gap-2"
+                  >
+                    <svg className="w-5 h-5 text-brand-orange" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M10 1l2.39 4.84 5.34.78-3.87 3.77.91 5.33L10 13.27l-4.77 2.5.91-5.33L2.27 6.67l5.34-.78L10 1z" />
+                    </svg>
+                    Popular
+                  </motion.h2>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {popularIntegrations.map((integration, i) => (
+                      <motion.div
+                        key={integration!.id}
+                        initial={{ opacity: 0, y: 15 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.4, delay: i * 0.05 }}
+                      >
+                        <Link
+                          href={`/integrations/${integration!.id}`}
+                          className="group flex items-center gap-3 p-4 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-sm border border-neutral-200 dark:border-neutral-800 rounded-xl hover:border-brand-orange/50 dark:hover:border-brand-orange/50 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg h-full"
+                        >
+                          <div className="p-2 bg-neutral-100 dark:bg-neutral-800 rounded-lg shrink-0 group-hover:scale-110 transition-transform duration-300 [&_svg]:w-6 [&_svg]:h-6">
+                            {integration!.icon}
+                          </div>
+                          <span className="font-semibold text-neutral-900 dark:text-white text-sm">
+                            {integration!.name}
+                          </span>
+                        </Link>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* * --- Category Groups --- */}
+              {filteredGroups.map((group) => (
+                <div key={group.category} className="mb-12">
+                  <motion.h2
+                    initial={{ opacity: 0, y: 10 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.4 }}
+                    className="text-lg font-semibold text-neutral-500 dark:text-neutral-400 mb-6 tracking-wide uppercase"
+                  >
+                    {group.label}
+                  </motion.h2>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {group.items.map((integration, i) => (
+                      <motion.div
+                        key={integration.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.5, delay: i * 0.05 }}
+                      >
+                        <Link
+                          href={`/integrations/${integration.id}`}
+                          className="group relative p-8 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-sm border border-neutral-200 dark:border-neutral-800 rounded-2xl hover:border-brand-orange/50 dark:hover:border-brand-orange/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl block h-full focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2"
+                        >
+                          <div className="flex items-start justify-between mb-6">
+                            <div className="p-3 bg-neutral-100 dark:bg-neutral-800 rounded-xl group-hover:scale-110 transition-transform duration-300">
+                              {integration.icon}
+                            </div>
+                            <ArrowRightIcon className="w-5 h-5 text-neutral-400 group-hover:text-brand-orange transition-colors" />
+                          </div>
+
+                          <h3 className="text-xl font-bold text-neutral-900 dark:text-white mb-3">
+                            {integration.name}
+                          </h3>
+                          <p className="text-neutral-600 dark:text-neutral-400 leading-relaxed mb-4">
+                            {integration.description}
+                          </p>
+                          <span className="text-sm font-medium text-brand-orange opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                            View Guide <span aria-hidden="true">&rarr;</span>
+                          </span>
+                        </Link>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </motion.div>
+          ) : (
+            // * --- No Results: "Missing something?" card ---
+            <motion.div
+              key="no-results"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.3 }}
+              className="max-w-md mx-auto mt-8 p-10 border border-dashed border-neutral-300 dark:border-neutral-700 rounded-2xl flex flex-col items-center justify-center text-center"
+            >
+              <div className="p-4 bg-neutral-100 dark:bg-neutral-800 rounded-full mb-4">
+                <svg className="w-8 h-8 text-neutral-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-neutral-900 dark:text-white mb-2">
+                Missing something?
+              </h3>
+              <p className="text-neutral-600 dark:text-neutral-400 text-sm mb-1">
+                No integrations found for &ldquo;{query}&rdquo;.
+              </p>
+              <p className="text-neutral-600 dark:text-neutral-400 text-sm mb-5">
+                Let us know which integration you&apos;d like to see next.
+              </p>
+              <a
+                href="mailto:support@ciphera.net"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-brand-orange text-white font-medium rounded-lg hover:bg-brand-orange/90 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2"
+              >
+                Request Integration
+              </a>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* * Request Integration Card — always shown when there ARE results */}
+        {hasResults && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: integrations.length * 0.1 }}
-            className="p-8 border border-dashed border-neutral-300 dark:border-neutral-700 rounded-2xl flex flex-col items-center justify-center text-center"
+            transition={{ duration: 0.5 }}
+            className="max-w-md mx-auto mt-12 p-8 border border-dashed border-neutral-300 dark:border-neutral-700 rounded-2xl flex flex-col items-center justify-center text-center"
           >
             <h3 className="text-xl font-bold text-neutral-900 dark:text-white mb-2">
               Missing something?
             </h3>
             <p className="text-neutral-600 dark:text-neutral-400 text-sm mb-4">
-              Let us know which integration you'd like to see next.
+              Let us know which integration you&apos;d like to see next.
             </p>
-            <a 
-              href="mailto:support@ciphera.net" 
+            <a
+              href="mailto:support@ciphera.net"
               className="text-sm font-medium text-brand-orange hover:underline focus:outline-none focus:ring-2 focus:ring-brand-orange focus:rounded"
             >
               Request Integration
             </a>
           </motion.div>
-        </div>
+        )}
       </div>
     </div>
   )
