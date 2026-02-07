@@ -868,10 +868,8 @@ function MonitorForm({
   submitLabel: string
   siteDomain: string
 }) {
-  const [protocol, setProtocol] = useState<'https://' | 'http://'>(() => {
-    if (formData.url.startsWith('http://')) return 'http://'
-    return 'https://'
-  })
+  // * Derive protocol from formData.url so edit modal shows the monitor's actual scheme (no desync)
+  const protocol: 'https://' | 'http://' = formData.url.startsWith('http://') ? 'http://' : 'https://'
   const [showProtocolDropdown, setShowProtocolDropdown] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -898,9 +896,7 @@ function MonitorForm({
   }
 
   const handleProtocolChange = (proto: 'https://' | 'http://') => {
-    setProtocol(proto)
     setShowProtocolDropdown(false)
-    // * Rebuild URL with new protocol
     const path = getPath()
     setFormData({ ...formData, url: `${proto}${siteDomain}${path}` })
   }
