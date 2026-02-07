@@ -307,6 +307,13 @@ export default function SiteDashboardPage() {
               ]}
             />
             <Button
+              onClick={() => router.push(`/sites/${siteId}/uptime`)}
+              variant="secondary"
+              className="text-sm"
+            >
+              Uptime
+            </Button>
+            <Button
               onClick={() => router.push(`/sites/${siteId}/funnels`)}
               variant="secondary"
               className="text-sm"
