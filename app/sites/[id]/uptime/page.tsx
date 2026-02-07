@@ -623,14 +623,14 @@ export default function UptimePage() {
     loadData()
   }, [loadData])
 
-  // * Auto-refresh every 30 seconds
+  // * Auto-refresh every 30 seconds; show toast on failure (e.g. network loss or auth expiry)
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
         const statusData = await getUptimeStatus(siteId)
         setUptimeData(statusData)
       } catch {
-        // * Silent refresh failure
+        toast.error('Could not refresh uptime data. Check your connection or sign in again.')
       }
     }, 30000)
     return () => clearInterval(interval)
@@ -679,7 +679,7 @@ export default function UptimePage() {
   }
 
   const handleDeleteMonitor = async (monitorId: string) => {
-    if (!confirm('Are you sure you want to delete this monitor? All historical data will be lost.')) return
+    if (!window.confirm('Are you sure you want to delete this monitor? All historical data will be lost.')) return
     try {
       await deleteUptimeMonitor(siteId, monitorId)
       toast.success('Monitor deleted')
