@@ -1,13 +1,14 @@
 'use client'
 
 /**
- * @file Integrations overview page with search, grouped by category.
+ * @file Integrations overview page with search, category filters, and grouped grid.
  *
- * Displays all 50 integrations in a filterable grid.
- * When the search query returns no results, a "Missing something?" card is shown.
+ * Displays all 75+ integrations in a filterable, searchable grid.
+ * Features: search with result count, category chips, popular section,
+ * keyboard shortcut (/ to focus search), and "Missing something?" card.
  */
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowRightIcon } from '@ciphera-net/ui'
@@ -18,32 +19,75 @@ import {
   type IntegrationCategory,
 } from '@/lib/integrations'
 
+// * IDs of popular integrations shown in the pinned "Popular" row
+const POPULAR_IDS = [
+  'nextjs', 'react', 'wordpress', 'shopify', 'webflow', 'vue', 'astro', 'vercel',
+]
+
 export default function IntegrationsPage() {
   const [query, setQuery] = useState('')
+  const [activeCategory, setActiveCategory] = useState<IntegrationCategory | 'all'>('all')
+  const searchRef = useRef<HTMLInputElement>(null)
 
-  // * Filter integrations by name, description, or category label
-  const filteredGroups = useMemo(() => {
+  // * Keyboard shortcut: "/" to focus search
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (
+        e.key === '/' &&
+        !['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement).tagName)
+      ) {
+        e.preventDefault()
+        searchRef.current?.focus()
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
+  // * Filter integrations by search query + active category
+  const { filteredGroups, totalResults, popularIntegrations } = useMemo(() => {
     const q = query.toLowerCase().trim()
+    const isSearching = q.length > 0
+    const isCategoryFiltered = activeCategory !== 'all'
 
-    const filtered = q
-      ? integrations.filter(
-          (i) =>
-            i.name.toLowerCase().includes(q) ||
-            i.description.toLowerCase().includes(q) ||
-            categoryLabels[i.category].toLowerCase().includes(q),
-        )
-      : integrations
+    let filtered = integrations
 
-    return categoryOrder
+    if (isSearching) {
+      filtered = filtered.filter(
+        (i) =>
+          i.name.toLowerCase().includes(q) ||
+          i.description.toLowerCase().includes(q) ||
+          categoryLabels[i.category].toLowerCase().includes(q),
+      )
+    }
+
+    if (isCategoryFiltered) {
+      filtered = filtered.filter((i) => i.category === activeCategory)
+    }
+
+    const groups = categoryOrder
       .map((cat) => ({
         category: cat as IntegrationCategory,
         label: categoryLabels[cat],
         items: filtered.filter((i) => i.category === cat),
       }))
       .filter((g) => g.items.length > 0)
-  }, [query])
+
+    // * Only show popular row when not searching/filtering
+    const popular =
+      !isSearching && !isCategoryFiltered
+        ? POPULAR_IDS.map((id) => integrations.find((i) => i.id === id)).filter(Boolean)
+        : []
+
+    return { filteredGroups: groups, totalResults: filtered.length, popularIntegrations: popular }
+  }, [query, activeCategory])
 
   const hasResults = filteredGroups.length > 0
+  const isFiltering = query.length > 0 || activeCategory !== 'all'
+
+  const handleCategoryClick = useCallback((cat: IntegrationCategory | 'all') => {
+    setActiveCategory(cat)
+  }, [])
 
   return (
     <div className="relative min-h-screen flex flex-col overflow-hidden selection:bg-brand-orange/20">
@@ -62,16 +106,22 @@ export default function IntegrationsPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="text-center mb-12"
+          className="text-center mb-10"
         >
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-neutral-900 dark:text-white mb-6">
-            Integrations
-          </h1>
+          {/* * --- Title with count badge --- */}
+          <div className="flex items-center justify-center gap-3 mb-6">
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-neutral-900 dark:text-white">
+              Integrations
+            </h1>
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-brand-orange/10 text-brand-orange border border-brand-orange/20">
+              {integrations.length}+
+            </span>
+          </div>
           <p className="text-xl text-neutral-600 dark:text-neutral-400 max-w-2xl mx-auto leading-relaxed mb-8">
-            Connect Pulse with your favorite frameworks and platforms in minutes.
+            Connect Pulse with {integrations.length}+ frameworks and platforms in minutes.
           </p>
 
-          {/* * --- Search Input --- */}
+          {/* * --- Search Input with "/" hint --- */}
           <div className="relative max-w-md mx-auto">
             <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
               <svg
@@ -89,13 +139,14 @@ export default function IntegrationsPage() {
               </svg>
             </div>
             <input
+              ref={searchRef}
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search integrations..."
-              className="w-full pl-12 pr-10 py-3 bg-white/70 dark:bg-neutral-900/70 backdrop-blur-sm border border-neutral-200 dark:border-neutral-800 rounded-xl text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-orange/50 focus:border-brand-orange/50 transition-all"
+              className="w-full pl-12 pr-16 py-3 bg-white/70 dark:bg-neutral-900/70 backdrop-blur-sm border border-neutral-200 dark:border-neutral-800 rounded-xl text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-orange/50 focus:border-brand-orange/50 transition-all"
             />
-            {query && (
+            {query ? (
               <button
                 onClick={() => setQuery('')}
                 className="absolute inset-y-0 right-0 flex items-center pr-4 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
@@ -105,8 +156,58 @@ export default function IntegrationsPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
                 </svg>
               </button>
+            ) : (
+              <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
+                <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-mono font-medium bg-neutral-200/80 dark:bg-neutral-700/80 text-neutral-500 dark:text-neutral-400 border border-neutral-300 dark:border-neutral-600">
+                  /
+                </kbd>
+              </div>
             )}
           </div>
+
+          {/* * --- Result count (shown when filtering) --- */}
+          {isFiltering && (
+            <motion.p
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-sm text-neutral-500 dark:text-neutral-400 mt-3"
+            >
+              {totalResults} {totalResults === 1 ? 'integration' : 'integrations'} found
+              {query && <> for &ldquo;{query}&rdquo;</>}
+            </motion.p>
+          )}
+        </motion.div>
+
+        {/* * --- Category Filter Chips --- */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.15 }}
+          className="flex flex-wrap justify-center gap-2 mb-10"
+        >
+          <button
+            onClick={() => handleCategoryClick('all')}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+              activeCategory === 'all'
+                ? 'bg-brand-orange text-white shadow-sm'
+                : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'
+            }`}
+          >
+            All
+          </button>
+          {categoryOrder.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => handleCategoryClick(cat)}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+                activeCategory === cat
+                  ? 'bg-brand-orange text-white shadow-sm'
+                  : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'
+              }`}
+            >
+              {categoryLabels[cat]}
+            </button>
+          ))}
         </motion.div>
 
         <AnimatePresence mode="wait">
@@ -118,6 +219,49 @@ export default function IntegrationsPage() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
             >
+              {/* * --- Popular Integrations (pinned row) --- */}
+              {popularIntegrations.length > 0 && (
+                <div className="mb-12">
+                  <motion.h2
+                    initial={{ opacity: 0, y: 10 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.4 }}
+                    className="text-lg font-semibold text-neutral-500 dark:text-neutral-400 mb-6 tracking-wide uppercase flex items-center gap-2"
+                  >
+                    <svg className="w-5 h-5 text-brand-orange" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M10 1l2.39 4.84 5.34.78-3.87 3.77.91 5.33L10 13.27l-4.77 2.5.91-5.33L2.27 6.67l5.34-.78L10 1z" />
+                    </svg>
+                    Popular
+                  </motion.h2>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {popularIntegrations.map((integration, i) => (
+                      <motion.div
+                        key={integration!.id}
+                        initial={{ opacity: 0, y: 15 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.4, delay: i * 0.05 }}
+                      >
+                        <Link
+                          href={`/integrations/${integration!.id}`}
+                          className="group flex items-center gap-3 p-4 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-sm border border-neutral-200 dark:border-neutral-800 rounded-xl hover:border-brand-orange/50 dark:hover:border-brand-orange/50 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg h-full"
+                        >
+                          <div className="p-2 bg-neutral-100 dark:bg-neutral-800 rounded-lg shrink-0 group-hover:scale-110 transition-transform duration-300 [&_svg]:w-6 [&_svg]:h-6">
+                            {integration!.icon}
+                          </div>
+                          <span className="font-semibold text-neutral-900 dark:text-white text-sm">
+                            {integration!.name}
+                          </span>
+                        </Link>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* * --- Category Groups --- */}
               {filteredGroups.map((group) => (
                 <div key={group.category} className="mb-12">
                   <motion.h2
@@ -141,7 +285,7 @@ export default function IntegrationsPage() {
                       >
                         <Link
                           href={`/integrations/${integration.id}`}
-                          className="group relative p-8 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-sm border border-neutral-200 dark:border-neutral-800 rounded-2xl hover:border-brand-orange/50 dark:hover:border-brand-orange/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl block focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2"
+                          className="group relative p-8 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-sm border border-neutral-200 dark:border-neutral-800 rounded-2xl hover:border-brand-orange/50 dark:hover:border-brand-orange/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl block h-full focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2"
                         >
                           <div className="flex items-start justify-between mb-6">
                             <div className="p-3 bg-neutral-100 dark:bg-neutral-800 rounded-xl group-hover:scale-110 transition-transform duration-300">
