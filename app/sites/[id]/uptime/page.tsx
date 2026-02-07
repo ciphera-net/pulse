@@ -338,15 +338,14 @@ function MonitorCard({
                   <Button
                     onClick={(e: React.MouseEvent) => { e.stopPropagation(); onEdit() }}
                     variant="secondary"
-                    size="sm"
+                    className="text-sm"
                   >
                     Edit
                   </Button>
                   <Button
                     onClick={(e: React.MouseEvent) => { e.stopPropagation(); onDelete() }}
                     variant="secondary"
-                    size="sm"
-                    className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                    className="text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
                   >
                     Delete
                   </Button>
