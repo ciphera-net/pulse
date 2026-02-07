@@ -20,6 +20,7 @@ const footerLinks = {
     { name: 'Ciphera Relay', href: 'https://ciphera.net/products#relay', external: true },
   ],
   company: [
+    { name: 'Features', href: '/features', external: false },
     { name: 'About', href: '/about', external: false },
     { name: 'Pricing', href: '/pricing', external: false },
     { name: 'Contact', href: 'https://ciphera.net/contact', external: true },
