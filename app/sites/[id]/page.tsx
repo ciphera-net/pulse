@@ -259,77 +259,87 @@ export default function SiteDashboardPage() {
             </button>
           </div>
 
-            <div className="flex gap-2">
-              <button
-                onClick={() => setIsExportModalOpen(true)}
-                className="hidden md:flex items-center gap-2 px-3 py-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors"
-              >
-                <DownloadIcon className="w-4 h-4" />
-                <span>Export</span>
-              </button>
-
-              <Select
-              value={
-                dateRange.start === new Date().toISOString().split('T')[0] && dateRange.end === new Date().toISOString().split('T')[0] 
-                ? 'today' 
-                : dateRange.start === getDateRange(7).start 
-                ? '7' 
-                : dateRange.start === getDateRange(30).start 
-                ? '30' 
-                : 'custom'
-              }
-              onChange={(value) => {
-                if (value === '7') {
-                  const range = getDateRange(7)
-                  setDateRange(range)
-                  saveSettings('7', range)
-                }
-                else if (value === '30') {
-                  const range = getDateRange(30)
-                  setDateRange(range)
-                  saveSettings('30', range)
-                }
-                else if (value === 'today') {
-                  const today = new Date().toISOString().split('T')[0]
-                  const range = { start: today, end: today }
-                  setDateRange(range)
-                  saveSettings('today', range)
-                }
-                else if (value === 'custom') {
-                  setIsDatePickerOpen(true)
-                }
-              }}
-              options={[
-                { value: 'today', label: 'Today' },
-                { value: '7', label: 'Last 7 days' },
-                { value: '30', label: 'Last 30 days' },
-                { value: 'custom', label: 'Custom' },
-              ]}
-            />
-            <Button
-              onClick={() => router.push(`/sites/${siteId}/uptime`)}
-              variant="secondary"
-              className="text-sm"
-            >
-              Uptime
-            </Button>
-            <Button
-              onClick={() => router.push(`/sites/${siteId}/funnels`)}
-              variant="secondary"
-              className="text-sm"
-            >
-              Funnels
-            </Button>
-            {canEdit && (
-            <Button
-              onClick={() => router.push(`/sites/${siteId}/settings`)}
-              variant="secondary"
-              className="text-sm"
-            >
-              Settings
-            </Button>
-            )}
-          </div>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => setIsExportModalOpen(true)}
+                  variant="primary"
+                  className="hidden md:inline-flex gap-2 text-sm"
+                >
+                  <DownloadIcon className="w-4 h-4" />
+                  Export
+                </Button>
+                <Select
+                  variant="input"
+                  className="min-w-[140px]"
+                  value={
+                    dateRange.start === new Date().toISOString().split('T')[0] && dateRange.end === new Date().toISOString().split('T')[0]
+                      ? 'today'
+                      : dateRange.start === getDateRange(7).start
+                        ? '7'
+                        : dateRange.start === getDateRange(30).start
+                          ? '30'
+                          : 'custom'
+                  }
+                  onChange={(value) => {
+                    if (value === '7') {
+                      const range = getDateRange(7)
+                      setDateRange(range)
+                      saveSettings('7', range)
+                    }
+                    else if (value === '30') {
+                      const range = getDateRange(30)
+                      setDateRange(range)
+                      saveSettings('30', range)
+                    }
+                    else if (value === 'today') {
+                      const today = new Date().toISOString().split('T')[0]
+                      const range = { start: today, end: today }
+                      setDateRange(range)
+                      saveSettings('today', range)
+                    }
+                    else if (value === 'custom') {
+                      setIsDatePickerOpen(true)
+                    }
+                  }}
+                  options={[
+                    { value: 'today', label: 'Today' },
+                    { value: '7', label: 'Last 7 days' },
+                    { value: '30', label: 'Last 30 days' },
+                    { value: 'custom', label: 'Custom' },
+                  ]}
+                />
+              </div>
+              <div
+                className="h-6 w-px bg-neutral-200 dark:bg-neutral-700 flex-shrink-0"
+                aria-hidden
+              />
+              <div className="flex items-center gap-1">
+                <Button
+                  onClick={() => router.push(`/sites/${siteId}/uptime`)}
+                  variant="ghost"
+                  className="text-sm"
+                >
+                  Uptime
+                </Button>
+                <Button
+                  onClick={() => router.push(`/sites/${siteId}/funnels`)}
+                  variant="ghost"
+                  className="text-sm"
+                >
+                  Funnels
+                </Button>
+                {canEdit && (
+                  <Button
+                    onClick={() => router.push(`/sites/${siteId}/settings`)}
+                    variant="ghost"
+                    className="text-sm"
+                  >
+                    Settings
+                  </Button>
+                )}
+              </div>
+            </div>
         </div>
       </div>
 
