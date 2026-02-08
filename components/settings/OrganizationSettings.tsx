@@ -237,11 +237,11 @@ export default function OrganizationSettings() {
     }
   }, [activeTab, currentOrgId, loadAudit, auditFetchTrigger])
 
-  // If no org ID, we are in personal workspace, so don't show org settings
+  // If no org ID, we are in personal organization context, so don't show org settings
   if (!currentOrgId) {
     return (
         <div className="p-6 text-center text-neutral-500">
-            <p>You are in your Personal Workspace. Switch to an Organization to manage its settings.</p>
+            <p>You are in your personal context. Switch to an Organization to manage its settings.</p>
         </div>
     )
   }
