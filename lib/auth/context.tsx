@@ -10,9 +10,17 @@ import { getUserOrganizations, switchContext } from '@/lib/api/organization'
 interface User {
   id: string
   email: string
+  display_name?: string
   totp_enabled: boolean
   org_id?: string
   role?: string
+  preferences?: {
+    email_notifications?: {
+      new_file_received: boolean
+      file_downloaded: boolean
+      security_alerts: boolean
+    }
+  }
 }
 
 interface AuthContextType {

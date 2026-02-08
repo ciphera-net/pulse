@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/auth/context'
 import { ProfileSettings as SharedProfileSettings } from '@ciphera-net/ui'
 import api from '@/lib/api/client'
 import { deriveAuthKey } from '@/lib/crypto/password'
-import { deleteAccount, getUserSessions, revokeSession, updateUserPreferences } from '@/lib/api/user'
+import { deleteAccount, getUserSessions, revokeSession, updateUserPreferences, updateDisplayName } from '@/lib/api/user'
 import { setup2FA, verify2FA, disable2FA, regenerateRecoveryCodes } from '@/lib/api/2fa'
 
 export default function ProfileSettings() {
@@ -37,6 +37,7 @@ export default function ProfileSettings() {
     <SharedProfileSettings
       user={user}
       onUpdateProfile={handleUpdateProfile}
+      onUpdateDisplayName={updateDisplayName}
       onUpdatePassword={handleUpdatePassword}
       onDeleteAccount={deleteAccount}
       onSetup2FA={setup2FA}

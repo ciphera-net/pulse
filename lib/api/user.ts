@@ -58,3 +58,10 @@ export async function updateUserPreferences(preferences: UserPreferences): Promi
     body: JSON.stringify(preferences),
   })
 }
+
+export async function updateDisplayName(displayName: string): Promise<void> {
+  return apiRequest<void>('/auth/user/display-name', {
+    method: 'PUT',
+    body: JSON.stringify({ display_name: displayName }),
+  })
+}
