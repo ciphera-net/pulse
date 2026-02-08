@@ -44,6 +44,7 @@ import {
 } from '@ciphera-net/ui'
 import Link from 'next/link'
 import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
+import VerificationModal from '@/components/sites/VerificationModal'
 
 const TOTAL_STEPS = 5
 const DEFAULT_ORG_NAME = 'My workspace'
@@ -96,6 +97,7 @@ function WelcomeContent() {
   const [siteLoading, setSiteLoading] = useState(false)
   const [siteError, setSiteError] = useState('')
   const [createdSite, setCreatedSite] = useState<Site | null>(null)
+  const [showVerificationModal, setShowVerificationModal] = useState(false)
 
   const [redirectingCheckout, setRedirectingCheckout] = useState(false)
   const [hadPendingCheckout, setHadPendingCheckout] = useState<boolean | null>(null)
@@ -320,7 +322,7 @@ function WelcomeContent() {
     'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-sm p-8 max-w-lg mx-auto'
 
   return (
-    <div className="min-h-[80vh] flex flex-col items-center justify-center bg-neutral-50 dark:bg-neutral-950 px-4 py-12">
+    <div className="flex-1 flex flex-col items-center justify-center bg-neutral-50 dark:bg-neutral-950 px-4 py-12">
       <div className="w-full max-w-lg">
         <div
           className="flex justify-center gap-1.5 mb-8"
@@ -364,9 +366,9 @@ function WelcomeContent() {
                     <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-orange/10 text-brand-orange mb-4">
                       <BarChartIcon className="h-7 w-7" />
                     </div>
-                    <h2 className="text-xl font-bold text-neutral-900 dark:text-white">
+                    <h1 className="text-xl font-bold text-neutral-900 dark:text-white">
                       Choose your workspace
-                    </h2>
+                    </h1>
                     <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
                       Continue with an existing workspace or create a new one.
                     </p>
@@ -378,7 +380,7 @@ function WelcomeContent() {
                         type="button"
                         onClick={() => handleSelectWorkspace(org)}
                         disabled={!!switchingOrgId}
-                        className="w-full flex items-center justify-between gap-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:border-brand-orange/50 px-4 py-3 text-left transition-colors disabled:opacity-60"
+                        className="w-full flex items-center justify-between gap-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:border-brand-orange/50 px-4 py-3 text-left transition-colors disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2"
                       >
                         <span className="font-medium text-neutral-900 dark:text-white">
                           {org.organization_name || 'Workspace'}
@@ -437,7 +439,7 @@ function WelcomeContent() {
               <button
                 type="button"
                 onClick={() => setStep(1)}
-                className="flex items-center gap-1.5 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 mb-6"
+                className="flex items-center gap-1.5 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 mb-6 focus:outline-none focus:ring-2 focus:ring-brand-orange rounded"
                 aria-label="Back to welcome"
               >
                 <ArrowLeftIcon className="h-4 w-4" />
@@ -447,9 +449,9 @@ function WelcomeContent() {
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-orange/10 text-brand-orange mb-4">
                   <BarChartIcon className="h-7 w-7" />
                 </div>
-                <h2 className="text-xl font-bold text-neutral-900 dark:text-white">
+                <h1 className="text-xl font-bold text-neutral-900 dark:text-white">
                   Name your workspace
-                </h2>
+                </h1>
                 <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
                   You can change this later in settings.
                 </p>
@@ -482,7 +484,7 @@ function WelcomeContent() {
                     onChange={(e) => setOrgSlug(e.target.value)}
                     className="w-full"
                   />
-                  <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                  <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
                     Used in your workspace URL.
                   </p>
                 </div>
@@ -508,7 +510,7 @@ function WelcomeContent() {
               <button
                 type="button"
                 onClick={() => setStep(2)}
-                className="flex items-center gap-1.5 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 mb-6"
+                className="flex items-center gap-1.5 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 mb-6 focus:outline-none focus:ring-2 focus:ring-brand-orange rounded"
                 aria-label="Back to workspace"
               >
                 <ArrowLeftIcon className="h-4 w-4" />
@@ -518,9 +520,9 @@ function WelcomeContent() {
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-500/10 text-green-600 dark:text-green-400 mb-4">
                   <CheckCircleIcon className="h-7 w-7" />
                 </div>
-                <h2 className="text-xl font-bold text-neutral-900 dark:text-white">
+                <h1 className="text-xl font-bold text-neutral-900 dark:text-white">
                   {showPendingCheckoutInStep3 ? 'Complete your plan' : "You're on the free plan"}
-                </h2>
+                </h1>
                 <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
                   {showPendingCheckoutInStep3
                     ? 'You chose a plan on the pricing page. Continue to add a payment method and start your trial.'
@@ -551,32 +553,31 @@ function WelcomeContent() {
                     </Button>
                   </>
                 ) : (
-                  <>
-                    <Button
-                      variant="primary"
-                      className="w-full sm:w-auto"
-                      onClick={() => setStep(4)}
-                    >
-                      Continue
-                      <ArrowRightIcon className="ml-2 h-4 w-4" />
-                    </Button>
-                    <p className="mt-4 text-center">
-                      <Link href="/pricing" className="text-sm text-brand-orange hover:underline">
-                        View pricing
-                      </Link>
-                    </p>
-                  </>
+                  <Button
+                    variant="primary"
+                    className="w-full sm:w-auto"
+                    onClick={() => setStep(4)}
+                  >
+                    Continue
+                    <ArrowRightIcon className="ml-2 h-4 w-4" />
+                  </Button>
                 )}
               </div>
-              {showPendingCheckoutInStep3 && (
+              {showPendingCheckoutInStep3 ? (
                 <p className="mt-4 text-center">
                   <button
                     type="button"
                     onClick={() => router.push('/pricing')}
-                    className="text-sm text-brand-orange hover:underline"
+                    className="text-sm text-brand-orange hover:underline focus:outline-none focus:ring-2 focus:ring-brand-orange rounded"
                   >
                     Choose a different plan
                   </button>
+                </p>
+              ) : (
+                <p className="mt-4 text-center">
+                  <Link href="/pricing" className="text-sm text-brand-orange hover:underline focus:outline-none focus:ring-2 focus:ring-brand-orange rounded">
+                    View pricing
+                  </Link>
                 </p>
               )}
             </motion.div>
@@ -594,7 +595,7 @@ function WelcomeContent() {
               <button
                 type="button"
                 onClick={() => setStep(3)}
-                className="flex items-center gap-1.5 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 mb-6"
+                className="flex items-center gap-1.5 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 mb-6 focus:outline-none focus:ring-2 focus:ring-brand-orange rounded"
                 aria-label="Back to plan"
               >
                 <ArrowLeftIcon className="h-4 w-4" />
@@ -604,9 +605,9 @@ function WelcomeContent() {
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-orange/10 text-brand-orange mb-4">
                   <GlobeIcon className="h-7 w-7" />
                 </div>
-                <h2 className="text-xl font-bold text-neutral-900 dark:text-white">
+                <h1 className="text-xl font-bold text-neutral-900 dark:text-white">
                   Add your first site
-                </h2>
+                </h1>
                 <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
                   Optional. You can add sites later from the dashboard.
                 </p>
@@ -637,7 +638,7 @@ function WelcomeContent() {
                     onChange={(e) => setSiteDomain(e.target.value.toLowerCase().trim())}
                     className="w-full"
                   />
-                  <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                  <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
                     Without http:// or https://
                   </p>
                 </div>
@@ -681,9 +682,9 @@ function WelcomeContent() {
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-500/10 text-green-600 dark:text-green-400 mb-6">
                   <CheckCircleIcon className="h-7 w-7" />
                 </div>
-                <h2 className="text-2xl font-bold text-neutral-900 dark:text-white">
+                <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
                   You're all set
-                </h2>
+                </h1>
                 <p className="mt-2 text-neutral-600 dark:text-neutral-400">
                   {createdSite
                     ? `"${createdSite.name}" is ready. Add the script to your site to start collecting data.`
@@ -700,6 +701,21 @@ function WelcomeContent() {
                 </div>
               )}
 
+              {createdSite && (
+                <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowVerificationModal(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-all text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2"
+                  >
+                    <span className="text-brand-orange">Verify installation</span>
+                  </button>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                    Check if your site is sending data correctly.
+                  </p>
+                </div>
+              )}
+
               <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
                 <Button variant="primary" onClick={goToDashboard} className="min-w-[160px]">
                   Go to dashboard
@@ -710,6 +726,14 @@ function WelcomeContent() {
                   </Button>
                 )}
               </div>
+
+              {createdSite && (
+                <VerificationModal
+                  isOpen={showVerificationModal}
+                  onClose={() => setShowVerificationModal(false)}
+                  site={createdSite}
+                />
+              )}
             </motion.div>
           )}
         </AnimatePresence>
