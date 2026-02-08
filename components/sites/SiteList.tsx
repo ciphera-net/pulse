@@ -28,7 +28,12 @@ export default function SiteList({ sites, loading, onDelete }: SiteListProps) {
     return (
       <div className="rounded-lg border border-dashed border-neutral-300 dark:border-neutral-700 p-12 text-center">
         <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">No sites yet</h3>
-        <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">Create your first site to get started.</p>
+        <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400 mb-4">Create your first site to get started.</p>
+        <Link href="/sites/new">
+          <Button variant="primary" className="text-sm">
+            Add your first site
+          </Button>
+        </Link>
       </div>
     )
   }
