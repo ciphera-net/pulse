@@ -20,6 +20,7 @@ import { createCheckoutSession } from '@/lib/api/billing'
 import { createSite, type Site } from '@/lib/api/sites'
 import { setSessionAction } from '@/app/actions/auth'
 import { useAuth } from '@/lib/auth/context'
+import apiRequest from '@/lib/api/client'
 import { getAuthErrorMessage } from '@/lib/utils/authErrors'
 import {
   trackWelcomeStepView,
@@ -147,13 +148,19 @@ function WelcomeContent() {
       const { access_token } = await switchContext(org.organization_id)
       const result = await setSessionAction(access_token)
       if (result.success && result.user) {
-        login(result.user)
+        try {
+          const fullProfile = await apiRequest<{ id: string; email: string; display_name?: string; totp_enabled: boolean; org_id?: string; role?: string }>('/auth/user/me')
+          const merged = { ...fullProfile, org_id: result.user.org_id ?? fullProfile.org_id, role: result.user.role ?? fullProfile.role }
+          login(merged)
+        } catch {
+          login(result.user)
+        }
         router.refresh()
         trackWelcomeWorkspaceSelected()
         setStep(3)
       }
     } catch (err) {
-      toast.error(getAuthErrorMessage(err) || 'Failed to switch workspace')
+      toast.error(getAuthErrorMessage(err) || 'Failed to switch organization')
     } finally {
       setSwitchingOrgId(null)
     }
@@ -178,7 +185,13 @@ function WelcomeContent() {
       const { access_token } = await switchContext(org.id)
       const result = await setSessionAction(access_token)
       if (result.success && result.user) {
-        login(result.user)
+        try {
+          const fullProfile = await apiRequest<{ id: string; email: string; display_name?: string; totp_enabled: boolean; org_id?: string; role?: string }>('/auth/user/me')
+          const merged = { ...fullProfile, org_id: result.user.org_id ?? fullProfile.org_id, role: result.user.role ?? fullProfile.role }
+          login(merged)
+        } catch {
+          login(result.user)
+        }
         router.refresh()
       }
       trackWelcomeWorkspaceCreated(!!(typeof window !== 'undefined' && localStorage.getItem('pulse_pending_checkout')))
