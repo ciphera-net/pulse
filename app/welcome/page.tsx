@@ -735,7 +735,7 @@ function WelcomeContent() {
                     ))}
                   </div>
                   <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">
-                    <Link href="/integrations" className="text-brand-orange hover:underline">
+                    <Link href="/integrations" target="_blank" rel="noopener noreferrer" className="text-brand-orange hover:underline">
                       View all integrations →
                     </Link>
                   </p>
