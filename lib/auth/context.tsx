@@ -100,6 +100,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (session) {
             setUser(session)
             localStorage.setItem('user', JSON.stringify(session))
+            // * Fetch full profile (including display_name) from API; preserve org_id/role from session
+            try {
+              const userData = await apiRequest<User>('/auth/user/me')
+              const merged = { ...userData, org_id: session.org_id, role: session.role }
+              setUser(merged)
+              localStorage.setItem('user', JSON.stringify(merged))
+            } catch (e) {
+              console.error('Failed to fetch full profile', e)
+            }
         } else {
             // * Session invalid/expired
             localStorage.removeItem('user')
