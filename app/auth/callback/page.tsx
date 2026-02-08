@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense, useRef, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth/context'
-import { AUTH_URL } from '@/lib/api/client'
+import { AUTH_URL, default as apiRequest } from '@/lib/api/client'
 import { exchangeAuthCode, setSessionAction } from '@/app/actions/auth'
 import { authMessageFromErrorType, type AuthErrorType } from '@/lib/utils/authErrors'
 import { LoadingOverlay } from '@ciphera-net/ui'
@@ -23,7 +23,14 @@ function AuthCallbackContent() {
     if (!code || !codeVerifier) return
     const result = await exchangeAuthCode(code, codeVerifier, redirectUri)
     if (result.success && result.user) {
-      login(result.user)
+      // * Fetch full profile (including display_name) before navigating so header shows correct name on first paint
+      try {
+        const fullProfile = await apiRequest<{ id: string; email: string; display_name?: string; totp_enabled: boolean; org_id?: string; role?: string }>('/auth/user/me')
+        const merged = { ...fullProfile, org_id: result.user.org_id ?? fullProfile.org_id, role: result.user.role ?? fullProfile.role }
+        login(merged)
+      } catch {
+        login(result.user)
+      }
       localStorage.removeItem('oauth_state')
       localStorage.removeItem('oauth_code_verifier')
       if (localStorage.getItem('pulse_pending_checkout')) {
@@ -51,7 +58,14 @@ function AuthCallbackContent() {
       const handleDirectTokens = async () => {
         const result = await setSessionAction(token, refreshToken)
         if (result.success && result.user) {
-          login(result.user)
+          // * Fetch full profile (including display_name) before navigating so header shows correct name on first paint
+          try {
+            const fullProfile = await apiRequest<{ id: string; email: string; display_name?: string; totp_enabled: boolean; org_id?: string; role?: string }>('/auth/user/me')
+            const merged = { ...fullProfile, org_id: result.user.org_id ?? fullProfile.org_id, role: result.user.role ?? fullProfile.role }
+            login(merged)
+          } catch {
+            login(result.user)
+          }
           if (typeof window !== 'undefined' && localStorage.getItem('pulse_pending_checkout')) {
             router.push('/welcome')
           } else {
