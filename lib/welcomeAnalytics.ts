@@ -6,6 +6,7 @@
 
 export type WelcomeEventName =
   | 'welcome_step_view'
+  | 'welcome_workspace_selected'
   | 'welcome_workspace_created'
   | 'welcome_plan_continue'
   | 'welcome_plan_skip'
@@ -45,6 +46,10 @@ function emit(event: WelcomeEventName, payload: Omit<WelcomeEventPayload, 'event
 
 export function trackWelcomeStepView(step: number) {
   emit('welcome_step_view', { step })
+}
+
+export function trackWelcomeWorkspaceSelected() {
+  emit('welcome_workspace_selected')
 }
 
 export function trackWelcomeWorkspaceCreated(hadPendingCheckout: boolean) {

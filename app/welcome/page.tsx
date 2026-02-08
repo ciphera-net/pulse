@@ -14,6 +14,7 @@ import {
   getUserOrganizations,
   switchContext,
   type Organization,
+  type OrganizationMember,
 } from '@/lib/api/organization'
 import { createCheckoutSession } from '@/lib/api/billing'
 import { createSite, type Site } from '@/lib/api/sites'
@@ -22,6 +23,7 @@ import { useAuth } from '@/lib/auth/context'
 import { getAuthErrorMessage } from '@/lib/utils/authErrors'
 import {
   trackWelcomeStepView,
+  trackWelcomeWorkspaceSelected,
   trackWelcomeWorkspaceCreated,
   trackWelcomePlanContinue,
   trackWelcomePlanSkip,
@@ -38,6 +40,7 @@ import {
   BarChartIcon,
   GlobeIcon,
   ZapIcon,
+  PlusIcon,
 } from '@ciphera-net/ui'
 import Link from 'next/link'
 
@@ -97,6 +100,10 @@ function WelcomeContent() {
   const [hadPendingCheckout, setHadPendingCheckout] = useState<boolean | null>(null)
   const [dismissedPendingCheckout, setDismissedPendingCheckout] = useState(false)
 
+  const [organizations, setOrganizations] = useState<OrganizationMember[] | null>(null)
+  const [orgsLoading, setOrgsLoading] = useState(false)
+  const [switchingOrgId, setSwitchingOrgId] = useState<string | null>(null)
+
   const setStep = useCallback(
     (next: number) => {
       const s = Math.min(Math.max(1, next), TOTAL_STEPS)
@@ -113,22 +120,45 @@ function WelcomeContent() {
     if (stepFromUrl !== step) setStepState(stepFromUrl)
   }, [stepParam, step])
 
-  // * If user already has orgs and no pending checkout, send to dashboard (avoid re-doing wizard)
+  // * Fetch organizations when on step 1 so we can show "Choose workspace" when user has orgs
   useEffect(() => {
     if (!user || step !== 1) return
     let cancelled = false
+    setOrgsLoading(true)
     getUserOrganizations()
       .then((orgs) => {
-        if (cancelled || orgs.length === 0) return
-        if (!localStorage.getItem('pulse_pending_checkout')) {
-          router.replace('/')
-        }
+        if (!cancelled) setOrganizations(orgs || [])
       })
-      .catch(() => {})
+      .catch(() => {
+        if (!cancelled) setOrganizations([])
+      })
+      .finally(() => {
+        if (!cancelled) setOrgsLoading(false)
+      })
     return () => {
       cancelled = true
     }
-  }, [user, step, router])
+  }, [user, step])
+
+  const handleSelectWorkspace = async (org: OrganizationMember) => {
+    setSwitchingOrgId(org.organization_id)
+    try {
+      const { access_token } = await switchContext(org.organization_id)
+      const result = await setSessionAction(access_token)
+      if (result.success && result.user) {
+        login(result.user)
+        router.refresh()
+        trackWelcomeWorkspaceSelected()
+        setStep(3)
+      }
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err) || 'Failed to switch workspace')
+    } finally {
+      setSwitchingOrgId(null)
+    }
+  }
+
+  const handleCreateNewWorkspace = () => setStep(2)
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value
@@ -272,6 +302,10 @@ function WelcomeContent() {
     return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Creating your workspace..." />
   }
 
+  if (switchingOrgId) {
+    return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Switching workspace..." />
+  }
+
   if (redirectingCheckout || (planLoading && step === 3)) {
     return (
       <LoadingOverlay
@@ -319,26 +353,74 @@ function WelcomeContent() {
               transition={{ duration: 0.25 }}
               className={cardClass}
             >
-              <div className="text-center">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-orange/10 text-brand-orange mb-6">
-                  <ZapIcon className="h-7 w-7" />
+              {orgsLoading ? (
+                <div className="text-center py-8">
+                  <p className="text-neutral-600 dark:text-neutral-400">Loading your workspaces...</p>
                 </div>
-                <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
-                  Welcome to Pulse
-                </h1>
-                <p className="mt-2 text-neutral-600 dark:text-neutral-400">
-                  Privacy-first analytics in a few steps. No credit card required to start.
-                </p>
-                <Button
-                  type="button"
-                  variant="primary"
-                  className="mt-8 w-full sm:w-auto min-w-[180px]"
-                  onClick={() => setStep(2)}
-                >
-                  Get started
-                  <ArrowRightIcon className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
+              ) : organizations && organizations.length > 0 ? (
+                <>
+                  <div className="text-center mb-6">
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-orange/10 text-brand-orange mb-4">
+                      <BarChartIcon className="h-7 w-7" />
+                    </div>
+                    <h2 className="text-xl font-bold text-neutral-900 dark:text-white">
+                      Choose your workspace
+                    </h2>
+                    <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+                      Continue with an existing workspace or create a new one.
+                    </p>
+                  </div>
+                  <div className="space-y-2 mb-6">
+                    {organizations.map((org) => (
+                      <button
+                        key={org.organization_id}
+                        type="button"
+                        onClick={() => handleSelectWorkspace(org)}
+                        disabled={!!switchingOrgId}
+                        className="w-full flex items-center justify-between gap-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:border-brand-orange/50 px-4 py-3 text-left transition-colors disabled:opacity-60"
+                      >
+                        <span className="font-medium text-neutral-900 dark:text-white">
+                          {org.organization_name || 'Workspace'}
+                        </span>
+                        {user?.org_id === org.organization_id && (
+                          <span className="text-xs text-neutral-500 dark:text-neutral-400">Current</span>
+                        )}
+                        <ArrowRightIcon className="h-4 w-4 text-neutral-400 flex-shrink-0" />
+                      </button>
+                    ))}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="w-full"
+                    onClick={handleCreateNewWorkspace}
+                  >
+                    <PlusIcon className="h-4 w-4 mr-2" />
+                    Create a new workspace
+                  </Button>
+                </>
+              ) : (
+                <div className="text-center">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-orange/10 text-brand-orange mb-6">
+                    <ZapIcon className="h-7 w-7" />
+                  </div>
+                  <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
+                    Welcome to Pulse
+                  </h1>
+                  <p className="mt-2 text-neutral-600 dark:text-neutral-400">
+                    Privacy-first analytics in a few steps. No credit card required to start.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    className="mt-8 w-full sm:w-auto min-w-[180px]"
+                    onClick={() => setStep(2)}
+                  >
+                    Get started
+                    <ArrowRightIcon className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </motion.div>
           )}
 
