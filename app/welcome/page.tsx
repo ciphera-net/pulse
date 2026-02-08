@@ -2,7 +2,7 @@
 
 /**
  * Guided onboarding wizard for new Pulse users.
- * Steps: Welcome → Workspace (create org) → Plan / trial → First site (optional) → Done.
+ * Steps: Welcome → Organization (create org) → Plan / trial → First site (optional) → Done.
  * Supports ?step= in URL for back/refresh. Handles pulse_pending_checkout from pricing.
  */
 
@@ -47,12 +47,12 @@ import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
 import VerificationModal from '@/components/sites/VerificationModal'
 
 const TOTAL_STEPS = 5
-const DEFAULT_ORG_NAME = 'My workspace'
+const DEFAULT_ORG_NAME = 'My organization'
 const SITE_DRAFT_KEY = 'pulse_welcome_site_draft'
 const WELCOME_COMPLETED_KEY = 'pulse_welcome_completed'
 
 function slugFromName(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'my-workspace'
+  return name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'my-organization'
 }
 
 function suggestSlugVariant(slug: string): string {
@@ -143,7 +143,7 @@ function WelcomeContent() {
     }
   }, [user, step])
 
-  const handleSelectWorkspace = async (org: OrganizationMember) => {
+  const handleSelectOrganization = async (org: OrganizationMember) => {
     setSwitchingOrgId(org.organization_id)
     try {
       const { access_token } = await switchContext(org.organization_id)
@@ -155,13 +155,13 @@ function WelcomeContent() {
         setStep(3)
       }
     } catch (err) {
-      toast.error(getAuthErrorMessage(err) || 'Failed to switch workspace')
+      toast.error(getAuthErrorMessage(err) || 'Failed to switch organization')
     } finally {
       setSwitchingOrgId(null)
     }
   }
 
-  const handleCreateNewWorkspace = () => setStep(2)
+  const handleCreateNewOrganization = () => setStep(2)
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value
@@ -171,7 +171,7 @@ function WelcomeContent() {
     )
   }
 
-  const handleWorkspaceSubmit = async (e: React.FormEvent) => {
+  const handleOrganizationSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setOrgLoading(true)
     setOrgError('')
@@ -186,7 +186,7 @@ function WelcomeContent() {
       trackWelcomeWorkspaceCreated(!!(typeof window !== 'undefined' && localStorage.getItem('pulse_pending_checkout')))
       setStep(3)
     } catch (err: unknown) {
-      const { message, suggestSlug } = getOrgErrorMessage(err, orgSlug, 'Failed to create workspace')
+      const { message, suggestSlug } = getOrgErrorMessage(err, orgSlug, 'Failed to create organization')
       setOrgError(message)
       if (suggestSlug) setOrgSlug(suggestSlug)
     } finally {
@@ -367,10 +367,10 @@ function WelcomeContent() {
                       <BarChartIcon className="h-7 w-7" />
                     </div>
                     <h1 className="text-xl font-bold text-neutral-900 dark:text-white">
-                      Choose your workspace
+                      Choose your organization
                     </h1>
                     <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-                      Continue with an existing workspace or create a new one.
+                      Continue with an existing organization or create a new one.
                     </p>
                   </div>
                   <div className="space-y-2 mb-6">
@@ -378,12 +378,12 @@ function WelcomeContent() {
                       <button
                         key={org.organization_id}
                         type="button"
-                        onClick={() => handleSelectWorkspace(org)}
+                        onClick={() => handleSelectOrganization(org)}
                         disabled={!!switchingOrgId}
                         className="w-full flex items-center justify-between gap-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:border-brand-orange/50 px-4 py-3 text-left transition-colors disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2"
                       >
                         <span className="font-medium text-neutral-900 dark:text-white">
-                          {org.organization_name || 'Workspace'}
+                          {org.organization_name || 'Organization'}
                         </span>
                         {user?.org_id === org.organization_id && (
                           <span className="text-xs text-neutral-500 dark:text-neutral-400">Current</span>
@@ -396,10 +396,10 @@ function WelcomeContent() {
                     type="button"
                     variant="secondary"
                     className="w-full"
-                    onClick={handleCreateNewWorkspace}
+                    onClick={handleCreateNewOrganization}
                   >
                     <PlusIcon className="h-4 w-4 mr-2" />
-                    Create a new workspace
+                    Create a new organization
                   </Button>
                 </>
               ) : (
@@ -450,16 +450,16 @@ function WelcomeContent() {
                   <BarChartIcon className="h-7 w-7" />
                 </div>
                 <h1 className="text-xl font-bold text-neutral-900 dark:text-white">
-                  Name your workspace
+                  Name your organization
                 </h1>
                 <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
                   You can change this later in settings.
                 </p>
               </div>
-              <form onSubmit={handleWorkspaceSubmit} className="space-y-4">
+              <form onSubmit={handleOrganizationSubmit} className="space-y-4">
                 <div>
                   <label htmlFor="welcome-org-name" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                    Workspace name
+                    Organization name
                   </label>
                   <Input
                     id="welcome-org-name"
@@ -485,7 +485,7 @@ function WelcomeContent() {
                     className="w-full"
                   />
                   <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-                    Used in your workspace URL.
+                    Used in your organization URL.
                   </p>
                 </div>
                 {orgError && (
@@ -511,7 +511,7 @@ function WelcomeContent() {
                 type="button"
                 onClick={() => setStep(2)}
                 className="flex items-center gap-1.5 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 mb-6 focus:outline-none focus:ring-2 focus:ring-brand-orange rounded"
-                aria-label="Back to workspace"
+                aria-label="Back to organization"
               >
                 <ArrowLeftIcon className="h-4 w-4" />
                 Back

@@ -7,16 +7,16 @@ import { switchContext, OrganizationMember } from '@/lib/api/organization'
 import { setSessionAction } from '@/app/actions/auth'
 import Link from 'next/link'
 
-export default function WorkspaceSwitcher({ orgs, activeOrgId }: { orgs: OrganizationMember[], activeOrgId: string | null }) {
+export default function OrganizationSwitcher({ orgs, activeOrgId }: { orgs: OrganizationMember[], activeOrgId: string | null }) {
   const router = useRouter()
   const [switching, setSwitching] = useState<string | null>(null)
-  
+
   const handleSwitch = async (orgId: string | null) => {
-    console.log('Switching to workspace:', orgId)
+    console.log('Switching to organization:', orgId)
     setSwitching(orgId || 'personal')
     try {
       // * If orgId is null, we can't switch context via API in the same way if strict mode is on
-      // * BUT, Pulse doesn't support personal workspace.
+      // * Pulse doesn't support personal organization context.
       // * So we should probably NOT show the "Personal" option in Pulse if strict mode is enforced.
       // * However, to match Drop exactly, we might want to show it but have it fail or redirect?
       // * Let's assume for now we want to match Drop's UI structure.
@@ -38,7 +38,7 @@ export default function WorkspaceSwitcher({ orgs, activeOrgId }: { orgs: Organiz
       window.location.reload() 
       
     } catch (err) {
-      console.error('Failed to switch workspace', err)
+      console.error('Failed to switch organization', err)
       setSwitching(null)
     }
   }
@@ -46,10 +46,10 @@ export default function WorkspaceSwitcher({ orgs, activeOrgId }: { orgs: Organiz
   return (
     <div className="border-b border-neutral-100 dark:border-neutral-800 pb-2 mb-2">
       <div className="px-3 py-2 text-xs font-medium text-neutral-500 uppercase tracking-wider">
-        Workspaces
+        Organizations
       </div>
-      
-      {/* Personal Workspace - HIDDEN IN PULSE (Strict Mode) */}
+
+      {/* Personal organization - HIDDEN IN PULSE (Strict Mode) */}
       {/* 
       <button
         onClick={() => handleSwitch(null)}
@@ -70,7 +70,7 @@ export default function WorkspaceSwitcher({ orgs, activeOrgId }: { orgs: Organiz
       </button>
       */}
       
-      {/* Organization Workspaces */}
+      {/* Organization list */}
       {orgs.map((org) => (
         <button
           key={org.organization_id}
