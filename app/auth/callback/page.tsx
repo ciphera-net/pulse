@@ -27,7 +27,7 @@ function AuthCallbackContent() {
       localStorage.removeItem('oauth_state')
       localStorage.removeItem('oauth_code_verifier')
       if (localStorage.getItem('pulse_pending_checkout')) {
-        router.push('/pricing')
+        router.push('/welcome')
       } else {
         router.push('/')
       }
