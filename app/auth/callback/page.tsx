@@ -27,7 +27,7 @@ function AuthCallbackContent() {
       localStorage.removeItem('oauth_state')
       localStorage.removeItem('oauth_code_verifier')
       if (localStorage.getItem('pulse_pending_checkout')) {
-        router.push('/pricing')
+        router.push('/welcome')
       } else {
         router.push('/')
       }
@@ -52,8 +52,12 @@ function AuthCallbackContent() {
         const result = await setSessionAction(token, refreshToken)
         if (result.success && result.user) {
           login(result.user)
-          const returnTo = searchParams.get('returnTo') || '/'
-          router.push(returnTo)
+          if (typeof window !== 'undefined' && localStorage.getItem('pulse_pending_checkout')) {
+            router.push('/welcome')
+          } else {
+            const returnTo = searchParams.get('returnTo') || '/'
+            router.push(returnTo)
+          }
         } else {
           setError(authMessageFromErrorType('invalid'))
         }

@@ -130,18 +130,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const checkOrg = async () => {
       if (!loading && user) {
-        // * If we are on onboarding, skip check
         if (pathname?.startsWith('/onboarding')) return
-        
-        // * If we are processing auth callback, skip check to avoid redirect loops
         if (pathname?.startsWith('/auth/callback')) return
 
         try {
           const organizations = await getUserOrganizations()
-          
+
           if (organizations.length === 0) {
-            // * No organizations -> Redirect to Onboarding
-            router.push('/onboarding')
+            if (pathname?.startsWith('/welcome')) return
+            router.push('/welcome')
             return
           }
 

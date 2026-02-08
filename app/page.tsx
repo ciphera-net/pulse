@@ -10,7 +10,7 @@ import { getSubscription, type SubscriptionDetails } from '@/lib/api/billing'
 import { LoadingOverlay } from '@ciphera-net/ui'
 import SiteList from '@/components/sites/SiteList'
 import { Button } from '@ciphera-net/ui'
-import { BarChartIcon, LockIcon, ZapIcon, CheckCircleIcon, XIcon } from '@ciphera-net/ui'
+import { BarChartIcon, LockIcon, ZapIcon, CheckCircleIcon, XIcon, GlobeIcon } from '@ciphera-net/ui'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@/lib/utils/authErrors'
 
@@ -102,6 +102,7 @@ export default function HomePage() {
   const [sitesLoading, setSitesLoading] = useState(true)
   const [subscription, setSubscription] = useState<SubscriptionDetails | null>(null)
   const [subscriptionLoading, setSubscriptionLoading] = useState(false)
+  const [showFinishSetupBanner, setShowFinishSetupBanner] = useState(true)
 
   useEffect(() => {
     if (user?.org_id) {
@@ -109,6 +110,22 @@ export default function HomePage() {
       loadSubscription()
     }
   }, [user])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (localStorage.getItem('pulse_welcome_completed') === 'true') setShowFinishSetupBanner(false)
+  }, [user?.org_id])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('trial_started') === '1') {
+      toast.success('Your trial is active. You can add sites and start tracking.')
+      params.delete('trial_started')
+      const newUrl = params.toString() ? `${window.location.pathname}?${params}` : window.location.pathname
+      window.history.replaceState({}, '', newUrl)
+    }
+  }, [])
 
   const loadSites = async () => {
     try {
@@ -289,6 +306,32 @@ export default function HomePage() {
 
   return (
     <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
+      {showFinishSetupBanner && (
+        <div className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-brand-orange/30 bg-brand-orange/5 px-4 py-3 dark:bg-brand-orange/10">
+          <p className="text-sm text-neutral-700 dark:text-neutral-300">
+            Finish setting up your workspace and add your first site.
+          </p>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Link href="/welcome?step=5">
+              <Button variant="primary" className="text-sm">
+                Finish setup
+              </Button>
+            </Link>
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window !== 'undefined') localStorage.setItem('pulse_welcome_completed', 'true')
+                setShowFinishSetupBanner(false)
+              }}
+              className="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-400 p-1 rounded"
+              aria-label="Dismiss"
+            >
+              <XIcon className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Your Sites</h1>
@@ -371,7 +414,26 @@ export default function HomePage() {
         </div>
       </div>
 
-      <SiteList sites={sites} loading={sitesLoading} onDelete={handleDelete} />
+      {!sitesLoading && sites.length === 0 && (
+        <div className="mb-8 rounded-2xl border-2 border-dashed border-brand-orange/30 bg-brand-orange/5 p-8 text-center dark:bg-brand-orange/10">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-orange/20 text-brand-orange mb-4">
+            <GlobeIcon className="h-7 w-7" />
+          </div>
+          <h2 className="text-xl font-bold text-neutral-900 dark:text-white mb-2">Add your first site</h2>
+          <p className="text-neutral-600 dark:text-neutral-400 mb-6 max-w-md mx-auto">
+            Connect a domain to start collecting privacy-friendly analytics. You can add more sites later from the dashboard.
+          </p>
+          <Link href="/sites/new">
+            <Button variant="primary" className="min-w-[180px]">
+              Add your first site
+            </Button>
+          </Link>
+        </div>
+      )}
+
+      {(sitesLoading || sites.length > 0) && (
+        <SiteList sites={sites} loading={sitesLoading} onDelete={handleDelete} />
+      )}
     </div>
   )
 }
