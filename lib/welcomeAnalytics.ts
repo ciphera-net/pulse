@@ -13,6 +13,8 @@ export type WelcomeEventName =
   | 'welcome_site_added'
   | 'welcome_site_skipped'
   | 'welcome_completed'
+  | 'site_created_from_dashboard'
+  | 'site_created_script_copied'
 
 export interface WelcomeEventPayload {
   event: WelcomeEventName
@@ -74,4 +76,12 @@ export function trackWelcomeSiteSkipped() {
 
 export function trackWelcomeCompleted(addedSite: boolean) {
   emit('welcome_completed', { added_site: addedSite })
+}
+
+export function trackSiteCreatedFromDashboard() {
+  emit('site_created_from_dashboard')
+}
+
+export function trackSiteCreatedScriptCopied() {
+  emit('site_created_script_copied')
 }
