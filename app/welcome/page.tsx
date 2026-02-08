@@ -20,21 +20,54 @@ import { createSite, type Site } from '@/lib/api/sites'
 import { setSessionAction } from '@/app/actions/auth'
 import { useAuth } from '@/lib/auth/context'
 import { getAuthErrorMessage } from '@/lib/utils/authErrors'
+import {
+  trackWelcomeStepView,
+  trackWelcomeWorkspaceCreated,
+  trackWelcomePlanContinue,
+  trackWelcomePlanSkip,
+  trackWelcomeSiteAdded,
+  trackWelcomeSiteSkipped,
+  trackWelcomeCompleted,
+} from '@/lib/welcomeAnalytics'
 import { LoadingOverlay, Button, Input } from '@ciphera-net/ui'
 import { toast } from '@ciphera-net/ui'
 import {
   CheckCircleIcon,
   ArrowRightIcon,
+  ArrowLeftIcon,
   BarChartIcon,
   GlobeIcon,
   ZapIcon,
 } from '@ciphera-net/ui'
+import Link from 'next/link'
 
 const TOTAL_STEPS = 5
 const DEFAULT_ORG_NAME = 'My workspace'
+const SITE_DRAFT_KEY = 'pulse_welcome_site_draft'
+const WELCOME_COMPLETED_KEY = 'pulse_welcome_completed'
 
 function slugFromName(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'my-workspace'
+}
+
+function suggestSlugVariant(slug: string): string {
+  const m = slug.match(/^(.+?)(-\d+)?$/)
+  if (!m) return `${slug}-2`
+  const base = m[1]
+  const num = m[2] ? parseInt(m[2].slice(1), 10) : 0
+  return `${base}-${num + 2}`
+}
+
+function getOrgErrorMessage(err: unknown, currentSlug: string, fallback: string): { message: string; suggestSlug?: string } {
+  const apiErr = err as { data?: { message?: string }; message?: string }
+  const raw = apiErr?.data?.message || apiErr?.message || ''
+  if (/slug|already|taken|duplicate|exists/i.test(raw)) {
+    return {
+      message: 'This URL slug is already in use. Try a different one.',
+      suggestSlug: suggestSlugVariant(currentSlug),
+    }
+  }
+  return { message: getAuthErrorMessage(err) || (err as Error)?.message || fallback }
 }
 
 function WelcomeContent() {
@@ -117,9 +150,12 @@ function WelcomeContent() {
         login(result.user)
         router.refresh()
       }
+      trackWelcomeWorkspaceCreated(!!(typeof window !== 'undefined' && localStorage.getItem('pulse_pending_checkout')))
       setStep(3)
     } catch (err: unknown) {
-      setOrgError(getAuthErrorMessage(err) || (err as Error)?.message || 'Failed to create workspace')
+      const { message, suggestSlug } = getOrgErrorMessage(err, orgSlug, 'Failed to create workspace')
+      setOrgError(message)
+      if (suggestSlug) setOrgSlug(suggestSlug)
     } finally {
       setOrgLoading(false)
     }
@@ -134,6 +170,7 @@ function WelcomeContent() {
     setPlanLoading(true)
     setPlanError('')
     try {
+      trackWelcomePlanContinue()
       const intent = JSON.parse(raw)
       const { url } = await createCheckoutSession({
         plan_id: intent.planId,
@@ -156,6 +193,7 @@ function WelcomeContent() {
   }
 
   const handlePlanSkip = () => {
+    trackWelcomePlanSkip()
     localStorage.removeItem('pulse_pending_checkout')
     setDismissedPendingCheckout(true)
     setStep(4)
@@ -172,6 +210,8 @@ function WelcomeContent() {
         domain: siteDomain.trim().toLowerCase(),
       })
       setCreatedSite(site)
+      if (typeof window !== 'undefined') sessionStorage.removeItem(SITE_DRAFT_KEY)
+      trackWelcomeSiteAdded()
       toast.success('Site added')
       setStep(5)
     } catch (err: unknown) {
@@ -181,9 +221,17 @@ function WelcomeContent() {
     }
   }
 
-  const handleSkipSite = () => setStep(5)
+  const handleSkipSite = () => {
+    trackWelcomeSiteSkipped()
+    if (typeof window !== 'undefined') sessionStorage.removeItem(SITE_DRAFT_KEY)
+    setStep(5)
+  }
 
-  const goToDashboard = () => router.push('/')
+  const goToDashboard = () => {
+    if (typeof window !== 'undefined') localStorage.setItem(WELCOME_COMPLETED_KEY, 'true')
+    trackWelcomeCompleted(!!createdSite)
+    router.push('/')
+  }
   const goToSite = () => createdSite && router.push(`/sites/${createdSite.id}`)
 
   const showPendingCheckoutInStep3 =
@@ -194,6 +242,31 @@ function WelcomeContent() {
       setHadPendingCheckout(!!localStorage.getItem('pulse_pending_checkout'))
     }
   }, [step, hadPendingCheckout])
+
+  useEffect(() => {
+    trackWelcomeStepView(step)
+  }, [step])
+
+  // * Restore first-site draft from sessionStorage
+  useEffect(() => {
+    if (step !== 4 || typeof window === 'undefined') return
+    try {
+      const raw = sessionStorage.getItem(SITE_DRAFT_KEY)
+      if (raw) {
+        const d = JSON.parse(raw) as { name?: string; domain?: string }
+        if (d.name) setSiteName(d.name)
+        if (d.domain) setSiteDomain(d.domain)
+      }
+    } catch {
+      // ignore
+    }
+  }, [step])
+
+  // * Persist first-site draft to sessionStorage
+  useEffect(() => {
+    if (step !== 4 || typeof window === 'undefined') return
+    sessionStorage.setItem(SITE_DRAFT_KEY, JSON.stringify({ name: siteName, domain: siteDomain }))
+  }, [step, siteName, siteDomain])
 
   if (orgLoading && step === 2) {
     return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Creating your workspace..." />
@@ -214,7 +287,14 @@ function WelcomeContent() {
   return (
     <div className="min-h-[80vh] flex flex-col items-center justify-center bg-neutral-50 dark:bg-neutral-950 px-4 py-12">
       <div className="w-full max-w-lg">
-        <div className="flex justify-center gap-1.5 mb-8">
+        <div
+          className="flex justify-center gap-1.5 mb-8"
+          role="progressbar"
+          aria-valuenow={step}
+          aria-valuemin={1}
+          aria-valuemax={TOTAL_STEPS}
+          aria-label={`Step ${step} of ${TOTAL_STEPS}`}
+        >
           {Array.from({ length: TOTAL_STEPS }, (_, i) => (
             <div
               key={i}
@@ -223,7 +303,8 @@ function WelcomeContent() {
                   ? 'bg-brand-orange w-8'
                   : 'bg-neutral-200 dark:bg-neutral-700 w-6'
               }`}
-              aria-hidden
+              aria-current={i + 1 === step ? 'step' : undefined}
+              aria-label={`Step ${i + 1} of ${TOTAL_STEPS}`}
             />
           ))}
         </div>
@@ -270,6 +351,15 @@ function WelcomeContent() {
               transition={{ duration: 0.25 }}
               className={cardClass}
             >
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                className="flex items-center gap-1.5 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 mb-6"
+                aria-label="Back to welcome"
+              >
+                <ArrowLeftIcon className="h-4 w-4" />
+                Back
+              </button>
               <div className="text-center mb-6">
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-orange/10 text-brand-orange mb-4">
                   <BarChartIcon className="h-7 w-7" />
@@ -332,6 +422,15 @@ function WelcomeContent() {
               transition={{ duration: 0.25 }}
               className={cardClass}
             >
+              <button
+                type="button"
+                onClick={() => setStep(2)}
+                className="flex items-center gap-1.5 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 mb-6"
+                aria-label="Back to workspace"
+              >
+                <ArrowLeftIcon className="h-4 w-4" />
+                Back
+              </button>
               <div className="text-center mb-6">
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-500/10 text-green-600 dark:text-green-400 mb-4">
                   <CheckCircleIcon className="h-7 w-7" />
@@ -369,14 +468,21 @@ function WelcomeContent() {
                     </Button>
                   </>
                 ) : (
-                  <Button
-                    variant="primary"
-                    className="w-full sm:w-auto"
-                    onClick={() => setStep(4)}
-                  >
-                    Continue
-                    <ArrowRightIcon className="ml-2 h-4 w-4" />
-                  </Button>
+                  <>
+                    <Button
+                      variant="primary"
+                      className="w-full sm:w-auto"
+                      onClick={() => setStep(4)}
+                    >
+                      Continue
+                      <ArrowRightIcon className="ml-2 h-4 w-4" />
+                    </Button>
+                    <p className="mt-4 text-center">
+                      <Link href="/pricing" className="text-sm text-brand-orange hover:underline">
+                        View pricing
+                      </Link>
+                    </p>
+                  </>
                 )}
               </div>
               {showPendingCheckoutInStep3 && (
@@ -402,6 +508,15 @@ function WelcomeContent() {
               transition={{ duration: 0.25 }}
               className={cardClass}
             >
+              <button
+                type="button"
+                onClick={() => setStep(3)}
+                className="flex items-center gap-1.5 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 mb-6"
+                aria-label="Back to plan"
+              >
+                <ArrowLeftIcon className="h-4 w-4" />
+                Back
+              </button>
               <div className="text-center mb-6">
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-orange/10 text-brand-orange mb-4">
                   <GlobeIcon className="h-7 w-7" />
