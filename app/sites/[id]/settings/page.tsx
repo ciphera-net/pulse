@@ -8,9 +8,10 @@ import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@/lib/utils/authErrors'
 import { LoadingOverlay } from '@ciphera-net/ui'
 import VerificationModal from '@/components/sites/VerificationModal'
+import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
 import { PasswordInput } from '@ciphera-net/ui'
 import { Select, Modal, Button } from '@ciphera-net/ui'
-import { APP_URL, API_URL } from '@/lib/api/client'
+import { APP_URL } from '@/lib/api/client'
 import { generatePrivacySnippet } from '@/lib/utils/privacySnippet'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@/lib/auth/context'
@@ -69,7 +70,6 @@ export default function SiteSettingsPage() {
     // Bot and noise filtering
     filter_bots: true
   })
-  const [scriptCopied, setScriptCopied] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
   const [snippetCopied, setSnippetCopied] = useState(false)
   const [showVerificationModal, setShowVerificationModal] = useState(false)
@@ -266,14 +266,6 @@ export default function SiteSettingsPage() {
     }
   }
 
-  const copyScript = () => {
-    const script = `<script defer data-domain="${site?.domain}" data-api="${API_URL}" src="${APP_URL}/script.js"></script>`
-    navigator.clipboard.writeText(script)
-    setScriptCopied(true)
-    toast.success('Script copied to clipboard')
-    setTimeout(() => setScriptCopied(false), 2000)
-  }
-
   const copyLink = () => {
     const link = `${APP_URL}/share/${siteId}`
     navigator.clipboard.writeText(link)
@@ -443,23 +435,15 @@ export default function SiteSettingsPage() {
                   <div className="pt-4 border-t border-neutral-100 dark:border-neutral-800">
                     <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-2">Tracking Script</h3>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
-                      Add this script to your website to start tracking visitors.
+                      Add this script to your website to start tracking visitors. Choose your framework for setup instructions.
                     </p>
-                    <div className="bg-neutral-100 dark:bg-neutral-800 rounded-lg p-4 mb-4 relative group">
-                      <code className="text-sm text-neutral-900 dark:text-white break-all font-mono block">
-                        {`<script defer data-domain="${site.domain}" data-api="${API_URL}" src="${APP_URL}/script.js"></script>`}
-                      </code>
-                      <button
-                        type="button"
-                        onClick={copyScript}
-                        className="absolute top-2 right-2 p-2 bg-white dark:bg-neutral-700 rounded-lg shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="Copy Script"
-                      >
-                        {scriptCopied ? <CheckIcon className="w-4 h-4 text-green-500" /> : <svg className="w-4 h-4 text-neutral-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>}
-                      </button>
-                    </div>
+                    <ScriptSetupBlock
+                      site={{ domain: site.domain, name: site.name }}
+                      showFrameworkPicker
+                      className="mb-4"
+                    />
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 mt-4">
                       <button
                         type="button"
                         onClick={() => setShowVerificationModal(true)}
