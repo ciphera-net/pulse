@@ -431,7 +431,9 @@ export default function HomePage() {
         </div>
       )}
 
-      <SiteList sites={sites} loading={sitesLoading} onDelete={handleDelete} />
+      {(sitesLoading || sites.length > 0) && (
+        <SiteList sites={sites} loading={sitesLoading} onDelete={handleDelete} />
+      )}
     </div>
   )
 }
