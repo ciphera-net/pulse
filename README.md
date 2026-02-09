@@ -60,6 +60,10 @@ npm run build
 npm start
 ```
 
+## Releasing
+
+Changelog and release process (who updates it, when, how to tag, deploy) are documented in [docs/releasing.md](docs/releasing.md). Versions use **0.x.y** while in initial development; the single product changelog is [CHANGELOG.md](CHANGELOG.md).
+
 ## Design System
 
 The frontend follows the Ciphera design language:
