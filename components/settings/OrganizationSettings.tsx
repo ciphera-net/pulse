@@ -130,7 +130,11 @@ export default function OrganizationSettings() {
   const currentOrgId = getOrgIdFromToken()
 
   const loadMembers = useCallback(async () => {
-    if (!currentOrgId) return
+    if (!currentOrgId) {
+      setIsLoadingMembers(false)
+      return
+    }
+    setIsLoadingMembers(true)
     try {
       const [membersData, invitesData, orgData] = await Promise.all([
         getOrganizationMembers(currentOrgId),
@@ -867,8 +871,8 @@ export default function OrganizationSettings() {
                         ) : invoices.length === 0 ? (
                           <div className="p-8 text-center text-neutral-500">No invoices found.</div>
                         ) : (
-                          invoices.map((invoice) => (
-                              <div key={invoice.id} className="px-4 py-3 flex items-center justify-between hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors">
+                          {invoices.map((invoice) => (
+                            <div key={invoice.id} className="px-4 py-3 flex items-center justify-between hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors">
                                 <div className="flex items-center gap-3">
                                   <div>
                                     <span className="font-medium text-sm text-neutral-900 dark:text-white">
@@ -903,7 +907,7 @@ export default function OrganizationSettings() {
                                   )}
                                 </div>
                               </div>
-                            ))
+                            ))}
                           )
                         }
                         </div>
