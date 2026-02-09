@@ -36,7 +36,9 @@ function AuthCallbackContent() {
       if (localStorage.getItem('pulse_pending_checkout')) {
         router.push('/welcome')
       } else {
-        router.push('/')
+        const raw = searchParams.get('returnTo') || '/'
+        const safe = (typeof raw === 'string' && raw.startsWith('/') && !raw.startsWith('//')) ? raw : '/'
+        router.push(safe)
       }
     } else {
       setError(authMessageFromErrorType(result.error as AuthErrorType))
