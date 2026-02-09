@@ -317,7 +317,7 @@ function WelcomeContent() {
   }
 
   if (switchingOrgId) {
-    return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Switching workspace..." />
+    return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Switching organization..." />
   }
 
   if (redirectingCheckout || (planLoading && step === 3)) {
