@@ -26,6 +26,7 @@ const footerLinks = {
     { name: 'Contact', href: 'https://ciphera.net/contact', external: true },
   ],
   resources: [
+    { name: 'Changelog', href: '/changelog', external: false },
     { name: 'Installation', href: '/installation', external: false },
     { name: 'Integrations', href: '/integrations', external: false },
     { name: 'Documentation', href: 'https://docs.ciphera.net', external: true },
@@ -54,6 +55,9 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
             <div className="flex gap-6 text-sm font-medium text-neutral-600 dark:text-neutral-300">
               <Component href="/about" className="hover:text-brand-orange transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange focus:rounded">
                 Why {appName}
+              </Component>
+              <Component href="/changelog" className="hover:text-brand-orange transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange focus:rounded">
+                Changelog
               </Component>
               <Component href="/pricing" className="hover:text-brand-orange transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange focus:rounded">
                 Pricing
