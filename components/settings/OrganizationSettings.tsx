@@ -708,10 +708,10 @@ export default function OrganizationSettings() {
             )}
 
             {activeTab === 'billing' && (
-              <div className="space-y-12">
+              <div className="space-y-8">
                 <div>
                   <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">Billing & Subscription</h2>
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400">Manage your subscription plan and payment methods.</p>
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400">Manage your plan, usage, and payment details.</p>
                 </div>
 
                 {isLoadingSubscription ? (
@@ -721,60 +721,82 @@ export default function OrganizationSettings() {
                 ) : !subscription ? (
                   <div className="p-8 text-center bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-200 dark:border-neutral-800">
                     <p className="text-neutral-500">Could not load subscription details.</p>
-                    <Button 
-                      variant="ghost" 
-                      onClick={loadSubscription}
-                      className="mt-4"
-                    >
-                      Retry
-                    </Button>
+                    <Button variant="ghost" onClick={loadSubscription} className="mt-4">Retry</Button>
                   </div>
                 ) : (
-                  <div className="space-y-8">
-                    {/* Current Plan */}
-                    <div className="bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6">
-                      <div className="flex items-start justify-between mb-6">
-                        <div>
-                          <h3 className="text-sm font-medium text-neutral-500 uppercase tracking-wider mb-1">Current Plan</h3>
-                          <div className="flex items-center gap-3">
-                            <span className="text-2xl font-bold text-neutral-900 dark:text-white capitalize">
-                              {subscription.plan_id?.startsWith('price_') ? 'Pro' : (subscription.plan_id === 'free' || !subscription.plan_id ? 'Free' : subscription.plan_id)} Plan
+                  <div className="space-y-6">
+
+                    {/* Trial notice */}
+                    {subscription.subscription_status === 'trialing' && (
+                      <div className="p-4 bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-800 rounded-2xl flex flex-col sm:flex-row sm:items-center gap-3">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                            Your free trial ends on{' '}
+                            <span className="font-semibold">
+                              {(() => {
+                                const d = subscription.current_period_end ? new Date(subscription.current_period_end as string) : null
+                                return d && !Number.isNaN(d.getTime()) ? d.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }) : '—'
+                              })()}
                             </span>
-                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${
-                              subscription.subscription_status === 'active'
-                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                                : subscription.subscription_status === 'trialing'
-                                ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'
-                                : 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300'
-                            }`}>
-                              {subscription.subscription_status === 'trialing' ? 'Trial Active' : (subscription.subscription_status || 'Free')}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
-                          <Button
-                            onClick={openChangePlanModal}
-                            disabled={subscription.cancel_at_period_end}
-                          >
-                            Change plan
-                          </Button>
-                          {subscription.has_payment_method && (
-                            <button
-                              type="button"
-                              onClick={handleManageSubscription}
-                              disabled={isRedirectingToPortal}
-                              className="text-sm text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 underline disabled:opacity-50"
-                            >
-                              Update payment method or view invoices
-                            </button>
-                          )}
+                          </p>
+                          <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-0.5">
+                            After the trial you'll be charged automatically unless you cancel before then.
+                          </p>
                         </div>
                       </div>
+                    )}
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 pt-6 border-t border-neutral-200 dark:border-neutral-800">
+                    {/* Cancel-at-period-end notice */}
+                    {subscription.cancel_at_period_end && (
+                      <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-2xl">
+                        <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                          Your subscription will end on{' '}
+                          <span className="font-semibold">
+                            {(() => {
+                              const d = subscription.current_period_end ? new Date(subscription.current_period_end as string) : null
+                              return d && !Number.isNaN(d.getTime()) ? d.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }) : '—'
+                            })()}
+                          </span>
+                        </p>
+                        <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                          You keep full access until then. Your data is retained for 30 days after. Use "Change plan" to resubscribe.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Plan & Usage card */}
+                    <div className="bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden">
+                      {/* Plan header */}
+                      <div className="p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xl font-bold text-neutral-900 dark:text-white capitalize">
+                            {subscription.plan_id?.startsWith('price_') ? 'Pro' : (subscription.plan_id === 'free' || !subscription.plan_id ? 'Free' : subscription.plan_id)} Plan
+                          </span>
+                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${
+                            subscription.subscription_status === 'active'
+                              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                              : subscription.subscription_status === 'trialing'
+                              ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'
+                              : 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300'
+                          }`}>
+                            {subscription.subscription_status === 'trialing' ? 'Trial' : (subscription.subscription_status || 'Free')}
+                          </span>
+                          {subscription.billing_interval && (
+                            <span className="text-xs text-neutral-500 capitalize">
+                              Billed {subscription.billing_interval}ly
+                            </span>
+                          )}
+                        </div>
+                        <Button onClick={openChangePlanModal} disabled={subscription.cancel_at_period_end}>
+                          Change plan
+                        </Button>
+                      </div>
+
+                      {/* Usage stats */}
+                      <div className="border-t border-neutral-200 dark:border-neutral-800 px-6 py-5 grid grid-cols-2 md:grid-cols-4 gap-y-4 gap-x-6">
                         <div>
-                          <div className="text-sm text-neutral-500 mb-1">Sites</div>
-                          <div className="font-medium text-neutral-900 dark:text-white">
+                          <div className="text-xs text-neutral-500 uppercase tracking-wider mb-1">Sites</div>
+                          <div className="text-lg font-semibold text-neutral-900 dark:text-white">
                             {typeof subscription.sites_count === 'number'
                               ? subscription.plan_id === 'solo'
                                 ? `${subscription.sites_count} / 1`
@@ -783,109 +805,81 @@ export default function OrganizationSettings() {
                           </div>
                         </div>
                         <div>
-                          <div className="text-sm text-neutral-500 mb-1">Pageviews this period</div>
-                          <div className="font-medium text-neutral-900 dark:text-white">
+                          <div className="text-xs text-neutral-500 uppercase tracking-wider mb-1">Pageviews</div>
+                          <div className="text-lg font-semibold text-neutral-900 dark:text-white">
                             {subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number'
                               ? `${subscription.pageview_usage.toLocaleString()} / ${subscription.pageview_limit.toLocaleString()}`
                               : '—'}
                           </div>
                         </div>
                         <div>
-                          <div className="text-sm text-neutral-500 mb-1">Billing Interval</div>
-                          <div className="font-medium text-neutral-900 dark:text-white capitalize">
-                            {subscription.billing_interval ? `${subscription.billing_interval}ly` : '—'}
+                          <div className="text-xs text-neutral-500 uppercase tracking-wider mb-1">
+                            {subscription.subscription_status === 'trialing' ? 'Trial ends' : (subscription.cancel_at_period_end ? 'Access until' : 'Renews')}
                           </div>
-                        </div>
-                        <div>
-                          <div className="text-sm text-neutral-500 mb-1">Pageview Limit</div>
-                          <div className="font-medium text-neutral-900 dark:text-white">
-                            {subscription.pageview_limit > 0 ? `${subscription.pageview_limit.toLocaleString()} / month` : 'Unlimited'}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-sm text-neutral-500 mb-1">
-                            {subscription.subscription_status === 'trialing' ? 'Trial Ends On' : 'Renews On'}
-                          </div>
-                          <div className="font-medium text-neutral-900 dark:text-white">
+                          <div className="text-lg font-semibold text-neutral-900 dark:text-white">
                             {(() => {
-                              const raw = subscription.current_period_end
-                              const d = raw ? new Date(raw as string) : null
-                              const ts = d ? d.getTime() : NaN
-                              return raw && !Number.isNaN(ts) && ts !== 0 ? (d as Date).toLocaleDateString() : '—'
+                              const d = subscription.current_period_end ? new Date(subscription.current_period_end as string) : null
+                              return d && !Number.isNaN(d.getTime()) && d.getTime() !== 0 ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—'
                             })()}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-neutral-500 uppercase tracking-wider mb-1">Limit</div>
+                          <div className="text-lg font-semibold text-neutral-900 dark:text-white">
+                            {subscription.pageview_limit > 0 ? `${subscription.pageview_limit.toLocaleString()} / mo` : 'Unlimited'}
                           </div>
                         </div>
                       </div>
                     </div>
 
-                    {/* Cancel-at-period-end notice or Cancel subscription action */}
-                    {subscription.has_payment_method && (subscription.subscription_status === 'active' || subscription.subscription_status === 'trialing') && (
-                      <>
-                        {subscription.cancel_at_period_end ? (
-                          <div className="p-6 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-2xl">
-                            <h3 className="font-medium text-amber-800 dark:text-amber-200 mb-2">Subscription set to cancel</h3>
-                            <p className="text-sm text-amber-700 dark:text-amber-300 mb-1">
-                              Your subscription will end on{' '}
-                              {(() => {
-                                const raw = subscription.current_period_end
-                                const d = raw ? new Date(raw as string) : null
-                                return raw && d && !Number.isNaN(d.getTime()) ? d.toLocaleDateString() : '—'
-                              })()}
-                              . You can use the app until then.
-                            </p>
-                            <p className="text-xs text-amber-600 dark:text-amber-400">
-                              Your data is retained for 30 days after access ends. You can resubscribe anytime using Change plan above.
-                            </p>
-                          </div>
-                        ) : (
-                          <div className="p-6 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-2xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                            <div>
-                              <h3 className="font-medium text-neutral-900 dark:text-white mb-1">Cancel subscription</h3>
-                              <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                                After cancellation, you can use the app until the end of your billing period. Your data is retained for 30 days after access ends.
-                              </p>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 border border-red-200 dark:border-red-800"
-                              onClick={() => setShowCancelPrompt(true)}
-                            >
-                              Cancel subscription
-                            </Button>
-                          </div>
-                        )}
-                      </>
-                    )}
+                    {/* Quick actions */}
+                    <div className="flex flex-wrap items-center gap-3">
+                      {subscription.has_payment_method && (
+                        <button
+                          type="button"
+                          onClick={handleManageSubscription}
+                          disabled={isRedirectingToPortal}
+                          className="inline-flex items-center gap-1.5 text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors disabled:opacity-50"
+                        >
+                          <ExternalLinkIcon className="w-4 h-4" />
+                          Payment method & invoices
+                        </button>
+                      )}
+                      {subscription.has_payment_method && (subscription.subscription_status === 'active' || subscription.subscription_status === 'trialing') && !subscription.cancel_at_period_end && (
+                        <button
+                          type="button"
+                          onClick={() => setShowCancelPrompt(true)}
+                          className="inline-flex items-center gap-1.5 text-sm text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                        >
+                          Cancel subscription
+                        </button>
+                      )}
+                    </div>
 
                     {/* Invoice History */}
-                    <div>
-                      <h3 className="text-sm font-medium text-neutral-500 uppercase tracking-wider mb-4">Invoice History</h3>
-                      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden">
-                        {isLoadingInvoices ? (
-                          <div className="flex items-center justify-center py-8">
-                            <div className="w-6 h-6 border-2 border-brand-orange/30 border-t-brand-orange rounded-full animate-spin" />
-                          </div>
-                        ) : invoices.length === 0 ? (
-                          <div className="p-8 text-center text-neutral-500">No invoices found.</div>
-                        ) : (
-                          <div className="divide-y divide-neutral-200 dark:divide-neutral-800">
-                            {invoices.map((invoice) => (
-                              <div key={invoice.id} className="p-4 flex items-center justify-between hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors">
-                                <div className="flex items-center gap-4">
-                                  <div className="h-10 w-10 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-neutral-500">
-                                    <BookOpenIcon className="w-5 h-5" />
-                                  </div>
+                    {invoices.length > 0 && (
+                      <div>
+                        <h3 className="text-sm font-medium text-neutral-500 uppercase tracking-wider mb-3">Recent invoices</h3>
+                        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden divide-y divide-neutral-200 dark:divide-neutral-800">
+                          {isLoadingInvoices ? (
+                            <div className="flex items-center justify-center py-8">
+                              <div className="w-6 h-6 border-2 border-brand-orange/30 border-t-brand-orange rounded-full animate-spin" />
+                            </div>
+                          ) : (
+                            invoices.map((invoice) => (
+                              <div key={invoice.id} className="px-4 py-3 flex items-center justify-between hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors">
+                                <div className="flex items-center gap-3">
                                   <div>
-                                    <div className="font-medium text-neutral-900 dark:text-white">
+                                    <span className="font-medium text-sm text-neutral-900 dark:text-white">
                                       {(invoice.amount_paid / 100).toLocaleString('en-US', { style: 'currency', currency: invoice.currency.toUpperCase() })}
-                                    </div>
-                                    <div className="text-xs text-neutral-500">
-                                      {new Date(invoice.created * 1000).toLocaleDateString()}
-                                    </div>
+                                    </span>
+                                    <span className="text-xs text-neutral-500 ml-2">
+                                      {new Date(invoice.created * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                    </span>
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-4">
-                                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${
+                                <div className="flex items-center gap-3">
+                                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${
                                     invoice.status === 'paid'
                                       ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
                                       : invoice.status === 'open'
@@ -895,34 +889,24 @@ export default function OrganizationSettings() {
                                     {invoice.status}
                                   </span>
                                   {invoice.invoice_pdf && (
-                                    <a 
-                                      href={invoice.invoice_pdf} 
-                                      target="_blank" 
-                                      rel="noopener noreferrer"
-                                      className="p-2 text-neutral-500 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
-                                      title="Download PDF"
-                                    >
-                                      <DownloadIcon className="w-5 h-5" />
+                                    <a href={invoice.invoice_pdf} target="_blank" rel="noopener noreferrer"
+                                       className="p-1.5 text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-lg transition-colors" title="Download PDF">
+                                      <DownloadIcon className="w-4 h-4" />
                                     </a>
                                   )}
                                   {invoice.hosted_invoice_url && (
-                                    <a 
-                                      href={invoice.hosted_invoice_url} 
-                                      target="_blank" 
-                                      rel="noopener noreferrer"
-                                      className="p-2 text-neutral-500 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
-                                      title="View Invoice"
-                                    >
-                                      <ExternalLinkIcon className="w-5 h-5" />
+                                    <a href={invoice.hosted_invoice_url} target="_blank" rel="noopener noreferrer"
+                                       className="p-1.5 text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-lg transition-colors" title="View invoice">
+                                      <ExternalLinkIcon className="w-4 h-4" />
                                     </a>
                                   )}
                                 </div>
                               </div>
-                            ))}
-                          </div>
-                        )}
+                            ))
+                          )}
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 )}
               </div>
