@@ -686,9 +686,15 @@ function WelcomeContent() {
                     variant="primary"
                     className="flex-1"
                     disabled={siteLoading || !siteName.trim() || !siteDomain.trim()}
-                    isLoading={siteLoading}
                   >
-                    Add site
+                    {siteLoading ? (
+                      <>
+                        <span className="inline-block h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" aria-hidden />
+                        Adding...
+                      </>
+                    ) : (
+                      'Add site'
+                    )}
                   </Button>
                   <Button
                     type="button"

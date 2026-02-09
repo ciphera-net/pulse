@@ -26,7 +26,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     }
   }, [auth.user])
 
-  const handleSwitchWorkspace = async (orgId: string | null) => {
+  const handleSwitchOrganization = async (orgId: string | null) => {
     if (!orgId) return // Pulse doesn't support personal workspace
     try {
       const { access_token } = await switchContext(orgId)
@@ -56,9 +56,9 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         appName="Pulse"
         orgs={orgs}
         activeOrgId={auth.user?.org_id}
-        onSwitchWorkspace={handleSwitchWorkspace}
+        onSwitchOrganization={handleSwitchOrganization}
         onCreateOrganization={handleCreateOrganization}
-        allowPersonalWorkspace={false}
+        allowPersonalOrganization={false}
         showFaq={false}
         showSecurity={false}
         showPricing={true}
