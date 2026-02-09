@@ -16,7 +16,8 @@ import {
   OrganizationInvitation,
   Organization
 } from '@/lib/api/organization'
-import { getSubscription, createPortalSession, getInvoices, cancelSubscription, SubscriptionDetails, Invoice } from '@/lib/api/billing'
+import { getSubscription, createPortalSession, getInvoices, cancelSubscription, changePlan, createCheckoutSession, SubscriptionDetails, Invoice } from '@/lib/api/billing'
+import { TRAFFIC_TIERS, PLAN_ID_SOLO, getTierIndexForLimit, getLimitForTierIndex } from '@/lib/plans'
 import { getAuditLog, AuditLogEntry, GetAuditLogParams } from '@/lib/api/audit'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@/lib/utils/authErrors'
@@ -70,6 +71,10 @@ export default function OrganizationSettings() {
   const [isRedirectingToPortal, setIsRedirectingToPortal] = useState(false)
   const [isCanceling, setIsCanceling] = useState(false)
   const [showCancelPrompt, setShowCancelPrompt] = useState(false)
+  const [showChangePlanModal, setShowChangePlanModal] = useState(false)
+  const [changePlanTierIndex, setChangePlanTierIndex] = useState(2)
+  const [changePlanYearly, setChangePlanYearly] = useState(false)
+  const [isChangingPlan, setIsChangingPlan] = useState(false)
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [isLoadingInvoices, setIsLoadingInvoices] = useState(false)
 
@@ -270,6 +275,40 @@ export default function OrganizationSettings() {
       toast.error(getAuthErrorMessage(error) || error.message || 'Failed to cancel subscription')
     } finally {
       setIsCanceling(false)
+    }
+  }
+
+  const openChangePlanModal = () => {
+    if (subscription?.pageview_limit) {
+      setChangePlanTierIndex(getTierIndexForLimit(subscription.pageview_limit))
+    } else {
+      setChangePlanTierIndex(2)
+    }
+    setChangePlanYearly(subscription?.billing_interval === 'year')
+    setShowChangePlanModal(true)
+  }
+
+  const hasActiveSubscription = subscription?.has_payment_method && (subscription?.subscription_status === 'active' || subscription?.subscription_status === 'trialing')
+
+  const handleChangePlanSubmit = async () => {
+    const interval = changePlanYearly ? 'year' : 'month'
+    const limit = getLimitForTierIndex(changePlanTierIndex)
+    setIsChangingPlan(true)
+    try {
+      if (hasActiveSubscription) {
+        await changePlan({ plan_id: PLAN_ID_SOLO, interval, limit })
+        toast.success('Plan updated. Changes may take a moment to reflect.')
+        setShowChangePlanModal(false)
+        loadSubscription()
+      } else {
+        const { url } = await createCheckoutSession({ plan_id: PLAN_ID_SOLO, interval, limit })
+        if (url) window.location.href = url
+        else throw new Error('No checkout URL')
+      }
+    } catch (error: any) {
+      toast.error(getAuthErrorMessage(error) || error.message || 'Something went wrong.')
+    } finally {
+      setIsChangingPlan(false)
     }
   }
 
@@ -712,15 +751,24 @@ export default function OrganizationSettings() {
                             </span>
                           </div>
                         </div>
-                        {subscription.has_payment_method && (
-                          <Button 
-                            onClick={handleManageSubscription}
-                            isLoading={isRedirectingToPortal}
-                            disabled={isRedirectingToPortal}
+                        <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+                          <Button
+                            onClick={openChangePlanModal}
+                            disabled={subscription.cancel_at_period_end}
                           >
-                            Manage Subscription
+                            Change plan
                           </Button>
-                        )}
+                          {subscription.has_payment_method && (
+                            <button
+                              type="button"
+                              onClick={handleManageSubscription}
+                              disabled={isRedirectingToPortal}
+                              className="text-sm text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 underline disabled:opacity-50"
+                            >
+                              Update payment method or view invoices
+                            </button>
+                          )}
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 pt-6 border-t border-neutral-200 dark:border-neutral-800">
@@ -786,7 +834,7 @@ export default function OrganizationSettings() {
                               . You can use the app until then.
                             </p>
                             <p className="text-xs text-amber-600 dark:text-amber-400">
-                              Your data is retained for 30 days after access ends. You can resubscribe anytime from the Stripe portal.
+                              Your data is retained for 30 days after access ends. You can resubscribe anytime using Change plan above.
                             </p>
                           </div>
                         ) : (
@@ -807,18 +855,6 @@ export default function OrganizationSettings() {
                           </div>
                         )}
                       </>
-                    )}
-
-                    {!subscription.has_payment_method && (
-                      <div className="p-6 bg-brand-orange/5 border border-brand-orange/20 rounded-2xl">
-                        <h3 className="font-medium text-brand-orange mb-2">Upgrade to Pro</h3>
-                        <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
-                          Get higher limits, more data retention, and priority support.
-                        </p>
-                        <Button onClick={() => router.push('/pricing')}>
-                          View Plans
-                        </Button>
-                      </div>
                     )}
 
                     {/* Invoice History */}
@@ -1155,6 +1191,88 @@ export default function OrganizationSettings() {
                 </Button>
                 <Button variant="ghost" onClick={() => setShowCancelPrompt(false)} disabled={isCanceling}>
                   Keep subscription
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Change plan modal */}
+      <AnimatePresence>
+        {showChangePlanModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl max-w-md w-full p-6 border border-neutral-200 dark:border-neutral-800"
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Change plan</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowChangePlanModal(false)}
+                  className="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-400"
+                  disabled={isChangingPlan}
+                >
+                  <XIcon className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
+                Choose your pageview limit and billing interval. {hasActiveSubscription ? 'Your next invoice will reflect prorations.' : 'You’ll start a new subscription.'}
+              </p>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Pageviews per month</label>
+                  <select
+                    value={changePlanTierIndex}
+                    onChange={(e) => setChangePlanTierIndex(Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:ring-2 focus:ring-brand-orange outline-none"
+                  >
+                    {TRAFFIC_TIERS.map((tier, idx) => (
+                      <option key={tier.value} value={idx}>
+                        {tier.label} / month
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Billing</label>
+                  <div className="flex rounded-lg border border-neutral-200 dark:border-neutral-800 p-1 gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setChangePlanYearly(false)}
+                      className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${!changePlanYearly ? 'bg-brand-orange text-white' : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'}`}
+                    >
+                      Monthly
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setChangePlanYearly(true)}
+                      className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${changePlanYearly ? 'bg-brand-orange text-white' : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'}`}
+                    >
+                      Yearly
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-2 mt-6">
+                <Button
+                  onClick={handleChangePlanSubmit}
+                  isLoading={isChangingPlan}
+                  disabled={isChangingPlan}
+                  className="flex-1"
+                >
+                  {hasActiveSubscription ? 'Update plan' : 'Start subscription'}
+                </Button>
+                <Button variant="ghost" onClick={() => setShowChangePlanModal(false)} disabled={isChangingPlan}>
+                  Cancel
                 </Button>
               </div>
             </motion.div>

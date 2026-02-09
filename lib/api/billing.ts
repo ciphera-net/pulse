@@ -64,6 +64,19 @@ export async function cancelSubscription(params?: CancelSubscriptionParams): Pro
   })
 }
 
+export interface ChangePlanParams {
+  plan_id: string
+  interval: string
+  limit: number
+}
+
+export async function changePlan(params: ChangePlanParams): Promise<{ ok: boolean }> {
+  return await billingFetch<{ ok: boolean }>('/api/billing/change-plan', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  })
+}
+
 export interface CreateCheckoutParams {
   plan_id: string
   interval: string
