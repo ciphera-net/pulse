@@ -142,7 +142,7 @@ function WelcomeContent() {
     }
   }, [user, step])
 
-  const handleSelectWorkspace = async (org: OrganizationMember) => {
+  const handleSelectOrganization = async (org: OrganizationMember) => {
     setSwitchingOrgId(org.organization_id)
     try {
       const { access_token } = await switchContext(org.organization_id)
@@ -166,7 +166,7 @@ function WelcomeContent() {
     }
   }
 
-  const handleCreateNewWorkspace = () => setStep(2)
+  const handleCreateNewOrganization = () => setStep(2)
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value
@@ -313,7 +313,7 @@ function WelcomeContent() {
   }, [step, siteName, siteDomain])
 
   if (orgLoading && step === 2) {
-    return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Creating your workspace..." />
+    return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Creating your organization..." />
   }
 
   if (switchingOrgId) {
@@ -393,7 +393,7 @@ function WelcomeContent() {
                         <motion.button
                           key={org.organization_id}
                           type="button"
-                          onClick={() => handleSelectWorkspace(org)}
+                          onClick={() => handleSelectOrganization(org)}
                           disabled={!!switchingOrgId}
                           initial={{ opacity: 0, y: 8 }}
                           animate={{ opacity: 1, y: 0 }}
@@ -429,7 +429,7 @@ function WelcomeContent() {
                       type="button"
                       variant="secondary"
                       className="w-full border border-dashed border-neutral-300 dark:border-neutral-600 hover:border-brand-orange/50 hover:bg-brand-orange/5 dark:hover:bg-brand-orange/10"
-                      onClick={handleCreateNewWorkspace}
+                      onClick={handleCreateNewOrganization}
                     >
                       <PlusIcon className="h-4 w-4 mr-2" />
                       Create a new organization
