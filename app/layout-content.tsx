@@ -33,7 +33,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
       await setSessionAction(access_token)
       window.location.reload()
     } catch (err) {
-      console.error('Failed to switch workspace', err)
+      console.error('Failed to switch organization', err)
     }
   }
 
