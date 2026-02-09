@@ -53,6 +53,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('user', JSON.stringify(userData))
     setUser(userData)
     router.refresh()
+    // * Fetch full profile (including display_name) so header shows correct name without page refresh
+    apiRequest<User>('/auth/user/me')
+      .then((fullProfile) => {
+        setUser((prev) => {
+          const merged = {
+            ...fullProfile,
+            org_id: prev?.org_id ?? fullProfile.org_id,
+            role: prev?.role ?? fullProfile.role,
+          }
+          localStorage.setItem('user', JSON.stringify(merged))
+          return merged
+        })
+      })
+      .catch((e) => console.error('Failed to fetch full profile after login', e))
   }
 
   const logout = useCallback(async () => {
@@ -153,12 +167,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                  // * Update session cookie
                  const result = await setSessionAction(access_token)
                  if (result.success && result.user) {
-                     setUser(result.user)
-                     localStorage.setItem('user', JSON.stringify(result.user))
-                     
-                     // * Force hard reload to ensure browser sends new cookie to backend
-                     // * router.refresh() is not enough for Client Components fetching data immediately
-                     // window.location.reload()
+                     try {
+                       const fullProfile = await apiRequest<{ id: string; email: string; display_name?: string; totp_enabled: boolean; org_id?: string; role?: string }>('/auth/user/me')
+                       const merged = { ...fullProfile, org_id: result.user.org_id ?? fullProfile.org_id, role: result.user.role ?? fullProfile.role }
+                       setUser(merged)
+                       localStorage.setItem('user', JSON.stringify(merged))
+                     } catch {
+                       setUser(result.user)
+                       localStorage.setItem('user', JSON.stringify(result.user))
+                     }
                      router.refresh()
                  }
              } catch (e) {
