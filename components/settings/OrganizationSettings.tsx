@@ -833,7 +833,7 @@ export default function OrganizationSettings() {
                     </div>
 
                     {/* Quick actions */}
-                    <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-4">
                       {subscription.has_payment_method && (
                         <button
                           type="button"
@@ -849,7 +849,7 @@ export default function OrganizationSettings() {
                         <button
                           type="button"
                           onClick={() => setShowCancelPrompt(true)}
-                          className="inline-flex items-center gap-1.5 text-sm text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 px-3.5 py-1.5 text-sm text-neutral-600 dark:text-neutral-400 hover:border-red-300 hover:text-red-600 dark:hover:border-red-800 dark:hover:text-red-400 transition-colors"
                         >
                           Cancel subscription
                         </button>
