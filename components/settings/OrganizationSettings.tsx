@@ -16,7 +16,7 @@ import {
   OrganizationInvitation,
   Organization
 } from '@/lib/api/organization'
-import { getSubscription, createPortalSession, getInvoices, SubscriptionDetails, Invoice } from '@/lib/api/billing'
+import { getSubscription, createPortalSession, getInvoices, cancelSubscription, SubscriptionDetails, Invoice } from '@/lib/api/billing'
 import { getAuditLog, AuditLogEntry, GetAuditLogParams } from '@/lib/api/audit'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@/lib/utils/authErrors'
@@ -68,6 +68,8 @@ export default function OrganizationSettings() {
   const [subscription, setSubscription] = useState<SubscriptionDetails | null>(null)
   const [isLoadingSubscription, setIsLoadingSubscription] = useState(false)
   const [isRedirectingToPortal, setIsRedirectingToPortal] = useState(false)
+  const [isCanceling, setIsCanceling] = useState(false)
+  const [showCancelPrompt, setShowCancelPrompt] = useState(false)
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [isLoadingInvoices, setIsLoadingInvoices] = useState(false)
 
@@ -254,6 +256,20 @@ export default function OrganizationSettings() {
     } catch (error: any) {
       toast.error(getAuthErrorMessage(error) || error.message || 'Failed to redirect to billing portal')
       setIsRedirectingToPortal(false)
+    }
+  }
+
+  const handleCancelSubscription = async (atPeriodEnd: boolean) => {
+    setIsCanceling(true)
+    try {
+      await cancelSubscription({ at_period_end: atPeriodEnd })
+      toast.success(atPeriodEnd ? 'Subscription will cancel at the end of the billing period.' : 'Subscription canceled.')
+      setShowCancelPrompt(false)
+      loadSubscription()
+    } catch (error: any) {
+      toast.error(getAuthErrorMessage(error) || error.message || 'Failed to cancel subscription')
+    } finally {
+      setIsCanceling(false)
     }
   }
 
@@ -754,6 +770,45 @@ export default function OrganizationSettings() {
                       </div>
                     </div>
 
+                    {/* Cancel-at-period-end notice or Cancel subscription action */}
+                    {subscription.has_payment_method && (subscription.subscription_status === 'active' || subscription.subscription_status === 'trialing') && (
+                      <>
+                        {subscription.cancel_at_period_end ? (
+                          <div className="p-6 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-2xl">
+                            <h3 className="font-medium text-amber-800 dark:text-amber-200 mb-2">Subscription set to cancel</h3>
+                            <p className="text-sm text-amber-700 dark:text-amber-300 mb-1">
+                              Your subscription will end on{' '}
+                              {(() => {
+                                const raw = subscription.current_period_end
+                                const d = raw ? new Date(raw as string) : null
+                                return raw && d && !Number.isNaN(d.getTime()) ? d.toLocaleDateString() : '—'
+                              })()}
+                              . You can use the app until then.
+                            </p>
+                            <p className="text-xs text-amber-600 dark:text-amber-400">
+                              Your data is retained for 30 days after access ends. You can resubscribe anytime from the Stripe portal.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="p-6 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-2xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                            <div>
+                              <h3 className="font-medium text-neutral-900 dark:text-white mb-1">Cancel subscription</h3>
+                              <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                                After cancellation, you can use the app until the end of your billing period. Your data is retained for 30 days after access ends.
+                              </p>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 border border-red-200 dark:border-red-800"
+                              onClick={() => setShowCancelPrompt(true)}
+                            >
+                              Cancel subscription
+                            </Button>
+                          </div>
+                        )}
+                      </>
+                    )}
+
                     {!subscription.has_payment_method && (
                       <div className="p-6 bg-brand-orange/5 border border-brand-orange/20 rounded-2xl">
                         <h3 className="font-medium text-brand-orange mb-2">Upgrade to Pro</h3>
@@ -1048,6 +1103,59 @@ export default function OrganizationSettings() {
                     {isDeleting ? 'Deleting...' : 'Delete Organization'}
                   </button>
                 </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Cancel subscription confirmation modal */}
+      <AnimatePresence>
+        {showCancelPrompt && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl max-w-md w-full p-6 border border-neutral-200 dark:border-neutral-800"
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Cancel subscription?</h3>
+                <button
+                  onClick={() => setShowCancelPrompt(false)}
+                  className="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-400"
+                  disabled={isCanceling}
+                >
+                  <XIcon className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="text-neutral-600 dark:text-neutral-300 mb-4">
+                You can cancel at the end of your billing period (you keep access until then) or cancel immediately. Your data is retained for 30 days after access ends.
+              </p>
+              <div className="flex flex-col gap-2">
+                <Button
+                  onClick={() => handleCancelSubscription(true)}
+                  disabled={isCanceling}
+                  isLoading={isCanceling}
+                >
+                  Cancel at period end
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  onClick={() => handleCancelSubscription(false)}
+                  disabled={isCanceling}
+                >
+                  Cancel immediately
+                </Button>
+                <Button variant="ghost" onClick={() => setShowCancelPrompt(false)} disabled={isCanceling}>
+                  Keep subscription
+                </Button>
               </div>
             </motion.div>
           </motion.div>
