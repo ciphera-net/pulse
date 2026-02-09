@@ -197,7 +197,7 @@ function WelcomeContent() {
       trackWelcomeWorkspaceCreated(!!(typeof window !== 'undefined' && localStorage.getItem('pulse_pending_checkout')))
       setStep(3)
     } catch (err: unknown) {
-      const { message, suggestSlug } = getOrgErrorMessage(err, orgSlug, 'Failed to create workspace')
+      const { message, suggestSlug } = getOrgErrorMessage(err, orgSlug, 'Failed to create organization')
       setOrgError(message)
       if (suggestSlug) setOrgSlug(suggestSlug)
     } finally {
@@ -484,7 +484,7 @@ function WelcomeContent() {
                   <BarChartIcon className="h-7 w-7" />
                 </div>
                 <h2 className="text-xl font-bold text-neutral-900 dark:text-white">
-                  Name your workspace
+                  Name your organization
                 </h2>
                 <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
                   You can change this later in settings.
@@ -493,7 +493,7 @@ function WelcomeContent() {
               <form onSubmit={handleWorkspaceSubmit} className="space-y-4">
                 <div>
                   <label htmlFor="welcome-org-name" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                    Workspace name
+                    Organization name
                   </label>
                   <Input
                     id="welcome-org-name"
@@ -519,7 +519,7 @@ function WelcomeContent() {
                     className="w-full"
                   />
                   <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                    Used in your workspace URL.
+                    Used in your organization URL.
                   </p>
                 </div>
                 {orgError && (
@@ -545,7 +545,7 @@ function WelcomeContent() {
                 type="button"
                 onClick={() => setStep(2)}
                 className="flex items-center gap-1.5 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 mb-6"
-                aria-label="Back to workspace"
+                aria-label="Back to organization"
               >
                 <ArrowLeftIcon className="h-4 w-4" />
                 Back
