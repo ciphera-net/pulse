@@ -47,12 +47,12 @@ import Link from 'next/link'
 import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
 
 const TOTAL_STEPS = 5
-const DEFAULT_ORG_NAME = 'My workspace'
+const DEFAULT_ORG_NAME = 'My organization'
 const SITE_DRAFT_KEY = 'pulse_welcome_site_draft'
 const WELCOME_COMPLETED_KEY = 'pulse_welcome_completed'
 
 function slugFromName(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'my-workspace'
+  return name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'my-organization'
 }
 
 function suggestSlugVariant(slug: string): string {

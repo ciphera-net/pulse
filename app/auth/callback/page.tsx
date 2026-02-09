@@ -69,8 +69,9 @@ function AuthCallbackContent() {
           if (typeof window !== 'undefined' && localStorage.getItem('pulse_pending_checkout')) {
             router.push('/welcome')
           } else {
-            const returnTo = searchParams.get('returnTo') || '/'
-            router.push(returnTo)
+            const raw = searchParams.get('returnTo') || '/'
+            const safe = (typeof raw === 'string' && raw.startsWith('/') && !raw.startsWith('//')) ? raw : '/'
+            router.push(safe)
           }
         } else {
           setError(authMessageFromErrorType('invalid'))
