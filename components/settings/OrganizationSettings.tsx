@@ -16,7 +16,8 @@ import {
   OrganizationInvitation,
   Organization
 } from '@/lib/api/organization'
-import { getSubscription, createPortalSession, getInvoices, SubscriptionDetails, Invoice } from '@/lib/api/billing'
+import { getSubscription, createPortalSession, getInvoices, cancelSubscription, changePlan, createCheckoutSession, SubscriptionDetails, Invoice } from '@/lib/api/billing'
+import { TRAFFIC_TIERS, PLAN_ID_SOLO, getTierIndexForLimit, getLimitForTierIndex } from '@/lib/plans'
 import { getAuditLog, AuditLogEntry, GetAuditLogParams } from '@/lib/api/audit'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@/lib/utils/authErrors'
@@ -68,6 +69,12 @@ export default function OrganizationSettings() {
   const [subscription, setSubscription] = useState<SubscriptionDetails | null>(null)
   const [isLoadingSubscription, setIsLoadingSubscription] = useState(false)
   const [isRedirectingToPortal, setIsRedirectingToPortal] = useState(false)
+  const [cancelLoadingAction, setCancelLoadingAction] = useState<'period_end' | 'immediate' | null>(null)
+  const [showCancelPrompt, setShowCancelPrompt] = useState(false)
+  const [showChangePlanModal, setShowChangePlanModal] = useState(false)
+  const [changePlanTierIndex, setChangePlanTierIndex] = useState(2)
+  const [changePlanYearly, setChangePlanYearly] = useState(false)
+  const [isChangingPlan, setIsChangingPlan] = useState(false)
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [isLoadingInvoices, setIsLoadingInvoices] = useState(false)
 
@@ -123,7 +130,11 @@ export default function OrganizationSettings() {
   const currentOrgId = getOrgIdFromToken()
 
   const loadMembers = useCallback(async () => {
-    if (!currentOrgId) return
+    if (!currentOrgId) {
+      setIsLoadingMembers(false)
+      return
+    }
+    setIsLoadingMembers(true)
     try {
       const [membersData, invitesData, orgData] = await Promise.all([
         getOrganizationMembers(currentOrgId),
@@ -254,6 +265,54 @@ export default function OrganizationSettings() {
     } catch (error: any) {
       toast.error(getAuthErrorMessage(error) || error.message || 'Failed to redirect to billing portal')
       setIsRedirectingToPortal(false)
+    }
+  }
+
+  const handleCancelSubscription = async (atPeriodEnd: boolean) => {
+    setCancelLoadingAction(atPeriodEnd ? 'period_end' : 'immediate')
+    try {
+      await cancelSubscription({ at_period_end: atPeriodEnd })
+      toast.success(atPeriodEnd ? 'Subscription will cancel at the end of the billing period.' : 'Subscription canceled.')
+      setShowCancelPrompt(false)
+      loadSubscription()
+    } catch (error: any) {
+      toast.error(getAuthErrorMessage(error) || error.message || 'Failed to cancel subscription')
+    } finally {
+      setCancelLoadingAction(null)
+    }
+  }
+
+  const openChangePlanModal = () => {
+    if (subscription?.pageview_limit != null && subscription.pageview_limit > 0) {
+      setChangePlanTierIndex(getTierIndexForLimit(subscription.pageview_limit))
+    } else {
+      setChangePlanTierIndex(2)
+    }
+    setChangePlanYearly(subscription?.billing_interval === 'year')
+    setShowChangePlanModal(true)
+  }
+
+  const hasActiveSubscription = subscription?.subscription_status === 'active' || subscription?.subscription_status === 'trialing'
+
+  const handleChangePlanSubmit = async () => {
+    const interval = changePlanYearly ? 'year' : 'month'
+    const limit = getLimitForTierIndex(changePlanTierIndex)
+    setIsChangingPlan(true)
+    try {
+      if (hasActiveSubscription) {
+        await changePlan({ plan_id: PLAN_ID_SOLO, interval, limit })
+        toast.success('Plan updated. Changes may take a moment to reflect.')
+        setShowChangePlanModal(false)
+        loadSubscription()
+      } else {
+        const { url } = await createCheckoutSession({ plan_id: PLAN_ID_SOLO, interval, limit })
+        if (url) window.location.href = url
+        else throw new Error('No checkout URL')
+      }
+    } catch (error: any) {
+      toast.error(getAuthErrorMessage(error) || error.message || 'Something went wrong.')
+    } finally {
+      setIsChangingPlan(false)
     }
   }
 
@@ -653,10 +712,10 @@ export default function OrganizationSettings() {
             )}
 
             {activeTab === 'billing' && (
-              <div className="space-y-12">
+              <div className="space-y-8">
                 <div>
                   <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">Billing & Subscription</h2>
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400">Manage your subscription plan and payment methods.</p>
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400">Manage your plan, usage, and payment details.</p>
                 </div>
 
                 {isLoadingSubscription ? (
@@ -666,51 +725,82 @@ export default function OrganizationSettings() {
                 ) : !subscription ? (
                   <div className="p-8 text-center bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-200 dark:border-neutral-800">
                     <p className="text-neutral-500">Could not load subscription details.</p>
-                    <Button 
-                      variant="ghost" 
-                      onClick={loadSubscription}
-                      className="mt-4"
-                    >
-                      Retry
-                    </Button>
+                    <Button variant="ghost" onClick={loadSubscription} className="mt-4">Retry</Button>
                   </div>
                 ) : (
-                  <div className="space-y-8">
-                    {/* Current Plan */}
-                    <div className="bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6">
-                      <div className="flex items-start justify-between mb-6">
-                        <div>
-                          <h3 className="text-sm font-medium text-neutral-500 uppercase tracking-wider mb-1">Current Plan</h3>
-                          <div className="flex items-center gap-3">
-                            <span className="text-2xl font-bold text-neutral-900 dark:text-white capitalize">
-                              {subscription.plan_id?.startsWith('price_') ? 'Pro' : (subscription.plan_id === 'free' || !subscription.plan_id ? 'Free' : subscription.plan_id)} Plan
+                  <div className="space-y-6">
+
+                    {/* Trial notice */}
+                    {subscription.subscription_status === 'trialing' && (
+                      <div className="p-4 bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-800 rounded-2xl flex flex-col sm:flex-row sm:items-center gap-3">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                            Your free trial ends on{' '}
+                            <span className="font-semibold">
+                              {(() => {
+                                const d = subscription.current_period_end ? new Date(subscription.current_period_end as string) : null
+                                return d && !Number.isNaN(d.getTime()) ? d.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }) : '—'
+                              })()}
                             </span>
-                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${
-                              subscription.subscription_status === 'active'
-                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                                : subscription.subscription_status === 'trialing'
-                                ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'
-                                : 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300'
-                            }`}>
-                              {subscription.subscription_status === 'trialing' ? 'Trial Active' : (subscription.subscription_status || 'Free')}
-                            </span>
-                          </div>
+                          </p>
+                          <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-0.5">
+                            After the trial you'll be charged automatically unless you cancel before then.
+                          </p>
                         </div>
-                        {subscription.has_payment_method && (
-                          <Button 
-                            onClick={handleManageSubscription}
-                            isLoading={isRedirectingToPortal}
-                            disabled={isRedirectingToPortal}
-                          >
-                            Manage Subscription
-                          </Button>
-                        )}
+                      </div>
+                    )}
+
+                    {/* Cancel-at-period-end notice */}
+                    {subscription.cancel_at_period_end && (
+                      <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-2xl">
+                        <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                          Your subscription will end on{' '}
+                          <span className="font-semibold">
+                            {(() => {
+                              const d = subscription.current_period_end ? new Date(subscription.current_period_end as string) : null
+                              return d && !Number.isNaN(d.getTime()) ? d.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }) : '—'
+                            })()}
+                          </span>
+                        </p>
+                        <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                          You keep full access until then. Your data is retained for 30 days after. Use "Change plan" to resubscribe.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Plan & Usage card */}
+                    <div className="bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden">
+                      {/* Plan header */}
+                      <div className="p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xl font-bold text-neutral-900 dark:text-white capitalize">
+                            {subscription.plan_id?.startsWith('price_') ? 'Pro' : (subscription.plan_id === 'free' || !subscription.plan_id ? 'Free' : subscription.plan_id)} Plan
+                          </span>
+                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${
+                            subscription.subscription_status === 'active'
+                              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                              : subscription.subscription_status === 'trialing'
+                              ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'
+                              : 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300'
+                          }`}>
+                            {subscription.subscription_status === 'trialing' ? 'Trial' : (subscription.subscription_status || 'Free')}
+                          </span>
+                          {subscription.billing_interval && (
+                            <span className="text-xs text-neutral-500 capitalize">
+                              Billed {subscription.billing_interval}ly
+                            </span>
+                          )}
+                        </div>
+                        <Button onClick={openChangePlanModal} disabled={subscription.cancel_at_period_end}>
+                          Change plan
+                        </Button>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 pt-6 border-t border-neutral-200 dark:border-neutral-800">
+                      {/* Usage stats */}
+                      <div className="border-t border-neutral-200 dark:border-neutral-800 px-6 py-5 grid grid-cols-2 md:grid-cols-4 gap-y-4 gap-x-6">
                         <div>
-                          <div className="text-sm text-neutral-500 mb-1">Sites</div>
-                          <div className="font-medium text-neutral-900 dark:text-white">
+                          <div className="text-xs text-neutral-500 uppercase tracking-wider mb-1">Sites</div>
+                          <div className="text-lg font-semibold text-neutral-900 dark:text-white">
                             {typeof subscription.sites_count === 'number'
                               ? subscription.plan_id === 'solo'
                                 ? `${subscription.sites_count} / 1`
@@ -719,57 +809,61 @@ export default function OrganizationSettings() {
                           </div>
                         </div>
                         <div>
-                          <div className="text-sm text-neutral-500 mb-1">Pageviews this period</div>
-                          <div className="font-medium text-neutral-900 dark:text-white">
+                          <div className="text-xs text-neutral-500 uppercase tracking-wider mb-1">Pageviews</div>
+                          <div className="text-lg font-semibold text-neutral-900 dark:text-white">
                             {subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number'
                               ? `${subscription.pageview_usage.toLocaleString()} / ${subscription.pageview_limit.toLocaleString()}`
                               : '—'}
                           </div>
                         </div>
                         <div>
-                          <div className="text-sm text-neutral-500 mb-1">Billing Interval</div>
-                          <div className="font-medium text-neutral-900 dark:text-white capitalize">
-                            {subscription.billing_interval ? `${subscription.billing_interval}ly` : '—'}
+                          <div className="text-xs text-neutral-500 uppercase tracking-wider mb-1">
+                            {subscription.subscription_status === 'trialing' ? 'Trial ends' : (subscription.cancel_at_period_end ? 'Access until' : 'Renews')}
                           </div>
-                        </div>
-                        <div>
-                          <div className="text-sm text-neutral-500 mb-1">Pageview Limit</div>
-                          <div className="font-medium text-neutral-900 dark:text-white">
-                            {subscription.pageview_limit > 0 ? `${subscription.pageview_limit.toLocaleString()} / month` : 'Unlimited'}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-sm text-neutral-500 mb-1">
-                            {subscription.subscription_status === 'trialing' ? 'Trial Ends On' : 'Renews On'}
-                          </div>
-                          <div className="font-medium text-neutral-900 dark:text-white">
+                          <div className="text-lg font-semibold text-neutral-900 dark:text-white">
                             {(() => {
-                              const raw = subscription.current_period_end
-                              const d = raw ? new Date(raw as string) : null
-                              const ts = d ? d.getTime() : NaN
-                              return raw && !Number.isNaN(ts) && ts !== 0 ? (d as Date).toLocaleDateString() : '—'
+                              const d = subscription.current_period_end ? new Date(subscription.current_period_end as string) : null
+                              return d && !Number.isNaN(d.getTime()) && d.getTime() !== 0 ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—'
                             })()}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-neutral-500 uppercase tracking-wider mb-1">Limit</div>
+                          <div className="text-lg font-semibold text-neutral-900 dark:text-white">
+                            {subscription.pageview_limit > 0 ? `${subscription.pageview_limit.toLocaleString()} / mo` : 'Unlimited'}
                           </div>
                         </div>
                       </div>
                     </div>
 
-                    {!subscription.has_payment_method && (
-                      <div className="p-6 bg-brand-orange/5 border border-brand-orange/20 rounded-2xl">
-                        <h3 className="font-medium text-brand-orange mb-2">Upgrade to Pro</h3>
-                        <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
-                          Get higher limits, more data retention, and priority support.
-                        </p>
-                        <Button onClick={() => router.push('/pricing')}>
-                          View Plans
-                        </Button>
-                      </div>
-                    )}
+                    {/* Quick actions */}
+                    <div className="flex flex-wrap items-center gap-4">
+                      {subscription.has_payment_method && (
+                        <button
+                          type="button"
+                          onClick={handleManageSubscription}
+                          disabled={isRedirectingToPortal}
+                          className="inline-flex items-center gap-1.5 text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors disabled:opacity-50"
+                        >
+                          <ExternalLinkIcon className="w-4 h-4" />
+                          Payment method & invoices
+                        </button>
+                      )}
+                      {subscription.has_payment_method && (subscription.subscription_status === 'active' || subscription.subscription_status === 'trialing') && !subscription.cancel_at_period_end && (
+                        <button
+                          type="button"
+                          onClick={() => setShowCancelPrompt(true)}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 px-3.5 py-1.5 text-sm text-neutral-600 dark:text-neutral-400 hover:border-red-300 hover:text-red-600 dark:hover:border-red-800 dark:hover:text-red-400 transition-colors"
+                        >
+                          Cancel subscription
+                        </button>
+                      )}
+                    </div>
 
                     {/* Invoice History */}
                     <div>
-                      <h3 className="text-sm font-medium text-neutral-500 uppercase tracking-wider mb-4">Invoice History</h3>
-                      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden">
+                      <h3 className="text-sm font-medium text-neutral-500 uppercase tracking-wider mb-3">Recent invoices</h3>
+                      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden divide-y divide-neutral-200 dark:divide-neutral-800">
                         {isLoadingInvoices ? (
                           <div className="flex items-center justify-center py-8">
                             <div className="w-6 h-6 border-2 border-brand-orange/30 border-t-brand-orange rounded-full animate-spin" />
@@ -777,24 +871,21 @@ export default function OrganizationSettings() {
                         ) : invoices.length === 0 ? (
                           <div className="p-8 text-center text-neutral-500">No invoices found.</div>
                         ) : (
-                          <div className="divide-y divide-neutral-200 dark:divide-neutral-800">
+                          <>
                             {invoices.map((invoice) => (
-                              <div key={invoice.id} className="p-4 flex items-center justify-between hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors">
-                                <div className="flex items-center gap-4">
-                                  <div className="h-10 w-10 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-neutral-500">
-                                    <BookOpenIcon className="w-5 h-5" />
-                                  </div>
+                              <div key={invoice.id} className="px-4 py-3 flex items-center justify-between hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors">
+                                <div className="flex items-center gap-3">
                                   <div>
-                                    <div className="font-medium text-neutral-900 dark:text-white">
+                                    <span className="font-medium text-sm text-neutral-900 dark:text-white">
                                       {(invoice.amount_paid / 100).toLocaleString('en-US', { style: 'currency', currency: invoice.currency.toUpperCase() })}
-                                    </div>
-                                    <div className="text-xs text-neutral-500">
-                                      {new Date(invoice.created * 1000).toLocaleDateString()}
-                                    </div>
+                                    </span>
+                                    <span className="text-xs text-neutral-500 ml-2">
+                                      {new Date(invoice.created * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                    </span>
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-4">
-                                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${
+                                <div className="flex items-center gap-3">
+                                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${
                                     invoice.status === 'paid'
                                       ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
                                       : invoice.status === 'open'
@@ -804,35 +895,26 @@ export default function OrganizationSettings() {
                                     {invoice.status}
                                   </span>
                                   {invoice.invoice_pdf && (
-                                    <a 
-                                      href={invoice.invoice_pdf} 
-                                      target="_blank" 
-                                      rel="noopener noreferrer"
-                                      className="p-2 text-neutral-500 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
-                                      title="Download PDF"
-                                    >
-                                      <DownloadIcon className="w-5 h-5" />
+                                    <a href={invoice.invoice_pdf} target="_blank" rel="noopener noreferrer"
+                                       className="p-1.5 text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-lg transition-colors" title="Download PDF">
+                                      <DownloadIcon className="w-4 h-4" />
                                     </a>
                                   )}
                                   {invoice.hosted_invoice_url && (
-                                    <a 
-                                      href={invoice.hosted_invoice_url} 
-                                      target="_blank" 
-                                      rel="noopener noreferrer"
-                                      className="p-2 text-neutral-500 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
-                                      title="View Invoice"
-                                    >
-                                      <ExternalLinkIcon className="w-5 h-5" />
+                                    <a href={invoice.hosted_invoice_url} target="_blank" rel="noopener noreferrer"
+                                       className="p-1.5 text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-lg transition-colors" title="View invoice">
+                                      <ExternalLinkIcon className="w-4 h-4" />
                                     </a>
                                   )}
                                 </div>
                               </div>
                             ))}
-                          </div>
-                        )}
+                          </>
+                        )
+                        }
+                        </div>
                       </div>
                     </div>
-                  </div>
                 )}
               </div>
             )}
@@ -1048,6 +1130,142 @@ export default function OrganizationSettings() {
                     {isDeleting ? 'Deleting...' : 'Delete Organization'}
                   </button>
                 </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Cancel subscription confirmation modal */}
+      <AnimatePresence>
+        {showCancelPrompt && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl max-w-md w-full p-6 border border-neutral-200 dark:border-neutral-800"
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Cancel subscription?</h3>
+                <button
+                  onClick={() => setShowCancelPrompt(false)}
+                  className="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-400"
+                  disabled={cancelLoadingAction != null}
+                >
+                  <XIcon className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="text-neutral-600 dark:text-neutral-300 mb-4">
+                You can cancel at the end of your billing period (you keep access until then) or cancel immediately. Your data is retained for 30 days after access ends.
+              </p>
+              <div className="flex flex-col gap-2">
+                <Button
+                  onClick={() => handleCancelSubscription(true)}
+                  disabled={cancelLoadingAction != null}
+                  isLoading={cancelLoadingAction === 'period_end'}
+                >
+                  Cancel at period end
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  onClick={() => handleCancelSubscription(false)}
+                  disabled={cancelLoadingAction != null}
+                  isLoading={cancelLoadingAction === 'immediate'}
+                >
+                  Cancel immediately
+                </Button>
+                <Button variant="ghost" onClick={() => setShowCancelPrompt(false)} disabled={cancelLoadingAction != null}>
+                  Keep subscription
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Change plan modal */}
+      <AnimatePresence>
+        {showChangePlanModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl max-w-md w-full p-6 border border-neutral-200 dark:border-neutral-800"
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Change plan</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowChangePlanModal(false)}
+                  className="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-400"
+                  disabled={isChangingPlan}
+                >
+                  <XIcon className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
+                Choose your pageview limit and billing interval. {hasActiveSubscription ? 'Your next invoice will reflect prorations.' : 'You’ll start a new subscription.'}
+              </p>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Pageviews per month</label>
+                  <select
+                    value={changePlanTierIndex}
+                    onChange={(e) => setChangePlanTierIndex(Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:ring-2 focus:ring-brand-orange outline-none"
+                  >
+                    {TRAFFIC_TIERS.map((tier, idx) => (
+                      <option key={tier.value} value={idx}>
+                        {tier.label} / month
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Billing</label>
+                  <div className="flex rounded-lg border border-neutral-200 dark:border-neutral-800 p-1 gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setChangePlanYearly(false)}
+                      className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${!changePlanYearly ? 'bg-brand-orange text-white' : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'}`}
+                    >
+                      Monthly
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setChangePlanYearly(true)}
+                      className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${changePlanYearly ? 'bg-brand-orange text-white' : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'}`}
+                    >
+                      Yearly
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-2 mt-6">
+                <Button
+                  onClick={handleChangePlanSubmit}
+                  isLoading={isChangingPlan}
+                  disabled={isChangingPlan}
+                  className="flex-1"
+                >
+                  {hasActiveSubscription ? 'Update plan' : 'Start subscription'}
+                </Button>
+                <Button variant="ghost" onClick={() => setShowChangePlanModal(false)} disabled={isChangingPlan}>
+                  Cancel
+                </Button>
               </div>
             </motion.div>
           </motion.div>

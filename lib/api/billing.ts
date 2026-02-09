@@ -7,6 +7,8 @@ export interface SubscriptionDetails {
   billing_interval: string
   pageview_limit: number
   has_payment_method: boolean
+  /** True when subscription is set to cancel at the end of the current period. */
+  cancel_at_period_end?: boolean
   /** Number of sites for the org (billing usage). Present when backend supports usage API. */
   sites_count?: number
   /** Pageviews in current billing period (when pageview_limit > 0). Present when backend supports usage API. */
@@ -47,6 +49,31 @@ export async function getSubscription(): Promise<SubscriptionDetails> {
 export async function createPortalSession(): Promise<{ url: string }> {
   return await billingFetch<{ url: string }>('/api/billing/portal', {
     method: 'POST',
+  })
+}
+
+export interface CancelSubscriptionParams {
+  /** If true (default), cancel at end of billing period; if false, cancel immediately. */
+  at_period_end?: boolean
+}
+
+export async function cancelSubscription(params?: CancelSubscriptionParams): Promise<{ ok: boolean; at_period_end: boolean }> {
+  return await billingFetch<{ ok: boolean; at_period_end: boolean }>('/api/billing/cancel', {
+    method: 'POST',
+    body: JSON.stringify({ at_period_end: params?.at_period_end ?? true }),
+  })
+}
+
+export interface ChangePlanParams {
+  plan_id: string
+  interval: string
+  limit: number
+}
+
+export async function changePlan(params: ChangePlanParams): Promise<{ ok: boolean }> {
+  return await billingFetch<{ ok: boolean }>('/api/billing/change-plan', {
+    method: 'POST',
+    body: JSON.stringify(params),
   })
 }
 
