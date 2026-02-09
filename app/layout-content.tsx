@@ -17,7 +17,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
   const isOnline = useOnlineStatus()
   const [orgs, setOrgs] = useState<any[]>([])
   
-  // * Fetch organizations for the header workspace switcher
+  // * Fetch organizations for the header organization switcher
   useEffect(() => {
     if (auth.user) {
       getUserOrganizations()
@@ -27,7 +27,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
   }, [auth.user])
 
   const handleSwitchOrganization = async (orgId: string | null) => {
-    if (!orgId) return // Pulse doesn't support personal workspace
+    if (!orgId) return // Pulse doesn't support personal organization context
     try {
       const { access_token } = await switchContext(orgId)
       await setSessionAction(access_token)
