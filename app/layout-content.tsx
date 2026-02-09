@@ -73,14 +73,6 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                 Features
               </Link>
             )}
-            {auth.user && (
-              <Link
-                href="/tools"
-                className="px-4 py-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-lg hover:bg-neutral-100/50 dark:hover:bg-neutral-800/50 transition-all duration-200"
-              >
-                Tools
-              </Link>
-            )}
           </>
         }
       />

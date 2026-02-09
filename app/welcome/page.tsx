@@ -20,6 +20,7 @@ import { createCheckoutSession } from '@/lib/api/billing'
 import { createSite, type Site } from '@/lib/api/sites'
 import { setSessionAction } from '@/app/actions/auth'
 import { useAuth } from '@/lib/auth/context'
+import apiRequest from '@/lib/api/client'
 import { getAuthErrorMessage } from '@/lib/utils/authErrors'
 import {
   trackWelcomeStepView,
@@ -149,7 +150,13 @@ function WelcomeContent() {
       const { access_token } = await switchContext(org.organization_id)
       const result = await setSessionAction(access_token)
       if (result.success && result.user) {
-        login(result.user)
+        try {
+          const fullProfile = await apiRequest<{ id: string; email: string; display_name?: string; totp_enabled: boolean; org_id?: string; role?: string }>('/auth/user/me')
+          const merged = { ...fullProfile, org_id: result.user.org_id ?? fullProfile.org_id, role: result.user.role ?? fullProfile.role }
+          login(merged)
+        } catch {
+          login(result.user)
+        }
         router.refresh()
         trackWelcomeWorkspaceSelected()
         setStep(3)
@@ -180,7 +187,13 @@ function WelcomeContent() {
       const { access_token } = await switchContext(org.id)
       const result = await setSessionAction(access_token)
       if (result.success && result.user) {
-        login(result.user)
+        try {
+          const fullProfile = await apiRequest<{ id: string; email: string; display_name?: string; totp_enabled: boolean; org_id?: string; role?: string }>('/auth/user/me')
+          const merged = { ...fullProfile, org_id: result.user.org_id ?? fullProfile.org_id, role: result.user.role ?? fullProfile.role }
+          login(merged)
+        } catch {
+          login(result.user)
+        }
         router.refresh()
       }
       trackWelcomeWorkspaceCreated(!!(typeof window !== 'undefined' && localStorage.getItem('pulse_pending_checkout')))
@@ -302,11 +315,11 @@ function WelcomeContent() {
   }, [step, siteName, siteDomain])
 
   if (orgLoading && step === 2) {
-    return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Creating your workspace..." />
+    return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Creating your organization..." />
   }
 
   if (switchingOrgId) {
-    return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Switching workspace..." />
+    return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Switching organization..." />
   }
 
   if (redirectingCheckout || (planLoading && step === 3)) {
@@ -357,50 +370,73 @@ function WelcomeContent() {
               className={cardClass}
             >
               {orgsLoading ? (
-                <div className="text-center py-8">
-                  <p className="text-neutral-600 dark:text-neutral-400">Loading your workspaces...</p>
+                <div className="text-center py-12">
+                  <div className="mx-auto h-8 w-8 border-2 border-brand-orange border-t-transparent rounded-full animate-spin mb-4" />
+                  <p className="text-neutral-600 dark:text-neutral-400">Loading your organizations...</p>
                 </div>
               ) : organizations && organizations.length > 0 ? (
                 <>
-                  <div className="text-center mb-6">
-                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-orange/10 text-brand-orange mb-4">
-                      <BarChartIcon className="h-7 w-7" />
+                  <div className="text-center mb-8">
+                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-orange/20 to-brand-orange/5 text-brand-orange mb-5 shadow-sm">
+                      <BarChartIcon className="h-8 w-8" />
                     </div>
-                    <h1 className="text-xl font-bold text-neutral-900 dark:text-white">
+                    <h2 className="text-2xl font-bold tracking-tight text-neutral-900 dark:text-white">
                       Choose your organization
-                    </h1>
-                    <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-                      Continue with an existing organization or create a new one.
+                    </h2>
+                    <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400 max-w-sm mx-auto">
+                      Continue with an existing one or create a new organization.
                     </p>
                   </div>
-                  <div className="space-y-2 mb-6">
-                    {organizations.map((org) => (
-                      <button
-                        key={org.organization_id}
-                        type="button"
-                        onClick={() => handleSelectOrganization(org)}
-                        disabled={!!switchingOrgId}
-                        className="w-full flex items-center justify-between gap-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:border-brand-orange/50 px-4 py-3 text-left transition-colors disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2"
-                      >
-                        <span className="font-medium text-neutral-900 dark:text-white">
-                          {org.organization_name || 'Organization'}
-                        </span>
-                        {user?.org_id === org.organization_id && (
-                          <span className="text-xs text-neutral-500 dark:text-neutral-400">Current</span>
-                        )}
-                        <ArrowRightIcon className="h-4 w-4 text-neutral-400 flex-shrink-0" />
-                      </button>
-                    ))}
+                  <div className="space-y-2.5 mb-6">
+                    {organizations.map((org, index) => {
+                      const isCurrent = user?.org_id === org.organization_id
+                      const initial = (org.organization_name || 'O').charAt(0).toUpperCase()
+                      return (
+                        <motion.button
+                          key={org.organization_id}
+                          type="button"
+                          onClick={() => handleSelectOrganization(org)}
+                          disabled={!!switchingOrgId}
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.04, duration: 0.2 }}
+                          className={`w-full flex items-center gap-3 rounded-xl border px-4 py-3.5 text-left transition-all duration-200 disabled:opacity-60 ${
+                            isCurrent
+                              ? 'border-brand-orange/60 bg-brand-orange/5 dark:bg-brand-orange/10 shadow-sm'
+                              : 'border-neutral-200 dark:border-neutral-700 bg-neutral-50/80 dark:bg-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-600 hover:shadow-sm'
+                          }`}
+                        >
+                          <div
+                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-semibold ${
+                              isCurrent
+                                ? 'bg-brand-orange/20 text-brand-orange dark:bg-brand-orange/30'
+                                : 'bg-neutral-200/80 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300'
+                            }`}
+                          >
+                            {initial}
+                          </div>
+                          <span className="flex-1 font-medium text-neutral-900 dark:text-white truncate">
+                            {org.organization_name || 'Organization'}
+                          </span>
+                          {isCurrent && (
+                            <span className="text-xs font-medium text-brand-orange shrink-0">Current</span>
+                          )}
+                          <ArrowRightIcon className={`h-4 w-4 shrink-0 ${isCurrent ? 'text-brand-orange' : 'text-neutral-400'}`} />
+                        </motion.button>
+                      )
+                    })}
                   </div>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="w-full"
-                    onClick={handleCreateNewOrganization}
-                  >
-                    <PlusIcon className="h-4 w-4 mr-2" />
-                    Create a new organization
-                  </Button>
+                  <div className="pt-2 border-t border-neutral-100 dark:border-neutral-800">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="w-full border border-dashed border-neutral-300 dark:border-neutral-600 hover:border-brand-orange/50 hover:bg-brand-orange/5 dark:hover:bg-brand-orange/10"
+                      onClick={handleCreateNewOrganization}
+                    >
+                      <PlusIcon className="h-4 w-4 mr-2" />
+                      Create a new organization
+                    </Button>
+                  </div>
                 </>
               ) : (
                 <div className="text-center">
@@ -484,7 +520,7 @@ function WelcomeContent() {
                     onChange={(e) => setOrgSlug(e.target.value)}
                     className="w-full"
                   />
-                  <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+                  <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
                     Used in your organization URL.
                   </p>
                 </div>
@@ -651,9 +687,15 @@ function WelcomeContent() {
                     variant="primary"
                     className="flex-1"
                     disabled={siteLoading || !siteName.trim() || !siteDomain.trim()}
-                    isLoading={siteLoading}
                   >
-                    Add site
+                    {siteLoading ? (
+                      <>
+                        <span className="inline-block h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" aria-hidden />
+                        Adding...
+                      </>
+                    ) : (
+                      'Add site'
+                    )}
                   </Button>
                   <Button
                     type="button"
