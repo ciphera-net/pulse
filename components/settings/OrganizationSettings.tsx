@@ -288,7 +288,7 @@ export default function OrganizationSettings() {
     setShowChangePlanModal(true)
   }
 
-  const hasActiveSubscription = subscription?.has_payment_method && (subscription?.subscription_status === 'active' || subscription?.subscription_status === 'trialing')
+  const hasActiveSubscription = subscription?.subscription_status === 'active' || subscription?.subscription_status === 'trialing'
 
   const handleChangePlanSubmit = async () => {
     const interval = changePlanYearly ? 'year' : 'month'
@@ -857,16 +857,17 @@ export default function OrganizationSettings() {
                     </div>
 
                     {/* Invoice History */}
-                    {invoices.length > 0 && (
-                      <div>
-                        <h3 className="text-sm font-medium text-neutral-500 uppercase tracking-wider mb-3">Recent invoices</h3>
-                        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden divide-y divide-neutral-200 dark:divide-neutral-800">
-                          {isLoadingInvoices ? (
-                            <div className="flex items-center justify-center py-8">
-                              <div className="w-6 h-6 border-2 border-brand-orange/30 border-t-brand-orange rounded-full animate-spin" />
-                            </div>
-                          ) : (
-                            invoices.map((invoice) => (
+                    <div>
+                      <h3 className="text-sm font-medium text-neutral-500 uppercase tracking-wider mb-3">Recent invoices</h3>
+                      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden divide-y divide-neutral-200 dark:divide-neutral-800">
+                        {isLoadingInvoices ? (
+                          <div className="flex items-center justify-center py-8">
+                            <div className="w-6 h-6 border-2 border-brand-orange/30 border-t-brand-orange rounded-full animate-spin" />
+                          </div>
+                        ) : invoices.length === 0 ? (
+                          <div className="p-8 text-center text-neutral-500">No invoices found.</div>
+                        ) : (
+                          invoices.map((invoice) => (
                               <div key={invoice.id} className="px-4 py-3 flex items-center justify-between hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors">
                                 <div className="flex items-center gap-3">
                                   <div>
@@ -903,11 +904,11 @@ export default function OrganizationSettings() {
                                 </div>
                               </div>
                             ))
-                          )}
+                          )
+                        }
                         </div>
                       </div>
-                    )}
-                  </div>
+                    </div>
                 )}
               </div>
             )}
