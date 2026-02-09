@@ -69,7 +69,7 @@ export default function OrganizationSettings() {
   const [subscription, setSubscription] = useState<SubscriptionDetails | null>(null)
   const [isLoadingSubscription, setIsLoadingSubscription] = useState(false)
   const [isRedirectingToPortal, setIsRedirectingToPortal] = useState(false)
-  const [isCanceling, setIsCanceling] = useState(false)
+  const [cancelLoadingAction, setCancelLoadingAction] = useState<'period_end' | 'immediate' | null>(null)
   const [showCancelPrompt, setShowCancelPrompt] = useState(false)
   const [showChangePlanModal, setShowChangePlanModal] = useState(false)
   const [changePlanTierIndex, setChangePlanTierIndex] = useState(2)
@@ -269,7 +269,7 @@ export default function OrganizationSettings() {
   }
 
   const handleCancelSubscription = async (atPeriodEnd: boolean) => {
-    setIsCanceling(true)
+    setCancelLoadingAction(atPeriodEnd ? 'period_end' : 'immediate')
     try {
       await cancelSubscription({ at_period_end: atPeriodEnd })
       toast.success(atPeriodEnd ? 'Subscription will cancel at the end of the billing period.' : 'Subscription canceled.')
@@ -278,12 +278,12 @@ export default function OrganizationSettings() {
     } catch (error: any) {
       toast.error(getAuthErrorMessage(error) || error.message || 'Failed to cancel subscription')
     } finally {
-      setIsCanceling(false)
+      setCancelLoadingAction(null)
     }
   }
 
   const openChangePlanModal = () => {
-    if (subscription?.pageview_limit) {
+    if (subscription?.pageview_limit != null && subscription.pageview_limit > 0) {
       setChangePlanTierIndex(getTierIndexForLimit(subscription.pageview_limit))
     } else {
       setChangePlanTierIndex(2)
@@ -1154,7 +1154,7 @@ export default function OrganizationSettings() {
                 <button
                   onClick={() => setShowCancelPrompt(false)}
                   className="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-400"
-                  disabled={isCanceling}
+                  disabled={cancelLoadingAction != null}
                 >
                   <XIcon className="w-5 h-5" />
                 </button>
@@ -1165,8 +1165,8 @@ export default function OrganizationSettings() {
               <div className="flex flex-col gap-2">
                 <Button
                   onClick={() => handleCancelSubscription(true)}
-                  disabled={isCanceling}
-                  isLoading={isCanceling}
+                  disabled={cancelLoadingAction != null}
+                  isLoading={cancelLoadingAction === 'period_end'}
                 >
                   Cancel at period end
                 </Button>
@@ -1174,11 +1174,12 @@ export default function OrganizationSettings() {
                   variant="ghost"
                   className="text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
                   onClick={() => handleCancelSubscription(false)}
-                  disabled={isCanceling}
+                  disabled={cancelLoadingAction != null}
+                  isLoading={cancelLoadingAction === 'immediate'}
                 >
                   Cancel immediately
                 </Button>
-                <Button variant="ghost" onClick={() => setShowCancelPrompt(false)} disabled={isCanceling}>
+                <Button variant="ghost" onClick={() => setShowCancelPrompt(false)} disabled={cancelLoadingAction != null}>
                   Keep subscription
                 </Button>
               </div>
