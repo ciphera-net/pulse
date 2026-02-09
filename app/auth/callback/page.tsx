@@ -105,6 +105,7 @@ function AuthCallbackContent() {
 
   const handleRetry = () => {
     setError(null)
+    processedRef.current = false
     setIsRetrying(true)
   }
 
