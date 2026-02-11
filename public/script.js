@@ -133,14 +133,22 @@
           try {
             const parsed = JSON.parse(raw);
             if (parsed && typeof parsed.id === 'string') {
-              const expired = ttlMs > 0 && typeof parsed.created === 'number' && (Date.now() - parsed.created > ttlMs);
+              const hasValidCreated = typeof parsed.created === 'number';
+              const expired = ttlMs > 0 && (!hasValidCreated || (Date.now() - parsed.created > ttlMs));
               if (!expired) {
                 cachedSessionId = parsed.id;
                 return cachedSessionId;
               }
             }
           } catch (e) {
-            // * Invalid JSON or old string format: treat as expired and regenerate
+            // * Invalid JSON: migrate legacy plain-string ID to { id, created } format
+            if (typeof raw === 'string' && raw.trim().length > 0) {
+              cachedSessionId = raw.trim();
+              try {
+                localStorage.setItem(key, JSON.stringify({ id: cachedSessionId, created: Date.now() }));
+              } catch (e2) {}
+              return cachedSessionId;
+            }
           }
         }
         cachedSessionId = generateId();
@@ -150,13 +158,19 @@
           try {
             var parsedAgain = JSON.parse(rawAgain);
             if (parsedAgain && typeof parsedAgain.id === 'string') {
-              var expiredAgain = ttlMs > 0 && typeof parsedAgain.created === 'number' && (Date.now() - parsedAgain.created > ttlMs);
+              var hasValidCreatedAgain = typeof parsedAgain.created === 'number';
+              var expiredAgain = ttlMs > 0 && (!hasValidCreatedAgain || (Date.now() - parsedAgain.created > ttlMs));
               if (!expiredAgain) {
                 cachedSessionId = parsedAgain.id;
                 return cachedSessionId;
               }
             }
-          } catch (e2) {}
+          } catch (e2) {
+            if (typeof rawAgain === 'string' && rawAgain.trim().length > 0) {
+              cachedSessionId = rawAgain.trim();
+              return cachedSessionId;
+            }
+          }
         }
         // * Final re-read immediately before write to avoid overwriting a fresher ID from another tab
         var rawBeforeWrite = localStorage.getItem(key);
@@ -164,13 +178,19 @@
           try {
             var parsedBefore = JSON.parse(rawBeforeWrite);
             if (parsedBefore && typeof parsedBefore.id === 'string') {
-              var expBefore = ttlMs > 0 && typeof parsedBefore.created === 'number' && (Date.now() - parsedBefore.created > ttlMs);
+              var hasValidCreatedBefore = typeof parsedBefore.created === 'number';
+              var expBefore = ttlMs > 0 && (!hasValidCreatedBefore || (Date.now() - parsedBefore.created > ttlMs));
               if (!expBefore) {
                 cachedSessionId = parsedBefore.id;
                 return cachedSessionId;
               }
             }
-          } catch (e3) {}
+          } catch (e3) {
+            if (typeof rawBeforeWrite === 'string' && rawBeforeWrite.trim().length > 0) {
+              cachedSessionId = rawBeforeWrite.trim();
+              return cachedSessionId;
+            }
+          }
         }
         // * Best-effort only: another tab could write between here and setItem; without locks perfect sync is not achievable
         localStorage.setItem(key, JSON.stringify({ id: cachedSessionId, created: Date.now() }));
