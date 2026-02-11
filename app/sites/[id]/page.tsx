@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { getSite, type Site } from '@/lib/api/sites'
-import { getStats, getRealtime, getDailyStats, getTopPages, getTopReferrers, getCountries, getCities, getRegions, getBrowsers, getOS, getDevices, getScreenResolutions, getEntryPages, getExitPages, getDashboard, getPerformanceByPage, type Stats, type DailyStat, type PerformanceByPageStat } from '@/lib/api/stats'
+import { getStats, getRealtime, getDailyStats, getTopPages, getTopReferrers, getCountries, getCities, getRegions, getBrowsers, getOS, getDevices, getScreenResolutions, getEntryPages, getExitPages, getDashboard, getCampaigns, getPerformanceByPage, type Stats, type DailyStat, type PerformanceByPageStat } from '@/lib/api/stats'
 import { formatNumber, formatDuration, getDateRange } from '@/lib/utils/format'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@/lib/utils/authErrors'
@@ -50,6 +50,7 @@ export default function SiteDashboardPage() {
   const [performance, setPerformance] = useState<{ lcp: number, cls: number, inp: number }>({ lcp: 0, cls: 0, inp: 0 })
   const [performanceByPage, setPerformanceByPage] = useState<PerformanceByPageStat[] | null>(null)
   const [goalCounts, setGoalCounts] = useState<Array<{ event_name: string; count: number }>>([])
+  const [campaigns, setCampaigns] = useState<any[]>([])
   const [dateRange, setDateRange] = useState(getDateRange(30))
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
@@ -163,7 +164,7 @@ export default function SiteDashboardPage() {
       setLoading(true)
       const interval = dateRange.start === dateRange.end ? todayInterval : multiDayInterval
       
-      const [data, prevStatsData, prevDailyStatsData] = await Promise.all([
+      const [data, prevStatsData, prevDailyStatsData, campaignsData] = await Promise.all([
         getDashboard(siteId, dateRange.start, dateRange.end, 10, interval),
         (async () => {
           const prevRange = getPreviousDateRange(dateRange.start, dateRange.end)
@@ -172,7 +173,8 @@ export default function SiteDashboardPage() {
         (async () => {
           const prevRange = getPreviousDateRange(dateRange.start, dateRange.end)
           return getDailyStats(siteId, prevRange.start, prevRange.end, interval)
-        })()
+        })(),
+        getCampaigns(siteId, dateRange.start, dateRange.end, 100),
       ])
 
       setSite(data.site)
@@ -197,6 +199,7 @@ export default function SiteDashboardPage() {
       setPerformance(data.performance || { lcp: 0, cls: 0, inp: 0 })
       setPerformanceByPage(data.performance_by_page ?? null)
       setGoalCounts(Array.isArray(data.goal_counts) ? data.goal_counts : [])
+      setCampaigns(Array.isArray(campaignsData) ? campaignsData : [])
     } catch (error: unknown) {
       toast.error(getAuthErrorMessage(error) || 'Failed to load data: ' + ((error as Error)?.message || 'Unknown error'))
     } finally {
@@ -439,6 +442,7 @@ export default function SiteDashboardPage() {
         stats={stats}
         topPages={topPages}
         topReferrers={topReferrers}
+        campaigns={campaigns}
       />
     </motion.div>
   )
