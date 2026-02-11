@@ -1,7 +1,7 @@
 /**
  * Pulse - Privacy-First Tracking Script
  * Lightweight, no cookies, GDPR compliant.
- * Default: cross-tab visitor ID (localStorage, optional data-storage-ttl in hours).
+ * Default: cross-tab visitor ID (localStorage), optional data-storage-ttl in hours.
  * Optional: data-storage="session" for per-tab (ephemeral) counting.
  */
 
@@ -116,8 +116,8 @@
     return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
   }
 
-  // * Returns session/visitor ID. Default: ephemeral (sessionStorage, per-tab).
-  // * With data-storage="local": persistent (localStorage, cross-tab), optional TTL in hours.
+  // * Returns session/visitor ID. Default: persistent (localStorage, cross-tab), optional TTL in hours.
+  // * With data-storage="session": ephemeral (sessionStorage, per-tab).
   function getSessionId() {
     if (cachedSessionId) {
       return cachedSessionId;
@@ -157,6 +157,20 @@
               }
             }
           } catch (e2) {}
+        }
+        // * Final re-read immediately before write to avoid overwriting a fresher ID from another tab
+        var rawBeforeWrite = localStorage.getItem(key);
+        if (rawBeforeWrite) {
+          try {
+            var parsedBefore = JSON.parse(rawBeforeWrite);
+            if (parsedBefore && typeof parsedBefore.id === 'string') {
+              var expBefore = ttlMs > 0 && typeof parsedBefore.created === 'number' && (Date.now() - parsedBefore.created > ttlMs);
+              if (!expBefore) {
+                cachedSessionId = parsedBefore.id;
+                return cachedSessionId;
+              }
+            }
+          } catch (e3) {}
         }
         localStorage.setItem(key, JSON.stringify({ id: cachedSessionId, created: Date.now() }));
       } catch (e) {
