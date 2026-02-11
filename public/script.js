@@ -26,11 +26,6 @@
   // * When storage is "local", optional TTL in hours; after TTL the ID is regenerated (e.g. 24 = one day)
   const ttlHours = storageMode === 'local' ? parseFloat(script.getAttribute('data-storage-ttl') || '24', 10) : 0;
   const ttlMs = ttlHours > 0 ? ttlHours * 60 * 60 * 1000 : 0;
-  // #region agent log
-  try {
-    fetch(apiUrl + '/api/v1/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:init',message:'storage config',data:{storageMode,dataStorageAttr:script.getAttribute('data-storage'),ttlHours,ttlMs,domain},timestamp:Date.now(),hypothesisId:'A,B'})}).catch(function(){});
-  } catch (e) {}
-  // #endregion
 
   // * Performance Monitoring (Core Web Vitals) State
   let currentEventId = null;
@@ -125,9 +120,6 @@
   // * With data-storage="local": persistent (localStorage, cross-tab), optional TTL in hours.
   function getSessionId() {
     if (cachedSessionId) {
-      // #region agent log
-      try { fetch(apiUrl + '/api/v1/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:getSessionId',message:'return cached',data:{sessionIdPrefix:cachedSessionId.substring(0,8),storageMode},timestamp:Date.now(),hypothesisId:'E'})}).catch(function(){}); } catch (e) {}
-      // #endregion
       return cachedSessionId;
     }
 
@@ -137,11 +129,6 @@
     if (storageMode === 'local') {
       try {
         const raw = localStorage.getItem(key);
-        // #region agent log
-        var rawType = raw === null ? 'null' : typeof raw;
-        var rawPrefix = raw && raw.substring ? raw.substring(0, 60) : '';
-        try { fetch(apiUrl + '/api/v1/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:getSessionId:local',message:'localStorage read',data:{rawType,rawPrefix,hasRaw:!!raw},timestamp:Date.now(),hypothesisId:'C,D,E'})}).catch(function(){}); } catch (e) {}
-        // #endregion
         if (raw) {
           try {
             const parsed = JSON.parse(raw);
@@ -149,9 +136,6 @@
               const expired = ttlMs > 0 && typeof parsed.created === 'number' && (Date.now() - parsed.created > ttlMs);
               if (!expired) {
                 cachedSessionId = parsed.id;
-                // #region agent log
-                try { fetch(apiUrl + '/api/v1/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:getSessionId:local',message:'reused from localStorage',data:{sessionIdPrefix:cachedSessionId.substring(0,8)},timestamp:Date.now(),hypothesisId:'D,E'})}).catch(function(){}); } catch (e) {}
-                // #endregion
                 return cachedSessionId;
               }
             }
@@ -169,31 +153,19 @@
               var expiredAgain = ttlMs > 0 && typeof parsedAgain.created === 'number' && (Date.now() - parsedAgain.created > ttlMs);
               if (!expiredAgain) {
                 cachedSessionId = parsedAgain.id;
-                // #region agent log
-                try { fetch(apiUrl + '/api/v1/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:getSessionId:local',message:'race fix reused other tab id',data:{sessionIdPrefix:cachedSessionId.substring(0,8)},timestamp:Date.now(),hypothesisId:'E'})}).catch(function(){}); } catch (e4) {}
-                // #endregion
                 return cachedSessionId;
               }
             }
           } catch (e2) {}
         }
         localStorage.setItem(key, JSON.stringify({ id: cachedSessionId, created: Date.now() }));
-        // #region agent log
-        try { fetch(apiUrl + '/api/v1/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:getSessionId:local',message:'generated new and wrote to localStorage',data:{sessionIdPrefix:cachedSessionId.substring(0,8)},timestamp:Date.now(),hypothesisId:'C,E'})}).catch(function(){}); } catch (e) {}
-        // #endregion
       } catch (e) {
         cachedSessionId = generateId();
-        // #region agent log
-        try { fetch(apiUrl + '/api/v1/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:getSessionId:local',message:'localStorage error fallback',data:{sessionIdPrefix:cachedSessionId.substring(0,8),err:String(e&&e.message)},timestamp:Date.now(),hypothesisId:'C'})}).catch(function(){}); } catch (e2) {}
-        // #endregion
       }
       return cachedSessionId;
     }
 
     // * data-storage="session": session storage (ephemeral, per-tab)
-    // #region agent log
-    try { fetch(apiUrl + '/api/v1/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:getSessionId',message:'using session branch',data:{storageMode},timestamp:Date.now(),hypothesisId:'A'})}).catch(function(){}); } catch (e) {}
-    // #endregion
     try {
       cachedSessionId = sessionStorage.getItem(key);
       if (!cachedSessionId && legacyKey) {
