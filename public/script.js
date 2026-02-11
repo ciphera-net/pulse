@@ -24,7 +24,7 @@
   // * Visitor ID storage: "local" (default, cross-tab) or "session" (ephemeral per-tab)
   const storageMode = (script.getAttribute('data-storage') || 'local').toLowerCase() === 'session' ? 'session' : 'local';
   // * When storage is "local", optional TTL in hours; after TTL the ID is regenerated (e.g. 24 = one day)
-  const ttlHours = storageMode === 'local' ? parseFloat(script.getAttribute('data-storage-ttl') || '24', 10) : 0;
+  const ttlHours = storageMode === 'local' ? parseFloat(script.getAttribute('data-storage-ttl') || '24') : 0;
   const ttlMs = ttlHours > 0 ? ttlHours * 60 * 60 * 1000 : 0;
 
   // * Performance Monitoring (Core Web Vitals) State
@@ -172,6 +172,8 @@
             }
           } catch (e3) {}
         }
+        // * Best-effort only: another tab could write before setItem; without locks perfect sync is not achievable
+        cachedSessionId = generateId();
         localStorage.setItem(key, JSON.stringify({ id: cachedSessionId, created: Date.now() }));
       } catch (e) {
         cachedSessionId = generateId();
