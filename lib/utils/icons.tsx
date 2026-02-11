@@ -80,37 +80,31 @@ export function getReferrerIcon(referrerName: string) {
 
 const REFERRER_NO_FAVICON = ['direct', 'unknown', '']
 
+/** Common subdomains to skip when deriving the main label (e.g. l.instagram.com → instagram). */
+const REFERRER_SUBDOMAIN_SKIP = new Set([
+  'www', 'm', 'l', 'app', 'mobile', 'search', 'mail', 'drive', 'maps', 'docs',
+  'sub', 'api', 'static', 'cdn', 'blog', 'shop', 'support', 'help', 'link',
+])
+
 /**
- * Map of referrer hostname (lowercase) to display name for the Top Referrers list.
- * Unknown hostnames fall back to the original referrer string.
+ * Override map for display names when the heuristic would be wrong (casing or brand alias).
+ * Keys: lowercase label or hostname. Values: exact display name.
  */
-const REFERRER_DISPLAY_NAMES: Record<string, string> = {
-  'google.com': 'Google',
-  'www.google.com': 'Google',
-  'google.co.uk': 'Google',
-  'google.de': 'Google',
-  'facebook.com': 'Facebook',
-  'www.facebook.com': 'Facebook',
-  'm.facebook.com': 'Facebook',
-  'instagram.com': 'Instagram',
-  'www.instagram.com': 'Instagram',
-  'l.instagram.com': 'Instagram',
-  'twitter.com': 'X',
-  'www.twitter.com': 'X',
+const REFERRER_DISPLAY_OVERRIDES: Record<string, string> = {
+  chatgpt: 'ChatGPT',
+  linkedin: 'LinkedIn',
+  youtube: 'YouTube',
+  reddit: 'Reddit',
+  github: 'GitHub',
+  duckduckgo: 'DuckDuckGo',
+  whatsapp: 'WhatsApp',
+  telegram: 'Telegram',
+  pinterest: 'Pinterest',
+  snapchat: 'Snapchat',
+  tumblr: 'Tumblr',
+  quora: 'Quora',
   't.co': 'X',
   'x.com': 'X',
-  'linkedin.com': 'LinkedIn',
-  'www.linkedin.com': 'LinkedIn',
-  'github.com': 'GitHub',
-  'www.github.com': 'GitHub',
-  'youtube.com': 'YouTube',
-  'www.youtube.com': 'YouTube',
-  'reddit.com': 'Reddit',
-  'www.reddit.com': 'Reddit',
-  'chatgpt.com': 'ChatGPT',
-  'www.chatgpt.com': 'ChatGPT',
-  'ciphera.net': 'Ciphera',
-  'www.ciphera.net': 'Ciphera',
 }
 
 /**
@@ -129,8 +123,25 @@ function getReferrerHostname(referrer: string): string | null {
 }
 
 /**
+ * Derives the main label from a hostname (e.g. "l.instagram.com" → "instagram", "google.com" → "google").
+ */
+function getReferrerLabel(hostname: string): string {
+  const withoutWww = hostname.startsWith('www.') ? hostname.slice(4) : hostname
+  const parts = withoutWww.split('.')
+  if (parts.length >= 2 && REFERRER_SUBDOMAIN_SKIP.has(parts[0])) {
+    return parts[1]
+  }
+  return parts[0] ?? withoutWww
+}
+
+function capitalizeLabel(label: string): string {
+  if (!label) return label
+  return label.charAt(0).toUpperCase() + label.slice(1).toLowerCase()
+}
+
+/**
  * Returns a friendly display name for the referrer (e.g. "Google" instead of "google.com").
- * Falls back to the original referrer string when no mapping exists.
+ * Uses a heuristic (hostname → main label → capitalize) plus a small override map for famous brands.
  */
 export function getReferrerDisplayName(referrer: string): string {
   if (!referrer || typeof referrer !== 'string') return referrer || ''
@@ -138,9 +149,38 @@ export function getReferrerDisplayName(referrer: string): string {
   if (trimmed === '') return ''
   const hostname = getReferrerHostname(trimmed)
   if (!hostname) return trimmed
-  const displayName = REFERRER_DISPLAY_NAMES[hostname]
-  if (displayName) return displayName
-  return trimmed
+  const overrideByHostname = REFERRER_DISPLAY_OVERRIDES[hostname]
+  if (overrideByHostname) return overrideByHostname
+  const label = getReferrerLabel(hostname)
+  const overrideByLabel = REFERRER_DISPLAY_OVERRIDES[label]
+  if (overrideByLabel) return overrideByLabel
+  return capitalizeLabel(label)
+}
+
+/**
+ * Merges referrer rows that share the same display name (e.g. chatgpt.com and https://chatgpt.com/...),
+ * summing pageviews and keeping one referrer per group for icon/tooltip. Sorted by pageviews desc.
+ */
+export function mergeReferrersByDisplayName(
+  items: Array<{ referrer: string; pageviews: number }>
+): Array<{ referrer: string; pageviews: number }> {
+  const byDisplayName = new Map<string, { referrer: string; pageviews: number; maxSingle: number }>()
+  for (const ref of items) {
+    const name = getReferrerDisplayName(ref.referrer)
+    const existing = byDisplayName.get(name)
+    if (!existing) {
+      byDisplayName.set(name, { referrer: ref.referrer, pageviews: ref.pageviews, maxSingle: ref.pageviews })
+    } else {
+      existing.pageviews += ref.pageviews
+      if (ref.pageviews > existing.maxSingle) {
+        existing.maxSingle = ref.pageviews
+        existing.referrer = ref.referrer
+      }
+    }
+  }
+  return Array.from(byDisplayName.values())
+    .map(({ referrer, pageviews }) => ({ referrer, pageviews }))
+    .sort((a, b) => b.pageviews - a.pageviews)
 }
 
 /**

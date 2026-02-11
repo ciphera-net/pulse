@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { formatNumber } from '@/lib/utils/format'
-import { getReferrerDisplayName, getReferrerFavicon, getReferrerIcon } from '@/lib/utils/icons'
+import { getReferrerDisplayName, getReferrerFavicon, getReferrerIcon, mergeReferrersByDisplayName } from '@/lib/utils/icons'
 import { Modal, GlobeIcon } from '@ciphera-net/ui'
 import { getTopReferrers, TopReferrer } from '@/lib/api/stats'
 
@@ -26,10 +26,12 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
     ref => ref.referrer && ref.referrer !== 'Unknown' && ref.referrer !== ''
   )
 
-  const hasData = filteredReferrers.length > 0
-  const displayedReferrers = hasData ? filteredReferrers.slice(0, LIMIT) : []
+  const mergedReferrers = mergeReferrersByDisplayName(filteredReferrers)
+
+  const hasData = mergedReferrers.length > 0
+  const displayedReferrers = hasData ? mergedReferrers.slice(0, LIMIT) : []
   const emptySlots = Math.max(0, LIMIT - displayedReferrers.length)
-  const showViewAll = hasData && filteredReferrers.length > LIMIT
+  const showViewAll = hasData && mergedReferrers.length > LIMIT
 
   function renderReferrerIcon(referrer: string) {
     const faviconUrl = getReferrerFavicon(referrer)
@@ -137,7 +139,7 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
               <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading...</p>
             </div>
           ) : (
-            (fullData.length > 0 ? fullData : filteredReferrers).map((ref, index) => (
+            mergeReferrersByDisplayName(fullData.length > 0 ? fullData : filteredReferrers).map((ref, index) => (
               <div key={index} className="flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
                 <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
                   {renderReferrerIcon(ref.referrer)}

@@ -9,6 +9,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Changed
 
 - **Top Referrers favicons (PULSE-52).** The Top Referrers card now shows real site favicons (e.g. Google, ChatGPT, Instagram) when the referrer is a domain or URL. “Direct” and “Unknown” keep the globe icon; if a favicon fails to load, the previous icon is shown as fallback.
+- **Referrer display names.** Referrers now show friendly names (e.g. “Google”, “Kagi”) using a heuristic from the hostname plus a small override map for famous brands (ChatGPT, LinkedIn, X, etc.). New sites get a sensible name without being added to a list.
+- **Top Referrers merged by name.** Rows that map to the same display name (e.g. `chatgpt.com` and `https://chatgpt.com/...`) are merged into one row with combined pageviews, so the same source no longer appears twice.
 
 ## [0.2.0-alpha] - 2026-02-11
 
