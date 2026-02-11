@@ -570,11 +570,11 @@ export default function Chart({
             <p className="text-xs text-neutral-400 dark:text-neutral-500">Try selecting another metric or date range</p>
           </div>
         ) : (
-          <div className="h-[360px] w-full flex flex-row items-stretch gap-2">
+          <div className="h-[360px] w-full flex flex-row items-stretch gap-1">
             {/* * Vertical Y-axis label (text reads bottom-to-top) */}
             <div
               className="flex items-center justify-center flex-shrink-0"
-              style={{ width: 28 }}
+              style={{ width: 20 }}
             >
               <span
                 className="text-xs font-medium whitespace-nowrap"
@@ -589,7 +589,7 @@ export default function Chart({
             </div>
             <div className="flex-1 min-h-0 min-w-0">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 4, right: 8, left: 50, bottom: 0 }}>
+                <AreaChart data={chartData} margin={{ top: 4, right: 8, left: 32, bottom: 0 }}>
                 <defs>
                   <linearGradient id={`gradient-${metric}`} x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor={activeMetric.color} stopOpacity={0.35} />
@@ -613,7 +613,7 @@ export default function Chart({
                   tickLine={false}
                   axisLine={false}
                   domain={[0, 'auto']}
-                  width={48}
+                  width={36}
                   tickFormatter={(val) => {
                     if (metric === 'bounce_rate') return `${val}%`
                     if (metric === 'avg_duration') return formatAxisDuration(val)
