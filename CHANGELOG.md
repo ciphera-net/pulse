@@ -4,6 +4,12 @@ All notable changes to Pulse (frontend and product) are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and Pulse uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with a **0.x.y** version scheme while in initial development. The leading `0` indicates that the public API and behaviour may change until we release **1.0.0**.
 
+## [0.4.0-alpha] - 2026-02-11
+
+### Changed
+
+- **Campaigns block improvements (PULSE-53).** The Campaigns card now supports sortable columns (Source, Medium, Campaign, Visitors, Pageviews), source favicons with display names (matching Top Referrers), a Pageviews column, and em-dash (—) for empty Medium/Campaign. Loading state uses a skeleton instead of a spinner. Rows use stable keys for better React reconciliation. An Export button exports campaigns to CSV; the main dashboard Export (PDF/Excel) also includes campaigns when available.
+
 ## [0.3.0-alpha] - 2026-02-11
 
 ### Changed
@@ -29,7 +35,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
-[Unreleased]: https://github.com/ciphera-net/pulse/compare/v0.3.0-alpha...HEAD
+[Unreleased]: https://github.com/ciphera-net/pulse/compare/v0.4.0-alpha...HEAD
+[0.4.0-alpha]: https://github.com/ciphera-net/pulse/compare/v0.3.0-alpha...v0.4.0-alpha
 [0.3.0-alpha]: https://github.com/ciphera-net/pulse/compare/v0.2.0-alpha...v0.3.0-alpha
 [0.2.0-alpha]: https://github.com/ciphera-net/pulse/compare/v0.1.0-alpha...v0.2.0-alpha
 [0.1.0-alpha]: https://github.com/ciphera-net/pulse/releases/tag/v0.1.0-alpha
