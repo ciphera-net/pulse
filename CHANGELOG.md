@@ -12,16 +12,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
-- **Visitor ID storage: optional localStorage for cross-tab unique visitors (PULSE-51).**
-  - Default: cross-tab visitor ID in `localStorage` so the same person with multiple tabs/windows (same origin) is counted as one visitor. Optional `data-storage-ttl` attribute sets TTL in hours; after expiry the script regenerates the ID.
-  - Optional `data-storage="session"` opts out to per-tab (ephemeral) counting using `sessionStorage`, preserving the previous privacy-first, no-persistent-ID behaviour when desired.
-  - Script embed snippet and dashboard copy updated to describe the default and the opt-out. No backend or schema changes; events remain keyed by `session_id`.
+- **Smarter unique visitor counts.** If someone opens your site in several tabs or windows, they’re now counted as one visitor by default, so your stats better reflect real people.
+- **Control over how visitors are counted.** You can switch back to “one visitor per tab” (more private, no lasting identifier) by adding an option to your script embed. The dashboard shows the right snippet for both options.
+- **Optional expiry for the visitor ID.** You can set how long the cross-tab visitor ID is kept (e.g. 24 hours); after that it’s refreshed automatically.
 
 ## [0.1.0] - 2026-02-09
 
 ### Added
 
-- Initial changelog and release process (PULSE-28).
+- Initial changelog and release process.
 - Release documentation in `docs/releasing.md` and optional changelog check script.
 
 ---
