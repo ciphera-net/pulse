@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { getSite, type Site } from '@/lib/api/sites'
 import { getStats, getRealtime, getDailyStats, getTopPages, getTopReferrers, getCountries, getCities, getRegions, getBrowsers, getOS, getDevices, getScreenResolutions, getEntryPages, getExitPages, getDashboard, getCampaigns, getPerformanceByPage, type Stats, type DailyStat, type PerformanceByPageStat } from '@/lib/api/stats'
-import { formatNumber, formatDuration, getDateRange } from '@/lib/utils/format'
+import { formatNumber, formatDuration, formatUpdatedAgo, getDateRange } from '@/lib/utils/format'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@/lib/utils/authErrors'
 import { LoadingOverlay, Button } from '@ciphera-net/ui'
@@ -57,6 +57,8 @@ export default function SiteDashboardPage() {
   const [todayInterval, setTodayInterval] = useState<'minute' | 'hour'>('hour')
   const [multiDayInterval, setMultiDayInterval] = useState<'hour' | 'day'>('day')
   const [isSettingsLoaded, setIsSettingsLoaded] = useState(false)
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null)
+  const [, setTick] = useState(0)
 
   // Load settings from localStorage
   useEffect(() => {
@@ -130,10 +132,17 @@ export default function SiteDashboardPage() {
       loadData()
     }
     const interval = setInterval(() => {
+      loadData(true)
       loadRealtime()
-    }, 30000) // Update every 30 seconds
+    }, 30000) // * Chart, KPIs, and realtime count update every 30 seconds
     return () => clearInterval(interval)
   }, [siteId, dateRange, todayInterval, multiDayInterval, isSettingsLoaded])
+
+  // * Tick every 5s to refresh "Updated X ago" display
+  useEffect(() => {
+    const interval = setInterval(() => setTick((t) => t + 1), 5000)
+    return () => clearInterval(interval)
+  }, [])
 
   const getPreviousDateRange = (start: string, end: string) => {
     const startDate = new Date(start)
@@ -159,9 +168,9 @@ export default function SiteDashboardPage() {
     }
   }
 
-  const loadData = async () => {
+  const loadData = async (silent = false) => {
     try {
-      setLoading(true)
+      if (!silent) setLoading(true)
       const interval = dateRange.start === dateRange.end ? todayInterval : multiDayInterval
       
       const [data, prevStatsData, prevDailyStatsData, campaignsData] = await Promise.all([
@@ -200,10 +209,13 @@ export default function SiteDashboardPage() {
       setPerformanceByPage(data.performance_by_page ?? null)
       setGoalCounts(Array.isArray(data.goal_counts) ? data.goal_counts : [])
       setCampaigns(Array.isArray(campaignsData) ? campaignsData : [])
+      setLastUpdatedAt(Date.now())
     } catch (error: unknown) {
-      toast.error(getAuthErrorMessage(error) || 'Failed to load data: ' + ((error as Error)?.message || 'Unknown error'))
+      if (!silent) {
+        toast.error(getAuthErrorMessage(error) || 'Failed to load data: ' + ((error as Error)?.message || 'Unknown error'))
+      }
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }
 
@@ -247,19 +259,27 @@ export default function SiteDashboardPage() {
               </p>
             </div>
             
-            {/* Realtime Indicator */}
-            <button
-              onClick={() => router.push(`/sites/${siteId}/realtime`)}
-              className="flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded-full border border-green-500/20 hover:bg-green-500/20 transition-colors cursor-pointer"
-            >
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-              </span>
-              <span className="text-sm font-medium text-green-700 dark:text-green-400">
-                {realtime} current visitors
-              </span>
-            </button>
+            <div className="flex items-center gap-3">
+              {/* Realtime Indicator */}
+              <button
+                onClick={() => router.push(`/sites/${siteId}/realtime`)}
+                className="flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded-full border border-green-500/20 hover:bg-green-500/20 transition-colors cursor-pointer"
+              >
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                </span>
+                <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                  {realtime} current visitors
+                </span>
+              </button>
+              {/* Polling indicator */}
+              {lastUpdatedAt !== null && (
+                <span className="text-xs text-neutral-500 dark:text-neutral-400" title="Data refreshes every 30 seconds">
+                  Updated {formatUpdatedAgo(lastUpdatedAt)}
+                </span>
+              )}
+            </div>
           </div>
 
             <div className="flex items-center gap-2">
