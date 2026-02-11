@@ -16,7 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Control over how visitors are counted.** You can switch back to “one visitor per tab” (more private, no lasting identifier) by adding an option to your script embed. The dashboard shows the right snippet for both options.
 - **Optional expiry for the visitor ID.** You can set how long the cross-tab visitor ID is kept (e.g. 24 hours); after that it’s refreshed automatically.
 
-## [0.1.0] - 2026-02-09
+## [0.1.0-alpha] - 2026-02-09
 
 ### Added
 
