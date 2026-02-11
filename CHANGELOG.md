@@ -19,3 +19,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Initial changelog and release process.
 - Release documentation in `docs/releasing.md` and optional changelog check script.
 
+---
+
+[Unreleased]: https://github.com/ciphera-net/pulse/compare/v0.2.0-alpha...HEAD
+[0.2.0-alpha]: https://github.com/ciphera-net/pulse/compare/v0.1.0-alpha...v0.2.0-alpha
+[0.1.0-alpha]: https://github.com/ciphera-net/pulse/releases/tag/v0.1.0-alpha
