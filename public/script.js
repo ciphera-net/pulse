@@ -1,8 +1,8 @@
 /**
  * Pulse - Privacy-First Tracking Script
  * Lightweight, no cookies, GDPR compliant.
- * Default: ephemeral session ID (sessionStorage, per-tab). Optional: data-storage="local"
- * and data-storage-ttl (hours) for a persistent cross-tab visitor ID with optional expiry.
+ * Default: cross-tab visitor ID (localStorage, optional data-storage-ttl in hours).
+ * Optional: data-storage="session" for per-tab (ephemeral) counting.
  */
 
 (function() {
@@ -21,8 +21,8 @@
 
   const domain = script.getAttribute('data-domain');
   const apiUrl = script.getAttribute('data-api') || 'https://pulse-api.ciphera.net';
-  // * Visitor ID storage: "session" (default, ephemeral per-tab) or "local" (persistent, cross-tab)
-  const storageMode = (script.getAttribute('data-storage') || 'session').toLowerCase() === 'local' ? 'local' : 'session';
+  // * Visitor ID storage: "local" (default, cross-tab) or "session" (ephemeral per-tab)
+  const storageMode = (script.getAttribute('data-storage') || 'local').toLowerCase() === 'session' ? 'session' : 'local';
   // * When storage is "local", optional TTL in hours; after TTL the ID is regenerated (e.g. 24 = one day)
   const ttlHours = storageMode === 'local' ? parseFloat(script.getAttribute('data-storage-ttl') || '24', 10) : 0;
   const ttlMs = ttlHours > 0 ? ttlHours * 60 * 60 * 1000 : 0;
@@ -151,7 +151,7 @@
       return cachedSessionId;
     }
 
-    // * Default: session storage (ephemeral, per-tab)
+    // * data-storage="session": session storage (ephemeral, per-tab)
     try {
       cachedSessionId = sessionStorage.getItem(key);
       if (!cachedSessionId && legacyKey) {

@@ -40,7 +40,7 @@ export default function ScriptSetupBlock({
   const [scriptCopied, setScriptCopied] = useState(false)
 
   const copyScript = useCallback(() => {
-    const script = `<script defer data-domain="${site.domain}" data-api="${API_URL}" src="${APP_URL}/script.js"></script>`
+    const script = `<script defer data-domain="${site.domain}" data-api="${API_URL}" data-storage="local" data-storage-ttl="24" src="${APP_URL}/script.js"></script>`
     navigator.clipboard.writeText(script)
     setScriptCopied(true)
     toast.success('Script copied to clipboard')
@@ -87,10 +87,10 @@ export default function ScriptSetupBlock({
 
       <div className="rounded-xl bg-neutral-100 dark:bg-neutral-800 p-4 relative group">
         <code className="text-xs text-neutral-900 dark:text-white break-all font-mono block pr-10">
-          {`<script defer data-domain="${site.domain}" data-api="${API_URL}" src="${APP_URL}/script.js"></script>`}
+          {`<script defer data-domain="${site.domain}" data-api="${API_URL}" data-storage="local" data-storage-ttl="24" src="${APP_URL}/script.js"></script>`}
         </code>
         <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
-          Optional: <code className="rounded px-1 bg-neutral-200 dark:bg-neutral-700">data-storage=&quot;local&quot;</code> for cross-tab unique visitors; <code className="rounded px-1 bg-neutral-200 dark:bg-neutral-700">data-storage-ttl=&quot;24&quot;</code> (hours) to expire the ID.
+          Optional: <code className="rounded px-1 bg-neutral-200 dark:bg-neutral-700">data-storage=&quot;session&quot;</code> for per-tab (ephemeral) visitor counting.
         </p>
         <button
           type="button"
