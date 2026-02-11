@@ -81,6 +81,69 @@ export function getReferrerIcon(referrerName: string) {
 const REFERRER_NO_FAVICON = ['direct', 'unknown', '']
 
 /**
+ * Map of referrer hostname (lowercase) to display name for the Top Referrers list.
+ * Unknown hostnames fall back to the original referrer string.
+ */
+const REFERRER_DISPLAY_NAMES: Record<string, string> = {
+  'google.com': 'Google',
+  'www.google.com': 'Google',
+  'google.co.uk': 'Google',
+  'google.de': 'Google',
+  'facebook.com': 'Facebook',
+  'www.facebook.com': 'Facebook',
+  'm.facebook.com': 'Facebook',
+  'instagram.com': 'Instagram',
+  'www.instagram.com': 'Instagram',
+  'l.instagram.com': 'Instagram',
+  'twitter.com': 'X',
+  'www.twitter.com': 'X',
+  't.co': 'X',
+  'x.com': 'X',
+  'linkedin.com': 'LinkedIn',
+  'www.linkedin.com': 'LinkedIn',
+  'github.com': 'GitHub',
+  'www.github.com': 'GitHub',
+  'youtube.com': 'YouTube',
+  'www.youtube.com': 'YouTube',
+  'reddit.com': 'Reddit',
+  'www.reddit.com': 'Reddit',
+  'chatgpt.com': 'ChatGPT',
+  'www.chatgpt.com': 'ChatGPT',
+  'ciphera.net': 'Ciphera',
+  'www.ciphera.net': 'Ciphera',
+}
+
+/**
+ * Returns the hostname for a referrer string (URL or plain hostname), or null if invalid.
+ */
+function getReferrerHostname(referrer: string): string | null {
+  if (!referrer || typeof referrer !== 'string') return null
+  const trimmed = referrer.trim()
+  if (REFERRER_NO_FAVICON.includes(trimmed.toLowerCase())) return null
+  try {
+    const url = new URL(trimmed.startsWith('http') ? trimmed : `https://${trimmed}`)
+    return url.hostname.toLowerCase()
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Returns a friendly display name for the referrer (e.g. "Google" instead of "google.com").
+ * Falls back to the original referrer string when no mapping exists.
+ */
+export function getReferrerDisplayName(referrer: string): string {
+  if (!referrer || typeof referrer !== 'string') return referrer || ''
+  const trimmed = referrer.trim()
+  if (trimmed === '') return ''
+  const hostname = getReferrerHostname(trimmed)
+  if (!hostname) return trimmed
+  const displayName = REFERRER_DISPLAY_NAMES[hostname]
+  if (displayName) return displayName
+  return trimmed
+}
+
+/**
  * Returns a favicon URL for the referrer's domain, or null for non-URL referrers
  * (e.g. "Direct", "Unknown") so callers can show an icon fallback instead.
  */

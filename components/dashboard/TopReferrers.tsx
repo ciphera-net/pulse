@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { formatNumber } from '@/lib/utils/format'
-import { getReferrerFavicon, getReferrerIcon } from '@/lib/utils/icons'
+import { getReferrerDisplayName, getReferrerFavicon, getReferrerIcon } from '@/lib/utils/icons'
 import { Modal, GlobeIcon } from '@ciphera-net/ui'
 import { getTopReferrers, TopReferrer } from '@/lib/api/stats'
 
@@ -98,7 +98,7 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
                 <div key={index} className="flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
                   <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
                     {renderReferrerIcon(ref.referrer)}
-                    <span className="truncate" title={ref.referrer}>{ref.referrer}</span>
+                    <span className="truncate" title={ref.referrer}>{getReferrerDisplayName(ref.referrer)}</span>
                   </div>
                   <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
                     {formatNumber(ref.pageviews)}
@@ -141,7 +141,7 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
               <div key={index} className="flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
                 <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
                   {renderReferrerIcon(ref.referrer)}
-                  <span className="truncate" title={ref.referrer}>{ref.referrer}</span>
+                  <span className="truncate" title={ref.referrer}>{getReferrerDisplayName(ref.referrer)}</span>
                 </div>
                 <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
                   {formatNumber(ref.pageviews)}

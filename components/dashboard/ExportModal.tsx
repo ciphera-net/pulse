@@ -7,6 +7,7 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import type { DailyStat } from './Chart'
 import { formatNumber, formatDuration } from '@/lib/utils/format'
+import { getReferrerDisplayName } from '@/lib/utils/icons'
 import type { TopPage, TopReferrer } from '@/lib/api/stats'
 
 interface ExportModalProps {
@@ -278,7 +279,7 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
         doc.text('Top Referrers', 14, finalY)
         finalY += 5
 
-        const referrersData = topReferrers.slice(0, 10).map(r => [r.referrer, formatNumber(r.pageviews)])
+        const referrersData = topReferrers.slice(0, 10).map(r => [getReferrerDisplayName(r.referrer), formatNumber(r.pageviews)])
         
         autoTable(doc, {
             startY: finalY,
