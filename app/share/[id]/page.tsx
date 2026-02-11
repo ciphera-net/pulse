@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { getPublicDashboard, getPublicStats, getPublicDailyStats, getPublicRealtime, getPublicPerformanceByPage, type DashboardData, type Stats, type DailyStat, type PerformanceByPageStat } from '@/lib/api/stats'
+import { formatUpdatedAgo } from '@/lib/utils/format'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@/lib/utils/authErrors'
 import { LoadingOverlay, Button } from '@ciphera-net/ui'
@@ -53,6 +54,8 @@ export default function PublicDashboardPage() {
   // Previous period data
   const [prevStats, setPrevStats] = useState<Stats | undefined>(undefined)
   const [prevDailyStats, setPrevDailyStats] = useState<DailyStat[] | undefined>(undefined)
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null)
+  const [, setTick] = useState(0)
 
   const getPreviousDateRange = (start: string, end: string) => {
     const startDate = new Date(start)
@@ -78,17 +81,23 @@ export default function PublicDashboardPage() {
     }
   }
 
-  // Auto-refresh interval (for realtime)
+  // * Auto-refresh interval: chart, KPIs, and realtime count update every 30 seconds
   useEffect(() => {
     const interval = setInterval(() => {
-      // Only refresh realtime count if we have data
       if (data && !isPasswordProtected) {
+        loadDashboard(true)
         loadRealtime()
       }
-    }, 30000) // 30 seconds
+    }, 30000)
 
     return () => clearInterval(interval)
-  }, [data, isPasswordProtected, dateRange, password])
+  }, [data, isPasswordProtected, dateRange, todayInterval, multiDayInterval, password])
+
+  // * Tick every 5s to refresh "Updated X ago" display
+  useEffect(() => {
+    const interval = setInterval(() => setTick((t) => t + 1), 5000)
+    return () => clearInterval(interval)
+  }, [])
 
   useEffect(() => {
     loadDashboard()
@@ -153,6 +162,7 @@ export default function PublicDashboardPage() {
       setData(dashboardData)
       setPrevStats(prevStatsData)
       setPrevDailyStats(prevDailyStatsData)
+      setLastUpdatedAt(Date.now())
 
       setIsPasswordProtected(false)
       // Reset captcha
@@ -283,15 +293,22 @@ export default function PublicDashboardPage() {
                     </h1>
                  </div>
 
-                 {/* Realtime Indicator - Desktop */}
-                 <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded-full border border-green-500/20 self-end mb-1">
-                    <span className="relative flex h-2 w-2">
+                 {/* Realtime Indicator & Polling - Desktop */}
+                 <div className="hidden md:flex items-center gap-3 self-end mb-1">
+                    <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded-full border border-green-500/20">
+                      <span className="relative flex h-2 w-2">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                    </span>
-                    <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                      </span>
+                      <span className="text-sm font-medium text-green-700 dark:text-green-400">
                         {realtime_visitors} current visitors
-                    </span>
+                      </span>
+                    </div>
+                    {lastUpdatedAt !== null && (
+                      <span className="text-xs text-neutral-500 dark:text-neutral-400" title="Data refreshes every 30 seconds">
+                        Updated {formatUpdatedAgo(lastUpdatedAt)}
+                      </span>
+                    )}
                  </div>
               </div>
             </div>
