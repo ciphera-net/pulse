@@ -90,7 +90,7 @@ export default function ScriptSetupBlock({
           {`<script defer data-domain="${site.domain}" data-api="${API_URL}" src="${APP_URL}/script.js"></script>`}
         </code>
         <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
-          Default: cross-tab (localStorage). Optional: <code className="rounded px-1 bg-neutral-200 dark:bg-neutral-700">data-storage=&quot;session&quot;</code> to opt out (per-tab, ephemeral).
+          Default: cross-tab (localStorage). Optional: <code className="rounded px-1 bg-neutral-200 dark:bg-neutral-700">data-storage=&quot;session&quot;</code> to opt out (per-tab, ephemeral). Optional: <code className="rounded px-1 bg-neutral-200 dark:bg-neutral-700">data-storage-ttl=&quot;48&quot;</code> to set expiry in hours (default: 24).
         </p>
         <button
           type="button"
