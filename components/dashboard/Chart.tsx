@@ -11,7 +11,6 @@ import {
   Tooltip,
   ResponsiveContainer,
   ReferenceLine,
-  Label,
 } from 'recharts'
 import type { TooltipProps } from 'recharts'
 import { formatNumber, formatDuration } from '@/lib/utils/format'
@@ -167,6 +166,15 @@ function formatAxisValue(value: number): string {
   if (value >= 1e6) return `${value / 1e6}M`
   if (value >= 1000) return `${value / 1000}k`
   return String(value)
+}
+
+// * Compact duration for Y-axis ticks (avoids truncation: "5m" not "5m 0s")
+function formatAxisDuration(seconds: number): string {
+  if (!seconds) return '0s'
+  const m = Math.floor(seconds / 60)
+  const s = Math.floor(seconds % 60)
+  if (m > 0) return s > 0 ? `${m}m ${s}s` : `${m}m`
+  return `${s}s`
 }
 
 // * Returns human-readable label for the previous comparison period (e.g. "Feb 10" or "Jan 5 – Feb 4")
@@ -368,7 +376,7 @@ export default function Chart({
   const chartMetric = metric
   const metricLabel = metrics.find(m => m.id === metric)?.label || 'visitors'
   const prevPeriodLabel = prevData?.length ? getPrevDateRangeLabel(dateRange) : ''
-  const trendContext = prevStats ? getTrendContext(dateRange) : ''
+  const trendContext = getTrendContext(dateRange)
 
   const avg = chartData.length
     ? chartData.reduce((s, d) => s + (d[chartMetric] as number), 0) / chartData.length
@@ -425,26 +433,30 @@ export default function Chart({
               <span className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-white">
                 {item.value}
               </span>
-              {item.trend !== null && (
-                <span className={`flex items-center text-sm font-medium ${
-                  (item.invertTrend ? -item.trend : item.trend) > 0 
-                    ? 'text-emerald-600 dark:text-emerald-500' 
-                    : (item.invertTrend ? -item.trend : item.trend) < 0 
-                      ? 'text-red-600 dark:text-red-500' 
-                      : 'text-neutral-500'
-                }`}>
-                  {(item.invertTrend ? -item.trend : item.trend) > 0 ? (
-                     <ArrowUpRightIcon className="w-3 h-3 mr-0.5" />
-                  ) : (item.invertTrend ? -item.trend : item.trend) < 0 ? (
-                     <ArrowDownRightIcon className="w-3 h-3 mr-0.5" />
-                  ) : null}
-                  {Math.abs(item.trend)}%
-                </span>
-              )}
+              <span className="flex items-center text-sm font-medium">
+                {item.trend !== null ? (
+                  <>
+                    <span className={
+                      (item.invertTrend ? -item.trend : item.trend) > 0 
+                        ? 'text-emerald-600 dark:text-emerald-500' 
+                        : (item.invertTrend ? -item.trend : item.trend) < 0 
+                          ? 'text-red-600 dark:text-red-500' 
+                          : 'text-neutral-500'
+                    }>
+                      {(item.invertTrend ? -item.trend : item.trend) > 0 ? (
+                        <ArrowUpRightIcon className="w-3 h-3 mr-0.5 inline" />
+                      ) : (item.invertTrend ? -item.trend : item.trend) < 0 ? (
+                        <ArrowDownRightIcon className="w-3 h-3 mr-0.5 inline" />
+                      ) : null}
+                      {Math.abs(item.trend)}%
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-neutral-500 dark:text-neutral-400">—</span>
+                )}
+              </span>
             </div>
-            {trendContext && item.trend !== null && (
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{trendContext}</p>
-            )}
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{trendContext}</p>
             {hasData && (
               <div className="mt-2">
                 <Sparkline data={chartData} dataKey={item.id} color={item.color} />
@@ -516,7 +528,7 @@ export default function Chart({
                 <Checkbox
                   checked={showComparison}
                   onCheckedChange={setShowComparison}
-                  label="Compare with previous period"
+                  label="Compare"
                 />
                 {showComparison && prevPeriodLabel && (
                   <span className="text-xs text-neutral-500 dark:text-neutral-400">
@@ -558,9 +570,26 @@ export default function Chart({
             <p className="text-xs text-neutral-400 dark:text-neutral-500">Try selecting another metric or date range</p>
           </div>
         ) : (
-          <div className="h-[360px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ top: 10, right: 8, left: -16, bottom: 0 }}>
+          <div className="h-[360px] w-full flex flex-row items-stretch gap-2">
+            {/* * Vertical Y-axis label (text reads bottom-to-top) */}
+            <div
+              className="flex items-center justify-center flex-shrink-0"
+              style={{ width: 28 }}
+            >
+              <span
+                className="text-xs font-medium whitespace-nowrap"
+                style={{
+                  color: colors.axis,
+                  transform: 'rotate(-90deg)',
+                  transformOrigin: 'center center',
+                }}
+              >
+                {metricLabel}
+              </span>
+            </div>
+            <div className="flex-1 min-h-0 min-w-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData} margin={{ top: 4, right: 8, left: 50, bottom: 0 }}>
                 <defs>
                   <linearGradient id={`gradient-${metric}`} x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor={activeMetric.color} stopOpacity={0.35} />
@@ -584,19 +613,13 @@ export default function Chart({
                   tickLine={false}
                   axisLine={false}
                   domain={[0, 'auto']}
+                  width={48}
                   tickFormatter={(val) => {
                     if (metric === 'bounce_rate') return `${val}%`
-                    if (metric === 'avg_duration') return formatDuration(val)
+                    if (metric === 'avg_duration') return formatAxisDuration(val)
                     return formatAxisValue(val)
                   }}
-                >
-                  <Label
-                    value={metricLabel}
-                    position="insideTopLeft"
-                    offset={8}
-                    style={{ fill: colors.axis, fontSize: 11, fontWeight: 500 }}
-                  />
-                </YAxis>
+                />
                 <Tooltip
                   content={(p: TooltipProps<number, string>) => (
                     <ChartTooltip
@@ -675,8 +698,9 @@ export default function Chart({
                   animationDuration={500}
                   animationEasing="ease-out"
                 />
-              </AreaChart>
-            </ResponsiveContainer>
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         )}
       </div>
