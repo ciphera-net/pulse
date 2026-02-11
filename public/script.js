@@ -160,6 +160,23 @@
           }
         }
         cachedSessionId = generateId();
+        // * Race fix: re-read before writing; if another tab wrote in the meantime, use that ID instead
+        var rawAgain = localStorage.getItem(key);
+        if (rawAgain) {
+          try {
+            var parsedAgain = JSON.parse(rawAgain);
+            if (parsedAgain && typeof parsedAgain.id === 'string') {
+              var expiredAgain = ttlMs > 0 && typeof parsedAgain.created === 'number' && (Date.now() - parsedAgain.created > ttlMs);
+              if (!expiredAgain) {
+                cachedSessionId = parsedAgain.id;
+                // #region agent log
+                try { fetch('http://127.0.0.1:7243/ingest/50587964-c1c6-436a-a7ce-ff2cde3c5b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:getSessionId:local',message:'race fix reused other tab id',data:{sessionIdPrefix:cachedSessionId.substring(0,8)},timestamp:Date.now(),hypothesisId:'E'})}).catch(function(){}); } catch (e4) {}
+                // #endregion
+                return cachedSessionId;
+              }
+            }
+          } catch (e2) {}
+        }
         localStorage.setItem(key, JSON.stringify({ id: cachedSessionId, created: Date.now() }));
         // #region agent log
         try { fetch('http://127.0.0.1:7243/ingest/50587964-c1c6-436a-a7ce-ff2cde3c5b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:getSessionId:local',message:'generated new and wrote to localStorage',data:{sessionIdPrefix:cachedSessionId.substring(0,8)},timestamp:Date.now(),hypothesisId:'C,E'})}).catch(function(){}); } catch (e) {}
