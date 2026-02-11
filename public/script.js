@@ -28,7 +28,7 @@
   const ttlMs = ttlHours > 0 ? ttlHours * 60 * 60 * 1000 : 0;
   // #region agent log
   try {
-    fetch('http://127.0.0.1:7243/ingest/50587964-c1c6-436a-a7ce-ff2cde3c5b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:init',message:'storage config',data:{storageMode,dataStorageAttr:script.getAttribute('data-storage'),ttlHours,ttlMs,domain},timestamp:Date.now(),hypothesisId:'A,B'})}).catch(function(){});
+    fetch(apiUrl + '/api/v1/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:init',message:'storage config',data:{storageMode,dataStorageAttr:script.getAttribute('data-storage'),ttlHours,ttlMs,domain},timestamp:Date.now(),hypothesisId:'A,B'})}).catch(function(){});
   } catch (e) {}
   // #endregion
 
@@ -126,7 +126,7 @@
   function getSessionId() {
     if (cachedSessionId) {
       // #region agent log
-      try { fetch('http://127.0.0.1:7243/ingest/50587964-c1c6-436a-a7ce-ff2cde3c5b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:getSessionId',message:'return cached',data:{sessionIdPrefix:cachedSessionId.substring(0,8),storageMode},timestamp:Date.now(),hypothesisId:'E'})}).catch(function(){}); } catch (e) {}
+      try { fetch(apiUrl + '/api/v1/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:getSessionId',message:'return cached',data:{sessionIdPrefix:cachedSessionId.substring(0,8),storageMode},timestamp:Date.now(),hypothesisId:'E'})}).catch(function(){}); } catch (e) {}
       // #endregion
       return cachedSessionId;
     }
@@ -140,7 +140,7 @@
         // #region agent log
         var rawType = raw === null ? 'null' : typeof raw;
         var rawPrefix = raw && raw.substring ? raw.substring(0, 60) : '';
-        try { fetch('http://127.0.0.1:7243/ingest/50587964-c1c6-436a-a7ce-ff2cde3c5b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:getSessionId:local',message:'localStorage read',data:{rawType,rawPrefix,hasRaw:!!raw},timestamp:Date.now(),hypothesisId:'C,D,E'})}).catch(function(){}); } catch (e) {}
+        try { fetch(apiUrl + '/api/v1/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:getSessionId:local',message:'localStorage read',data:{rawType,rawPrefix,hasRaw:!!raw},timestamp:Date.now(),hypothesisId:'C,D,E'})}).catch(function(){}); } catch (e) {}
         // #endregion
         if (raw) {
           try {
@@ -150,7 +150,7 @@
               if (!expired) {
                 cachedSessionId = parsed.id;
                 // #region agent log
-                try { fetch('http://127.0.0.1:7243/ingest/50587964-c1c6-436a-a7ce-ff2cde3c5b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:getSessionId:local',message:'reused from localStorage',data:{sessionIdPrefix:cachedSessionId.substring(0,8)},timestamp:Date.now(),hypothesisId:'D,E'})}).catch(function(){}); } catch (e) {}
+                try { fetch(apiUrl + '/api/v1/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:getSessionId:local',message:'reused from localStorage',data:{sessionIdPrefix:cachedSessionId.substring(0,8)},timestamp:Date.now(),hypothesisId:'D,E'})}).catch(function(){}); } catch (e) {}
                 // #endregion
                 return cachedSessionId;
               }
@@ -170,7 +170,7 @@
               if (!expiredAgain) {
                 cachedSessionId = parsedAgain.id;
                 // #region agent log
-                try { fetch('http://127.0.0.1:7243/ingest/50587964-c1c6-436a-a7ce-ff2cde3c5b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:getSessionId:local',message:'race fix reused other tab id',data:{sessionIdPrefix:cachedSessionId.substring(0,8)},timestamp:Date.now(),hypothesisId:'E'})}).catch(function(){}); } catch (e4) {}
+                try { fetch(apiUrl + '/api/v1/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:getSessionId:local',message:'race fix reused other tab id',data:{sessionIdPrefix:cachedSessionId.substring(0,8)},timestamp:Date.now(),hypothesisId:'E'})}).catch(function(){}); } catch (e4) {}
                 // #endregion
                 return cachedSessionId;
               }
@@ -179,12 +179,12 @@
         }
         localStorage.setItem(key, JSON.stringify({ id: cachedSessionId, created: Date.now() }));
         // #region agent log
-        try { fetch('http://127.0.0.1:7243/ingest/50587964-c1c6-436a-a7ce-ff2cde3c5b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:getSessionId:local',message:'generated new and wrote to localStorage',data:{sessionIdPrefix:cachedSessionId.substring(0,8)},timestamp:Date.now(),hypothesisId:'C,E'})}).catch(function(){}); } catch (e) {}
+        try { fetch(apiUrl + '/api/v1/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:getSessionId:local',message:'generated new and wrote to localStorage',data:{sessionIdPrefix:cachedSessionId.substring(0,8)},timestamp:Date.now(),hypothesisId:'C,E'})}).catch(function(){}); } catch (e) {}
         // #endregion
       } catch (e) {
         cachedSessionId = generateId();
         // #region agent log
-        try { fetch('http://127.0.0.1:7243/ingest/50587964-c1c6-436a-a7ce-ff2cde3c5b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:getSessionId:local',message:'localStorage error fallback',data:{sessionIdPrefix:cachedSessionId.substring(0,8),err:String(e&&e.message)},timestamp:Date.now(),hypothesisId:'C'})}).catch(function(){}); } catch (e2) {}
+        try { fetch(apiUrl + '/api/v1/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:getSessionId:local',message:'localStorage error fallback',data:{sessionIdPrefix:cachedSessionId.substring(0,8),err:String(e&&e.message)},timestamp:Date.now(),hypothesisId:'C'})}).catch(function(){}); } catch (e2) {}
         // #endregion
       }
       return cachedSessionId;
@@ -192,7 +192,7 @@
 
     // * data-storage="session": session storage (ephemeral, per-tab)
     // #region agent log
-    try { fetch('http://127.0.0.1:7243/ingest/50587964-c1c6-436a-a7ce-ff2cde3c5b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:getSessionId',message:'using session branch',data:{storageMode},timestamp:Date.now(),hypothesisId:'A'})}).catch(function(){}); } catch (e) {}
+    try { fetch(apiUrl + '/api/v1/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:getSessionId',message:'using session branch',data:{storageMode},timestamp:Date.now(),hypothesisId:'A'})}).catch(function(){}); } catch (e) {}
     // #endregion
     try {
       cachedSessionId = sessionStorage.getItem(key);
