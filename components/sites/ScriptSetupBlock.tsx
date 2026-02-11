@@ -89,6 +89,9 @@ export default function ScriptSetupBlock({
         <code className="text-xs text-neutral-900 dark:text-white break-all font-mono block pr-10">
           {`<script defer data-domain="${site.domain}" data-api="${API_URL}" src="${APP_URL}/script.js"></script>`}
         </code>
+        <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
+          Optional: <code className="rounded px-1 bg-neutral-200 dark:bg-neutral-700">data-storage=&quot;local&quot;</code> for cross-tab unique visitors; <code className="rounded px-1 bg-neutral-200 dark:bg-neutral-700">data-storage-ttl=&quot;24&quot;</code> (hours) to expire the ID.
+        </p>
         <button
           type="button"
           onClick={copyScript}

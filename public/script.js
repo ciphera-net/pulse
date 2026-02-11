@@ -1,6 +1,8 @@
 /**
  * Pulse - Privacy-First Tracking Script
- * Lightweight, no cookies, GDPR compliant
+ * Lightweight, no cookies, GDPR compliant.
+ * Default: ephemeral session ID (sessionStorage, per-tab). Optional: data-storage="local"
+ * and data-storage-ttl (hours) for a persistent cross-tab visitor ID with optional expiry.
  */
 
 (function() {
@@ -19,6 +21,11 @@
 
   const domain = script.getAttribute('data-domain');
   const apiUrl = script.getAttribute('data-api') || 'https://pulse-api.ciphera.net';
+  // * Visitor ID storage: "session" (default, ephemeral per-tab) or "local" (persistent, cross-tab)
+  const storageMode = (script.getAttribute('data-storage') || 'session').toLowerCase() === 'local' ? 'local' : 'session';
+  // * When storage is "local", optional TTL in hours; after TTL the ID is regenerated (e.g. 24 = one day)
+  const ttlHours = storageMode === 'local' ? parseFloat(script.getAttribute('data-storage-ttl') || '24', 10) : 0;
+  const ttlMs = ttlHours > 0 ? ttlHours * 60 * 60 * 1000 : 0;
 
   // * Performance Monitoring (Core Web Vitals) State
   let currentEventId = null;
@@ -102,25 +109,51 @@
     }
   });
 
-  // * Memory cache for session ID (fallback if sessionStorage is unavailable)
+  // * Memory cache for session ID (fallback if storage is unavailable)
   let cachedSessionId = null;
 
-  // * Generate ephemeral session ID (not persistent)
+  function generateId() {
+    return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  }
+
+  // * Returns session/visitor ID. Default: ephemeral (sessionStorage, per-tab).
+  // * With data-storage="local": persistent (localStorage, cross-tab), optional TTL in hours.
   function getSessionId() {
     if (cachedSessionId) {
       return cachedSessionId;
     }
 
-    // * Use a static key for session storage to ensure consistency across pages
     const key = 'ciphera_session_id';
-    // * Legacy key support for migration (strip whitespace just in case)
     const legacyKey = 'plausible_session_' + (domain ? domain.trim() : '');
 
-    try {
-      // * Try to get existing session ID
-      cachedSessionId = sessionStorage.getItem(key);
+    if (storageMode === 'local') {
+      try {
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed.id === 'string') {
+              const expired = ttlMs > 0 && typeof parsed.created === 'number' && (Date.now() - parsed.created > ttlMs);
+              if (!expired) {
+                cachedSessionId = parsed.id;
+                return cachedSessionId;
+              }
+            }
+          } catch (e) {
+            // * Invalid JSON or old string format: treat as expired and regenerate
+          }
+        }
+        cachedSessionId = generateId();
+        localStorage.setItem(key, JSON.stringify({ id: cachedSessionId, created: Date.now() }));
+      } catch (e) {
+        cachedSessionId = generateId();
+      }
+      return cachedSessionId;
+    }
 
-      // * If not found in new key, try legacy key and migrate
+    // * Default: session storage (ephemeral, per-tab)
+    try {
+      cachedSessionId = sessionStorage.getItem(key);
       if (!cachedSessionId && legacyKey) {
         cachedSessionId = sessionStorage.getItem(legacyKey);
         if (cachedSessionId) {
@@ -133,7 +166,7 @@
     }
 
     if (!cachedSessionId) {
-      cachedSessionId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      cachedSessionId = generateId();
       try {
         sessionStorage.setItem(key, cachedSessionId);
       } catch (e) {
