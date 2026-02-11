@@ -78,11 +78,123 @@ export function getReferrerIcon(referrerName: string) {
   return <FaGlobe className="text-neutral-400" />
 }
 
-export function getReferrerFavicon(referrer: string) {
-    try {
-        const url = new URL(referrer.startsWith('http') ? referrer : `https://${referrer}`);
-        return `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=32`;
-    } catch (e) {
-        return null;
+const REFERRER_NO_FAVICON = ['direct', 'unknown', '']
+
+/** Common subdomains to skip when deriving the main label (e.g. l.instagram.com → instagram). */
+const REFERRER_SUBDOMAIN_SKIP = new Set([
+  'www', 'm', 'l', 'app', 'mobile', 'search', 'mail', 'drive', 'maps', 'docs',
+  'sub', 'api', 'static', 'cdn', 'blog', 'shop', 'support', 'help', 'link',
+])
+
+/**
+ * Override map for display names when the heuristic would be wrong (casing or brand alias).
+ * Keys: lowercase label or hostname. Values: exact display name.
+ */
+const REFERRER_DISPLAY_OVERRIDES: Record<string, string> = {
+  chatgpt: 'ChatGPT',
+  linkedin: 'LinkedIn',
+  youtube: 'YouTube',
+  reddit: 'Reddit',
+  github: 'GitHub',
+  duckduckgo: 'DuckDuckGo',
+  whatsapp: 'WhatsApp',
+  telegram: 'Telegram',
+  pinterest: 'Pinterest',
+  snapchat: 'Snapchat',
+  tumblr: 'Tumblr',
+  quora: 'Quora',
+  't.co': 'X',
+  'x.com': 'X',
+}
+
+/**
+ * Returns the hostname for a referrer string (URL or plain hostname), or null if invalid.
+ */
+function getReferrerHostname(referrer: string): string | null {
+  if (!referrer || typeof referrer !== 'string') return null
+  const trimmed = referrer.trim()
+  if (REFERRER_NO_FAVICON.includes(trimmed.toLowerCase())) return null
+  try {
+    const url = new URL(trimmed.startsWith('http') ? trimmed : `https://${trimmed}`)
+    return url.hostname.toLowerCase()
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Derives the main label from a hostname (e.g. "l.instagram.com" → "instagram", "google.com" → "google").
+ */
+function getReferrerLabel(hostname: string): string {
+  const withoutWww = hostname.startsWith('www.') ? hostname.slice(4) : hostname
+  const parts = withoutWww.split('.')
+  if (parts.length >= 2 && REFERRER_SUBDOMAIN_SKIP.has(parts[0])) {
+    return parts[1]
+  }
+  return parts[0] ?? withoutWww
+}
+
+function capitalizeLabel(label: string): string {
+  if (!label) return label
+  return label.charAt(0).toUpperCase() + label.slice(1).toLowerCase()
+}
+
+/**
+ * Returns a friendly display name for the referrer (e.g. "Google" instead of "google.com").
+ * Uses a heuristic (hostname → main label → capitalize) plus a small override map for famous brands.
+ */
+export function getReferrerDisplayName(referrer: string): string {
+  if (!referrer || typeof referrer !== 'string') return referrer || ''
+  const trimmed = referrer.trim()
+  if (trimmed === '') return ''
+  const hostname = getReferrerHostname(trimmed)
+  if (!hostname) return trimmed
+  const overrideByHostname = REFERRER_DISPLAY_OVERRIDES[hostname]
+  if (overrideByHostname) return overrideByHostname
+  const label = getReferrerLabel(hostname)
+  const overrideByLabel = REFERRER_DISPLAY_OVERRIDES[label]
+  if (overrideByLabel) return overrideByLabel
+  return capitalizeLabel(label)
+}
+
+/**
+ * Merges referrer rows that share the same display name (e.g. chatgpt.com and https://chatgpt.com/...),
+ * summing pageviews and keeping one referrer per group for icon/tooltip. Sorted by pageviews desc.
+ */
+export function mergeReferrersByDisplayName(
+  items: Array<{ referrer: string; pageviews: number }>
+): Array<{ referrer: string; pageviews: number }> {
+  const byDisplayName = new Map<string, { referrer: string; pageviews: number; maxSingle: number }>()
+  for (const ref of items) {
+    const name = getReferrerDisplayName(ref.referrer)
+    const existing = byDisplayName.get(name)
+    if (!existing) {
+      byDisplayName.set(name, { referrer: ref.referrer, pageviews: ref.pageviews, maxSingle: ref.pageviews })
+    } else {
+      existing.pageviews += ref.pageviews
+      if (ref.pageviews > existing.maxSingle) {
+        existing.maxSingle = ref.pageviews
+        existing.referrer = ref.referrer
+      }
     }
+  }
+  return Array.from(byDisplayName.values())
+    .map(({ referrer, pageviews }) => ({ referrer, pageviews }))
+    .sort((a, b) => b.pageviews - a.pageviews)
+}
+
+/**
+ * Returns a favicon URL for the referrer's domain, or null for non-URL referrers
+ * (e.g. "Direct", "Unknown") so callers can show an icon fallback instead.
+ */
+export function getReferrerFavicon(referrer: string): string | null {
+  if (!referrer || typeof referrer !== 'string') return null
+  const normalized = referrer.trim().toLowerCase()
+  if (REFERRER_NO_FAVICON.includes(normalized)) return null
+  try {
+    const url = new URL(referrer.startsWith('http') ? referrer : `https://${referrer}`)
+    return `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=32`
+  } catch {
+    return null
+  }
 }

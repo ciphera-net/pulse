@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { formatNumber } from '@/lib/utils/format'
-import { getReferrerIcon } from '@/lib/utils/icons'
+import { getReferrerDisplayName, getReferrerFavicon, getReferrerIcon, mergeReferrersByDisplayName } from '@/lib/utils/icons'
 import { Modal, GlobeIcon } from '@ciphera-net/ui'
 import { getTopReferrers, TopReferrer } from '@/lib/api/stats'
 
@@ -19,16 +19,35 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [fullData, setFullData] = useState<TopReferrer[]>([])
   const [isLoadingFull, setIsLoadingFull] = useState(false)
+  const [faviconFailed, setFaviconFailed] = useState<Set<string>>(new Set())
 
   // Filter out empty/unknown referrers
   const filteredReferrers = (referrers || []).filter(
     ref => ref.referrer && ref.referrer !== 'Unknown' && ref.referrer !== ''
   )
 
-  const hasData = filteredReferrers.length > 0
-  const displayedReferrers = hasData ? filteredReferrers.slice(0, LIMIT) : []
+  const mergedReferrers = mergeReferrersByDisplayName(filteredReferrers)
+
+  const hasData = mergedReferrers.length > 0
+  const displayedReferrers = hasData ? mergedReferrers.slice(0, LIMIT) : []
   const emptySlots = Math.max(0, LIMIT - displayedReferrers.length)
-  const showViewAll = hasData && filteredReferrers.length > LIMIT
+  const showViewAll = hasData && mergedReferrers.length > LIMIT
+
+  function renderReferrerIcon(referrer: string) {
+    const faviconUrl = getReferrerFavicon(referrer)
+    const useFavicon = faviconUrl && !faviconFailed.has(referrer)
+    if (useFavicon) {
+      return (
+        <img
+          src={faviconUrl}
+          alt=""
+          className="w-5 h-5 flex-shrink-0 rounded object-contain"
+          onError={() => setFaviconFailed((prev) => new Set(prev).add(referrer))}
+        />
+      )
+    }
+    return <span className="text-lg flex-shrink-0">{getReferrerIcon(referrer)}</span>
+  }
 
   useEffect(() => {
     if (isModalOpen) {
@@ -80,8 +99,8 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
               {displayedReferrers.map((ref, index) => (
                 <div key={index} className="flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
                   <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
-                    <span className="text-lg flex-shrink-0">{getReferrerIcon(ref.referrer)}</span>
-                    <span className="truncate" title={ref.referrer}>{ref.referrer}</span>
+                    {renderReferrerIcon(ref.referrer)}
+                    <span className="truncate" title={ref.referrer}>{getReferrerDisplayName(ref.referrer)}</span>
                   </div>
                   <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
                     {formatNumber(ref.pageviews)}
@@ -120,11 +139,11 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
               <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading...</p>
             </div>
           ) : (
-            (fullData.length > 0 ? fullData : filteredReferrers).map((ref, index) => (
+            mergeReferrersByDisplayName(fullData.length > 0 ? fullData : filteredReferrers).map((ref, index) => (
               <div key={index} className="flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
                 <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
-                  <span className="text-lg flex-shrink-0">{getReferrerIcon(ref.referrer)}</span>
-                  <span className="truncate" title={ref.referrer}>{ref.referrer}</span>
+                  {renderReferrerIcon(ref.referrer)}
+                  <span className="truncate" title={ref.referrer}>{getReferrerDisplayName(ref.referrer)}</span>
                 </div>
                 <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
                   {formatNumber(ref.pageviews)}
