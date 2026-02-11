@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- **Campaigns block improvements.** The Campaigns card now supports sortable columns (Source, Medium, Campaign, Visitors, Pageviews), source favicons with display names (matching Top Referrers), a Pageviews column, and em-dash (—) for empty Medium/Campaign. Loading state uses a skeleton instead of a spinner. Rows use stable keys for better React reconciliation. An Export button exports campaigns to CSV; the main dashboard Export (PDF/Excel) also includes campaigns when available.
 - **Top Referrers favicons (PULSE-52).** The Top Referrers card now shows real site favicons (e.g. Google, ChatGPT, Instagram) when the referrer is a domain or URL. “Direct” and “Unknown” keep the globe icon; if a favicon fails to load, the previous icon is shown as fallback.
 - **Referrer display names.** Referrers now show friendly names (e.g. “Google”, “Kagi”) using a heuristic from the hostname plus a small override map for famous brands (ChatGPT, LinkedIn, X, etc.). New sites get a sensible name without being added to a list.
 - **Top Referrers merged by name.** Rows that map to the same display name (e.g. `chatgpt.com` and `https://chatgpt.com/...`) are merged into one row with combined pageviews, so the same source no longer appears twice.

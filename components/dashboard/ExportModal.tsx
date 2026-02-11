@@ -8,7 +8,7 @@ import autoTable from 'jspdf-autotable'
 import type { DailyStat } from './Chart'
 import { formatNumber, formatDuration } from '@/lib/utils/format'
 import { getReferrerDisplayName, mergeReferrersByDisplayName } from '@/lib/utils/icons'
-import type { TopPage, TopReferrer } from '@/lib/api/stats'
+import type { TopPage, TopReferrer, CampaignStat } from '@/lib/api/stats'
 
 interface ExportModalProps {
   isOpen: boolean
@@ -22,6 +22,7 @@ interface ExportModalProps {
   }
   topPages?: TopPage[]
   topReferrers?: TopReferrer[]
+  campaigns?: CampaignStat[]
 }
 
 type ExportFormat = 'csv' | 'json' | 'xlsx' | 'pdf'
@@ -44,7 +45,7 @@ const loadImage = (src: string): Promise<string> => {
   })
 }
 
-export default function ExportModal({ isOpen, onClose, data, stats, topPages, topReferrers }: ExportModalProps) {
+export default function ExportModal({ isOpen, onClose, data, stats, topPages, topReferrers, campaigns }: ExportModalProps) {
   const [format, setFormat] = useState<ExportFormat>('csv')
   const [filename, setFilename] = useState(`pulse_export_${new Date().toISOString().split('T')[0]}`)
   const [includeHeader, setIncludeHeader] = useState(true)
@@ -94,7 +95,19 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
     } else if (format === 'xlsx') {
       const ws = XLSX.utils.json_to_sheet(exportData)
       const wb = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(wb, ws, "Data")
+      XLSX.utils.book_append_sheet(wb, ws, 'Data')
+      if (campaigns && campaigns.length > 0) {
+        const campaignsSheet = XLSX.utils.json_to_sheet(
+          campaigns.map(c => ({
+            Source: getReferrerDisplayName(c.source),
+            Medium: c.medium || '—',
+            Campaign: c.campaign || '—',
+            Visitors: c.visitors,
+            Pageviews: c.pageviews,
+          }))
+        )
+        XLSX.utils.book_append_sheet(wb, campaignsSheet, 'Campaigns')
+      }
       const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
       const blob = new Blob([wbout], { type: 'application/octet-stream' })
       
@@ -290,6 +303,36 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
             headStyles: { fillColor: [249, 115, 22], textColor: [255, 255, 255], fontStyle: 'bold' },
             columnStyles: { 1: { halign: 'right' } },
             alternateRowStyles: { fillColor: [255, 250, 245] },
+        })
+        
+        finalY = (doc as any).lastAutoTable.finalY + 10
+      }
+
+      // Campaigns Table
+      if (campaigns && campaigns.length > 0) {
+        if (finalY + 40 > doc.internal.pageSize.height) {
+          doc.addPage()
+          finalY = 20
+        }
+        doc.setFontSize(14)
+        doc.setTextColor(23, 23, 23)
+        doc.text('Campaigns', 14, finalY)
+        finalY += 5
+        const campaignsData = campaigns.slice(0, 10).map(c => [
+          getReferrerDisplayName(c.source),
+          c.medium || '—',
+          c.campaign || '—',
+          formatNumber(c.visitors),
+          formatNumber(c.pageviews),
+        ])
+        autoTable(doc, {
+          startY: finalY,
+          head: [['Source', 'Medium', 'Campaign', 'Visitors', 'Pageviews']],
+          body: campaignsData,
+          styles: { font: 'helvetica', fontSize: 9, cellPadding: 3 },
+          headStyles: { fillColor: [249, 115, 22], textColor: [255, 255, 255], fontStyle: 'bold' },
+          columnStyles: { 3: { halign: 'right' }, 4: { halign: 'right' } },
+          alternateRowStyles: { fillColor: [255, 250, 245] },
         })
       }
 
