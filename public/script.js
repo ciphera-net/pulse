@@ -172,8 +172,7 @@
             }
           } catch (e3) {}
         }
-        // * Best-effort only: another tab could write before setItem; without locks perfect sync is not achievable
-        cachedSessionId = generateId();
+        // * Best-effort only: another tab could write between here and setItem; without locks perfect sync is not achievable
         localStorage.setItem(key, JSON.stringify({ id: cachedSessionId, created: Date.now() }));
       } catch (e) {
         cachedSessionId = generateId();
