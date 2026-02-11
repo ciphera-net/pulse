@@ -78,11 +78,20 @@ export function getReferrerIcon(referrerName: string) {
   return <FaGlobe className="text-neutral-400" />
 }
 
-export function getReferrerFavicon(referrer: string) {
-    try {
-        const url = new URL(referrer.startsWith('http') ? referrer : `https://${referrer}`);
-        return `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=32`;
-    } catch (e) {
-        return null;
-    }
+const REFERRER_NO_FAVICON = ['direct', 'unknown', '']
+
+/**
+ * Returns a favicon URL for the referrer's domain, or null for non-URL referrers
+ * (e.g. "Direct", "Unknown") so callers can show an icon fallback instead.
+ */
+export function getReferrerFavicon(referrer: string): string | null {
+  if (!referrer || typeof referrer !== 'string') return null
+  const normalized = referrer.trim().toLowerCase()
+  if (REFERRER_NO_FAVICON.includes(normalized)) return null
+  try {
+    const url = new URL(referrer.startsWith('http') ? referrer : `https://${referrer}`)
+    return `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=32`
+  } catch {
+    return null
+  }
 }
