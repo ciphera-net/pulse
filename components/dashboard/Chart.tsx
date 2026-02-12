@@ -13,7 +13,7 @@ import {
   ReferenceLine,
 } from 'recharts'
 import type { TooltipProps } from 'recharts'
-import { formatNumber, formatDuration } from '@/lib/utils/format'
+import { formatNumber, formatDuration, formatUpdatedAgo } from '@/lib/utils/format'
 import { ArrowUpRightIcon, ArrowDownRightIcon, BarChartIcon, Select, Button, DownloadIcon } from '@ciphera-net/ui'
 import { Checkbox } from '@ciphera-net/ui'
 
@@ -69,6 +69,8 @@ interface ChartProps {
   setMultiDayInterval: (interval: 'hour' | 'day') => void
   /** Optional: callback when user requests chart export (parent can open ExportModal or handle export) */
   onExportChart?: () => void
+  /** Optional: timestamp of last data fetch for "Live · Xs ago" indicator */
+  lastUpdatedAt?: number | null
 }
 
 type MetricType = 'pageviews' | 'visitors' | 'bounce_rate' | 'avg_duration'
@@ -263,6 +265,7 @@ export default function Chart({
   multiDayInterval,
   setMultiDayInterval,
   onExportChart,
+  lastUpdatedAt,
 }: ChartProps) {
   const [metric, setMetric] = useState<MetricType>('visitors')
   const [showComparison, setShowComparison] = useState(false)
@@ -406,10 +409,19 @@ export default function Chart({
   return (
     <div
       ref={chartContainerRef}
-      className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm"
+      className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm relative"
       role="region"
       aria-label={`Analytics chart showing ${metricLabel} over time`}
     >
+      {/* * Subtle live/updated indicator in bottom-right corner */}
+      {lastUpdatedAt != null && (
+        <div
+          className="absolute bottom-3 right-6 text-xs text-neutral-500 dark:text-neutral-400 pointer-events-none"
+          title="Data refreshes every 30 seconds"
+        >
+          Live · {formatUpdatedAgo(lastUpdatedAt)}
+        </div>
+      )}
       {/* Stats Header (Interactive Tabs) */}
       <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-neutral-200 dark:divide-neutral-800 border-b border-neutral-200 dark:border-neutral-800">
         {metrics.map((item) => (
