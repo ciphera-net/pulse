@@ -92,9 +92,9 @@ export default function PublicDashboardPage() {
     return () => clearInterval(interval)
   }, [data, isPasswordProtected, dateRange, todayInterval, multiDayInterval, password])
 
-  // * Tick every 5s to refresh "Updated X ago" display
+  // * Tick every 1s so "Live · Xs ago" counts in real time
   useEffect(() => {
-    const interval = setInterval(() => setTick((t) => t + 1), 5000)
+    const interval = setInterval(() => setTick((t) => t + 1), 1000)
     return () => clearInterval(interval)
   }, [])
 
