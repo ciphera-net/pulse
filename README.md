@@ -4,7 +4,13 @@
 [![Built with Next.js](https://img.shields.io/badge/Built%20with-Next.js-blue.svg?logo=next.js&logoColor=white)](https://nextjs.org/)
 [![Hosted in Switzerland](https://img.shields.io/badge/Hosted%20in-Switzerland-red.svg)](https://en.wikipedia.org/wiki/Switzerland)
 
-Pulse is the dashboard interface for the Pulse analytics platform. It provides a simple, intuitive interface for managing sites and viewing analytics data.
+**Pulse** is a privacy-first analytics platform by Ciphera. Use it as a hosted service—no self-hosting required.
+
+## Get Pulse
+
+Pulse is available as a commercial product. Hosted in Switzerland, it gives you real-time analytics and insights without compromising your visitors' privacy.
+
+**[Try Pulse Free →](https://pulse.ciphera.net)**
 
 ## Features
 
@@ -24,41 +30,9 @@ Pulse is the dashboard interface for the Pulse analytics platform. It provides a
 - **UI Components**: @ciphera-net/ui for shared components
 - **Hosting**: Swiss infrastructure
 
-## Getting Started
+## Contributing
 
-### Prerequisites
-
-- Node.js 18+ 
-- npm or yarn
-
-### Installation
-
-1. Install dependencies:
-```bash
-npm install
-```
-
-2. Set up environment variables (create `.env.local` file):
-```env
-NEXT_PUBLIC_API_URL=http://localhost:8082
-NEXT_PUBLIC_AUTH_URL=http://localhost:3000
-NEXT_PUBLIC_AUTH_API_URL=http://localhost:8081
-NEXT_PUBLIC_APP_URL=http://localhost:3003
-```
-
-3. Run the development server:
-```bash
-npm run dev
-```
-
-4. Open [http://localhost:3003](http://localhost:3003) in your browser.
-
-### Build for Production
-
-```bash
-npm run build
-npm start
-```
+This repository is open source. If you want to contribute (bug fixes, features, docs), see [CONTRIBUTING.md](CONTRIBUTING.md) for setup and workflow.
 
 ## Releasing
 
@@ -72,7 +46,7 @@ The frontend follows the Ciphera design language:
 - **Neutral Colors**: Full scale (50-900) for UI elements
 - **Dark Mode**: Full support with class-based switching
 - **Font**: Plus Jakarta Sans
-- **Design Patterns**: 
+- **Design Patterns**:
   - Rounded corners (rounded-xl, rounded-3xl)
   - Smooth transitions (duration-200, duration-300)
   - Shadow effects with brand-orange accents
