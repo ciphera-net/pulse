@@ -127,15 +127,6 @@ export default function SiteDashboardPage() {
     localStorage.setItem('pulse_dashboard_settings', JSON.stringify(settings))
   }, [todayInterval, multiDayInterval, isSettingsLoaded]) // dateRange is handled in saveSettings/onChange
 
-  useEffect(() => {
-    if (isSettingsLoaded) loadData()
-    const interval = setInterval(() => {
-      loadData(true)
-      loadRealtime()
-    }, 30000)
-    return () => clearInterval(interval)
-  }, [siteId, dateRange, todayInterval, multiDayInterval, isSettingsLoaded, loadData, loadRealtime])
-
   // * Tick every 1s so "Live · Xs ago" counts in real time
   useEffect(() => {
     const interval = setInterval(() => setTick((t) => t + 1), 1000)
@@ -214,6 +205,15 @@ export default function SiteDashboardPage() {
       // Silently fail for realtime updates
     }
   }, [siteId])
+
+  useEffect(() => {
+    if (isSettingsLoaded) loadData()
+    const interval = setInterval(() => {
+      loadData(true)
+      loadRealtime()
+    }, 30000)
+    return () => clearInterval(interval)
+  }, [siteId, dateRange, todayInterval, multiDayInterval, isSettingsLoaded, loadData, loadRealtime])
 
   if (loading) {
     return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" />
