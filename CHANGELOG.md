@@ -6,9 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [0.5.0-alpha] - 2026-02-11
 
+### Added
+
+- **Live chart and KPIs.** Chart and stats refresh every 30 seconds. "Live · Xs ago" indicator with green dot in the chart corner counts in real time.
+- **Polling indicator.** Shows when data was last updated (bottom-right of chart card).
+
 ### Changed
 
-- **Analytics chart improvements.** Clearer labels (including what the chart measures), compare mode shows which period you're comparing against, mini trend lines on each stat, export chart as image, and a better experience on mobile.
+- **Analytics chart improvements.** Clearer labels, compare mode shows which period you're comparing against, mini trend lines on each stat, export chart as image, and a better experience on mobile.
+- **Trend context for all date ranges.** "vs yesterday" or "vs previous 7 days" now shows for Today, 7 days, and 30 days.
+- **Compare label shortened.** "Compare with previous period" → "Compare".
+- **Chart axes layout.** Y-axis space matches X-axis; metric label moved above chart; compact duration format for axis ticks.
 
 ## [0.4.0-alpha] - 2026-02-11
 
