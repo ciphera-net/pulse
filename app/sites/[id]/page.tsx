@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { getSite, type Site } from '@/lib/api/sites'
 import { getStats, getRealtime, getDailyStats, getTopPages, getTopReferrers, getCountries, getCities, getRegions, getBrowsers, getOS, getDevices, getScreenResolutions, getEntryPages, getExitPages, getDashboard, getCampaigns, getPerformanceByPage, type Stats, type DailyStat, type PerformanceByPageStat } from '@/lib/api/stats'
-import { formatNumber, formatDuration, formatUpdatedAgo, getDateRange } from '@/lib/utils/format'
+import { formatNumber, formatDuration, getDateRange } from '@/lib/utils/format'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@/lib/utils/authErrors'
 import { LoadingOverlay, Button } from '@ciphera-net/ui'
@@ -259,27 +259,19 @@ export default function SiteDashboardPage() {
               </p>
             </div>
             
-            <div className="flex items-center gap-3">
-              {/* Realtime Indicator */}
-              <button
-                onClick={() => router.push(`/sites/${siteId}/realtime`)}
-                className="flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded-full border border-green-500/20 hover:bg-green-500/20 transition-colors cursor-pointer"
-              >
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                </span>
-                <span className="text-sm font-medium text-green-700 dark:text-green-400">
-                  {realtime} current visitors
-                </span>
-              </button>
-              {/* Polling indicator */}
-              {lastUpdatedAt !== null && (
-                <span className="text-xs text-neutral-500 dark:text-neutral-400" title="Data refreshes every 30 seconds">
-                  Updated {formatUpdatedAgo(lastUpdatedAt)}
-                </span>
-              )}
-            </div>
+            {/* Realtime Indicator */}
+            <button
+              onClick={() => router.push(`/sites/${siteId}/realtime`)}
+              className="flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded-full border border-green-500/20 hover:bg-green-500/20 transition-colors cursor-pointer"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+              </span>
+              <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                {realtime} current visitors
+              </span>
+            </button>
           </div>
 
             <div className="flex items-center gap-2">
@@ -379,6 +371,7 @@ export default function SiteDashboardPage() {
           setTodayInterval={setTodayInterval}
           multiDayInterval={multiDayInterval}
           setMultiDayInterval={setMultiDayInterval}
+          lastUpdatedAt={lastUpdatedAt}
         />
       </div>
 
