@@ -15,7 +15,6 @@ import {
   FaTabletAlt, 
   FaGoogle, 
   FaFacebook, 
-  FaTwitter, 
   FaLinkedin, 
   FaInstagram, 
   FaGithub, 
@@ -24,6 +23,7 @@ import {
   FaQuestion,
   FaGlobe
 } from 'react-icons/fa'
+import { FaXTwitter } from 'react-icons/fa6'
 import { SiBrave } from 'react-icons/si'
 import { MdDeviceUnknown, MdSmartphone, MdTabletMac, MdDesktopWindows } from 'react-icons/md'
 
@@ -67,7 +67,7 @@ export function getReferrerIcon(referrerName: string) {
   const lower = referrerName.toLowerCase()
   if (lower.includes('google')) return <FaGoogle className="text-blue-500" />
   if (lower.includes('facebook')) return <FaFacebook className="text-blue-600" />
-  if (lower.includes('twitter') || lower.includes('t.co') || lower.includes('x.com')) return <FaTwitter className="text-blue-400" />
+  if (lower.includes('twitter') || lower.includes('t.co') || lower.includes('x.com')) return <FaXTwitter className="text-neutral-800 dark:text-neutral-200" />
   if (lower.includes('linkedin')) return <FaLinkedin className="text-blue-700" />
   if (lower.includes('instagram')) return <FaInstagram className="text-pink-600" />
   if (lower.includes('github')) return <FaGithub className="text-neutral-800 dark:text-neutral-200" />
@@ -183,6 +183,9 @@ export function mergeReferrersByDisplayName(
     .sort((a, b) => b.pageviews - a.pageviews)
 }
 
+/** Domains that always use the custom X icon instead of favicon (avoids legacy bird). */
+const REFERRER_USE_X_ICON = new Set(['t.co', 'x.com', 'twitter.com', 'www.twitter.com'])
+
 /**
  * Returns a favicon URL for the referrer's domain, or null for non-URL referrers
  * (e.g. "Direct", "Unknown") so callers can show an icon fallback instead.
@@ -193,6 +196,7 @@ export function getReferrerFavicon(referrer: string): string | null {
   if (REFERRER_NO_FAVICON.includes(normalized)) return null
   try {
     const url = new URL(referrer.startsWith('http') ? referrer : `https://${referrer}`)
+    if (REFERRER_USE_X_ICON.has(url.hostname.toLowerCase())) return null
     return `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=32`
   } catch {
     return null
