@@ -1,7 +1,7 @@
 'use client'
 
 import { useAuth } from '@/lib/auth/context'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { getSite, type Site } from '@/lib/api/sites'
@@ -57,6 +57,8 @@ export default function SiteDashboardPage() {
   const [todayInterval, setTodayInterval] = useState<'minute' | 'hour'>('hour')
   const [multiDayInterval, setMultiDayInterval] = useState<'hour' | 'day'>('day')
   const [isSettingsLoaded, setIsSettingsLoaded] = useState(false)
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null)
+  const [, setTick] = useState(0)
 
   // Load settings from localStorage
   useEffect(() => {
@@ -126,42 +128,36 @@ export default function SiteDashboardPage() {
   }, [todayInterval, multiDayInterval, isSettingsLoaded]) // dateRange is handled in saveSettings/onChange
 
   useEffect(() => {
-    if (isSettingsLoaded) {
-      loadData()
-    }
+    if (isSettingsLoaded) loadData()
     const interval = setInterval(() => {
+      loadData(true)
       loadRealtime()
-    }, 30000) // Update every 30 seconds
+    }, 30000)
     return () => clearInterval(interval)
-  }, [siteId, dateRange, todayInterval, multiDayInterval, isSettingsLoaded])
+  }, [siteId, dateRange, todayInterval, multiDayInterval, isSettingsLoaded, loadData, loadRealtime])
 
-  const getPreviousDateRange = (start: string, end: string) => {
+  // * Tick every 1s so "Live · Xs ago" counts in real time
+  useEffect(() => {
+    const interval = setInterval(() => setTick((t) => t + 1), 1000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const getPreviousDateRange = useCallback((start: string, end: string) => {
     const startDate = new Date(start)
     const endDate = new Date(end)
     const duration = endDate.getTime() - startDate.getTime()
-    
-    // * If duration is 0 (Today), set previous range to yesterday
     if (duration === 0) {
       const prevEnd = new Date(startDate.getTime() - 24 * 60 * 60 * 1000)
-      const prevStart = prevEnd
-      return {
-        start: prevStart.toISOString().split('T')[0],
-        end: prevEnd.toISOString().split('T')[0]
-      }
+      return { start: prevEnd.toISOString().split('T')[0], end: prevEnd.toISOString().split('T')[0] }
     }
-
     const prevEnd = new Date(startDate.getTime() - 24 * 60 * 60 * 1000)
     const prevStart = new Date(prevEnd.getTime() - duration)
-    
-    return {
-      start: prevStart.toISOString().split('T')[0],
-      end: prevEnd.toISOString().split('T')[0]
-    }
-  }
+    return { start: prevStart.toISOString().split('T')[0], end: prevEnd.toISOString().split('T')[0] }
+  }, [])
 
-  const loadData = async () => {
+  const loadData = useCallback(async (silent = false) => {
     try {
-      setLoading(true)
+      if (!silent) setLoading(true)
       const interval = dateRange.start === dateRange.end ? todayInterval : multiDayInterval
       
       const [data, prevStatsData, prevDailyStatsData, campaignsData] = await Promise.all([
@@ -200,21 +196,24 @@ export default function SiteDashboardPage() {
       setPerformanceByPage(data.performance_by_page ?? null)
       setGoalCounts(Array.isArray(data.goal_counts) ? data.goal_counts : [])
       setCampaigns(Array.isArray(campaignsData) ? campaignsData : [])
+      setLastUpdatedAt(Date.now())
     } catch (error: unknown) {
-      toast.error(getAuthErrorMessage(error) || 'Failed to load data: ' + ((error as Error)?.message || 'Unknown error'))
+      if (!silent) {
+        toast.error(getAuthErrorMessage(error) || 'Failed to load data: ' + ((error as Error)?.message || 'Unknown error'))
+      }
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
-  }
+  }, [siteId, dateRange, todayInterval, multiDayInterval])
 
-  const loadRealtime = async () => {
+  const loadRealtime = useCallback(async () => {
     try {
       const data = await getRealtime(siteId)
       setRealtime(data.visitors)
     } catch (error) {
       // Silently fail for realtime updates
     }
-  }
+  }, [siteId])
 
   if (loading) {
     return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" />
@@ -359,6 +358,7 @@ export default function SiteDashboardPage() {
           setTodayInterval={setTodayInterval}
           multiDayInterval={multiDayInterval}
           setMultiDayInterval={setMultiDayInterval}
+          lastUpdatedAt={lastUpdatedAt}
         />
       </div>
 

@@ -26,6 +26,18 @@ export function getDateRange(days: number): { start: string; end: string } {
 }
 
 /**
+ * Format "updated X ago" for polling indicators (e.g. "Just now", "12 seconds ago")
+ */
+export function formatUpdatedAgo(timestamp: number): string {
+  const diff = Math.floor((Date.now() - timestamp) / 1000)
+  if (diff < 5) return 'Just now'
+  if (diff < 60) return `${diff} seconds ago`
+  if (diff < 120) return '1 minute ago'
+  const minutes = Math.floor(diff / 60)
+  return `${minutes} minutes ago`
+}
+
+/**
  * Format relative time (e.g., "2 hours ago")
  */
 export function formatRelativeTime(date: string | Date): string {

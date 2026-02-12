@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useCallback } from 'react'
 import { useTheme } from '@ciphera-net/ui'
 import {
   AreaChart,
@@ -13,8 +13,8 @@ import {
   ReferenceLine,
 } from 'recharts'
 import type { TooltipProps } from 'recharts'
-import { formatNumber, formatDuration } from '@/lib/utils/format'
-import { ArrowUpRightIcon, ArrowDownRightIcon, BarChartIcon, Select } from '@ciphera-net/ui'
+import { formatNumber, formatDuration, formatUpdatedAgo } from '@/lib/utils/format'
+import { ArrowUpRightIcon, ArrowDownRightIcon, BarChartIcon, Select, Button, DownloadIcon } from '@ciphera-net/ui'
 import { Checkbox } from '@ciphera-net/ui'
 
 const COLORS = {
@@ -67,6 +67,10 @@ interface ChartProps {
   setTodayInterval: (interval: 'minute' | 'hour') => void
   multiDayInterval: 'hour' | 'day'
   setMultiDayInterval: (interval: 'hour' | 'day') => void
+  /** Optional: callback when user requests chart export (parent can open ExportModal or handle export) */
+  onExportChart?: () => void
+  /** Optional: timestamp of last data fetch for "Live · Xs ago" indicator */
+  lastUpdatedAt?: number | null
 }
 
 type MetricType = 'pageviews' | 'visitors' | 'bounce_rate' | 'avg_duration'
@@ -80,6 +84,7 @@ function ChartTooltip({
   metricLabel,
   formatNumberFn,
   showComparison,
+  prevPeriodLabel,
   colors,
 }: {
   active?: boolean
@@ -89,6 +94,7 @@ function ChartTooltip({
   metricLabel: string
   formatNumberFn: (n: number) => string
   showComparison: boolean
+  prevPeriodLabel?: string
   colors: typeof CHART_COLORS_LIGHT
 }) {
   if (!active || !payload?.length || !label) return null
@@ -140,7 +146,7 @@ function ChartTooltip({
       </div>
       {hasPrev && (
         <div className="mt-1.5 flex items-center gap-1.5 text-xs" style={{ color: colors.textMuted }}>
-          <span>vs {formatValue(prev as number)} prev</span>
+          <span>vs {formatValue(prev as number)} {prevPeriodLabel ? `(${prevPeriodLabel})` : 'prev'}</span>
           {delta !== null && (
             <span
               className="font-medium"
@@ -164,6 +170,89 @@ function formatAxisValue(value: number): string {
   return String(value)
 }
 
+// * Compact duration for Y-axis ticks (avoids truncation: "5m" not "5m 0s")
+function formatAxisDuration(seconds: number): string {
+  if (!seconds) return '0s'
+  const m = Math.floor(seconds / 60)
+  const s = Math.floor(seconds % 60)
+  if (m > 0) return s > 0 ? `${m}m ${s}s` : `${m}m`
+  return `${s}s`
+}
+
+// * Returns human-readable label for the previous comparison period (e.g. "Feb 10" or "Jan 5 – Feb 4")
+function getPrevDateRangeLabel(dateRange: { start: string; end: string }): string {
+  const startDate = new Date(dateRange.start)
+  const endDate = new Date(dateRange.end)
+  const duration = endDate.getTime() - startDate.getTime()
+
+  if (duration === 0) {
+    const prev = new Date(startDate.getTime() - 24 * 60 * 60 * 1000)
+    return prev.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  }
+
+  const prevEnd = new Date(startDate.getTime() - 24 * 60 * 60 * 1000)
+  const prevStart = new Date(prevEnd.getTime() - duration)
+  const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return `${fmt(prevStart)} – ${fmt(prevEnd)}`
+}
+
+// * Returns short trend context (e.g. "vs yesterday", "vs previous 7 days")
+function getTrendContext(dateRange: { start: string; end: string }): string {
+  const startDate = new Date(dateRange.start)
+  const endDate = new Date(dateRange.end)
+  const duration = endDate.getTime() - startDate.getTime()
+
+  if (duration === 0) return 'vs yesterday'
+  const days = Math.round(duration / (24 * 60 * 60 * 1000))
+  if (days === 1) return 'vs yesterday'
+  return `vs previous ${days} days`
+}
+
+// * Mini sparkline SVG for KPI cards
+function Sparkline({
+  data,
+  dataKey,
+  color,
+  width = 56,
+  height = 20,
+}: {
+  data: Array<Record<string, unknown>>
+  dataKey: string
+  color: string
+  width?: number
+  height?: number
+}) {
+  if (!data.length) return null
+  const values = data.map((d) => Number(d[dataKey] ?? 0))
+  const max = Math.max(...values, 1)
+  const min = Math.min(...values, 0)
+  const range = max - min || 1
+  const padding = 2
+  const w = width - padding * 2
+  const h = height - padding * 2
+
+  const points = values.map((v, i) => {
+    const x = padding + (i / Math.max(values.length - 1, 1)) * w
+    const y = padding + h - ((v - min) / range) * h
+    return `${x},${y}`
+  })
+
+  const pathD = points.length > 1 ? `M ${points.join(' L ')}` : `M ${points[0]} L ${points[0]}`
+
+  return (
+    <svg width={width} height={height} className="flex-shrink-0" aria-hidden>
+      <path
+        d={pathD}
+        fill="none"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 export default function Chart({ 
   data, 
   prevData, 
@@ -174,11 +263,35 @@ export default function Chart({
   todayInterval,
   setTodayInterval,
   multiDayInterval,
-  setMultiDayInterval
+  setMultiDayInterval,
+  onExportChart,
+  lastUpdatedAt,
 }: ChartProps) {
   const [metric, setMetric] = useState<MetricType>('visitors')
   const [showComparison, setShowComparison] = useState(false)
+  const chartContainerRef = useRef<HTMLDivElement>(null)
   const { resolvedTheme } = useTheme()
+
+  const handleExportChart = useCallback(async () => {
+    if (onExportChart) {
+      onExportChart()
+      return
+    }
+    if (!chartContainerRef.current) return
+    try {
+      const { toPng } = await import('html-to-image')
+      const dataUrl = await toPng(chartContainerRef.current, {
+        cacheBust: true,
+        backgroundColor: resolvedTheme === 'dark' ? '#171717' : '#ffffff',
+      })
+      const link = document.createElement('a')
+      link.download = `chart-${dateRange.start}-${dateRange.end}.png`
+      link.href = dataUrl
+      link.click()
+    } catch {
+      // Fallback: do nothing if export fails
+    }
+  }, [onExportChart, dateRange, resolvedTheme])
 
   const colors = useMemo(
     () => (resolvedTheme === 'dark' ? CHART_COLORS_DARK : CHART_COLORS_LIGHT),
@@ -265,12 +378,16 @@ export default function Chart({
   const activeMetric = metrics.find((m) => m.id === metric) || metrics[0]
   const chartMetric = metric
   const metricLabel = metrics.find(m => m.id === metric)?.label || 'visitors'
+  const prevPeriodLabel = prevData?.length ? getPrevDateRangeLabel(dateRange) : ''
+  const trendContext = getTrendContext(dateRange)
 
   const avg = chartData.length
     ? chartData.reduce((s, d) => s + (d[chartMetric] as number), 0) / chartData.length
     : 0
 
   const hasPrev = !!(prevData?.length && showComparison)
+  const hasData = data.length > 0
+  const hasAnyNonZero = hasData && chartData.some((d) => (d[chartMetric] as number) > 0)
 
   // * In hourly view, only show X-axis labels at 12:00 AM (date + 12:00 AM).
   const midnightTicks =
@@ -290,44 +407,77 @@ export default function Chart({
   const dayTicks = interval === 'day' && chartData.length > 0 ? chartData.map((c) => c.date) : undefined
 
   return (
-    <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm">
+    <div
+      ref={chartContainerRef}
+      className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm relative"
+      role="region"
+      aria-label={`Analytics chart showing ${metricLabel} over time`}
+    >
+      {/* * Subtle live/updated indicator in bottom-right corner */}
+      {lastUpdatedAt != null && (
+        <div
+          className="absolute bottom-3 right-6 flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400 pointer-events-none"
+          title="Data refreshes every 30 seconds"
+        >
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
+          </span>
+          Live · {formatUpdatedAgo(lastUpdatedAt)}
+        </div>
+      )}
       {/* Stats Header (Interactive Tabs) */}
       <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-neutral-200 dark:divide-neutral-800 border-b border-neutral-200 dark:border-neutral-800">
         {metrics.map((item) => (
           <button
             key={item.id}
+            type="button"
             onClick={() => setMetric(item.id as MetricType)}
+            aria-pressed={metric === item.id}
+            aria-label={`Show ${item.label} chart`}
             className={`
-              p-6 text-left transition-colors relative group
+              p-4 sm:p-6 text-left transition-colors relative group
               hover:bg-neutral-50 dark:hover:bg-neutral-800/50
               ${metric === item.id ? 'bg-neutral-50 dark:bg-neutral-800/50' : ''}
-              cursor-pointer
+              cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2
             `}
           >
             <div className={`text-xs font-semibold uppercase tracking-wider mb-1 flex items-center gap-2 ${metric === item.id ? 'text-neutral-900 dark:text-white' : 'text-neutral-500'}`}>
               {item.label}
             </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-neutral-900 dark:text-white">
+            <div className="flex items-baseline gap-2 flex-wrap">
+              <span className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-white">
                 {item.value}
               </span>
-              {item.trend !== null && (
-                <span className={`flex items-center text-sm font-medium ${
-                  (item.invertTrend ? -item.trend : item.trend) > 0 
-                    ? 'text-emerald-600 dark:text-emerald-500' 
-                    : (item.invertTrend ? -item.trend : item.trend) < 0 
-                      ? 'text-red-600 dark:text-red-500' 
-                      : 'text-neutral-500'
-                }`}>
-                  {(item.invertTrend ? -item.trend : item.trend) > 0 ? (
-                     <ArrowUpRightIcon className="w-3 h-3 mr-0.5" />
-                  ) : (item.invertTrend ? -item.trend : item.trend) < 0 ? (
-                     <ArrowDownRightIcon className="w-3 h-3 mr-0.5" />
-                  ) : null}
-                  {Math.abs(item.trend)}%
-                </span>
-              )}
+              <span className="flex items-center text-sm font-medium">
+                {item.trend !== null ? (
+                  <>
+                    <span className={
+                      (item.invertTrend ? -item.trend : item.trend) > 0 
+                        ? 'text-emerald-600 dark:text-emerald-500' 
+                        : (item.invertTrend ? -item.trend : item.trend) < 0 
+                          ? 'text-red-600 dark:text-red-500' 
+                          : 'text-neutral-500'
+                    }>
+                      {(item.invertTrend ? -item.trend : item.trend) > 0 ? (
+                        <ArrowUpRightIcon className="w-3 h-3 mr-0.5 inline" />
+                      ) : (item.invertTrend ? -item.trend : item.trend) < 0 ? (
+                        <ArrowDownRightIcon className="w-3 h-3 mr-0.5 inline" />
+                      ) : null}
+                      {Math.abs(item.trend)}%
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-neutral-500 dark:text-neutral-400">—</span>
+                )}
+              </span>
             </div>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{trendContext}</p>
+            {hasData && (
+              <div className="mt-2">
+                <Sparkline data={chartData} dataKey={item.id} color={item.color} />
+              </div>
+            )}
             {metric === item.id && (
                <div className="absolute bottom-0 left-0 right-0 h-1" style={{ backgroundColor: item.color }} />
             )}
@@ -355,51 +505,71 @@ export default function Chart({
                     className="h-2 w-2 rounded-full border border-dashed"
                     style={{ borderColor: colors.axis }}
                   />
-                  Previous
+                  Previous{prevPeriodLabel ? ` (${prevPeriodLabel})` : ''}
                 </span>
               </div>
             )}
           </div>
 
           {/* Right side: Controls */}
-          <div className="flex items-center gap-3 self-end sm:self-auto">
-            {dateRange.start === dateRange.end && (
-              <Select
-                value={todayInterval}
-                onChange={(value) => setTodayInterval(value as 'minute' | 'hour')}
-                options={[
-                  { value: 'minute', label: '1 min' },
-                  { value: 'hour', label: '1 hour' },
-                ]}
-                className="min-w-[100px]"
-              />
-            )}
-            {dateRange.start !== dateRange.end && (
-              <Select
-                value={multiDayInterval}
-                onChange={(value) => setMultiDayInterval(value as 'hour' | 'day')}
-                options={[
-                  { value: 'hour', label: '1 hour' },
-                  { value: 'day', label: '1 day' },
-                ]}
-                className="min-w-[100px]"
-              />
-            )}
+          <div className="flex flex-wrap items-center gap-3 self-end sm:self-auto">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-neutral-500 dark:text-neutral-400">Group by:</span>
+              {dateRange.start === dateRange.end && (
+                <Select
+                  value={todayInterval}
+                  onChange={(value) => setTodayInterval(value as 'minute' | 'hour')}
+                  options={[
+                    { value: 'minute', label: '1 min' },
+                    { value: 'hour', label: '1 hour' },
+                  ]}
+                  className="min-w-[100px]"
+                />
+              )}
+              {dateRange.start !== dateRange.end && (
+                <Select
+                  value={multiDayInterval}
+                  onChange={(value) => setMultiDayInterval(value as 'hour' | 'day')}
+                  options={[
+                    { value: 'hour', label: '1 hour' },
+                    { value: 'day', label: '1 day' },
+                  ]}
+                  className="min-w-[100px]"
+                />
+              )}
+            </div>
 
             {prevData?.length ? (
-              <Checkbox
-                checked={showComparison}
-                onCheckedChange={setShowComparison}
-                label="Compare"
-              />
+              <div className="flex flex-col gap-0.5">
+                <Checkbox
+                  checked={showComparison}
+                  onCheckedChange={setShowComparison}
+                  label="Compare"
+                />
+                {showComparison && prevPeriodLabel && (
+                  <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                    ({prevPeriodLabel})
+                  </span>
+                )}
+              </div>
             ) : null}
+
+            <Button
+              variant="ghost"
+              onClick={handleExportChart}
+              disabled={!hasData}
+              className="gap-1.5 py-1.5 px-3 text-sm text-neutral-600 dark:text-neutral-400"
+            >
+              <DownloadIcon className="w-4 h-4" />
+              Export chart
+            </Button>
 
             {/* Vertical Separator */}
             <div className="h-4 w-px bg-neutral-200 dark:bg-neutral-800" />
           </div>
         </div>
 
-        {data.length === 0 ? (
+        {!hasData ? (
           <div className="flex h-[320px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30">
             <BarChartIcon className="h-12 w-12 text-neutral-300 dark:text-neutral-600" aria-hidden />
             <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
@@ -407,10 +577,22 @@ export default function Chart({
             </p>
             <p className="text-xs text-neutral-400 dark:text-neutral-500">Try a different date range</p>
           </div>
+        ) : !hasAnyNonZero ? (
+          <div className="flex h-[320px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30">
+            <BarChartIcon className="h-12 w-12 text-neutral-300 dark:text-neutral-600" aria-hidden />
+            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
+              No {metricLabel.toLowerCase()} data for this period
+            </p>
+            <p className="text-xs text-neutral-400 dark:text-neutral-500">Try selecting another metric or date range</p>
+          </div>
         ) : (
-          <div className="h-[360px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ top: 10, right: 8, left: -16, bottom: 0 }}>
+          <div className="h-[360px] w-full flex flex-col">
+            <div className="text-xs font-medium mb-1 flex-shrink-0" style={{ color: colors.axis }}>
+              {metricLabel}
+            </div>
+            <div className="flex-1 min-h-0 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData} margin={{ top: 4, right: 8, left: 24, bottom: 24 }}>
                 <defs>
                   <linearGradient id={`gradient-${metric}`} x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor={activeMetric.color} stopOpacity={0.35} />
@@ -434,9 +616,10 @@ export default function Chart({
                   tickLine={false}
                   axisLine={false}
                   domain={[0, 'auto']}
+                  width={24}
                   tickFormatter={(val) => {
                     if (metric === 'bounce_rate') return `${val}%`
-                    if (metric === 'avg_duration') return formatDuration(val)
+                    if (metric === 'avg_duration') return formatAxisDuration(val)
                     return formatAxisValue(val)
                   }}
                 />
@@ -453,6 +636,7 @@ export default function Chart({
                       metricLabel={metricLabel}
                       formatNumberFn={formatNumber}
                       showComparison={hasPrev}
+                      prevPeriodLabel={prevPeriodLabel}
                       colors={colors}
                     />
                   )}
@@ -465,6 +649,12 @@ export default function Chart({
                     stroke={colors.axis}
                     strokeDasharray="4 4"
                     strokeOpacity={0.7}
+                    label={{
+                      value: `Avg: ${metric === 'bounce_rate' ? `${Math.round(avg)}%` : metric === 'avg_duration' ? formatAxisDuration(avg) : formatAxisValue(avg)}`,
+                      position: 'insideTopRight',
+                      fill: colors.axis,
+                      fontSize: 11,
+                    }}
                   />
                 )}
 
@@ -511,8 +701,9 @@ export default function Chart({
                   animationDuration={500}
                   animationEasing="ease-out"
                 />
-              </AreaChart>
-            </ResponsiveContainer>
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         )}
       </div>
