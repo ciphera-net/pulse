@@ -650,8 +650,8 @@ export default function Chart({
                     strokeDasharray="4 4"
                     strokeOpacity={0.7}
                     label={{
-                      value: `Avg: ${metric === 'bounce_rate' ? `${Math.round(avg)}%` : metric === 'avg_duration' ? formatDuration(avg) : formatAxisValue(avg)}`,
-                      position: 'right',
+                      value: `Avg: ${metric === 'bounce_rate' ? `${Math.round(avg)}%` : metric === 'avg_duration' ? formatAxisDuration(avg) : formatAxisValue(avg)}`,
+                      position: 'insideTopRight',
                       fill: colors.axis,
                       fontSize: 11,
                     }}
