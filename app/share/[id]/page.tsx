@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { getPublicDashboard, getPublicStats, getPublicDailyStats, getPublicRealtime, getPublicPerformanceByPage, type DashboardData, type Stats, type DailyStat, type PerformanceByPageStat } from '@/lib/api/stats'
 import { toast } from '@ciphera-net/ui'
@@ -80,29 +80,13 @@ export default function PublicDashboardPage() {
     }
   }
 
-  // * Auto-refresh interval: chart, KPIs, and realtime count update every 30 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (data && !isPasswordProtected) {
-        loadDashboard(true)
-        loadRealtime()
-      }
-    }, 30000)
-
-    return () => clearInterval(interval)
-  }, [data, isPasswordProtected, dateRange, todayInterval, multiDayInterval, password])
-
   // * Tick every 1s so "Live · Xs ago" counts in real time
   useEffect(() => {
     const interval = setInterval(() => setTick((t) => t + 1), 1000)
     return () => clearInterval(interval)
   }, [])
 
-  useEffect(() => {
-    loadDashboard()
-  }, [siteId, dateRange, todayInterval, multiDayInterval])
-
-  const loadRealtime = async () => {
+  const loadRealtime = useCallback(async () => {
     try {
       const auth = {
         password,
@@ -122,9 +106,9 @@ export default function PublicDashboardPage() {
     } catch (error) {
       // Silently fail for realtime updates
     }
-  }
+  }, [siteId, password, captchaId, captchaSolution, captchaToken, data])
 
-  const loadDashboard = async (silent = false) => {
+  const loadDashboard = useCallback(async (silent = false) => {
     try {
       if (!silent) setLoading(true)
       
@@ -186,7 +170,22 @@ export default function PublicDashboardPage() {
     } finally {
       if (!silent) setLoading(false)
     }
-  }
+  }, [siteId, dateRange, todayInterval, multiDayInterval, password, captchaId, captchaSolution, captchaToken])
+
+  // * Auto-refresh interval: chart, KPIs, and realtime count update every 30 seconds
+  useEffect(() => {
+    if (data && !isPasswordProtected) {
+      const interval = setInterval(() => {
+        loadDashboard(true)
+        loadRealtime()
+      }, 30000)
+      return () => clearInterval(interval)
+    }
+  }, [data, isPasswordProtected, dateRange, todayInterval, multiDayInterval, password, loadDashboard, loadRealtime])
+
+  useEffect(() => {
+    loadDashboard()
+  }, [siteId, dateRange, todayInterval, multiDayInterval, loadDashboard])
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault()
