@@ -46,7 +46,7 @@ function formatTimeAgo(dateStr: string): string {
 }
 
 function getTypeIcon(type: string) {
-  if (type.includes('down') || type.includes('degraded')) {
+  if (type.includes('down') || type.includes('degraded') || type.startsWith('billing_')) {
     return <AlertTriangleIcon className="w-4 h-4 shrink-0 text-amber-500" />
   }
   return <CheckCircleIcon className="w-4 h-4 shrink-0 text-emerald-500" />
