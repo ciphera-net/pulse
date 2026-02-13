@@ -19,6 +19,7 @@ import {
 import { getSubscription, createPortalSession, getInvoices, cancelSubscription, changePlan, createCheckoutSession, SubscriptionDetails, Invoice } from '@/lib/api/billing'
 import { TRAFFIC_TIERS, PLAN_ID_SOLO, getTierIndexForLimit, getLimitForTierIndex } from '@/lib/plans'
 import { getAuditLog, AuditLogEntry, GetAuditLogParams } from '@/lib/api/audit'
+import { getNotificationSettings, updateNotificationSettings } from '@/lib/api/notification-settings'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@/lib/utils/authErrors'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -33,8 +34,19 @@ import {
   BookOpenIcon,
   DownloadIcon,
   ExternalLinkIcon,
-  LayoutDashboardIcon
+  LayoutDashboardIcon,
+  Checkbox
 } from '@ciphera-net/ui'
+
+// * Bell icon for notifications tab
+function BellIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+    </svg>
+  )
+}
 // @ts-ignore
 import { Button, Input } from '@ciphera-net/ui'
 
@@ -43,13 +55,13 @@ export default function OrganizationSettings() {
   const router = useRouter()
   const searchParams = useSearchParams()
   // Initialize from URL, default to 'general'
-  const [activeTab, setActiveTab] = useState<'general' | 'members' | 'billing' | 'audit'>(() => {
+  const [activeTab, setActiveTab] = useState<'general' | 'members' | 'billing' | 'notifications' | 'audit'>(() => {
     const tab = searchParams.get('tab')
-    return (tab === 'billing' || tab === 'members' || tab === 'audit') ? tab : 'general'
+    return (tab === 'billing' || tab === 'members' || tab === 'notifications' || tab === 'audit') ? tab : 'general'
   })
 
   // Sync URL with state without triggering navigation/reload
-  const handleTabChange = (tab: 'general' | 'members' | 'billing' | 'audit') => {
+  const handleTabChange = (tab: 'general' | 'members' | 'billing' | 'notifications' | 'audit') => {
     setActiveTab(tab)
     const url = new URL(window.location.href)
     url.searchParams.set('tab', tab)
@@ -106,6 +118,12 @@ export default function OrganizationSettings() {
   const [auditLogIdFilter, setAuditLogIdFilter] = useState('')
   const [auditStartDate, setAuditStartDate] = useState('')
   const [auditEndDate, setAuditEndDate] = useState('')
+
+  // Notification settings state
+  const [notificationSettings, setNotificationSettings] = useState<Record<string, boolean>>({})
+  const [notificationCategories, setNotificationCategories] = useState<{ id: string; label: string; description: string }[]>([])
+  const [isLoadingNotificationSettings, setIsLoadingNotificationSettings] = useState(false)
+  const [isSavingNotificationSettings, setIsSavingNotificationSettings] = useState(false)
 
   // Refs for filters to keep loadAudit stable and avoid rapid re-renders
   const filtersRef = useRef({
@@ -247,6 +265,27 @@ export default function OrganizationSettings() {
       loadAudit()
     }
   }, [activeTab, currentOrgId, loadAudit, auditFetchTrigger])
+
+  const loadNotificationSettings = useCallback(async () => {
+    if (!currentOrgId) return
+    setIsLoadingNotificationSettings(true)
+    try {
+      const res = await getNotificationSettings()
+      setNotificationSettings(res.settings || {})
+      setNotificationCategories(res.categories || [])
+    } catch (error) {
+      console.error('Failed to load notification settings', error)
+      toast.error(getAuthErrorMessage(error as Error) || 'Failed to load notification settings')
+    } finally {
+      setIsLoadingNotificationSettings(false)
+    }
+  }, [currentOrgId])
+
+  useEffect(() => {
+    if (activeTab === 'notifications' && currentOrgId) {
+      loadNotificationSettings()
+    }
+  }, [activeTab, currentOrgId, loadNotificationSettings])
 
   // If no org ID, we are in personal organization context, so don't show org settings
   if (!currentOrgId) {
@@ -459,6 +498,19 @@ export default function OrganizationSettings() {
           >
             <BoxIcon className="w-5 h-5" />
             Billing
+          </button>
+          <button
+            onClick={() => handleTabChange('notifications')}
+            role="tab"
+            aria-selected={activeTab === 'notifications'}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2 ${
+              activeTab === 'notifications'
+                ? 'bg-brand-orange/10 text-brand-orange'
+                : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+            }`}
+          >
+            <BellIcon className="w-5 h-5" />
+            Notifications
           </button>
           <button
             onClick={() => handleTabChange('audit')}
@@ -915,6 +967,60 @@ export default function OrganizationSettings() {
                         </div>
                       </div>
                     </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'notifications' && (
+              <div className="space-y-8">
+                <div>
+                  <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">Notification Settings</h2>
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                    Choose which notification types you want to receive. These apply to the notification center for owners and admins.
+                  </p>
+                </div>
+
+                {isLoadingNotificationSettings ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="w-6 h-6 border-2 border-brand-orange/30 border-t-brand-orange rounded-full animate-spin" />
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {notificationCategories.map((cat) => (
+                      <div
+                        key={cat.id}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50"
+                      >
+                        <div className="flex-1">
+                          <p className="font-medium text-neutral-900 dark:text-white">{cat.label}</p>
+                          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">{cat.description}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            checked={notificationSettings[cat.id] !== false}
+                            onCheckedChange={(checked) => {
+                              const next = { ...notificationSettings, [cat.id]: checked === true }
+                              setNotificationSettings(next)
+                              setIsSavingNotificationSettings(true)
+                              updateNotificationSettings(next)
+                                .then(() => {
+                                  toast.success('Notification settings updated')
+                                })
+                                .catch((err) => {
+                                  toast.error(getAuthErrorMessage(err) || 'Failed to update settings')
+                                  setNotificationSettings(notificationSettings)
+                                })
+                                .finally(() => setIsSavingNotificationSettings(false))
+                            }}
+                            disabled={isSavingNotificationSettings}
+                          />
+                          <span className="text-sm text-neutral-500">
+                            {notificationSettings[cat.id] !== false ? 'On' : 'Off'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             )}
