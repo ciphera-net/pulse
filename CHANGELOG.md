@@ -12,6 +12,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - **In-app notification center.** Bell icon in the header with dropdown of recent notifications. Uptime monitor status changes (down, degraded, recovered) create in-app notifications with links to the uptime page.
 - **Payment failed notifications.** When Stripe sends `invoice.payment_failed`, owners and admins receive an in-app notification with a link to update payment method. Members do not see billing notifications.
+- **Pageview limit notifications.** Owners and admins are notified when usage reaches 80%, 90%, or 100% of the plan limit (checked every 6 hours).
+- **Trial ending soon.** When a trial ends within 7 days, owners and admins receive a notification. Triggered by Stripe webhooks and a periodic checker.
+- **Subscription canceled.** When a subscription is canceled, owners and admins are notified with a link to billing.
 
 ## [0.5.1-alpha] - 2026-02-12
 
