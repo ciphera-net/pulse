@@ -975,7 +975,7 @@ export default function OrganizationSettings() {
               <div className="space-y-8">
                 <div>
                   <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">Notification Settings</h2>
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6">
                     Choose which notification types you want to receive. These apply to the notification center for owners and admins.
                   </p>
                 </div>
@@ -985,41 +985,44 @@ export default function OrganizationSettings() {
                     <div className="w-6 h-6 border-2 border-brand-orange/30 border-t-brand-orange rounded-full animate-spin" />
                   </div>
                 ) : (
-                  <div className="space-y-6">
-                    {notificationCategories.map((cat) => (
-                      <div
-                        key={cat.id}
-                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50"
-                      >
-                        <div className="flex-1">
-                          <p className="font-medium text-neutral-900 dark:text-white">{cat.label}</p>
-                          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">{cat.description}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Checkbox
-                            checked={notificationSettings[cat.id] !== false}
-                            onCheckedChange={(checked) => {
-                              const next = { ...notificationSettings, [cat.id]: checked === true }
-                              setNotificationSettings(next)
-                              setIsSavingNotificationSettings(true)
-                              updateNotificationSettings(next)
-                                .then(() => {
-                                  toast.success('Notification settings updated')
-                                })
-                                .catch((err) => {
-                                  toast.error(getAuthErrorMessage(err) || 'Failed to update settings')
-                                  setNotificationSettings(notificationSettings)
-                                })
-                                .finally(() => setIsSavingNotificationSettings(false))
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-medium text-neutral-500 uppercase tracking-wider">Notification categories</h3>
+                    <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden divide-y divide-neutral-200 dark:divide-neutral-800">
+                      {notificationCategories.map((cat) => (
+                        <div
+                          key={cat.id}
+                          className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"
+                        >
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-neutral-900 dark:text-white">{cat.label}</p>
+                            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">{cat.description}</p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <Checkbox
+                              checked={notificationSettings[cat.id] !== false}
+                              onCheckedChange={(checked) => {
+                                const next = { ...notificationSettings, [cat.id]: checked === true }
+                                setNotificationSettings(next)
+                                setIsSavingNotificationSettings(true)
+                                updateNotificationSettings(next)
+                                  .then(() => {
+                                    toast.success('Notification settings updated')
+                                  })
+                                  .catch((err) => {
+                                    toast.error(getAuthErrorMessage(err) || 'Failed to update settings')
+                                    setNotificationSettings(notificationSettings)
+                                  })
+                                  .finally(() => setIsSavingNotificationSettings(false))
                             }}
                             disabled={isSavingNotificationSettings}
                           />
-                          <span className="text-sm text-neutral-500">
-                            {notificationSettings[cat.id] !== false ? 'On' : 'Off'}
-                          </span>
+                            <span className="text-sm text-neutral-500 whitespace-nowrap">
+                              {notificationSettings[cat.id] !== false ? 'On' : 'Off'}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
