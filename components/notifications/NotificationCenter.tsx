@@ -65,8 +65,8 @@ export default function NotificationCenter() {
     setError(null)
     try {
       const res = await listNotifications()
-      setNotifications(res.notifications)
-      setUnreadCount(res.unread_count)
+      setNotifications(Array.isArray(res?.notifications) ? res.notifications : [])
+      setUnreadCount(typeof res?.unread_count === 'number' ? res.unread_count : 0)
     } catch (err) {
       setError(getAuthErrorMessage(err as Error) || 'Failed to load notifications')
       setNotifications([])
@@ -160,14 +160,14 @@ export default function NotificationCenter() {
             {error && (
               <div className="p-6 text-center text-red-500 text-sm">{error}</div>
             )}
-            {!loading && !error && notifications.length === 0 && (
+            {!loading && !error && (notifications?.length ?? 0) === 0 && (
               <div className="p-6 text-center text-neutral-500 dark:text-neutral-400 text-sm">
                 No notifications yet
               </div>
             )}
-            {!loading && !error && notifications.length > 0 && (
+            {!loading && !error && (notifications?.length ?? 0) > 0 && (
               <ul className="divide-y divide-neutral-200 dark:divide-neutral-700">
-                {notifications.map((n) => (
+                {(notifications ?? []).map((n) => (
                   <li key={n.id}>
                     {n.link_url ? (
                       <Link
