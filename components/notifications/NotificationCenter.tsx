@@ -52,6 +52,8 @@ function getTypeIcon(type: string) {
   return <CheckCircleIcon className="w-4 h-4 shrink-0 text-emerald-500" />
 }
 
+const LOADING_DELAY_MS = 250
+
 export default function NotificationCenter() {
   const [open, setOpen] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([])
@@ -61,8 +63,8 @@ export default function NotificationCenter() {
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const fetchNotifications = async () => {
-    setLoading(true)
     setError(null)
+    const loadingTimer = setTimeout(() => setLoading(true), LOADING_DELAY_MS)
     try {
       const res = await listNotifications()
       setNotifications(Array.isArray(res?.notifications) ? res.notifications : [])
@@ -72,6 +74,7 @@ export default function NotificationCenter() {
       setNotifications([])
       setUnreadCount(0)
     } finally {
+      clearTimeout(loadingTimer)
       setLoading(false)
     }
   }
