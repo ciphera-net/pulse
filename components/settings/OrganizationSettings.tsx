@@ -35,7 +35,6 @@ import {
   DownloadIcon,
   ExternalLinkIcon,
   LayoutDashboardIcon,
-  Checkbox
 } from '@ciphera-net/ui'
 
 // * Bell icon for notifications tab
@@ -997,11 +996,14 @@ export default function OrganizationSettings() {
                             <p className="text-sm font-medium text-neutral-900 dark:text-white">{cat.label}</p>
                             <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">{cat.description}</p>
                           </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <Checkbox
-                              checked={notificationSettings[cat.id] !== false}
-                              onCheckedChange={(checked) => {
-                                const next = { ...notificationSettings, [cat.id]: checked === true }
+                          <div className="flex items-center shrink-0">
+                            <button
+                              type="button"
+                              role="switch"
+                              aria-checked={notificationSettings[cat.id] !== false}
+                              aria-label={`${notificationSettings[cat.id] !== false ? 'Disable' : 'Enable'} ${cat.label} notifications`}
+                              onClick={() => {
+                                const next = { ...notificationSettings, [cat.id]: notificationSettings[cat.id] === false }
                                 setNotificationSettings(next)
                                 setIsSavingNotificationSettings(true)
                                 updateNotificationSettings(next)
@@ -1013,12 +1015,18 @@ export default function OrganizationSettings() {
                                     setNotificationSettings(notificationSettings)
                                   })
                                   .finally(() => setIsSavingNotificationSettings(false))
-                            }}
-                            disabled={isSavingNotificationSettings}
-                          />
-                            <span className="text-sm text-neutral-500 whitespace-nowrap">
-                              {notificationSettings[cat.id] !== false ? 'On' : 'Off'}
-                            </span>
+                              }}
+                              disabled={isSavingNotificationSettings}
+                              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                                notificationSettings[cat.id] !== false ? 'bg-brand-orange' : 'bg-neutral-200 dark:bg-neutral-700'
+                              }`}
+                            >
+                              <span
+                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                  notificationSettings[cat.id] !== false ? 'translate-x-5' : 'translate-x-0'
+                                }`}
+                              />
+                            </button>
                           </div>
                         </div>
                       ))}
