@@ -181,14 +181,8 @@ export default function NotificationCenter() {
               <div className="p-6 text-center text-red-500 text-sm">{error}</div>
             )}
             {!loading && !error && (notifications?.length ?? 0) === 0 && (
-              <div className="p-6 text-center text-neutral-500 dark:text-neutral-400 text-sm space-y-2">
-                <p>No notifications yet</p>
-                <p className="text-xs">
-                  Manage which notifications you receive in{' '}
-                  <Link href="/org-settings?tab=notifications" className="text-brand-orange hover:underline" onClick={() => setOpen(false)}>
-                    Organization Settings → Notifications
-                  </Link>
-                </p>
+              <div className="p-6 text-center text-neutral-500 dark:text-neutral-400 text-sm">
+                No notifications yet
               </div>
             )}
             {!loading && !error && (notifications?.length ?? 0) > 0 && (
