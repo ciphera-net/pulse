@@ -286,6 +286,13 @@ export default function OrganizationSettings() {
     }
   }, [activeTab, currentOrgId, loadNotificationSettings])
 
+  // * Redirect members away from Notifications tab (owners/admins only)
+  useEffect(() => {
+    if (activeTab === 'notifications' && user?.role === 'member') {
+      handleTabChange('general')
+    }
+  }, [activeTab, user?.role])
+
   // If no org ID, we are in personal organization context, so don't show org settings
   if (!currentOrgId) {
     return (
@@ -498,19 +505,21 @@ export default function OrganizationSettings() {
             <BoxIcon className="w-5 h-5" />
             Billing
           </button>
-          <button
-            onClick={() => handleTabChange('notifications')}
-            role="tab"
-            aria-selected={activeTab === 'notifications'}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2 ${
-              activeTab === 'notifications'
-                ? 'bg-brand-orange/10 text-brand-orange'
-                : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
-            }`}
-          >
-            <BellIcon className="w-5 h-5" />
-            Notifications
-          </button>
+          {(user?.role === 'owner' || user?.role === 'admin') && (
+            <button
+              onClick={() => handleTabChange('notifications')}
+              role="tab"
+              aria-selected={activeTab === 'notifications'}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2 ${
+                activeTab === 'notifications'
+                  ? 'bg-brand-orange/10 text-brand-orange'
+                  : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+              }`}
+            >
+              <BellIcon className="w-5 h-5" />
+              Notifications
+            </button>
+          )}
           <button
             onClick={() => handleTabChange('audit')}
             role="tab"
