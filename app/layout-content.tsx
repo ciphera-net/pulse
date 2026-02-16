@@ -2,7 +2,8 @@
 
 import { OfflineBanner } from '@/components/OfflineBanner'
 import { Footer } from '@/components/Footer'
-import { Header, GridIcon } from '@ciphera-net/ui'
+import { Header } from '@ciphera-net/ui'
+import NotificationCenter from '@/components/notifications/NotificationCenter'
 import { useAuth } from '@/lib/auth/context'
 import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus'
 import Link from 'next/link'
@@ -21,7 +22,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
   useEffect(() => {
     if (auth.user) {
       getUserOrganizations()
-        .then((organizations) => setOrgs(organizations))
+        .then((organizations) => setOrgs(Array.isArray(organizations) ? organizations : []))
         .catch(err => console.error('Failed to fetch orgs for header', err))
     }
   }, [auth.user])
@@ -63,6 +64,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         showSecurity={false}
         showPricing={true}
         topOffset={showOfflineBar ? `${barHeightRem}rem` : undefined}
+        rightSideActions={auth.user ? <NotificationCenter /> : null}
         customNavItems={
           <>
             {!auth.user && (

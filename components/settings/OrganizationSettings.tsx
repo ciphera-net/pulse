@@ -19,6 +19,7 @@ import {
 import { getSubscription, createPortalSession, getInvoices, cancelSubscription, changePlan, createCheckoutSession, SubscriptionDetails, Invoice } from '@/lib/api/billing'
 import { TRAFFIC_TIERS, PLAN_ID_SOLO, getTierIndexForLimit, getLimitForTierIndex } from '@/lib/plans'
 import { getAuditLog, AuditLogEntry, GetAuditLogParams } from '@/lib/api/audit'
+import { getNotificationSettings, updateNotificationSettings } from '@/lib/api/notification-settings'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@/lib/utils/authErrors'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -33,8 +34,18 @@ import {
   BookOpenIcon,
   DownloadIcon,
   ExternalLinkIcon,
-  LayoutDashboardIcon
+  LayoutDashboardIcon,
 } from '@ciphera-net/ui'
+
+// * Bell icon for notifications tab
+function BellIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+    </svg>
+  )
+}
 // @ts-ignore
 import { Button, Input } from '@ciphera-net/ui'
 
@@ -43,13 +54,13 @@ export default function OrganizationSettings() {
   const router = useRouter()
   const searchParams = useSearchParams()
   // Initialize from URL, default to 'general'
-  const [activeTab, setActiveTab] = useState<'general' | 'members' | 'billing' | 'audit'>(() => {
+  const [activeTab, setActiveTab] = useState<'general' | 'members' | 'billing' | 'notifications' | 'audit'>(() => {
     const tab = searchParams.get('tab')
-    return (tab === 'billing' || tab === 'members' || tab === 'audit') ? tab : 'general'
+    return (tab === 'billing' || tab === 'members' || tab === 'notifications' || tab === 'audit') ? tab : 'general'
   })
 
   // Sync URL with state without triggering navigation/reload
-  const handleTabChange = (tab: 'general' | 'members' | 'billing' | 'audit') => {
+  const handleTabChange = (tab: 'general' | 'members' | 'billing' | 'notifications' | 'audit') => {
     setActiveTab(tab)
     const url = new URL(window.location.href)
     url.searchParams.set('tab', tab)
@@ -106,6 +117,12 @@ export default function OrganizationSettings() {
   const [auditLogIdFilter, setAuditLogIdFilter] = useState('')
   const [auditStartDate, setAuditStartDate] = useState('')
   const [auditEndDate, setAuditEndDate] = useState('')
+
+  // Notification settings state
+  const [notificationSettings, setNotificationSettings] = useState<Record<string, boolean>>({})
+  const [notificationCategories, setNotificationCategories] = useState<{ id: string; label: string; description: string }[]>([])
+  const [isLoadingNotificationSettings, setIsLoadingNotificationSettings] = useState(false)
+  const [isSavingNotificationSettings, setIsSavingNotificationSettings] = useState(false)
 
   // Refs for filters to keep loadAudit stable and avoid rapid re-renders
   const filtersRef = useRef({
@@ -247,6 +264,34 @@ export default function OrganizationSettings() {
       loadAudit()
     }
   }, [activeTab, currentOrgId, loadAudit, auditFetchTrigger])
+
+  const loadNotificationSettings = useCallback(async () => {
+    if (!currentOrgId) return
+    setIsLoadingNotificationSettings(true)
+    try {
+      const res = await getNotificationSettings()
+      setNotificationSettings(res.settings || {})
+      setNotificationCategories(res.categories || [])
+    } catch (error) {
+      console.error('Failed to load notification settings', error)
+      toast.error(getAuthErrorMessage(error as Error) || 'Failed to load notification settings')
+    } finally {
+      setIsLoadingNotificationSettings(false)
+    }
+  }, [currentOrgId])
+
+  useEffect(() => {
+    if (activeTab === 'notifications' && currentOrgId) {
+      loadNotificationSettings()
+    }
+  }, [activeTab, currentOrgId, loadNotificationSettings])
+
+  // * Redirect members away from Notifications tab (owners/admins only)
+  useEffect(() => {
+    if (activeTab === 'notifications' && user?.role === 'member') {
+      handleTabChange('general')
+    }
+  }, [activeTab, user?.role])
 
   // If no org ID, we are in personal organization context, so don't show org settings
   if (!currentOrgId) {
@@ -460,6 +505,21 @@ export default function OrganizationSettings() {
             <BoxIcon className="w-5 h-5" />
             Billing
           </button>
+          {(user?.role === 'owner' || user?.role === 'admin') && (
+            <button
+              onClick={() => handleTabChange('notifications')}
+              role="tab"
+              aria-selected={activeTab === 'notifications'}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2 ${
+                activeTab === 'notifications'
+                  ? 'bg-brand-orange/10 text-brand-orange'
+                  : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+              }`}
+            >
+              <BellIcon className="w-5 h-5" />
+              Notifications
+            </button>
+          )}
           <button
             onClick={() => handleTabChange('audit')}
             role="tab"
@@ -915,6 +975,73 @@ export default function OrganizationSettings() {
                         </div>
                       </div>
                     </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'notifications' && (
+              <div className="space-y-8">
+                <div>
+                  <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">Notification Settings</h2>
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6">
+                    Choose which notification types you want to receive. These apply to the notification center for owners and admins.
+                  </p>
+                </div>
+
+                {isLoadingNotificationSettings ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="w-6 h-6 border-2 border-brand-orange/30 border-t-brand-orange rounded-full animate-spin" />
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-medium text-neutral-500 uppercase tracking-wider">Notification categories</h3>
+                    <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden divide-y divide-neutral-200 dark:divide-neutral-800">
+                      {notificationCategories.map((cat) => (
+                        <div
+                          key={cat.id}
+                          className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"
+                        >
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-neutral-900 dark:text-white">{cat.label}</p>
+                            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">{cat.description}</p>
+                          </div>
+                          <div className="flex items-center shrink-0">
+                            <button
+                              type="button"
+                              role="switch"
+                              aria-checked={notificationSettings[cat.id] !== false}
+                              aria-label={`${notificationSettings[cat.id] !== false ? 'Disable' : 'Enable'} ${cat.label} notifications`}
+                              onClick={() => {
+                                const prev = { ...notificationSettings }
+                                const next = { ...notificationSettings, [cat.id]: notificationSettings[cat.id] === false }
+                                setNotificationSettings(next)
+                                setIsSavingNotificationSettings(true)
+                                updateNotificationSettings(next)
+                                  .then(() => {
+                                    toast.success('Notification settings updated')
+                                  })
+                                  .catch((err) => {
+                                    toast.error(getAuthErrorMessage(err) || 'Failed to update settings')
+                                    setNotificationSettings(prev)
+                                  })
+                                  .finally(() => setIsSavingNotificationSettings(false))
+                              }}
+                              disabled={isSavingNotificationSettings}
+                              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                                notificationSettings[cat.id] !== false ? 'bg-brand-orange' : 'bg-neutral-200 dark:bg-neutral-700'
+                              }`}
+                            >
+                              <span
+                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                  notificationSettings[cat.id] !== false ? 'translate-x-5' : 'translate-x-0'
+                                }`}
+                              />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
             )}
