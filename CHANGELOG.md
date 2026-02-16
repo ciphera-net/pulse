@@ -12,7 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - **Notification settings.** New Notifications tab in organization settings lets owners and admins toggle billing and uptime notification categories. Disabling a category stops new notifications of that type from being created.
 - **In-app notification center.** Bell icon in the header with dropdown of recent notifications. Uptime monitor status changes (down, degraded, recovered) create in-app notifications with links to the uptime page.
-- **Notifications UX improvements.** Bell dropdown links to "Manage settings" and "View all" notifications page. Empty state guides users to Organization Settings. Unread count polls every 90 seconds. Full notifications page at /notifications with pagination.
+- **Notifications UX improvements.** Bell dropdown links to "Manage settings" and "View all" notifications page. Unread count polls every 90 seconds. Full notifications page at /notifications with pagination.
 - **Notifications tab visibility.** Notifications tab in organization settings is hidden from members (owners and admins only).
 - **Audit log for notification settings.** Changes to notification preferences are recorded in the organization audit log.
 - **Payment failed notifications.** When Stripe sends `invoice.payment_failed`, owners and admins receive an in-app notification with a link to update payment method. Members do not see billing notifications.
