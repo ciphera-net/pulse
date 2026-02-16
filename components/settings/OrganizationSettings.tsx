@@ -1012,6 +1012,7 @@ export default function OrganizationSettings() {
                               aria-checked={notificationSettings[cat.id] !== false}
                               aria-label={`${notificationSettings[cat.id] !== false ? 'Disable' : 'Enable'} ${cat.label} notifications`}
                               onClick={() => {
+                                const prev = { ...notificationSettings }
                                 const next = { ...notificationSettings, [cat.id]: notificationSettings[cat.id] === false }
                                 setNotificationSettings(next)
                                 setIsSavingNotificationSettings(true)
@@ -1021,7 +1022,7 @@ export default function OrganizationSettings() {
                                   })
                                   .catch((err) => {
                                     toast.error(getAuthErrorMessage(err) || 'Failed to update settings')
-                                    setNotificationSettings(notificationSettings)
+                                    setNotificationSettings(prev)
                                   })
                                   .finally(() => setIsSavingNotificationSettings(false))
                               }}

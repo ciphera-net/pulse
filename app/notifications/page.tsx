@@ -99,8 +99,8 @@ export default function NotificationsPage() {
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
       setUnreadCount(0)
       toast.success('All notifications marked as read')
-    } catch {
-      toast.error(getAuthErrorMessage(new Error('Failed to mark all as read')))
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to mark all as read')
     }
   }
 
