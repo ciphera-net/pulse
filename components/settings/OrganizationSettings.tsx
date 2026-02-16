@@ -281,17 +281,17 @@ export default function OrganizationSettings() {
   }, [currentOrgId])
 
   useEffect(() => {
-    if (activeTab === 'notifications' && currentOrgId) {
+    if (activeTab === 'notifications' && currentOrgId && user?.role !== 'member') {
       loadNotificationSettings()
     }
-  }, [activeTab, currentOrgId, loadNotificationSettings])
+  }, [activeTab, currentOrgId, loadNotificationSettings, user?.role])
 
   // * Redirect members away from Notifications tab (owners/admins only)
   useEffect(() => {
     if (activeTab === 'notifications' && user?.role === 'member') {
       handleTabChange('general')
     }
-  }, [activeTab, user?.role])
+  }, [activeTab, user?.role, handleTabChange])
 
   // If no org ID, we are in personal organization context, so don't show org settings
   if (!currentOrgId) {

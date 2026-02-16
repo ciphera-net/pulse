@@ -14,31 +14,11 @@ import {
   type Notification,
 } from '@/lib/api/notifications'
 import { getAuthErrorMessage } from '@/lib/utils/authErrors'
-import { AlertTriangleIcon, CheckCircleIcon, Button, ArrowLeftIcon } from '@ciphera-net/ui'
+import { formatTimeAgo, getTypeIcon } from '@/lib/utils/notifications'
+import { Button, ArrowLeftIcon } from '@ciphera-net/ui'
 import { toast } from '@ciphera-net/ui'
 
 const PAGE_SIZE = 50
-
-function formatTimeAgo(dateStr: string): string {
-  const d = new Date(dateStr)
-  const now = new Date()
-  const diffMs = now.getTime() - d.getTime()
-  const diffMins = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMs / 3600000)
-  const diffDays = Math.floor(diffMs / 86400000)
-  if (diffMins < 1) return 'Just now'
-  if (diffMins < 60) return `${diffMins}m ago`
-  if (diffHours < 24) return `${diffHours}h ago`
-  if (diffDays < 7) return `${diffDays}d ago`
-  return d.toLocaleDateString()
-}
-
-function getTypeIcon(type: string) {
-  if (type.includes('down') || type.includes('degraded') || type.startsWith('billing_')) {
-    return <AlertTriangleIcon className="w-4 h-4 shrink-0 text-amber-500" />
-  }
-  return <CheckCircleIcon className="w-4 h-4 shrink-0 text-emerald-500" />
-}
 
 export default function NotificationsPage() {
   const { user } = useAuth()
