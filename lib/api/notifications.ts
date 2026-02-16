@@ -22,8 +22,18 @@ export interface ListNotificationsResponse {
   unread_count: number
 }
 
-export async function listNotifications(): Promise<ListNotificationsResponse> {
-  return apiRequest<ListNotificationsResponse>('/notifications')
+export interface ListNotificationsParams {
+  limit?: number
+  offset?: number
+}
+
+export async function listNotifications(params?: ListNotificationsParams): Promise<ListNotificationsResponse> {
+  const q = new URLSearchParams()
+  if (params?.limit != null) q.set('limit', String(params.limit))
+  if (params?.offset != null) q.set('offset', String(params.offset))
+  const query = q.toString()
+  const url = query ? `/notifications?${query}` : '/notifications'
+  return apiRequest<ListNotificationsResponse>(url)
 }
 
 export async function markNotificationRead(id: string): Promise<void> {

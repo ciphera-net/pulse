@@ -8,7 +8,7 @@ import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { listNotifications, markNotificationRead, markAllNotificationsRead, type Notification } from '@/lib/api/notifications'
 import { getAuthErrorMessage } from '@/lib/utils/authErrors'
-import { AlertTriangleIcon, CheckCircleIcon } from '@ciphera-net/ui'
+import { AlertTriangleIcon, CheckCircleIcon, SettingsIcon } from '@ciphera-net/ui'
 
 // * Bell icon (simple SVG, no extra deps)
 function BellIcon({ className }: { className?: string }) {
@@ -53,6 +53,7 @@ function getTypeIcon(type: string) {
 }
 
 const LOADING_DELAY_MS = 250
+const POLL_INTERVAL_MS = 90_000
 
 export default function NotificationCenter() {
   const [open, setOpen] = useState(false)
@@ -62,11 +63,20 @@ export default function NotificationCenter() {
   const [error, setError] = useState<string | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
+  const fetchUnreadCount = async () => {
+    try {
+      const res = await listNotifications({ limit: 1 })
+      setUnreadCount(typeof res?.unread_count === 'number' ? res.unread_count : 0)
+    } catch {
+      // Ignore polling errors
+    }
+  }
+
   const fetchNotifications = async () => {
     setError(null)
     const loadingTimer = setTimeout(() => setLoading(true), LOADING_DELAY_MS)
     try {
-      const res = await listNotifications()
+      const res = await listNotifications({})
       setNotifications(Array.isArray(res?.notifications) ? res.notifications : [])
       setUnreadCount(typeof res?.unread_count === 'number' ? res.unread_count : 0)
     } catch (err) {
@@ -84,6 +94,13 @@ export default function NotificationCenter() {
       fetchNotifications()
     }
   }, [open])
+
+  // * Poll unread count in background (when authenticated)
+  useEffect(() => {
+    fetchUnreadCount()
+    const id = setInterval(fetchUnreadCount, POLL_INTERVAL_MS)
+    return () => clearInterval(id)
+  }, [])
 
   // * Close dropdown when clicking outside
   useEffect(() => {
@@ -164,8 +181,14 @@ export default function NotificationCenter() {
               <div className="p-6 text-center text-red-500 text-sm">{error}</div>
             )}
             {!loading && !error && (notifications?.length ?? 0) === 0 && (
-              <div className="p-6 text-center text-neutral-500 dark:text-neutral-400 text-sm">
-                No notifications yet
+              <div className="p-6 text-center text-neutral-500 dark:text-neutral-400 text-sm space-y-2">
+                <p>No notifications yet</p>
+                <p className="text-xs">
+                  Manage which notifications you receive in{' '}
+                  <Link href="/org-settings?tab=notifications" className="text-brand-orange hover:underline" onClick={() => setOpen(false)}>
+                    Organization Settings → Notifications
+                  </Link>
+                </p>
               </div>
             )}
             {!loading && !error && (notifications?.length ?? 0) > 0 && (
@@ -225,6 +248,24 @@ export default function NotificationCenter() {
                 ))}
               </ul>
             )}
+          </div>
+
+          <div className="border-t border-neutral-200 dark:border-neutral-700 px-4 py-3 flex items-center justify-between gap-2">
+            <Link
+              href="/notifications"
+              onClick={() => setOpen(false)}
+              className="text-sm text-brand-orange hover:underline"
+            >
+              View all
+            </Link>
+            <Link
+              href="/org-settings?tab=notifications"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-1.5 text-sm text-neutral-500 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors"
+            >
+              <SettingsIcon className="w-4 h-4" />
+              Manage settings
+            </Link>
           </div>
         </div>
       )}
