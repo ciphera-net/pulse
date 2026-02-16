@@ -8,7 +8,8 @@ import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { listNotifications, markNotificationRead, markAllNotificationsRead, type Notification } from '@/lib/api/notifications'
 import { getAuthErrorMessage } from '@/lib/utils/authErrors'
-import { AlertTriangleIcon, CheckCircleIcon, SettingsIcon } from '@ciphera-net/ui'
+import { formatTimeAgo, getTypeIcon } from '@/lib/utils/notifications'
+import { SettingsIcon } from '@ciphera-net/ui'
 
 // * Bell icon (simple SVG, no extra deps)
 function BellIcon({ className }: { className?: string }) {
@@ -29,27 +30,6 @@ function BellIcon({ className }: { className?: string }) {
       <path d="M13.73 21a2 2 0 0 1-3.46 0" />
     </svg>
   )
-}
-
-function formatTimeAgo(dateStr: string): string {
-  const d = new Date(dateStr)
-  const now = new Date()
-  const diffMs = now.getTime() - d.getTime()
-  const diffMins = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMs / 3600000)
-  const diffDays = Math.floor(diffMs / 86400000)
-  if (diffMins < 1) return 'Just now'
-  if (diffMins < 60) return `${diffMins}m ago`
-  if (diffHours < 24) return `${diffHours}h ago`
-  if (diffDays < 7) return `${diffDays}d ago`
-  return d.toLocaleDateString()
-}
-
-function getTypeIcon(type: string) {
-  if (type.includes('down') || type.includes('degraded') || type.startsWith('billing_')) {
-    return <AlertTriangleIcon className="w-4 h-4 shrink-0 text-amber-500" />
-  }
-  return <CheckCircleIcon className="w-4 h-4 shrink-0 text-emerald-500" />
 }
 
 const LOADING_DELAY_MS = 250
