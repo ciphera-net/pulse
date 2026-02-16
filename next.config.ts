@@ -21,6 +21,18 @@ const nextConfig: NextConfig = {
       },
     ]
   },
+  async rewrites() {
+    return [
+      {
+        source: '/docs',
+        destination: 'https://ciphera-e9ed055e.mintlify.dev/docs',
+      },
+      {
+        source: '/docs/:path*',
+        destination: 'https://ciphera-e9ed055e.mintlify.dev/docs/:path*',
+      },
+    ]
+  },
 }
 
 export default withPWA(nextConfig)
