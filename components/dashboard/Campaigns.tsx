@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
-import { formatNumber } from '@/lib/utils/format'
-import { Modal, ArrowRightIcon, Button } from '@ciphera-net/ui'
+import { formatNumber } from '@ciphera-net/ui'
+import { Modal, ArrowRightIcon, Button, Spinner } from '@ciphera-net/ui'
 import { ChevronDownIcon, DownloadIcon } from '@ciphera-net/ui'
 import { getCampaigns, CampaignStat } from '@/lib/api/stats'
 import { getReferrerFavicon, getReferrerIcon, getReferrerDisplayName } from '@/lib/utils/icons'
@@ -293,7 +293,7 @@ export default function Campaigns({ siteId, dateRange }: CampaignsProps) {
         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
           {isLoadingFull ? (
             <div className="py-8 flex flex-col items-center gap-2">
-              <div className="animate-spin w-6 h-6 border-2 border-neutral-300 dark:border-neutral-700 border-t-brand-orange rounded-full" />
+              <Spinner />
               <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading...</p>
             </div>
           ) : (

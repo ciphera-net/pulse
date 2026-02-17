@@ -13,7 +13,7 @@ import {
   ReferenceLine,
 } from 'recharts'
 import type { TooltipProps } from 'recharts'
-import { formatNumber, formatDuration, formatUpdatedAgo } from '@/lib/utils/format'
+import { formatNumber, formatDuration, formatUpdatedAgo } from '@ciphera-net/ui'
 import { ArrowUpRightIcon, ArrowDownRightIcon, BarChartIcon, Select, Button, DownloadIcon } from '@ciphera-net/ui'
 import { Checkbox } from '@ciphera-net/ui'
 

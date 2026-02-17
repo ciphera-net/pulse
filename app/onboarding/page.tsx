@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createOrganization } from '@/lib/api/organization'
 import { useAuth } from '@/lib/auth/context'
-import { getAuthErrorMessage } from '@/lib/utils/authErrors'
+import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { LoadingOverlay } from '@ciphera-net/ui'
 import { Button, Input } from '@ciphera-net/ui'
 

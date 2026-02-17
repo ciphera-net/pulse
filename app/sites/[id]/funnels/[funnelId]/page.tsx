@@ -16,7 +16,7 @@ import {
   ResponsiveContainer,
   Cell
 } from 'recharts'
-import { getDateRange } from '@/lib/utils/format'
+import { getDateRange } from '@ciphera-net/ui'
 
 const CHART_COLORS_LIGHT = {
   border: '#E5E5E5',

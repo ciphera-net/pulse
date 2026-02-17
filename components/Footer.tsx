@@ -2,8 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { GithubIcon, TwitterIcon } from '@ciphera-net/ui'
-import SwissFlagIcon from './SwissFlagIcon'
+import { GithubIcon, TwitterIcon, SwissFlagIcon } from '@ciphera-net/ui'
 
 interface FooterProps {
   LinkComponent?: any
@@ -47,7 +46,7 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
   if (isAuthenticated) {
     return (
       <footer className="w-full py-8 mt-auto border-t border-neutral-100 dark:border-neutral-800 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="text-sm text-neutral-500 dark:text-neutral-400">
               © 2024-{year} Ciphera. All rights reserved.

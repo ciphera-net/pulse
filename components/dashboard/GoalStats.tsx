@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { formatNumber } from '@/lib/utils/format'
+import { formatNumber } from '@ciphera-net/ui'
 import { BookOpenIcon, ArrowRightIcon } from '@ciphera-net/ui'
 import type { GoalCountStat } from '@/lib/api/stats'
 

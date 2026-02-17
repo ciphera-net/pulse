@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { formatNumber } from '@/lib/utils/format'
+import { formatNumber } from '@ciphera-net/ui'
 import * as Flags from 'country-flag-icons/react/3x2'
 import WorldMap from './WorldMap'
 import { GlobeIcon } from '@ciphera-net/ui'
