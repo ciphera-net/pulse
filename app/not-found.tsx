@@ -3,7 +3,7 @@ import { Button } from '@ciphera-net/ui'
 
 export default function NotFound() {
   return (
-    <div className="relative min-h-[80vh] flex flex-col items-center justify-center overflow-hidden selection:bg-brand-orange/20">
+    <div className="relative min-h-[80vh] flex flex-col items-center justify-center overflow-hidden">
       {/* * --- ATMOSPHERE (Background) --- */}
       <div className="absolute inset-0 -z-10 pointer-events-none">
         {/* * Center Orange Glow */}
