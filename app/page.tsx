@@ -172,7 +172,7 @@ export default function HomePage() {
 
   if (!user) {
     return (
-      <div className="relative min-h-screen flex flex-col overflow-hidden selection:bg-brand-orange/20">
+      <div className="relative min-h-screen flex flex-col overflow-hidden">
         
         {/* * --- 1. ATMOSPHERE (Background) --- */}
         <div className="absolute inset-0 -z-10 pointer-events-none">

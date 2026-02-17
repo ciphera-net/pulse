@@ -57,7 +57,7 @@ function ComparisonTable({ title, competitors }: { title: string, competitors: {
 
 export default function AboutPage() {
   return (
-    <div className="relative min-h-screen flex flex-col overflow-hidden selection:bg-brand-orange/20">
+    <div className="relative min-h-screen flex flex-col overflow-hidden">
       {/* * --- ATMOSPHERE (Background) --- */}
       <div className="absolute inset-0 -z-10 pointer-events-none">
         <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-brand-orange/10 rounded-full blur-[128px] opacity-60" />
