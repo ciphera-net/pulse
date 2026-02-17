@@ -21,10 +21,15 @@ This document defines the visual language and design patterns for Pulse Analytic
 --brand-orange: #FD5E0F;
 --brand-orange-hover: #E54E00; /* Darker for hover states */
 
+/* Injected by @ciphera-net/ui preset — use in SVG, Recharts, rgba() */
+--color-brand-orange: #FD5E0F;
+--color-brand-orange-rgb: 253, 94, 15; /* For rgba(var(--color-brand-orange-rgb), 0.5) */
+
 /* Usage */
 - Primary CTAs, links, focus rings
 - Accent elements, badges
 - Never use for large backgrounds (too vibrant)
+- var(--color-brand-orange) for SVG/Recharts where Tailwind classes don't apply
 ```
 
 ### Neutral Scale
