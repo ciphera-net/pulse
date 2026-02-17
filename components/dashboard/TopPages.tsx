@@ -1,6 +1,6 @@
 'use client'
 
-import { formatNumber } from '@/lib/utils/format'
+import { formatNumber } from '@ciphera-net/ui'
 import { LayoutDashboardIcon } from '@ciphera-net/ui'
 
 interface TopPagesProps {

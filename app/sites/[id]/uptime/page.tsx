@@ -19,7 +19,7 @@ import {
 } from '@/lib/api/uptime'
 import { toast } from '@ciphera-net/ui'
 import { useTheme } from '@ciphera-net/ui'
-import { getAuthErrorMessage } from '@/lib/utils/authErrors'
+import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { LoadingOverlay, Button, Modal } from '@ciphera-net/ui'
 import {
   AreaChart,

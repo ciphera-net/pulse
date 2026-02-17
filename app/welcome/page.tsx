@@ -21,7 +21,7 @@ import { createSite, type Site } from '@/lib/api/sites'
 import { setSessionAction } from '@/app/actions/auth'
 import { useAuth } from '@/lib/auth/context'
 import apiRequest from '@/lib/api/client'
-import { getAuthErrorMessage } from '@/lib/utils/authErrors'
+import { getAuthErrorMessage } from '@ciphera-net/ui'
 import {
   trackWelcomeStepView,
   trackWelcomeWorkspaceSelected,

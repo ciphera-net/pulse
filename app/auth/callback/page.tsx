@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth/context'
 import { AUTH_URL, default as apiRequest } from '@/lib/api/client'
 import { exchangeAuthCode, setSessionAction } from '@/app/actions/auth'
-import { authMessageFromErrorType, type AuthErrorType } from '@/lib/utils/authErrors'
+import { authMessageFromErrorType, type AuthErrorType } from '@ciphera-net/ui'
 import { LoadingOverlay } from '@ciphera-net/ui'
 
 function AuthCallbackContent() {

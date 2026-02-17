@@ -21,7 +21,7 @@ import { TRAFFIC_TIERS, PLAN_ID_SOLO, getTierIndexForLimit, getLimitForTierIndex
 import { getAuditLog, AuditLogEntry, GetAuditLogParams } from '@/lib/api/audit'
 import { getNotificationSettings, updateNotificationSettings } from '@/lib/api/notification-settings'
 import { toast } from '@ciphera-net/ui'
-import { getAuthErrorMessage } from '@/lib/utils/authErrors'
+import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   AlertTriangleIcon,
@@ -35,6 +35,7 @@ import {
   DownloadIcon,
   ExternalLinkIcon,
   LayoutDashboardIcon,
+  Spinner,
 } from '@ciphera-net/ui'
 
 // * Bell icon for notifications tab
@@ -699,7 +700,7 @@ export default function OrganizationSettings() {
                   <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden divide-y divide-neutral-200 dark:divide-neutral-800">
                     {isLoadingMembers ? (
                       <div className="flex items-center justify-center py-8">
-                        <div className="w-6 h-6 border-2 border-brand-orange/30 border-t-brand-orange rounded-full animate-spin" />
+                        <Spinner />
                       </div>
                     ) : members.length === 0 ? (
                       <div className="p-8 text-center text-neutral-500">No members found.</div>
@@ -780,7 +781,7 @@ export default function OrganizationSettings() {
 
                 {isLoadingSubscription ? (
                   <div className="flex items-center justify-center py-12">
-                    <div className="w-6 h-6 border-2 border-brand-orange/30 border-t-brand-orange rounded-full animate-spin" />
+                    <Spinner />
                   </div>
                 ) : !subscription ? (
                   <div className="p-8 text-center bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-200 dark:border-neutral-800">
@@ -926,7 +927,7 @@ export default function OrganizationSettings() {
                       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden divide-y divide-neutral-200 dark:divide-neutral-800">
                         {isLoadingInvoices ? (
                           <div className="flex items-center justify-center py-8">
-                            <div className="w-6 h-6 border-2 border-brand-orange/30 border-t-brand-orange rounded-full animate-spin" />
+                            <Spinner />
                           </div>
                         ) : invoices.length === 0 ? (
                           <div className="p-8 text-center text-neutral-500">No invoices found.</div>
@@ -990,7 +991,7 @@ export default function OrganizationSettings() {
 
                 {isLoadingNotificationSettings ? (
                   <div className="flex items-center justify-center py-12">
-                    <div className="w-6 h-6 border-2 border-brand-orange/30 border-t-brand-orange rounded-full animate-spin" />
+                    <Spinner />
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -1117,7 +1118,7 @@ export default function OrganizationSettings() {
                 <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden">
                   {isLoadingAudit ? (
                     <div className="flex items-center justify-center py-12">
-                      <div className="w-6 h-6 border-2 border-brand-orange/30 border-t-brand-orange rounded-full animate-spin" />
+                      <Spinner />
                     </div>
                   ) : (auditEntries ?? []).length === 0 ? (
                     <div className="p-8 text-center text-neutral-500">No audit events found.</div>
