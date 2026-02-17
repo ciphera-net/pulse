@@ -2,8 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { GithubIcon, TwitterIcon } from '@ciphera-net/ui'
-import SwissFlagIcon from './SwissFlagIcon'
+import { GithubIcon, TwitterIcon, SwissFlagIcon } from '@ciphera-net/ui'
 
 interface FooterProps {
   LinkComponent?: any

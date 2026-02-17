@@ -7,7 +7,7 @@
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { listNotifications, markNotificationRead, markAllNotificationsRead, type Notification } from '@/lib/api/notifications'
-import { getAuthErrorMessage } from '@/lib/utils/authErrors'
+import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { formatTimeAgo, getTypeIcon } from '@/lib/utils/notifications'
 import { SettingsIcon } from '@ciphera-net/ui'
 

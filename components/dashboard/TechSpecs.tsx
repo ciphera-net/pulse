@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { formatNumber } from '@/lib/utils/format'
+import { formatNumber } from '@ciphera-net/ui'
 import { getBrowserIcon, getOSIcon, getDeviceIcon } from '@/lib/utils/icons'
 import { MdMonitor } from 'react-icons/md'
-import { Modal, GridIcon } from '@ciphera-net/ui'
+import { Modal, GridIcon, Spinner } from '@ciphera-net/ui'
 import { getBrowsers, getOS, getDevices, getScreenResolutions } from '@/lib/api/stats'
 
 interface TechSpecsProps {
@@ -190,7 +190,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
           {isLoadingFull ? (
             <div className="py-8 flex flex-col items-center gap-2">
-              <div className="animate-spin w-6 h-6 border-2 border-neutral-300 dark:border-neutral-700 border-t-brand-orange rounded-full" />
+              <Spinner />
               <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading...</p>
             </div>
           ) : (

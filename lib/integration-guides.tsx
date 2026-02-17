@@ -8,7 +8,7 @@
  */
 
 import { type ReactNode } from 'react'
-import { CodeBlock } from '@/components/CodeBlock'
+import { CodeBlock } from '@ciphera-net/ui'
 
 // * ─── Guide registry ─────────────────────────────────────────────────────────
 

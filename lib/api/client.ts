@@ -2,7 +2,7 @@
  * HTTP client wrapper for API calls
  */
 
-import { authMessageFromStatus, AUTH_ERROR_MESSAGES } from '@/lib/utils/authErrors'
+import { authMessageFromStatus, AUTH_ERROR_MESSAGES } from '@ciphera-net/ui'
 
 /** Request timeout in ms; network errors surface as user-facing "Network error, please try again." */
 const FETCH_TIMEOUT_MS = 30_000

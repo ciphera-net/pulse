@@ -12,7 +12,7 @@ import SiteList from '@/components/sites/SiteList'
 import { Button } from '@ciphera-net/ui'
 import { BarChartIcon, LockIcon, ZapIcon, CheckCircleIcon, XIcon, GlobeIcon } from '@ciphera-net/ui'
 import { toast } from '@ciphera-net/ui'
-import { getAuthErrorMessage } from '@/lib/utils/authErrors'
+import { getAuthErrorMessage } from '@ciphera-net/ui'
 
 function DashboardPreview() {
   return (
