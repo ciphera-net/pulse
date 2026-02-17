@@ -285,7 +285,7 @@ Glass card effect with backdrop blur (premium feel):
 Orange gradient for emphasized text:
 ```css
 .gradient-text {
-  @apply bg-gradient-to-r from-brand-orange to-[#E54E00] bg-clip-text text-transparent;
+  @apply bg-gradient-to-r from-brand-orange to-brand-orange-hover bg-clip-text text-transparent;
 }
 ```
 
