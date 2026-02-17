@@ -23,7 +23,7 @@ This document defines the visual language and design patterns for Pulse Analytic
 
 /* Injected by @ciphera-net/ui preset — use in SVG, Recharts, rgba() */
 --color-brand-orange: #FD5E0F;
---color-brand-orange-rgb: 253, 94, 15; /* For rgba(var(--color-brand-orange-rgb), 0.5) */
+--color-brand-orange-rgb: 253, 94, 15; /* Used by .glow-orange utility; also for custom rgba(var(--color-brand-orange-rgb), 0.5) */
 
 /* Usage */
 - Primary CTAs, links, focus rings
