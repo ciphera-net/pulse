@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { formatNumber } from '@/lib/utils/format'
+import { formatNumber } from '@ciphera-net/ui'
 import { TopPage, getTopPages, getEntryPages, getExitPages } from '@/lib/api/stats'
-import { Modal, ArrowUpRightIcon, LayoutDashboardIcon } from '@ciphera-net/ui'
+import { Modal, ArrowUpRightIcon, LayoutDashboardIcon, Spinner } from '@ciphera-net/ui'
 
 interface ContentStatsProps {
   topPages: TopPage[]
@@ -174,7 +174,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
           {isLoadingFull ? (
             <div className="py-8 flex flex-col items-center gap-2">
-              <div className="animate-spin w-6 h-6 border-2 border-neutral-300 dark:border-neutral-700 border-t-brand-orange rounded-full" />
+              <Spinner />
               <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading...</p>
             </div>
           ) : (

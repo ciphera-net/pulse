@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { getSite, type Site } from '@/lib/api/sites'
 import { getRealtimeVisitors, getSessionDetails, type Visitor, type SessionEvent } from '@/lib/api/realtime'
 import { toast } from '@ciphera-net/ui'
-import { getAuthErrorMessage } from '@/lib/utils/authErrors'
+import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { LoadingOverlay, UserIcon } from '@ciphera-net/ui'
 import { motion, AnimatePresence } from 'framer-motion'
 

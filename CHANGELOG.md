@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.7.0-alpha] - 2026-02-17
+
+### Changed
+
+- **ciphera-ui consolidation.** Migrated shared components and utilities to @ciphera-net/ui (v0.0.57): SwissFlagIcon, CodeBlock, Spinner, format utilities (formatNumber, formatDuration, formatDate, getDateRange, formatUpdatedAgo, formatRelativeTime), and auth error utilities (getAuthErrorMessage, authMessageFromStatus, authMessageFromErrorType). Removed 6 local duplicate files (LoadingOverlay, SwissFlagIcon, CodeBlock, authErrors.ts, format.ts).
+- **Form card border radius.** Login, signup, invite accept, verify, reset-password, forgot-password, and organization create cards now use rounded-2xl to match design system.
+- **Hardcoded brand colors.** Uptime page chart uses CSS variable var(--color-brand-orange) instead of #FD5E0F.
+- **Selection styling.** Removed redundant selection:bg-brand-orange/20 from page wrappers; relies on ciphera-ui base styles.
+- **Inline spinners.** Dashboard widgets (TopReferrers, Locations, TechSpecs, Campaigns, ContentStats), notifications page, and OrganizationSettings now use Spinner from ciphera-ui.
+
+### Removed
+
+- **Dead components.** LoadingOverlay.tsx (unused; all usage already from ciphera-ui).
+
 ## [0.6.0-alpha] - 2026-02-13
 
 ### Added
@@ -67,7 +81,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
-[Unreleased]: https://github.com/ciphera-net/pulse/compare/v0.6.0-alpha...HEAD
+[Unreleased]: https://github.com/ciphera-net/pulse/compare/v0.7.0-alpha...HEAD
+[0.7.0-alpha]: https://github.com/ciphera-net/pulse/compare/v0.6.0-alpha...v0.7.0-alpha
 [0.6.0-alpha]: https://github.com/ciphera-net/pulse/compare/v0.5.1-alpha...v0.6.0-alpha
 [0.5.1-alpha]: https://github.com/ciphera-net/pulse/compare/v0.5.0-alpha...v0.5.1-alpha
 [0.5.0-alpha]: https://github.com/ciphera-net/pulse/compare/v0.4.0-alpha...v0.5.0-alpha

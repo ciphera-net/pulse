@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { formatNumber } from '@/lib/utils/format'
+import { formatNumber } from '@ciphera-net/ui'
 import { getReferrerDisplayName, getReferrerFavicon, getReferrerIcon, mergeReferrersByDisplayName } from '@/lib/utils/icons'
-import { Modal, GlobeIcon } from '@ciphera-net/ui'
+import { Modal, GlobeIcon, Spinner } from '@ciphera-net/ui'
 import { getTopReferrers, TopReferrer } from '@/lib/api/stats'
 
 interface TopReferrersProps {
@@ -135,7 +135,7 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
           {isLoadingFull ? (
             <div className="py-8 flex flex-col items-center gap-2">
-              <div className="animate-spin w-6 h-6 border-2 border-neutral-300 dark:border-neutral-700 border-t-brand-orange rounded-full" />
+              <Spinner />
               <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading...</p>
             </div>
           ) : (

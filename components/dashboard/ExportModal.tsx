@@ -6,7 +6,7 @@ import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import type { DailyStat } from './Chart'
-import { formatNumber, formatDuration } from '@/lib/utils/format'
+import { formatNumber, formatDuration } from '@ciphera-net/ui'
 import { getReferrerDisplayName, mergeReferrersByDisplayName } from '@/lib/utils/icons'
 import type { TopPage, TopReferrer, CampaignStat } from '@/lib/api/stats'
 

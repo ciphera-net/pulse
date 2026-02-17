@@ -19,7 +19,7 @@ import {
 } from '@/lib/api/uptime'
 import { toast } from '@ciphera-net/ui'
 import { useTheme } from '@ciphera-net/ui'
-import { getAuthErrorMessage } from '@/lib/utils/authErrors'
+import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { LoadingOverlay, Button, Modal } from '@ciphera-net/ui'
 import {
   AreaChart,
@@ -313,7 +313,7 @@ function ResponseTimeChart({ checks }: { checks: UptimeCheck[] }) {
         }}
       >
         <div className="font-medium mb-0.5">{label}</div>
-        <div style={{ color: '#FD5E0F' }} className="font-semibold">
+        <div style={{ color: 'var(--color-brand-orange)' }} className="font-semibold">
           {payload[0].value}ms
         </div>
       </div>
@@ -330,8 +330,8 @@ function ResponseTimeChart({ checks }: { checks: UptimeCheck[] }) {
           <AreaChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
             <defs>
               <linearGradient id="responseTimeGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#FD5E0F" stopOpacity={0.3} />
-                <stop offset="100%" stopColor="#FD5E0F" stopOpacity={0.02} />
+                <stop offset="0%" stopColor="var(--color-brand-orange)" stopOpacity={0.3} />
+                <stop offset="100%" stopColor="var(--color-brand-orange)" stopOpacity={0.02} />
               </linearGradient>
             </defs>
             <CartesianGrid
@@ -357,11 +357,11 @@ function ResponseTimeChart({ checks }: { checks: UptimeCheck[] }) {
             <Area
               type="monotone"
               dataKey="ms"
-              stroke="#FD5E0F"
+              stroke="var(--color-brand-orange)"
               strokeWidth={2}
               fill="url(#responseTimeGradient)"
               dot={false}
-              activeDot={{ r: 4, fill: '#FD5E0F', strokeWidth: 0 }}
+              activeDot={{ r: 4, fill: 'var(--color-brand-orange)', strokeWidth: 0 }}
             />
           </AreaChart>
         </ResponsiveContainer>
