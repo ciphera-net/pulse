@@ -219,10 +219,10 @@ export default function PricingSection() {
         transition={{ duration: 0.5 }}
         className="text-center mb-12"
       >
-        <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-6">
+        <h2 className="text-3xl font-bold text-neutral-900 dark:text-white mb-4">
           Transparent Pricing
         </h2>
-        <p className="text-xl text-neutral-600 dark:text-neutral-400">
+        <p className="text-lg text-neutral-600 dark:text-neutral-400">
           Scale with your traffic. No hidden fees.
         </p>
       </motion.div>
@@ -232,11 +232,11 @@ export default function PricingSection() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
-        className="max-w-6xl mx-auto border border-neutral-200 dark:border-neutral-800 rounded-3xl bg-white/50 dark:bg-neutral-900/50 backdrop-blur-xl shadow-sm overflow-hidden mb-20"
+        className="max-w-6xl mx-auto border border-neutral-200 dark:border-neutral-800 rounded-2xl bg-white/50 dark:bg-neutral-900/50 backdrop-blur-xl shadow-sm overflow-hidden mb-20"
       >
         
         {/* Top Toolbar */}
-        <div className="p-8 border-b border-neutral-200 dark:border-neutral-800 flex flex-col md:flex-row items-center justify-between gap-8 bg-neutral-50/50 dark:bg-neutral-900/50">
+        <div className="p-6 border-b border-neutral-200 dark:border-neutral-800 flex flex-col md:flex-row items-center justify-between gap-8 bg-neutral-50/50 dark:bg-neutral-900/50">
           <div className="w-full md:w-2/3">
             <div className="flex justify-between text-sm font-medium text-neutral-500 mb-4">
               <span>10k</span>
@@ -252,7 +252,9 @@ export default function PricingSection() {
               step="1"
               value={sliderIndex}
               onChange={(e) => setSliderIndex(parseInt(e.target.value))}
-              className="w-full h-2 bg-neutral-200 rounded-lg appearance-none cursor-pointer dark:bg-neutral-700 accent-brand-orange"
+              aria-label="Monthly pageview limit"
+              aria-valuetext={`${currentTraffic.label} pageviews per month`}
+              className="w-full h-2 bg-neutral-200 rounded-lg appearance-none cursor-pointer dark:bg-neutral-700 accent-brand-orange focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2"
             />
           </div>
 
@@ -260,10 +262,12 @@ export default function PricingSection() {
             <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-medium uppercase tracking-wide">
               Get 1 month free with yearly
             </span>
-            <div className="bg-neutral-200 dark:bg-neutral-800 p-1 rounded-lg flex">
+            <div className="bg-neutral-200 dark:bg-neutral-800 p-1 rounded-lg flex" role="radiogroup" aria-label="Billing interval">
               <button
                 onClick={() => setIsYearly(false)}
-                className={`min-w-[88px] px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                role="radio"
+                aria-checked={!isYearly}
+                className={`min-w-[88px] px-4 py-2 rounded-lg text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-brand-orange ${
                   !isYearly
                     ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
                     : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
@@ -273,7 +277,9 @@ export default function PricingSection() {
               </button>
               <button
                 onClick={() => setIsYearly(true)}
-                className={`min-w-[88px] px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                role="radio"
+                aria-checked={isYearly}
+                className={`min-w-[88px] px-4 py-2 rounded-lg text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-brand-orange ${
                   isYearly
                     ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
                     : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
@@ -292,7 +298,7 @@ export default function PricingSection() {
             const isTeam = plan.id === 'team'
 
             return (
-              <div key={plan.id} className={`p-8 flex flex-col relative transition-colors ${isTeam ? 'bg-brand-orange/[0.02]' : 'hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50'}`}>
+              <div key={plan.id} className={`p-6 flex flex-col relative transition-colors ${isTeam ? 'bg-brand-orange/[0.02]' : 'hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50'}`}>
                 {isTeam && (
                   <>
                     <div className="absolute top-0 left-0 w-full h-1 bg-brand-orange" />
@@ -361,7 +367,7 @@ export default function PricingSection() {
           })}
 
           {/* Enterprise Section */}
-          <div className="p-8 bg-neutral-50/50 dark:bg-neutral-900/50 flex flex-col">
+          <div className="p-6 bg-neutral-50/50 dark:bg-neutral-900/50 flex flex-col">
             <div className="mb-8">
               <h3 className="text-lg font-bold text-neutral-900 dark:text-white mb-2">Enterprise</h3>
               <p className="text-sm text-neutral-500 min-h-[40px] mb-4">For high volume sites and custom needs</p>
