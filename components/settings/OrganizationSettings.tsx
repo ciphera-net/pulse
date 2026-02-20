@@ -16,7 +16,7 @@ import {
   OrganizationInvitation,
   Organization
 } from '@/lib/api/organization'
-import { getSubscription, createPortalSession, getInvoices, cancelSubscription, resumeSubscription, changePlan, createCheckoutSession, SubscriptionDetails, Invoice } from '@/lib/api/billing'
+import { getSubscription, createPortalSession, getInvoices, cancelSubscription, resumeSubscription, changePlan, previewInvoice, createCheckoutSession, SubscriptionDetails, Invoice, PreviewInvoiceResult } from '@/lib/api/billing'
 import { TRAFFIC_TIERS, PLAN_ID_SOLO, getTierIndexForLimit, getLimitForTierIndex, getSitesLimitForPlan } from '@/lib/plans'
 import { getAuditLog, AuditLogEntry, GetAuditLogParams } from '@/lib/api/audit'
 import { getNotificationSettings, updateNotificationSettings } from '@/lib/api/notification-settings'
@@ -87,6 +87,8 @@ export default function OrganizationSettings() {
   const [showChangePlanModal, setShowChangePlanModal] = useState(false)
   const [changePlanTierIndex, setChangePlanTierIndex] = useState(2)
   const [changePlanYearly, setChangePlanYearly] = useState(false)
+  const [invoicePreview, setInvoicePreview] = useState<PreviewInvoiceResult | null>(null)
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false)
   const [isChangingPlan, setIsChangingPlan] = useState(false)
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [isLoadingInvoices, setIsLoadingInvoices] = useState(false)
@@ -349,10 +351,26 @@ export default function OrganizationSettings() {
       setChangePlanTierIndex(2)
     }
     setChangePlanYearly(subscription?.billing_interval === 'year')
+    setInvoicePreview(null)
     setShowChangePlanModal(true)
   }
 
   const hasActiveSubscription = subscription?.subscription_status === 'active' || subscription?.subscription_status === 'trialing'
+
+  useEffect(() => {
+    if (!showChangePlanModal || !hasActiveSubscription) {
+      setInvoicePreview(null)
+      return
+    }
+    let cancelled = false
+    setIsLoadingPreview(true)
+    const interval = changePlanYearly ? 'year' : 'month'
+    const limit = getLimitForTierIndex(changePlanTierIndex)
+    previewInvoice({ plan_id: PLAN_ID_SOLO, interval, limit })
+      .then((res) => { if (!cancelled) setInvoicePreview(res ?? null) })
+      .finally(() => { if (!cancelled) setIsLoadingPreview(false) })
+    return () => { cancelled = true }
+  }, [showChangePlanModal, hasActiveSubscription, changePlanTierIndex, changePlanYearly])
 
   const handleChangePlanSubmit = async () => {
     const interval = changePlanYearly ? 'year' : 'month'
@@ -925,8 +943,18 @@ export default function OrganizationSettings() {
                           </div>
                           <div className="text-lg font-semibold text-neutral-900 dark:text-white">
                             {(() => {
-                              const d = subscription.current_period_end ? new Date(subscription.current_period_end as string) : null
-                              return d && !Number.isNaN(d.getTime()) && d.getTime() !== 0 ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—'
+                              const ts = subscription.next_invoice_period_end ?? subscription.current_period_end
+                              const d = ts ? new Date(typeof ts === 'number' ? ts * 1000 : ts) : null
+                              const dateStr = d && !Number.isNaN(d.getTime()) && d.getTime() !== 0
+                                ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+                                : '—'
+                              const amount = subscription.next_invoice_amount_due != null && subscription.next_invoice_currency
+                                ? (subscription.next_invoice_amount_due / 100).toLocaleString('en-US', {
+                                    style: 'currency',
+                                    currency: subscription.next_invoice_currency.toUpperCase(),
+                                  })
+                                : null
+                              return amount && dateStr !== '—' ? `${dateStr} for ${amount}` : dateStr
                             })()}
                           </div>
                         </div>
@@ -1426,6 +1454,26 @@ export default function OrganizationSettings() {
                   </div>
                 </div>
               </div>
+              {hasActiveSubscription && (
+                <div className="mt-4 p-3 rounded-lg bg-neutral-100 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700">
+                  {isLoadingPreview ? (
+                    <div className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
+                      <Spinner className="w-4 h-4" />
+                      Calculating next invoice…
+                    </div>
+                  ) : invoicePreview ? (
+                    <p className="text-sm text-neutral-700 dark:text-neutral-300">
+                      Next invoice:{' '}
+                      {(invoicePreview.amount_due / 100).toLocaleString('en-US', {
+                        style: 'currency',
+                        currency: invoicePreview.currency.toUpperCase(),
+                      })}{' '}
+                      on {new Date(invoicePreview.period_end * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}{' '}
+                      <span className="text-neutral-500">(prorated)</span>
+                    </p>
+                  ) : null}
+                </div>
+              )}
               <div className="flex gap-2 mt-6">
                 <Button
                   onClick={handleChangePlanSubmit}
