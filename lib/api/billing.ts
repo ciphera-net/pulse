@@ -23,6 +23,12 @@ export interface SubscriptionDetails {
   business_name?: string
   /** Tax IDs collected on the Stripe customer (VAT, EIN, etc.) for invoice verification. */
   tax_ids?: TaxID[]
+  /** Next invoice amount in cents (for "Renews on X for €Y" display). */
+  next_invoice_amount_due?: number
+  /** Currency for next invoice (e.g. eur). */
+  next_invoice_currency?: string
+  /** Unix timestamp when next invoice period ends. */
+  next_invoice_period_end?: number
 }
 
 async function billingFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -85,6 +91,23 @@ export interface ChangePlanParams {
   plan_id: string
   interval: string
   limit: number
+}
+
+export interface PreviewInvoiceResult {
+  amount_due: number
+  currency: string
+  period_end: number
+}
+
+export async function previewInvoice(params: ChangePlanParams): Promise<PreviewInvoiceResult | null> {
+  const res = await billingFetch<PreviewInvoiceResult | Record<string, never>>('/api/billing/preview-invoice', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  })
+  if (res && typeof res === 'object' && 'amount_due' in res && typeof (res as PreviewInvoiceResult).amount_due === 'number') {
+    return res as PreviewInvoiceResult
+  }
+  return null
 }
 
 export async function changePlan(params: ChangePlanParams): Promise<{ ok: boolean }> {
