@@ -85,10 +85,21 @@ export interface CreateCheckoutParams {
   limit: number
 }
 
-export async function createCheckoutSession(params: CreateCheckoutParams): Promise<{ url: string }> {
-  return await billingFetch<{ url: string }>('/api/billing/checkout', {
+export async function createCheckoutSession(params: CreateCheckoutParams): Promise<{ client_secret: string }> {
+  return await billingFetch<{ client_secret: string }>('/api/billing/checkout', {
     method: 'POST',
     body: JSON.stringify(params),
+  })
+}
+
+export interface CheckoutSessionStatus {
+  status: string
+  customer_email: string
+}
+
+export async function getCheckoutSessionStatus(sessionId: string): Promise<CheckoutSessionStatus> {
+  return await billingFetch<CheckoutSessionStatus>(`/api/billing/checkout/session-status?session_id=${encodeURIComponent(sessionId)}`, {
+    method: 'GET',
   })
 }
 
