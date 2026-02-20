@@ -298,6 +298,24 @@ export default function OrganizationSettings() {
     }
   }, [activeTab, user?.role, handleTabChange])
 
+  const hasActiveSubscription = subscription?.subscription_status === 'active' || subscription?.subscription_status === 'trialing'
+
+  useEffect(() => {
+    if (!showChangePlanModal || !hasActiveSubscription) {
+      setInvoicePreview(null)
+      return
+    }
+    let cancelled = false
+    setIsLoadingPreview(true)
+    setInvoicePreview(null)
+    const interval = changePlanYearly ? 'year' : 'month'
+    const limit = getLimitForTierIndex(changePlanTierIndex)
+    previewInvoice({ plan_id: changePlanId, interval, limit })
+      .then((res) => { if (!cancelled) setInvoicePreview(res ?? null) })
+      .finally(() => { if (!cancelled) setIsLoadingPreview(false) })
+    return () => { cancelled = true }
+  }, [showChangePlanModal, hasActiveSubscription, changePlanId, changePlanTierIndex, changePlanYearly])
+
   // If no org ID, we are in personal organization context, so don't show org settings
   if (!currentOrgId) {
     return (
@@ -361,24 +379,6 @@ export default function OrganizationSettings() {
     setInvoicePreview(null)
     setShowChangePlanModal(true)
   }
-
-  const hasActiveSubscription = subscription?.subscription_status === 'active' || subscription?.subscription_status === 'trialing'
-
-  useEffect(() => {
-    if (!showChangePlanModal || !hasActiveSubscription) {
-      setInvoicePreview(null)
-      return
-    }
-    let cancelled = false
-    setIsLoadingPreview(true)
-    setInvoicePreview(null)
-    const interval = changePlanYearly ? 'year' : 'month'
-    const limit = getLimitForTierIndex(changePlanTierIndex)
-    previewInvoice({ plan_id: changePlanId, interval, limit })
-      .then((res) => { if (!cancelled) setInvoicePreview(res ?? null) })
-      .finally(() => { if (!cancelled) setIsLoadingPreview(false) })
-    return () => { cancelled = true }
-  }, [showChangePlanModal, hasActiveSubscription, changePlanId, changePlanTierIndex, changePlanYearly])
 
   const handleChangePlanSubmit = async () => {
     const interval = changePlanYearly ? 'year' : 'month'
