@@ -16,7 +16,7 @@ import {
   OrganizationInvitation,
   Organization
 } from '@/lib/api/organization'
-import { getSubscription, createPortalSession, getInvoices, cancelSubscription, changePlan, SubscriptionDetails, Invoice } from '@/lib/api/billing'
+import { getSubscription, createPortalSession, getInvoices, cancelSubscription, changePlan, createCheckoutSession, SubscriptionDetails, Invoice } from '@/lib/api/billing'
 import { TRAFFIC_TIERS, PLAN_ID_SOLO, getTierIndexForLimit, getLimitForTierIndex, getSitesLimitForPlan } from '@/lib/plans'
 import { getAuditLog, AuditLogEntry, GetAuditLogParams } from '@/lib/api/audit'
 import { getNotificationSettings, updateNotificationSettings } from '@/lib/api/notification-settings'
@@ -351,12 +351,9 @@ export default function OrganizationSettings() {
         setShowChangePlanModal(false)
         loadSubscription()
       } else {
-        const params = new URLSearchParams({
-          plan_id: PLAN_ID_SOLO,
-          interval,
-          limit: String(limit),
-        })
-        router.push(`/checkout?${params.toString()}`)
+        const { url } = await createCheckoutSession({ plan_id: PLAN_ID_SOLO, interval, limit })
+        if (url) window.location.href = url
+        else throw new Error('No checkout URL')
       }
     } catch (error: any) {
       toast.error(getAuthErrorMessage(error) || error.message || 'Something went wrong.')
