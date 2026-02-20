@@ -74,6 +74,13 @@ export async function cancelSubscription(params?: CancelSubscriptionParams): Pro
   })
 }
 
+/** Clears cancel_at_period_end so the subscription continues past the current period. */
+export async function resumeSubscription(): Promise<{ ok: boolean }> {
+  return await billingFetch<{ ok: boolean }>('/api/billing/resume', {
+    method: 'POST',
+  })
+}
+
 export interface ChangePlanParams {
   plan_id: string
   interval: string

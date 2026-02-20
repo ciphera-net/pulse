@@ -16,7 +16,7 @@ import {
   OrganizationInvitation,
   Organization
 } from '@/lib/api/organization'
-import { getSubscription, createPortalSession, getInvoices, cancelSubscription, changePlan, createCheckoutSession, SubscriptionDetails, Invoice } from '@/lib/api/billing'
+import { getSubscription, createPortalSession, getInvoices, cancelSubscription, resumeSubscription, changePlan, createCheckoutSession, SubscriptionDetails, Invoice } from '@/lib/api/billing'
 import { TRAFFIC_TIERS, PLAN_ID_SOLO, getTierIndexForLimit, getLimitForTierIndex, getSitesLimitForPlan } from '@/lib/plans'
 import { getAuditLog, AuditLogEntry, GetAuditLogParams } from '@/lib/api/audit'
 import { getNotificationSettings, updateNotificationSettings } from '@/lib/api/notification-settings'
@@ -83,6 +83,7 @@ export default function OrganizationSettings() {
   const [isRedirectingToPortal, setIsRedirectingToPortal] = useState(false)
   const [cancelLoadingAction, setCancelLoadingAction] = useState<'period_end' | 'immediate' | null>(null)
   const [showCancelPrompt, setShowCancelPrompt] = useState(false)
+  const [isResuming, setIsResuming] = useState(false)
   const [showChangePlanModal, setShowChangePlanModal] = useState(false)
   const [changePlanTierIndex, setChangePlanTierIndex] = useState(2)
   const [changePlanYearly, setChangePlanYearly] = useState(false)
@@ -325,6 +326,19 @@ export default function OrganizationSettings() {
       toast.error(getAuthErrorMessage(error) || error.message || 'Failed to cancel subscription')
     } finally {
       setCancelLoadingAction(null)
+    }
+  }
+
+  const handleResumeSubscription = async () => {
+    setIsResuming(true)
+    try {
+      await resumeSubscription()
+      toast.success('Subscription will continue. Cancellation has been undone.')
+      loadSubscription()
+    } catch (error: any) {
+      toast.error(getAuthErrorMessage(error) || error.message || 'Failed to resume subscription')
+    } finally {
+      setIsResuming(false)
     }
   }
 
@@ -813,19 +827,30 @@ export default function OrganizationSettings() {
 
                     {/* Cancel-at-period-end notice */}
                     {subscription.cancel_at_period_end && (
-                      <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-2xl">
-                        <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
-                          Your subscription will end on{' '}
-                          <span className="font-semibold">
-                            {(() => {
-                              const d = subscription.current_period_end ? new Date(subscription.current_period_end as string) : null
-                              return d && !Number.isNaN(d.getTime()) ? d.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }) : '—'
-                            })()}
-                          </span>
-                        </p>
-                        <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                          You keep full access until then. Your data is retained for 30 days after. Use "Change plan" to resubscribe.
-                        </p>
+                      <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-2xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                            Your subscription will end on{' '}
+                            <span className="font-semibold">
+                              {(() => {
+                                const d = subscription.current_period_end ? new Date(subscription.current_period_end as string) : null
+                                return d && !Number.isNaN(d.getTime()) ? d.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }) : '—'
+                              })()}
+                            </span>
+                          </p>
+                          <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                            You keep full access until then. Your data is retained for 30 days after. Use "Change plan" to resubscribe.
+                          </p>
+                        </div>
+                        <Button
+                          variant="secondary"
+                          onClick={handleResumeSubscription}
+                          disabled={isResuming}
+                          isLoading={isResuming}
+                          className="shrink-0"
+                        >
+                          Keep my subscription
+                        </Button>
                       </div>
                     )}
 
