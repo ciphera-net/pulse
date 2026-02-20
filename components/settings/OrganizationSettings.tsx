@@ -856,6 +856,11 @@ export default function OrganizationSettings() {
                           Change plan
                         </Button>
                       </div>
+                      {subscription.business_name && (
+                        <div className="px-6 pb-2 -mt-2 text-sm text-neutral-500 dark:text-neutral-400">
+                          Billing for: {subscription.business_name}
+                        </div>
+                      )}
 
                       {/* Usage stats */}
                       <div className="border-t border-neutral-200 dark:border-neutral-800 px-6 py-5 grid grid-cols-2 md:grid-cols-4 gap-y-4 gap-x-6">
