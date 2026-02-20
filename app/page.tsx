@@ -390,7 +390,7 @@ export default function HomePage() {
                   return `${label} Plan`
                 })()}
               </p>
-              {(typeof subscription.sites_count === 'number' || (subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number')) && (
+              {(typeof subscription.sites_count === 'number' || (subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number') || (subscription.next_invoice_amount_due != null && subscription.next_invoice_currency && !subscription.cancel_at_period_end && (subscription.subscription_status === 'active' || subscription.subscription_status === 'trialing'))) && (
                 <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
                   {typeof subscription.sites_count === 'number' && (
                     <span>Sites: {(() => {
@@ -398,9 +398,25 @@ export default function HomePage() {
                       return limit != null && typeof subscription.sites_count === 'number' ? `${subscription.sites_count}/${limit}` : subscription.sites_count
                     })()}</span>
                   )}
-                  {typeof subscription.sites_count === 'number' && subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number' && ' · '}
+                  {typeof subscription.sites_count === 'number' && (subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number') && ' · '}
                   {subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number' && (
                     <span>Pageviews: {subscription.pageview_usage.toLocaleString()}/{subscription.pageview_limit.toLocaleString()}</span>
+                  )}
+                  {subscription.next_invoice_amount_due != null && subscription.next_invoice_currency && !subscription.cancel_at_period_end && (subscription.subscription_status === 'active' || subscription.subscription_status === 'trialing') && (
+                    <span className="block mt-1">
+                      Renews {(() => {
+                        const ts = subscription.next_invoice_period_end ?? subscription.current_period_end
+                        const d = ts ? new Date(typeof ts === 'number' ? ts * 1000 : ts) : null
+                        const dateStr = d && !Number.isNaN(d.getTime()) && d.getTime() !== 0
+                          ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+                          : null
+                        const amount = (subscription.next_invoice_amount_due / 100).toLocaleString('en-US', {
+                          style: 'currency',
+                          currency: subscription.next_invoice_currency.toUpperCase(),
+                        })
+                        return dateStr ? `${dateStr} for ${amount}` : amount
+                      })()}
+                    </span>
                   )}
                 </p>
               )}

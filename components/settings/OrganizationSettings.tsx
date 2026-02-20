@@ -312,6 +312,7 @@ export default function OrganizationSettings() {
     const limit = getLimitForTierIndex(changePlanTierIndex)
     previewInvoice({ plan_id: changePlanId, interval, limit })
       .then((res) => { if (!cancelled) setInvoicePreview(res ?? null) })
+      .catch(() => { if (!cancelled) { setInvoicePreview(null) } })
       .finally(() => { if (!cancelled) setIsLoadingPreview(false) })
     return () => { cancelled = true }
   }, [showChangePlanModal, hasActiveSubscription, changePlanId, changePlanTierIndex, changePlanYearly])
@@ -1083,9 +1084,14 @@ export default function OrganizationSettings() {
                                   )}
                                   {invoice.hosted_invoice_url && (
                                     <a href={invoice.hosted_invoice_url} target="_blank" rel="noopener noreferrer"
-                                       className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange" title="View invoice">
+                                       className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange ${
+                                         invoice.status === 'open'
+                                           ? 'bg-brand-orange text-white hover:bg-brand-orange-hover'
+                                           : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                                       }`}
+                                       title={invoice.status === 'open' ? 'Pay now' : 'View invoice'}>
                                       <ExternalLinkIcon className="w-3.5 h-3.5" />
-                                      View invoice
+                                      {invoice.status === 'open' ? 'Pay now' : 'View invoice'}
                                     </a>
                                   )}
                                 </div>
