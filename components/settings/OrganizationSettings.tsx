@@ -364,6 +364,7 @@ export default function OrganizationSettings() {
     }
     let cancelled = false
     setIsLoadingPreview(true)
+    setInvoicePreview(null)
     const interval = changePlanYearly ? 'year' : 'month'
     const limit = getLimitForTierIndex(changePlanTierIndex)
     previewInvoice({ plan_id: PLAN_ID_SOLO, interval, limit })
@@ -1471,7 +1472,11 @@ export default function OrganizationSettings() {
                       on {new Date(invoicePreview.period_end * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}{' '}
                       <span className="text-neutral-500">(prorated)</span>
                     </p>
-                  ) : null}
+                  ) : (
+                    <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                      Unable to calculate preview. Your next invoice will reflect prorations.
+                    </p>
+                  )}
                 </div>
               )}
               <div className="flex gap-2 mt-6">
