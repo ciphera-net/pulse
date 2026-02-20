@@ -6,13 +6,13 @@
  * Fetches session status and redirects to dashboard on success.
  */
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { getCheckoutSessionStatus } from '@/lib/api/billing'
 import { LoadingOverlay } from '@ciphera-net/ui'
 import Link from 'next/link'
 
-export default function CheckoutReturnPage() {
+function CheckoutReturnContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const sessionId = searchParams.get('session_id')
@@ -89,5 +89,13 @@ export default function CheckoutReturnPage() {
         </Link>
       </div>
     </div>
+  )
+}
+
+export default function CheckoutReturnPage() {
+  return (
+    <Suspense fallback={<LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Loading…" />}>
+      <CheckoutReturnContent />
+    </Suspense>
   )
 }
