@@ -17,7 +17,7 @@ import {
   Organization
 } from '@/lib/api/organization'
 import { getSubscription, createPortalSession, getInvoices, cancelSubscription, changePlan, createCheckoutSession, SubscriptionDetails, Invoice } from '@/lib/api/billing'
-import { TRAFFIC_TIERS, PLAN_ID_SOLO, getTierIndexForLimit, getLimitForTierIndex } from '@/lib/plans'
+import { TRAFFIC_TIERS, PLAN_ID_SOLO, getTierIndexForLimit, getLimitForTierIndex, getSitesLimitForPlan } from '@/lib/plans'
 import { getAuditLog, AuditLogEntry, GetAuditLogParams } from '@/lib/api/audit'
 import { getNotificationSettings, updateNotificationSettings } from '@/lib/api/notification-settings'
 import { toast } from '@ciphera-net/ui'
@@ -863,9 +863,10 @@ export default function OrganizationSettings() {
                           <div className="text-xs text-neutral-500 uppercase tracking-wider mb-1">Sites</div>
                           <div className="text-lg font-semibold text-neutral-900 dark:text-white">
                             {typeof subscription.sites_count === 'number'
-                              ? subscription.plan_id === 'solo'
-                                ? `${subscription.sites_count} / 1`
-                                : `${subscription.sites_count}`
+                              ? (() => {
+                                  const limit = getSitesLimitForPlan(subscription.plan_id)
+                                  return limit != null ? `${subscription.sites_count} / ${limit}` : `${subscription.sites_count}`
+                                })()
                               : '—'}
                           </div>
                         </div>

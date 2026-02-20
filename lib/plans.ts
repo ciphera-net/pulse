@@ -1,9 +1,22 @@
 /**
  * Shared plan and traffic tier definitions for pricing and billing (Change plan).
- * Backend supports plan_id "solo" and limit 10k–10M; month/year interval.
+ * Backend supports plan_id solo, team, business and limit 10k–10M; month/year interval.
  */
 
 export const PLAN_ID_SOLO = 'solo'
+export const PLAN_ID_TEAM = 'team'
+export const PLAN_ID_BUSINESS = 'business'
+
+/** Sites limit per plan. Returns null for free (no limit enforced in UI). */
+export function getSitesLimitForPlan(planId: string | null | undefined): number | null {
+  if (!planId || planId === 'free') return null
+  switch (planId) {
+    case 'solo': return 1
+    case 'team': return 5
+    case 'business': return 10
+    default: return null
+  }
+}
 
 /** Traffic tiers available for Solo plan (pageview limits). */
 export const TRAFFIC_TIERS = [
