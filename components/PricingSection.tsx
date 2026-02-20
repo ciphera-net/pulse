@@ -1,13 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Button, CheckCircleIcon } from '@ciphera-net/ui'
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
 import { toast } from '@ciphera-net/ui'
-import { createCheckoutSession } from '@/lib/api/billing'
 
 // 1. Define Plans with IDs and Site Limits
 const PLANS = [
@@ -102,6 +101,7 @@ const TRAFFIC_TIERS = [
 ]
 
 export default function PricingSection() {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const [isYearly, setIsYearly] = useState(false)
   const [sliderIndex, setSliderIndex] = useState(2) // Default to 100k (index 2)
@@ -186,22 +186,16 @@ export default function PricingSection() {
         return
       }
 
-      // 2. Call backend to create checkout session
+      // 2. Navigate to embedded checkout page
       const interval = options?.interval || (isYearly ? 'year' : 'month')
       const limit = options?.limit || currentTraffic.value
 
-      const { url } = await createCheckoutSession({
+      const params = new URLSearchParams({
         plan_id: planId,
         interval,
-        limit,
+        limit: String(limit),
       })
-
-      // 3. Redirect to Stripe Checkout
-      if (url) {
-        window.location.href = url
-      } else {
-        throw new Error('No checkout URL returned')
-      }
+      router.push(`/checkout?${params.toString()}`)
 
     } catch (error: any) {
       console.error('Checkout error:', error)
