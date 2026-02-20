@@ -13,7 +13,7 @@ export interface SubscriptionDetails {
   sites_count?: number
   /** Pageviews in current billing period (when pageview_limit > 0). Present when backend supports usage API. */
   pageview_usage?: number
-  /** Business name from Stripe Checkout (optional). */
+  /** Business name from Stripe Tax ID collection / business purchase flow (optional). */
   business_name?: string
 }
 
