@@ -1,5 +1,11 @@
 import { API_URL } from './client'
 
+export interface TaxID {
+  type: string
+  value: string
+  country?: string
+}
+
 export interface SubscriptionDetails {
   plan_id: string
   subscription_status: string
@@ -15,6 +21,8 @@ export interface SubscriptionDetails {
   pageview_usage?: number
   /** Business name from Stripe Tax ID collection / business purchase flow (optional). */
   business_name?: string
+  /** Tax IDs collected on the Stripe customer (VAT, EIN, etc.) for invoice verification. */
+  tax_ids?: TaxID[]
 }
 
 async function billingFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {

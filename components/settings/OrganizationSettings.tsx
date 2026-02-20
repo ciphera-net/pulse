@@ -856,9 +856,20 @@ export default function OrganizationSettings() {
                           Change plan
                         </Button>
                       </div>
-                      {subscription.business_name && (
-                        <div className="px-6 pb-2 -mt-2 text-sm text-neutral-500 dark:text-neutral-400">
-                          Billing for: {subscription.business_name}
+                      {(subscription.business_name || (subscription.tax_ids && subscription.tax_ids.length > 0)) && (
+                        <div className="px-6 pb-2 -mt-2 space-y-1 text-sm text-neutral-500 dark:text-neutral-400">
+                          {subscription.business_name && (
+                            <div>Billing for: {subscription.business_name}</div>
+                          )}
+                          {subscription.tax_ids && subscription.tax_ids.length > 0 && (
+                            <div>
+                              Tax ID{subscription.tax_ids.length > 1 ? 's' : ''}:{' '}
+                              {subscription.tax_ids.map((t) => {
+                                const label = t.type === 'eu_vat' ? 'VAT' : t.type === 'us_ein' ? 'EIN' : t.type.replace(/_/g, ' ').toUpperCase()
+                                return `${label} ${t.value}${t.country ? ` (${t.country})` : ''}`
+                              }).join(', ')}
+                            </div>
+                          )}
                         </div>
                       )}
 
