@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.8.0-alpha] - 2026-02-20
+
+### Added
+
+- **Renewal date and amount.** The dashboard and billing tab now show when your subscription renews and how much you'll be charged.
+- **Invoice preview when changing plans.** Before you switch plans, you can see exactly what your next invoice will be (including prorations).
+- **Pay now for open invoices.** Unpaid invoices show a clear "Pay now" button so you can settle them quickly.
+- **Enterprise contact.** The pricing page Enterprise plan now links to email us directly instead of checkout.
+- **Past due alert.** If your payment fails, a red banner appears with a link to update your payment method.
+- **Pageview usage bar.** Your billing card shows a color-coded bar so you can see at a glance how close you are to your limit (green, then amber, then red).
+
+### Changed
+
+- **Change plan flow.** Cleaner plan selector with Solo, Team, and Business options. Shows which plan you're on and a preview of your next invoice. If the preview can't be calculated, you'll see a friendly message instead of a blank screen.
+- **Billing tab layout.** Improved spacing, clearer headings, and better focus when using keyboard navigation.
+- **Pricing page layout.** Updated spacing and typography. Slider and billing toggle are more accessible.
+- **Billing Portal return.** After updating your payment method in Stripe's portal, you're taken back to the billing tab instead of the general settings page.
+
+### Fixed
+
+- **Theme toggle crash.** Fixed a crash that could occur when switching between light and dark mode on the pricing page and then opening organization settings.
+
 ## [0.7.0-alpha] - 2026-02-17
 
 ### Changed
@@ -82,7 +104,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
-[Unreleased]: https://github.com/ciphera-net/pulse/compare/v0.7.0-alpha...HEAD
+[Unreleased]: https://github.com/ciphera-net/pulse/compare/v0.8.0-alpha...HEAD
+[0.8.0-alpha]: https://github.com/ciphera-net/pulse/compare/v0.7.0-alpha...v0.8.0-alpha
 [0.7.0-alpha]: https://github.com/ciphera-net/pulse/compare/v0.6.0-alpha...v0.7.0-alpha
 [0.6.0-alpha]: https://github.com/ciphera-net/pulse/compare/v0.5.1-alpha...v0.6.0-alpha
 [0.5.1-alpha]: https://github.com/ciphera-net/pulse/compare/v0.5.0-alpha...v0.5.1-alpha

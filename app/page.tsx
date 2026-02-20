@@ -13,6 +13,7 @@ import { Button } from '@ciphera-net/ui'
 import { BarChartIcon, LockIcon, ZapIcon, CheckCircleIcon, XIcon, GlobeIcon } from '@ciphera-net/ui'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
+import { getSitesLimitForPlan } from '@/lib/plans'
 
 function DashboardPreview() {
   return (
@@ -337,10 +338,13 @@ export default function HomePage() {
           <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Your Sites</h1>
           <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">Manage your analytics sites and view insights.</p>
         </div>
-        {subscription?.plan_id === 'solo' && sites.length >= 1 ? (
+        {(() => {
+          const siteLimit = getSitesLimitForPlan(subscription?.plan_id)
+          const atLimit = siteLimit != null && sites.length >= siteLimit
+          return atLimit ? (
           <div className="flex items-center gap-3">
             <span className="text-sm font-medium text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700">
-              Limit reached (1/1)
+              Limit reached ({sites.length}/{siteLimit})
             </span>
             <Link href="/pricing">
               <Button variant="primary" className="text-sm">
@@ -348,7 +352,8 @@ export default function HomePage() {
               </Button>
             </Link>
           </div>
-        ) : (
+        ) : null
+        })() ?? (
           <Link href="/sites/new">
             <Button variant="primary" className="text-sm">
               Add New Site
@@ -385,14 +390,33 @@ export default function HomePage() {
                   return `${label} Plan`
                 })()}
               </p>
-              {(typeof subscription.sites_count === 'number' || (subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number')) && (
+              {(typeof subscription.sites_count === 'number' || (subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number') || (subscription.next_invoice_amount_due != null && subscription.next_invoice_currency && !subscription.cancel_at_period_end && (subscription.subscription_status === 'active' || subscription.subscription_status === 'trialing'))) && (
                 <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
                   {typeof subscription.sites_count === 'number' && (
-                    <span>Sites: {subscription.plan_id === 'solo' && subscription.sites_count > 0 ? `${subscription.sites_count}/1` : subscription.sites_count}</span>
+                    <span>Sites: {(() => {
+                      const limit = getSitesLimitForPlan(subscription.plan_id)
+                      return limit != null && typeof subscription.sites_count === 'number' ? `${subscription.sites_count}/${limit}` : subscription.sites_count
+                    })()}</span>
                   )}
-                  {typeof subscription.sites_count === 'number' && subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number' && ' · '}
+                  {typeof subscription.sites_count === 'number' && (subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number') && ' · '}
                   {subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number' && (
                     <span>Pageviews: {subscription.pageview_usage.toLocaleString()}/{subscription.pageview_limit.toLocaleString()}</span>
+                  )}
+                  {subscription.next_invoice_amount_due != null && subscription.next_invoice_currency && !subscription.cancel_at_period_end && (subscription.subscription_status === 'active' || subscription.subscription_status === 'trialing') && (
+                    <span className="block mt-1">
+                      Renews {(() => {
+                        const ts = subscription.next_invoice_period_end ?? subscription.current_period_end
+                        const d = ts ? new Date(typeof ts === 'number' ? ts * 1000 : ts) : null
+                        const dateStr = d && !Number.isNaN(d.getTime()) && d.getTime() !== 0
+                          ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+                          : null
+                        const amount = (subscription.next_invoice_amount_due / 100).toLocaleString('en-US', {
+                          style: 'currency',
+                          currency: subscription.next_invoice_currency.toUpperCase(),
+                        })
+                        return dateStr ? `${dateStr} for ${amount}` : amount
+                      })()}
+                    </span>
                   )}
                 </p>
               )}

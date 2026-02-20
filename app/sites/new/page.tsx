@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createSite, listSites, getSite, type Site } from '@/lib/api/sites'
 import { getSubscription } from '@/lib/api/billing'
+import { getSitesLimitForPlan } from '@/lib/plans'
 import { trackSiteCreatedFromDashboard, trackSiteCreatedScriptCopied } from '@/lib/welcomeAnalytics'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
@@ -57,9 +58,10 @@ export default function NewSitePage() {
           getSubscription()
         ])
 
-        if (subscription?.plan_id === 'solo' && sites.length >= 1) {
+        const siteLimit = subscription?.plan_id ? getSitesLimitForPlan(subscription.plan_id) : null
+        if (siteLimit != null && sites.length >= siteLimit) {
           setAtLimit(true)
-          toast.error('Solo plan limit reached (1 site). Please upgrade to add more sites.')
+          toast.error(`${subscription.plan_id} plan limit reached (${siteLimit} site${siteLimit === 1 ? '' : 's'}). Please upgrade to add more sites.`)
           router.replace('/')
         }
       } catch (error) {
