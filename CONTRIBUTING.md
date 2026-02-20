@@ -21,7 +21,6 @@ Thank you for your interest in contributing to Pulse! We welcome contributions f
     NEXT_PUBLIC_AUTH_URL=http://localhost:3000
     NEXT_PUBLIC_AUTH_API_URL=http://localhost:8081
     NEXT_PUBLIC_APP_URL=http://localhost:3003
-    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...   # For embedded checkout (optional if billing not used)
     ```
 5.  **Run the development server**:
     ```bash

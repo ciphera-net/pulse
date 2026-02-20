@@ -16,6 +16,7 @@ import {
   type Organization,
   type OrganizationMember,
 } from '@/lib/api/organization'
+import { createCheckoutSession } from '@/lib/api/billing'
 import { createSite, type Site } from '@/lib/api/sites'
 import { setSessionAction } from '@/app/actions/auth'
 import { useAuth } from '@/lib/auth/context'
@@ -217,14 +218,18 @@ function WelcomeContent() {
     try {
       trackWelcomePlanContinue()
       const intent = JSON.parse(raw)
-      const params = new URLSearchParams({
+      const { url } = await createCheckoutSession({
         plan_id: intent.planId,
         interval: intent.interval || 'month',
-        limit: String(intent.limit ?? 100000),
+        limit: intent.limit ?? 100000,
       })
       localStorage.removeItem('pulse_pending_checkout')
-      setRedirectingCheckout(true)
-      router.push(`/checkout?${params.toString()}`)
+      if (url) {
+        setRedirectingCheckout(true)
+        window.location.href = url
+        return
+      }
+      throw new Error('No checkout URL returned')
     } catch (err: unknown) {
       setPlanError(getAuthErrorMessage(err) || (err as Error)?.message || 'Failed to start checkout')
       localStorage.removeItem('pulse_pending_checkout')
