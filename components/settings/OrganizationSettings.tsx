@@ -974,14 +974,16 @@ export default function OrganizationSettings() {
                                   </span>
                                   {invoice.invoice_pdf && (
                                     <a href={invoice.invoice_pdf} target="_blank" rel="noopener noreferrer"
-                                       className="p-1.5 text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-lg transition-colors" title="Download PDF">
-                                      <DownloadIcon className="w-4 h-4" />
+                                       className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors" title="Download PDF">
+                                      <DownloadIcon className="w-3.5 h-3.5" />
+                                      Download PDF
                                     </a>
                                   )}
                                   {invoice.hosted_invoice_url && (
                                     <a href={invoice.hosted_invoice_url} target="_blank" rel="noopener noreferrer"
-                                       className="p-1.5 text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-lg transition-colors" title="View invoice">
-                                      <ExternalLinkIcon className="w-4 h-4" />
+                                       className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors" title="View invoice">
+                                      <ExternalLinkIcon className="w-3.5 h-3.5" />
+                                      View invoice
                                     </a>
                                   )}
                                 </div>
