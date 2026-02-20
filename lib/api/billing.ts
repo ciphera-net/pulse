@@ -13,6 +13,8 @@ export interface SubscriptionDetails {
   sites_count?: number
   /** Pageviews in current billing period (when pageview_limit > 0). Present when backend supports usage API. */
   pageview_usage?: number
+  /** Business name from Stripe Checkout (optional). */
+  business_name?: string
 }
 
 async function billingFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
