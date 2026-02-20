@@ -17,7 +17,7 @@ import {
   Organization
 } from '@/lib/api/organization'
 import { getSubscription, createPortalSession, getInvoices, cancelSubscription, resumeSubscription, changePlan, previewInvoice, createCheckoutSession, SubscriptionDetails, Invoice, PreviewInvoiceResult } from '@/lib/api/billing'
-import { TRAFFIC_TIERS, PLAN_ID_SOLO, getTierIndexForLimit, getLimitForTierIndex, getSitesLimitForPlan } from '@/lib/plans'
+import { TRAFFIC_TIERS, PLAN_ID_SOLO, PLAN_ID_TEAM, PLAN_ID_BUSINESS, getTierIndexForLimit, getLimitForTierIndex, getSitesLimitForPlan } from '@/lib/plans'
 import { getAuditLog, AuditLogEntry, GetAuditLogParams } from '@/lib/api/audit'
 import { getNotificationSettings, updateNotificationSettings } from '@/lib/api/notification-settings'
 import { toast } from '@ciphera-net/ui'
@@ -85,6 +85,7 @@ export default function OrganizationSettings() {
   const [showCancelPrompt, setShowCancelPrompt] = useState(false)
   const [isResuming, setIsResuming] = useState(false)
   const [showChangePlanModal, setShowChangePlanModal] = useState(false)
+  const [changePlanId, setChangePlanId] = useState<string>(PLAN_ID_SOLO)
   const [changePlanTierIndex, setChangePlanTierIndex] = useState(2)
   const [changePlanYearly, setChangePlanYearly] = useState(false)
   const [invoicePreview, setInvoicePreview] = useState<PreviewInvoiceResult | null>(null)
@@ -345,6 +346,12 @@ export default function OrganizationSettings() {
   }
 
   const openChangePlanModal = () => {
+    const currentPlan = subscription?.plan_id
+    if (currentPlan === PLAN_ID_TEAM || currentPlan === PLAN_ID_BUSINESS) {
+      setChangePlanId(currentPlan)
+    } else {
+      setChangePlanId(PLAN_ID_SOLO)
+    }
     if (subscription?.pageview_limit != null && subscription.pageview_limit > 0) {
       setChangePlanTierIndex(getTierIndexForLimit(subscription.pageview_limit))
     } else {
@@ -367,11 +374,11 @@ export default function OrganizationSettings() {
     setInvoicePreview(null)
     const interval = changePlanYearly ? 'year' : 'month'
     const limit = getLimitForTierIndex(changePlanTierIndex)
-    previewInvoice({ plan_id: PLAN_ID_SOLO, interval, limit })
+    previewInvoice({ plan_id: changePlanId, interval, limit })
       .then((res) => { if (!cancelled) setInvoicePreview(res ?? null) })
       .finally(() => { if (!cancelled) setIsLoadingPreview(false) })
     return () => { cancelled = true }
-  }, [showChangePlanModal, hasActiveSubscription, changePlanTierIndex, changePlanYearly])
+  }, [showChangePlanModal, hasActiveSubscription, changePlanId, changePlanTierIndex, changePlanYearly])
 
   const handleChangePlanSubmit = async () => {
     const interval = changePlanYearly ? 'year' : 'month'
@@ -379,12 +386,12 @@ export default function OrganizationSettings() {
     setIsChangingPlan(true)
     try {
       if (hasActiveSubscription) {
-        await changePlan({ plan_id: PLAN_ID_SOLO, interval, limit })
+        await changePlan({ plan_id: changePlanId, interval, limit })
         toast.success('Plan updated. Changes may take a moment to reflect.')
         setShowChangePlanModal(false)
         loadSubscription()
       } else {
-        const { url } = await createCheckoutSession({ plan_id: PLAN_ID_SOLO, interval, limit })
+        const { url } = await createCheckoutSession({ plan_id: changePlanId, interval, limit })
         if (url) window.location.href = url
         else throw new Error('No checkout URL')
       }
@@ -844,6 +851,29 @@ export default function OrganizationSettings() {
                       </div>
                     )}
 
+                    {/* Past due notice */}
+                    {subscription.subscription_status === 'past_due' && (
+                      <div className="p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-2xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-red-800 dark:text-red-200">
+                            Payment past due
+                          </p>
+                          <p className="text-xs text-red-700 dark:text-red-300 mt-0.5">
+                            We couldn't charge your payment method. Please update your billing info to avoid service interruption.
+                          </p>
+                        </div>
+                        <Button
+                          variant="secondary"
+                          onClick={handleManageSubscription}
+                          disabled={isRedirectingToPortal}
+                          isLoading={isRedirectingToPortal}
+                          className="shrink-0"
+                        >
+                          Update payment method
+                        </Button>
+                      </div>
+                    )}
+
                     {/* Cancel-at-period-end notice */}
                     {subscription.cancel_at_period_end && (
                       <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-2xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -886,9 +916,11 @@ export default function OrganizationSettings() {
                               ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
                               : subscription.subscription_status === 'trialing'
                               ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'
+                              : subscription.subscription_status === 'past_due'
+                              ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
                               : 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300'
                           }`}>
-                            {subscription.subscription_status === 'trialing' ? 'Trial' : (subscription.subscription_status || 'Free')}
+                            {subscription.subscription_status === 'trialing' ? 'Trial' : subscription.subscription_status === 'past_due' ? 'Past Due' : (subscription.subscription_status || 'Free')}
                           </span>
                           {subscription.billing_interval && (
                             <span className="text-xs text-neutral-500 capitalize">
@@ -918,7 +950,7 @@ export default function OrganizationSettings() {
                       )}
 
                       {/* Usage stats */}
-                      <div className="border-t border-neutral-200 dark:border-neutral-800 px-6 py-5 grid grid-cols-2 md:grid-cols-4 gap-y-4 gap-x-6">
+                      <div className="border-t border-neutral-200 dark:border-neutral-800 p-6 grid grid-cols-2 md:grid-cols-4 gap-y-4 gap-x-6">
                         <div>
                           <div className="text-xs text-neutral-500 uppercase tracking-wider mb-1">Sites</div>
                           <div className="text-lg font-semibold text-neutral-900 dark:text-white">
@@ -937,6 +969,22 @@ export default function OrganizationSettings() {
                               ? `${subscription.pageview_usage.toLocaleString()} / ${subscription.pageview_limit.toLocaleString()}`
                               : '—'}
                           </div>
+                          {subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number' && (
+                            <div className="mt-2 h-1.5 w-full rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all ${
+                                  subscription.pageview_usage / subscription.pageview_limit >= 1
+                                    ? 'bg-red-500'
+                                    : subscription.pageview_usage / subscription.pageview_limit >= 0.9
+                                    ? 'bg-red-400'
+                                    : subscription.pageview_usage / subscription.pageview_limit >= 0.8
+                                    ? 'bg-amber-400'
+                                    : 'bg-green-500'
+                                }`}
+                                style={{ width: `${Math.min(100, (subscription.pageview_usage / subscription.pageview_limit) * 100)}%` }}
+                              />
+                            </div>
+                          )}
                         </div>
                         <div>
                           <div className="text-xs text-neutral-500 uppercase tracking-wider mb-1">
@@ -975,7 +1023,7 @@ export default function OrganizationSettings() {
                           type="button"
                           onClick={handleManageSubscription}
                           disabled={isRedirectingToPortal}
-                          className="inline-flex items-center gap-1.5 text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors disabled:opacity-50"
+                          className="inline-flex items-center gap-1.5 text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:rounded"
                         >
                           <ExternalLinkIcon className="w-4 h-4" />
                           Payment method & invoices
@@ -985,7 +1033,7 @@ export default function OrganizationSettings() {
                         <button
                           type="button"
                           onClick={() => setShowCancelPrompt(true)}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 px-3.5 py-1.5 text-sm text-neutral-600 dark:text-neutral-400 hover:border-red-300 hover:text-red-600 dark:hover:border-red-800 dark:hover:text-red-400 transition-colors"
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-neutral-200 dark:border-neutral-700 px-3.5 py-1.5 text-sm text-neutral-600 dark:text-neutral-400 hover:border-red-300 hover:text-red-600 dark:hover:border-red-800 dark:hover:text-red-400 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
                         >
                           Cancel subscription
                         </button>
@@ -994,7 +1042,7 @@ export default function OrganizationSettings() {
 
                     {/* Invoice History */}
                     <div>
-                      <h3 className="text-sm font-medium text-neutral-500 uppercase tracking-wider mb-3">Recent invoices</h3>
+                      <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-3">Recent invoices</h3>
                       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden divide-y divide-neutral-200 dark:divide-neutral-800">
                         {isLoadingInvoices ? (
                           <div className="flex items-center justify-center py-8">
@@ -1028,14 +1076,14 @@ export default function OrganizationSettings() {
                                   </span>
                                   {invoice.invoice_pdf && (
                                     <a href={invoice.invoice_pdf} target="_blank" rel="noopener noreferrer"
-                                       className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors" title="Download PDF">
+                                       className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange" title="Download PDF">
                                       <DownloadIcon className="w-3.5 h-3.5" />
                                       Download PDF
                                     </a>
                                   )}
                                   {invoice.hosted_invoice_url && (
                                     <a href={invoice.hosted_invoice_url} target="_blank" rel="noopener noreferrer"
-                                       className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors" title="View invoice">
+                                       className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange" title="View invoice">
                                       <ExternalLinkIcon className="w-3.5 h-3.5" />
                                       View invoice
                                     </a>
@@ -1411,8 +1459,9 @@ export default function OrganizationSettings() {
                 <button
                   type="button"
                   onClick={() => setShowChangePlanModal(false)}
-                  className="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-400"
+                  className="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-orange rounded-lg p-1"
                   disabled={isChangingPlan}
+                  aria-label="Close dialog"
                 >
                   <XIcon className="w-5 h-5" />
                 </button>
@@ -1421,6 +1470,41 @@ export default function OrganizationSettings() {
                 Choose your pageview limit and billing interval. {hasActiveSubscription ? 'Your next invoice will reflect prorations.' : 'You’ll start a new subscription.'}
               </p>
               <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Plan</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {([
+                      { id: PLAN_ID_SOLO, name: 'Solo', sites: '1 site' },
+                      { id: PLAN_ID_TEAM, name: 'Team', sites: 'Up to 5 sites' },
+                      { id: PLAN_ID_BUSINESS, name: 'Business', sites: 'Up to 10 sites' },
+                    ] as const).map((plan) => {
+                      const isCurrentPlan = subscription?.plan_id === plan.id
+                      const isSelected = changePlanId === plan.id
+                      return (
+                        <button
+                          key={plan.id}
+                          type="button"
+                          onClick={() => setChangePlanId(plan.id)}
+                          className={`relative p-3 rounded-xl border text-left transition-all focus:outline-none focus:ring-2 focus:ring-brand-orange ${
+                            isSelected
+                              ? 'border-brand-orange bg-brand-orange/5 dark:bg-brand-orange/10'
+                              : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
+                          }`}
+                        >
+                          <span className={`block text-sm font-semibold ${isSelected ? 'text-brand-orange' : 'text-neutral-900 dark:text-white'}`}>
+                            {plan.name}
+                          </span>
+                          <span className="block text-xs text-neutral-500 mt-0.5">{plan.sites}</span>
+                          {isCurrentPlan && (
+                            <span className="absolute -top-2 right-2 px-1.5 py-0.5 text-[10px] font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 rounded-full border border-neutral-200 dark:border-neutral-700">
+                              Current
+                            </span>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Pageviews per month</label>
                   <select
@@ -1441,14 +1525,14 @@ export default function OrganizationSettings() {
                     <button
                       type="button"
                       onClick={() => setChangePlanYearly(false)}
-                      className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${!changePlanYearly ? 'bg-brand-orange text-white' : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'}`}
+                      className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange ${!changePlanYearly ? 'bg-brand-orange text-white' : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'}`}
                     >
                       Monthly
                     </button>
                     <button
                       type="button"
                       onClick={() => setChangePlanYearly(true)}
-                      className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${changePlanYearly ? 'bg-brand-orange text-white' : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'}`}
+                      className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange ${changePlanYearly ? 'bg-brand-orange text-white' : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'}`}
                     >
                       Yearly
                     </button>
@@ -1456,7 +1540,7 @@ export default function OrganizationSettings() {
                 </div>
               </div>
               {hasActiveSubscription && (
-                <div className="mt-4 p-3 rounded-lg bg-neutral-100 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700">
+                <div className="mt-4 p-4 rounded-lg bg-neutral-100 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700">
                   {isLoadingPreview ? (
                     <div className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
                       <Spinner className="w-4 h-4" />
