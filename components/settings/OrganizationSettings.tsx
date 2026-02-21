@@ -1024,7 +1024,7 @@ export default function OrganizationSettings() {
                           type="button"
                           onClick={handleManageSubscription}
                           disabled={isRedirectingToPortal}
-                          className="inline-flex items-center gap-1.5 text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:rounded"
+                          className="inline-flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:rounded"
                         >
                           <ExternalLinkIcon className="w-4 h-4" />
                           Payment method & invoices
@@ -1034,7 +1034,7 @@ export default function OrganizationSettings() {
                         <button
                           type="button"
                           onClick={() => setShowCancelPrompt(true)}
-                          className="inline-flex items-center gap-1.5 rounded-xl border border-neutral-200 dark:border-neutral-700 px-3.5 py-1.5 text-sm text-neutral-600 dark:text-neutral-400 hover:border-red-300 hover:text-red-600 dark:hover:border-red-800 dark:hover:text-red-400 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                          className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 dark:border-neutral-700 px-3.5 py-1.5 text-sm text-neutral-600 dark:text-neutral-400 hover:border-red-300 hover:text-red-600 dark:hover:border-red-800 dark:hover:text-red-400 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
                         >
                           Cancel subscription
                         </button>
@@ -1077,14 +1077,14 @@ export default function OrganizationSettings() {
                                   </span>
                                   {invoice.invoice_pdf && (
                                     <a href={invoice.invoice_pdf} target="_blank" rel="noopener noreferrer"
-                                       className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange" title="Download PDF">
+                                       className="inline-flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange" title="Download PDF">
                                       <DownloadIcon className="w-3.5 h-3.5" />
                                       Download PDF
                                     </a>
                                   )}
                                   {invoice.hosted_invoice_url && (
                                     <a href={invoice.hosted_invoice_url} target="_blank" rel="noopener noreferrer"
-                                       className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange ${
+                                       className={`inline-flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange ${
                                          invoice.status === 'open'
                                            ? 'bg-brand-orange text-white hover:bg-brand-orange-hover'
                                            : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800'

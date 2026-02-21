@@ -145,7 +145,7 @@ function ChartTooltip({
         </span>
       </div>
       {hasPrev && (
-        <div className="mt-1.5 flex items-center gap-1.5 text-xs" style={{ color: colors.textMuted }}>
+        <div className="mt-1.5 flex items-center gap-2 text-xs" style={{ color: colors.textMuted }}>
           <span>vs {formatValue(prev as number)} {prevPeriodLabel ? `(${prevPeriodLabel})` : 'prev'}</span>
           {delta !== null && (
             <span
@@ -416,7 +416,7 @@ export default function Chart({
       {/* * Subtle live/updated indicator in bottom-right corner */}
       {lastUpdatedAt != null && (
         <div
-          className="absolute bottom-3 right-6 flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400 pointer-events-none"
+          className="absolute bottom-3 right-6 flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400 pointer-events-none"
           title="Data refreshes every 30 seconds"
         >
           <span className="relative flex h-1.5 w-1.5">
@@ -540,7 +540,7 @@ export default function Chart({
             </div>
 
             {prevData?.length ? (
-              <div className="flex flex-col gap-0.5">
+              <div className="flex flex-col gap-1">
                 <Checkbox
                   checked={showComparison}
                   onCheckedChange={setShowComparison}
@@ -558,7 +558,7 @@ export default function Chart({
               variant="ghost"
               onClick={handleExportChart}
               disabled={!hasData}
-              className="gap-1.5 py-1.5 px-3 text-sm text-neutral-600 dark:text-neutral-400"
+              className="gap-2 py-1.5 px-3 text-sm text-neutral-600 dark:text-neutral-400"
             >
               <DownloadIcon className="w-4 h-4" />
               Export chart

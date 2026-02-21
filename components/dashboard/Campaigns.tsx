@@ -146,7 +146,7 @@ export default function Campaigns({ siteId, dateRange }: CampaignsProps) {
     <button
       type="button"
       onClick={() => handleSort(colKey)}
-      className={`inline-flex items-center gap-0.5 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-inset rounded ${className}`}
+      className={`inline-flex items-center gap-1 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-inset rounded ${className}`}
       aria-label={`Sort by ${label}`}
     >
       {label}
@@ -170,7 +170,7 @@ export default function Campaigns({ siteId, dateRange }: CampaignsProps) {
               <Button
                 variant="ghost"
                 onClick={handleExportCampaigns}
-                className="h-8 px-3 text-xs gap-1.5"
+                className="h-8 px-3 text-xs gap-2"
               >
                 <DownloadIcon className="w-3.5 h-3.5" />
                 Export
@@ -179,7 +179,7 @@ export default function Campaigns({ siteId, dateRange }: CampaignsProps) {
             <Button
               variant="ghost"
               onClick={() => setIsBuilderOpen(true)}
-              className="h-8 px-3 text-xs gap-1.5"
+              className="h-8 px-3 text-xs gap-2"
             >
               <PlusIcon className="w-3.5 h-3.5" />
               Build URL
@@ -276,7 +276,7 @@ export default function Campaigns({ siteId, dateRange }: CampaignsProps) {
             </p>
             <Link
               href="/installation"
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-orange hover:text-brand-orange/90 hover:underline focus:outline-none focus:ring-2 focus:ring-brand-orange/20 rounded"
+              className="inline-flex items-center gap-2 text-sm font-medium text-brand-orange hover:text-brand-orange/90 hover:underline focus:outline-none focus:ring-2 focus:ring-brand-orange/20 rounded"
             >
               Read documentation
               <ArrowRightIcon className="w-4 h-4" />
