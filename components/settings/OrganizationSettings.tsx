@@ -497,7 +497,7 @@ export default function OrganizationSettings() {
   // handleTabChange is defined above
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Organization Settings</h1>
         <p className="mt-2 text-neutral-600 dark:text-neutral-400">
