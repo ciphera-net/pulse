@@ -49,8 +49,8 @@ export default function ReactIntegrationPage() {
             The simplest way is to add the script tag directly to the <code>&lt;head&gt;</code> of your <code>index.html</code> file.
           </p>
 
-          <div className="bg-[#1e1e1e] rounded-xl overflow-hidden border border-neutral-800 my-6">
-            <div className="flex items-center px-4 py-2 bg-[#252526] border-b border-neutral-800">
+          <div className="bg-neutral-900 rounded-xl overflow-hidden border border-neutral-800 my-6">
+            <div className="flex items-center px-4 py-2 bg-neutral-800 border-b border-neutral-800">
               <span className="text-xs text-neutral-400 font-mono">public/index.html</span>
             </div>
             <div className="p-4 overflow-x-auto">
@@ -83,8 +83,8 @@ export default function ReactIntegrationPage() {
             If you need to load the script dynamically (e.g., only in production), you can use a <code>useEffect</code> hook in your main App component.
           </p>
 
-          <div className="bg-[#1e1e1e] rounded-xl overflow-hidden border border-neutral-800 my-6">
-            <div className="flex items-center px-4 py-2 bg-[#252526] border-b border-neutral-800">
+          <div className="bg-neutral-900 rounded-xl overflow-hidden border border-neutral-800 my-6">
+            <div className="flex items-center px-4 py-2 bg-neutral-800 border-b border-neutral-800">
               <span className="text-xs text-neutral-400 font-mono">src/App.tsx</span>
             </div>
             <div className="p-4 overflow-x-auto">

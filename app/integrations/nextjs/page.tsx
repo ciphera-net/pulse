@@ -48,8 +48,8 @@ export default function NextJsIntegrationPage() {
             Add the script to your root layout file (usually <code>app/layout.tsx</code> or <code>app/layout.js</code>).
           </p>
 
-          <div className="bg-[#1e1e1e] rounded-xl overflow-hidden border border-neutral-800 my-6">
-            <div className="flex items-center px-4 py-2 bg-[#252526] border-b border-neutral-800">
+          <div className="bg-neutral-900 rounded-xl overflow-hidden border border-neutral-800 my-6">
+            <div className="flex items-center px-4 py-2 bg-neutral-800 border-b border-neutral-800">
               <span className="text-xs text-neutral-400 font-mono">app/layout.tsx</span>
             </div>
             <div className="p-4 overflow-x-auto">
@@ -84,8 +84,8 @@ export default function RootLayout({
             If you are using the older Pages Router, add the script to your custom <code>_app.tsx</code> or <code>_document.tsx</code>.
           </p>
 
-          <div className="bg-[#1e1e1e] rounded-xl overflow-hidden border border-neutral-800 my-6">
-            <div className="flex items-center px-4 py-2 bg-[#252526] border-b border-neutral-800">
+          <div className="bg-neutral-900 rounded-xl overflow-hidden border border-neutral-800 my-6">
+            <div className="flex items-center px-4 py-2 bg-neutral-800 border-b border-neutral-800">
               <span className="text-xs text-neutral-400 font-mono">pages/_app.tsx</span>
             </div>
             <div className="p-4 overflow-x-auto">

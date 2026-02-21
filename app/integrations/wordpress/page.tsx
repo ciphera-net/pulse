@@ -50,8 +50,8 @@ export default function WordPressIntegrationPage() {
             <li>Paste the following code snippet:</li>
           </ol>
 
-          <div className="bg-[#1e1e1e] rounded-xl overflow-hidden border border-neutral-800 my-6">
-            <div className="flex items-center px-4 py-2 bg-[#252526] border-b border-neutral-800">
+          <div className="bg-neutral-900 rounded-xl overflow-hidden border border-neutral-800 my-6">
+            <div className="flex items-center px-4 py-2 bg-neutral-800 border-b border-neutral-800">
               <span className="text-xs text-neutral-400 font-mono">Header Script</span>
             </div>
             <div className="p-4 overflow-x-auto">
