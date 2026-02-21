@@ -19,20 +19,20 @@ import {
 import { getDateRange } from '@ciphera-net/ui'
 
 const CHART_COLORS_LIGHT = {
-  border: '#E5E5E5',
-  axis: '#A3A3A3',
+  border: 'var(--color-neutral-200)',
+  axis: 'var(--color-neutral-400)',
   tooltipBg: '#ffffff',
-  tooltipBorder: '#E5E5E5',
+  tooltipBorder: 'var(--color-neutral-200)',
 }
 
 const CHART_COLORS_DARK = {
-  border: '#404040',
-  axis: '#737373',
-  tooltipBg: '#262626',
-  tooltipBorder: '#404040',
+  border: 'var(--color-neutral-700)',
+  axis: 'var(--color-neutral-500)',
+  tooltipBg: 'var(--color-neutral-800)',
+  tooltipBorder: 'var(--color-neutral-700)',
 }
 
-const BRAND_ORANGE = '#FD5E0F'
+const BRAND_ORANGE = 'var(--color-brand-orange)'
 
 export default function FunnelReportPage() {
   const params = useParams()
