@@ -44,7 +44,7 @@ export function getLimitForTierIndex(index: number): number {
 /** Maximum data retention (months) allowed per plan. */
 export function getMaxRetentionMonthsForPlan(planId: string | null | undefined): number {
   switch (planId) {
-    case 'business': return 60
+    case 'business': return 36
     case 'team': return 24
     case 'solo': return 12
     default: return 6
@@ -60,7 +60,7 @@ export function getRetentionOptionsForPlan(planId: string | null | undefined): {
   ]
   const solo = [...base, { label: '1 year', value: 12 }]
   const team = [...solo, { label: '2 years', value: 24 }]
-  const business = [...team, { label: '3 years', value: 36 }, { label: '5 years', value: 60 }]
+  const business = [...team, { label: '3 years', value: 36 }]
 
   switch (planId) {
     case 'business': return business
