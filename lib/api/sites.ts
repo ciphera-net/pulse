@@ -21,6 +21,8 @@ export interface Site {
   enable_performance_insights?: boolean
   // Bot and noise filtering
   filter_bots?: boolean
+  // Data retention (months); 0 = keep forever
+  data_retention_months?: number
   created_at: string
   updated_at: string
 }
@@ -47,6 +49,8 @@ export interface UpdateSiteRequest {
   enable_performance_insights?: boolean
   // Bot and noise filtering
   filter_bots?: boolean
+  // Data retention (months); 0 = keep forever
+  data_retention_months?: number
 }
 
 export async function listSites(): Promise<Site[]> {
