@@ -125,6 +125,7 @@ export default function HomePage() {
     let cancelled = false
     const today = new Date().toISOString().split('T')[0]
     const start7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    const emptyStats: Stats = { pageviews: 0, visitors: 0, bounce_rate: 0, avg_duration: 0 }
     const load = async () => {
       const results = await Promise.allSettled(
         sites.map(async (site) => {
@@ -137,11 +138,14 @@ export default function HomePage() {
       )
       if (cancelled) return
       const map: SiteStatsMap = {}
-      for (const r of results) {
+      results.forEach((r, i) => {
+        const site = sites[i]
         if (r.status === 'fulfilled') {
-          map[r.value.siteId] = { stats: r.value.stats, dailyStats: r.value.dailyStats }
+          map[site.id] = { stats: r.value.stats, dailyStats: r.value.dailyStats }
+        } else {
+          map[site.id] = { stats: emptyStats, dailyStats: [] }
         }
-      }
+      })
       setSiteStats(map)
     }
     load()
