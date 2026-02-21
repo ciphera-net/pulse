@@ -398,13 +398,13 @@ export default function HomePage() {
         )}
       </div>
 
-      {/* * Global Overview */}
+      {/* * Global Overview - min-h ensures no layout shift when Plan & usage loads */}
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+        <div className="flex min-h-[160px] flex-col rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
           <p className="text-sm text-neutral-500 dark:text-neutral-400">Total Sites</p>
           <p className="text-2xl font-bold text-neutral-900 dark:text-white">{sites.length}</p>
         </div>
-        <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+        <div className="flex min-h-[160px] flex-col rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
           <p className="text-sm text-neutral-500 dark:text-neutral-400">Total Visitors (24h)</p>
           <p className="text-2xl font-bold text-neutral-900 dark:text-white">
             {sites.length === 0 || Object.keys(siteStats).length < sites.length
@@ -412,10 +412,15 @@ export default function HomePage() {
               : Object.values(siteStats).reduce((sum, { stats }) => sum + (stats?.visitors ?? 0), 0).toLocaleString()}
           </p>
         </div>
-        <div className="rounded-2xl border border-neutral-200 bg-brand-orange/10 p-4 dark:border-neutral-800">
+        <div className="flex min-h-[160px] flex-col rounded-2xl border border-neutral-200 bg-brand-orange/10 p-4 dark:border-neutral-800">
           <p className="text-sm text-brand-orange">Plan & usage</p>
           {subscriptionLoading ? (
-            <p className="text-lg font-bold text-brand-orange">...</p>
+            <div className="animate-pulse space-y-2">
+              <div className="h-6 w-24 rounded bg-brand-orange/20" />
+              <div className="h-4 w-full rounded bg-brand-orange/10" />
+              <div className="h-4 w-3/4 rounded bg-brand-orange/10" />
+              <div className="h-4 w-20 rounded bg-brand-orange/10 pt-2" />
+            </div>
           ) : subscription ? (
             <>
               <p className="text-lg font-bold text-brand-orange">
