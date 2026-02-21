@@ -132,11 +132,11 @@ export default function NotificationsPage() {
             <Spinner />
           </div>
         ) : error ? (
-          <div className="p-8 text-center text-red-500 bg-red-50 dark:bg-red-900/10 rounded-2xl border border-red-200 dark:border-red-800">
+          <div className="p-6 text-center text-red-500 bg-red-50 dark:bg-red-900/10 rounded-2xl border border-red-200 dark:border-red-800">
             {error}
           </div>
         ) : notifications.length === 0 ? (
-          <div className="p-8 text-center text-neutral-500 dark:text-neutral-400 rounded-2xl border border-neutral-200 dark:border-neutral-800">
+          <div className="p-6 text-center text-neutral-500 dark:text-neutral-400 rounded-2xl border border-neutral-200 dark:border-neutral-800">
             <p>No notifications yet</p>
             <p className="text-sm mt-2">
               Manage which notifications you receive in{' '}

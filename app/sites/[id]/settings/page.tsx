@@ -549,7 +549,7 @@ export default function SiteSettingsPage() {
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">Manage who can view your dashboard.</p>
                   </div>
 
-                  <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
+                  <div className="p-6 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="p-2 bg-white dark:bg-neutral-800 rounded-lg text-neutral-400">
@@ -676,7 +676,7 @@ export default function SiteSettingsPage() {
                     <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Data Collection</h3>
 
                     {/* Page Paths Toggle */}
-                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
+                    <div className="p-6 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="font-medium text-neutral-900 dark:text-white">Page Paths</h4>
@@ -697,7 +697,7 @@ export default function SiteSettingsPage() {
                     </div>
 
                     {/* Referrers Toggle */}
-                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
+                    <div className="p-6 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="font-medium text-neutral-900 dark:text-white">Referrers</h4>
@@ -718,7 +718,7 @@ export default function SiteSettingsPage() {
                     </div>
 
                     {/* Device Info Toggle */}
-                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
+                    <div className="p-6 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="font-medium text-neutral-900 dark:text-white">Device Info</h4>
@@ -739,7 +739,7 @@ export default function SiteSettingsPage() {
                     </div>
 
                     {/* Geographic Data Dropdown */}
-                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
+                    <div className="p-6 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="font-medium text-neutral-900 dark:text-white">Geographic Data</h4>
@@ -763,7 +763,7 @@ export default function SiteSettingsPage() {
                     </div>
 
                     {/* Screen Resolution Toggle */}
-                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
+                    <div className="p-6 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="font-medium text-neutral-900 dark:text-white">Screen Resolution</h4>
@@ -787,7 +787,7 @@ export default function SiteSettingsPage() {
                   {/* Bot and noise filtering */}
                   <div className="space-y-4 pt-6 border-t border-neutral-100 dark:border-neutral-800">
                     <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Filtering</h3>
-                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
+                    <div className="p-6 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="font-medium text-neutral-900 dark:text-white">Filter bots and referrer spam</h4>
@@ -811,7 +811,7 @@ export default function SiteSettingsPage() {
                   {/* Performance Insights Toggle */}
                   <div className="space-y-4 pt-6 border-t border-neutral-100 dark:border-neutral-800">
                     <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Performance Insights</h3>
-                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
+                    <div className="p-6 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="font-medium text-neutral-900 dark:text-white">Performance Insights (Add-on)</h4>
@@ -849,7 +849,7 @@ export default function SiteSettingsPage() {
                         </button>
                       </div>
                     )}
-                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
+                    <div className="p-6 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="font-medium text-neutral-900 dark:text-white">Keep raw event data for</h4>
