@@ -235,7 +235,7 @@ export default function NotificationCenter() {
             <Link
               href="/org-settings?tab=notifications"
               onClick={() => setOpen(false)}
-              className="flex items-center gap-1.5 text-sm text-neutral-500 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors"
+              className="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors"
             >
               <SettingsIcon className="w-4 h-4" />
               Manage settings

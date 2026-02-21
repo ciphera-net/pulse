@@ -473,7 +473,7 @@ function MonitorCard({
                   <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
                     Status
                   </div>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-2">
                     <div className={`w-2 h-2 rounded-full ${getStatusDotColor(monitor.last_status)}`} />
                     <span className="text-sm font-medium text-neutral-900 dark:text-white">
                       {getStatusLabel(monitor.last_status)}

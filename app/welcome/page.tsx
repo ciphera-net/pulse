@@ -338,7 +338,7 @@ function WelcomeContent() {
     <div className="flex-1 flex flex-col items-center justify-center bg-neutral-50 dark:bg-neutral-950 px-4 py-12">
       <div className="w-full max-w-lg">
         <div
-          className="flex justify-center gap-1.5 mb-8"
+          className="flex justify-center gap-2 mb-8"
           role="progressbar"
           aria-valuenow={step}
           aria-valuemin={1}
@@ -475,7 +475,7 @@ function WelcomeContent() {
               <button
                 type="button"
                 onClick={() => setStep(1)}
-                className="flex items-center gap-1.5 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 mb-6 focus:outline-none focus:ring-2 focus:ring-brand-orange rounded"
+                className="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 mb-6 focus:outline-none focus:ring-2 focus:ring-brand-orange rounded"
                 aria-label="Back to welcome"
               >
                 <ArrowLeftIcon className="h-4 w-4" />
@@ -546,7 +546,7 @@ function WelcomeContent() {
               <button
                 type="button"
                 onClick={() => setStep(2)}
-                className="flex items-center gap-1.5 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 mb-6 focus:outline-none focus:ring-2 focus:ring-brand-orange rounded"
+                className="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 mb-6 focus:outline-none focus:ring-2 focus:ring-brand-orange rounded"
                 aria-label="Back to organization"
               >
                 <ArrowLeftIcon className="h-4 w-4" />
@@ -631,7 +631,7 @@ function WelcomeContent() {
               <button
                 type="button"
                 onClick={() => setStep(3)}
-                className="flex items-center gap-1.5 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 mb-6 focus:outline-none focus:ring-2 focus:ring-brand-orange rounded"
+                className="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 mb-6 focus:outline-none focus:ring-2 focus:ring-brand-orange rounded"
                 aria-label="Back to plan"
               >
                 <ArrowLeftIcon className="h-4 w-4" />
