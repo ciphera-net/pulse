@@ -16,7 +16,7 @@ export default function WordPressIntegrationPage() {
         />
       </div>
 
-      <div className="flex-grow w-full max-w-4xl mx-auto px-4 pt-12 pb-10 z-10">
+      <div className="flex-grow w-full max-w-4xl mx-auto px-4 pt-20 pb-10 z-10">
         <Link 
           href="/integrations" 
           className="inline-flex items-center text-sm text-neutral-500 hover:text-brand-orange mb-8 transition-colors"
