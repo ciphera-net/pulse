@@ -152,10 +152,10 @@ export default function NewSitePage() {
           </div>
 
           <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-            <Button variant="primary" onClick={goToDashboard} className="min-w-[160px]">
+            <Button variant="primary" onClick={goToDashboard} className="min-w-40">
               Back to dashboard
             </Button>
-            <Button variant="secondary" onClick={() => router.push(`/sites/${createdSite.id}`)} className="min-w-[160px]">
+            <Button variant="secondary" onClick={() => router.push(`/sites/${createdSite.id}`)} className="min-w-40">
               View {createdSite.name}
             </Button>
           </div>

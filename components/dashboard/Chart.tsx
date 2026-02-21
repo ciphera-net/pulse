@@ -570,7 +570,7 @@ export default function Chart({
         </div>
 
         {!hasData ? (
-          <div className="flex h-[320px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30">
+          <div className="flex h-80 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30">
             <BarChartIcon className="h-12 w-12 text-neutral-300 dark:text-neutral-600" aria-hidden />
             <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
               No data for this period
@@ -578,7 +578,7 @@ export default function Chart({
             <p className="text-xs text-neutral-400 dark:text-neutral-500">Try a different date range</p>
           </div>
         ) : !hasAnyNonZero ? (
-          <div className="flex h-[320px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30">
+          <div className="flex h-80 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30">
             <BarChartIcon className="h-12 w-12 text-neutral-300 dark:text-neutral-600" aria-hidden />
             <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
               No {metricLabel.toLowerCase()} data for this period

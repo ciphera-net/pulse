@@ -97,7 +97,7 @@ const WorldMap = ({ data }: WorldMapProps) => {
       </ComposableMap>
       {tooltipContent && (
          <div 
-           className="fixed z-50 px-2 py-1 text-xs font-medium text-white bg-black/80 backdrop-blur-sm rounded shadow pointer-events-none transform -translate-x-1/2 -translate-y-full mt-[-10px]"
+           className="fixed z-50 px-2 py-1 text-xs font-medium text-white bg-black/80 backdrop-blur-sm rounded shadow pointer-events-none transform -translate-x-1/2 -translate-y-full -mt-2.5"
            style={{ left: tooltipContent.x, top: tooltipContent.y }}
          >
             {tooltipContent.content}

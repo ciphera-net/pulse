@@ -759,11 +759,11 @@ function WelcomeContent() {
               )}
 
               <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-                <Button variant="primary" onClick={goToDashboard} className="min-w-[160px]">
+                <Button variant="primary" onClick={goToDashboard} className="min-w-40">
                   Go to dashboard
                 </Button>
                 {createdSite && (
-                  <Button variant="secondary" onClick={goToSite} className="min-w-[160px]">
+                  <Button variant="secondary" onClick={goToSite} className="min-w-40">
                     View {createdSite.name}
                   </Button>
                 )}
