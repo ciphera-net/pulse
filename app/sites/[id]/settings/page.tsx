@@ -109,7 +109,7 @@ export default function SiteSettingsPage() {
     }
   }
 
-  // * Clamp data_retention_months when subscription loads: if current value exceeds plan max, sync to max
+  // * Snap data_retention_months to nearest valid option when subscription loads
   useEffect(() => {
     if (!subscription) return
     const opts = getRetentionOptionsForPlan(subscription.plan_id)
@@ -117,7 +117,8 @@ export default function SiteSettingsPage() {
     const maxVal = Math.max(...values)
     setFormData(prev => {
       if (values.includes(prev.data_retention_months)) return prev
-      return { ...prev, data_retention_months: Math.min(prev.data_retention_months, maxVal) }
+      const bestFit = values.filter(v => v <= prev.data_retention_months).pop() ?? maxVal
+      return { ...prev, data_retention_months: Math.min(bestFit, maxVal) }
     })
   }, [subscription])
 

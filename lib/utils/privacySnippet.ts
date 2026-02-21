@@ -23,7 +23,7 @@ export function generatePrivacySnippet(site: Site): string {
   const screen = site.collect_screen_resolution ?? true
   const perf = site.enable_performance_insights ?? false
   const filterBots = site.filter_bots ?? true
-  const retentionMonths = site.data_retention_months ?? 12
+  const retentionMonths = site.data_retention_months ?? 6
 
   const parts: string[] = []
   if (paths) parts.push('which pages are viewed')
