@@ -16,7 +16,7 @@ export default function VueIntegrationPage() {
         />
       </div>
 
-      <div className="flex-grow w-full max-w-4xl mx-auto px-4 pt-12 pb-10 z-10">
+      <div className="flex-grow w-full max-w-4xl mx-auto px-4 pt-20 pb-10 z-10">
         <Link 
           href="/integrations" 
           className="inline-flex items-center text-sm text-neutral-500 hover:text-brand-orange mb-8 transition-colors"
@@ -32,7 +32,7 @@ export default function VueIntegrationPage() {
               <path d="M64 24.6H39L64 67.4l25-42.8H64z" fill="#35495E" />
             </svg>
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-neutral-900 dark:text-white">
             Vue.js Integration
           </h1>
         </div>
@@ -49,8 +49,8 @@ export default function VueIntegrationPage() {
             Add the script tag to the <code>&lt;head&gt;</code> section of your <code>index.html</code> file. This works for both Vue 2 and Vue 3 projects created with Vue CLI or Vite.
           </p>
 
-          <div className="bg-[#1e1e1e] rounded-xl overflow-hidden border border-neutral-800 my-6">
-            <div className="flex items-center px-4 py-2 bg-[#252526] border-b border-neutral-800">
+          <div className="bg-neutral-900 rounded-xl overflow-hidden border border-neutral-800 my-6">
+            <div className="flex items-center px-4 py-2 bg-neutral-800 border-b border-neutral-800">
               <span className="text-xs text-neutral-400 font-mono">index.html</span>
             </div>
             <div className="p-4 overflow-x-auto">
@@ -84,8 +84,8 @@ export default function VueIntegrationPage() {
             For Nuxt.js applications, you should add the script to your <code>nuxt.config.js</code> or <code>nuxt.config.ts</code> file.
           </p>
 
-          <div className="bg-[#1e1e1e] rounded-xl overflow-hidden border border-neutral-800 my-6">
-            <div className="flex items-center px-4 py-2 bg-[#252526] border-b border-neutral-800">
+          <div className="bg-neutral-900 rounded-xl overflow-hidden border border-neutral-800 my-6">
+            <div className="flex items-center px-4 py-2 bg-neutral-800 border-b border-neutral-800">
               <span className="text-xs text-neutral-400 font-mono">nuxt.config.ts</span>
             </div>
             <div className="p-4 overflow-x-auto">

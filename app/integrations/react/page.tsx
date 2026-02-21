@@ -16,7 +16,7 @@ export default function ReactIntegrationPage() {
         />
       </div>
 
-      <div className="flex-grow w-full max-w-4xl mx-auto px-4 pt-12 pb-10 z-10">
+      <div className="flex-grow w-full max-w-4xl mx-auto px-4 pt-20 pb-10 z-10">
         <Link 
           href="/integrations" 
           className="inline-flex items-center text-sm text-neutral-500 hover:text-brand-orange mb-8 transition-colors"
@@ -32,7 +32,7 @@ export default function ReactIntegrationPage() {
               <circle cx="64" cy="64" r="10.6" />
             </svg>
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-neutral-900 dark:text-white">
             React Integration
           </h1>
         </div>
@@ -49,8 +49,8 @@ export default function ReactIntegrationPage() {
             The simplest way is to add the script tag directly to the <code>&lt;head&gt;</code> of your <code>index.html</code> file.
           </p>
 
-          <div className="bg-[#1e1e1e] rounded-xl overflow-hidden border border-neutral-800 my-6">
-            <div className="flex items-center px-4 py-2 bg-[#252526] border-b border-neutral-800">
+          <div className="bg-neutral-900 rounded-xl overflow-hidden border border-neutral-800 my-6">
+            <div className="flex items-center px-4 py-2 bg-neutral-800 border-b border-neutral-800">
               <span className="text-xs text-neutral-400 font-mono">public/index.html</span>
             </div>
             <div className="p-4 overflow-x-auto">
@@ -83,8 +83,8 @@ export default function ReactIntegrationPage() {
             If you need to load the script dynamically (e.g., only in production), you can use a <code>useEffect</code> hook in your main App component.
           </p>
 
-          <div className="bg-[#1e1e1e] rounded-xl overflow-hidden border border-neutral-800 my-6">
-            <div className="flex items-center px-4 py-2 bg-[#252526] border-b border-neutral-800">
+          <div className="bg-neutral-900 rounded-xl overflow-hidden border border-neutral-800 my-6">
+            <div className="flex items-center px-4 py-2 bg-neutral-800 border-b border-neutral-800">
               <span className="text-xs text-neutral-400 font-mono">src/App.tsx</span>
             </div>
             <div className="p-4 overflow-x-auto">

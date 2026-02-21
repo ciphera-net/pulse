@@ -332,13 +332,13 @@ function WelcomeContent() {
   }
 
   const cardClass =
-    'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-sm p-8 max-w-lg mx-auto'
+    'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-sm p-6 max-w-lg mx-auto'
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center bg-neutral-50 dark:bg-neutral-950 px-4 py-12">
       <div className="w-full max-w-lg">
         <div
-          className="flex justify-center gap-1.5 mb-8"
+          className="flex justify-center gap-2 mb-8"
           role="progressbar"
           aria-valuenow={step}
           aria-valuemin={1}
@@ -475,7 +475,7 @@ function WelcomeContent() {
               <button
                 type="button"
                 onClick={() => setStep(1)}
-                className="flex items-center gap-1.5 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 mb-6 focus:outline-none focus:ring-2 focus:ring-brand-orange rounded"
+                className="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 mb-6 focus:outline-none focus:ring-2 focus:ring-brand-orange rounded"
                 aria-label="Back to welcome"
               >
                 <ArrowLeftIcon className="h-4 w-4" />
@@ -485,7 +485,7 @@ function WelcomeContent() {
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-orange/10 text-brand-orange mb-4">
                   <BarChartIcon className="h-7 w-7" />
                 </div>
-                <h1 className="text-xl font-bold text-neutral-900 dark:text-white">
+                <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
                   Name your organization
                 </h1>
                 <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
@@ -546,7 +546,7 @@ function WelcomeContent() {
               <button
                 type="button"
                 onClick={() => setStep(2)}
-                className="flex items-center gap-1.5 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 mb-6 focus:outline-none focus:ring-2 focus:ring-brand-orange rounded"
+                className="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 mb-6 focus:outline-none focus:ring-2 focus:ring-brand-orange rounded"
                 aria-label="Back to organization"
               >
                 <ArrowLeftIcon className="h-4 w-4" />
@@ -556,7 +556,7 @@ function WelcomeContent() {
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-500/10 text-green-600 dark:text-green-400 mb-4">
                   <CheckCircleIcon className="h-7 w-7" />
                 </div>
-                <h1 className="text-xl font-bold text-neutral-900 dark:text-white">
+                <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
                   {showPendingCheckoutInStep3 ? 'Complete your plan' : "You're on the free plan"}
                 </h1>
                 <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
@@ -631,7 +631,7 @@ function WelcomeContent() {
               <button
                 type="button"
                 onClick={() => setStep(3)}
-                className="flex items-center gap-1.5 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 mb-6 focus:outline-none focus:ring-2 focus:ring-brand-orange rounded"
+                className="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 mb-6 focus:outline-none focus:ring-2 focus:ring-brand-orange rounded"
                 aria-label="Back to plan"
               >
                 <ArrowLeftIcon className="h-4 w-4" />
@@ -641,7 +641,7 @@ function WelcomeContent() {
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-orange/10 text-brand-orange mb-4">
                   <GlobeIcon className="h-7 w-7" />
                 </div>
-                <h1 className="text-xl font-bold text-neutral-900 dark:text-white">
+                <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
                   Add your first site
                 </h1>
                 <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
@@ -759,11 +759,11 @@ function WelcomeContent() {
               )}
 
               <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-                <Button variant="primary" onClick={goToDashboard} className="min-w-[160px]">
+                <Button variant="primary" onClick={goToDashboard} className="min-w-40">
                   Go to dashboard
                 </Button>
                 {createdSite && (
-                  <Button variant="secondary" onClick={goToSite} className="min-w-[160px]">
+                  <Button variant="secondary" onClick={goToSite} className="min-w-40">
                     View {createdSite.name}
                   </Button>
                 )}

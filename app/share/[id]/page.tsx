@@ -199,7 +199,7 @@ export default function PublicDashboardPage() {
   if (isPasswordProtected && !data) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="max-w-md w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-8 shadow-lg">
+        <div className="max-w-md w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 shadow-lg transition-shadow duration-300">
           <div className="text-center mb-6">
              <div className="w-12 h-12 bg-brand-orange/10 rounded-xl flex items-center justify-center mx-auto mb-4 text-brand-orange">
               <ZapIcon className="w-6 h-6" />

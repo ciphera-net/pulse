@@ -238,7 +238,7 @@ export default function PricingSection() {
         {/* Top Toolbar */}
         <div className="p-6 border-b border-neutral-200 dark:border-neutral-800 flex flex-col md:flex-row items-center justify-between gap-8 bg-neutral-50/50 dark:bg-neutral-900/50">
           <div className="w-full md:w-2/3">
-            <div className="flex justify-between text-sm font-medium text-neutral-500 mb-4">
+            <div className="flex justify-between text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-4">
               <span>10k</span>
               <span className="text-brand-orange font-bold text-lg">
                 Up to {currentTraffic.label} monthly pageviews
@@ -259,7 +259,7 @@ export default function PricingSection() {
           </div>
 
           <div className="flex flex-col items-end gap-2 shrink-0">
-            <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-medium uppercase tracking-wide">
+            <span className="text-xs text-neutral-500 dark:text-neutral-400 font-medium uppercase tracking-wide">
               Get 1 month free with yearly
             </span>
             <div className="bg-neutral-200 dark:bg-neutral-800 p-1 rounded-lg flex" role="radiogroup" aria-label="Billing interval">
@@ -310,7 +310,7 @@ export default function PricingSection() {
                 
                 <div className="mb-8">
                   <h3 className="text-lg font-bold text-neutral-900 dark:text-white mb-2">{plan.name}</h3>
-                  <p className="text-sm text-neutral-500 min-h-[40px] mb-4">{plan.description}</p>
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400 min-h-[40px] mb-4">{plan.description}</p>
                   
                   {priceDetails ? (
                     isYearly ? (
@@ -319,7 +319,7 @@ export default function PricingSection() {
                           <span className="text-4xl font-bold text-neutral-900 dark:text-white">
                             €{priceDetails.yearlyTotal}
                           </span>
-                          <span className="text-neutral-500 font-medium">/year</span>
+                          <span className="text-neutral-500 dark:text-neutral-400 font-medium">/year</span>
                         </div>
                         <div className="flex items-center gap-2 mt-2 text-sm font-medium">
                           <span className="text-neutral-400 line-through decoration-neutral-400">
@@ -335,7 +335,7 @@ export default function PricingSection() {
                         <span className="text-4xl font-bold text-neutral-900 dark:text-white">
                           €{priceDetails.baseMonthly}
                         </span>
-                        <span className="text-neutral-500 font-medium">/mo</span>
+                        <span className="text-neutral-500 dark:text-neutral-400 font-medium">/mo</span>
                       </div>
                     )
                   ) : (
@@ -370,18 +370,19 @@ export default function PricingSection() {
           <div className="p-6 bg-neutral-50/50 dark:bg-neutral-900/50 flex flex-col">
             <div className="mb-8">
               <h3 className="text-lg font-bold text-neutral-900 dark:text-white mb-2">Enterprise</h3>
-              <p className="text-sm text-neutral-500 min-h-[40px] mb-4">For high volume sites and custom needs</p>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400 min-h-[40px] mb-4">For high volume sites and custom needs</p>
               <div className="text-4xl font-bold text-neutral-900 dark:text-white">
                 Custom
               </div>
             </div>
 
-            <a
-              href="mailto:business@ciphera.net?subject=Enterprise%20Plan%20Inquiry"
-              className="inline-flex items-center justify-center w-full mb-8 rounded-lg border border-neutral-200 dark:border-neutral-700 px-4 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange"
+            <Button
+              variant="secondary"
+              className="w-full mb-8"
+              onClick={() => { window.location.href = 'mailto:business@ciphera.net?subject=Enterprise%20Plan%20Inquiry' }}
             >
               Contact us
-            </a>
+            </Button>
 
             <ul className="space-y-4">
               {[

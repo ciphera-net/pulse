@@ -11,7 +11,7 @@ import {
 } from '@ciphera-net/ui'
 import { Site } from '@/lib/api/sites'
 import { getRealtime } from '@/lib/api/stats'
-import { toast } from '@ciphera-net/ui'
+import { toast, Button } from '@ciphera-net/ui'
 
 interface VerificationModalProps {
   isOpen: boolean
@@ -130,15 +130,12 @@ export default function VerificationModal({ isOpen, onClose, site }: Verificatio
                       </div>
                     </div>
 
-                    <button
-                      onClick={handleStartVerification}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-xl font-medium hover:opacity-90 transition-opacity"
-                    >
+                    <Button onClick={handleStartVerification} className="w-full justify-center">
                       Open Website & Verify
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-4 h-4 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                       </svg>
-                    </button>
+                    </Button>
                   </div>
                 )}
 
@@ -172,12 +169,9 @@ export default function VerificationModal({ isOpen, onClose, site }: Verificatio
                         We are successfully receiving data from your website.
                       </p>
                     </div>
-                    <button
-                      onClick={onClose}
-                      className="w-full px-4 py-3 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-xl font-medium hover:opacity-90 transition-opacity"
-                    >
+                    <Button onClick={onClose} className="w-full justify-center">
                       Done
-                    </button>
+                    </Button>
                   </div>
                 )}
 
@@ -205,18 +199,12 @@ export default function VerificationModal({ isOpen, onClose, site }: Verificatio
                     </div>
 
                     <div className="flex gap-3">
-                      <button
-                        onClick={onClose}
-                        className="flex-1 px-4 py-2.5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 rounded-xl font-medium hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
-                      >
+                      <Button variant="secondary" onClick={onClose} className="flex-1 justify-center">
                         Close
-                      </button>
-                      <button
-                        onClick={handleStartVerification}
-                        className="flex-1 px-4 py-2.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-xl font-medium hover:opacity-90 transition-opacity"
-                      >
+                      </Button>
+                      <Button onClick={handleStartVerification} className="flex-1 justify-center">
                         Try Again
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 )}

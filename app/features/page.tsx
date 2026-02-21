@@ -129,7 +129,7 @@ export default function FeaturesPage() {
             <span className="w-1.5 h-1.5 rounded-full bg-brand-orange animate-pulse" />
             Product Tour
           </span>
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-neutral-900 dark:text-white mb-6">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-neutral-900 dark:text-white mb-6">
             Everything you need. <br />
             <span className="gradient-text">Nothing you don&apos;t.</span>
           </h1>
@@ -147,7 +147,7 @@ export default function FeaturesPage() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: i * 0.1 }}
-              className="card-glass p-8 hover:-translate-y-1 hover:shadow-xl transition-all duration-300 group"
+              className="card-glass p-6 hover:-translate-y-1 hover:shadow-xl transition-all duration-300 group"
             >
               <div className="w-12 h-12 rounded-xl bg-brand-orange/10 flex items-center justify-center mb-6 text-brand-orange group-hover:scale-110 transition-transform duration-300">
                 <feature.icon className="w-6 h-6" />
@@ -171,7 +171,7 @@ export default function FeaturesPage() {
           className="mb-28"
         >
           <div className="text-center mb-14">
-            <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-4">
               Powerful analytics, <span className="gradient-text">simplified</span>
             </h2>
             <p className="text-lg text-neutral-600 dark:text-neutral-400 max-w-2xl mx-auto">
@@ -215,7 +215,7 @@ export default function FeaturesPage() {
         >
           <div className="grid md:grid-cols-2 gap-10 items-center">
             <div>
-              <h2 className="text-3xl font-bold text-neutral-900 dark:text-white mb-4">
+              <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-4">
                 Content that <span className="gradient-text">performs</span>
               </h2>
               <p className="text-neutral-600 dark:text-neutral-400 leading-relaxed mb-6">
@@ -285,7 +285,7 @@ export default function FeaturesPage() {
           className="mb-28"
         >
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-4">
               Built for trust
             </h2>
             <p className="text-lg text-neutral-600 dark:text-neutral-400 max-w-2xl mx-auto">
@@ -341,7 +341,7 @@ export default function FeaturesPage() {
           className="mb-28"
         >
           <div className="text-center mb-14">
-            <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-4">
               Up and running in <span className="gradient-text">3 minutes</span>
             </h2>
             <p className="text-lg text-neutral-600 dark:text-neutral-400 max-w-2xl mx-auto">
@@ -390,7 +390,7 @@ export default function FeaturesPage() {
           transition={{ duration: 0.5 }}
           className="text-center mb-20"
         >
-          <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white mb-4">
+          <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-4">
             Ready to see it in action?
           </h2>
           <p className="text-neutral-600 dark:text-neutral-400 mb-8 max-w-lg mx-auto">
