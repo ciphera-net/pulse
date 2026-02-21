@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.9.0-alpha] - 2026-02-21
+
+### Added
+
+- **Data retention settings (PULSE-58).** Site owners can choose how long raw event data is kept (1 month to 3 years depending on plan). Events older than the retention period are automatically deleted every 24 hours. Aggregated daily stats are preserved so historical charts remain intact.
+- **Data Retention section in Site Settings.** Under Data & Privacy, a dropdown lets you set retention; options are capped by your plan (free: up to 6 months, solo: 1 year, team: 2 years, business: 3 years).
+- **Privacy snippet includes retention.** The generated privacy policy text now mentions when raw data is automatically deleted.
+
 ## [0.8.0-alpha] - 2026-02-20
 
 ### Added
@@ -104,7 +112,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
-[Unreleased]: https://github.com/ciphera-net/pulse/compare/v0.8.0-alpha...HEAD
+[Unreleased]: https://github.com/ciphera-net/pulse/compare/v0.9.0-alpha...HEAD
+[0.9.0-alpha]: https://github.com/ciphera-net/pulse/compare/v0.8.0-alpha...v0.9.0-alpha
 [0.8.0-alpha]: https://github.com/ciphera-net/pulse/compare/v0.7.0-alpha...v0.8.0-alpha
 [0.7.0-alpha]: https://github.com/ciphera-net/pulse/compare/v0.6.0-alpha...v0.7.0-alpha
 [0.6.0-alpha]: https://github.com/ciphera-net/pulse/compare/v0.5.1-alpha...v0.6.0-alpha
