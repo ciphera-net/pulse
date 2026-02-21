@@ -18,7 +18,7 @@ export default function ChangelogPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 sm:px-6 py-8">
-      <h1 className="text-3xl font-bold text-neutral-900 dark:text-white mb-2">
+      <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-neutral-900 dark:text-white mb-2">
         Changelog
       </h1>
       <p className="text-neutral-600 dark:text-neutral-400 mb-8 text-sm">

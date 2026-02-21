@@ -485,7 +485,7 @@ function WelcomeContent() {
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-orange/10 text-brand-orange mb-4">
                   <BarChartIcon className="h-7 w-7" />
                 </div>
-                <h1 className="text-xl font-bold text-neutral-900 dark:text-white">
+                <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
                   Name your organization
                 </h1>
                 <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
@@ -556,7 +556,7 @@ function WelcomeContent() {
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-500/10 text-green-600 dark:text-green-400 mb-4">
                   <CheckCircleIcon className="h-7 w-7" />
                 </div>
-                <h1 className="text-xl font-bold text-neutral-900 dark:text-white">
+                <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
                   {showPendingCheckoutInStep3 ? 'Complete your plan' : "You're on the free plan"}
                 </h1>
                 <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
@@ -641,7 +641,7 @@ function WelcomeContent() {
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-orange/10 text-brand-orange mb-4">
                   <GlobeIcon className="h-7 w-7" />
                 </div>
-                <h1 className="text-xl font-bold text-neutral-900 dark:text-white">
+                <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
                   Add your first site
                 </h1>
                 <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
