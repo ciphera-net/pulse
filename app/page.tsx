@@ -6,6 +6,8 @@ import { motion } from 'framer-motion'
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow, initiateSignupFlow } from '@/lib/api/oauth'
 import { listSites, deleteSite, type Site } from '@/lib/api/sites'
+import { getStats, getDailyStats } from '@/lib/api/stats'
+import type { Stats, DailyStat } from '@/lib/api/stats'
 import { getSubscription, type SubscriptionDetails } from '@/lib/api/billing'
 import { LoadingOverlay } from '@ciphera-net/ui'
 import SiteList from '@/components/sites/SiteList'
@@ -97,10 +99,13 @@ function ComparisonSection() {
 }
 
 
+type SiteStatsMap = Record<string, { stats: Stats; dailyStats: DailyStat[] }>
+
 export default function HomePage() {
   const { user, loading: authLoading } = useAuth()
   const [sites, setSites] = useState<Site[]>([])
   const [sitesLoading, setSitesLoading] = useState(true)
+  const [siteStats, setSiteStats] = useState<SiteStatsMap>({})
   const [subscription, setSubscription] = useState<SubscriptionDetails | null>(null)
   const [subscriptionLoading, setSubscriptionLoading] = useState(false)
   const [showFinishSetupBanner, setShowFinishSetupBanner] = useState(true)
@@ -111,6 +116,37 @@ export default function HomePage() {
       loadSubscription()
     }
   }, [user])
+
+  useEffect(() => {
+    if (sites.length === 0) {
+      setSiteStats({})
+      return
+    }
+    let cancelled = false
+    const today = new Date().toISOString().split('T')[0]
+    const start7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    const load = async () => {
+      const results = await Promise.allSettled(
+        sites.map(async (site) => {
+          const [statsRes, dailyRes] = await Promise.all([
+            getStats(site.id, today, today),
+            getDailyStats(site.id, start7d, today, 'day'),
+          ])
+          return { siteId: site.id, stats: statsRes, dailyStats: dailyRes ?? [] }
+        })
+      )
+      if (cancelled) return
+      const map: SiteStatsMap = {}
+      for (const r of results) {
+        if (r.status === 'fulfilled') {
+          map[r.value.siteId] = { stats: r.value.stats, dailyStats: r.value.dailyStats }
+        }
+      }
+      setSiteStats(map)
+    }
+    load()
+    return () => { cancelled = true }
+  }, [sites])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -370,7 +406,11 @@ export default function HomePage() {
         </div>
         <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
           <p className="text-sm text-neutral-500 dark:text-neutral-400">Total Visitors (24h)</p>
-          <p className="text-2xl font-bold text-neutral-900 dark:text-white">--</p>
+          <p className="text-2xl font-bold text-neutral-900 dark:text-white">
+            {sites.length === 0 || Object.keys(siteStats).length < sites.length
+              ? '--'
+              : Object.values(siteStats).reduce((sum, { stats }) => sum + (stats?.visitors ?? 0), 0).toLocaleString()}
+          </p>
         </div>
         <div className="rounded-2xl border border-neutral-200 bg-brand-orange/10 p-4 dark:border-neutral-800">
           <p className="text-sm text-brand-orange">Plan & usage</p>
@@ -456,7 +496,7 @@ export default function HomePage() {
       )}
 
       {(sitesLoading || sites.length > 0) && (
-        <SiteList sites={sites} loading={sitesLoading} onDelete={handleDelete} />
+        <SiteList sites={sites} siteStats={siteStats} loading={sitesLoading} onDelete={handleDelete} />
       )}
     </div>
   )
