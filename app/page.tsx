@@ -6,8 +6,8 @@ import { motion } from 'framer-motion'
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow, initiateSignupFlow } from '@/lib/api/oauth'
 import { listSites, deleteSite, type Site } from '@/lib/api/sites'
-import { getStats, getDailyStats } from '@/lib/api/stats'
-import type { Stats, DailyStat } from '@/lib/api/stats'
+import { getStats } from '@/lib/api/stats'
+import type { Stats } from '@/lib/api/stats'
 import { getSubscription, type SubscriptionDetails } from '@/lib/api/billing'
 import { LoadingOverlay } from '@ciphera-net/ui'
 import SiteList from '@/components/sites/SiteList'
@@ -99,7 +99,7 @@ function ComparisonSection() {
 }
 
 
-type SiteStatsMap = Record<string, { stats: Stats; dailyStats: DailyStat[] }>
+type SiteStatsMap = Record<string, { stats: Stats }>
 
 export default function HomePage() {
   const { user, loading: authLoading } = useAuth()
@@ -124,16 +124,12 @@ export default function HomePage() {
     }
     let cancelled = false
     const today = new Date().toISOString().split('T')[0]
-    const start7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     const emptyStats: Stats = { pageviews: 0, visitors: 0, bounce_rate: 0, avg_duration: 0 }
     const load = async () => {
       const results = await Promise.allSettled(
         sites.map(async (site) => {
-          const [statsRes, dailyRes] = await Promise.all([
-            getStats(site.id, today, today),
-            getDailyStats(site.id, start7d, today, 'day'),
-          ])
-          return { siteId: site.id, stats: statsRes, dailyStats: dailyRes ?? [] }
+          const statsRes = await getStats(site.id, today, today)
+          return { siteId: site.id, stats: statsRes }
         })
       )
       if (cancelled) return
@@ -141,9 +137,9 @@ export default function HomePage() {
       results.forEach((r, i) => {
         const site = sites[i]
         if (r.status === 'fulfilled') {
-          map[site.id] = { stats: r.value.stats, dailyStats: r.value.dailyStats }
+          map[site.id] = { stats: r.value.stats }
         } else {
-          map[site.id] = { stats: emptyStats, dailyStats: [] }
+          map[site.id] = { stats: emptyStats }
         }
       })
       setSiteStats(map)

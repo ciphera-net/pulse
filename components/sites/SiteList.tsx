@@ -2,13 +2,12 @@
 
 import Link from 'next/link'
 import { Site } from '@/lib/api/sites'
-import type { Stats, DailyStat } from '@/lib/api/stats'
+import type { Stats } from '@/lib/api/stats'
 import { formatNumber } from '@ciphera-net/ui'
 import { BarChartIcon, SettingsIcon, BookOpenIcon, ExternalLinkIcon, Button } from '@ciphera-net/ui'
 import { useAuth } from '@/lib/auth/context'
-import Sparkline from '@/components/dashboard/Sparkline'
 
-export type SiteStatsMap = Record<string, { stats: Stats; dailyStats: DailyStat[] }>
+export type SiteStatsMap = Record<string, { stats: Stats }>
 
 interface SiteListProps {
   sites: Site[]
@@ -20,17 +19,14 @@ interface SiteListProps {
 interface SiteCardProps {
   site: Site
   stats: Stats | null
-  dailyStats: DailyStat[]
   statsLoading: boolean
   onDelete: (id: string) => void
   canDelete: boolean
 }
 
-function SiteCard({ site, stats, dailyStats, statsLoading, onDelete, canDelete }: SiteCardProps) {
+function SiteCard({ site, stats, statsLoading, onDelete, canDelete }: SiteCardProps) {
   const visitors24h = stats?.visitors ?? 0
   const pageviews = stats?.pageviews ?? 0
-  const hasChartData = dailyStats.length > 0
-  const sparklineColor = 'var(--color-brand-orange)'
 
   return (
     <div className="group relative flex flex-col rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm transition-all hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900">
@@ -70,28 +66,20 @@ function SiteCard({ site, stats, dailyStats, statsLoading, onDelete, canDelete }
         </div>
       </div>
 
-      {/* Mini Stats Grid + KPI Chart */}
-      <div className="mb-6 rounded-lg bg-neutral-50 p-3 dark:bg-neutral-800/50">
-        <div className="grid grid-cols-2 gap-4 mb-3">
-          <div>
-            <p className="text-xs text-neutral-500">Visitors (24h)</p>
-            <p className="font-mono text-lg font-medium text-neutral-900 dark:text-white">
-              {statsLoading ? '--' : formatNumber(visitors24h)}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-neutral-500">Pageviews</p>
-            <p className="font-mono text-lg font-medium text-neutral-900 dark:text-white">
-              {statsLoading ? '--' : formatNumber(pageviews)}
-            </p>
-          </div>
+      {/* Mini Stats Grid */}
+      <div className="mb-6 grid grid-cols-2 gap-4 rounded-lg bg-neutral-50 p-3 dark:bg-neutral-800/50">
+        <div>
+          <p className="text-xs text-neutral-500">Visitors (24h)</p>
+          <p className="font-mono text-lg font-medium text-neutral-900 dark:text-white">
+            {statsLoading ? '--' : formatNumber(visitors24h)}
+          </p>
         </div>
-        {hasChartData && (
-          <div className="flex items-center gap-2 pt-2 border-t border-neutral-200 dark:border-neutral-700">
-            <Sparkline data={dailyStats} dataKey="visitors" color={sparklineColor} width={120} height={32} />
-            <span className="text-xs text-neutral-500">7d visitors</span>
-          </div>
-        )}
+        <div>
+          <p className="text-xs text-neutral-500">Pageviews</p>
+          <p className="font-mono text-lg font-medium text-neutral-900 dark:text-white">
+            {statsLoading ? '--' : formatNumber(pageviews)}
+          </p>
+        </div>
       </div>
 
       {/* Actions */}
@@ -154,7 +142,6 @@ export default function SiteList({ sites, siteStats, loading, onDelete }: SiteLi
             key={site.id}
             site={site}
             stats={data?.stats ?? null}
-            dailyStats={data?.dailyStats ?? []}
             statsLoading={!data}
             onDelete={onDelete}
             canDelete={canDelete}
