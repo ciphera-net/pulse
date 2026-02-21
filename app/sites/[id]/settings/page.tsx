@@ -13,6 +13,8 @@ import { PasswordInput } from '@ciphera-net/ui'
 import { Select, Modal, Button } from '@ciphera-net/ui'
 import { APP_URL } from '@/lib/api/client'
 import { generatePrivacySnippet } from '@/lib/utils/privacySnippet'
+import { getSubscription, type SubscriptionDetails } from '@/lib/api/billing'
+import { getRetentionOptionsForPlan, formatRetentionMonths } from '@/lib/plans'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@/lib/auth/context'
 import {
@@ -68,8 +70,12 @@ export default function SiteSettingsPage() {
     // Performance insights setting
     enable_performance_insights: false,
     // Bot and noise filtering
-    filter_bots: true
+    filter_bots: true,
+    // Data retention (6 = free-tier max; safe default)
+    data_retention_months: 6
   })
+  const [subscription, setSubscription] = useState<SubscriptionDetails | null>(null)
+  const [subscriptionLoadFailed, setSubscriptionLoadFailed] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
   const [snippetCopied, setSnippetCopied] = useState(false)
   const [showVerificationModal, setShowVerificationModal] = useState(false)
@@ -83,6 +89,7 @@ export default function SiteSettingsPage() {
 
   useEffect(() => {
     loadSite()
+    loadSubscription()
   }, [siteId])
 
   useEffect(() => {
@@ -90,6 +97,30 @@ export default function SiteSettingsPage() {
       loadGoals()
     }
   }, [activeTab, siteId])
+
+  const loadSubscription = async () => {
+    try {
+      setSubscriptionLoadFailed(false)
+      const sub = await getSubscription()
+      setSubscription(sub)
+    } catch (e) {
+      setSubscriptionLoadFailed(true)
+      toast.error(getAuthErrorMessage(e as Error) || 'Could not load plan limits. Showing default options.')
+    }
+  }
+
+  // * Snap data_retention_months to nearest valid option when subscription loads
+  useEffect(() => {
+    if (!subscription) return
+    const opts = getRetentionOptionsForPlan(subscription.plan_id)
+    const values = opts.map(o => o.value)
+    const maxVal = Math.max(...values)
+    setFormData(prev => {
+      if (values.includes(prev.data_retention_months)) return prev
+      const bestFit = values.filter(v => v <= prev.data_retention_months).pop() ?? maxVal
+      return { ...prev, data_retention_months: Math.min(bestFit, maxVal) }
+    })
+  }, [subscription])
 
   const loadSite = async () => {
     try {
@@ -111,7 +142,9 @@ export default function SiteSettingsPage() {
         // Performance insights setting (default to false)
         enable_performance_insights: data.enable_performance_insights ?? false,
         // Bot and noise filtering (default to true)
-        filter_bots: data.filter_bots ?? true
+        filter_bots: data.filter_bots ?? true,
+        // Data retention (default 6 = free-tier max; avoids flash-then-clamp for existing sites)
+        data_retention_months: data.data_retention_months ?? 6
       })
       if (data.has_password) {
         setIsPasswordEnabled(true)
@@ -226,7 +259,9 @@ export default function SiteSettingsPage() {
         // Performance insights setting
         enable_performance_insights: formData.enable_performance_insights,
         // Bot and noise filtering
-        filter_bots: formData.filter_bots
+        filter_bots: formData.filter_bots,
+        // Data retention
+        data_retention_months: formData.data_retention_months
       })
       toast.success('Site updated successfully')
       loadSite()
@@ -818,6 +853,58 @@ export default function SiteSettingsPage() {
                           <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-orange/20 dark:peer-focus:ring-brand-orange/20 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-neutral-600 peer-checked:bg-brand-orange"></div>
                         </label>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Data Retention */}
+                  <div className="space-y-4 pt-6 border-t border-neutral-100 dark:border-neutral-800">
+                    <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Data Retention</h3>
+                    {subscriptionLoadFailed && (
+                      <div className="p-3 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 flex items-center justify-between gap-3">
+                        <p className="text-sm text-amber-800 dark:text-amber-200">
+                          Plan limits could not be loaded. Options shown may be limited.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={loadSubscription}
+                          className="shrink-0 text-sm font-medium text-amber-800 dark:text-amber-200 hover:underline"
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    )}
+                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-medium text-neutral-900 dark:text-white">Keep raw event data for</h4>
+                          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
+                            Events older than this are automatically deleted. Aggregated daily stats are kept permanently.
+                          </p>
+                        </div>
+                        <Select
+                          value={String(formData.data_retention_months)}
+                          onChange={(v) => setFormData({ ...formData, data_retention_months: Number(v) })}
+                          options={getRetentionOptionsForPlan(subscription?.plan_id).map(opt => ({
+                            value: String(opt.value),
+                            label: opt.label,
+                          }))}
+                          variant="input"
+                          align="right"
+                          className="min-w-[160px]"
+                        />
+                      </div>
+                      {subscription?.plan_id && subscription.plan_id !== 'free' && (
+                        <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-3">
+                          Your {subscription.plan_id} plan supports up to {formatRetentionMonths(
+                            getRetentionOptionsForPlan(subscription.plan_id).at(-1)?.value ?? 6
+                          )} of data retention.
+                        </p>
+                      )}
+                      {(!subscription?.plan_id || subscription.plan_id === 'free') && (
+                        <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-3">
+                          Free plan supports up to 6 months. <a href="/pricing" className="text-brand-orange hover:underline">Upgrade</a> for longer retention.
+                        </p>
+                      )}
                     </div>
                   </div>
 
