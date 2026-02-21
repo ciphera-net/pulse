@@ -52,7 +52,7 @@ export default function GoalStats({ goalCounts }: GoalStatsProps) {
           </p>
           <Link
             href="/installation"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-orange hover:text-brand-orange/90 hover:underline focus:outline-none focus:ring-2 focus:ring-brand-orange/20 rounded"
+            className="inline-flex items-center gap-2 text-sm font-medium text-brand-orange hover:text-brand-orange/90 hover:underline focus:outline-none focus:ring-2 focus:ring-brand-orange/20 rounded"
           >
             Read documentation
             <ArrowRightIcon className="w-4 h-4" />

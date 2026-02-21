@@ -323,15 +323,15 @@ export default function SiteSettingsPage() {
 
   if (!site) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
         <p className="text-neutral-600 dark:text-neutral-400">Site not found</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen pt-12 pb-12 px-4 sm:px-6">
-      <div className="max-w-4xl mx-auto space-y-8">
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
+      <div className="space-y-8">
         <div>
           <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Site Settings</h1>
           <p className="mt-2 text-neutral-600 dark:text-neutral-400">
@@ -487,7 +487,7 @@ export default function SiteSettingsPage() {
                         <ZapIcon className="w-4 h-4" />
                         Verify Installation
                       </button>
-                      <p className="text-xs text-neutral-500 dark:text-neutral-500">
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400">
                         Check if your site is sending data correctly.
                       </p>
                     </div>
@@ -495,21 +495,9 @@ export default function SiteSettingsPage() {
 
                     <div className="pt-4 border-t border-neutral-100 dark:border-neutral-800 flex justify-end">
                     {canEdit && (
-                      <button
-                        type="submit"
-                        disabled={saving}
-                        className="flex items-center gap-2 px-6 py-2.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-xl font-medium 
-                        hover:bg-neutral-800 dark:hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-                      >
-                        {saving ? (
-                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        ) : (
-                          <>
-                            <CheckIcon className="w-4 h-4" />
-                            Save Changes
-                          </>
-                        )}
-                      </button>
+                      <Button type="submit" disabled={saving} isLoading={saving}>
+                        Save Changes
+                      </Button>
                     )}
                     </div>
                   </form>
@@ -561,7 +549,7 @@ export default function SiteSettingsPage() {
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">Manage who can view your dashboard.</p>
                   </div>
 
-                  <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
+                  <div className="p-6 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="p-2 bg-white dark:bg-neutral-800 rounded-lg text-neutral-400">
@@ -613,7 +601,7 @@ export default function SiteSettingsPage() {
                                 {linkCopied ? 'Copied!' : 'Copy Link'}
                               </button>
                             </div>
-                            <p className="mt-2 text-xs text-neutral-500">
+                            <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
                               Share this link with others to view the dashboard.
                             </p>
                           </div>
@@ -652,7 +640,7 @@ export default function SiteSettingsPage() {
                                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                     placeholder={site.has_password ? "Change password (leave empty to keep current)" : "Set a password"}
                                   />
-                                  <p className="mt-2 text-xs text-neutral-500">
+                                  <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
                                     Visitors will need to enter this password to view the dashboard.
                                   </p>
                                 </motion.div>
@@ -666,21 +654,9 @@ export default function SiteSettingsPage() {
 
                   <div className="pt-4 border-t border-neutral-100 dark:border-neutral-800 flex justify-end">
                     {canEdit && (
-                      <button
-                        type="submit"
-                        disabled={saving}
-                        className="flex items-center gap-2 px-6 py-2.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-xl font-medium 
-                        hover:bg-neutral-800 dark:hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-                      >
-                        {saving ? (
-                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        ) : (
-                          <>
-                            <CheckIcon className="w-4 h-4" />
-                            Save Changes
-                          </>
-                        )}
-                      </button>
+                      <Button type="submit" disabled={saving} isLoading={saving}>
+                        Save Changes
+                      </Button>
                     )}
                   </div>
                 </form>
@@ -700,7 +676,7 @@ export default function SiteSettingsPage() {
                     <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Data Collection</h3>
 
                     {/* Page Paths Toggle */}
-                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
+                    <div className="p-6 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="font-medium text-neutral-900 dark:text-white">Page Paths</h4>
@@ -721,7 +697,7 @@ export default function SiteSettingsPage() {
                     </div>
 
                     {/* Referrers Toggle */}
-                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
+                    <div className="p-6 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="font-medium text-neutral-900 dark:text-white">Referrers</h4>
@@ -742,7 +718,7 @@ export default function SiteSettingsPage() {
                     </div>
 
                     {/* Device Info Toggle */}
-                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
+                    <div className="p-6 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="font-medium text-neutral-900 dark:text-white">Device Info</h4>
@@ -763,7 +739,7 @@ export default function SiteSettingsPage() {
                     </div>
 
                     {/* Geographic Data Dropdown */}
-                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
+                    <div className="p-6 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="font-medium text-neutral-900 dark:text-white">Geographic Data</h4>
@@ -787,7 +763,7 @@ export default function SiteSettingsPage() {
                     </div>
 
                     {/* Screen Resolution Toggle */}
-                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
+                    <div className="p-6 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="font-medium text-neutral-900 dark:text-white">Screen Resolution</h4>
@@ -811,7 +787,7 @@ export default function SiteSettingsPage() {
                   {/* Bot and noise filtering */}
                   <div className="space-y-4 pt-6 border-t border-neutral-100 dark:border-neutral-800">
                     <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Filtering</h3>
-                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
+                    <div className="p-6 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="font-medium text-neutral-900 dark:text-white">Filter bots and referrer spam</h4>
@@ -835,7 +811,7 @@ export default function SiteSettingsPage() {
                   {/* Performance Insights Toggle */}
                   <div className="space-y-4 pt-6 border-t border-neutral-100 dark:border-neutral-800">
                     <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Performance Insights</h3>
-                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
+                    <div className="p-6 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="font-medium text-neutral-900 dark:text-white">Performance Insights (Add-on)</h4>
@@ -873,7 +849,7 @@ export default function SiteSettingsPage() {
                         </button>
                       </div>
                     )}
-                    <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
+                    <div className="p-6 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="font-medium text-neutral-900 dark:text-white">Keep raw event data for</h4>
@@ -965,7 +941,7 @@ export default function SiteSettingsPage() {
                         {snippetCopied ? (
                           <CheckIcon className="w-4 h-4 text-green-600" />
                         ) : (
-                          <svg className="w-4 h-4 text-neutral-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <svg className="w-4 h-4 text-neutral-500 dark:text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <rect x="9" y="9" width="13" height="13" rx="2" ry="2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
@@ -976,21 +952,9 @@ export default function SiteSettingsPage() {
 
                   <div className="pt-4 border-t border-neutral-100 dark:border-neutral-800 flex justify-end">
                     {canEdit && (
-                      <button
-                        type="submit"
-                        disabled={saving}
-                        className="flex items-center gap-2 px-6 py-2.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-xl font-medium
-                        hover:bg-neutral-800 dark:hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-                      >
-                        {saving ? (
-                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        ) : (
-                          <>
-                            <CheckIcon className="w-4 h-4" />
-                            Save Changes
-                          </>
-                        )}
-                      </button>
+                      <Button type="submit" disabled={saving} isLoading={saving}>
+                        Save Changes
+                      </Button>
                     )}
                   </div>
                 </form>

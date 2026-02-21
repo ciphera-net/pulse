@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.10.0-alpha] - 2026-02-21
+
+### Changed
+
+- **Design consistency (PULSE-59).** Pulse now feels more cohesive across all pages — headings, buttons, and layout are consistent.
+- **Headings.** Marketing and integration pages use the same heading sizes for a clearer visual hierarchy.
+- **Buttons.** Settings pages and the verification modal use consistent button styles. The Enterprise "Contact us" button on pricing now matches the rest.
+- **Settings layout.** Profile settings, Organization Settings, and Site Settings now span the full width of the page, matching the dashboard.
+- **Charts and maps.** Analytics charts, funnel views, and the uptime map now use Pulse's brand colors correctly in both light and dark mode.
+- **Integration guides.** Code examples in the integration and installation guides look cleaner and work better in dark mode.
+- **Dark mode.** Text and backgrounds across settings, pricing, and funnels are easier to read when you switch themes.
+- **Cards and panels.** All cards use consistent padding for a more even layout.
+- **Integration pages.** Integration setup guides have more comfortable spacing at the top.
+- **Org slug.** The organization URL prefix correctly shows `pulse.ciphera.net/` instead of the wrong domain.
+
 ## [0.9.0-alpha] - 2026-02-21
 
 ### Added
@@ -112,7 +127,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
-[Unreleased]: https://github.com/ciphera-net/pulse/compare/v0.9.0-alpha...HEAD
+[Unreleased]: https://github.com/ciphera-net/pulse/compare/v0.10.0-alpha...HEAD
+[0.10.0-alpha]: https://github.com/ciphera-net/pulse/compare/v0.9.0-alpha...v0.10.0-alpha
 [0.9.0-alpha]: https://github.com/ciphera-net/pulse/compare/v0.8.0-alpha...v0.9.0-alpha
 [0.8.0-alpha]: https://github.com/ciphera-net/pulse/compare/v0.7.0-alpha...v0.8.0-alpha
 [0.7.0-alpha]: https://github.com/ciphera-net/pulse/compare/v0.6.0-alpha...v0.7.0-alpha

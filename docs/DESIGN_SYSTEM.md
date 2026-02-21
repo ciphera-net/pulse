@@ -817,9 +817,9 @@ Always test both light and dark modes:
 ### VS Code-Style Syntax Highlighting
 
 ```tsx
-<div className="bg-[#1e1e1e] rounded-xl overflow-hidden shadow-2xl border border-neutral-800">
+<div className="bg-neutral-900 rounded-xl overflow-hidden shadow-2xl border border-neutral-800">
   {/* Header bar */}
-  <div className="flex items-center px-4 py-3 bg-[#252526] border-b border-neutral-800">
+  <div className="flex items-center px-4 py-3 bg-neutral-800 border-b border-neutral-800">
     <div className="flex gap-2">
       <div className="w-3 h-3 rounded-full bg-red-500/20" />
       <div className="w-3 h-3 rounded-full bg-yellow-500/20" />
@@ -973,7 +973,6 @@ presets: [
 **Dashboard:** Chart, TopPages, TopReferrers, Locations, TechSpecs, Campaigns, Goals, Performance  
 **Settings:** OrganizationSettings, ProfileSettings  
 **Sites:** SiteList, VerificationModal  
-**Tools:** UtmBuilder  
 
 ---
 

@@ -320,7 +320,7 @@ export default function OrganizationSettings() {
   // If no org ID, we are in personal organization context, so don't show org settings
   if (!currentOrgId) {
     return (
-        <div className="p-6 text-center text-neutral-500">
+        <div className="p-6 text-center text-neutral-500 dark:text-neutral-400">
             <p>You are in your personal context. Switch to an Organization to manage its settings.</p>
         </div>
     )
@@ -497,7 +497,7 @@ export default function OrganizationSettings() {
   // handleTabChange is defined above
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Organization Settings</h1>
         <p className="mt-2 text-neutral-600 dark:text-neutral-400">
@@ -584,7 +584,7 @@ export default function OrganizationSettings() {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.2 }}
-            className="w-full bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-6 md:p-8 shadow-sm"
+            className="w-full bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-6 shadow-sm"
           >
             {activeTab === 'general' && (
               <div className="space-y-12">
@@ -606,7 +606,7 @@ export default function OrganizationSettings() {
                         minLength={2}
                         maxLength={50}
                         disabled={!isEditing}
-                        className={`bg-white dark:bg-neutral-900 ${!isEditing ? 'text-neutral-500' : ''}`}
+                        className={`bg-white dark:bg-neutral-900 ${!isEditing ? 'text-neutral-500 dark:text-neutral-400' : ''}`}
                       />
                     </div>
                     
@@ -615,8 +615,8 @@ export default function OrganizationSettings() {
                         Organization Slug
                       </label>
                       <div className="flex rounded-xl shadow-sm">
-                        <span className="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 text-neutral-500 text-sm">
-                          drop.ciphera.net/
+                        <span className="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 text-neutral-500 dark:text-neutral-400 text-sm">
+                          pulse.ciphera.net/
                         </span>
                         <Input
                           type="text"
@@ -626,10 +626,10 @@ export default function OrganizationSettings() {
                           minLength={3}
                           maxLength={30}
                           disabled={!isEditing}
-                          className={`rounded-l-none bg-white dark:bg-neutral-900 ${!isEditing ? 'text-neutral-500' : ''}`}
+                          className={`rounded-l-none bg-white dark:bg-neutral-900 ${!isEditing ? 'text-neutral-500 dark:text-neutral-400' : ''}`}
                         />
                       </div>
-                      <p className="text-xs text-neutral-500">
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400">
                         Changing the slug will change your organization's URL.
                       </p>
                     </div>
@@ -670,7 +670,7 @@ export default function OrganizationSettings() {
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">Irreversible actions for this organization.</p>
                   </div>
 
-                  <div className="p-4 border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/10 rounded-2xl flex items-center justify-between">
+                  <div className="p-6 border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/10 rounded-2xl flex items-center justify-between">
                     <div>
                       <h3 className="font-medium text-red-900 dark:text-red-200">Delete Organization</h3>
                       <p className="text-sm text-red-700 dark:text-red-300 mt-1">Permanently delete this organization and all its data.</p>
@@ -737,14 +737,14 @@ export default function OrganizationSettings() {
 
                 {/* Members List */}
                 <div className="space-y-4">
-                  <h3 className="text-sm font-medium text-neutral-500 uppercase tracking-wider">Active Members</h3>
+                  <h3 className="text-sm font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Active Members</h3>
                   <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden divide-y divide-neutral-200 dark:divide-neutral-800">
                     {isLoadingMembers ? (
                       <div className="flex items-center justify-center py-8">
                         <Spinner />
                       </div>
                     ) : members.length === 0 ? (
-                      <div className="p-8 text-center text-neutral-500">No members found.</div>
+                      <div className="p-8 text-center text-neutral-500 dark:text-neutral-400">No members found.</div>
                     ) : (
                       members.map((member) => (
                         <div key={member.user_id} className="p-4 flex items-center justify-between hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors">
@@ -756,7 +756,7 @@ export default function OrganizationSettings() {
                               <div className="text-sm font-medium text-neutral-900 dark:text-white">
                                 {member.user_email || 'Unknown User'}
                               </div>
-                              <div className="text-xs text-neutral-500">
+                              <div className="text-xs text-neutral-500 dark:text-neutral-400">
                                 Joined {new Date(member.joined_at).toLocaleDateString()}
                               </div>
                             </div>
@@ -781,7 +781,7 @@ export default function OrganizationSettings() {
                 {/* Pending Invitations */}
                 {invitations.length > 0 && (
                   <div className="space-y-4">
-                    <h3 className="text-sm font-medium text-neutral-500 uppercase tracking-wider">Pending Invitations</h3>
+                    <h3 className="text-sm font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Pending Invitations</h3>
                     <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden divide-y divide-neutral-200 dark:divide-neutral-800">
                       {invitations.map((invite) => (
                         <div key={invite.id} className="p-4 flex items-center justify-between">
@@ -793,7 +793,7 @@ export default function OrganizationSettings() {
                               <div className="text-sm font-medium text-neutral-900 dark:text-white">
                                 {invite.email}
                               </div>
-                              <div className="text-xs text-neutral-500">
+                              <div className="text-xs text-neutral-500 dark:text-neutral-400">
                                 Invited as <span className="capitalize font-medium">{invite.role}</span> • Expires {new Date(invite.expires_at).toLocaleDateString()}
                               </div>
                             </div>
@@ -825,8 +825,8 @@ export default function OrganizationSettings() {
                     <Spinner />
                   </div>
                 ) : !subscription ? (
-                  <div className="p-8 text-center bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-200 dark:border-neutral-800">
-                    <p className="text-neutral-500">Could not load subscription details.</p>
+                  <div className="p-6 text-center bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-200 dark:border-neutral-800">
+                    <p className="text-neutral-500 dark:text-neutral-400">Could not load subscription details.</p>
                     <Button variant="ghost" onClick={loadSubscription} className="mt-4">Retry</Button>
                   </div>
                 ) : (
@@ -834,7 +834,7 @@ export default function OrganizationSettings() {
 
                     {/* Trial notice */}
                     {subscription.subscription_status === 'trialing' && (
-                      <div className="p-4 bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-800 rounded-2xl flex flex-col sm:flex-row sm:items-center gap-3">
+                      <div className="p-6 bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-800 rounded-2xl flex flex-col sm:flex-row sm:items-center gap-3">
                         <div className="flex-1">
                           <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
                             Your free trial ends on{' '}
@@ -854,7 +854,7 @@ export default function OrganizationSettings() {
 
                     {/* Past due notice */}
                     {subscription.subscription_status === 'past_due' && (
-                      <div className="p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-2xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="p-6 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-2xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div className="flex-1">
                           <p className="text-sm font-medium text-red-800 dark:text-red-200">
                             Payment past due
@@ -877,7 +877,7 @@ export default function OrganizationSettings() {
 
                     {/* Cancel-at-period-end notice */}
                     {subscription.cancel_at_period_end && (
-                      <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-2xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="p-6 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-2xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div>
                           <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
                             Your subscription will end on{' '}
@@ -1024,7 +1024,7 @@ export default function OrganizationSettings() {
                           type="button"
                           onClick={handleManageSubscription}
                           disabled={isRedirectingToPortal}
-                          className="inline-flex items-center gap-1.5 text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:rounded"
+                          className="inline-flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:rounded"
                         >
                           <ExternalLinkIcon className="w-4 h-4" />
                           Payment method & invoices
@@ -1034,7 +1034,7 @@ export default function OrganizationSettings() {
                         <button
                           type="button"
                           onClick={() => setShowCancelPrompt(true)}
-                          className="inline-flex items-center gap-1.5 rounded-xl border border-neutral-200 dark:border-neutral-700 px-3.5 py-1.5 text-sm text-neutral-600 dark:text-neutral-400 hover:border-red-300 hover:text-red-600 dark:hover:border-red-800 dark:hover:text-red-400 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                          className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 dark:border-neutral-700 px-3.5 py-1.5 text-sm text-neutral-600 dark:text-neutral-400 hover:border-red-300 hover:text-red-600 dark:hover:border-red-800 dark:hover:text-red-400 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
                         >
                           Cancel subscription
                         </button>
@@ -1050,7 +1050,7 @@ export default function OrganizationSettings() {
                             <Spinner />
                           </div>
                         ) : invoices.length === 0 ? (
-                          <div className="p-8 text-center text-neutral-500">No invoices found.</div>
+                          <div className="p-8 text-center text-neutral-500 dark:text-neutral-400">No invoices found.</div>
                         ) : (
                           <>
                             {invoices.map((invoice) => (
@@ -1077,14 +1077,14 @@ export default function OrganizationSettings() {
                                   </span>
                                   {invoice.invoice_pdf && (
                                     <a href={invoice.invoice_pdf} target="_blank" rel="noopener noreferrer"
-                                       className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange" title="Download PDF">
+                                       className="inline-flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange" title="Download PDF">
                                       <DownloadIcon className="w-3.5 h-3.5" />
                                       Download PDF
                                     </a>
                                   )}
                                   {invoice.hosted_invoice_url && (
                                     <a href={invoice.hosted_invoice_url} target="_blank" rel="noopener noreferrer"
-                                       className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange ${
+                                       className={`inline-flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange ${
                                          invoice.status === 'open'
                                            ? 'bg-brand-orange text-white hover:bg-brand-orange-hover'
                                            : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800'
@@ -1122,7 +1122,7 @@ export default function OrganizationSettings() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <h3 className="text-sm font-medium text-neutral-500 uppercase tracking-wider">Notification categories</h3>
+                    <h3 className="text-sm font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Notification categories</h3>
                     <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden divide-y divide-neutral-200 dark:divide-neutral-800">
                       {notificationCategories.map((cat) => (
                         <div
@@ -1285,7 +1285,7 @@ export default function OrganizationSettings() {
                   {/* Pagination */}
                   {auditTotal > auditPageSize && (
                     <div className="flex items-center justify-between px-4 py-3 border-t border-neutral-200 dark:border-neutral-800">
-                      <span className="text-sm text-neutral-500">
+                      <span className="text-sm text-neutral-500 dark:text-neutral-400">
                         {auditPage * auditPageSize + 1}–{Math.min((auditPage + 1) * auditPageSize, auditTotal)} of {auditTotal}
                       </span>
                       <div className="flex gap-2">
@@ -1502,7 +1502,7 @@ export default function OrganizationSettings() {
                           </span>
                           <span className="block text-xs text-neutral-500 mt-0.5">{plan.sites}</span>
                           {isCurrentPlan && (
-                            <span className="absolute -top-2 right-2 px-1.5 py-0.5 text-[10px] font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 rounded-full border border-neutral-200 dark:border-neutral-700">
+                            <span className="absolute -top-2 right-2 px-1.5 py-0.5 text-xs font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 rounded-full border border-neutral-200 dark:border-neutral-700">
                               Current
                             </span>
                           )}

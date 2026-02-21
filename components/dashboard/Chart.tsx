@@ -18,27 +18,27 @@ import { ArrowUpRightIcon, ArrowDownRightIcon, BarChartIcon, Select, Button, Dow
 import { Checkbox } from '@ciphera-net/ui'
 
 const COLORS = {
-  brand: '#FD5E0F',
-  success: '#10B981', // Emerald-500
-  danger: '#EF4444',  // Red-500
+  brand: 'var(--color-brand-orange)',
+  success: 'var(--color-success)',
+  danger: 'var(--color-error)',
 }
 
 const CHART_COLORS_LIGHT = {
-  border: '#E5E5E5',
-  text: '#171717',
-  textMuted: '#737373',
-  axis: '#A3A3A3',
+  border: 'var(--color-neutral-200)',
+  text: 'var(--color-neutral-900)',
+  textMuted: 'var(--color-neutral-500)',
+  axis: 'var(--color-neutral-400)',
   tooltipBg: '#ffffff',
-  tooltipBorder: '#E5E5E5',
+  tooltipBorder: 'var(--color-neutral-200)',
 }
 
 const CHART_COLORS_DARK = {
-  border: '#404040',
-  text: '#fafafa',
-  textMuted: '#a3a3a3',
-  axis: '#737373',
-  tooltipBg: '#262626',
-  tooltipBorder: '#404040',
+  border: 'var(--color-neutral-700)',
+  text: 'var(--color-neutral-50)',
+  textMuted: 'var(--color-neutral-400)',
+  axis: 'var(--color-neutral-500)',
+  tooltipBg: 'var(--color-neutral-800)',
+  tooltipBorder: 'var(--color-neutral-700)',
 }
 
 export interface DailyStat {
@@ -127,7 +127,7 @@ function ChartTooltip({
 
   return (
     <div
-      className="rounded-lg border px-4 py-3 shadow-lg"
+      className="rounded-lg border px-4 py-3 shadow-lg transition-shadow duration-300"
       style={{
         backgroundColor: colors.tooltipBg,
         borderColor: colors.tooltipBorder,
@@ -145,7 +145,7 @@ function ChartTooltip({
         </span>
       </div>
       {hasPrev && (
-        <div className="mt-1.5 flex items-center gap-1.5 text-xs" style={{ color: colors.textMuted }}>
+        <div className="mt-1.5 flex items-center gap-2 text-xs" style={{ color: colors.textMuted }}>
           <span>vs {formatValue(prev as number)} {prevPeriodLabel ? `(${prevPeriodLabel})` : 'prev'}</span>
           {delta !== null && (
             <span
@@ -282,7 +282,7 @@ export default function Chart({
       const { toPng } = await import('html-to-image')
       const dataUrl = await toPng(chartContainerRef.current, {
         cacheBust: true,
-        backgroundColor: resolvedTheme === 'dark' ? '#171717' : '#ffffff',
+        backgroundColor: resolvedTheme === 'dark' ? 'var(--color-neutral-900)' : '#ffffff',
       })
       const link = document.createElement('a')
       link.download = `chart-${dateRange.start}-${dateRange.end}.png`
@@ -416,7 +416,7 @@ export default function Chart({
       {/* * Subtle live/updated indicator in bottom-right corner */}
       {lastUpdatedAt != null && (
         <div
-          className="absolute bottom-3 right-6 flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400 pointer-events-none"
+          className="absolute bottom-3 right-6 flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400 pointer-events-none"
           title="Data refreshes every 30 seconds"
         >
           <span className="relative flex h-1.5 w-1.5">
@@ -540,7 +540,7 @@ export default function Chart({
             </div>
 
             {prevData?.length ? (
-              <div className="flex flex-col gap-0.5">
+              <div className="flex flex-col gap-1">
                 <Checkbox
                   checked={showComparison}
                   onCheckedChange={setShowComparison}
@@ -558,7 +558,7 @@ export default function Chart({
               variant="ghost"
               onClick={handleExportChart}
               disabled={!hasData}
-              className="gap-1.5 py-1.5 px-3 text-sm text-neutral-600 dark:text-neutral-400"
+              className="gap-2 py-1.5 px-3 text-sm text-neutral-600 dark:text-neutral-400"
             >
               <DownloadIcon className="w-4 h-4" />
               Export chart
@@ -570,7 +570,7 @@ export default function Chart({
         </div>
 
         {!hasData ? (
-          <div className="flex h-[320px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30">
+          <div className="flex h-80 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30">
             <BarChartIcon className="h-12 w-12 text-neutral-300 dark:text-neutral-600" aria-hidden />
             <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
               No data for this period
@@ -578,7 +578,7 @@ export default function Chart({
             <p className="text-xs text-neutral-400 dark:text-neutral-500">Try a different date range</p>
           </div>
         ) : !hasAnyNonZero ? (
-          <div className="flex h-[320px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30">
+          <div className="flex h-80 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30">
             <BarChartIcon className="h-12 w-12 text-neutral-300 dark:text-neutral-600" aria-hidden />
             <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
               No {metricLabel.toLowerCase()} data for this period
@@ -694,7 +694,7 @@ export default function Chart({
                   activeDot={{
                     r: 5,
                     strokeWidth: 2,
-                    fill: resolvedTheme === 'dark' ? '#262626' : '#ffffff',
+                    fill: resolvedTheme === 'dark' ? 'var(--color-neutral-800)' : '#ffffff',
                     stroke: activeMetric.color,
                   }}
                   isAnimationActive

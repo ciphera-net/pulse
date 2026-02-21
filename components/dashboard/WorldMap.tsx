@@ -35,9 +35,9 @@ const WorldMap = ({ data }: WorldMapProps) => {
 
   // Plausible-like colors based on provided SVG snippet
   const isDark = resolvedTheme === 'dark'
-  const defaultFill = isDark ? "#262626" : "#f5f5f5" // neutral-800 / neutral-100
-  const defaultStroke = isDark ? "#171717" : "#ffffff" // neutral-900 / white
-  const brandOrange = "#FD5E0F"
+  const defaultFill = isDark ? "var(--color-neutral-800)" : "var(--color-neutral-100)"
+  const defaultStroke = isDark ? "var(--color-neutral-900)" : "#ffffff"
+  const brandOrange = "var(--color-brand-orange)"
   
   return (
     <div className="relative w-full">
@@ -97,7 +97,7 @@ const WorldMap = ({ data }: WorldMapProps) => {
       </ComposableMap>
       {tooltipContent && (
          <div 
-           className="fixed z-50 px-2 py-1 text-xs font-medium text-white bg-black/80 backdrop-blur-sm rounded shadow pointer-events-none transform -translate-x-1/2 -translate-y-full mt-[-10px]"
+           className="fixed z-50 px-2 py-1 text-xs font-medium text-white bg-black/80 backdrop-blur-sm rounded shadow pointer-events-none transform -translate-x-1/2 -translate-y-full -mt-2.5"
            style={{ left: tooltipContent.x, top: tooltipContent.y }}
          >
             {tooltipContent.content}

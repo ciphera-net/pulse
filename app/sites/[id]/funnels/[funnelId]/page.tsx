@@ -19,20 +19,20 @@ import {
 import { getDateRange } from '@ciphera-net/ui'
 
 const CHART_COLORS_LIGHT = {
-  border: '#E5E5E5',
-  axis: '#A3A3A3',
+  border: 'var(--color-neutral-200)',
+  axis: 'var(--color-neutral-400)',
   tooltipBg: '#ffffff',
-  tooltipBorder: '#E5E5E5',
+  tooltipBorder: 'var(--color-neutral-200)',
 }
 
 const CHART_COLORS_DARK = {
-  border: '#404040',
-  axis: '#737373',
-  tooltipBg: '#262626',
-  tooltipBorder: '#404040',
+  border: 'var(--color-neutral-700)',
+  axis: 'var(--color-neutral-500)',
+  tooltipBg: 'var(--color-neutral-800)',
+  tooltipBorder: 'var(--color-neutral-700)',
 }
 
-const BRAND_ORANGE = '#FD5E0F'
+const BRAND_ORANGE = 'var(--color-brand-orange)'
 
 export default function FunnelReportPage() {
   const params = useParams()
@@ -225,7 +225,7 @@ export default function FunnelReportPage() {
                       const data = payload[0].payload;
                       return (
                         <div
-                          className="p-3 rounded-xl shadow-lg border"
+                          className="p-3 rounded-xl shadow-lg border transition-shadow duration-300"
                           style={{
                             backgroundColor: chartColors.tooltipBg,
                             borderColor: chartColors.tooltipBorder,
@@ -267,10 +267,10 @@ export default function FunnelReportPage() {
             <table className="w-full text-left text-sm">
               <thead className="bg-neutral-50 dark:bg-neutral-800/50 border-b border-neutral-200 dark:border-neutral-800">
                 <tr>
-                  <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider">Step</th>
-                  <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-right">Visitors</th>
-                  <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-right">Drop-off</th>
-                  <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-right">Conversion</th>
+                  <th className="px-6 py-4 font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Step</th>
+                  <th className="px-6 py-4 font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider text-right">Visitors</th>
+                  <th className="px-6 py-4 font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider text-right">Drop-off</th>
+                  <th className="px-6 py-4 font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider text-right">Conversion</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
@@ -283,7 +283,7 @@ export default function FunnelReportPage() {
                         </span>
                         <div>
                           <p className="font-medium text-neutral-900 dark:text-white">{step.step.name}</p>
-                          <p className="text-neutral-500 text-xs font-mono mt-0.5">{step.step.value}</p>
+                          <p className="text-neutral-500 dark:text-neutral-400 text-xs font-mono mt-0.5">{step.step.value}</p>
                         </div>
                       </div>
                     </td>

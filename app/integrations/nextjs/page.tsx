@@ -16,7 +16,7 @@ export default function NextJsIntegrationPage() {
         />
       </div>
 
-      <div className="flex-grow w-full max-w-4xl mx-auto px-4 pt-12 pb-10 z-10">
+      <div className="flex-grow w-full max-w-4xl mx-auto px-4 pt-20 pb-10 z-10">
         <Link 
           href="/integrations" 
           className="inline-flex items-center text-sm text-neutral-500 hover:text-brand-orange mb-8 transition-colors"
@@ -31,7 +31,7 @@ export default function NextJsIntegrationPage() {
               <path d="M64 0C28.7 0 0 28.7 0 64s28.7 64 64 64 64-28.7 64-64S99.3 0 64 0zm27.6 93.9c-.8.9-2.2 1-3.1.2L42.8 52.8V88c0 1.3-1.1 2.3-2.3 2.3h-7.4c-1.3 0-2.3-1.1-2.3-2.3V40c0-1.3 1.1-2.3 2.3-2.3h7.4c1 0 1.9.6 2.2 1.5l48.6 44.8V40c0-1.3 1.1-2.3 2.3-2.3h7.4c1.3 0 2.3 1.1 2.3 2.3v48c0 1.3-1.1 2.3-2.3 2.3h-6.8c-.9 0-1.7-.5-2.1-1.3z" />
             </svg>
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-neutral-900 dark:text-white">
             Next.js Integration
           </h1>
         </div>
@@ -48,8 +48,8 @@ export default function NextJsIntegrationPage() {
             Add the script to your root layout file (usually <code>app/layout.tsx</code> or <code>app/layout.js</code>).
           </p>
 
-          <div className="bg-[#1e1e1e] rounded-xl overflow-hidden border border-neutral-800 my-6">
-            <div className="flex items-center px-4 py-2 bg-[#252526] border-b border-neutral-800">
+          <div className="bg-neutral-900 rounded-xl overflow-hidden border border-neutral-800 my-6">
+            <div className="flex items-center px-4 py-2 bg-neutral-800 border-b border-neutral-800">
               <span className="text-xs text-neutral-400 font-mono">app/layout.tsx</span>
             </div>
             <div className="p-4 overflow-x-auto">
@@ -84,8 +84,8 @@ export default function RootLayout({
             If you are using the older Pages Router, add the script to your custom <code>_app.tsx</code> or <code>_document.tsx</code>.
           </p>
 
-          <div className="bg-[#1e1e1e] rounded-xl overflow-hidden border border-neutral-800 my-6">
-            <div className="flex items-center px-4 py-2 bg-[#252526] border-b border-neutral-800">
+          <div className="bg-neutral-900 rounded-xl overflow-hidden border border-neutral-800 my-6">
+            <div className="flex items-center px-4 py-2 bg-neutral-800 border-b border-neutral-800">
               <span className="text-xs text-neutral-400 font-mono">pages/_app.tsx</span>
             </div>
             <div className="p-4 overflow-x-auto">
