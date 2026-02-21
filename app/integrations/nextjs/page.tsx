@@ -31,7 +31,7 @@ export default function NextJsIntegrationPage() {
               <path d="M64 0C28.7 0 0 28.7 0 64s28.7 64 64 64 64-28.7 64-64S99.3 0 64 0zm27.6 93.9c-.8.9-2.2 1-3.1.2L42.8 52.8V88c0 1.3-1.1 2.3-2.3 2.3h-7.4c-1.3 0-2.3-1.1-2.3-2.3V40c0-1.3 1.1-2.3 2.3-2.3h7.4c1 0 1.9.6 2.2 1.5l48.6 44.8V40c0-1.3 1.1-2.3 2.3-2.3h7.4c1.3 0 2.3 1.1 2.3 2.3v48c0 1.3-1.1 2.3-2.3 2.3h-6.8c-.9 0-1.7-.5-2.1-1.3z" />
             </svg>
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-neutral-900 dark:text-white">
             Next.js Integration
           </h1>
         </div>
