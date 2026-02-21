@@ -376,12 +376,13 @@ export default function PricingSection() {
               </div>
             </div>
 
-            <a
-              href="mailto:business@ciphera.net?subject=Enterprise%20Plan%20Inquiry"
-              className="inline-flex items-center justify-center w-full mb-8 rounded-lg border border-neutral-200 dark:border-neutral-700 px-4 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange"
+            <Button
+              variant="secondary"
+              className="w-full mb-8"
+              onClick={() => { window.location.href = 'mailto:business@ciphera.net?subject=Enterprise%20Plan%20Inquiry' }}
             >
               Contact us
-            </a>
+            </Button>
 
             <ul className="space-y-4">
               {[

@@ -973,7 +973,6 @@ presets: [
 **Dashboard:** Chart, TopPages, TopReferrers, Locations, TechSpecs, Campaigns, Goals, Performance  
 **Settings:** OrganizationSettings, ProfileSettings  
 **Sites:** SiteList, VerificationModal  
-**Tools:** UtmBuilder  
 
 ---
 
