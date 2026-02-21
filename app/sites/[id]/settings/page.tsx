@@ -487,7 +487,7 @@ export default function SiteSettingsPage() {
                         <ZapIcon className="w-4 h-4" />
                         Verify Installation
                       </button>
-                      <p className="text-xs text-neutral-500 dark:text-neutral-500">
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400">
                         Check if your site is sending data correctly.
                       </p>
                     </div>
@@ -601,7 +601,7 @@ export default function SiteSettingsPage() {
                                 {linkCopied ? 'Copied!' : 'Copy Link'}
                               </button>
                             </div>
-                            <p className="mt-2 text-xs text-neutral-500">
+                            <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
                               Share this link with others to view the dashboard.
                             </p>
                           </div>
@@ -640,7 +640,7 @@ export default function SiteSettingsPage() {
                                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                     placeholder={site.has_password ? "Change password (leave empty to keep current)" : "Set a password"}
                                   />
-                                  <p className="mt-2 text-xs text-neutral-500">
+                                  <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
                                     Visitors will need to enter this password to view the dashboard.
                                   </p>
                                 </motion.div>
@@ -941,7 +941,7 @@ export default function SiteSettingsPage() {
                         {snippetCopied ? (
                           <CheckIcon className="w-4 h-4 text-green-600" />
                         ) : (
-                          <svg className="w-4 h-4 text-neutral-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <svg className="w-4 h-4 text-neutral-500 dark:text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <rect x="9" y="9" width="13" height="13" rx="2" ry="2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>

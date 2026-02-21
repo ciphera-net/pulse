@@ -320,7 +320,7 @@ export default function OrganizationSettings() {
   // If no org ID, we are in personal organization context, so don't show org settings
   if (!currentOrgId) {
     return (
-        <div className="p-6 text-center text-neutral-500">
+        <div className="p-6 text-center text-neutral-500 dark:text-neutral-400">
             <p>You are in your personal context. Switch to an Organization to manage its settings.</p>
         </div>
     )
@@ -606,7 +606,7 @@ export default function OrganizationSettings() {
                         minLength={2}
                         maxLength={50}
                         disabled={!isEditing}
-                        className={`bg-white dark:bg-neutral-900 ${!isEditing ? 'text-neutral-500' : ''}`}
+                        className={`bg-white dark:bg-neutral-900 ${!isEditing ? 'text-neutral-500 dark:text-neutral-400' : ''}`}
                       />
                     </div>
                     
@@ -615,7 +615,7 @@ export default function OrganizationSettings() {
                         Organization Slug
                       </label>
                       <div className="flex rounded-xl shadow-sm">
-                        <span className="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 text-neutral-500 text-sm">
+                        <span className="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 text-neutral-500 dark:text-neutral-400 text-sm">
                           drop.ciphera.net/
                         </span>
                         <Input
@@ -626,10 +626,10 @@ export default function OrganizationSettings() {
                           minLength={3}
                           maxLength={30}
                           disabled={!isEditing}
-                          className={`rounded-l-none bg-white dark:bg-neutral-900 ${!isEditing ? 'text-neutral-500' : ''}`}
+                          className={`rounded-l-none bg-white dark:bg-neutral-900 ${!isEditing ? 'text-neutral-500 dark:text-neutral-400' : ''}`}
                         />
                       </div>
-                      <p className="text-xs text-neutral-500">
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400">
                         Changing the slug will change your organization's URL.
                       </p>
                     </div>
@@ -737,14 +737,14 @@ export default function OrganizationSettings() {
 
                 {/* Members List */}
                 <div className="space-y-4">
-                  <h3 className="text-sm font-medium text-neutral-500 uppercase tracking-wider">Active Members</h3>
+                  <h3 className="text-sm font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Active Members</h3>
                   <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden divide-y divide-neutral-200 dark:divide-neutral-800">
                     {isLoadingMembers ? (
                       <div className="flex items-center justify-center py-8">
                         <Spinner />
                       </div>
                     ) : members.length === 0 ? (
-                      <div className="p-8 text-center text-neutral-500">No members found.</div>
+                      <div className="p-8 text-center text-neutral-500 dark:text-neutral-400">No members found.</div>
                     ) : (
                       members.map((member) => (
                         <div key={member.user_id} className="p-4 flex items-center justify-between hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors">
@@ -756,7 +756,7 @@ export default function OrganizationSettings() {
                               <div className="text-sm font-medium text-neutral-900 dark:text-white">
                                 {member.user_email || 'Unknown User'}
                               </div>
-                              <div className="text-xs text-neutral-500">
+                              <div className="text-xs text-neutral-500 dark:text-neutral-400">
                                 Joined {new Date(member.joined_at).toLocaleDateString()}
                               </div>
                             </div>
@@ -781,7 +781,7 @@ export default function OrganizationSettings() {
                 {/* Pending Invitations */}
                 {invitations.length > 0 && (
                   <div className="space-y-4">
-                    <h3 className="text-sm font-medium text-neutral-500 uppercase tracking-wider">Pending Invitations</h3>
+                    <h3 className="text-sm font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Pending Invitations</h3>
                     <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden divide-y divide-neutral-200 dark:divide-neutral-800">
                       {invitations.map((invite) => (
                         <div key={invite.id} className="p-4 flex items-center justify-between">
@@ -793,7 +793,7 @@ export default function OrganizationSettings() {
                               <div className="text-sm font-medium text-neutral-900 dark:text-white">
                                 {invite.email}
                               </div>
-                              <div className="text-xs text-neutral-500">
+                              <div className="text-xs text-neutral-500 dark:text-neutral-400">
                                 Invited as <span className="capitalize font-medium">{invite.role}</span> • Expires {new Date(invite.expires_at).toLocaleDateString()}
                               </div>
                             </div>
@@ -826,7 +826,7 @@ export default function OrganizationSettings() {
                   </div>
                 ) : !subscription ? (
                   <div className="p-8 text-center bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-200 dark:border-neutral-800">
-                    <p className="text-neutral-500">Could not load subscription details.</p>
+                    <p className="text-neutral-500 dark:text-neutral-400">Could not load subscription details.</p>
                     <Button variant="ghost" onClick={loadSubscription} className="mt-4">Retry</Button>
                   </div>
                 ) : (
@@ -1050,7 +1050,7 @@ export default function OrganizationSettings() {
                             <Spinner />
                           </div>
                         ) : invoices.length === 0 ? (
-                          <div className="p-8 text-center text-neutral-500">No invoices found.</div>
+                          <div className="p-8 text-center text-neutral-500 dark:text-neutral-400">No invoices found.</div>
                         ) : (
                           <>
                             {invoices.map((invoice) => (
@@ -1122,7 +1122,7 @@ export default function OrganizationSettings() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <h3 className="text-sm font-medium text-neutral-500 uppercase tracking-wider">Notification categories</h3>
+                    <h3 className="text-sm font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Notification categories</h3>
                     <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden divide-y divide-neutral-200 dark:divide-neutral-800">
                       {notificationCategories.map((cat) => (
                         <div
@@ -1285,7 +1285,7 @@ export default function OrganizationSettings() {
                   {/* Pagination */}
                   {auditTotal > auditPageSize && (
                     <div className="flex items-center justify-between px-4 py-3 border-t border-neutral-200 dark:border-neutral-800">
-                      <span className="text-sm text-neutral-500">
+                      <span className="text-sm text-neutral-500 dark:text-neutral-400">
                         {auditPage * auditPageSize + 1}–{Math.min((auditPage + 1) * auditPageSize, auditTotal)} of {auditTotal}
                       </span>
                       <div className="flex gap-2">

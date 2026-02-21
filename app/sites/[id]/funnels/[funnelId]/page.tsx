@@ -267,10 +267,10 @@ export default function FunnelReportPage() {
             <table className="w-full text-left text-sm">
               <thead className="bg-neutral-50 dark:bg-neutral-800/50 border-b border-neutral-200 dark:border-neutral-800">
                 <tr>
-                  <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider">Step</th>
-                  <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-right">Visitors</th>
-                  <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-right">Drop-off</th>
-                  <th className="px-6 py-4 font-medium text-neutral-500 uppercase tracking-wider text-right">Conversion</th>
+                  <th className="px-6 py-4 font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Step</th>
+                  <th className="px-6 py-4 font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider text-right">Visitors</th>
+                  <th className="px-6 py-4 font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider text-right">Drop-off</th>
+                  <th className="px-6 py-4 font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider text-right">Conversion</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
@@ -283,7 +283,7 @@ export default function FunnelReportPage() {
                         </span>
                         <div>
                           <p className="font-medium text-neutral-900 dark:text-white">{step.step.name}</p>
-                          <p className="text-neutral-500 text-xs font-mono mt-0.5">{step.step.value}</p>
+                          <p className="text-neutral-500 dark:text-neutral-400 text-xs font-mono mt-0.5">{step.step.value}</p>
                         </div>
                       </div>
                     </td>
