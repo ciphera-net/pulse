@@ -107,7 +107,7 @@ export default function NewSitePage() {
   if (createdSite) {
     return (
       <div className="w-full max-w-2xl mx-auto px-4 sm:px-6 py-8">
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-8">
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6">
           <div className="text-center">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-500/10 text-green-600 dark:text-green-400 mb-6">
               <CheckCircleIcon className="h-7 w-7" />

@@ -264,7 +264,7 @@ export default function HomePage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: i * 0.1 }}
-                className="card-glass p-8 hover:-translate-y-1 hover:shadow-xl transition-all duration-300 group"
+                className="card-glass p-6 hover:-translate-y-1 hover:shadow-xl transition-all duration-300 group"
               >
                 <div className="w-12 h-12 rounded-xl bg-brand-orange/10 flex items-center justify-center mb-6 text-brand-orange group-hover:scale-110 transition-transform duration-300">
                   <feature.icon className="w-6 h-6" />
@@ -439,7 +439,7 @@ export default function HomePage() {
       </div>
 
       {!sitesLoading && sites.length === 0 && (
-        <div className="mb-8 rounded-2xl border-2 border-dashed border-brand-orange/30 bg-brand-orange/5 p-8 text-center dark:bg-brand-orange/10">
+        <div className="mb-8 rounded-2xl border-2 border-dashed border-brand-orange/30 bg-brand-orange/5 p-6 text-center dark:bg-brand-orange/10">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-orange/20 text-brand-orange mb-4">
             <GlobeIcon className="h-7 w-7" />
           </div>

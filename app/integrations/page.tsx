@@ -285,7 +285,7 @@ export default function IntegrationsPage() {
                       >
                         <Link
                           href={`/integrations/${integration.id}`}
-                          className="group relative p-8 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-sm border border-neutral-200 dark:border-neutral-800 rounded-2xl hover:border-brand-orange/50 dark:hover:border-brand-orange/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl block h-full focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2"
+                          className="group relative p-6 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-sm border border-neutral-200 dark:border-neutral-800 rounded-2xl hover:border-brand-orange/50 dark:hover:border-brand-orange/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl block h-full focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2"
                         >
                           <div className="flex items-start justify-between mb-6">
                             <div className="p-3 bg-neutral-100 dark:bg-neutral-800 rounded-xl group-hover:scale-110 transition-transform duration-300">
@@ -351,7 +351,7 @@ export default function IntegrationsPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
-            className="max-w-md mx-auto mt-12 p-8 border border-dashed border-neutral-300 dark:border-neutral-700 rounded-2xl flex flex-col items-center justify-center text-center"
+            className="max-w-md mx-auto mt-12 p-6 border border-dashed border-neutral-300 dark:border-neutral-700 rounded-2xl flex flex-col items-center justify-center text-center"
           >
             <h3 className="text-xl font-bold text-neutral-900 dark:text-white mb-2">
               Missing something?

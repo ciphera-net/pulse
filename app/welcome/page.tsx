@@ -332,7 +332,7 @@ function WelcomeContent() {
   }
 
   const cardClass =
-    'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-sm p-8 max-w-lg mx-auto'
+    'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-sm p-6 max-w-lg mx-auto'
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center bg-neutral-50 dark:bg-neutral-950 px-4 py-12">

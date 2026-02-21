@@ -584,7 +584,7 @@ export default function OrganizationSettings() {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.2 }}
-            className="w-full bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-6 md:p-8 shadow-sm"
+            className="w-full bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-6 shadow-sm"
           >
             {activeTab === 'general' && (
               <div className="space-y-12">
@@ -670,7 +670,7 @@ export default function OrganizationSettings() {
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">Irreversible actions for this organization.</p>
                   </div>
 
-                  <div className="p-4 border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/10 rounded-2xl flex items-center justify-between">
+                  <div className="p-6 border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/10 rounded-2xl flex items-center justify-between">
                     <div>
                       <h3 className="font-medium text-red-900 dark:text-red-200">Delete Organization</h3>
                       <p className="text-sm text-red-700 dark:text-red-300 mt-1">Permanently delete this organization and all its data.</p>
@@ -825,7 +825,7 @@ export default function OrganizationSettings() {
                     <Spinner />
                   </div>
                 ) : !subscription ? (
-                  <div className="p-8 text-center bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-200 dark:border-neutral-800">
+                  <div className="p-6 text-center bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-200 dark:border-neutral-800">
                     <p className="text-neutral-500 dark:text-neutral-400">Could not load subscription details.</p>
                     <Button variant="ghost" onClick={loadSubscription} className="mt-4">Retry</Button>
                   </div>
@@ -834,7 +834,7 @@ export default function OrganizationSettings() {
 
                     {/* Trial notice */}
                     {subscription.subscription_status === 'trialing' && (
-                      <div className="p-4 bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-800 rounded-2xl flex flex-col sm:flex-row sm:items-center gap-3">
+                      <div className="p-6 bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-800 rounded-2xl flex flex-col sm:flex-row sm:items-center gap-3">
                         <div className="flex-1">
                           <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
                             Your free trial ends on{' '}
@@ -854,7 +854,7 @@ export default function OrganizationSettings() {
 
                     {/* Past due notice */}
                     {subscription.subscription_status === 'past_due' && (
-                      <div className="p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-2xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="p-6 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-2xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div className="flex-1">
                           <p className="text-sm font-medium text-red-800 dark:text-red-200">
                             Payment past due
@@ -877,7 +877,7 @@ export default function OrganizationSettings() {
 
                     {/* Cancel-at-period-end notice */}
                     {subscription.cancel_at_period_end && (
-                      <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-2xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="p-6 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-2xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div>
                           <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
                             Your subscription will end on{' '}
