@@ -71,10 +71,11 @@ export default function SiteSettingsPage() {
     enable_performance_insights: false,
     // Bot and noise filtering
     filter_bots: true,
-    // Data retention
-    data_retention_months: 12
+    // Data retention (6 = free-tier max; safe default)
+    data_retention_months: 6
   })
   const [subscription, setSubscription] = useState<SubscriptionDetails | null>(null)
+  const [subscriptionLoadFailed, setSubscriptionLoadFailed] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
   const [snippetCopied, setSnippetCopied] = useState(false)
   const [showVerificationModal, setShowVerificationModal] = useState(false)
@@ -99,9 +100,11 @@ export default function SiteSettingsPage() {
 
   const loadSubscription = async () => {
     try {
+      setSubscriptionLoadFailed(false)
       const sub = await getSubscription()
       setSubscription(sub)
     } catch (e) {
+      setSubscriptionLoadFailed(true)
       toast.error(getAuthErrorMessage(e as Error) || 'Could not load plan limits. Showing default options.')
     }
   }
@@ -139,8 +142,8 @@ export default function SiteSettingsPage() {
         enable_performance_insights: data.enable_performance_insights ?? false,
         // Bot and noise filtering (default to true)
         filter_bots: data.filter_bots ?? true,
-        // Data retention
-        data_retention_months: data.data_retention_months ?? 12
+        // Data retention (default 6 = free-tier max; avoids flash-then-clamp for existing sites)
+        data_retention_months: data.data_retention_months ?? 6
       })
       if (data.has_password) {
         setIsPasswordEnabled(true)
@@ -855,6 +858,20 @@ export default function SiteSettingsPage() {
                   {/* Data Retention */}
                   <div className="space-y-4 pt-6 border-t border-neutral-100 dark:border-neutral-800">
                     <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Data Retention</h3>
+                    {subscriptionLoadFailed && (
+                      <div className="p-3 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 flex items-center justify-between gap-3">
+                        <p className="text-sm text-amber-800 dark:text-amber-200">
+                          Plan limits could not be loaded. Options shown may be limited.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={loadSubscription}
+                          className="shrink-0 text-sm font-medium text-amber-800 dark:text-amber-200 hover:underline"
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    )}
                     <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                       <div className="flex items-center justify-between">
                         <div>
