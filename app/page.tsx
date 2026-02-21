@@ -416,10 +416,10 @@ export default function HomePage() {
           <p className="text-sm text-brand-orange">Plan & usage</p>
           {subscriptionLoading ? (
             <div className="animate-pulse space-y-2">
-              <div className="h-6 w-24 rounded bg-brand-orange/20" />
-              <div className="h-4 w-full rounded bg-brand-orange/10" />
-              <div className="h-4 w-3/4 rounded bg-brand-orange/10" />
-              <div className="h-4 w-20 rounded bg-brand-orange/10 pt-2" />
+              <div className="h-6 w-24 rounded bg-neutral-100 dark:bg-neutral-800" />
+              <div className="h-4 w-full rounded bg-neutral-100 dark:bg-neutral-800" />
+              <div className="h-4 w-3/4 rounded bg-neutral-100 dark:bg-neutral-800" />
+              <div className="h-4 w-20 rounded bg-neutral-100 dark:bg-neutral-800 pt-2" />
             </div>
           ) : subscription ? (
             <>
