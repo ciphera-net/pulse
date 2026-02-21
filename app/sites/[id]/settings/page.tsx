@@ -495,21 +495,9 @@ export default function SiteSettingsPage() {
 
                     <div className="pt-4 border-t border-neutral-100 dark:border-neutral-800 flex justify-end">
                     {canEdit && (
-                      <button
-                        type="submit"
-                        disabled={saving}
-                        className="flex items-center gap-2 px-6 py-2.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-xl font-medium 
-                        hover:bg-neutral-800 dark:hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-                      >
-                        {saving ? (
-                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        ) : (
-                          <>
-                            <CheckIcon className="w-4 h-4" />
-                            Save Changes
-                          </>
-                        )}
-                      </button>
+                      <Button type="submit" disabled={saving} isLoading={saving}>
+                        Save Changes
+                      </Button>
                     )}
                     </div>
                   </form>
@@ -666,21 +654,9 @@ export default function SiteSettingsPage() {
 
                   <div className="pt-4 border-t border-neutral-100 dark:border-neutral-800 flex justify-end">
                     {canEdit && (
-                      <button
-                        type="submit"
-                        disabled={saving}
-                        className="flex items-center gap-2 px-6 py-2.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-xl font-medium 
-                        hover:bg-neutral-800 dark:hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-                      >
-                        {saving ? (
-                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        ) : (
-                          <>
-                            <CheckIcon className="w-4 h-4" />
-                            Save Changes
-                          </>
-                        )}
-                      </button>
+                      <Button type="submit" disabled={saving} isLoading={saving}>
+                        Save Changes
+                      </Button>
                     )}
                   </div>
                 </form>
@@ -976,21 +952,9 @@ export default function SiteSettingsPage() {
 
                   <div className="pt-4 border-t border-neutral-100 dark:border-neutral-800 flex justify-end">
                     {canEdit && (
-                      <button
-                        type="submit"
-                        disabled={saving}
-                        className="flex items-center gap-2 px-6 py-2.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-xl font-medium
-                        hover:bg-neutral-800 dark:hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-                      >
-                        {saving ? (
-                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        ) : (
-                          <>
-                            <CheckIcon className="w-4 h-4" />
-                            Save Changes
-                          </>
-                        )}
-                      </button>
+                      <Button type="submit" disabled={saving} isLoading={saving}>
+                        Save Changes
+                      </Button>
                     )}
                   </div>
                 </form>
