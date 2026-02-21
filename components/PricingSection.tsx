@@ -238,7 +238,7 @@ export default function PricingSection() {
         {/* Top Toolbar */}
         <div className="p-6 border-b border-neutral-200 dark:border-neutral-800 flex flex-col md:flex-row items-center justify-between gap-8 bg-neutral-50/50 dark:bg-neutral-900/50">
           <div className="w-full md:w-2/3">
-            <div className="flex justify-between text-sm font-medium text-neutral-500 mb-4">
+            <div className="flex justify-between text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-4">
               <span>10k</span>
               <span className="text-brand-orange font-bold text-lg">
                 Up to {currentTraffic.label} monthly pageviews
@@ -310,7 +310,7 @@ export default function PricingSection() {
                 
                 <div className="mb-8">
                   <h3 className="text-lg font-bold text-neutral-900 dark:text-white mb-2">{plan.name}</h3>
-                  <p className="text-sm text-neutral-500 min-h-[40px] mb-4">{plan.description}</p>
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400 min-h-[40px] mb-4">{plan.description}</p>
                   
                   {priceDetails ? (
                     isYearly ? (
@@ -319,7 +319,7 @@ export default function PricingSection() {
                           <span className="text-4xl font-bold text-neutral-900 dark:text-white">
                             €{priceDetails.yearlyTotal}
                           </span>
-                          <span className="text-neutral-500 font-medium">/year</span>
+                          <span className="text-neutral-500 dark:text-neutral-400 font-medium">/year</span>
                         </div>
                         <div className="flex items-center gap-2 mt-2 text-sm font-medium">
                           <span className="text-neutral-400 line-through decoration-neutral-400">
@@ -335,7 +335,7 @@ export default function PricingSection() {
                         <span className="text-4xl font-bold text-neutral-900 dark:text-white">
                           €{priceDetails.baseMonthly}
                         </span>
-                        <span className="text-neutral-500 font-medium">/mo</span>
+                        <span className="text-neutral-500 dark:text-neutral-400 font-medium">/mo</span>
                       </div>
                     )
                   ) : (
@@ -370,7 +370,7 @@ export default function PricingSection() {
           <div className="p-6 bg-neutral-50/50 dark:bg-neutral-900/50 flex flex-col">
             <div className="mb-8">
               <h3 className="text-lg font-bold text-neutral-900 dark:text-white mb-2">Enterprise</h3>
-              <p className="text-sm text-neutral-500 min-h-[40px] mb-4">For high volume sites and custom needs</p>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400 min-h-[40px] mb-4">For high volume sites and custom needs</p>
               <div className="text-4xl font-bold text-neutral-900 dark:text-white">
                 Custom
               </div>
