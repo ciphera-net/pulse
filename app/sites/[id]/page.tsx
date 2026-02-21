@@ -221,7 +221,7 @@ export default function SiteDashboardPage() {
 
   if (!site) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
         <p className="text-neutral-600 dark:text-neutral-400">Site not found</p>
       </div>
     )
