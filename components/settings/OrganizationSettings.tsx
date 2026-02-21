@@ -616,7 +616,7 @@ export default function OrganizationSettings() {
                       </label>
                       <div className="flex rounded-xl shadow-sm">
                         <span className="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 text-neutral-500 dark:text-neutral-400 text-sm">
-                          drop.ciphera.net/
+                          pulse.ciphera.net/
                         </span>
                         <Input
                           type="text"
