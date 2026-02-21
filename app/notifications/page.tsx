@@ -90,7 +90,7 @@ export default function NotificationsPage() {
 
   if (!user?.org_id) {
     return (
-      <div className="min-h-screen pt-24 pb-12 px-4 sm:px-6">
+      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
         <div className="max-w-2xl mx-auto text-center py-12">
           <p className="text-neutral-500">Switch to an organization to view notifications.</p>
           <Link href="/welcome" className="text-brand-orange hover:underline mt-4 inline-block">
@@ -102,7 +102,7 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="min-h-screen pt-24 pb-12 px-4 sm:px-6">
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <Link

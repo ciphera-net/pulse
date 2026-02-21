@@ -106,7 +106,7 @@ export default function NewSitePage() {
   // * Step 2: Framework picker + script (same as /welcome after adding first site)
   if (createdSite) {
     return (
-      <div className="container mx-auto px-4 py-8 max-w-2xl">
+      <div className="w-full max-w-2xl mx-auto px-4 sm:px-6 py-8">
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-8">
           <div className="text-center">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-500/10 text-green-600 dark:text-green-400 mb-6">
@@ -172,7 +172,7 @@ export default function NewSitePage() {
 
   // * Step 1: Name & domain form
   return (
-    <div className="container mx-auto px-4 py-8 max-w-2xl">
+    <div className="w-full max-w-2xl mx-auto px-4 sm:px-6 py-8">
       <h1 className="text-2xl font-bold mb-8 text-neutral-900 dark:text-white">
         Create New Site
       </h1>
