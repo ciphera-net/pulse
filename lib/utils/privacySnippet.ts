@@ -1,4 +1,5 @@
 import type { Site } from '@/lib/api/sites'
+import { formatRetentionMonths } from '@/lib/plans'
 
 const DOCS_URL =
   (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_APP_URL)
@@ -22,6 +23,7 @@ export function generatePrivacySnippet(site: Site): string {
   const screen = site.collect_screen_resolution ?? true
   const perf = site.enable_performance_insights ?? false
   const filterBots = site.filter_bots ?? true
+  const retentionMonths = site.data_retention_months ?? 12
 
   const parts: string[] = []
   if (paths) parts.push('which pages are viewed')
@@ -43,6 +45,9 @@ export function generatePrivacySnippet(site: Site): string {
   let p2 = `We collect anonymous data: ${list}. `
   if (filterBots) {
     p2 += 'Known bots and referrer spam are excluded from our analytics. '
+  }
+  if (retentionMonths > 0) {
+    p2 += `Raw event data is automatically deleted after ${formatRetentionMonths(retentionMonths)}. `
   }
   p2 += `Data is processed in a privacy-preserving way and is not used to identify individuals. For more information, see Pulse's documentation: ${DOCS_URL}`
 
