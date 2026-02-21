@@ -101,10 +101,22 @@ export default function SiteSettingsPage() {
     try {
       const sub = await getSubscription()
       setSubscription(sub)
-    } catch {
-      // * Non-critical; free tier assumed if billing unavailable
+    } catch (e) {
+      toast.error(getAuthErrorMessage(e as Error) || 'Could not load plan limits. Showing default options.')
     }
   }
+
+  // * Clamp data_retention_months when subscription loads: if current value exceeds plan max, sync to max
+  useEffect(() => {
+    if (!subscription) return
+    const opts = getRetentionOptionsForPlan(subscription.plan_id)
+    const values = opts.map(o => o.value)
+    const maxVal = Math.max(...values)
+    setFormData(prev => {
+      if (values.includes(prev.data_retention_months)) return prev
+      return { ...prev, data_retention_months: Math.min(prev.data_retention_months, maxVal) }
+    })
+  }, [subscription])
 
   const loadSite = async () => {
     try {
