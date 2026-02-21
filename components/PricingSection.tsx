@@ -259,7 +259,7 @@ export default function PricingSection() {
           </div>
 
           <div className="flex flex-col items-end gap-2 shrink-0">
-            <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-medium uppercase tracking-wide">
+            <span className="text-xs text-neutral-500 dark:text-neutral-400 font-medium uppercase tracking-wide">
               Get 1 month free with yearly
             </span>
             <div className="bg-neutral-200 dark:bg-neutral-800 p-1 rounded-lg flex" role="radiogroup" aria-label="Billing interval">

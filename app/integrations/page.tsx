@@ -158,7 +158,7 @@ export default function IntegrationsPage() {
               </button>
             ) : (
               <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
-                <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-mono font-medium bg-neutral-200/80 dark:bg-neutral-700/80 text-neutral-500 dark:text-neutral-400 border border-neutral-300 dark:border-neutral-600">
+                <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono font-medium bg-neutral-200/80 dark:bg-neutral-700/80 text-neutral-500 dark:text-neutral-400 border border-neutral-300 dark:border-neutral-600">
                   /
                 </kbd>
               </div>
