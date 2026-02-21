@@ -127,7 +127,7 @@ function ChartTooltip({
 
   return (
     <div
-      className="rounded-lg border px-4 py-3 shadow-lg"
+      className="rounded-lg border px-4 py-3 shadow-lg transition-shadow duration-300"
       style={{
         backgroundColor: colors.tooltipBg,
         borderColor: colors.tooltipBorder,

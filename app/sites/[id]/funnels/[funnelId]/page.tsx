@@ -225,7 +225,7 @@ export default function FunnelReportPage() {
                       const data = payload[0].payload;
                       return (
                         <div
-                          className="p-3 rounded-xl shadow-lg border"
+                          className="p-3 rounded-xl shadow-lg border transition-shadow duration-300"
                           style={{
                             backgroundColor: chartColors.tooltipBg,
                             borderColor: chartColors.tooltipBorder,
