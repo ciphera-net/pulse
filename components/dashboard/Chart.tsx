@@ -18,27 +18,27 @@ import { ArrowUpRightIcon, ArrowDownRightIcon, BarChartIcon, Select, Button, Dow
 import { Checkbox } from '@ciphera-net/ui'
 
 const COLORS = {
-  brand: '#FD5E0F',
-  success: '#10B981', // Emerald-500
-  danger: '#EF4444',  // Red-500
+  brand: 'var(--color-brand-orange)',
+  success: 'var(--color-success)',
+  danger: 'var(--color-error)',
 }
 
 const CHART_COLORS_LIGHT = {
-  border: '#E5E5E5',
-  text: '#171717',
-  textMuted: '#737373',
-  axis: '#A3A3A3',
+  border: 'var(--color-neutral-200)',
+  text: 'var(--color-neutral-900)',
+  textMuted: 'var(--color-neutral-500)',
+  axis: 'var(--color-neutral-400)',
   tooltipBg: '#ffffff',
-  tooltipBorder: '#E5E5E5',
+  tooltipBorder: 'var(--color-neutral-200)',
 }
 
 const CHART_COLORS_DARK = {
-  border: '#404040',
-  text: '#fafafa',
-  textMuted: '#a3a3a3',
-  axis: '#737373',
-  tooltipBg: '#262626',
-  tooltipBorder: '#404040',
+  border: 'var(--color-neutral-700)',
+  text: 'var(--color-neutral-50)',
+  textMuted: 'var(--color-neutral-400)',
+  axis: 'var(--color-neutral-500)',
+  tooltipBg: 'var(--color-neutral-800)',
+  tooltipBorder: 'var(--color-neutral-700)',
 }
 
 export interface DailyStat {
@@ -282,7 +282,7 @@ export default function Chart({
       const { toPng } = await import('html-to-image')
       const dataUrl = await toPng(chartContainerRef.current, {
         cacheBust: true,
-        backgroundColor: resolvedTheme === 'dark' ? '#171717' : '#ffffff',
+        backgroundColor: resolvedTheme === 'dark' ? 'var(--color-neutral-900)' : '#ffffff',
       })
       const link = document.createElement('a')
       link.download = `chart-${dateRange.start}-${dateRange.end}.png`
@@ -694,7 +694,7 @@ export default function Chart({
                   activeDot={{
                     r: 5,
                     strokeWidth: 2,
-                    fill: resolvedTheme === 'dark' ? '#262626' : '#ffffff',
+                    fill: resolvedTheme === 'dark' ? 'var(--color-neutral-800)' : '#ffffff',
                     stroke: activeMetric.color,
                   }}
                   isAnimationActive

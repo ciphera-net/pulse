@@ -34,20 +34,20 @@ import type { TooltipProps } from 'recharts'
 
 // * Chart theme colors (consistent with main Pulse chart)
 const CHART_COLORS_LIGHT = {
-  border: '#E5E5E5',
-  text: '#171717',
-  textMuted: '#737373',
-  axis: '#A3A3A3',
+  border: 'var(--color-neutral-200)',
+  text: 'var(--color-neutral-900)',
+  textMuted: 'var(--color-neutral-500)',
+  axis: 'var(--color-neutral-400)',
   tooltipBg: '#ffffff',
-  tooltipBorder: '#E5E5E5',
+  tooltipBorder: 'var(--color-neutral-200)',
 }
 const CHART_COLORS_DARK = {
-  border: '#404040',
-  text: '#fafafa',
-  textMuted: '#a3a3a3',
-  axis: '#737373',
-  tooltipBg: '#262626',
-  tooltipBorder: '#404040',
+  border: 'var(--color-neutral-700)',
+  text: 'var(--color-neutral-50)',
+  textMuted: 'var(--color-neutral-400)',
+  axis: 'var(--color-neutral-500)',
+  tooltipBg: 'var(--color-neutral-800)',
+  tooltipBorder: 'var(--color-neutral-700)',
 }
 
 // * Status color mapping
