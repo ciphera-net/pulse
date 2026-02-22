@@ -12,6 +12,9 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   // * Privacy-first: Disable analytics and telemetry
   productionBrowserSourceMaps: false,
+  experimental: {
+    optimizePackageImports: ['react-icons'],
+  },
   images: {
     remotePatterns: [
       {
