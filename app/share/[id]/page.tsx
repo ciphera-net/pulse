@@ -166,7 +166,7 @@ export default function PublicDashboardPage() {
       } else if (error.status === 404 || error.response?.status === 404) {
         toast.error('Site not found')
       } else if (!silent) {
-        toast.error(getAuthErrorMessage(error) || 'Failed to load dashboard: ' + ((error as Error)?.message || 'Unknown error'))
+        toast.error(getAuthErrorMessage(error) || 'Failed to load public dashboard')
       }
     } finally {
       if (!silent) setLoading(false)

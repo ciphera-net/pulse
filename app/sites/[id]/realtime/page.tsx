@@ -48,7 +48,7 @@ export default function RealtimePage() {
           handleSelectVisitor(visitorsData[0])
         }
       } catch (error: unknown) {
-        toast.error(getAuthErrorMessage(error) || 'Failed to load data')
+        toast.error(getAuthErrorMessage(error) || 'Failed to load realtime visitors')
       } finally {
         setLoading(false)
       }
@@ -85,7 +85,7 @@ export default function RealtimePage() {
       const events = await getSessionDetails(siteId, visitor.session_id)
       setSessionEvents(events || [])
     } catch (error: unknown) {
-      toast.error(getAuthErrorMessage(error) || 'Failed to load session details')
+      toast.error(getAuthErrorMessage(error) || 'Failed to load session events')
     } finally {
       setLoadingEvents(false)
     }

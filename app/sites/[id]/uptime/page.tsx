@@ -615,7 +615,7 @@ export default function UptimePage() {
       setSite(siteData)
       setUptimeData(statusData)
     } catch (error: unknown) {
-      toast.error(getAuthErrorMessage(error) || 'Failed to load uptime data')
+      toast.error(getAuthErrorMessage(error) || 'Failed to load uptime monitors')
     } finally {
       setLoading(false)
     }

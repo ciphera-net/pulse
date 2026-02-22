@@ -405,8 +405,8 @@ toast.success('Site created successfully')
 
 **Error Toast:**
 ```tsx
-toast.error('Failed to load data')
-// Red toast with X icon
+toast.error('Failed to load uptime monitors')
+// Red toast with X icon — always mention what failed
 ```
 
 **Error Display:**

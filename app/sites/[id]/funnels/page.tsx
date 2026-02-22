@@ -21,7 +21,7 @@ export default function FunnelsPage() {
       const data = await listFunnels(siteId)
       setFunnels(data)
     } catch (error) {
-      toast.error('Failed to load funnels')
+      toast.error('Failed to load your funnels')
     } finally {
       setLoading(false)
     }

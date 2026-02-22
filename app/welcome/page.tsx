@@ -162,7 +162,7 @@ function WelcomeContent() {
         setStep(3)
       }
     } catch (err) {
-      toast.error(getAuthErrorMessage(err) || 'Failed to switch organization')
+      toast.error(getAuthErrorMessage(err) || 'Failed to switch workspace')
     } finally {
       setSwitchingOrgId(null)
     }

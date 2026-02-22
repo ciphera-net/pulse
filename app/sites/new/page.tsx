@@ -87,7 +87,7 @@ export default function NewSitePage() {
         sessionStorage.setItem(LAST_CREATED_SITE_KEY, JSON.stringify({ id: site.id }))
       }
     } catch (error: unknown) {
-      toast.error(getAuthErrorMessage(error) || 'Failed to create site: ' + ((error as Error)?.message || 'Unknown error'))
+      toast.error(getAuthErrorMessage(error) || 'Failed to create site. Please try again.')
     } finally {
       setLoading(false)
     }
