@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { formatNumber } from '@ciphera-net/ui'
+import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
 import { getBrowserIcon, getOSIcon, getDeviceIcon } from '@/lib/utils/icons'
 import { MdMonitor } from 'react-icons/md'
 import { Modal, GridIcon } from '@ciphera-net/ui'
@@ -25,6 +26,7 @@ const LIMIT = 7
 
 export default function TechSpecs({ browsers, os, devices, screenResolutions, collectDeviceInfo = true, collectScreenResolution = true, siteId, dateRange }: TechSpecsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('browsers')
+  const handleTabKeyDown = useTabListKeyboard()
   const [isModalOpen, setIsModalOpen] = useState(false)
   type TechItem = { name: string; pageviews: number; icon: React.ReactNode }
   const [fullData, setFullData] = useState<TechItem[]>([])
@@ -127,7 +129,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
               </button>
             )}
           </div>
-          <div className="flex p-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg" role="tablist" aria-label="Technology view tabs">
+          <div className="flex p-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg" role="tablist" aria-label="Technology view tabs" onKeyDown={handleTabKeyDown}>
             {(['browsers', 'os', 'devices', 'screens'] as Tab[]).map((tab) => (
               <button
                 key={tab}

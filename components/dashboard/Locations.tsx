@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { formatNumber } from '@ciphera-net/ui'
+import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
 import * as Flags from 'country-flag-icons/react/3x2'
 import iso3166 from 'iso-3166-2'
 import WorldMap from './WorldMap'
@@ -26,6 +27,7 @@ const LIMIT = 7
 
 export default function Locations({ countries, cities, regions, geoDataLevel = 'full', siteId, dateRange }: LocationProps) {
   const [activeTab, setActiveTab] = useState<Tab>('map')
+  const handleTabKeyDown = useTabListKeyboard()
   const [isModalOpen, setIsModalOpen] = useState(false)
   type LocationItem = { country?: string; city?: string; region?: string; pageviews: number }
   const [fullData, setFullData] = useState<LocationItem[]>([])
@@ -203,7 +205,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
               </button>
             )}
           </div>
-          <div className="flex p-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg" role="tablist" aria-label="Location view tabs">
+          <div className="flex p-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg" role="tablist" aria-label="Location view tabs" onKeyDown={handleTabKeyDown}>
             {(['map', 'countries', 'regions', 'cities'] as Tab[]).map((tab) => (
               <button
                 key={tab}

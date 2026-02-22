@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { formatNumber } from '@ciphera-net/ui'
+import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
 import { TopPage, getTopPages, getEntryPages, getExitPages } from '@/lib/api/stats'
 import { Modal, ArrowUpRightIcon, LayoutDashboardIcon } from '@ciphera-net/ui'
 import { ListSkeleton } from '@/components/skeletons'
@@ -22,6 +23,7 @@ const LIMIT = 7
 
 export default function ContentStats({ topPages, entryPages, exitPages, domain, collectPagePaths = true, siteId, dateRange }: ContentStatsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('top_pages')
+  const handleTabKeyDown = useTabListKeyboard()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [fullData, setFullData] = useState<TopPage[]>([])
   const [isLoadingFull, setIsLoadingFull] = useState(false)
@@ -103,7 +105,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
               </button>
             )}
           </div>
-          <div className="flex p-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg" role="tablist" aria-label="Content view tabs">
+          <div className="flex p-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg" role="tablist" aria-label="Content view tabs" onKeyDown={handleTabKeyDown}>
             {(['top_pages', 'entry_pages', 'exit_pages'] as Tab[]).map((tab) => (
               <button
                 key={tab}
