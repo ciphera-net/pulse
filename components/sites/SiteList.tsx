@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { Site } from '@/lib/api/sites'
 import type { Stats } from '@/lib/api/stats'
 import { formatNumber } from '@ciphera-net/ui'
@@ -34,10 +35,13 @@ function SiteCard({ site, stats, statsLoading, onDelete, canDelete }: SiteCardPr
       <div className="flex items-start justify-between mb-6">
         <div className="flex items-center gap-4">
           <div className="h-12 w-12 overflow-hidden rounded-lg border border-neutral-100 bg-neutral-50 p-1 dark:border-neutral-800 dark:bg-neutral-800">
-            <img
+            <Image
               src={`https://www.google.com/s2/favicons?domain=${site.domain}&sz=64`}
               alt={site.name}
+              width={40}
+              height={40}
               className="h-full w-full object-contain"
+              unoptimized
             />
           </div>
           <div>

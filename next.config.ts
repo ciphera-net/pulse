@@ -12,6 +12,15 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   // * Privacy-first: Disable analytics and telemetry
   productionBrowserSourceMaps: false,
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'www.google.com',
+        pathname: '/s2/favicons**',
+      },
+    ],
+  },
   async redirects() {
     return [
       {

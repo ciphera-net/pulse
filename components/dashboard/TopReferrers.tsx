@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { formatNumber } from '@ciphera-net/ui'
 import { getReferrerDisplayName, getReferrerFavicon, getReferrerIcon, mergeReferrersByDisplayName } from '@/lib/utils/icons'
 import { Modal, GlobeIcon } from '@ciphera-net/ui'
@@ -39,11 +40,14 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
     const useFavicon = faviconUrl && !faviconFailed.has(referrer)
     if (useFavicon) {
       return (
-        <img
+        <Image
           src={faviconUrl}
           alt=""
+          width={20}
+          height={20}
           className="w-5 h-5 flex-shrink-0 rounded object-contain"
           onError={() => setFaviconFailed((prev) => new Set(prev).add(referrer))}
+          unoptimized
         />
       )
     }

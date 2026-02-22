@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import Image from 'next/image'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { getPublicDashboard, getPublicStats, getPublicDailyStats, getPublicRealtime, getPublicPerformanceByPage, type DashboardData, type Stats, type DailyStat, type PerformanceByPageStat } from '@/lib/api/stats'
 import { toast } from '@ciphera-net/ui'
@@ -282,13 +283,16 @@ export default function PublicDashboardPage() {
                         <span className="text-sm font-medium text-brand-orange uppercase tracking-wider">Public Dashboard</span>
                     </div>
                     <h1 className="text-2xl font-bold text-neutral-900 dark:text-white flex items-center gap-3">
-                    <img 
+                    <Image
                         src={`https://www.google.com/s2/favicons?domain=${site.domain}&sz=64`}
                         alt={site.name}
+                        width={32}
+                        height={32}
                         className="w-8 h-8 rounded-lg"
                         onError={(e) => {
                         (e.target as HTMLImageElement).src = '/globe.svg'
                         }}
+                        unoptimized
                     />
                     {site.domain}
                     </h1>
