@@ -6,6 +6,8 @@
 
 const SK = 'animate-pulse bg-neutral-100 dark:bg-neutral-800'
 
+export { useMinimumLoading } from './useMinimumLoading'
+
 // ─── Primitives ──────────────────────────────────────────────
 
 export function SkeletonLine({ className = '' }: { className?: string }) {

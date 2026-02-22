@@ -21,7 +21,7 @@ import { toast } from '@ciphera-net/ui'
 import { useTheme } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { Button, Modal } from '@ciphera-net/ui'
-import { UptimeSkeleton, ChecksSkeleton } from '@/components/skeletons'
+import { UptimeSkeleton, ChecksSkeleton, useMinimumLoading } from '@/components/skeletons'
 import {
   AreaChart,
   Area,
@@ -703,7 +703,9 @@ export default function UptimePage() {
     setShowEditModal(true)
   }
 
-  if (loading) return <UptimeSkeleton />
+  const showSkeleton = useMinimumLoading(loading)
+
+  if (showSkeleton) return <UptimeSkeleton />
   if (!site) return <div className="p-8 text-neutral-500">Site not found</div>
 
   const monitors = Array.isArray(uptimeData?.monitors) ? uptimeData.monitors : []

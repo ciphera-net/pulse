@@ -6,7 +6,7 @@ import { getSite, updateSite, resetSiteData, deleteSite, type Site, type GeoData
 import { listGoals, createGoal, updateGoal, deleteGoal, type Goal } from '@/lib/api/goals'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
-import { SettingsFormSkeleton, GoalsListSkeleton } from '@/components/skeletons'
+import { SettingsFormSkeleton, GoalsListSkeleton, useMinimumLoading } from '@/components/skeletons'
 import VerificationModal from '@/components/sites/VerificationModal'
 import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
 import { PasswordInput } from '@ciphera-net/ui'
@@ -317,7 +317,9 @@ export default function SiteSettingsPage() {
     setTimeout(() => setSnippetCopied(false), 2000)
   }
 
-  if (loading) {
+  const showSkeleton = useMinimumLoading(loading)
+
+  if (showSkeleton) {
     return (
       <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
         <div className="space-y-8">

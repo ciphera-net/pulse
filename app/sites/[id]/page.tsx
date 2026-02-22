@@ -11,7 +11,7 @@ import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { LoadingOverlay, Button } from '@ciphera-net/ui'
 import { Select, DatePicker, DownloadIcon } from '@ciphera-net/ui'
-import { DashboardSkeleton } from '@/components/skeletons'
+import { DashboardSkeleton, useMinimumLoading } from '@/components/skeletons'
 import ExportModal from '@/components/dashboard/ExportModal'
 import ContentStats from '@/components/dashboard/ContentStats'
 import TopReferrers from '@/components/dashboard/TopReferrers'
@@ -216,7 +216,9 @@ export default function SiteDashboardPage() {
     return () => clearInterval(interval)
   }, [siteId, dateRange, todayInterval, multiDayInterval, isSettingsLoaded, loadData, loadRealtime])
 
-  if (loading) {
+  const showSkeleton = useMinimumLoading(loading)
+
+  if (showSkeleton) {
     return <DashboardSkeleton />
   }
 
