@@ -22,7 +22,7 @@ export function formatTimeAgo(dateStr: string): string {
  */
 export function getTypeIcon(type: string) {
   if (type.includes('down') || type.includes('degraded') || type.startsWith('billing_')) {
-    return <AlertTriangleIcon className="w-4 h-4 shrink-0 text-amber-500" />
+    return <AlertTriangleIcon className="w-4 h-4 shrink-0 text-amber-500" aria-hidden="true" />
   }
-  return <CheckCircleIcon className="w-4 h-4 shrink-0 text-emerald-500" />
+  return <CheckCircleIcon className="w-4 h-4 shrink-0 text-emerald-500" aria-hidden="true" />
 }
