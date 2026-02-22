@@ -17,6 +17,7 @@ import PerformanceStats from '@/components/dashboard/PerformanceStats'
 import { Select, DatePicker as DatePickerModal, Captcha, DownloadIcon, ZapIcon } from '@ciphera-net/ui'
 import { DashboardSkeleton, useMinimumLoading } from '@/components/skeletons'
 import ExportModal from '@/components/dashboard/ExportModal'
+import { FAVICON_SERVICE_URL } from '@/lib/utils/icons'
 
 // Helper to get date ranges
 const getDateRange = (days: number) => {
@@ -286,7 +287,7 @@ export default function PublicDashboardPage() {
                     </div>
                     <h1 className="text-2xl font-bold text-neutral-900 dark:text-white flex items-center gap-3">
                     <Image
-                        src={`https://www.google.com/s2/favicons?domain=${site.domain}&sz=64`}
+                        src={`${FAVICON_SERVICE_URL}?domain=${site.domain}&sz=64`}
                         alt={site.name}
                         width={32}
                         height={32}

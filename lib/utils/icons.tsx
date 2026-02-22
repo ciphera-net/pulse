@@ -1,4 +1,10 @@
 import React from 'react'
+
+/**
+ * Google's public favicon service base URL.
+ * Append `?domain=<host>&sz=<px>` to get a favicon.
+ */
+export const FAVICON_SERVICE_URL = 'https://www.google.com/s2/favicons'
 import { 
   FaChrome, 
   FaFirefox, 
@@ -197,7 +203,7 @@ export function getReferrerFavicon(referrer: string): string | null {
   try {
     const url = new URL(referrer.startsWith('http') ? referrer : `https://${referrer}`)
     if (REFERRER_USE_X_ICON.has(url.hostname.toLowerCase())) return null
-    return `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=32`
+    return `${FAVICON_SERVICE_URL}?domain=${url.hostname}&sz=32`
   } catch {
     return null
   }
