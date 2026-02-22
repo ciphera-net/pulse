@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ApiError } from '@/lib/api/client'
 import { getFunnel, getFunnelStats, deleteFunnel, type Funnel, type FunnelStats } from '@/lib/api/funnels'
-import { toast, LoadingOverlay, Select, DatePicker, ChevronLeftIcon, ArrowRightIcon, TrashIcon, useTheme, Button } from '@ciphera-net/ui'
+import { toast, Select, DatePicker, ChevronLeftIcon, ArrowRightIcon, TrashIcon, useTheme, Button } from '@ciphera-net/ui'
+import { FunnelDetailSkeleton, useMinimumLoading } from '@/components/skeletons'
 import Link from 'next/link'
 import {
   BarChart,
@@ -63,7 +64,7 @@ export default function FunnelReportPage() {
       if (status === 404) setLoadError('not_found')
       else if (status === 403) setLoadError('forbidden')
       else setLoadError('error')
-      if (status !== 404 && status !== 403) toast.error('Failed to load funnel data')
+      if (status !== 404 && status !== 403) toast.error('Failed to load funnel details')
     } finally {
       setLoading(false)
     }
@@ -91,8 +92,10 @@ export default function FunnelReportPage() {
     }
   }
 
-  if (loading && !funnel) {
-    return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" />
+  const showSkeleton = useMinimumLoading(loading && !funnel)
+
+  if (showSkeleton) {
+    return <FunnelDetailSkeleton />
   }
 
   if (loadError === 'not_found' || (!funnel && !stats && !loadError)) {

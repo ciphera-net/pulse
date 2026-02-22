@@ -1,10 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { logger } from '@/lib/utils/logger'
 import { formatNumber } from '@ciphera-net/ui'
+import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
 import { getBrowserIcon, getOSIcon, getDeviceIcon } from '@/lib/utils/icons'
 import { MdMonitor } from 'react-icons/md'
-import { Modal, GridIcon, Spinner } from '@ciphera-net/ui'
+import { Modal, GridIcon } from '@ciphera-net/ui'
+import { ListSkeleton } from '@/components/skeletons'
 import { getBrowsers, getOS, getDevices, getScreenResolutions } from '@/lib/api/stats'
 
 interface TechSpecsProps {
@@ -24,8 +27,10 @@ const LIMIT = 7
 
 export default function TechSpecs({ browsers, os, devices, screenResolutions, collectDeviceInfo = true, collectScreenResolution = true, siteId, dateRange }: TechSpecsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('browsers')
+  const handleTabKeyDown = useTabListKeyboard()
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [fullData, setFullData] = useState<any[]>([])
+  type TechItem = { name: string; pageviews: number; icon: React.ReactNode }
+  const [fullData, setFullData] = useState<TechItem[]>([])
   const [isLoadingFull, setIsLoadingFull] = useState(false)
 
   // Filter out "Unknown" entries that result from disabled collection
@@ -38,7 +43,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
       const fetchData = async () => {
         setIsLoadingFull(true)
         try {
-          let data: any[] = []
+          let data: TechItem[] = []
           if (activeTab === 'browsers') {
             const res = await getBrowsers(siteId, dateRange.start, dateRange.end, 100)
             data = res.map(b => ({ name: b.browser, pageviews: b.pageviews, icon: getBrowserIcon(b.browser) }))
@@ -54,7 +59,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
           }
           setFullData(filterUnknown(data))
         } catch (e) {
-          console.error(e)
+          logger.error(e)
         } finally {
           setIsLoadingFull(false)
         }
@@ -125,7 +130,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
               </button>
             )}
           </div>
-          <div className="flex p-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg" role="tablist" aria-label="Technology view tabs">
+          <div className="flex p-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg" role="tablist" aria-label="Technology view tabs" onKeyDown={handleTabKeyDown}>
             {(['browsers', 'os', 'devices', 'screens'] as Tab[]).map((tab) => (
               <button
                 key={tab}
@@ -189,9 +194,8 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
       >
         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
           {isLoadingFull ? (
-            <div className="py-8 flex flex-col items-center gap-2">
-              <Spinner />
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading...</p>
+            <div className="py-4">
+              <ListSkeleton rows={10} />
             </div>
           ) : (
             (fullData.length > 0 ? fullData : data).map((item, index) => (

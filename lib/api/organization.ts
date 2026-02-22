@@ -47,7 +47,6 @@ export async function getUserOrganizations(): Promise<OrganizationMember[]> {
 // Switch Context (Get token for specific org)
 export async function switchContext(organizationId: string | null): Promise<{ access_token: string; expires_in: number }> {
   const payload = { organization_id: organizationId || '' }
-  console.log('Sending switch context request:', payload)
   return await authFetch<{ access_token: string; expires_in: number }>('/auth/switch-context', {
     method: 'POST',
     body: JSON.stringify(payload),
@@ -87,10 +86,7 @@ export async function sendInvitation(
   role: string = 'member',
   captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
 ): Promise<OrganizationInvitation> {
-  const body: any = {
-    email,
-    role
-  }
+  const body: Record<string, string> = { email, role }
 
   if (captcha?.captcha_id) body.captcha_id = captcha.captcha_id
   if (captcha?.captcha_solution) body.captcha_solution = captcha.captcha_solution

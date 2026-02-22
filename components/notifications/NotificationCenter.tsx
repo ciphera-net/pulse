@@ -10,6 +10,7 @@ import { listNotifications, markNotificationRead, markAllNotificationsRead, type
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { formatTimeAgo, getTypeIcon } from '@/lib/utils/notifications'
 import { SettingsIcon } from '@ciphera-net/ui'
+import { SkeletonLine, SkeletonCircle } from '@/components/skeletons'
 
 // * Bell icon (simple SVG, no extra deps)
 function BellIcon({ className }: { className?: string }) {
@@ -25,6 +26,7 @@ function BellIcon({ className }: { className?: string }) {
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
+      aria-hidden="true"
     >
       <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
       <path d="M13.73 21a2 2 0 0 1-3.46 0" />
@@ -82,16 +84,22 @@ export default function NotificationCenter() {
     return () => clearInterval(id)
   }, [])
 
-  // * Close dropdown when clicking outside
+  // * Close dropdown when clicking outside or pressing Escape
   useEffect(() => {
+    if (!open) return
     function handleClickOutside(e: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setOpen(false)
       }
     }
-    if (open) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleKeyDown)
     }
   }, [open])
 
@@ -127,23 +135,32 @@ export default function NotificationCenter() {
       <button
         type="button"
         onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        aria-haspopup="true"
+        aria-controls={open ? 'notification-dropdown' : undefined}
         className="relative p-2 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-lg hover:bg-neutral-100/50 dark:hover:bg-neutral-800/50 transition-colors"
-        aria-label={unreadCount > 0 ? `${unreadCount} unread notifications` : 'Notifications'}
+        aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
       >
         <BellIcon />
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 w-2 h-2 bg-brand-orange rounded-full" />
+          <span className="absolute top-1 right-1 w-2 h-2 bg-brand-orange rounded-full" aria-hidden="true" />
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl overflow-hidden z-[100]">
+        <div
+          id="notification-dropdown"
+          role="dialog"
+          aria-label="Notifications"
+          className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl overflow-hidden z-[100]"
+        >
           <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200 dark:border-neutral-700">
             <h3 className="font-semibold text-neutral-900 dark:text-white">Notifications</h3>
             {unreadCount > 0 && (
               <button
                 type="button"
                 onClick={handleMarkAllRead}
+                aria-label="Mark all notifications as read"
                 className="text-sm text-brand-orange hover:underline"
               >
                 Mark all read
@@ -153,8 +170,16 @@ export default function NotificationCenter() {
 
           <div className="max-h-80 overflow-y-auto">
             {loading && (
-              <div className="p-6 text-center text-neutral-500 dark:text-neutral-400 text-sm">
-                Loading…
+              <div className="p-3 space-y-1">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="flex gap-3 px-4 py-3">
+                    <SkeletonCircle className="h-8 w-8 shrink-0" />
+                    <div className="flex-1 space-y-1.5">
+                      <SkeletonLine className="h-3.5 w-3/4" />
+                      <SkeletonLine className="h-3 w-1/2" />
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
             {error && (
@@ -193,12 +218,10 @@ export default function NotificationCenter() {
                         </div>
                       </Link>
                     ) : (
-                      <div
-                        role="button"
-                        tabIndex={0}
+                      <button
+                        type="button"
                         onClick={() => handleNotificationClick(n)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleNotificationClick(n)}
-                        className={`block px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 cursor-pointer ${!n.read ? 'bg-brand-orange/5 dark:bg-brand-orange/10' : ''}`}
+                        className={`w-full text-left block px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 cursor-pointer ${!n.read ? 'bg-brand-orange/5 dark:bg-brand-orange/10' : ''}`}
                       >
                         <div className="flex gap-3">
                           {getTypeIcon(n.type)}
@@ -216,7 +239,7 @@ export default function NotificationCenter() {
                             </p>
                           </div>
                         </div>
-                      </div>
+                      </button>
                     )}
                   </li>
                 ))}
@@ -237,7 +260,7 @@ export default function NotificationCenter() {
               onClick={() => setOpen(false)}
               className="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors"
             >
-              <SettingsIcon className="w-4 h-4" />
+              <SettingsIcon className="w-4 h-4" aria-hidden="true" />
               Manage settings
             </Link>
           </div>

@@ -1,12 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { logger } from '@/lib/utils/logger'
 import { formatNumber } from '@ciphera-net/ui'
+import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
 import * as Flags from 'country-flag-icons/react/3x2'
-// @ts-ignore
 import iso3166 from 'iso-3166-2'
 import WorldMap from './WorldMap'
-import { Modal, GlobeIcon, Spinner } from '@ciphera-net/ui'
+import { Modal, GlobeIcon } from '@ciphera-net/ui'
+import { ListSkeleton } from '@/components/skeletons'
 import { SiTorproject } from 'react-icons/si'
 import { FaUserSecret, FaSatellite } from 'react-icons/fa'
 import { getCountries, getCities, getRegions } from '@/lib/api/stats'
@@ -26,8 +28,10 @@ const LIMIT = 7
 
 export default function Locations({ countries, cities, regions, geoDataLevel = 'full', siteId, dateRange }: LocationProps) {
   const [activeTab, setActiveTab] = useState<Tab>('map')
+  const handleTabKeyDown = useTabListKeyboard()
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [fullData, setFullData] = useState<any[]>([])
+  type LocationItem = { country?: string; city?: string; region?: string; pageviews: number }
+  const [fullData, setFullData] = useState<LocationItem[]>([])
   const [isLoadingFull, setIsLoadingFull] = useState(false)
 
   useEffect(() => {
@@ -35,7 +39,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
       const fetchData = async () => {
         setIsLoadingFull(true)
         try {
-          let data: any[] = []
+          let data: LocationItem[] = []
           if (activeTab === 'countries') {
             data = await getCountries(siteId, dateRange.start, dateRange.end, 250)
           } else if (activeTab === 'regions') {
@@ -45,7 +49,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
           }
           setFullData(data)
         } catch (e) {
-          console.error(e)
+          logger.error(e)
         } finally {
           setIsLoadingFull(false)
         }
@@ -72,7 +76,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
         return <GlobeIcon className="w-5 h-5 text-neutral-500 dark:text-neutral-400" />
     }
 
-    const FlagComponent = (Flags as any)[countryCode]
+    const FlagComponent = (Flags as Record<string, React.ComponentType<{ className?: string }>>)[countryCode]
     return FlagComponent ? <FlagComponent className="w-5 h-5 rounded-sm shadow-sm" /> : null
   }
 
@@ -157,7 +161,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
   }
 
   // Filter out "Unknown" entries that result from disabled collection
-  const filterUnknown = (data: any[]) => {
+  const filterUnknown = (data: LocationItem[]) => {
     return data.filter(item => {
       if (activeTab === 'countries') return item.country && item.country !== 'Unknown' && item.country !== ''
       if (activeTab === 'regions') return item.region && item.region !== 'Unknown' && item.region !== ''
@@ -171,7 +175,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
   const hasData = activeTab === 'map'
     ? (countries && filterUnknown(countries).length > 0)
     : (data && data.length > 0)
-  const displayedData = (activeTab !== 'map' && hasData) ? (data as any[]).slice(0, LIMIT) : []
+  const displayedData = (activeTab !== 'map' && hasData) ? data.slice(0, LIMIT) : []
   const emptySlots = Math.max(0, LIMIT - displayedData.length)
   const showViewAll = activeTab !== 'map' && hasData && data.length > LIMIT
 
@@ -202,7 +206,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
               </button>
             )}
           </div>
-          <div className="flex p-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg" role="tablist" aria-label="Location view tabs">
+          <div className="flex p-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg" role="tablist" aria-label="Location view tabs" onKeyDown={handleTabKeyDown}>
             {(['map', 'countries', 'regions', 'cities'] as Tab[]).map((tab) => (
               <button
                 key={tab}
@@ -227,7 +231,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
               <p className="text-neutral-500 dark:text-neutral-400 text-sm">{getDisabledMessage()}</p>
             </div>
           ) : activeTab === 'map' ? (
-            hasData ? <WorldMap data={filterUnknown(countries)} /> : (
+            hasData ? <WorldMap data={filterUnknown(countries) as { country: string; pageviews: number }[]} /> : (
               <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
                 <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
                   <GlobeIcon className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
@@ -246,13 +250,13 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
                 {displayedData.map((item, index) => (
                   <div key={index} className="flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
                     <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
-                      {activeTab === 'countries' && <span className="shrink-0">{getFlagComponent(item.country)}</span>}
-                      {activeTab !== 'countries' && <span className="shrink-0">{getFlagComponent(item.country)}</span>}
+                      {activeTab === 'countries' && <span className="shrink-0">{getFlagComponent(item.country ?? '')}</span>}
+                      {activeTab !== 'countries' && <span className="shrink-0">{getFlagComponent(item.country ?? '')}</span>}
 
                       <span className="truncate">
-                        {activeTab === 'countries' ? getCountryName(item.country) :
-                         activeTab === 'regions' ? getRegionName(item.region, item.country) :
-                         getCityName(item.city)}
+                        {activeTab === 'countries' ? getCountryName(item.country ?? '') :
+                         activeTab === 'regions' ? getRegionName(item.region ?? '', item.country ?? '') :
+                         getCityName(item.city ?? '')}
                       </span>
                     </div>
                     <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
@@ -288,19 +292,18 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
       >
         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
           {isLoadingFull ? (
-            <div className="py-8 flex flex-col items-center gap-2">
-              <Spinner />
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading...</p>
+            <div className="py-4">
+              <ListSkeleton rows={10} />
             </div>
           ) : (
-            (fullData.length > 0 ? fullData : data as any[]).map((item, index) => (
+            (fullData.length > 0 ? fullData : data).map((item, index) => (
               <div key={index} className="flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
                 <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
-                  <span className="shrink-0">{getFlagComponent(item.country)}</span>
+                  <span className="shrink-0">{getFlagComponent(item.country ?? '')}</span>
                   <span className="truncate">
-                    {activeTab === 'countries' ? getCountryName(item.country) : 
-                     activeTab === 'regions' ? getRegionName(item.region, item.country) :
-                     getCityName(item.city)}
+                    {activeTab === 'countries' ? getCountryName(item.country ?? '') : 
+                     activeTab === 'regions' ? getRegionName(item.region ?? '', item.country ?? '') :
+                     getCityName(item.city ?? '')}
                   </span>
                 </div>
                 <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">

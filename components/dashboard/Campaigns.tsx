@@ -1,9 +1,12 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import { logger } from '@/lib/utils/logger'
 import Link from 'next/link'
+import Image from 'next/image'
 import { formatNumber } from '@ciphera-net/ui'
-import { Modal, ArrowRightIcon, Button, Spinner } from '@ciphera-net/ui'
+import { Modal, ArrowRightIcon, Button } from '@ciphera-net/ui'
+import { TableSkeleton } from '@/components/skeletons'
 import { ChevronDownIcon, DownloadIcon } from '@ciphera-net/ui'
 import { getCampaigns, CampaignStat } from '@/lib/api/stats'
 import { getReferrerFavicon, getReferrerIcon, getReferrerDisplayName } from '@/lib/utils/icons'
@@ -56,7 +59,7 @@ export default function Campaigns({ siteId, dateRange }: CampaignsProps) {
         const result = await getCampaigns(siteId, dateRange.start, dateRange.end, 10)
         setData(result)
       } catch (e) {
-        console.error(e)
+        logger.error(e)
       } finally {
         setIsLoading(false)
       }
@@ -72,7 +75,7 @@ export default function Campaigns({ siteId, dateRange }: CampaignsProps) {
           const result = await getCampaigns(siteId, dateRange.start, dateRange.end, 100)
           setFullData(result)
         } catch (e) {
-          console.error(e)
+          logger.error(e)
         } finally {
           setIsLoadingFull(false)
         }
@@ -110,11 +113,14 @@ export default function Campaigns({ siteId, dateRange }: CampaignsProps) {
     const useFavicon = faviconUrl && !faviconFailed.has(source)
     if (useFavicon) {
       return (
-        <img
+        <Image
           src={faviconUrl}
           alt=""
+          width={20}
+          height={20}
           className="w-5 h-5 flex-shrink-0 rounded object-contain"
           onError={() => setFaviconFailed((prev) => new Set(prev).add(source))}
+          unoptimized
         />
       )
     }
@@ -292,9 +298,8 @@ export default function Campaigns({ siteId, dateRange }: CampaignsProps) {
       >
         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
           {isLoadingFull ? (
-            <div className="py-8 flex flex-col items-center gap-2">
-              <Spinner />
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading...</p>
+            <div className="py-4">
+              <TableSkeleton rows={10} cols={5} />
             </div>
           ) : (
             <>

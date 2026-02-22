@@ -1,9 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { logger } from '@/lib/utils/logger'
 import { formatNumber } from '@ciphera-net/ui'
+import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
 import { TopPage, getTopPages, getEntryPages, getExitPages } from '@/lib/api/stats'
-import { Modal, ArrowUpRightIcon, LayoutDashboardIcon, Spinner } from '@ciphera-net/ui'
+import { Modal, ArrowUpRightIcon, LayoutDashboardIcon } from '@ciphera-net/ui'
+import { ListSkeleton } from '@/components/skeletons'
 
 interface ContentStatsProps {
   topPages: TopPage[]
@@ -21,6 +24,7 @@ const LIMIT = 7
 
 export default function ContentStats({ topPages, entryPages, exitPages, domain, collectPagePaths = true, siteId, dateRange }: ContentStatsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('top_pages')
+  const handleTabKeyDown = useTabListKeyboard()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [fullData, setFullData] = useState<TopPage[]>([])
   const [isLoadingFull, setIsLoadingFull] = useState(false)
@@ -47,7 +51,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
           }
           setFullData(filterGenericPaths(data))
         } catch (e) {
-          console.error(e)
+          logger.error(e)
         } finally {
           setIsLoadingFull(false)
         }
@@ -102,7 +106,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
               </button>
             )}
           </div>
-          <div className="flex p-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg" role="tablist" aria-label="Content view tabs">
+          <div className="flex p-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg" role="tablist" aria-label="Content view tabs" onKeyDown={handleTabKeyDown}>
             {(['top_pages', 'entry_pages', 'exit_pages'] as Tab[]).map((tab) => (
               <button
                 key={tab}
@@ -173,9 +177,8 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
       >
         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
           {isLoadingFull ? (
-            <div className="py-8 flex flex-col items-center gap-2">
-              <Spinner />
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading...</p>
+            <div className="py-4">
+              <ListSkeleton rows={10} />
             </div>
           ) : (
             (fullData.length > 0 ? fullData : data).map((page, index) => (

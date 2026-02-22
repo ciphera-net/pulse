@@ -6,6 +6,47 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.11.0-alpha] - 2026-02-22
+
+### Added
+
+- **Better page titles.** Browser tabs now show which site and page you're on (e.g. "Uptime · example.com | Pulse") instead of the same generic title everywhere.
+- **Link previews for public dashboards.** Sharing a public dashboard link on social media now shows a proper preview with the site name and description.
+- **Faster login redirects.** If you're not signed in and try to open a dashboard or settings page, you're redirected to login immediately instead of seeing a blank page first. Already-signed-in users who visit the login page are sent straight to the dashboard.
+- **Graceful error recovery.** If a page crashes, you now see a friendly error screen with a "Try again" button instead of a blank white page. Each section of the app has its own error message so you know exactly what went wrong.
+- **Security headers.** All pages now include clickjacking protection, MIME-sniffing prevention, a strict referrer policy, and HSTS. Browser APIs like camera and microphone are explicitly disabled.
+- **Better form experience.** Forms now auto-focus the first field when they open, text inputs enforce character limits with a visible counter when you're close, and the settings page warns you before navigating away with unsaved changes.
+- **Accessibility improvements.** The notification bell, workspace switcher, and all dashboard tabs are now fully keyboard-navigable. Screen readers announce unread counts, active organizations, and tab changes correctly. Decorative icons are hidden from assistive technology.
+- **Smooth organization switching.** Switching between organizations now shows a branded loading screen instead of a blank flash while the page reloads.
+- **Graceful server shutdown.** Deployments no longer kill in-flight requests or interrupt background tasks. The server finishes ongoing work before shutting down.
+- **Database connection pooling.** The backend now limits and recycles database connections, preventing exhaustion under load and reducing query latency.
+- **Date range validation.** Analytics, funnel, and uptime queries now reject invalid date ranges (end before start, or spans longer than a year) instead of silently returning empty or oversized results.
+- **Excluded paths limit.** Sites can now have up to 50 excluded paths. Previously there was no cap, which could slow down event processing.
+
+### Changed
+
+- **Smoother loading experience.** Pages now show a subtle preview of the layout while data loads instead of a blank screen or spinner. This applies everywhere — dashboards, settings, uptime, funnels, notifications, billing, and detail modals.
+- **Clearer error messages.** When something goes wrong, the error message now tells you what failed (e.g. "Failed to load uptime monitors") instead of a generic "Failed to load data".
+- **Faster favicon loading.** Site icons in the dashboard, referrers, and campaigns now use Next.js image optimization for better caching and lazy loading.
+- **Tighter name limits.** Site, funnel, and monitor names are now capped at 100 characters instead of 255 — long enough for any real name, short enough to not break the UI.
+- **Stricter type safety.** Eliminated all `any` types and `@ts-ignore` suppressions across the codebase, so the TypeScript compiler catches more bugs at build time.
+- **Smaller page downloads.** Icon imports are now tree-shaken so only the icons actually used are included in the bundle.
+- **Removed debug logs.** Auth and organization-switching details no longer leak into the browser console in production. Error logs are now also suppressed in production and only appear during development.
+
+### Fixed
+
+- **Landing page dashboard preview.** The homepage now shows a realistic preview of the Pulse dashboard instead of an empty placeholder.
+- **Logout redirect loop.** Signing out no longer bounces you straight to Ciphera Auth. You now land on the Pulse homepage where you can choose to sign back in.
+- **No more loading flicker.** Fast-loading pages no longer flash a loading state for a split second before showing content.
+- **Organization context switch.** Switching away from a deleted organization now stores the session correctly instead of using an insecure fallback.
+- **Dark mode uptime chart.** The response time chart on the uptime page now correctly follows your dark mode preference instead of always showing a white tooltip background.
+- **Onboarding form limits.** The welcome page now enforces the same character limits as the rest of the app.
+- **Audit log reliability.** Failed audit log writes are now logged to the server instead of being silently ignored, so gaps in the audit trail are detectable.
+- **Safer error messages.** Server errors no longer expose internal details (database errors, stack traces) to the browser. You see a clear message like "Failed to create site" while the full error is logged server-side for debugging.
+- **Content Security Policy.** The backend CSP header was being overwritten by a duplicate, and the captcha service was incorrectly whitelisted under image sources instead of connection sources. Both are now fixed.
+- **Logout redirect loop.** Signing out no longer bounces you straight to Ciphera Auth. You now land on the Pulse homepage where you can choose to sign back in.
+- **Date range edge case.** The maximum date range check could be off by a day due to an internal time adjustment. It now compares calendar days accurately.
+
 ## [0.10.0-alpha] - 2026-02-21
 
 ### Changed
@@ -127,7 +168,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
-[Unreleased]: https://github.com/ciphera-net/pulse/compare/v0.10.0-alpha...HEAD
+[Unreleased]: https://github.com/ciphera-net/pulse/compare/v0.11.0-alpha...HEAD
+[0.11.0-alpha]: https://github.com/ciphera-net/pulse/compare/v0.10.0-alpha...v0.11.0-alpha
 [0.10.0-alpha]: https://github.com/ciphera-net/pulse/compare/v0.9.0-alpha...v0.10.0-alpha
 [0.9.0-alpha]: https://github.com/ciphera-net/pulse/compare/v0.8.0-alpha...v0.9.0-alpha
 [0.8.0-alpha]: https://github.com/ciphera-net/pulse/compare/v0.7.0-alpha...v0.8.0-alpha

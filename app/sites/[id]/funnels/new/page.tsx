@@ -84,7 +84,7 @@ export default function CreateFunnelPage() {
       toast.success('Funnel created')
       router.push(`/sites/${siteId}/funnels`)
     } catch (error) {
-      toast.error('Failed to create funnel')
+      toast.error('Failed to create funnel. Please try again.')
     } finally {
       setSaving(false)
     }
@@ -120,8 +120,13 @@ export default function CreateFunnelPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Signup Flow"
+                autoFocus
                 required
+                maxLength={100}
               />
+              {name.length > 80 && (
+                <span className={`text-xs tabular-nums mt-1 ${name.length > 90 ? 'text-amber-500' : 'text-neutral-400'}`}>{name.length}/100</span>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">

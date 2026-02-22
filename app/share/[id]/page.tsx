@@ -1,10 +1,12 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import Image from 'next/image'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { getPublicDashboard, getPublicStats, getPublicDailyStats, getPublicRealtime, getPublicPerformanceByPage, type DashboardData, type Stats, type DailyStat, type PerformanceByPageStat } from '@/lib/api/stats'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
+import { ApiError } from '@/lib/api/client'
 import { LoadingOverlay, Button } from '@ciphera-net/ui'
 import Chart from '@/components/dashboard/Chart'
 import TopPages from '@/components/dashboard/ContentStats'
@@ -13,7 +15,9 @@ import Locations from '@/components/dashboard/Locations'
 import TechSpecs from '@/components/dashboard/TechSpecs'
 import PerformanceStats from '@/components/dashboard/PerformanceStats'
 import { Select, DatePicker as DatePickerModal, Captcha, DownloadIcon, ZapIcon } from '@ciphera-net/ui'
+import { DashboardSkeleton, useMinimumLoading } from '@/components/skeletons'
 import ExportModal from '@/components/dashboard/ExportModal'
+import { FAVICON_SERVICE_URL } from '@/lib/utils/icons'
 
 // Helper to get date ranges
 const getDateRange = (days: number) => {
@@ -152,8 +156,9 @@ export default function PublicDashboardPage() {
       setCaptchaId('')
       setCaptchaSolution('')
       setCaptchaToken('')
-    } catch (error: any) {
-      if ((error.status === 401 || error.response?.status === 401) && (error.data?.is_protected || error.response?.data?.is_protected)) {
+    } catch (error: unknown) {
+      const apiErr = error instanceof ApiError ? error : null
+      if (apiErr?.status === 401 && (apiErr.data as Record<string, unknown>)?.is_protected) {
         setIsPasswordProtected(true)
         if (password) {
           toast.error('Invalid password or captcha')
@@ -162,10 +167,10 @@ export default function PublicDashboardPage() {
           setCaptchaSolution('')
           setCaptchaToken('')
         }
-      } else if (error.status === 404 || error.response?.status === 404) {
+      } else if (apiErr?.status === 404) {
         toast.error('Site not found')
       } else if (!silent) {
-        toast.error(getAuthErrorMessage(error) || 'Failed to load dashboard: ' + ((error as Error)?.message || 'Unknown error'))
+        toast.error(getAuthErrorMessage(error) || 'Failed to load public dashboard')
       }
     } finally {
       if (!silent) setLoading(false)
@@ -192,8 +197,10 @@ export default function PublicDashboardPage() {
     loadDashboard()
   }
 
-  if (loading && !data && !isPasswordProtected) {
-    return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" />
+  const showSkeleton = useMinimumLoading(loading && !data && !isPasswordProtected)
+
+  if (showSkeleton) {
+    return <DashboardSkeleton />
   }
 
   if (isPasswordProtected && !data) {
@@ -279,13 +286,16 @@ export default function PublicDashboardPage() {
                         <span className="text-sm font-medium text-brand-orange uppercase tracking-wider">Public Dashboard</span>
                     </div>
                     <h1 className="text-2xl font-bold text-neutral-900 dark:text-white flex items-center gap-3">
-                    <img 
-                        src={`https://www.google.com/s2/favicons?domain=${site.domain}&sz=64`}
+                    <Image
+                        src={`${FAVICON_SERVICE_URL}?domain=${site.domain}&sz=64`}
                         alt={site.name}
+                        width={32}
+                        height={32}
                         className="w-8 h-8 rounded-lg"
                         onError={(e) => {
                         (e.target as HTMLImageElement).src = '/globe.svg'
                         }}
+                        unoptimized
                     />
                     {site.domain}
                     </h1>

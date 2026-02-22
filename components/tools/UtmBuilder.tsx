@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { logger } from '@/lib/utils/logger'
 import { CopyIcon, CheckIcon } from '@radix-ui/react-icons'
 import { listSites, Site } from '@/lib/api/sites'
 import { Select, Input, Button } from '@ciphera-net/ui'
@@ -30,7 +31,7 @@ export default function UtmBuilder({ initialSiteId }: UtmBuilderProps) {
         const data = await listSites()
         setSites(data)
       } catch (e) {
-        console.error('Failed to load sites for UTM builder', e)
+        logger.error('Failed to load sites for UTM builder', e)
       }
     }
     fetchSites()
