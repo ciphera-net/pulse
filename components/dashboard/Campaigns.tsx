@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import { logger } from '@/lib/utils/logger'
 import Link from 'next/link'
 import Image from 'next/image'
 import { formatNumber } from '@ciphera-net/ui'
@@ -58,7 +59,7 @@ export default function Campaigns({ siteId, dateRange }: CampaignsProps) {
         const result = await getCampaigns(siteId, dateRange.start, dateRange.end, 10)
         setData(result)
       } catch (e) {
-        console.error(e)
+        logger.error(e)
       } finally {
         setIsLoading(false)
       }
@@ -74,7 +75,7 @@ export default function Campaigns({ siteId, dateRange }: CampaignsProps) {
           const result = await getCampaigns(siteId, dateRange.start, dateRange.end, 100)
           setFullData(result)
         } catch (e) {
-          console.error(e)
+          logger.error(e)
         } finally {
           setIsLoadingFull(false)
         }

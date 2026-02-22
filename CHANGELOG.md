@@ -31,7 +31,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - **No more loading flicker.** Fast-loading pages no longer flash a loading state for a split second before showing content.
 - **Organization context switch.** Switching away from a deleted organization now stores the session correctly instead of using an insecure fallback.
-- **Removed debug logs.** Auth and organization-switching details no longer leak into the browser console in production.
+- **Removed debug logs.** Auth and organization-switching details no longer leak into the browser console in production. Error logs are now also suppressed in production and only appear during development.
 - **Dark mode uptime chart.** The response time chart on the uptime page now correctly follows your dark mode preference instead of always showing a white tooltip background.
 
 ## [0.10.0-alpha] - 2026-02-21

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { PlusIcon, PersonIcon, CubeIcon, CheckIcon } from '@radix-ui/react-icons'
 import { switchContext, OrganizationMember } from '@/lib/api/organization'
 import { setSessionAction } from '@/app/actions/auth'
+import { logger } from '@/lib/utils/logger'
 import Link from 'next/link'
 
 export default function OrganizationSwitcher({ orgs, activeOrgId }: { orgs: OrganizationMember[], activeOrgId: string | null }) {
@@ -37,7 +38,7 @@ export default function OrganizationSwitcher({ orgs, activeOrgId }: { orgs: Orga
       window.location.reload()
       
     } catch (err) {
-      console.error('Failed to switch organization', err)
+      logger.error('Failed to switch organization', err)
       setSwitching(null)
     }
   }
