@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { logger } from '@/lib/utils/logger'
 import { useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Button, CheckCircleIcon } from '@ciphera-net/ui'
@@ -140,7 +141,7 @@ export default function PricingSection() {
         // Clear intent
         localStorage.removeItem('pulse_pending_checkout')
       } catch (e) {
-        console.error('Failed to parse pending checkout', e)
+        logger.error('Failed to parse pending checkout', e)
         localStorage.removeItem('pulse_pending_checkout')
       }
     }
@@ -203,7 +204,7 @@ export default function PricingSection() {
       }
 
     } catch (error: unknown) {
-      console.error('Checkout error:', error)
+      logger.error('Checkout error:', error)
       toast.error('Failed to start checkout — please try again')
     } finally {
       setLoadingPlan(null)

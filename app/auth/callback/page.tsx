@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, Suspense, useRef, useCallback } from 'react'
+import { logger } from '@/lib/utils/logger'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth/context'
 import { AUTH_URL, default as apiRequest } from '@/lib/api/client'
@@ -96,7 +97,7 @@ function AuthCallbackContent() {
       return
     }
     if (state !== storedState) {
-      console.error('State mismatch', { received: state, stored: storedState })
+      logger.error('State mismatch', { received: state, stored: storedState })
       setError('Invalid state')
       return
     }

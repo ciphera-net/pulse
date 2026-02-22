@@ -1,6 +1,7 @@
 'use server'
 
 import { cookies } from 'next/headers'
+import { logger } from '@/lib/utils/logger'
 
 const AUTH_API_URL = process.env.NEXT_PUBLIC_AUTH_API_URL || process.env.NEXT_PUBLIC_AUTH_URL || 'http://localhost:8081'
 
@@ -102,7 +103,7 @@ export async function exchangeAuthCode(code: string, codeVerifier: string, redir
     }
 
   } catch (error: unknown) {
-    console.error('Auth Exchange Error:', error)
+    logger.error('Auth Exchange Error:', error)
     const isNetwork =
       error instanceof TypeError ||
       (error instanceof Error && (error.name === 'AbortError' || /fetch|network|ECONNREFUSED|ETIMEDOUT/i.test(error.message)))
@@ -152,7 +153,7 @@ export async function setSessionAction(accessToken: string, refreshToken?: strin
             }
         }
     } catch (e) {
-        console.error('[setSessionAction] Error:', e)
+        logger.error('[setSessionAction] Error:', e)
         return { success: false as const, error: 'invalid' }
     }
 }

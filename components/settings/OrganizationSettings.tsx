@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { setSessionAction } from '@/app/actions/auth'
+import { logger } from '@/lib/utils/logger'
 import { useAuth } from '@/lib/auth/context'
 import { 
   deleteOrganization, 
@@ -170,7 +171,7 @@ export default function OrganizationSettings() {
       setOrgName(orgData.name)
       setOrgSlug(orgData.slug)
     } catch (error) {
-      console.error('Failed to load data:', error)
+      logger.error('Failed to load data:', error)
       // toast.error('Failed to load members')
     } finally {
       setIsLoadingMembers(false)
@@ -184,7 +185,7 @@ export default function OrganizationSettings() {
       const sub = await getSubscription()
       setSubscription(sub)
     } catch (error) {
-      console.error('Failed to load subscription:', error)
+      logger.error('Failed to load subscription:', error)
       // toast.error('Failed to load subscription details')
     } finally {
       setIsLoadingSubscription(false)
@@ -198,7 +199,7 @@ export default function OrganizationSettings() {
       const invs = await getInvoices()
       setInvoices(invs)
     } catch (error) {
-      console.error('Failed to load invoices:', error)
+      logger.error('Failed to load invoices:', error)
     } finally {
       setIsLoadingInvoices(false)
     }
@@ -247,7 +248,7 @@ export default function OrganizationSettings() {
       setAuditEntries(Array.isArray(entries) ? entries : [])
       setAuditTotal(typeof total === 'number' ? total : 0)
     } catch (error) {
-      console.error('Failed to load audit log', error)
+      logger.error('Failed to load audit log', error)
       toast.error(getAuthErrorMessage(error as Error) || 'Failed to load audit log entries')
     } finally {
       setIsLoadingAudit(false)
@@ -279,7 +280,7 @@ export default function OrganizationSettings() {
       setNotificationSettings(res.settings || {})
       setNotificationCategories(res.categories || [])
     } catch (error) {
-      console.error('Failed to load notification settings', error)
+      logger.error('Failed to load notification settings', error)
       toast.error(getAuthErrorMessage(error as Error) || 'Failed to load notification settings')
     } finally {
       setIsLoadingNotificationSettings(false)
@@ -422,13 +423,13 @@ export default function OrganizationSettings() {
         sessionStorage.setItem('pulse_switching_org', 'true')
         window.location.href = '/'
       } catch (switchErr) {
-        console.error('Failed to switch to personal context after delete:', switchErr)
+        logger.error('Failed to switch to personal context after delete:', switchErr)
         sessionStorage.setItem('pulse_switching_org', 'true')
         window.location.href = '/'
       }
       
     } catch (err: unknown) {
-      console.error(err)
+      logger.error(err)
       toast.error(getAuthErrorMessage(err) || (err instanceof Error ? err.message : '') || 'Failed to delete organization')
       setIsDeleting(false)
     }

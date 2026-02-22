@@ -6,6 +6,7 @@ import apiRequest from '@/lib/api/client'
 import { LoadingOverlay } from '@ciphera-net/ui'
 import { logoutAction, getSessionAction, setSessionAction } from '@/app/actions/auth'
 import { getUserOrganizations, switchContext } from '@/lib/api/organization'
+import { logger } from '@/lib/utils/logger'
 
 interface User {
   id: string
@@ -66,7 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return merged
         })
       })
-      .catch((e) => console.error('Failed to fetch full profile after login', e))
+      .catch((e) => logger.error('Failed to fetch full profile after login', e))
   }
 
   const logout = useCallback(async () => {
@@ -96,7 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return merged
       })
     } catch (e) {
-      console.error('Failed to refresh user data', e)
+      logger.error('Failed to refresh user data', e)
     }
     router.refresh()
   }, [router])
@@ -121,7 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setUser(merged)
               localStorage.setItem('user', JSON.stringify(merged))
             } catch (e) {
-              console.error('Failed to fetch full profile', e)
+              logger.error('Failed to fetch full profile', e)
             }
         } else {
             // * Session invalid/expired
@@ -178,11 +179,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                      router.refresh()
                  }
              } catch (e) {
-                 console.error('Failed to auto-switch context', e)
+                 logger.error('Failed to auto-switch context', e)
              }
           }
         } catch (e) {
-          console.error("Failed to fetch organizations", e)
+          logger.error("Failed to fetch organizations", e)
         }
       }
     }

@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/auth/context'
 import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { logger } from '@/lib/utils/logger'
 import { getUserOrganizations, switchContext } from '@/lib/api/organization'
 import { setSessionAction } from '@/app/actions/auth'
 import { LoadingOverlay } from '@ciphera-net/ui'
@@ -39,7 +40,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     if (auth.user) {
       getUserOrganizations()
         .then((organizations) => setOrgs(Array.isArray(organizations) ? organizations : []))
-        .catch(err => console.error('Failed to fetch orgs for header', err))
+        .catch(err => logger.error('Failed to fetch orgs for header', err))
     }
   }, [auth.user])
 
@@ -51,7 +52,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
       sessionStorage.setItem(ORG_SWITCH_KEY, 'true')
       window.location.reload()
     } catch (err) {
-      console.error('Failed to switch organization', err)
+      logger.error('Failed to switch organization', err)
     }
   }
 

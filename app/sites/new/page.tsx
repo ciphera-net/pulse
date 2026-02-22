@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { logger } from '@/lib/utils/logger'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createSite, listSites, getSite, type Site } from '@/lib/api/sites'
@@ -65,7 +66,7 @@ export default function NewSitePage() {
           router.replace('/')
         }
       } catch (error) {
-        console.error('Failed to check limits', error)
+        logger.error('Failed to check limits', error)
       } finally {
         setLimitsChecked(true)
       }

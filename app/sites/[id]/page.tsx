@@ -1,6 +1,7 @@
 'use client'
 
 import { useAuth } from '@/lib/auth/context'
+import { logger } from '@/lib/utils/logger'
 import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -85,7 +86,7 @@ export default function SiteDashboardPage() {
         if (settings.multiDayInterval) setMultiDayInterval(settings.multiDayInterval)
       }
     } catch (e) {
-      console.error('Failed to load dashboard settings', e)
+      logger.error('Failed to load dashboard settings', e)
     } finally {
       setIsSettingsLoaded(true)
     }
@@ -103,7 +104,7 @@ export default function SiteDashboardPage() {
       }
       localStorage.setItem('pulse_dashboard_settings', JSON.stringify(settings))
     } catch (e) {
-      console.error('Failed to save dashboard settings', e)
+      logger.error('Failed to save dashboard settings', e)
     }
   }
 

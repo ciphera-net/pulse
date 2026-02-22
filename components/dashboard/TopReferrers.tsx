@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { logger } from '@/lib/utils/logger'
 import Image from 'next/image'
 import { formatNumber } from '@ciphera-net/ui'
 import { getReferrerDisplayName, getReferrerFavicon, getReferrerIcon, mergeReferrersByDisplayName } from '@/lib/utils/icons'
@@ -66,7 +67,7 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
           )
           setFullData(filtered)
         } catch (e) {
-          console.error(e)
+          logger.error(e)
         } finally {
           setIsLoadingFull(false)
         }
