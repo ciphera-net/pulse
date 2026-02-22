@@ -703,6 +703,10 @@ export default function UptimePage() {
     setShowEditModal(true)
   }
 
+  useEffect(() => {
+    if (site?.domain) document.title = `Uptime · ${site.domain} | Pulse`
+  }, [site?.domain])
+
   const showSkeleton = useMinimumLoading(loading)
 
   if (showSkeleton) return <UptimeSkeleton />
