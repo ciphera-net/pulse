@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { ApiError } from '@/lib/api/client'
 import { getFunnel, getFunnelStats, deleteFunnel, type Funnel, type FunnelStats } from '@/lib/api/funnels'
 import { toast, Select, DatePicker, ChevronLeftIcon, ArrowRightIcon, TrashIcon, useTheme, Button } from '@ciphera-net/ui'
-import { FunnelDetailSkeleton } from '@/components/skeletons'
+import { FunnelDetailSkeleton, useMinimumLoading } from '@/components/skeletons'
 import Link from 'next/link'
 import {
   BarChart,
@@ -92,7 +92,9 @@ export default function FunnelReportPage() {
     }
   }
 
-  if (loading && !funnel) {
+  const showSkeleton = useMinimumLoading(loading && !funnel)
+
+  if (showSkeleton) {
     return <FunnelDetailSkeleton />
   }
 

@@ -7,7 +7,7 @@ import { getRealtimeVisitors, getSessionDetails, type Visitor, type SessionEvent
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { UserIcon } from '@ciphera-net/ui'
-import { RealtimeSkeleton, SessionEventsSkeleton } from '@/components/skeletons'
+import { RealtimeSkeleton, SessionEventsSkeleton, useMinimumLoading } from '@/components/skeletons'
 import { motion, AnimatePresence } from 'framer-motion'
 
 function formatTimeAgo(dateString: string) {
@@ -91,7 +91,9 @@ export default function RealtimePage() {
     }
   }
 
-  if (loading) return <RealtimeSkeleton />
+  const showSkeleton = useMinimumLoading(loading)
+
+  if (showSkeleton) return <RealtimeSkeleton />
   if (!site) return <div className="p-8">Site not found</div>
 
   return (
