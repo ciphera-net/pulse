@@ -938,11 +938,11 @@ function MonitorForm({
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           placeholder="e.g. API, Website, CDN"
           autoFocus
-          maxLength={255}
+          maxLength={100}
           className="w-full px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:border-transparent text-sm"
         />
-        {formData.name.length > 200 && (
-          <span className={`text-xs tabular-nums mt-1 ${formData.name.length > 240 ? 'text-amber-500' : 'text-neutral-400'}`}>{formData.name.length}/255</span>
+        {formData.name.length > 80 && (
+          <span className={`text-xs tabular-nums mt-1 ${formData.name.length > 90 ? 'text-amber-500' : 'text-neutral-400'}`}>{formData.name.length}/100</span>
         )}
       </div>
 

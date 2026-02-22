@@ -192,7 +192,7 @@ export default function NewSitePage() {
             id="name"
             required
             autoFocus
-            maxLength={255}
+            maxLength={100}
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             placeholder="My Website"

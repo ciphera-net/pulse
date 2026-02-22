@@ -122,10 +122,10 @@ export default function CreateFunnelPage() {
                 placeholder="e.g. Signup Flow"
                 autoFocus
                 required
-                maxLength={255}
+                maxLength={100}
               />
-              {name.length > 200 && (
-                <span className={`text-xs tabular-nums mt-1 ${name.length > 240 ? 'text-amber-500' : 'text-neutral-400'}`}>{name.length}/255</span>
+              {name.length > 80 && (
+                <span className={`text-xs tabular-nums mt-1 ${name.length > 90 ? 'text-amber-500' : 'text-neutral-400'}`}>{name.length}/100</span>
               )}
             </div>
             <div>
