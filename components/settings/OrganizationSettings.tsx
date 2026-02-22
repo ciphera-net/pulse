@@ -49,7 +49,6 @@ function BellIcon({ className }: { className?: string }) {
     </svg>
   )
 }
-// @ts-ignore
 import { Button, Input } from '@ciphera-net/ui'
 
 export default function OrganizationSettings() {
@@ -333,8 +332,8 @@ export default function OrganizationSettings() {
     try {
       const { url } = await createPortalSession()
       window.location.href = url
-    } catch (error: any) {
-      toast.error(getAuthErrorMessage(error) || error.message || 'Failed to open billing portal')
+    } catch (error: unknown) {
+      toast.error(getAuthErrorMessage(error) || (error instanceof Error ? error.message : '') || 'Failed to open billing portal')
       setIsRedirectingToPortal(false)
     }
   }
@@ -346,8 +345,8 @@ export default function OrganizationSettings() {
       toast.success(atPeriodEnd ? 'Subscription will cancel at the end of the billing period.' : 'Subscription canceled.')
       setShowCancelPrompt(false)
       loadSubscription()
-    } catch (error: any) {
-      toast.error(getAuthErrorMessage(error) || error.message || 'Failed to cancel subscription')
+    } catch (error: unknown) {
+      toast.error(getAuthErrorMessage(error) || (error instanceof Error ? error.message : '') || 'Failed to cancel subscription')
     } finally {
       setCancelLoadingAction(null)
     }
@@ -359,8 +358,8 @@ export default function OrganizationSettings() {
       await resumeSubscription()
       toast.success('Subscription will continue. Cancellation has been undone.')
       loadSubscription()
-    } catch (error: any) {
-      toast.error(getAuthErrorMessage(error) || error.message || 'Failed to resume subscription')
+    } catch (error: unknown) {
+      toast.error(getAuthErrorMessage(error) || (error instanceof Error ? error.message : '') || 'Failed to resume subscription')
     } finally {
       setIsResuming(false)
     }
@@ -398,8 +397,8 @@ export default function OrganizationSettings() {
         if (url) window.location.href = url
         else throw new Error('No checkout URL')
       }
-    } catch (error: any) {
-      toast.error(getAuthErrorMessage(error) || error.message || 'Failed to update member role')
+    } catch (error: unknown) {
+      toast.error(getAuthErrorMessage(error) || (error instanceof Error ? error.message : '') || 'Failed to update plan')
     } finally {
       setIsChangingPlan(false)
     }
@@ -427,9 +426,9 @@ export default function OrganizationSettings() {
         window.location.href = '/'
       }
       
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err)
-      toast.error(getAuthErrorMessage(err) || err.message || 'Failed to delete organization')
+      toast.error(getAuthErrorMessage(err) || (err instanceof Error ? err.message : '') || 'Failed to delete organization')
       setIsDeleting(false)
     }
   }
@@ -457,8 +456,8 @@ export default function OrganizationSettings() {
       setCaptchaSolution('')
       setCaptchaToken('')
       loadMembers() // Refresh list
-    } catch (error: any) {
-      toast.error(getAuthErrorMessage(error) || error.message || 'Failed to send invitation')
+    } catch (error: unknown) {
+      toast.error(getAuthErrorMessage(error) || (error instanceof Error ? error.message : '') || 'Failed to send invitation')
     } finally {
       setIsInviting(false)
     }
@@ -469,8 +468,8 @@ export default function OrganizationSettings() {
       await revokeInvitation(currentOrgId, inviteId)
       toast.success('Invitation revoked')
       loadMembers() // Refresh list
-    } catch (error: any) {
-      toast.error(getAuthErrorMessage(error) || error.message || 'Failed to revoke invitation')
+    } catch (error: unknown) {
+      toast.error(getAuthErrorMessage(error) || (error instanceof Error ? error.message : '') || 'Failed to revoke invitation')
     }
   }
 
@@ -484,8 +483,8 @@ export default function OrganizationSettings() {
       toast.success('Organization updated successfully')
       setIsEditing(false)
       loadMembers() 
-    } catch (error: any) {
-      toast.error(getAuthErrorMessage(error) || error.message || 'Failed to save organization settings')
+    } catch (error: unknown) {
+      toast.error(getAuthErrorMessage(error) || (error instanceof Error ? error.message : '') || 'Failed to save organization settings')
     } finally {
       setIsSaving(false)
     }
@@ -603,7 +602,7 @@ export default function OrganizationSettings() {
                       <Input
                         type="text"
                         value={orgName}
-                        onChange={(e: any) => setOrgName(e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOrgName(e.target.value)}
                         required
                         minLength={2}
                         maxLength={50}
@@ -623,7 +622,7 @@ export default function OrganizationSettings() {
                         <Input
                           type="text"
                           value={orgSlug}
-                          onChange={(e: any) => setOrgSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOrgSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
                           required
                           minLength={3}
                           maxLength={30}
@@ -703,7 +702,7 @@ export default function OrganizationSettings() {
                           type="email" 
                           placeholder="colleague@company.com" 
                           value={inviteEmail}
-                          onChange={(e: any) => setInviteEmail(e.target.value)}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInviteEmail(e.target.value)}
                           required
                           className="bg-white dark:bg-neutral-900"
                         />

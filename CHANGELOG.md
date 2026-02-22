@@ -26,6 +26,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - **Organization context switch.** Switching away from a deleted organization now stores the session correctly instead of using an insecure fallback.
 - **Removed debug logs.** Auth and organization-switching details no longer leak into the browser console in production.
+- **Stricter type safety.** Eliminated all `any` types and `@ts-ignore` suppressions across the codebase, so the TypeScript compiler catches more bugs at build time.
 
 ## [0.10.0-alpha] - 2026-02-21
 

@@ -20,7 +20,7 @@ export default function Locations({ countries, cities }: LocationProps) {
     if (!countryCode || countryCode === 'Unknown') return null
     // * The API returns 2-letter country codes (e.g. US, DE)
     // * We cast it to the flag component name
-    const FlagComponent = (Flags as any)[countryCode]
+    const FlagComponent = (Flags as Record<string, React.ComponentType<{ className?: string }>>)[countryCode]
     return FlagComponent ? <FlagComponent className="w-5 h-5 rounded-sm shadow-sm" /> : null
   }
 

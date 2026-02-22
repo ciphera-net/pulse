@@ -67,9 +67,9 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
     
     // Prepare data
     const exportData = data.map((item) => {
-      const filteredItem: Partial<DailyStat> = {}
+      const filteredItem: Record<string, string | number> = {}
       fields.forEach((field) => {
-        (filteredItem as any)[field] = item[field]
+        filteredItem[field] = item[field]
       })
       return filteredItem
     })
@@ -212,7 +212,7 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
       autoTable(doc, {
         startY: startY,
         head: [fields.map(f => f.charAt(0).toUpperCase() + f.slice(1).replace('_', ' '))],
-        body: tableData as any[][],
+        body: tableData as (string | number)[][],
         styles: {
             font: 'helvetica',
             fontSize: 9,
@@ -249,7 +249,7 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
         }
       })
 
-      let finalY = (doc as any).lastAutoTable.finalY + 10
+      let finalY = doc.lastAutoTable.finalY + 10
 
       // Top Pages Table
       if (topPages && topPages.length > 0) {
@@ -276,7 +276,7 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
             alternateRowStyles: { fillColor: [255, 250, 245] },
         })
         
-        finalY = (doc as any).lastAutoTable.finalY + 10
+        finalY = doc.lastAutoTable.finalY + 10
       }
 
       // Top Referrers Table
@@ -305,7 +305,7 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
             alternateRowStyles: { fillColor: [255, 250, 245] },
         })
         
-        finalY = (doc as any).lastAutoTable.finalY + 10
+        finalY = doc.lastAutoTable.finalY + 10
       }
 
       // Campaigns Table

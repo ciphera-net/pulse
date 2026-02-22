@@ -86,10 +86,7 @@ export async function sendInvitation(
   role: string = 'member',
   captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
 ): Promise<OrganizationInvitation> {
-  const body: any = {
-    email,
-    role
-  }
+  const body: Record<string, string> = { email, role }
 
   if (captcha?.captcha_id) body.captcha_id = captcha.captcha_id
   if (captcha?.captcha_solution) body.captcha_solution = captcha.captcha_solution

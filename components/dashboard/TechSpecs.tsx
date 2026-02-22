@@ -26,7 +26,8 @@ const LIMIT = 7
 export default function TechSpecs({ browsers, os, devices, screenResolutions, collectDeviceInfo = true, collectScreenResolution = true, siteId, dateRange }: TechSpecsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('browsers')
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [fullData, setFullData] = useState<any[]>([])
+  type TechItem = { name: string; pageviews: number; icon: React.ReactNode }
+  const [fullData, setFullData] = useState<TechItem[]>([])
   const [isLoadingFull, setIsLoadingFull] = useState(false)
 
   // Filter out "Unknown" entries that result from disabled collection
@@ -39,7 +40,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
       const fetchData = async () => {
         setIsLoadingFull(true)
         try {
-          let data: any[] = []
+          let data: TechItem[] = []
           if (activeTab === 'browsers') {
             const res = await getBrowsers(siteId, dateRange.start, dateRange.end, 100)
             data = res.map(b => ({ name: b.browser, pageviews: b.pageviews, icon: getBrowserIcon(b.browser) }))
