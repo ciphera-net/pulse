@@ -6,10 +6,13 @@ import { motion } from 'framer-motion'
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow, initiateSignupFlow } from '@/lib/api/oauth'
 import { listSites, deleteSite, type Site } from '@/lib/api/sites'
+import { getStats } from '@/lib/api/stats'
+import type { Stats } from '@/lib/api/stats'
 import { getSubscription, type SubscriptionDetails } from '@/lib/api/billing'
 import { LoadingOverlay } from '@ciphera-net/ui'
 import SiteList from '@/components/sites/SiteList'
 import { Button } from '@ciphera-net/ui'
+import Image from 'next/image'
 import { BarChartIcon, LockIcon, ZapIcon, CheckCircleIcon, XIcon, GlobeIcon } from '@ciphera-net/ui'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
@@ -17,29 +20,36 @@ import { getSitesLimitForPlan } from '@/lib/plans'
 
 function DashboardPreview() {
   return (
-    <div className="relative w-full max-w-7xl mx-auto mt-20 mb-32 h-[600px] flex items-center justify-center">
-      {/* * Glow behind the image */}
+    <div className="relative w-full max-w-7xl mx-auto mt-20 mb-32">
       <div className="absolute inset-0 bg-brand-orange/20 blur-[100px] -z-10 rounded-full opacity-50" />
-      
-      {/* * Static Container */}
-      <div
-        className="relative w-full h-full rounded-xl border border-neutral-200/50 dark:border-neutral-800/50 bg-neutral-900/50 backdrop-blur-sm shadow-2xl overflow-hidden"
+
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.7, delay: 0.4 }}
+        className="relative rounded-xl border border-neutral-200/50 dark:border-neutral-800/50 shadow-2xl overflow-hidden"
       >
-        {/* * Header of the fake browser window */}
-        <div className="h-8 bg-neutral-800/50 border-b border-white/5 flex items-center px-4 gap-2">
-          <div className="w-3 h-3 rounded-full bg-red-500/50" />
-          <div className="w-3 h-3 rounded-full bg-yellow-500/50" />
-          <div className="w-3 h-3 rounded-full bg-green-500/50" />
+        {/* * Browser chrome */}
+        <div className="h-8 bg-neutral-100 dark:bg-neutral-800/80 border-b border-neutral-200 dark:border-white/5 flex items-center px-4 gap-2">
+          <div className="w-3 h-3 rounded-full bg-red-400/60" />
+          <div className="w-3 h-3 rounded-full bg-yellow-400/60" />
+          <div className="w-3 h-3 rounded-full bg-green-400/60" />
+          <div className="ml-4 flex-1 max-w-xs h-5 rounded bg-neutral-200 dark:bg-neutral-700/50" />
         </div>
-        
-        {/* * Placeholder for actual dashboard screenshot - replace src with real image later */}
-        <div className="w-full h-[calc(100%-2rem)] bg-neutral-900 flex items-center justify-center text-neutral-700">
-           <div className="text-center">
-             <BarChartIcon className="w-16 h-16 mx-auto mb-4 opacity-20" />
-             <p>Dashboard Preview</p>
-           </div>
+
+        {/* * Screenshot with bottom fade */}
+        <div className="relative max-h-[900px] overflow-hidden">
+          <Image
+            src="/dashboard-preview-v2.png"
+            alt="Pulse analytics dashboard showing visitor stats, charts, top pages, referrers, locations, and technology breakdown"
+            width={1920}
+            height={3000}
+            className="w-full h-auto object-cover object-top"
+            priority
+          />
+          <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-transparent from-60% to-white dark:to-neutral-950" />
         </div>
-      </div>
+      </motion.div>
     </div>
   )
 }
@@ -97,10 +107,13 @@ function ComparisonSection() {
 }
 
 
+type SiteStatsMap = Record<string, { stats: Stats }>
+
 export default function HomePage() {
   const { user, loading: authLoading } = useAuth()
   const [sites, setSites] = useState<Site[]>([])
   const [sitesLoading, setSitesLoading] = useState(true)
+  const [siteStats, setSiteStats] = useState<SiteStatsMap>({})
   const [subscription, setSubscription] = useState<SubscriptionDetails | null>(null)
   const [subscriptionLoading, setSubscriptionLoading] = useState(false)
   const [showFinishSetupBanner, setShowFinishSetupBanner] = useState(true)
@@ -111,6 +124,37 @@ export default function HomePage() {
       loadSubscription()
     }
   }, [user])
+
+  useEffect(() => {
+    if (sites.length === 0) {
+      setSiteStats({})
+      return
+    }
+    let cancelled = false
+    const today = new Date().toISOString().split('T')[0]
+    const emptyStats: Stats = { pageviews: 0, visitors: 0, bounce_rate: 0, avg_duration: 0 }
+    const load = async () => {
+      const results = await Promise.allSettled(
+        sites.map(async (site) => {
+          const statsRes = await getStats(site.id, today, today)
+          return { siteId: site.id, stats: statsRes }
+        })
+      )
+      if (cancelled) return
+      const map: SiteStatsMap = {}
+      results.forEach((r, i) => {
+        const site = sites[i]
+        if (r.status === 'fulfilled') {
+          map[site.id] = { stats: r.value.stats }
+        } else {
+          map[site.id] = { stats: emptyStats }
+        }
+      })
+      setSiteStats(map)
+    }
+    load()
+    return () => { cancelled = true }
+  }, [sites])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -133,8 +177,8 @@ export default function HomePage() {
       setSitesLoading(true)
       const data = await listSites()
       setSites(Array.isArray(data) ? data : [])
-    } catch (error: any) {
-      toast.error(getAuthErrorMessage(error) || 'Failed to load sites: ' + ((error as Error)?.message || 'Unknown error'))
+    } catch (error: unknown) {
+      toast.error(getAuthErrorMessage(error) || 'Failed to load your sites')
       setSites([])
     } finally {
       setSitesLoading(false)
@@ -162,8 +206,8 @@ export default function HomePage() {
       await deleteSite(id)
       toast.success('Site deleted successfully')
       loadSites()
-    } catch (error: any) {
-      toast.error(getAuthErrorMessage(error) || 'Failed to delete site: ' + ((error as Error)?.message || 'Unknown error'))
+    } catch (error: unknown) {
+      toast.error(getAuthErrorMessage(error) || 'Failed to delete site')
     }
   }
 
@@ -362,20 +406,29 @@ export default function HomePage() {
         )}
       </div>
 
-      {/* * Global Overview */}
+      {/* * Global Overview - min-h ensures no layout shift when Plan & usage loads */}
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+        <div className="flex min-h-[160px] flex-col rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
           <p className="text-sm text-neutral-500 dark:text-neutral-400">Total Sites</p>
           <p className="text-2xl font-bold text-neutral-900 dark:text-white">{sites.length}</p>
         </div>
-        <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+        <div className="flex min-h-[160px] flex-col rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
           <p className="text-sm text-neutral-500 dark:text-neutral-400">Total Visitors (24h)</p>
-          <p className="text-2xl font-bold text-neutral-900 dark:text-white">--</p>
+          <p className="text-2xl font-bold text-neutral-900 dark:text-white">
+            {sites.length === 0 || Object.keys(siteStats).length < sites.length
+              ? '--'
+              : Object.values(siteStats).reduce((sum, { stats }) => sum + (stats?.visitors ?? 0), 0).toLocaleString()}
+          </p>
         </div>
-        <div className="rounded-2xl border border-neutral-200 bg-brand-orange/10 p-4 dark:border-neutral-800">
+        <div className="flex min-h-[160px] flex-col rounded-2xl border border-neutral-200 bg-brand-orange/10 p-4 dark:border-neutral-800">
           <p className="text-sm text-brand-orange">Plan & usage</p>
           {subscriptionLoading ? (
-            <p className="text-lg font-bold text-brand-orange">...</p>
+            <div className="animate-pulse space-y-2">
+              <div className="h-6 w-24 rounded bg-brand-orange/25 dark:bg-brand-orange/20" />
+              <div className="h-4 w-full rounded bg-brand-orange/25 dark:bg-brand-orange/20" />
+              <div className="h-4 w-3/4 rounded bg-brand-orange/25 dark:bg-brand-orange/20" />
+              <div className="h-4 w-20 rounded bg-brand-orange/25 dark:bg-brand-orange/20 pt-2" />
+            </div>
           ) : subscription ? (
             <>
               <p className="text-lg font-bold text-brand-orange">
@@ -456,7 +509,7 @@ export default function HomePage() {
       )}
 
       {(sitesLoading || sites.length > 0) && (
-        <SiteList sites={sites} loading={sitesLoading} onDelete={handleDelete} />
+        <SiteList sites={sites} siteStats={siteStats} loading={sitesLoading} onDelete={handleDelete} />
       )}
     </div>
   )

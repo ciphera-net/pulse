@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { listFunnels, deleteFunnel, type Funnel } from '@/lib/api/funnels'
-import { toast, LoadingOverlay, PlusIcon, ArrowRightIcon, ChevronLeftIcon, TrashIcon, Button } from '@ciphera-net/ui'
+import { toast, PlusIcon, ArrowRightIcon, ChevronLeftIcon, TrashIcon, Button } from '@ciphera-net/ui'
+import { FunnelsListSkeleton, useMinimumLoading } from '@/components/skeletons'
 import Link from 'next/link'
 
 export default function FunnelsPage() {
@@ -20,7 +21,7 @@ export default function FunnelsPage() {
       const data = await listFunnels(siteId)
       setFunnels(data)
     } catch (error) {
-      toast.error('Failed to load funnels')
+      toast.error('Failed to load your funnels')
     } finally {
       setLoading(false)
     }
@@ -43,8 +44,10 @@ export default function FunnelsPage() {
     }
   }
 
-  if (loading) {
-    return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" />
+  const showSkeleton = useMinimumLoading(loading)
+
+  if (showSkeleton) {
+    return <FunnelsListSkeleton />
   }
 
   return (

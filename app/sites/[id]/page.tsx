@@ -1,6 +1,7 @@
 'use client'
 
 import { useAuth } from '@/lib/auth/context'
+import { logger } from '@/lib/utils/logger'
 import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -11,6 +12,7 @@ import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { LoadingOverlay, Button } from '@ciphera-net/ui'
 import { Select, DatePicker, DownloadIcon } from '@ciphera-net/ui'
+import { DashboardSkeleton, useMinimumLoading } from '@/components/skeletons'
 import ExportModal from '@/components/dashboard/ExportModal'
 import ContentStats from '@/components/dashboard/ContentStats'
 import TopReferrers from '@/components/dashboard/TopReferrers'
@@ -84,7 +86,7 @@ export default function SiteDashboardPage() {
         if (settings.multiDayInterval) setMultiDayInterval(settings.multiDayInterval)
       }
     } catch (e) {
-      console.error('Failed to load dashboard settings', e)
+      logger.error('Failed to load dashboard settings', e)
     } finally {
       setIsSettingsLoaded(true)
     }
@@ -102,7 +104,7 @@ export default function SiteDashboardPage() {
       }
       localStorage.setItem('pulse_dashboard_settings', JSON.stringify(settings))
     } catch (e) {
-      console.error('Failed to save dashboard settings', e)
+      logger.error('Failed to save dashboard settings', e)
     }
   }
 
@@ -190,7 +192,7 @@ export default function SiteDashboardPage() {
       setLastUpdatedAt(Date.now())
     } catch (error: unknown) {
       if (!silent) {
-        toast.error(getAuthErrorMessage(error) || 'Failed to load data: ' + ((error as Error)?.message || 'Unknown error'))
+        toast.error(getAuthErrorMessage(error) || 'Failed to load dashboard analytics')
       }
     } finally {
       if (!silent) setLoading(false)
@@ -215,8 +217,14 @@ export default function SiteDashboardPage() {
     return () => clearInterval(interval)
   }, [siteId, dateRange, todayInterval, multiDayInterval, isSettingsLoaded, loadData, loadRealtime])
 
-  if (loading) {
-    return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" />
+  useEffect(() => {
+    if (site?.domain) document.title = `${site.domain} | Pulse`
+  }, [site?.domain])
+
+  const showSkeleton = useMinimumLoading(loading)
+
+  if (showSkeleton) {
+    return <DashboardSkeleton />
   }
 
   if (!site) {

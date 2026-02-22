@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { logger } from '@/lib/utils/logger'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createSite, listSites, getSite, type Site } from '@/lib/api/sites'
@@ -65,7 +66,7 @@ export default function NewSitePage() {
           router.replace('/')
         }
       } catch (error) {
-        console.error('Failed to check limits', error)
+        logger.error('Failed to check limits', error)
       } finally {
         setLimitsChecked(true)
       }
@@ -87,7 +88,7 @@ export default function NewSitePage() {
         sessionStorage.setItem(LAST_CREATED_SITE_KEY, JSON.stringify({ id: site.id }))
       }
     } catch (error: unknown) {
-      toast.error(getAuthErrorMessage(error) || 'Failed to create site: ' + ((error as Error)?.message || 'Unknown error'))
+      toast.error(getAuthErrorMessage(error) || 'Failed to create site. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -191,6 +192,8 @@ export default function NewSitePage() {
           <Input
             id="name"
             required
+            autoFocus
+            maxLength={100}
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             placeholder="My Website"
@@ -204,6 +207,7 @@ export default function NewSitePage() {
           <Input
             id="domain"
             required
+            maxLength={253}
             value={formData.domain}
             onChange={(e) => setFormData({ ...formData, domain: e.target.value.toLowerCase().trim() })}
             placeholder="example.com"

@@ -20,7 +20,8 @@ import {
 import { toast } from '@ciphera-net/ui'
 import { useTheme } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
-import { LoadingOverlay, Button, Modal } from '@ciphera-net/ui'
+import { Button, Modal } from '@ciphera-net/ui'
+import { UptimeSkeleton, ChecksSkeleton, useMinimumLoading } from '@/components/skeletons'
 import {
   AreaChart,
   Area,
@@ -283,8 +284,8 @@ function UptimeStatusBar({
 
 // * Component: Response time chart (Recharts area chart)
 function ResponseTimeChart({ checks }: { checks: UptimeCheck[] }) {
-  const { theme } = useTheme()
-  const colors = theme === 'dark' ? CHART_COLORS_DARK : CHART_COLORS_LIGHT
+  const { resolvedTheme } = useTheme()
+  const colors = resolvedTheme === 'dark' ? CHART_COLORS_DARK : CHART_COLORS_LIGHT
 
   // * Prepare data in chronological order (oldest first)
   const data = [...checks]
@@ -510,9 +511,7 @@ function MonitorCard({
 
               {/* Response time chart */}
               {loadingChecks ? (
-                <div className="text-center py-4 text-neutral-500 dark:text-neutral-400 text-sm">
-                  Loading checks...
-                </div>
+                <ChecksSkeleton />
               ) : checks.length > 0 ? (
                 <>
                   <ResponseTimeChart checks={checks} />
@@ -616,7 +615,7 @@ export default function UptimePage() {
       setSite(siteData)
       setUptimeData(statusData)
     } catch (error: unknown) {
-      toast.error(getAuthErrorMessage(error) || 'Failed to load uptime data')
+      toast.error(getAuthErrorMessage(error) || 'Failed to load uptime monitors')
     } finally {
       setLoading(false)
     }
@@ -704,7 +703,13 @@ export default function UptimePage() {
     setShowEditModal(true)
   }
 
-  if (loading) return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Uptime" />
+  useEffect(() => {
+    if (site?.domain) document.title = `Uptime · ${site.domain} | Pulse`
+  }, [site?.domain])
+
+  const showSkeleton = useMinimumLoading(loading)
+
+  if (showSkeleton) return <UptimeSkeleton />
   if (!site) return <div className="p-8 text-neutral-500">Site not found</div>
 
   const monitors = Array.isArray(uptimeData?.monitors) ? uptimeData.monitors : []
@@ -932,8 +937,13 @@ function MonitorForm({
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           placeholder="e.g. API, Website, CDN"
+          autoFocus
+          maxLength={100}
           className="w-full px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:border-transparent text-sm"
         />
+        {formData.name.length > 80 && (
+          <span className={`text-xs tabular-nums mt-1 ${formData.name.length > 90 ? 'text-amber-500' : 'text-neutral-400'}`}>{formData.name.length}/100</span>
+        )}
       </div>
 
       {/* URL with protocol dropdown + domain prefix */}

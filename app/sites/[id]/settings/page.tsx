@@ -1,18 +1,19 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { getSite, updateSite, resetSiteData, deleteSite, type Site, type GeoDataLevel } from '@/lib/api/sites'
 import { listGoals, createGoal, updateGoal, deleteGoal, type Goal } from '@/lib/api/goals'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
-import { LoadingOverlay } from '@ciphera-net/ui'
+import { SettingsFormSkeleton, GoalsListSkeleton, useMinimumLoading } from '@/components/skeletons'
 import VerificationModal from '@/components/sites/VerificationModal'
 import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
 import { PasswordInput } from '@ciphera-net/ui'
 import { Select, Modal, Button } from '@ciphera-net/ui'
 import { APP_URL } from '@/lib/api/client'
 import { generatePrivacySnippet } from '@/lib/utils/privacySnippet'
+import { useUnsavedChanges } from '@/lib/hooks/useUnsavedChanges'
 import { getSubscription, type SubscriptionDetails } from '@/lib/api/billing'
 import { getRetentionOptionsForPlan, formatRetentionMonths } from '@/lib/plans'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -86,6 +87,7 @@ export default function SiteSettingsPage() {
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null)
   const [goalForm, setGoalForm] = useState({ name: '', event_name: '' })
   const [goalSaving, setGoalSaving] = useState(false)
+  const initialFormRef = useRef<string>('')
 
   useEffect(() => {
     loadSite()
@@ -146,13 +148,27 @@ export default function SiteSettingsPage() {
         // Data retention (default 6 = free-tier max; avoids flash-then-clamp for existing sites)
         data_retention_months: data.data_retention_months ?? 6
       })
+      initialFormRef.current = JSON.stringify({
+        name: data.name,
+        timezone: data.timezone || 'UTC',
+        is_public: data.is_public || false,
+        excluded_paths: (data.excluded_paths || []).join('\n'),
+        collect_page_paths: data.collect_page_paths ?? true,
+        collect_referrers: data.collect_referrers ?? true,
+        collect_device_info: data.collect_device_info ?? true,
+        collect_geo_data: data.collect_geo_data || 'full',
+        collect_screen_resolution: data.collect_screen_resolution ?? true,
+        enable_performance_insights: data.enable_performance_insights ?? false,
+        filter_bots: data.filter_bots ?? true,
+        data_retention_months: data.data_retention_months ?? 6
+      })
       if (data.has_password) {
         setIsPasswordEnabled(true)
       } else {
         setIsPasswordEnabled(false)
       }
-    } catch (error: any) {
-      toast.error(getAuthErrorMessage(error) || 'Failed to load site: ' + ((error as Error)?.message || 'Unknown error'))
+    } catch (error: unknown) {
+      toast.error(getAuthErrorMessage(error) || 'Failed to load site settings')
     } finally {
       setLoading(false)
     }
@@ -264,9 +280,23 @@ export default function SiteSettingsPage() {
         data_retention_months: formData.data_retention_months
       })
       toast.success('Site updated successfully')
+      initialFormRef.current = JSON.stringify({
+        name: formData.name,
+        timezone: formData.timezone,
+        is_public: formData.is_public,
+        excluded_paths: formData.excluded_paths,
+        collect_page_paths: formData.collect_page_paths,
+        collect_referrers: formData.collect_referrers,
+        collect_device_info: formData.collect_device_info,
+        collect_geo_data: formData.collect_geo_data,
+        collect_screen_resolution: formData.collect_screen_resolution,
+        enable_performance_insights: formData.enable_performance_insights,
+        filter_bots: formData.filter_bots,
+        data_retention_months: formData.data_retention_months
+      })
       loadSite()
-    } catch (error: any) {
-      toast.error(getAuthErrorMessage(error) || 'Failed to update site: ' + ((error as Error)?.message || 'Unknown error'))
+    } catch (error: unknown) {
+      toast.error(getAuthErrorMessage(error) || 'Failed to save site settings')
     } finally {
       setSaving(false)
     }
@@ -280,8 +310,8 @@ export default function SiteSettingsPage() {
     try {
       await resetSiteData(siteId)
       toast.success('All site data has been reset')
-    } catch (error: any) {
-      toast.error(getAuthErrorMessage(error) || 'Failed to reset data: ' + ((error as Error)?.message || 'Unknown error'))
+    } catch (error: unknown) {
+      toast.error(getAuthErrorMessage(error) || 'Failed to reset site data')
     }
   }
 
@@ -296,8 +326,8 @@ export default function SiteSettingsPage() {
       await deleteSite(siteId)
       toast.success('Site deleted successfully')
       router.push('/')
-    } catch (error: any) {
-      toast.error(getAuthErrorMessage(error) || 'Failed to delete site: ' + ((error as Error)?.message || 'Unknown error'))
+    } catch (error: unknown) {
+      toast.error(getAuthErrorMessage(error) || 'Failed to delete site')
     }
   }
 
@@ -317,8 +347,50 @@ export default function SiteSettingsPage() {
     setTimeout(() => setSnippetCopied(false), 2000)
   }
 
-  if (loading) {
-    return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" />
+  const isFormDirty = initialFormRef.current !== '' && JSON.stringify({
+    name: formData.name,
+    timezone: formData.timezone,
+    is_public: formData.is_public,
+    excluded_paths: formData.excluded_paths,
+    collect_page_paths: formData.collect_page_paths,
+    collect_referrers: formData.collect_referrers,
+    collect_device_info: formData.collect_device_info,
+    collect_geo_data: formData.collect_geo_data,
+    collect_screen_resolution: formData.collect_screen_resolution,
+    enable_performance_insights: formData.enable_performance_insights,
+    filter_bots: formData.filter_bots,
+    data_retention_months: formData.data_retention_months
+  }) !== initialFormRef.current
+
+  useUnsavedChanges(isFormDirty)
+
+  useEffect(() => {
+    if (site?.domain) document.title = `Settings · ${site.domain} | Pulse`
+  }, [site?.domain])
+
+  const showSkeleton = useMinimumLoading(loading)
+
+  if (showSkeleton) {
+    return (
+      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
+        <div className="space-y-8">
+          <div>
+            <div className="h-8 w-40 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800 mb-2" />
+            <div className="h-4 w-64 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
+          </div>
+          <div className="flex flex-col md:flex-row gap-8">
+            <nav className="w-full md:w-64 flex-shrink-0 space-y-1">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-12 animate-pulse rounded-xl bg-neutral-100 dark:bg-neutral-800" />
+              ))}
+            </nav>
+            <div className="flex-1 bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-6 md:p-8">
+              <SettingsFormSkeleton />
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (!site) {
@@ -429,11 +501,15 @@ export default function SiteSettingsPage() {
                         type="text"
                         id="name"
                         required
+                        maxLength={100}
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-lg bg-neutral-50/50 dark:bg-neutral-900/50 focus:bg-white dark:focus:bg-neutral-900 
                         focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all duration-200 dark:text-white"
                       />
+                      {formData.name.length > 80 && (
+                        <span className={`text-xs tabular-nums ${formData.name.length > 90 ? 'text-amber-500' : 'text-neutral-400'}`}>{formData.name.length}/100</span>
+                      )}
                     </div>
 
                     <div className="space-y-1.5">
@@ -970,7 +1046,7 @@ export default function SiteSettingsPage() {
                   </p>
                 </div>
                 {goalsLoading ? (
-                  <div className="py-8 text-center text-neutral-500 dark:text-neutral-400">Loading goals…</div>
+                  <GoalsListSkeleton />
                 ) : (
                   <>
                     {canEdit && (
@@ -1037,6 +1113,7 @@ export default function SiteSettingsPage() {
               value={goalForm.name}
               onChange={(e) => setGoalForm({ ...goalForm, name: e.target.value })}
               placeholder="e.g. Signups"
+              autoFocus
               className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white"
               required
             />
@@ -1048,10 +1125,14 @@ export default function SiteSettingsPage() {
               value={goalForm.event_name}
               onChange={(e) => setGoalForm({ ...goalForm, event_name: e.target.value })}
               placeholder="e.g. signup_click (letters, numbers, underscores only)"
+              maxLength={64}
               className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white"
               required
             />
-            <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">Only letters, numbers, and underscores; spaces become underscores. Invalid characters cannot be used. Max 64 characters after formatting.</p>
+            <div className="flex justify-between mt-1">
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">Letters, numbers, and underscores only. Spaces become underscores.</p>
+              <span className={`text-xs tabular-nums ${goalForm.event_name.length > 56 ? 'text-amber-500' : 'text-neutral-400'}`}>{goalForm.event_name.length}/64</span>
+            </div>
             {editingGoal && goalForm.event_name.trim().toLowerCase().replace(/\s+/g, '_') !== editingGoal.event_name && (
               <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">Changing event name does not reassign events already tracked under the previous name.</p>
             )}

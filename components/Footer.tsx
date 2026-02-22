@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { GithubIcon, TwitterIcon, SwissFlagIcon } from '@ciphera-net/ui'
 
 interface FooterProps {
-  LinkComponent?: any
+  LinkComponent?: React.ElementType
   appName?: string
   isAuthenticated?: boolean
 }

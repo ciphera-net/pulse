@@ -162,7 +162,7 @@ function WelcomeContent() {
         setStep(3)
       }
     } catch (err) {
-      toast.error(getAuthErrorMessage(err) || 'Failed to switch organization')
+      toast.error(getAuthErrorMessage(err) || 'Failed to switch workspace')
     } finally {
       setSwitchingOrgId(null)
     }
@@ -659,6 +659,7 @@ function WelcomeContent() {
                     placeholder="My Website"
                     value={siteName}
                     onChange={(e) => setSiteName(e.target.value)}
+                    maxLength={100}
                     className="w-full"
                   />
                 </div>
@@ -672,6 +673,7 @@ function WelcomeContent() {
                     placeholder="example.com"
                     value={siteDomain}
                     onChange={(e) => setSiteDomain(e.target.value.toLowerCase().trim())}
+                    maxLength={253}
                     className="w-full"
                   />
                   <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">

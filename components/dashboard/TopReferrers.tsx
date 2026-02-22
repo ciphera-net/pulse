@@ -1,9 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { logger } from '@/lib/utils/logger'
+import Image from 'next/image'
 import { formatNumber } from '@ciphera-net/ui'
 import { getReferrerDisplayName, getReferrerFavicon, getReferrerIcon, mergeReferrersByDisplayName } from '@/lib/utils/icons'
-import { Modal, GlobeIcon, Spinner } from '@ciphera-net/ui'
+import { Modal, GlobeIcon } from '@ciphera-net/ui'
+import { ListSkeleton } from '@/components/skeletons'
 import { getTopReferrers, TopReferrer } from '@/lib/api/stats'
 
 interface TopReferrersProps {
@@ -38,11 +41,14 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
     const useFavicon = faviconUrl && !faviconFailed.has(referrer)
     if (useFavicon) {
       return (
-        <img
+        <Image
           src={faviconUrl}
           alt=""
+          width={20}
+          height={20}
           className="w-5 h-5 flex-shrink-0 rounded object-contain"
           onError={() => setFaviconFailed((prev) => new Set(prev).add(referrer))}
+          unoptimized
         />
       )
     }
@@ -61,7 +67,7 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
           )
           setFullData(filtered)
         } catch (e) {
-          console.error(e)
+          logger.error(e)
         } finally {
           setIsLoadingFull(false)
         }
@@ -134,9 +140,8 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
       >
         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
           {isLoadingFull ? (
-            <div className="py-8 flex flex-col items-center gap-2">
-              <Spinner />
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading...</p>
+            <div className="py-4">
+              <ListSkeleton rows={10} />
             </div>
           ) : (
             mergeReferrersByDisplayName(fullData.length > 0 ? fullData : filteredReferrers).map((ref, index) => (

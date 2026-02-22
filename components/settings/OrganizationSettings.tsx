@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { setSessionAction } from '@/app/actions/auth'
+import { logger } from '@/lib/utils/logger'
 import { useAuth } from '@/lib/auth/context'
 import { 
   deleteOrganization, 
@@ -37,6 +39,7 @@ import {
   LayoutDashboardIcon,
   Spinner,
 } from '@ciphera-net/ui'
+import { MembersListSkeleton, InvoicesListSkeleton, AuditLogSkeleton, SettingsFormSkeleton, SkeletonCard } from '@/components/skeletons'
 
 // * Bell icon for notifications tab
 function BellIcon({ className }: { className?: string }) {
@@ -47,7 +50,6 @@ function BellIcon({ className }: { className?: string }) {
     </svg>
   )
 }
-// @ts-ignore
 import { Button, Input } from '@ciphera-net/ui'
 
 export default function OrganizationSettings() {
@@ -169,7 +171,7 @@ export default function OrganizationSettings() {
       setOrgName(orgData.name)
       setOrgSlug(orgData.slug)
     } catch (error) {
-      console.error('Failed to load data:', error)
+      logger.error('Failed to load data:', error)
       // toast.error('Failed to load members')
     } finally {
       setIsLoadingMembers(false)
@@ -183,7 +185,7 @@ export default function OrganizationSettings() {
       const sub = await getSubscription()
       setSubscription(sub)
     } catch (error) {
-      console.error('Failed to load subscription:', error)
+      logger.error('Failed to load subscription:', error)
       // toast.error('Failed to load subscription details')
     } finally {
       setIsLoadingSubscription(false)
@@ -197,7 +199,7 @@ export default function OrganizationSettings() {
       const invs = await getInvoices()
       setInvoices(invs)
     } catch (error) {
-      console.error('Failed to load invoices:', error)
+      logger.error('Failed to load invoices:', error)
     } finally {
       setIsLoadingInvoices(false)
     }
@@ -246,8 +248,8 @@ export default function OrganizationSettings() {
       setAuditEntries(Array.isArray(entries) ? entries : [])
       setAuditTotal(typeof total === 'number' ? total : 0)
     } catch (error) {
-      console.error('Failed to load audit log', error)
-      toast.error(getAuthErrorMessage(error as Error) || 'Failed to load audit log')
+      logger.error('Failed to load audit log', error)
+      toast.error(getAuthErrorMessage(error as Error) || 'Failed to load audit log entries')
     } finally {
       setIsLoadingAudit(false)
     }
@@ -278,7 +280,7 @@ export default function OrganizationSettings() {
       setNotificationSettings(res.settings || {})
       setNotificationCategories(res.categories || [])
     } catch (error) {
-      console.error('Failed to load notification settings', error)
+      logger.error('Failed to load notification settings', error)
       toast.error(getAuthErrorMessage(error as Error) || 'Failed to load notification settings')
     } finally {
       setIsLoadingNotificationSettings(false)
@@ -331,8 +333,8 @@ export default function OrganizationSettings() {
     try {
       const { url } = await createPortalSession()
       window.location.href = url
-    } catch (error: any) {
-      toast.error(getAuthErrorMessage(error) || error.message || 'Failed to redirect to billing portal')
+    } catch (error: unknown) {
+      toast.error(getAuthErrorMessage(error) || (error instanceof Error ? error.message : '') || 'Failed to open billing portal')
       setIsRedirectingToPortal(false)
     }
   }
@@ -344,8 +346,8 @@ export default function OrganizationSettings() {
       toast.success(atPeriodEnd ? 'Subscription will cancel at the end of the billing period.' : 'Subscription canceled.')
       setShowCancelPrompt(false)
       loadSubscription()
-    } catch (error: any) {
-      toast.error(getAuthErrorMessage(error) || error.message || 'Failed to cancel subscription')
+    } catch (error: unknown) {
+      toast.error(getAuthErrorMessage(error) || (error instanceof Error ? error.message : '') || 'Failed to cancel subscription')
     } finally {
       setCancelLoadingAction(null)
     }
@@ -357,8 +359,8 @@ export default function OrganizationSettings() {
       await resumeSubscription()
       toast.success('Subscription will continue. Cancellation has been undone.')
       loadSubscription()
-    } catch (error: any) {
-      toast.error(getAuthErrorMessage(error) || error.message || 'Failed to resume subscription')
+    } catch (error: unknown) {
+      toast.error(getAuthErrorMessage(error) || (error instanceof Error ? error.message : '') || 'Failed to resume subscription')
     } finally {
       setIsResuming(false)
     }
@@ -396,8 +398,8 @@ export default function OrganizationSettings() {
         if (url) window.location.href = url
         else throw new Error('No checkout URL')
       }
-    } catch (error: any) {
-      toast.error(getAuthErrorMessage(error) || error.message || 'Something went wrong.')
+    } catch (error: unknown) {
+      toast.error(getAuthErrorMessage(error) || (error instanceof Error ? error.message : '') || 'Failed to update plan')
     } finally {
       setIsChangingPlan(false)
     }
@@ -417,17 +419,18 @@ export default function OrganizationSettings() {
       // * Switch to personal context explicitly
       try {
         const { access_token } = await switchContext(null)
-        localStorage.setItem('token', access_token)
+        await setSessionAction(access_token)
+        sessionStorage.setItem('pulse_switching_org', 'true')
         window.location.href = '/'
       } catch (switchErr) {
-        console.error('Failed to switch to personal context after delete:', switchErr)
-        // Fallback: reload and let backend handle invalid token if any
+        logger.error('Failed to switch to personal context after delete:', switchErr)
+        sessionStorage.setItem('pulse_switching_org', 'true')
         window.location.href = '/'
       }
       
-    } catch (err: any) {
-      console.error(err)
-      toast.error(getAuthErrorMessage(err) || err.message || 'Failed to delete organization')
+    } catch (err: unknown) {
+      logger.error(err)
+      toast.error(getAuthErrorMessage(err) || (err instanceof Error ? err.message : '') || 'Failed to delete organization')
       setIsDeleting(false)
     }
   }
@@ -455,8 +458,8 @@ export default function OrganizationSettings() {
       setCaptchaSolution('')
       setCaptchaToken('')
       loadMembers() // Refresh list
-    } catch (error: any) {
-      toast.error(getAuthErrorMessage(error) || error.message || 'Failed to send invitation')
+    } catch (error: unknown) {
+      toast.error(getAuthErrorMessage(error) || (error instanceof Error ? error.message : '') || 'Failed to send invitation')
     } finally {
       setIsInviting(false)
     }
@@ -467,8 +470,8 @@ export default function OrganizationSettings() {
       await revokeInvitation(currentOrgId, inviteId)
       toast.success('Invitation revoked')
       loadMembers() // Refresh list
-    } catch (error: any) {
-      toast.error(getAuthErrorMessage(error) || error.message || 'Failed to revoke invitation')
+    } catch (error: unknown) {
+      toast.error(getAuthErrorMessage(error) || (error instanceof Error ? error.message : '') || 'Failed to revoke invitation')
     }
   }
 
@@ -482,8 +485,8 @@ export default function OrganizationSettings() {
       toast.success('Organization updated successfully')
       setIsEditing(false)
       loadMembers() 
-    } catch (error: any) {
-      toast.error(getAuthErrorMessage(error) || error.message || 'Failed to update organization')
+    } catch (error: unknown) {
+      toast.error(getAuthErrorMessage(error) || (error instanceof Error ? error.message : '') || 'Failed to save organization settings')
     } finally {
       setIsSaving(false)
     }
@@ -601,7 +604,7 @@ export default function OrganizationSettings() {
                       <Input
                         type="text"
                         value={orgName}
-                        onChange={(e: any) => setOrgName(e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOrgName(e.target.value)}
                         required
                         minLength={2}
                         maxLength={50}
@@ -621,7 +624,7 @@ export default function OrganizationSettings() {
                         <Input
                           type="text"
                           value={orgSlug}
-                          onChange={(e: any) => setOrgSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOrgSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
                           required
                           minLength={3}
                           maxLength={30}
@@ -701,7 +704,7 @@ export default function OrganizationSettings() {
                           type="email" 
                           placeholder="colleague@company.com" 
                           value={inviteEmail}
-                          onChange={(e: any) => setInviteEmail(e.target.value)}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInviteEmail(e.target.value)}
                           required
                           className="bg-white dark:bg-neutral-900"
                         />
@@ -740,9 +743,7 @@ export default function OrganizationSettings() {
                   <h3 className="text-sm font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Active Members</h3>
                   <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden divide-y divide-neutral-200 dark:divide-neutral-800">
                     {isLoadingMembers ? (
-                      <div className="flex items-center justify-center py-8">
-                        <Spinner />
-                      </div>
+                      <MembersListSkeleton />
                     ) : members.length === 0 ? (
                       <div className="p-8 text-center text-neutral-500 dark:text-neutral-400">No members found.</div>
                     ) : (
@@ -821,8 +822,9 @@ export default function OrganizationSettings() {
                 </div>
 
                 {isLoadingSubscription ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Spinner />
+                  <div className="space-y-4">
+                    <SkeletonCard className="h-32" />
+                    <SkeletonCard className="h-20" />
                   </div>
                 ) : !subscription ? (
                   <div className="p-6 text-center bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-200 dark:border-neutral-800">
@@ -1046,9 +1048,7 @@ export default function OrganizationSettings() {
                       <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-3">Recent invoices</h3>
                       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden divide-y divide-neutral-200 dark:divide-neutral-800">
                         {isLoadingInvoices ? (
-                          <div className="flex items-center justify-center py-8">
-                            <Spinner />
-                          </div>
+                          <InvoicesListSkeleton />
                         ) : invoices.length === 0 ? (
                           <div className="p-8 text-center text-neutral-500 dark:text-neutral-400">No invoices found.</div>
                         ) : (
@@ -1117,9 +1117,7 @@ export default function OrganizationSettings() {
                 </div>
 
                 {isLoadingNotificationSettings ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Spinner />
-                  </div>
+                  <SettingsFormSkeleton />
                 ) : (
                   <div className="space-y-4">
                     <h3 className="text-sm font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Notification categories</h3>
@@ -1149,7 +1147,7 @@ export default function OrganizationSettings() {
                                     toast.success('Notification settings updated')
                                   })
                                   .catch((err) => {
-                                    toast.error(getAuthErrorMessage(err) || 'Failed to update settings')
+                                    toast.error(getAuthErrorMessage(err) || 'Failed to save notification preferences')
                                     setNotificationSettings(prev)
                                   })
                                   .finally(() => setIsSavingNotificationSettings(false))
@@ -1244,9 +1242,7 @@ export default function OrganizationSettings() {
                 {/* Table */}
                 <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden">
                   {isLoadingAudit ? (
-                    <div className="flex items-center justify-center py-12">
-                      <Spinner />
-                    </div>
+                    <AuditLogSkeleton />
                   ) : (auditEntries ?? []).length === 0 ? (
                     <div className="p-8 text-center text-neutral-500">No audit events found.</div>
                   ) : (
