@@ -10,14 +10,30 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { getUserOrganizations, switchContext } from '@/lib/api/organization'
 import { setSessionAction } from '@/app/actions/auth'
+import { LoadingOverlay } from '@ciphera-net/ui'
 import { useRouter } from 'next/navigation'
+
+const ORG_SWITCH_KEY = 'pulse_switching_org'
 
 export default function LayoutContent({ children }: { children: React.ReactNode }) {
   const auth = useAuth()
   const router = useRouter()
   const isOnline = useOnlineStatus()
   const [orgs, setOrgs] = useState<any[]>([])
-  
+  const [isSwitchingOrg, setIsSwitchingOrg] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return sessionStorage.getItem(ORG_SWITCH_KEY) === 'true'
+  })
+
+  // * Clear the switching flag once the page has settled after reload
+  useEffect(() => {
+    if (isSwitchingOrg) {
+      sessionStorage.removeItem(ORG_SWITCH_KEY)
+      const timer = setTimeout(() => setIsSwitchingOrg(false), 600)
+      return () => clearTimeout(timer)
+    }
+  }, [isSwitchingOrg])
+
   // * Fetch organizations for the header organization switcher
   useEffect(() => {
     if (auth.user) {
@@ -32,6 +48,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     try {
       const { access_token } = await switchContext(orgId)
       await setSessionAction(access_token)
+      sessionStorage.setItem(ORG_SWITCH_KEY, 'true')
       window.location.reload()
     } catch (err) {
       console.error('Failed to switch organization', err)
@@ -46,6 +63,10 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
   const barHeightRem = 2.5;
   const headerHeightRem = 6;
   const mainTopPaddingRem = barHeightRem + headerHeightRem;
+
+  if (isSwitchingOrg) {
+    return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" portal={false} />
+  }
 
   return (
     <>
