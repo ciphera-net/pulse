@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { setSessionAction } from '@/app/actions/auth'
 import { useAuth } from '@/lib/auth/context'
 import { 
   deleteOrganization, 
@@ -418,7 +419,7 @@ export default function OrganizationSettings() {
       // * Switch to personal context explicitly
       try {
         const { access_token } = await switchContext(null)
-        localStorage.setItem('token', access_token)
+        await setSessionAction(access_token)
         window.location.href = '/'
       } catch (switchErr) {
         console.error('Failed to switch to personal context after delete:', switchErr)

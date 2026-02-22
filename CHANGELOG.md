@@ -22,6 +22,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Better form experience.** Forms now auto-focus the first field when they open, text inputs enforce character limits with a visible counter when you're close, and the settings page warns you before navigating away with unsaved changes.
 - **Tighter name limits.** Site, funnel, and monitor names are now capped at 100 characters instead of 255 — long enough for any real name, short enough to not break the UI.
 
+### Fixed
+
+- **Organization context switch.** Switching away from a deleted organization now stores the session correctly instead of using an insecure fallback.
+
 ## [0.10.0-alpha] - 2026-02-21
 
 ### Changed
