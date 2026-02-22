@@ -184,46 +184,5 @@ async function apiRequest<T>(
   return response.json()
 }
 
-// * Legacy axios-style client for compatibility
-export function getClient() {
-  return {
-    post: async (endpoint: string, body: any) => {
-      // Handle the case where endpoint might start with /api (remove it if our base client adds it, OR adjust usage)
-      // Our apiRequest adds /api/v1 prefix.
-      // If we pass /api/billing/checkout, apiRequest makes it /api/v1/api/billing/checkout -> Wrong.
-      // We should probably just expose apiRequest directly or wrap it properly.
-      
-      // Let's adapt the endpoint:
-      // If endpoint starts with /api/, strip it because apiRequest adds /api/v1
-      // BUT WAIT: The backend billing endpoint is likely at /api/billing/checkout (not /api/v1/billing/checkout) if I registered it at root group?
-      // Let's check backend routing.
-      // In main.go: billingGroup := router.Group("/api/billing") -> so it is at /api/billing/... NOT /api/v1/billing...
-      
-      // So we need a raw fetch for this, or modify apiRequest to support non-v1 routes.
-      // For now, let's just implement a simple fetch wrapper that mimics axios
-      
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-      const headers: any = { 'Content-Type': 'application/json' }
-      // Although we use cookies, sometimes we might fallback to token if cookies fail? 
-      // Pulse uses cookies primarily now.
-      
-      const url = `${API_URL}${endpoint}`
-      const res = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body),
-        credentials: 'include'
-      })
-      
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.error || 'Request failed')
-      }
-      
-      return { data: await res.json() }
-    }
-  }
-}
-
 export const authFetch = apiRequest
 export default apiRequest
