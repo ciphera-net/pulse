@@ -284,8 +284,8 @@ function UptimeStatusBar({
 
 // * Component: Response time chart (Recharts area chart)
 function ResponseTimeChart({ checks }: { checks: UptimeCheck[] }) {
-  const { theme } = useTheme()
-  const colors = theme === 'dark' ? CHART_COLORS_DARK : CHART_COLORS_LIGHT
+  const { resolvedTheme } = useTheme()
+  const colors = resolvedTheme === 'dark' ? CHART_COLORS_DARK : CHART_COLORS_LIGHT
 
   // * Prepare data in chronological order (oldest first)
   const data = [...checks]
