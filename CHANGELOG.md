@@ -37,6 +37,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Removed debug logs.** Auth and organization-switching details no longer leak into the browser console in production. Error logs are now also suppressed in production and only appear during development.
 - **Dark mode uptime chart.** The response time chart on the uptime page now correctly follows your dark mode preference instead of always showing a white tooltip background.
 - **Onboarding form limits.** The welcome page now enforces the same character limits as the rest of the app.
+- **Audit log reliability.** Failed audit log writes are now logged to the server instead of being silently ignored, so gaps in the audit trail are detectable.
 
 ## [0.10.0-alpha] - 2026-02-21
 
