@@ -12,49 +12,13 @@ import { getSubscription, type SubscriptionDetails } from '@/lib/api/billing'
 import { LoadingOverlay } from '@ciphera-net/ui'
 import SiteList from '@/components/sites/SiteList'
 import { Button } from '@ciphera-net/ui'
+import Image from 'next/image'
 import { BarChartIcon, LockIcon, ZapIcon, CheckCircleIcon, XIcon, GlobeIcon } from '@ciphera-net/ui'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { getSitesLimitForPlan } from '@/lib/plans'
 
-const MOCK_STATS = [
-  { label: 'UNIQUE VISITORS', value: '12,847', trend: '+14%', up: true },
-  { label: 'TOTAL PAGEVIEWS', value: '48,293', trend: '+8%', up: true },
-  { label: 'BOUNCE RATE', value: '42%', trend: '-3%', up: true },
-  { label: 'VISIT DURATION', value: '2m 34s', trend: '+11%', up: true },
-]
-
-const MOCK_CHART_POINTS = [
-  20, 35, 28, 45, 38, 52, 48, 65, 58, 72, 68, 85, 78, 92, 88, 105,
-  98, 110, 95, 115, 108, 125, 118, 130, 122, 138, 142, 155, 148, 160,
-]
-
-const MOCK_PAGES = [
-  { path: '/', views: '8,421' },
-  { path: '/pricing', views: '3,287' },
-  { path: '/features', views: '2,104' },
-  { path: '/blog/getting-started', views: '1,856' },
-  { path: '/docs/installation', views: '1,203' },
-]
-
-const MOCK_REFERRERS = [
-  { name: 'google.com', views: '5,832' },
-  { name: 'twitter.com', views: '2,417' },
-  { name: 'github.com', views: '1,894' },
-  { name: 'reddit.com', views: '1,105' },
-  { name: 'Direct / None', views: '987' },
-]
-
 function DashboardPreview() {
-  const chartMax = Math.max(...MOCK_CHART_POINTS)
-  const chartH = 180
-  const points = MOCK_CHART_POINTS.map((v, i) => {
-    const x = (i / (MOCK_CHART_POINTS.length - 1)) * 100
-    const y = chartH - (v / chartMax) * (chartH - 20)
-    return `${x},${y}`
-  }).join(' ')
-  const areaPoints = `0,${chartH} ${points} 100,${chartH}`
-
   return (
     <div className="relative w-full max-w-7xl mx-auto mt-20 mb-32">
       <div className="absolute inset-0 bg-brand-orange/20 blur-[100px] -z-10 rounded-full opacity-50" />
@@ -63,7 +27,7 @@ function DashboardPreview() {
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7, delay: 0.4 }}
-        className="relative rounded-xl border border-neutral-200/50 dark:border-neutral-800/50 bg-white dark:bg-neutral-900 shadow-2xl overflow-hidden"
+        className="relative rounded-xl border border-neutral-200/50 dark:border-neutral-800/50 shadow-2xl overflow-hidden"
       >
         {/* * Browser chrome */}
         <div className="h-8 bg-neutral-100 dark:bg-neutral-800/80 border-b border-neutral-200 dark:border-white/5 flex items-center px-4 gap-2">
@@ -73,88 +37,17 @@ function DashboardPreview() {
           <div className="ml-4 flex-1 max-w-xs h-5 rounded bg-neutral-200 dark:bg-neutral-700/50" />
         </div>
 
-        <div className="p-4 sm:p-6">
-          {/* * Header row */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div>
-                <div className="text-lg font-bold text-neutral-900 dark:text-white">acme.com</div>
-                <div className="text-xs text-neutral-500">Last 30 days</div>
-              </div>
-              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-500/10 rounded-full border border-green-500/20">
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
-                </span>
-                <span className="text-xs font-medium text-green-700 dark:text-green-400">24 online</span>
-              </div>
-            </div>
-          </div>
-
-          {/* * Stat cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-neutral-200 dark:divide-neutral-800 border border-neutral-200 dark:border-neutral-800 rounded-t-lg">
-            {MOCK_STATS.map((s, i) => (
-              <div
-                key={i}
-                className={`p-3 sm:p-4 ${i === 0 ? 'bg-neutral-50 dark:bg-neutral-800/50' : ''}`}
-              >
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500 mb-1">{s.label}</div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-lg sm:text-xl font-bold text-neutral-900 dark:text-white">{s.value}</span>
-                  <span className={`text-xs font-medium ${s.up ? 'text-emerald-600 dark:text-emerald-500' : 'text-red-600 dark:text-red-500'}`}>
-                    {s.trend}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* * Chart area */}
-          <div className="border border-t-0 border-neutral-200 dark:border-neutral-800 rounded-b-lg p-4 mb-6 bg-white dark:bg-neutral-900">
-            <svg viewBox={`0 0 100 ${chartH}`} preserveAspectRatio="none" className="w-full h-[180px]">
-              <defs>
-                <linearGradient id="mockGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--color-brand-orange)" stopOpacity="0.3" />
-                  <stop offset="100%" stopColor="var(--color-brand-orange)" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              <polygon points={areaPoints} fill="url(#mockGrad)" />
-              <polyline points={points} fill="none" stroke="var(--color-brand-orange)" strokeWidth="0.5" vectorEffect="non-scaling-stroke" />
-            </svg>
-          </div>
-
-          {/* * Two-column widgets */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* * Top Pages */}
-            <div className="border border-neutral-200 dark:border-neutral-800 rounded-lg overflow-hidden">
-              <div className="px-4 py-3 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/30">
-                <span className="text-sm font-semibold text-neutral-900 dark:text-white">Top Pages</span>
-              </div>
-              <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
-                {MOCK_PAGES.map((p, i) => (
-                  <div key={i} className="flex items-center justify-between px-4 py-2.5">
-                    <span className="text-sm text-neutral-700 dark:text-neutral-300 truncate">{p.path}</span>
-                    <span className="text-sm font-medium text-neutral-900 dark:text-white ml-4 shrink-0">{p.views}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* * Top Referrers */}
-            <div className="border border-neutral-200 dark:border-neutral-800 rounded-lg overflow-hidden">
-              <div className="px-4 py-3 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/30">
-                <span className="text-sm font-semibold text-neutral-900 dark:text-white">Top Referrers</span>
-              </div>
-              <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
-                {MOCK_REFERRERS.map((r, i) => (
-                  <div key={i} className="flex items-center justify-between px-4 py-2.5">
-                    <span className="text-sm text-neutral-700 dark:text-neutral-300 truncate">{r.name}</span>
-                    <span className="text-sm font-medium text-neutral-900 dark:text-white ml-4 shrink-0">{r.views}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+        {/* * Screenshot with bottom fade */}
+        <div className="relative max-h-[700px] overflow-hidden">
+          <Image
+            src="/dashboard-preview.png"
+            alt="Pulse analytics dashboard showing visitor stats, charts, top pages, referrers, locations, and technology breakdown"
+            width={1920}
+            height={3000}
+            className="w-full h-auto object-cover object-top"
+            priority
+          />
+          <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-transparent from-60% to-white dark:to-neutral-950" />
         </div>
       </motion.div>
     </div>
