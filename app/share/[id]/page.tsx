@@ -6,6 +6,7 @@ import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { getPublicDashboard, getPublicStats, getPublicDailyStats, getPublicRealtime, getPublicPerformanceByPage, type DashboardData, type Stats, type DailyStat, type PerformanceByPageStat } from '@/lib/api/stats'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
+import { ApiError } from '@/lib/api/client'
 import { LoadingOverlay, Button } from '@ciphera-net/ui'
 import Chart from '@/components/dashboard/Chart'
 import TopPages from '@/components/dashboard/ContentStats'
@@ -154,8 +155,9 @@ export default function PublicDashboardPage() {
       setCaptchaId('')
       setCaptchaSolution('')
       setCaptchaToken('')
-    } catch (error: any) {
-      if ((error.status === 401 || error.response?.status === 401) && (error.data?.is_protected || error.response?.data?.is_protected)) {
+    } catch (error: unknown) {
+      const apiErr = error instanceof ApiError ? error : null
+      if (apiErr?.status === 401 && (apiErr.data as Record<string, unknown>)?.is_protected) {
         setIsPasswordProtected(true)
         if (password) {
           toast.error('Invalid password or captcha')
@@ -164,7 +166,7 @@ export default function PublicDashboardPage() {
           setCaptchaSolution('')
           setCaptchaToken('')
         }
-      } else if (error.status === 404 || error.response?.status === 404) {
+      } else if (apiErr?.status === 404) {
         toast.error('Site not found')
       } else if (!silent) {
         toast.error(getAuthErrorMessage(error) || 'Failed to load public dashboard')

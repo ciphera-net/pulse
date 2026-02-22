@@ -150,8 +150,7 @@ export default function PricingSection() {
 
   // Helper to get all price details
   const getPriceDetails = (planId: string) => {
-    // @ts-ignore
-    const basePrice = currentTraffic.prices[planId]
+    const basePrice = currentTraffic.prices[planId as keyof typeof currentTraffic.prices]
     
     // Handle "Custom"
     if (basePrice === null || basePrice === undefined) return null
@@ -203,7 +202,7 @@ export default function PricingSection() {
         throw new Error('No checkout URL returned')
       }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Checkout error:', error)
       toast.error('Failed to start checkout — please try again')
     } finally {

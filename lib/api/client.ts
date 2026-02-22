@@ -24,9 +24,9 @@ export function getSignupUrl(redirectPath = '/auth/callback') {
 
 export class ApiError extends Error {
   status: number
-  data?: any
+  data?: Record<string, unknown>
   
-  constructor(message: string, status: number, data?: any) {
+  constructor(message: string, status: number, data?: Record<string, unknown>) {
     super(message)
     this.status = status
     this.data = data
