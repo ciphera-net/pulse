@@ -84,7 +84,7 @@ export default function CreateFunnelPage() {
       toast.success('Funnel created')
       router.push(`/sites/${siteId}/funnels`)
     } catch (error) {
-      toast.error('Failed to create funnel')
+      toast.error('Failed to create funnel. Please try again.')
     } finally {
       setSaving(false)
     }

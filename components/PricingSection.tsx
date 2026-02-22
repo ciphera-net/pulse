@@ -205,7 +205,7 @@ export default function PricingSection() {
 
     } catch (error: any) {
       console.error('Checkout error:', error)
-      toast.error('Failed to start checkout. Please try again.')
+      toast.error('Failed to start checkout — please try again')
     } finally {
       setLoadingPlan(null)
     }

@@ -170,7 +170,7 @@ export default function HomePage() {
       const data = await listSites()
       setSites(Array.isArray(data) ? data : [])
     } catch (error: any) {
-      toast.error(getAuthErrorMessage(error) || 'Failed to load sites: ' + ((error as Error)?.message || 'Unknown error'))
+      toast.error(getAuthErrorMessage(error) || 'Failed to load your sites')
       setSites([])
     } finally {
       setSitesLoading(false)
@@ -199,7 +199,7 @@ export default function HomePage() {
       toast.success('Site deleted successfully')
       loadSites()
     } catch (error: any) {
-      toast.error(getAuthErrorMessage(error) || 'Failed to delete site: ' + ((error as Error)?.message || 'Unknown error'))
+      toast.error(getAuthErrorMessage(error) || 'Failed to delete site')
     }
   }
 

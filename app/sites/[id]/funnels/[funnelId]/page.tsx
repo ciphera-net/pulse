@@ -64,7 +64,7 @@ export default function FunnelReportPage() {
       if (status === 404) setLoadError('not_found')
       else if (status === 403) setLoadError('forbidden')
       else setLoadError('error')
-      if (status !== 404 && status !== 403) toast.error('Failed to load funnel data')
+      if (status !== 404 && status !== 403) toast.error('Failed to load funnel details')
     } finally {
       setLoading(false)
     }

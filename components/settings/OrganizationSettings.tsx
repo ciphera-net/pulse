@@ -248,7 +248,7 @@ export default function OrganizationSettings() {
       setAuditTotal(typeof total === 'number' ? total : 0)
     } catch (error) {
       console.error('Failed to load audit log', error)
-      toast.error(getAuthErrorMessage(error as Error) || 'Failed to load audit log')
+      toast.error(getAuthErrorMessage(error as Error) || 'Failed to load audit log entries')
     } finally {
       setIsLoadingAudit(false)
     }
@@ -333,7 +333,7 @@ export default function OrganizationSettings() {
       const { url } = await createPortalSession()
       window.location.href = url
     } catch (error: any) {
-      toast.error(getAuthErrorMessage(error) || error.message || 'Failed to redirect to billing portal')
+      toast.error(getAuthErrorMessage(error) || error.message || 'Failed to open billing portal')
       setIsRedirectingToPortal(false)
     }
   }
@@ -398,7 +398,7 @@ export default function OrganizationSettings() {
         else throw new Error('No checkout URL')
       }
     } catch (error: any) {
-      toast.error(getAuthErrorMessage(error) || error.message || 'Something went wrong.')
+      toast.error(getAuthErrorMessage(error) || error.message || 'Failed to update member role')
     } finally {
       setIsChangingPlan(false)
     }
@@ -484,7 +484,7 @@ export default function OrganizationSettings() {
       setIsEditing(false)
       loadMembers() 
     } catch (error: any) {
-      toast.error(getAuthErrorMessage(error) || error.message || 'Failed to update organization')
+      toast.error(getAuthErrorMessage(error) || error.message || 'Failed to save organization settings')
     } finally {
       setIsSaving(false)
     }
@@ -1145,7 +1145,7 @@ export default function OrganizationSettings() {
                                     toast.success('Notification settings updated')
                                   })
                                   .catch((err) => {
-                                    toast.error(getAuthErrorMessage(err) || 'Failed to update settings')
+                                    toast.error(getAuthErrorMessage(err) || 'Failed to save notification preferences')
                                     setNotificationSettings(prev)
                                   })
                                   .finally(() => setIsSavingNotificationSettings(false))

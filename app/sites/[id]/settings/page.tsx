@@ -152,7 +152,7 @@ export default function SiteSettingsPage() {
         setIsPasswordEnabled(false)
       }
     } catch (error: any) {
-      toast.error(getAuthErrorMessage(error) || 'Failed to load site: ' + ((error as Error)?.message || 'Unknown error'))
+      toast.error(getAuthErrorMessage(error) || 'Failed to load site settings')
     } finally {
       setLoading(false)
     }
@@ -266,7 +266,7 @@ export default function SiteSettingsPage() {
       toast.success('Site updated successfully')
       loadSite()
     } catch (error: any) {
-      toast.error(getAuthErrorMessage(error) || 'Failed to update site: ' + ((error as Error)?.message || 'Unknown error'))
+      toast.error(getAuthErrorMessage(error) || 'Failed to save site settings')
     } finally {
       setSaving(false)
     }
@@ -281,7 +281,7 @@ export default function SiteSettingsPage() {
       await resetSiteData(siteId)
       toast.success('All site data has been reset')
     } catch (error: any) {
-      toast.error(getAuthErrorMessage(error) || 'Failed to reset data: ' + ((error as Error)?.message || 'Unknown error'))
+      toast.error(getAuthErrorMessage(error) || 'Failed to reset site data')
     }
   }
 
@@ -297,7 +297,7 @@ export default function SiteSettingsPage() {
       toast.success('Site deleted successfully')
       router.push('/')
     } catch (error: any) {
-      toast.error(getAuthErrorMessage(error) || 'Failed to delete site: ' + ((error as Error)?.message || 'Unknown error'))
+      toast.error(getAuthErrorMessage(error) || 'Failed to delete site')
     }
   }
 

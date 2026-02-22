@@ -191,7 +191,7 @@ export default function SiteDashboardPage() {
       setLastUpdatedAt(Date.now())
     } catch (error: unknown) {
       if (!silent) {
-        toast.error(getAuthErrorMessage(error) || 'Failed to load data: ' + ((error as Error)?.message || 'Unknown error'))
+        toast.error(getAuthErrorMessage(error) || 'Failed to load dashboard analytics')
       }
     } finally {
       if (!silent) setLoading(false)
