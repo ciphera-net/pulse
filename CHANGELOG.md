@@ -20,6 +20,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Smooth organization switching.** Switching between organizations now shows a branded loading screen instead of a blank flash while the page reloads.
 - **Graceful server shutdown.** Deployments no longer kill in-flight requests or interrupt background tasks. The server finishes ongoing work before shutting down.
 - **Database connection pooling.** The backend now limits and recycles database connections, preventing exhaustion under load and reducing query latency.
+- **Date range validation.** Analytics, funnel, and uptime queries now reject invalid date ranges (end before start, or spans longer than a year) instead of silently returning empty or oversized results.
+- **Excluded paths limit.** Sites can now have up to 50 excluded paths. Previously there was no cap, which could slow down event processing.
 
 ### Changed
 
@@ -29,18 +31,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Tighter name limits.** Site, funnel, and monitor names are now capped at 100 characters instead of 255 — long enough for any real name, short enough to not break the UI.
 - **Stricter type safety.** Eliminated all `any` types and `@ts-ignore` suppressions across the codebase, so the TypeScript compiler catches more bugs at build time.
 - **Smaller page downloads.** Icon imports are now tree-shaken so only the icons actually used are included in the bundle.
+- **Removed debug logs.** Auth and organization-switching details no longer leak into the browser console in production. Error logs are now also suppressed in production and only appear during development.
 
 ### Fixed
 
 - **No more loading flicker.** Fast-loading pages no longer flash a loading state for a split second before showing content.
 - **Organization context switch.** Switching away from a deleted organization now stores the session correctly instead of using an insecure fallback.
-- **Removed debug logs.** Auth and organization-switching details no longer leak into the browser console in production. Error logs are now also suppressed in production and only appear during development.
 - **Dark mode uptime chart.** The response time chart on the uptime page now correctly follows your dark mode preference instead of always showing a white tooltip background.
 - **Onboarding form limits.** The welcome page now enforces the same character limits as the rest of the app.
 - **Audit log reliability.** Failed audit log writes are now logged to the server instead of being silently ignored, so gaps in the audit trail are detectable.
 - **Safer error messages.** Server errors no longer expose internal details (database errors, stack traces) to the browser. You see a clear message like "Failed to create site" while the full error is logged server-side for debugging.
-- **Date range validation.** Analytics, funnel, and uptime queries now reject invalid date ranges (end before start, or spans longer than a year) instead of silently returning empty or oversized results.
-- **Excluded paths limit.** Sites can now have up to 50 excluded paths. Previously there was no cap, which could slow down event processing.
+- **Content Security Policy.** The backend CSP header was being overwritten by a duplicate, breaking captcha integration. The policy is now set in one place.
 
 ## [0.10.0-alpha] - 2026-02-21
 
