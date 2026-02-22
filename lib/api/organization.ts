@@ -47,7 +47,6 @@ export async function getUserOrganizations(): Promise<OrganizationMember[]> {
 // Switch Context (Get token for specific org)
 export async function switchContext(organizationId: string | null): Promise<{ access_token: string; expires_in: number }> {
   const payload = { organization_id: organizationId || '' }
-  console.log('Sending switch context request:', payload)
   return await authFetch<{ access_token: string; expires_in: number }>('/auth/switch-context', {
     method: 'POST',
     body: JSON.stringify(payload),

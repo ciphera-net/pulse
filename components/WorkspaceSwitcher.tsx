@@ -12,7 +12,6 @@ export default function OrganizationSwitcher({ orgs, activeOrgId }: { orgs: Orga
   const [switching, setSwitching] = useState<string | null>(null)
 
   const handleSwitch = async (orgId: string | null) => {
-    console.log('Switching to organization:', orgId)
     setSwitching(orgId || 'personal')
     try {
       // * If orgId is null, we can't switch context via API in the same way if strict mode is on

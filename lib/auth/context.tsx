@@ -159,7 +159,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // * If user has organizations but no context (org_id), switch to the first one
           if (!user.org_id && organizations.length > 0) {
              const firstOrg = organizations[0]
-             console.log('Auto-switching to organization:', firstOrg.organization_name)
              
              try {
                  const { access_token } = await switchContext(firstOrg.organization_id)

@@ -112,18 +112,13 @@ export async function exchangeAuthCode(code: string, codeVerifier: string, redir
 
 export async function setSessionAction(accessToken: string, refreshToken?: string) {
     try {
-        console.log('[setSessionAction] Decoding token...')
         if (!accessToken) throw new Error('Access token is missing')
         
         const payloadPart = accessToken.split('.')[1]
         const payload: UserPayload = JSON.parse(Buffer.from(payloadPart, 'base64').toString())
         
-        console.log('[setSessionAction] Token Payload:', { sub: payload.sub, org_id: payload.org_id })
-
         const cookieStore = await cookies()
         const cookieDomain = getCookieDomain()
-        
-        console.log('[setSessionAction] Setting cookies with domain:', cookieDomain)
 
         cookieStore.set('access_token', accessToken, {
             httpOnly: true,
@@ -146,8 +141,6 @@ export async function setSessionAction(accessToken: string, refreshToken?: strin
             })
         }
         
-        console.log('[setSessionAction] Cookies set successfully')
-
         return {
             success: true,
             user: {
