@@ -7,6 +7,7 @@ import type { Stats } from '@/lib/api/stats'
 import { formatNumber } from '@ciphera-net/ui'
 import { BarChartIcon, SettingsIcon, BookOpenIcon, ExternalLinkIcon, Button } from '@ciphera-net/ui'
 import { useAuth } from '@/lib/auth/context'
+import { FAVICON_SERVICE_URL } from '@/lib/utils/icons'
 
 export type SiteStatsMap = Record<string, { stats: Stats }>
 
@@ -36,7 +37,7 @@ function SiteCard({ site, stats, statsLoading, onDelete, canDelete }: SiteCardPr
         <div className="flex items-center gap-4">
           <div className="h-12 w-12 overflow-hidden rounded-lg border border-neutral-100 bg-neutral-50 p-1 dark:border-neutral-800 dark:bg-neutral-800">
             <Image
-              src={`https://www.google.com/s2/favicons?domain=${site.domain}&sz=64`}
+              src={`${FAVICON_SERVICE_URL}?domain=${site.domain}&sz=64`}
               alt={site.name}
               width={40}
               height={40}

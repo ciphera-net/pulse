@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { FAVICON_SERVICE_URL } from '@/lib/utils/icons'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8082'
 
@@ -46,7 +47,7 @@ export async function generateMetadata({ params }: SharePageParams): Promise<Met
         siteName: 'Pulse by Ciphera',
         type: 'website',
         images: [{
-          url: `https://www.google.com/s2/favicons?domain=${domain}&sz=128`,
+          url: `${FAVICON_SERVICE_URL}?domain=${domain}&sz=128`,
           width: 128,
           height: 128,
           alt: `${domain} favicon`,
