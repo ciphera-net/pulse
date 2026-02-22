@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { formatNumber } from '@ciphera-net/ui'
 import { Modal, ArrowRightIcon, Button } from '@ciphera-net/ui'
 import { TableSkeleton } from '@/components/skeletons'
@@ -111,11 +112,14 @@ export default function Campaigns({ siteId, dateRange }: CampaignsProps) {
     const useFavicon = faviconUrl && !faviconFailed.has(source)
     if (useFavicon) {
       return (
-        <img
+        <Image
           src={faviconUrl}
           alt=""
+          width={20}
+          height={20}
           className="w-5 h-5 flex-shrink-0 rounded object-contain"
           onError={() => setFaviconFailed((prev) => new Set(prev).add(source))}
+          unoptimized
         />
       )
     }
