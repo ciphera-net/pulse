@@ -501,14 +501,14 @@ export default function SiteSettingsPage() {
                         type="text"
                         id="name"
                         required
-                        maxLength={255}
+                        maxLength={100}
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-lg bg-neutral-50/50 dark:bg-neutral-900/50 focus:bg-white dark:focus:bg-neutral-900 
                         focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all duration-200 dark:text-white"
                       />
-                      {formData.name.length > 200 && (
-                        <span className={`text-xs tabular-nums ${formData.name.length > 240 ? 'text-amber-500' : 'text-neutral-400'}`}>{formData.name.length}/255</span>
+                      {formData.name.length > 80 && (
+                        <span className={`text-xs tabular-nums ${formData.name.length > 90 ? 'text-amber-500' : 'text-neutral-400'}`}>{formData.name.length}/100</span>
                       )}
                     </div>
 
