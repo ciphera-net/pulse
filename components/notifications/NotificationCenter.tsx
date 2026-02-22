@@ -10,6 +10,7 @@ import { listNotifications, markNotificationRead, markAllNotificationsRead, type
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { formatTimeAgo, getTypeIcon } from '@/lib/utils/notifications'
 import { SettingsIcon } from '@ciphera-net/ui'
+import { SkeletonLine, SkeletonCircle } from '@/components/skeletons'
 
 // * Bell icon (simple SVG, no extra deps)
 function BellIcon({ className }: { className?: string }) {
@@ -153,8 +154,16 @@ export default function NotificationCenter() {
 
           <div className="max-h-80 overflow-y-auto">
             {loading && (
-              <div className="p-6 text-center text-neutral-500 dark:text-neutral-400 text-sm">
-                Loading…
+              <div className="p-3 space-y-1">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="flex gap-3 px-4 py-3">
+                    <SkeletonCircle className="h-8 w-8 shrink-0" />
+                    <div className="flex-1 space-y-1.5">
+                      <SkeletonLine className="h-3.5 w-3/4" />
+                      <SkeletonLine className="h-3 w-1/2" />
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
             {error && (

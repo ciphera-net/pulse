@@ -6,7 +6,8 @@ import { getSite, type Site } from '@/lib/api/sites'
 import { getRealtimeVisitors, getSessionDetails, type Visitor, type SessionEvent } from '@/lib/api/realtime'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
-import { LoadingOverlay, UserIcon } from '@ciphera-net/ui'
+import { UserIcon } from '@ciphera-net/ui'
+import { RealtimeSkeleton, SessionEventsSkeleton } from '@/components/skeletons'
 import { motion, AnimatePresence } from 'framer-motion'
 
 function formatTimeAgo(dateString: string) {
@@ -90,7 +91,7 @@ export default function RealtimePage() {
     }
   }
 
-  if (loading) return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Realtime" />
+  if (loading) return <RealtimeSkeleton />
   if (!site) return <div className="p-8">Site not found</div>
 
   return (
@@ -197,9 +198,7 @@ export default function RealtimePage() {
                         Select a visitor on the left to see their activity.
                     </div>
                 ) : loadingEvents ? (
-                    <div className="h-full flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neutral-900 dark:border-white"></div>
-                    </div>
+                    <SessionEventsSkeleton />
                 ) : (
                     <div className="relative pl-6 border-l-2 border-neutral-100 dark:border-neutral-800 space-y-8">
                         {sessionEvents.map((event, idx) => (

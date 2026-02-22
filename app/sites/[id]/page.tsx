@@ -11,6 +11,7 @@ import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { LoadingOverlay, Button } from '@ciphera-net/ui'
 import { Select, DatePicker, DownloadIcon } from '@ciphera-net/ui'
+import { DashboardSkeleton } from '@/components/skeletons'
 import ExportModal from '@/components/dashboard/ExportModal'
 import ContentStats from '@/components/dashboard/ContentStats'
 import TopReferrers from '@/components/dashboard/TopReferrers'
@@ -216,7 +217,7 @@ export default function SiteDashboardPage() {
   }, [siteId, dateRange, todayInterval, multiDayInterval, isSettingsLoaded, loadData, loadRealtime])
 
   if (loading) {
-    return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" />
+    return <DashboardSkeleton />
   }
 
   if (!site) {

@@ -20,7 +20,8 @@ import {
 import { toast } from '@ciphera-net/ui'
 import { useTheme } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
-import { LoadingOverlay, Button, Modal } from '@ciphera-net/ui'
+import { Button, Modal } from '@ciphera-net/ui'
+import { UptimeSkeleton, ChecksSkeleton } from '@/components/skeletons'
 import {
   AreaChart,
   Area,
@@ -510,9 +511,7 @@ function MonitorCard({
 
               {/* Response time chart */}
               {loadingChecks ? (
-                <div className="text-center py-4 text-neutral-500 dark:text-neutral-400 text-sm">
-                  Loading checks...
-                </div>
+                <ChecksSkeleton />
               ) : checks.length > 0 ? (
                 <>
                   <ResponseTimeChart checks={checks} />
@@ -704,7 +703,7 @@ export default function UptimePage() {
     setShowEditModal(true)
   }
 
-  if (loading) return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Uptime" />
+  if (loading) return <UptimeSkeleton />
   if (!site) return <div className="p-8 text-neutral-500">Site not found</div>
 
   const monitors = Array.isArray(uptimeData?.monitors) ? uptimeData.monitors : []

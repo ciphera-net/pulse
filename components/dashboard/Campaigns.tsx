@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { formatNumber } from '@ciphera-net/ui'
-import { Modal, ArrowRightIcon, Button, Spinner } from '@ciphera-net/ui'
+import { Modal, ArrowRightIcon, Button } from '@ciphera-net/ui'
+import { TableSkeleton } from '@/components/skeletons'
 import { ChevronDownIcon, DownloadIcon } from '@ciphera-net/ui'
 import { getCampaigns, CampaignStat } from '@/lib/api/stats'
 import { getReferrerFavicon, getReferrerIcon, getReferrerDisplayName } from '@/lib/utils/icons'
@@ -292,9 +293,8 @@ export default function Campaigns({ siteId, dateRange }: CampaignsProps) {
       >
         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
           {isLoadingFull ? (
-            <div className="py-8 flex flex-col items-center gap-2">
-              <Spinner />
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading...</p>
+            <div className="py-4">
+              <TableSkeleton rows={10} cols={5} />
             </div>
           ) : (
             <>

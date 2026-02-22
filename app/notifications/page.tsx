@@ -15,7 +15,8 @@ import {
 } from '@/lib/api/notifications'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { formatTimeAgo, getTypeIcon } from '@/lib/utils/notifications'
-import { Button, ArrowLeftIcon, Spinner } from '@ciphera-net/ui'
+import { Button, ArrowLeftIcon } from '@ciphera-net/ui'
+import { NotificationsListSkeleton } from '@/components/skeletons'
 import { toast } from '@ciphera-net/ui'
 
 const PAGE_SIZE = 50
@@ -128,9 +129,7 @@ export default function NotificationsPage() {
         </p>
 
         {loading ? (
-          <div className="flex justify-center py-12">
-            <Spinner />
-          </div>
+          <NotificationsListSkeleton />
         ) : error ? (
           <div className="p-6 text-center text-red-500 bg-red-50 dark:bg-red-900/10 rounded-2xl border border-red-200 dark:border-red-800">
             {error}

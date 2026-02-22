@@ -37,6 +37,7 @@ import {
   LayoutDashboardIcon,
   Spinner,
 } from '@ciphera-net/ui'
+import { MembersListSkeleton, InvoicesListSkeleton, AuditLogSkeleton, SettingsFormSkeleton, SkeletonCard } from '@/components/skeletons'
 
 // * Bell icon for notifications tab
 function BellIcon({ className }: { className?: string }) {
@@ -740,9 +741,7 @@ export default function OrganizationSettings() {
                   <h3 className="text-sm font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Active Members</h3>
                   <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden divide-y divide-neutral-200 dark:divide-neutral-800">
                     {isLoadingMembers ? (
-                      <div className="flex items-center justify-center py-8">
-                        <Spinner />
-                      </div>
+                      <MembersListSkeleton />
                     ) : members.length === 0 ? (
                       <div className="p-8 text-center text-neutral-500 dark:text-neutral-400">No members found.</div>
                     ) : (
@@ -821,8 +820,9 @@ export default function OrganizationSettings() {
                 </div>
 
                 {isLoadingSubscription ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Spinner />
+                  <div className="space-y-4">
+                    <SkeletonCard className="h-32" />
+                    <SkeletonCard className="h-20" />
                   </div>
                 ) : !subscription ? (
                   <div className="p-6 text-center bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-200 dark:border-neutral-800">
@@ -1046,9 +1046,7 @@ export default function OrganizationSettings() {
                       <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-3">Recent invoices</h3>
                       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden divide-y divide-neutral-200 dark:divide-neutral-800">
                         {isLoadingInvoices ? (
-                          <div className="flex items-center justify-center py-8">
-                            <Spinner />
-                          </div>
+                          <InvoicesListSkeleton />
                         ) : invoices.length === 0 ? (
                           <div className="p-8 text-center text-neutral-500 dark:text-neutral-400">No invoices found.</div>
                         ) : (
@@ -1117,9 +1115,7 @@ export default function OrganizationSettings() {
                 </div>
 
                 {isLoadingNotificationSettings ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Spinner />
-                  </div>
+                  <SettingsFormSkeleton />
                 ) : (
                   <div className="space-y-4">
                     <h3 className="text-sm font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Notification categories</h3>
@@ -1244,9 +1240,7 @@ export default function OrganizationSettings() {
                 {/* Table */}
                 <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden">
                   {isLoadingAudit ? (
-                    <div className="flex items-center justify-center py-12">
-                      <Spinner />
-                    </div>
+                    <AuditLogSkeleton />
                   ) : (auditEntries ?? []).length === 0 ? (
                     <div className="p-8 text-center text-neutral-500">No audit events found.</div>
                   ) : (

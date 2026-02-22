@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { ChevronDownIcon } from '@ciphera-net/ui'
 import { PerformanceStats as Stats, PerformanceByPageStat, getPerformanceByPage } from '@/lib/api/stats'
 import { Select } from '@ciphera-net/ui'
+import { TableSkeleton } from '@/components/skeletons'
 
 interface Props {
   stats: Stats
@@ -205,7 +206,7 @@ export default function PerformanceStats({ stats, performanceByPage, siteId, sta
               style={{ overflow: 'hidden' }}
             >
               {loadingTable ? (
-                <div className="py-8 text-center text-neutral-500 text-sm">Loading…</div>
+                <div className="py-4"><TableSkeleton rows={5} cols={5} /></div>
               ) : rows.length === 0 ? (
                 <div className="py-6 text-center text-neutral-500 text-sm">
                   No per-page metrics yet. Data appears as visitors are tracked with performance insights enabled.
