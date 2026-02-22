@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { formatNumber } from '@ciphera-net/ui'
 import { getReferrerDisplayName, getReferrerFavicon, getReferrerIcon, mergeReferrersByDisplayName } from '@/lib/utils/icons'
-import { Modal, GlobeIcon, Spinner } from '@ciphera-net/ui'
+import { Modal, GlobeIcon } from '@ciphera-net/ui'
+import { ListSkeleton } from '@/components/skeletons'
 import { getTopReferrers, TopReferrer } from '@/lib/api/stats'
 
 interface TopReferrersProps {
@@ -134,9 +135,8 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
       >
         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
           {isLoadingFull ? (
-            <div className="py-8 flex flex-col items-center gap-2">
-              <Spinner />
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading...</p>
+            <div className="py-4">
+              <ListSkeleton rows={10} />
             </div>
           ) : (
             mergeReferrersByDisplayName(fullData.length > 0 ? fullData : filteredReferrers).map((ref, index) => (

@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { listFunnels, deleteFunnel, type Funnel } from '@/lib/api/funnels'
-import { toast, LoadingOverlay, PlusIcon, ArrowRightIcon, ChevronLeftIcon, TrashIcon, Button } from '@ciphera-net/ui'
+import { toast, PlusIcon, ArrowRightIcon, ChevronLeftIcon, TrashIcon, Button } from '@ciphera-net/ui'
+import { FunnelsListSkeleton } from '@/components/skeletons'
 import Link from 'next/link'
 
 export default function FunnelsPage() {
@@ -44,7 +45,7 @@ export default function FunnelsPage() {
   }
 
   if (loading) {
-    return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" />
+    return <FunnelsListSkeleton />
   }
 
   return (

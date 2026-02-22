@@ -13,6 +13,7 @@ import Locations from '@/components/dashboard/Locations'
 import TechSpecs from '@/components/dashboard/TechSpecs'
 import PerformanceStats from '@/components/dashboard/PerformanceStats'
 import { Select, DatePicker as DatePickerModal, Captcha, DownloadIcon, ZapIcon } from '@ciphera-net/ui'
+import { DashboardSkeleton } from '@/components/skeletons'
 import ExportModal from '@/components/dashboard/ExportModal'
 
 // Helper to get date ranges
@@ -193,7 +194,7 @@ export default function PublicDashboardPage() {
   }
 
   if (loading && !data && !isPasswordProtected) {
-    return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" />
+    return <DashboardSkeleton />
   }
 
   if (isPasswordProtected && !data) {

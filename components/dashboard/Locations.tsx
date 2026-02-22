@@ -6,7 +6,8 @@ import * as Flags from 'country-flag-icons/react/3x2'
 // @ts-ignore
 import iso3166 from 'iso-3166-2'
 import WorldMap from './WorldMap'
-import { Modal, GlobeIcon, Spinner } from '@ciphera-net/ui'
+import { Modal, GlobeIcon } from '@ciphera-net/ui'
+import { ListSkeleton } from '@/components/skeletons'
 import { SiTorproject } from 'react-icons/si'
 import { FaUserSecret, FaSatellite } from 'react-icons/fa'
 import { getCountries, getCities, getRegions } from '@/lib/api/stats'
@@ -288,9 +289,8 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
       >
         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
           {isLoadingFull ? (
-            <div className="py-8 flex flex-col items-center gap-2">
-              <Spinner />
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading...</p>
+            <div className="py-4">
+              <ListSkeleton rows={10} />
             </div>
           ) : (
             (fullData.length > 0 ? fullData : data as any[]).map((item, index) => (

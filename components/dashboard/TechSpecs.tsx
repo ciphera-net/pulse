@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { formatNumber } from '@ciphera-net/ui'
 import { getBrowserIcon, getOSIcon, getDeviceIcon } from '@/lib/utils/icons'
 import { MdMonitor } from 'react-icons/md'
-import { Modal, GridIcon, Spinner } from '@ciphera-net/ui'
+import { Modal, GridIcon } from '@ciphera-net/ui'
+import { ListSkeleton } from '@/components/skeletons'
 import { getBrowsers, getOS, getDevices, getScreenResolutions } from '@/lib/api/stats'
 
 interface TechSpecsProps {
@@ -189,9 +190,8 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
       >
         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
           {isLoadingFull ? (
-            <div className="py-8 flex flex-col items-center gap-2">
-              <Spinner />
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading...</p>
+            <div className="py-4">
+              <ListSkeleton rows={10} />
             </div>
           ) : (
             (fullData.length > 0 ? fullData : data).map((item, index) => (

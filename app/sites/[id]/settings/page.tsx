@@ -6,7 +6,7 @@ import { getSite, updateSite, resetSiteData, deleteSite, type Site, type GeoData
 import { listGoals, createGoal, updateGoal, deleteGoal, type Goal } from '@/lib/api/goals'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
-import { LoadingOverlay } from '@ciphera-net/ui'
+import { SettingsFormSkeleton, GoalsListSkeleton } from '@/components/skeletons'
 import VerificationModal from '@/components/sites/VerificationModal'
 import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
 import { PasswordInput } from '@ciphera-net/ui'
@@ -318,7 +318,26 @@ export default function SiteSettingsPage() {
   }
 
   if (loading) {
-    return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" />
+    return (
+      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
+        <div className="space-y-8">
+          <div>
+            <div className="h-8 w-40 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800 mb-2" />
+            <div className="h-4 w-64 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
+          </div>
+          <div className="flex flex-col md:flex-row gap-8">
+            <nav className="w-full md:w-64 flex-shrink-0 space-y-1">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-12 animate-pulse rounded-xl bg-neutral-100 dark:bg-neutral-800" />
+              ))}
+            </nav>
+            <div className="flex-1 bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-6 md:p-8">
+              <SettingsFormSkeleton />
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (!site) {
@@ -970,7 +989,7 @@ export default function SiteSettingsPage() {
                   </p>
                 </div>
                 {goalsLoading ? (
-                  <div className="py-8 text-center text-neutral-500 dark:text-neutral-400">Loading goals…</div>
+                  <GoalsListSkeleton />
                 ) : (
                   <>
                     {canEdit && (

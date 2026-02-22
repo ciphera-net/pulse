@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { formatNumber } from '@ciphera-net/ui'
 import { TopPage, getTopPages, getEntryPages, getExitPages } from '@/lib/api/stats'
-import { Modal, ArrowUpRightIcon, LayoutDashboardIcon, Spinner } from '@ciphera-net/ui'
+import { Modal, ArrowUpRightIcon, LayoutDashboardIcon } from '@ciphera-net/ui'
+import { ListSkeleton } from '@/components/skeletons'
 
 interface ContentStatsProps {
   topPages: TopPage[]
@@ -173,9 +174,8 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
       >
         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
           {isLoadingFull ? (
-            <div className="py-8 flex flex-col items-center gap-2">
-              <Spinner />
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading...</p>
+            <div className="py-4">
+              <ListSkeleton rows={10} />
             </div>
           ) : (
             (fullData.length > 0 ? fullData : data).map((page, index) => (
