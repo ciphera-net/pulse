@@ -33,8 +33,8 @@ export default function OrganizationSwitcher({ orgs, activeOrgId }: { orgs: Orga
       // * Note: switchContext only returns access_token, we keep existing refresh token
       await setSessionAction(access_token)
       
-      // Force reload to pick up new permissions
-      window.location.reload() 
+      sessionStorage.setItem('pulse_switching_org', 'true')
+      window.location.reload()
       
     } catch (err) {
       console.error('Failed to switch organization', err)

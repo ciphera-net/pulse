@@ -419,10 +419,11 @@ export default function OrganizationSettings() {
       try {
         const { access_token } = await switchContext(null)
         await setSessionAction(access_token)
+        sessionStorage.setItem('pulse_switching_org', 'true')
         window.location.href = '/'
       } catch (switchErr) {
         console.error('Failed to switch to personal context after delete:', switchErr)
-        // Fallback: reload and let backend handle invalid token if any
+        sessionStorage.setItem('pulse_switching_org', 'true')
         window.location.href = '/'
       }
       
