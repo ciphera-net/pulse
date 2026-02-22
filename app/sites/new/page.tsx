@@ -191,6 +191,8 @@ export default function NewSitePage() {
           <Input
             id="name"
             required
+            autoFocus
+            maxLength={255}
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             placeholder="My Website"
@@ -204,6 +206,7 @@ export default function NewSitePage() {
           <Input
             id="domain"
             required
+            maxLength={253}
             value={formData.domain}
             onChange={(e) => setFormData({ ...formData, domain: e.target.value.toLowerCase().trim() })}
             placeholder="example.com"

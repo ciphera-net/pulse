@@ -120,8 +120,13 @@ export default function CreateFunnelPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Signup Flow"
+                autoFocus
                 required
+                maxLength={255}
               />
+              {name.length > 200 && (
+                <span className={`text-xs tabular-nums mt-1 ${name.length > 240 ? 'text-amber-500' : 'text-neutral-400'}`}>{name.length}/255</span>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
