@@ -38,7 +38,7 @@ function DashboardPreview() {
         </div>
 
         {/* * Screenshot with bottom fade */}
-        <div className="relative max-h-[700px] overflow-hidden">
+        <div className="relative max-h-[900px] overflow-hidden">
           <Image
             src="/dashboard-preview.png"
             alt="Pulse analytics dashboard showing visitor stats, charts, top pages, referrers, locations, and technology breakdown"
