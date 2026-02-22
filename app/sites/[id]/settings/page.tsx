@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { getSite, updateSite, resetSiteData, deleteSite, type Site, type GeoDataLevel } from '@/lib/api/sites'
 import { listGoals, createGoal, updateGoal, deleteGoal, type Goal } from '@/lib/api/goals'
@@ -13,6 +13,7 @@ import { PasswordInput } from '@ciphera-net/ui'
 import { Select, Modal, Button } from '@ciphera-net/ui'
 import { APP_URL } from '@/lib/api/client'
 import { generatePrivacySnippet } from '@/lib/utils/privacySnippet'
+import { useUnsavedChanges } from '@/lib/hooks/useUnsavedChanges'
 import { getSubscription, type SubscriptionDetails } from '@/lib/api/billing'
 import { getRetentionOptionsForPlan, formatRetentionMonths } from '@/lib/plans'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -86,6 +87,7 @@ export default function SiteSettingsPage() {
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null)
   const [goalForm, setGoalForm] = useState({ name: '', event_name: '' })
   const [goalSaving, setGoalSaving] = useState(false)
+  const initialFormRef = useRef<string>('')
 
   useEffect(() => {
     loadSite()
@@ -144,6 +146,20 @@ export default function SiteSettingsPage() {
         // Bot and noise filtering (default to true)
         filter_bots: data.filter_bots ?? true,
         // Data retention (default 6 = free-tier max; avoids flash-then-clamp for existing sites)
+        data_retention_months: data.data_retention_months ?? 6
+      })
+      initialFormRef.current = JSON.stringify({
+        name: data.name,
+        timezone: data.timezone || 'UTC',
+        is_public: data.is_public || false,
+        excluded_paths: (data.excluded_paths || []).join('\n'),
+        collect_page_paths: data.collect_page_paths ?? true,
+        collect_referrers: data.collect_referrers ?? true,
+        collect_device_info: data.collect_device_info ?? true,
+        collect_geo_data: data.collect_geo_data || 'full',
+        collect_screen_resolution: data.collect_screen_resolution ?? true,
+        enable_performance_insights: data.enable_performance_insights ?? false,
+        filter_bots: data.filter_bots ?? true,
         data_retention_months: data.data_retention_months ?? 6
       })
       if (data.has_password) {
@@ -264,6 +280,20 @@ export default function SiteSettingsPage() {
         data_retention_months: formData.data_retention_months
       })
       toast.success('Site updated successfully')
+      initialFormRef.current = JSON.stringify({
+        name: formData.name,
+        timezone: formData.timezone,
+        is_public: formData.is_public,
+        excluded_paths: formData.excluded_paths,
+        collect_page_paths: formData.collect_page_paths,
+        collect_referrers: formData.collect_referrers,
+        collect_device_info: formData.collect_device_info,
+        collect_geo_data: formData.collect_geo_data,
+        collect_screen_resolution: formData.collect_screen_resolution,
+        enable_performance_insights: formData.enable_performance_insights,
+        filter_bots: formData.filter_bots,
+        data_retention_months: formData.data_retention_months
+      })
       loadSite()
     } catch (error: any) {
       toast.error(getAuthErrorMessage(error) || 'Failed to save site settings')
@@ -316,6 +346,23 @@ export default function SiteSettingsPage() {
     toast.success('Privacy snippet copied to clipboard')
     setTimeout(() => setSnippetCopied(false), 2000)
   }
+
+  const isFormDirty = initialFormRef.current !== '' && JSON.stringify({
+    name: formData.name,
+    timezone: formData.timezone,
+    is_public: formData.is_public,
+    excluded_paths: formData.excluded_paths,
+    collect_page_paths: formData.collect_page_paths,
+    collect_referrers: formData.collect_referrers,
+    collect_device_info: formData.collect_device_info,
+    collect_geo_data: formData.collect_geo_data,
+    collect_screen_resolution: formData.collect_screen_resolution,
+    enable_performance_insights: formData.enable_performance_insights,
+    filter_bots: formData.filter_bots,
+    data_retention_months: formData.data_retention_months
+  }) !== initialFormRef.current
+
+  useUnsavedChanges(isFormDirty)
 
   useEffect(() => {
     if (site?.domain) document.title = `Settings · ${site.domain} | Pulse`
@@ -454,11 +501,15 @@ export default function SiteSettingsPage() {
                         type="text"
                         id="name"
                         required
+                        maxLength={255}
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-lg bg-neutral-50/50 dark:bg-neutral-900/50 focus:bg-white dark:focus:bg-neutral-900 
                         focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all duration-200 dark:text-white"
                       />
+                      {formData.name.length > 200 && (
+                        <span className={`text-xs tabular-nums ${formData.name.length > 240 ? 'text-amber-500' : 'text-neutral-400'}`}>{formData.name.length}/255</span>
+                      )}
                     </div>
 
                     <div className="space-y-1.5">
@@ -1062,6 +1113,7 @@ export default function SiteSettingsPage() {
               value={goalForm.name}
               onChange={(e) => setGoalForm({ ...goalForm, name: e.target.value })}
               placeholder="e.g. Signups"
+              autoFocus
               className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white"
               required
             />
@@ -1073,10 +1125,14 @@ export default function SiteSettingsPage() {
               value={goalForm.event_name}
               onChange={(e) => setGoalForm({ ...goalForm, event_name: e.target.value })}
               placeholder="e.g. signup_click (letters, numbers, underscores only)"
+              maxLength={64}
               className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white"
               required
             />
-            <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">Only letters, numbers, and underscores; spaces become underscores. Invalid characters cannot be used. Max 64 characters after formatting.</p>
+            <div className="flex justify-between mt-1">
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">Letters, numbers, and underscores only. Spaces become underscores.</p>
+              <span className={`text-xs tabular-nums ${goalForm.event_name.length > 56 ? 'text-amber-500' : 'text-neutral-400'}`}>{goalForm.event_name.length}/64</span>
+            </div>
             {editingGoal && goalForm.event_name.trim().toLowerCase().replace(/\s+/g, '_') !== editingGoal.event_name && (
               <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">Changing event name does not reassign events already tracked under the previous name.</p>
             )}
