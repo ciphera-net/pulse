@@ -1,6 +1,17 @@
 import { Suspense } from 'react'
+import type { Metadata } from 'next'
 import PricingSection from '@/components/PricingSection'
 import { PricingCardsSkeleton } from '@/components/skeletons'
+
+export const metadata: Metadata = {
+  title: 'Pricing | Pulse',
+  description: 'Simple, transparent pricing for privacy-first web analytics. Free tier included.',
+  openGraph: {
+    title: 'Pricing | Pulse',
+    description: 'Simple, transparent pricing for privacy-first web analytics. Free tier included.',
+    siteName: 'Pulse by Ciphera',
+  },
+}
 
 export default function PricingPage() {
   return (

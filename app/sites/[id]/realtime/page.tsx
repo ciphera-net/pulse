@@ -91,6 +91,10 @@ export default function RealtimePage() {
     }
   }
 
+  useEffect(() => {
+    if (site?.domain) document.title = `Realtime · ${site.domain} | Pulse`
+  }, [site?.domain])
+
   const showSkeleton = useMinimumLoading(loading)
 
   if (showSkeleton) return <RealtimeSkeleton />

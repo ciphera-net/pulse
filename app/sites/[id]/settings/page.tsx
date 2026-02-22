@@ -317,6 +317,10 @@ export default function SiteSettingsPage() {
     setTimeout(() => setSnippetCopied(false), 2000)
   }
 
+  useEffect(() => {
+    if (site?.domain) document.title = `Settings · ${site.domain} | Pulse`
+  }, [site?.domain])
+
   const showSkeleton = useMinimumLoading(loading)
 
   if (showSkeleton) {

@@ -14,6 +14,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **No more loading flicker.** Fast-loading pages no longer flash a loading state for a split second before showing content.
 - **Clearer error messages.** When something goes wrong, the error message now tells you what failed (e.g. "Failed to load uptime monitors") instead of a generic "Failed to load data".
 - **Faster favicon loading.** Site icons in the dashboard, referrers, and campaigns now use Next.js image optimization for better caching and lazy loading.
+- **Better page titles.** Browser tabs now show which site and page you're on (e.g. "Uptime · example.com | Pulse") instead of the same generic title everywhere.
+- **Link previews for public dashboards.** Sharing a public dashboard link on social media now shows a proper preview with the site name and description.
 
 ## [0.10.0-alpha] - 2026-02-21
 

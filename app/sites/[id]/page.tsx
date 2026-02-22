@@ -216,6 +216,10 @@ export default function SiteDashboardPage() {
     return () => clearInterval(interval)
   }, [siteId, dateRange, todayInterval, multiDayInterval, isSettingsLoaded, loadData, loadRealtime])
 
+  useEffect(() => {
+    if (site?.domain) document.title = `${site.domain} | Pulse`
+  }, [site?.domain])
+
   const showSkeleton = useMinimumLoading(loading)
 
   if (showSkeleton) {
