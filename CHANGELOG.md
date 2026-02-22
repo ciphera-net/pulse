@@ -43,8 +43,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Onboarding form limits.** The welcome page now enforces the same character limits as the rest of the app.
 - **Audit log reliability.** Failed audit log writes are now logged to the server instead of being silently ignored, so gaps in the audit trail are detectable.
 - **Safer error messages.** Server errors no longer expose internal details (database errors, stack traces) to the browser. You see a clear message like "Failed to create site" while the full error is logged server-side for debugging.
-- **Content Security Policy.** The backend CSP header was being overwritten by a duplicate, breaking captcha integration. The policy is now set in one place.
+- **Content Security Policy.** The backend CSP header was being overwritten by a duplicate, and the captcha service was incorrectly whitelisted under image sources instead of connection sources. Both are now fixed.
 - **Logout redirect loop.** Signing out no longer bounces you straight to Ciphera Auth. You now land on the Pulse homepage where you can choose to sign back in.
+- **Date range edge case.** The maximum date range check could be off by a day due to an internal time adjustment. It now compares calendar days accurately.
 
 ## [0.10.0-alpha] - 2026-02-21
 
