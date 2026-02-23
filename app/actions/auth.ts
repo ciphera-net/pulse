@@ -33,7 +33,7 @@ interface UserPayload {
 /** Error type returned to client for mapping to user-facing copy (no sensitive details). */
 export type AuthExchangeErrorType = 'network' | 'expired' | 'invalid' | 'server'
 
-export async function exchangeAuthCode(code: string, codeVerifier: string, redirectUri: string) {
+export async function exchangeAuthCode(code: string, codeVerifier: string | null, redirectUri: string) {
   try {
     const res = await fetch(`${AUTH_API_URL}/oauth/token`, {
       method: 'POST',
@@ -45,7 +45,7 @@ export async function exchangeAuthCode(code: string, codeVerifier: string, redir
         code,
         client_id: 'pulse-app',
         redirect_uri: redirectUri,
-        code_verifier: codeVerifier,
+        code_verifier: codeVerifier || '',
       }),
     })
 
