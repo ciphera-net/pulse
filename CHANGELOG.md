@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.11.1-alpha] - 2026-02-23
+
+### Changed
+
+- **Safer sign-in from the Ciphera hub.** When you open Pulse from the Ciphera Apps page, your credentials are no longer visible in the browser address bar. Sign-in now uses a secure one-time code that expires in seconds, so your session stays private even if someone sees your screen or browser history.
+
 ## [0.11.0-alpha] - 2026-02-22
 
 ### Added
@@ -168,7 +174,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
-[Unreleased]: https://github.com/ciphera-net/pulse/compare/v0.11.0-alpha...HEAD
+[Unreleased]: https://github.com/ciphera-net/pulse/compare/v0.11.1-alpha...HEAD
+[0.11.1-alpha]: https://github.com/ciphera-net/pulse/compare/v0.11.0-alpha...v0.11.1-alpha
 [0.11.0-alpha]: https://github.com/ciphera-net/pulse/compare/v0.10.0-alpha...v0.11.0-alpha
 [0.10.0-alpha]: https://github.com/ciphera-net/pulse/compare/v0.9.0-alpha...v0.10.0-alpha
 [0.9.0-alpha]: https://github.com/ciphera-net/pulse/compare/v0.8.0-alpha...v0.9.0-alpha
