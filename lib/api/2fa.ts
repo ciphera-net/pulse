@@ -34,8 +34,9 @@ export async function disable2FA(passwordDerived: string): Promise<void> {
   })
 }
 
-export async function regenerateRecoveryCodes(): Promise<RegenerateCodesResponse> {
+export async function regenerateRecoveryCodes(passwordDerived: string): Promise<RegenerateCodesResponse> {
   return apiRequest<RegenerateCodesResponse>('/auth/2fa/recovery', {
     method: 'POST',
+    body: JSON.stringify({ password: passwordDerived }),
   })
 }
