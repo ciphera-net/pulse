@@ -27,9 +27,10 @@ export async function verify2FA(code: string): Promise<Verify2FAResponse> {
   })
 }
 
-export async function disable2FA(): Promise<void> {
+export async function disable2FA(passwordDerived: string): Promise<void> {
   return apiRequest<void>('/auth/2fa/disable', {
     method: 'POST',
+    body: JSON.stringify({ password: passwordDerived }),
   })
 }
 
