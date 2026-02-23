@@ -6,6 +6,7 @@ import api from '@/lib/api/client'
 import { deriveAuthKey } from '@/lib/crypto/password'
 import { deleteAccount, getUserSessions, revokeSession, updateUserPreferences, updateDisplayName } from '@/lib/api/user'
 import { setup2FA, verify2FA, disable2FA, regenerateRecoveryCodes } from '@/lib/api/2fa'
+import { registerPasskey, listPasskeys, deletePasskey } from '@/lib/api/webauthn'
 
 export default function ProfileSettings() {
   const { user, refresh, logout } = useAuth()
@@ -46,6 +47,9 @@ export default function ProfileSettings() {
       onRegenerateRecoveryCodes={regenerateRecoveryCodes}
       onGetSessions={getUserSessions}
       onRevokeSession={revokeSession}
+      onRegisterPasskey={registerPasskey}
+      onListPasskeys={listPasskeys}
+      onDeletePasskey={deletePasskey}
       onUpdatePreferences={updateUserPreferences}
       deriveAuthKey={deriveAuthKey}
       refreshUser={refresh}
