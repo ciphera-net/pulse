@@ -3,8 +3,24 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { getAdminOrg, grantPlan, type AdminOrgDetail } from '@/lib/api/admin'
-import { Card, CardHeader, CardTitle, CardContent, Button, LoadingOverlay, Select, toast } from '@ciphera-net/ui'
-import { format, addMonths, addYears } from 'date-fns'
+import { Button, LoadingOverlay, Select, toast } from '@ciphera-net/ui'
+
+function formatDate(d: Date) {
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+function formatDateTime(d: Date) {
+  return d.toLocaleDateString('en-US', { dateStyle: 'long' }) + ' ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric' })
+}
+function addMonths(d: Date, months: number) {
+  const out = new Date(d)
+  out.setMonth(out.getMonth() + months)
+  return out
+}
+function addYears(d: Date, years: number) {
+  const out = new Date(d)
+  out.setFullYear(out.getFullYear() + years)
+  return out
+}
 
 const PLAN_OPTIONS = [
   { value: 'free', label: 'Free' },
@@ -105,12 +121,9 @@ export default function AdminOrgDetailPage() {
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* Current Status */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Current Status</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-2 text-sm">
+        <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 shadow-sm">
+          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">Current Status</h3>
+          <div className="grid grid-cols-2 gap-2 text-sm">
               <span className="text-neutral-500">Plan:</span>
               <span className="font-medium">{org.plan_id}</span>
               
@@ -125,7 +138,7 @@ export default function AdminOrgDetailPage() {
               
               <span className="text-neutral-500">Period End:</span>
               <span className="font-medium">
-                {org.current_period_end ? format(new Date(org.current_period_end), 'PPP p') : '-'}
+                {org.current_period_end ? formatDateTime(new Date(org.current_period_end)) : '-'}
               </span>
 
               <span className="text-neutral-500">Stripe Cust:</span>
@@ -133,35 +146,27 @@ export default function AdminOrgDetailPage() {
               
               <span className="text-neutral-500">Stripe Sub:</span>
               <span className="font-mono text-xs">{org.stripe_subscription_id || '-'}</span>
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Sites */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Sites ({org.sites.length})</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 shadow-sm">
+          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">Sites ({org.sites.length})</h3>
             <ul className="space-y-2 max-h-60 overflow-y-auto">
               {org.sites.map((site) => (
                 <li key={site.id} className="flex justify-between items-center text-sm p-2 bg-neutral-50 dark:bg-neutral-900 rounded">
                   <span className="font-medium">{site.domain}</span>
-                  <span className="text-neutral-500 text-xs">{format(new Date(site.created_at), 'MMM d, yyyy')}</span>
+                  <span className="text-neutral-500 text-xs">{formatDate(new Date(site.created_at))}</span>
                 </li>
               ))}
               {org.sites.length === 0 && <li className="text-neutral-500 text-sm">No sites found</li>}
-            </ul>
-          </CardContent>
-        </Card>
+          </ul>
+        </div>
       </div>
 
       {/* Grant Plan Form */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Grant Plan (Manual Override)</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 shadow-sm">
+        <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">Grant Plan (Manual Override)</h3>
           <form onSubmit={handleGrantPlan} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -232,8 +237,7 @@ export default function AdminOrgDetailPage() {
               </Button>
             </div>
           </form>
-        </CardContent>
-      </Card>
+      </div>
     </div>
   )
 }
