@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- **Admin organizations list.** Organizations that created a site but never subscribed now appear in the admin list. Previously only orgs with a billing row were shown.
 - **Sign in after inactivity.** Clicking "Sign in" after a period of inactivity no longer does nothing. Previously, stale refresh cookies caused the middleware to redirect away from the login page; now only a valid access token triggers that redirect, so you can complete OAuth sign-in when your session has expired.
 - **Frequent re-login.** You no longer have to sign in multiple times a day. When the access token expires after 15 minutes of inactivity, the app now automatically refreshes it using your refresh token on the next page load, so you stay logged in for up to 30 days.
 - **2FA disable now requires password confirmation.** Disabling 2FA sends the derived password to the backend for verification. This prevents an attacker with a hijacked session from stripping 2FA.
