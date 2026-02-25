@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- **Performance insights.** Track how fast your site loads with Core Web Vitals (page load speed, layout shifts, responsiveness). Turn it on in Site Settings → Data & Privacy to see a performance widget on your dashboard.
+- **Goals & Events.** Define custom goals (e.g. signup, purchase) and track them with `pulse.track()` in your snippet. Counts appear on your dashboard once you add goals in Site Settings → Goals & Events.
 - **2FA recovery codes backup.** When you enable 2FA, you receive recovery codes. You can now regenerate new codes (with password confirmation) from Settings and download them as a `.txt` file. Regenerating invalidates all existing codes.
 
 ### Fixed
@@ -34,10 +36,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Better form experience.** Forms now auto-focus the first field when they open, text inputs enforce character limits with a visible counter when you're close, and the settings page warns you before navigating away with unsaved changes.
 - **Accessibility improvements.** The notification bell, workspace switcher, and all dashboard tabs are now fully keyboard-navigable. Screen readers announce unread counts, active organizations, and tab changes correctly. Decorative icons are hidden from assistive technology.
 - **Smooth organization switching.** Switching between organizations now shows a branded loading screen instead of a blank flash while the page reloads.
-- **Graceful server shutdown.** Deployments no longer kill in-flight requests or interrupt background tasks. The server finishes ongoing work before shutting down.
-- **Database connection pooling.** The backend now limits and recycles database connections, preventing exhaustion under load and reducing query latency.
-- **Date range validation.** Analytics, funnel, and uptime queries now reject invalid date ranges (end before start, or spans longer than a year) instead of silently returning empty or oversized results.
-- **Excluded paths limit.** Sites can now have up to 50 excluded paths. Previously there was no cap, which could slow down event processing.
+- **Graceful server shutdown.** Deployments no longer kill in-flight requests or interrupt background tasks. The server finishes ongoing work before shutting down, so your active sessions aren't cut off mid-action.
+- **Database connection pooling.** The backend now limits and recycles database connections, preventing exhaustion under load and keeping queries fast even with many concurrent users.
+- **Date range validation.** Analytics, funnel, and uptime queries now reject invalid date ranges (end before start, or spans longer than a year) and show a clear error instead of empty or confusing results.
+- **Excluded paths limit.** Sites can now have up to 50 excluded paths. Previously there was no cap, which could slow down event processing; the limit keeps things fast while still giving you flexibility.
 
 ### Changed
 
@@ -45,8 +47,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Clearer error messages.** When something goes wrong, the error message now tells you what failed (e.g. "Failed to load uptime monitors") instead of a generic "Failed to load data".
 - **Faster favicon loading.** Site icons in the dashboard, referrers, and campaigns now use Next.js image optimization for better caching and lazy loading.
 - **Tighter name limits.** Site, funnel, and monitor names are now capped at 100 characters instead of 255 — long enough for any real name, short enough to not break the UI.
-- **Stricter type safety.** Eliminated all `any` types and `@ts-ignore` suppressions across the codebase, so the TypeScript compiler catches more bugs at build time.
-- **Smaller page downloads.** Icon imports are now tree-shaken so only the icons actually used are included in the bundle.
+- **Stricter type safety.** Eliminated all `any` types and `@ts-ignore` suppressions across the codebase, so the TypeScript compiler catches more bugs at build time and fewer edge cases slip through.
+- **Smaller page downloads.** Icon imports are now tree-shaken so only the icons actually used are included in the bundle, reducing download size and speeding up page loads.
 - **Removed debug logs.** Auth and organization-switching details no longer leak into the browser console in production. Error logs are now also suppressed in production and only appear during development.
 
 ### Fixed
