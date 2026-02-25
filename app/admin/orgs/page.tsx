@@ -3,8 +3,11 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { listAdminOrgs, type AdminOrgSummary } from '@/lib/api/admin'
-import { Card, CardHeader, CardTitle, CardContent, Button, LoadingOverlay } from '@ciphera-net/ui'
-import { format } from 'date-fns'
+import { Button, LoadingOverlay } from '@ciphera-net/ui'
+
+function formatDate(d: Date) {
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
 
 export default function AdminOrgsPage() {
   const [orgs, setOrgs] = useState<AdminOrgSummary[]>([])
@@ -26,12 +29,9 @@ export default function AdminOrgsPage() {
         <h2 className="text-xl font-semibold text-neutral-900 dark:text-white">Organizations</h2>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>All Organizations</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
+      <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 shadow-sm">
+        <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">All Organizations</h3>
+        <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="border-b border-neutral-200 dark:border-neutral-800">
                 <tr>
@@ -70,20 +70,19 @@ export default function AdminOrgsPage() {
                       {new Intl.NumberFormat().format(org.pageview_limit)}
                     </td>
                     <td className="px-4 py-3 text-neutral-500 text-xs">
-                      {format(new Date(org.updated_at), 'MMM d, yyyy')}
+                      {formatDate(new Date(org.updated_at))}
                     </td>
                     <td className="px-4 py-3">
                       <Link href={`/admin/orgs/${org.organization_id}`}>
-                        <Button variant="ghost" size="sm">Manage</Button>
+                        <Button variant="ghost">Manage</Button>
                       </Link>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }
