@@ -110,8 +110,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const init = async () => {
         // * 1. Check server-side session (cookies)
-        const session = await getSessionAction()
-        
+        let session = await getSessionAction()
+
+        // * 2. If no access_token but refresh_token may exist, try refresh (fixes 15-min inactivity logout)
+        if (!session && typeof window !== 'undefined') {
+          const refreshRes = await fetch('/api/auth/refresh', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+          })
+          if (refreshRes.ok) {
+            session = await getSessionAction()
+          }
+        }
+
         if (session) {
             setUser(session)
             localStorage.setItem('user', JSON.stringify(session))
@@ -129,7 +141,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             localStorage.removeItem('user')
             setUser(null)
         }
-        
+
         // * Clear legacy tokens if they exist (migration)
         if (localStorage.getItem('token')) {
             localStorage.removeItem('token')

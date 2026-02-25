@@ -34,8 +34,9 @@ export function middleware(request: NextRequest) {
   const hasRefresh = request.cookies.has('refresh_token')
   const hasSession = hasAccess || hasRefresh
 
-  // * Authenticated user hitting /login or /signup → send them home
-  if (hasSession && AUTH_ONLY_ROUTES.has(pathname)) {
+  // * Authenticated user (with access token) hitting /login or /signup → send them home.
+  // * Only check access_token; stale refresh_token alone must not block login (fixes post-inactivity sign-in).
+  if (hasAccess && AUTH_ONLY_ROUTES.has(pathname)) {
     return NextResponse.redirect(new URL('/', request.url))
   }
 
