@@ -12,6 +12,7 @@ const PUBLIC_ROUTES = new Set([
   '/faq',
   '/changelog',
   '/installation',
+  '/script.js', // * Tracking script – must load without auth for embedded sites (Shopify, etc.)
 ])
 
 const PUBLIC_PREFIXES = [
