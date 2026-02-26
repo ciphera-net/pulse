@@ -1,12 +1,32 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { listAdminOrgs, type AdminOrgSummary } from '@/lib/api/admin'
-import { Button, LoadingOverlay } from '@ciphera-net/ui'
+import { Button, LoadingOverlay, toast } from '@ciphera-net/ui'
 
 function formatDate(d: Date) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+function CopyableOrgId({ id }: { id: string }) {
+  const [copied, setCopied] = useState(false)
+  const copy = useCallback(() => {
+    navigator.clipboard.writeText(id)
+    setCopied(true)
+    toast.success('Org ID copied to clipboard')
+    setTimeout(() => setCopied(false), 2000)
+  }, [id])
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      className="font-mono text-xs text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange cursor-pointer transition-colors text-left"
+      title="Click to copy"
+    >
+      {copied ? 'Copied!' : `${id.substring(0, 8)}...`}
+    </button>
+  )
 }
 
 export default function AdminOrgsPage() {
@@ -35,7 +55,7 @@ export default function AdminOrgsPage() {
             <table className="w-full text-left text-sm">
               <thead className="border-b border-neutral-200 dark:border-neutral-800">
                 <tr>
-                  <th className="px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">Business Name</th>
+                  <th className="px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">Name</th>
                   <th className="px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">Org ID</th>
                   <th className="px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">Plan</th>
                   <th className="px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">Status</th>
@@ -50,8 +70,8 @@ export default function AdminOrgsPage() {
                     <td className="px-4 py-3 text-neutral-900 dark:text-white font-medium">
                       {org.business_name || 'N/A'}
                     </td>
-                    <td className="px-4 py-3 text-neutral-500 font-mono text-xs">
-                      {org.organization_id.substring(0, 8)}...
+                    <td className="px-4 py-3">
+                      <CopyableOrgId id={org.organization_id} />
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
