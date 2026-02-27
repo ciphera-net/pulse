@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 
 - **Faster dashboard loading.** Your site analytics now load almost instantly, even during busy periods. Behind the scenes, we've added intelligent caching that remembers your dashboard data for 30 seconds and refreshes it automatically in the background. Real-time visitor counts are updated every 5 seconds so you always see current activity without waiting.
+- **Better data management for long-term performance.** We've restructured how your analytics data is stored so the app stays fast even as you collect months of data. Old data is now automatically organized by month and cleaned up efficiently based on your retention settings, keeping everything running smoothly no matter how much traffic you get.
 - **Performance insights.** Track how fast your site loads with Core Web Vitals (page load speed, layout shifts, responsiveness). Turn it on in Site Settings → Data & Privacy to see a performance widget on your dashboard.
 - **Goals & Events.** Define custom goals (e.g. signup, purchase) and track them with `pulse.track()` in your snippet. Counts appear on your dashboard once you add goals in Site Settings → Goals & Events.
 - **2FA recovery codes backup.** When you enable 2FA, you receive recovery codes. You can now regenerate new codes (with password confirmation) from Settings and download them as a `.txt` file. Regenerating invalidates all existing codes.
