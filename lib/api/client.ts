@@ -22,6 +22,36 @@ export function getSignupUrl(redirectPath = '/auth/callback') {
   return `${AUTH_URL}/signup?client_id=pulse-app&redirect_uri=${redirectUri}&response_type=code`
 }
 
+// * ============================================================================
+// * CSRF Token Handling
+// * ============================================================================
+
+/**
+ * Get CSRF token from the csrf_token cookie (non-httpOnly)
+ * This is needed for state-changing requests to the Auth API
+ */
+function getCSRFToken(): string | null {
+  if (typeof document === 'undefined') return null
+  
+  const cookies = document.cookie.split(';')
+  for (const cookie of cookies) {
+    const [name, value] = cookie.trim().split('=')
+    if (name === 'csrf_token') {
+      return decodeURIComponent(value)
+    }
+  }
+  return null
+}
+
+/**
+ * Check if a request method requires CSRF protection
+ * State-changing methods (POST, PUT, DELETE, PATCH) need CSRF tokens
+ */
+function isStateChangingMethod(method: string): boolean {
+  const stateChangingMethods = ['POST', 'PUT', 'DELETE', 'PATCH']
+  return stateChangingMethods.includes(method.toUpperCase())
+}
+
 export class ApiError extends Error {
   status: number
   data?: Record<string, unknown>
@@ -150,13 +180,29 @@ async function apiRequest<T>(
     ? `${baseUrl}${endpoint}`
     : `${baseUrl}/api/v1${endpoint}`
 
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...options.headers,
+  }
+  
+  // * Merge any additional headers from options
+  if (options.headers) {
+    const additionalHeaders = options.headers as Record<string, string>
+    Object.entries(additionalHeaders).forEach(([key, value]) => {
+      headers[key] = value
+    })
   }
 
   // * We rely on HttpOnly cookies, so no manual Authorization header injection.
   // * We MUST set credentials: 'include' for the browser to send cookies cross-origin (or same-site).
+  
+  // * Add CSRF token for state-changing requests to Auth API
+  // * Auth API uses Double Submit Cookie pattern for CSRF protection
+  if (isAuthRequest && isStateChangingMethod(method)) {
+    const csrfToken = getCSRFToken()
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken
+    }
+  }
 
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)

@@ -32,6 +32,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- **Seamless sign-in from Auth.** When you click "Sign in" on Pulse and complete authentication in the Ciphera Auth portal, you now return to Pulse fully authenticated without any loading loops or errors. We fixed CSRF handling and cookie forwarding issues that were causing 403 errors after OAuth callback, so the transition between apps is now smooth and reliable.
 - **Sign in after inactivity.** Clicking "Sign in" after a period of inactivity no longer does nothing. Previously, stale refresh cookies caused the middleware to redirect away from the login page; now only a valid access token triggers that redirect, so you can complete OAuth sign-in when your session has expired.
 - **Frequent re-login.** You no longer have to sign in multiple times a day. When the access token expires after 15 minutes of inactivity, the app now automatically refreshes it using your refresh token on the next page load, so you stay logged in for up to 30 days.
 - **2FA disable now requires password confirmation.** Disabling 2FA sends the derived password to the backend for verification. This prevents an attacker with a hijacked session from stripping 2FA.

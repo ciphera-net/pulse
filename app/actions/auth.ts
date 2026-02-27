@@ -91,6 +91,20 @@ export async function exchangeAuthCode(code: string, codeVerifier: string | null
       maxAge: 60 * 60 * 24 * 30 // 30 days
     })
 
+    // * Note: CSRF token should be set by Auth API login flow and available via cookie
+    // * If the Auth API returns a CSRF token in header, we forward it
+    const csrfToken = res.headers.get('X-CSRF-Token')
+    if (csrfToken) {
+      cookieStore.set('csrf_token', csrfToken, {
+        httpOnly: false, // * Must be readable by JS for CSRF protection
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        domain: cookieDomain,
+        maxAge: 60 * 60 * 24 * 30
+      })
+    }
+
     return {
       success: true,
       user: {
