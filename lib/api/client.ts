@@ -59,21 +59,46 @@ function onRefreshFailed(err: unknown) {
 }
 
 /**
- * Base API client with error handling
+ * Base API client with error handling, request deduplication, and short-term caching
  */
 async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
+  // * Skip deduplication for non-GET requests (mutations should always execute)
+  const method = options.method || 'GET'
+  const shouldDedupe = method === 'GET'
+
+  if (shouldDedupe) {
+    // * Clean up expired entries periodically
+    if (pendingRequests.size > 100 || responseCache.size > 100) {
+      cleanupExpiredEntries()
+    }
+
+    const requestKey = getRequestKey(endpoint, options)
+
+    // * Check if we have a recent cached response (within 2 seconds)
+    const cached = responseCache.get(requestKey) as CachedResponse<T> | undefined
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      return cached.data
+    }
+
+    // * Check if there's an identical request in flight
+    const pending = pendingRequests.get(requestKey) as PendingRequest<T> | undefined
+    if (pending && Date.now() - pending.timestamp < 30000) {
+      return pending.promise
+    }
+  }
+
   // * Determine base URL
   const isAuthRequest = endpoint.startsWith('/auth')
   const baseUrl = isAuthRequest ? AUTH_API_URL : API_URL
-  
+
   // * Handle legacy endpoints that already include /api/ prefix
-  const url = endpoint.startsWith('/api/') 
+  const url = endpoint.startsWith('/api/')
     ? `${baseUrl}${endpoint}`
     : `${baseUrl}/api/v1${endpoint}`
-  
+
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
     ...options.headers,
@@ -86,22 +111,24 @@ async function apiRequest<T>(
   const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
   const signal = options.signal ?? controller.signal
 
-  let response: Response
-  try {
-    response = await fetch(url, {
-      ...options,
-      headers,
-      credentials: 'include', // * IMPORTANT: Send cookies
-      signal,
-    })
-    clearTimeout(timeoutId)
-  } catch (e) {
-    clearTimeout(timeoutId)
-    if (e instanceof Error && (e.name === 'AbortError' || e.name === 'TypeError')) {
-      throw new ApiError(AUTH_ERROR_MESSAGES.NETWORK, 0)
+  // * Create the request promise
+  const requestPromise = (async (): Promise<T> => {
+    let response: Response
+    try {
+      response = await fetch(url, {
+        ...options,
+        headers,
+        credentials: 'include', // * IMPORTANT: Send cookies
+        signal,
+      })
+      clearTimeout(timeoutId)
+    } catch (e) {
+      clearTimeout(timeoutId)
+      if (e instanceof Error && (e.name === 'AbortError' || e.name === 'TypeError')) {
+        throw new ApiError(AUTH_ERROR_MESSAGES.NETWORK, 0)
+      }
+      throw e
     }
-    throw e
-  }
 
   if (!response.ok) {
     if (response.status === 401) {
@@ -182,6 +209,38 @@ async function apiRequest<T>(
   }
 
   return response.json()
+  })()
+
+  // * For GET requests, track the promise for deduplication and cache the result
+  if (shouldDedupe) {
+    const requestKey = getRequestKey(endpoint, options)
+
+    // * Store in pending requests
+    pendingRequests.set(requestKey, {
+      promise: requestPromise as Promise<unknown>,
+      timestamp: Date.now(),
+    })
+
+    // * Clean up pending request and cache the result when done
+    requestPromise
+      .then((data) => {
+        // * Cache successful response
+        responseCache.set(requestKey, {
+          data,
+          timestamp: Date.now(),
+        })
+        // * Remove from pending
+        pendingRequests.delete(requestKey)
+        return data
+      })
+      .catch((error) => {
+        // * Remove from pending on error too
+        pendingRequests.delete(requestKey)
+        throw error
+      })
+  }
+
+  return requestPromise
 }
 
 export const authFetch = apiRequest
