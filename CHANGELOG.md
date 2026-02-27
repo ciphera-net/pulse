@@ -35,6 +35,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- **Request ID tracing for debugging.** All API requests now include a unique Request ID header (`X-Request-ID`) that helps trace requests across frontend and backend services. When errors occur, the Request ID is included in the response, making it easy to find the exact request in server logs for debugging.
 - **App Switcher now shows consistent order.** The Ciphera Apps menu now always displays apps in the same order: Pulse, Drop, Auth — regardless of which app you're currently using. Previously, the current app was shown first, causing the order to change depending on context. This creates a more predictable navigation experience.
 
 ### Fixed
