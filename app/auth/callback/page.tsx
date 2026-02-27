@@ -56,12 +56,15 @@ function AuthCallbackContent() {
     const storedState = localStorage.getItem('oauth_state')
     const codeVerifier = localStorage.getItem('oauth_code_verifier')
 
-    // * Full OAuth flow (app-initiated): validate state + use PKCE
-    // * Session-authorized flow (from auth hub): no stored state or verifier
-    const isFullOAuth = !!storedState && !!codeVerifier
-
-    if (isFullOAuth) {
-      if (state !== storedState) {
+    // * Session flow (from auth hub): redirect has code but no state. Clear stale PKCE
+    // * data from any previous app-initiated OAuth so exchange proceeds without validation.
+    if (!state) {
+      localStorage.removeItem('oauth_state')
+      localStorage.removeItem('oauth_code_verifier')
+    } else {
+      // * Full OAuth flow (app-initiated): validate state + use PKCE
+      const isFullOAuth = !!storedState && !!codeVerifier
+      if (isFullOAuth && state !== storedState) {
         logger.error('State mismatch', { received: state, stored: storedState })
         setError('Invalid state')
         return
