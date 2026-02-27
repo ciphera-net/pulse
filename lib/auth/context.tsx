@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import apiRequest from '@/lib/api/client'
-import { LoadingOverlay, useSessionSync } from '@ciphera-net/ui'
+import { LoadingOverlay, useSessionSync, SessionExpiryWarning } from '@ciphera-net/ui'
 import { logoutAction, getSessionAction, setSessionAction } from '@/app/actions/auth'
 import { getUserOrganizations, switchContext } from '@/lib/api/organization'
 import { logger } from '@/lib/utils/logger'
@@ -217,6 +217,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider value={{ user, loading, login, logout, refresh, refreshSession }}>
       {isLoggingOut && <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" />}
+      <SessionExpiryWarning
+        isAuthenticated={!!user}
+        onExtendSession={refresh}
+        onExpired={logout}
+      />
       {children}
     </AuthContext.Provider>
   )
