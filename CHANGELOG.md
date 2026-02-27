@@ -33,6 +33,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Goals & Events.** Define custom goals (e.g. signup, purchase) and track them with `pulse.track()` in your snippet. Counts appear on your dashboard once you add goals in Site Settings → Goals & Events.
 - **2FA recovery codes backup.** When you enable 2FA, you receive recovery codes. You can now regenerate new codes (with password confirmation) from Settings and download them as a `.txt` file. Regenerating invalidates all existing codes.
 
+### Changed
+
+- **App Switcher now shows consistent order.** The Ciphera Apps menu now always displays apps in the same order: Pulse, Drop, Auth — regardless of which app you're currently using. Previously, the current app was shown first, causing the order to change depending on context. This creates a more predictable navigation experience.
+
 ### Fixed
 
 - **Shopify and embedded site tracking.** The Pulse tracking script now loads correctly when embedded on third-party sites like Shopify stores, WooCommerce, or custom storefronts. Previously, tracking failed because the script was redirected to the login page instead of loading.
