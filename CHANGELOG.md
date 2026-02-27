@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- **Lighter dashboard data transfers.** Your dashboard now loads data in smaller, focused pieces instead of one massive bundle. This means faster loading times—especially on slower connections—and your analytics appear section by section as they become ready, rather than making you wait for everything at once.
 - **Smarter data fetching.** Your dashboard now automatically prevents duplicate requests when multiple components ask for the same data at the same time. It also briefly caches recent responses, so switching between pages feels instant while still keeping everything up to date. This reduces server load and makes the app feel snappier.
 - **Smarter dashboard updates.** Your dashboard now knows when you're actively viewing it versus when it's in the background. When you switch to another tab, we intelligently slow down data refreshes to save resources, then instantly catch up when you return. This keeps your analytics current without putting unnecessary load on the system.
 - **Instant real-time visitor counts.** Your dashboard's "current visitors" counter now updates lightning-fast using an optimized tracking system. Instead of scanning your entire database, we maintain a live session index that shows active visitors in milliseconds—even when thousands of people are browsing your sites simultaneously.
