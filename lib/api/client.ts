@@ -58,6 +58,57 @@ function onRefreshFailed(err: unknown) {
   refreshSubscribers = []
 }
 
+// * ============================================================================
+// * Request Deduplication & Caching
+// * ============================================================================
+
+/** Cache TTL in milliseconds (2 seconds) */
+const CACHE_TTL_MS = 2_000
+
+/** Stores in-flight requests for deduplication */
+interface PendingRequest {
+  promise: Promise<unknown>
+  timestamp: number
+}
+const pendingRequests = new Map<string, PendingRequest>()
+
+/** Stores cached responses */
+interface CachedResponse {
+  data: unknown
+  timestamp: number
+}
+const responseCache = new Map<string, CachedResponse>()
+
+/**
+ * Generate a unique key for a request based on endpoint and options
+ */
+function getRequestKey(endpoint: string, options: RequestInit): string {
+  const method = options.method || 'GET'
+  const body = options.body || ''
+  return `${method}:${endpoint}:${body}`
+}
+
+/**
+ * Clean up expired entries from pending requests and response cache
+ */
+function cleanupExpiredEntries(): void {
+  const now = Date.now()
+
+  // * Clean up stale pending requests (older than 30 seconds)
+  for (const [key, pending] of pendingRequests.entries()) {
+    if (now - pending.timestamp > 30_000) {
+      pendingRequests.delete(key)
+    }
+  }
+
+  // * Clean up stale cached responses (older than CACHE_TTL_MS)
+  for (const [key, cached] of responseCache.entries()) {
+    if (now - cached.timestamp > CACHE_TTL_MS) {
+      responseCache.delete(key)
+    }
+  }
+}
+
 /**
  * Base API client with error handling, request deduplication, and short-term caching
  */
@@ -78,15 +129,15 @@ async function apiRequest<T>(
     const requestKey = getRequestKey(endpoint, options)
 
     // * Check if we have a recent cached response (within 2 seconds)
-    const cached = responseCache.get(requestKey) as CachedResponse<T> | undefined
+    const cached = responseCache.get(requestKey)
     if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-      return cached.data
+      return cached.data as T
     }
 
     // * Check if there's an identical request in flight
-    const pending = pendingRequests.get(requestKey) as PendingRequest<T> | undefined
+    const pending = pendingRequests.get(requestKey)
     if (pending && Date.now() - pending.timestamp < 30000) {
-      return pending.promise
+      return pending.promise as Promise<T>
     }
   }
 
