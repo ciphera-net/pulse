@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/lib/auth/context'
 import { logger } from '@/lib/utils/logger'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { getSite, type Site } from '@/lib/api/sites'
@@ -148,6 +148,23 @@ export default function SiteDashboardPage() {
     return { start: prevStart.toISOString().split('T')[0], end: prevEnd.toISOString().split('T')[0] }
   }, [])
 
+  // * Visibility-aware polling intervals
+  // * Historical data: 60s when visible, paused when hidden
+  // * Real-time data: 5s when visible, 30s when hidden
+  const [isVisible, setIsVisible] = useState(true)
+  const dashboardIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const realtimeIntervalRef = useRef<NodeJS.Timeout | null>(null)
+
+  // * Track visibility state
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      const visible = document.visibilityState === 'visible'
+      setIsVisible(visible)
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [])
+
   const loadData = useCallback(async (silent = false) => {
     try {
       if (!silent) setLoading(true)
@@ -204,18 +221,60 @@ export default function SiteDashboardPage() {
       const data = await getRealtime(siteId)
       setRealtime(data.visitors)
     } catch (error) {
-      // Silently fail for realtime updates
+      // * Silently fail for realtime updates
     }
   }, [siteId])
 
+  // * Visibility-aware polling for dashboard data (historical)
+  // * Refreshes every 60 seconds when tab is visible, pauses when hidden
   useEffect(() => {
-    if (isSettingsLoaded) loadData()
-    const interval = setInterval(() => {
-      loadData(true)
+    if (!isSettingsLoaded) return
+
+    // * Initial load
+    loadData()
+
+    // * Clear existing interval
+    if (dashboardIntervalRef.current) {
+      clearInterval(dashboardIntervalRef.current)
+    }
+
+    // * Only poll when visible (saves server resources when tab is backgrounded)
+    if (isVisible) {
+      dashboardIntervalRef.current = setInterval(() => {
+        loadData(true)
+      }, 60000) // * 60 seconds for historical data
+    }
+
+    return () => {
+      if (dashboardIntervalRef.current) {
+        clearInterval(dashboardIntervalRef.current)
+      }
+    }
+  }, [siteId, dateRange, todayInterval, multiDayInterval, isSettingsLoaded, loadData, isVisible])
+
+  // * Visibility-aware polling for realtime data
+  // * Refreshes every 5 seconds when visible, every 30 seconds when hidden
+  useEffect(() => {
+    if (!isSettingsLoaded) return
+
+    // * Clear existing interval
+    if (realtimeIntervalRef.current) {
+      clearInterval(realtimeIntervalRef.current)
+    }
+
+    // * Different intervals based on visibility
+    const interval = isVisible ? 5000 : 30000 // * 5s visible, 30s hidden
+    
+    realtimeIntervalRef.current = setInterval(() => {
       loadRealtime()
-    }, 30000)
-    return () => clearInterval(interval)
-  }, [siteId, dateRange, todayInterval, multiDayInterval, isSettingsLoaded, loadData, loadRealtime])
+    }, interval)
+
+    return () => {
+      if (realtimeIntervalRef.current) {
+        clearInterval(realtimeIntervalRef.current)
+      }
+    }
+  }, [siteId, isSettingsLoaded, loadRealtime, isVisible])
 
   useEffect(() => {
     if (site?.domain) document.title = `${site.domain} | Pulse`

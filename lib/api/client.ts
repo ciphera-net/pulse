@@ -22,6 +22,36 @@ export function getSignupUrl(redirectPath = '/auth/callback') {
   return `${AUTH_URL}/signup?client_id=pulse-app&redirect_uri=${redirectUri}&response_type=code`
 }
 
+// * ============================================================================
+// * CSRF Token Handling
+// * ============================================================================
+
+/**
+ * Get CSRF token from the csrf_token cookie (non-httpOnly)
+ * This is needed for state-changing requests to the Auth API
+ */
+function getCSRFToken(): string | null {
+  if (typeof document === 'undefined') return null
+  
+  const cookies = document.cookie.split(';')
+  for (const cookie of cookies) {
+    const [name, value] = cookie.trim().split('=')
+    if (name === 'csrf_token') {
+      return decodeURIComponent(value)
+    }
+  }
+  return null
+}
+
+/**
+ * Check if a request method requires CSRF protection
+ * State-changing methods (POST, PUT, DELETE, PATCH) need CSRF tokens
+ */
+function isStateChangingMethod(method: string): boolean {
+  const stateChangingMethods = ['POST', 'PUT', 'DELETE', 'PATCH']
+  return stateChangingMethods.includes(method.toUpperCase())
+}
+
 export class ApiError extends Error {
   status: number
   data?: Record<string, unknown>
@@ -58,50 +88,144 @@ function onRefreshFailed(err: unknown) {
   refreshSubscribers = []
 }
 
+// * ============================================================================
+// * Request Deduplication & Caching
+// * ============================================================================
+
+/** Cache TTL in milliseconds (2 seconds) */
+const CACHE_TTL_MS = 2_000
+
+/** Stores in-flight requests for deduplication */
+interface PendingRequest {
+  promise: Promise<unknown>
+  timestamp: number
+}
+const pendingRequests = new Map<string, PendingRequest>()
+
+/** Stores cached responses */
+interface CachedResponse {
+  data: unknown
+  timestamp: number
+}
+const responseCache = new Map<string, CachedResponse>()
+
 /**
- * Base API client with error handling
+ * Generate a unique key for a request based on endpoint and options
+ */
+function getRequestKey(endpoint: string, options: RequestInit): string {
+  const method = options.method || 'GET'
+  const body = options.body || ''
+  return `${method}:${endpoint}:${body}`
+}
+
+/**
+ * Clean up expired entries from pending requests and response cache
+ */
+function cleanupExpiredEntries(): void {
+  const now = Date.now()
+
+  // * Clean up stale pending requests (older than 30 seconds)
+  for (const [key, pending] of pendingRequests.entries()) {
+    if (now - pending.timestamp > 30_000) {
+      pendingRequests.delete(key)
+    }
+  }
+
+  // * Clean up stale cached responses (older than CACHE_TTL_MS)
+  for (const [key, cached] of responseCache.entries()) {
+    if (now - cached.timestamp > CACHE_TTL_MS) {
+      responseCache.delete(key)
+    }
+  }
+}
+
+/**
+ * Base API client with error handling, request deduplication, and short-term caching
  */
 async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
+  // * Skip deduplication for non-GET requests (mutations should always execute)
+  const method = options.method || 'GET'
+  const shouldDedupe = method === 'GET'
+
+  if (shouldDedupe) {
+    // * Clean up expired entries periodically
+    if (pendingRequests.size > 100 || responseCache.size > 100) {
+      cleanupExpiredEntries()
+    }
+
+    const requestKey = getRequestKey(endpoint, options)
+
+    // * Check if we have a recent cached response (within 2 seconds)
+    const cached = responseCache.get(requestKey)
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      return cached.data as T
+    }
+
+    // * Check if there's an identical request in flight
+    const pending = pendingRequests.get(requestKey)
+    if (pending && Date.now() - pending.timestamp < 30000) {
+      return pending.promise as Promise<T>
+    }
+  }
+
   // * Determine base URL
   const isAuthRequest = endpoint.startsWith('/auth')
   const baseUrl = isAuthRequest ? AUTH_API_URL : API_URL
-  
+
   // * Handle legacy endpoints that already include /api/ prefix
-  const url = endpoint.startsWith('/api/') 
+  const url = endpoint.startsWith('/api/')
     ? `${baseUrl}${endpoint}`
     : `${baseUrl}/api/v1${endpoint}`
-  
-  const headers: HeadersInit = {
+
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...options.headers,
+  }
+  
+  // * Merge any additional headers from options
+  if (options.headers) {
+    const additionalHeaders = options.headers as Record<string, string>
+    Object.entries(additionalHeaders).forEach(([key, value]) => {
+      headers[key] = value
+    })
   }
 
   // * We rely on HttpOnly cookies, so no manual Authorization header injection.
   // * We MUST set credentials: 'include' for the browser to send cookies cross-origin (or same-site).
+  
+  // * Add CSRF token for state-changing requests to Auth API
+  // * Auth API uses Double Submit Cookie pattern for CSRF protection
+  if (isAuthRequest && isStateChangingMethod(method)) {
+    const csrfToken = getCSRFToken()
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken
+    }
+  }
 
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
   const signal = options.signal ?? controller.signal
 
-  let response: Response
-  try {
-    response = await fetch(url, {
-      ...options,
-      headers,
-      credentials: 'include', // * IMPORTANT: Send cookies
-      signal,
-    })
-    clearTimeout(timeoutId)
-  } catch (e) {
-    clearTimeout(timeoutId)
-    if (e instanceof Error && (e.name === 'AbortError' || e.name === 'TypeError')) {
-      throw new ApiError(AUTH_ERROR_MESSAGES.NETWORK, 0)
+  // * Create the request promise
+  const requestPromise = (async (): Promise<T> => {
+    let response: Response
+    try {
+      response = await fetch(url, {
+        ...options,
+        headers,
+        credentials: 'include', // * IMPORTANT: Send cookies
+        signal,
+      })
+      clearTimeout(timeoutId)
+    } catch (e) {
+      clearTimeout(timeoutId)
+      if (e instanceof Error && (e.name === 'AbortError' || e.name === 'TypeError')) {
+        throw new ApiError(AUTH_ERROR_MESSAGES.NETWORK, 0)
+      }
+      throw e
     }
-    throw e
-  }
 
   if (!response.ok) {
     if (response.status === 401) {
@@ -182,6 +306,38 @@ async function apiRequest<T>(
   }
 
   return response.json()
+  })()
+
+  // * For GET requests, track the promise for deduplication and cache the result
+  if (shouldDedupe) {
+    const requestKey = getRequestKey(endpoint, options)
+
+    // * Store in pending requests
+    pendingRequests.set(requestKey, {
+      promise: requestPromise as Promise<unknown>,
+      timestamp: Date.now(),
+    })
+
+    // * Clean up pending request and cache the result when done
+    requestPromise
+      .then((data) => {
+        // * Cache successful response
+        responseCache.set(requestKey, {
+          data,
+          timestamp: Date.now(),
+        })
+        // * Remove from pending
+        pendingRequests.delete(requestKey)
+        return data
+      })
+      .catch((error) => {
+        // * Remove from pending on error too
+        pendingRequests.delete(requestKey)
+        throw error
+      })
+  }
+
+  return requestPromise
 }
 
 export const authFetch = apiRequest

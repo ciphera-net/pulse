@@ -35,11 +35,15 @@ export type AuthExchangeErrorType = 'network' | 'expired' | 'invalid' | 'server'
 
 export async function exchangeAuthCode(code: string, codeVerifier: string | null, redirectUri: string) {
   try {
+    // * IMPORTANT: credentials: 'include' is required to receive httpOnly cookies from Auth API
+    // * The Auth API sets access_token, refresh_token, and csrf_token as httpOnly cookies
+    // * We must forward these to the browser for cross-subdomain auth to work
     const res = await fetch(`${AUTH_API_URL}/oauth/token`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
+      credentials: 'include', // * Critical: receives httpOnly cookies from Auth API
       body: JSON.stringify({
         grant_type: 'authorization_code',
         code,
@@ -90,6 +94,50 @@ export async function exchangeAuthCode(code: string, codeVerifier: string | null
       domain: cookieDomain,
       maxAge: 60 * 60 * 24 * 30 // 30 days
     })
+
+    // * Forward cookies from Auth API response to browser
+    // * The Auth API sets httpOnly cookies on auth.ciphera.net - we need to mirror them on pulse.ciphera.net
+    const setCookieHeaders = res.headers.getSetCookie()
+    if (setCookieHeaders && setCookieHeaders.length > 0) {
+      for (const cookieStr of setCookieHeaders) {
+        // * Parse Set-Cookie header (format: name=value; attributes...)
+        const [nameValue] = cookieStr.split(';')
+        const [name, value] = nameValue.trim().split('=')
+        
+        if (name && value) {
+          // * Determine if httpOnly (default true for security)
+          const isHttpOnly = cookieStr.toLowerCase().includes('httponly')
+          // * Determine sameSite (default lax)
+          const sameSiteMatch = cookieStr.match(/samesite=(\w+)/i)
+          const sameSite = (sameSiteMatch?.[1]?.toLowerCase() as 'strict' | 'lax' | 'none') || 'lax'
+          // * Extract max-age if present
+          const maxAgeMatch = cookieStr.match(/max-age=(\d+)/i)
+          const maxAge = maxAgeMatch ? parseInt(maxAgeMatch[1], 10) : 60 * 60 * 24 * 30
+          
+          cookieStore.set(name.trim(), decodeURIComponent(value.trim()), {
+            httpOnly: isHttpOnly,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: sameSite,
+            path: '/',
+            domain: cookieDomain,
+            maxAge: maxAge
+          })
+        }
+      }
+    }
+
+    // * Also check for CSRF token in response header (fallback)
+    const csrfToken = res.headers.get('X-CSRF-Token')
+    if (csrfToken && !cookieStore.get('csrf_token')) {
+      cookieStore.set('csrf_token', csrfToken, {
+        httpOnly: false, // * Must be readable by JS for CSRF protection
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        domain: cookieDomain,
+        maxAge: 60 * 60 * 24 * 30
+      })
+    }
 
     return {
       success: true,
