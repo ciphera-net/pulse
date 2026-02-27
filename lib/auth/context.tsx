@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import apiRequest from '@/lib/api/client'
-import { LoadingOverlay } from '@ciphera-net/ui'
+import { LoadingOverlay, useSessionSync } from '@ciphera-net/ui'
 import { logoutAction, getSessionAction, setSessionAction } from '@/app/actions/auth'
 import { getUserOrganizations, switchContext } from '@/lib/api/organization'
 import { logger } from '@/lib/utils/logger'
@@ -74,10 +74,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoggingOut(true)
     await logoutAction()
     localStorage.removeItem('user')
-    // * Clear legacy tokens if they exist
-    localStorage.removeItem('token')
-    localStorage.removeItem('refreshToken')
-    
+    // * Broadcast logout to other tabs (BroadcastChannel will handle if available)
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      const channel = new BroadcastChannel('ciphera_session')
+      channel.postMessage({ type: 'LOGOUT' })
+      channel.close()
+    }
     setTimeout(() => {
       window.location.href = '/'
     }, 500)
@@ -142,16 +144,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(null)
         }
 
-        // * Clear legacy tokens if they exist (migration)
-        if (localStorage.getItem('token')) {
-            localStorage.removeItem('token')
-            localStorage.removeItem('refreshToken')
-        }
-
         setLoading(false)
     }
     init()
   }, [])
+
+  // * Sync session across browser tabs using BroadcastChannel
+  useSessionSync({
+    onLogout: () => {
+      localStorage.removeItem('user')
+      window.location.href = '/'
+    },
+    onLogin: (userData) => {
+      setUser(userData as User)
+      router.refresh()
+    },
+    onRefresh: () => {
+      refresh()
+    },
+  })
 
   // * Organization Wall & Auto-Switch
   useEffect(() => {
