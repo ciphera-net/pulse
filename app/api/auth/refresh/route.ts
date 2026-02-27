@@ -37,6 +37,9 @@ export async function POST() {
 
     const data = await res.json()
 
+    // * Get CSRF token from Auth API response header (for cookie rotation)
+    const csrfToken = res.headers.get('X-CSRF-Token')
+
     cookieStore.set('access_token', data.access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -54,6 +57,18 @@ export async function POST() {
       domain: cookieDomain,
       maxAge: 60 * 60 * 24 * 30
     })
+
+    // * Set/update CSRF token cookie (non-httpOnly, for JS access)
+    if (csrfToken) {
+      cookieStore.set('csrf_token', csrfToken, {
+        httpOnly: false, // * Must be readable by JS for CSRF protection
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        domain: cookieDomain,
+        maxAge: 60 * 60 * 24 * 30
+      })
+    }
 
     return NextResponse.json({ success: true, access_token: data.access_token })
   } catch (error) {
