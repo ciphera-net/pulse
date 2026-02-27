@@ -2,7 +2,7 @@
 
 import { OfflineBanner } from '@/components/OfflineBanner'
 import { Footer } from '@/components/Footer'
-import { Header } from '@ciphera-net/ui'
+import { Header, type CipheraApp } from '@ciphera-net/ui'
 import NotificationCenter from '@/components/notifications/NotificationCenter'
 import { useAuth } from '@/lib/auth/context'
 import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus'
@@ -15,6 +15,34 @@ import { LoadingOverlay } from '@ciphera-net/ui'
 import { useRouter } from 'next/navigation'
 
 const ORG_SWITCH_KEY = 'pulse_switching_org'
+
+// * Available Ciphera apps for the app switcher
+const CIPHERA_APPS: CipheraApp[] = [
+  {
+    id: 'pulse',
+    name: 'Pulse',
+    description: 'Your current app — Privacy-first analytics',
+    icon: '/pulse_icon_no_margins.png',
+    href: 'https://pulse.ciphera.net',
+    isAvailable: false, // * Current app
+  },
+  {
+    id: 'drop',
+    name: 'Drop',
+    description: 'Secure file sharing',
+    icon: '/drop_icon_no_margins.png',
+    href: 'https://drop.ciphera.net',
+    isAvailable: true,
+  },
+  {
+    id: 'auth',
+    name: 'Ciphera Account',
+    description: 'Manage your account settings',
+    icon: '/auth_icon_no_margins.png',
+    href: 'https://auth.ciphera.net',
+    isAvailable: true,
+  },
+]
 
 export default function LayoutContent({ children }: { children: React.ReactNode }) {
   const auth = useAuth()
@@ -87,6 +115,8 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         showPricing={true}
         topOffset={showOfflineBar ? `${barHeightRem}rem` : undefined}
         rightSideActions={auth.user ? <NotificationCenter /> : null}
+        apps={CIPHERA_APPS}
+        currentAppId="pulse"
         customNavItems={
           <>
             {!auth.user && (
