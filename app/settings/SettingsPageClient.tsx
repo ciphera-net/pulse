@@ -1,8 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useAuth } from '@/lib/auth/context'
 import ProfileSettings from '@/components/settings/ProfileSettings'
+import TrustedDevicesCard from '@/components/settings/TrustedDevicesCard'
+import SecurityActivityCard from '@/components/settings/SecurityActivityCard'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   UserIcon,
@@ -13,13 +16,26 @@ import {
   ExternalLinkIcon,
 } from '@ciphera-net/ui'
 
+// Inline SVG icons not available in ciphera-ui
+function BellIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+    </svg>
+  )
+}
+
 // --- Types ---
 
 type ProfileSubTab = 'profile' | 'security' | 'preferences'
 
 type ActiveSelection =
   | { section: 'profile'; subTab: ProfileSubTab }
+  | { section: 'notifications' }
   | { section: 'account' }
+  | { section: 'devices' }
+  | { section: 'activity' }
 
 type ExpandableSection = 'profile' | 'account'
 
@@ -217,8 +233,31 @@ function AppSettingsSection() {
     switch (active.section) {
       case 'profile':
         return <ProfileSettings activeTab={active.subTab} />
+      case 'notifications':
+        return (
+          <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-8 shadow-sm">
+            <div className="text-center max-w-md mx-auto">
+              <BellIcon className="w-12 h-12 text-neutral-300 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-neutral-900 dark:text-white mb-2">Notification Preferences</h3>
+              <p className="text-sm text-neutral-500 mb-4">
+                Configure which notifications you receive and how you want to be notified.
+              </p>
+              <Link
+                href="/notifications"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-brand-orange text-white rounded-lg hover:bg-brand-orange/90 transition-colors"
+              >
+                Open Notification Center
+                <ChevronRightIcon className="w-4 h-4" />
+              </Link>
+            </div>
+          </div>
+        )
       case 'account':
         return <AccountManagementCard />
+      case 'devices':
+        return <TrustedDevicesCard />
+      case 'activity':
+        return <SecurityActivityCard />
       default:
         return null
     }
@@ -266,6 +305,17 @@ function AppSettingsSection() {
                 />
               </ExpandableSubItems>
             </div>
+
+            {/* Notifications (flat, no expansion) */}
+            <SectionHeader
+              expanded={false}
+              active={active.section === 'notifications'}
+              onToggle={() => setActive({ section: 'notifications' })}
+              icon={BellIcon}
+              label="Notifications"
+              description="Email and in-app notifications"
+              hasChildren={false}
+            />
           </div>
         </div>
 
@@ -308,16 +358,14 @@ function AppSettingsSection() {
                 external
               />
               <SubItem
-                active={false}
-                onClick={() => window.open('https://auth.ciphera.net/devices', '_blank')}
+                active={active.section === 'devices'}
+                onClick={() => setActive({ section: 'devices' })}
                 label="Trusted Devices"
-                external
               />
               <SubItem
-                active={false}
-                onClick={() => window.open('https://auth.ciphera.net/activity', '_blank')}
+                active={active.section === 'activity'}
+                onClick={() => setActive({ section: 'activity' })}
                 label="Security Activity"
-                external
               />
             </ExpandableSubItems>
           </div>
