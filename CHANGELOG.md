@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.12.0-alpha] - 2026-03-01
+
 ### Added
 
 - **Automated testing for improved reliability.** Pulse now has a comprehensive test suite that verifies critical parts of the app work correctly before every release. This covers login and session protection, error tracking, online/offline detection, and background data refreshing. These checks run automatically so regressions are caught before they reach you.
@@ -217,7 +219,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
-[Unreleased]: https://github.com/ciphera-net/pulse/compare/v0.11.1-alpha...HEAD
+[Unreleased]: https://github.com/ciphera-net/pulse/compare/v0.12.0-alpha...HEAD
+[0.12.0-alpha]: https://github.com/ciphera-net/pulse/compare/v0.11.1-alpha...v0.12.0-alpha
 [0.11.1-alpha]: https://github.com/ciphera-net/pulse/compare/v0.11.0-alpha...v0.11.1-alpha
 [0.11.0-alpha]: https://github.com/ciphera-net/pulse/compare/v0.10.0-alpha...v0.11.0-alpha
 [0.10.0-alpha]: https://github.com/ciphera-net/pulse/compare/v0.9.0-alpha...v0.10.0-alpha
