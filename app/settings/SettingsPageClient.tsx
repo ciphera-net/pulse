@@ -30,7 +30,7 @@ function BellIcon({ className }: { className?: string }) {
 // --- Types ---
 
 type ProfileSubTab = 'profile' | 'security' | 'preferences'
-type NotificationSubTab = 'email' | 'center'
+type NotificationSubTab = 'security' | 'center'
 
 type ActiveSelection =
   | { section: 'profile'; subTab: ProfileSubTab }
@@ -139,12 +139,14 @@ function ExpandableSubItems({ expanded, children }: { expanded: boolean; childre
 
 // --- Content Components ---
 
-// Email Notification Preferences Card
-const PULSE_NOTIFICATION_OPTIONS = [
-  { key: 'security_alerts', label: 'Security Alerts', description: 'Important security events like new logins, password changes, and 2FA updates.' },
+// Security Alerts Card (granular security toggles)
+const SECURITY_ALERT_OPTIONS = [
+  { key: 'login_alerts', label: 'Login Activity', description: 'New device sign-ins and suspicious login attempts.' },
+  { key: 'password_alerts', label: 'Password Changes', description: 'Password changes and session revocations.' },
+  { key: 'two_factor_alerts', label: 'Two-Factor Authentication', description: '2FA enabled/disabled and recovery code changes.' },
 ]
 
-function EmailNotificationPreferencesCard() {
+function SecurityAlertsCard() {
   const { user } = useAuth()
   const [emailNotifications, setEmailNotifications] = useState<Record<string, boolean>>({})
 
@@ -152,7 +154,7 @@ function EmailNotificationPreferencesCard() {
     if (user?.preferences?.email_notifications) {
       setEmailNotifications(user.preferences.email_notifications)
     } else {
-      const defaults = PULSE_NOTIFICATION_OPTIONS.reduce((acc, option) => ({
+      const defaults = SECURITY_ALERT_OPTIONS.reduce((acc, option) => ({
         ...acc,
         [option.key]: true
       }), {} as Record<string, boolean>)
@@ -168,7 +170,7 @@ function EmailNotificationPreferencesCard() {
     setEmailNotifications(newState)
     try {
       await updateUserPreferences({
-        email_notifications: newState as { new_file_received: boolean; file_downloaded: boolean; security_alerts: boolean }
+        email_notifications: newState as { new_file_received: boolean; file_downloaded: boolean; login_alerts: boolean; password_alerts: boolean; two_factor_alerts: boolean }
       })
     } catch {
       setEmailNotifications(prev => ({
@@ -185,13 +187,13 @@ function EmailNotificationPreferencesCard() {
           <BellIcon className="w-5 h-5 text-brand-orange" />
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">Email Notifications</h2>
-          <p className="text-sm text-neutral-500">Choose which email notifications you receive</p>
+          <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">Security Alerts</h2>
+          <p className="text-sm text-neutral-500">Choose which security events trigger email alerts</p>
         </div>
       </div>
 
       <div className="space-y-4">
-        {PULSE_NOTIFICATION_OPTIONS.map((item) => (
+        {SECURITY_ALERT_OPTIONS.map((item) => (
           <div
             key={item.key}
             className={`flex items-center justify-between p-4 border rounded-xl transition-all duration-200 ${
@@ -328,7 +330,7 @@ function AppSettingsSection() {
       case 'profile':
         return <ProfileSettings activeTab={active.subTab} />
       case 'notifications':
-        if (active.subTab === 'email') return <EmailNotificationPreferencesCard />
+        if (active.subTab === 'security') return <SecurityAlertsCard />
         if (active.subTab === 'center') return (
           <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-8 shadow-sm">
             <div className="text-center max-w-md mx-auto">
@@ -410,7 +412,7 @@ function AppSettingsSection() {
                 onToggle={() => {
                   toggleSection('notifications')
                   if (!expanded.has('notifications')) {
-                    selectSubTab({ section: 'notifications', subTab: 'email' })
+                    selectSubTab({ section: 'notifications', subTab: 'security' })
                   }
                 }}
                 icon={BellIcon}
@@ -419,9 +421,9 @@ function AppSettingsSection() {
               />
               <ExpandableSubItems expanded={expanded.has('notifications')}>
                 <SubItem
-                  active={active.section === 'notifications' && active.subTab === 'email'}
-                  onClick={() => selectSubTab({ section: 'notifications', subTab: 'email' })}
-                  label="Email Preferences"
+                  active={active.section === 'notifications' && active.subTab === 'security'}
+                  onClick={() => selectSubTab({ section: 'notifications', subTab: 'security' })}
+                  label="Security Alerts"
                 />
                 <SubItem
                   active={active.section === 'notifications' && active.subTab === 'center'}
