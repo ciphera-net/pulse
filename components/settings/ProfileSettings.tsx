@@ -60,6 +60,7 @@ export default function ProfileSettings({ activeTab }: Props = {}) {
       logout={logout}
       activeTab={activeTab}
       hideNav={activeTab !== undefined}
+      hideNotifications
     />
   )
 }
