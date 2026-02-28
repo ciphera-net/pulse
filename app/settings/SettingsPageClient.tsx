@@ -1,14 +1,29 @@
 'use client'
 
 import { useState } from 'react'
+import { useAuth } from '@/lib/auth/context'
 import ProfileSettings from '@/components/settings/ProfileSettings'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   UserIcon,
+  LockIcon,
+  BoxIcon,
+  ChevronRightIcon,
   ChevronDownIcon,
+  ExternalLinkIcon,
 } from '@ciphera-net/ui'
 
+// --- Types ---
+
 type ProfileSubTab = 'profile' | 'security' | 'preferences'
+
+type ActiveSelection =
+  | { section: 'profile'; subTab: ProfileSubTab }
+  | { section: 'account' }
+
+type ExpandableSection = 'profile' | 'account'
+
+// --- Sidebar Components ---
 
 function SectionHeader({
   expanded,
@@ -17,6 +32,7 @@ function SectionHeader({
   icon: Icon,
   label,
   description,
+  hasChildren = true,
 }: {
   expanded: boolean
   active: boolean
@@ -24,6 +40,7 @@ function SectionHeader({
   icon: React.ElementType
   label: string
   description?: string
+  hasChildren?: boolean
 }) {
   return (
     <button
@@ -43,11 +60,15 @@ function SectionHeader({
           </p>
         )}
       </div>
-      <ChevronDownIcon
-        className={`w-4 h-4 shrink-0 mt-1 transition-transform duration-200 ${
-          expanded ? '' : '-rotate-90'
-        }`}
-      />
+      {hasChildren ? (
+        <ChevronDownIcon
+          className={`w-4 h-4 shrink-0 mt-1 transition-transform duration-200 ${
+            expanded ? '' : '-rotate-90'
+          }`}
+        />
+      ) : (
+        <ChevronRightIcon className={`w-4 h-4 shrink-0 mt-1 transition-transform ${active ? 'rotate-90' : ''}`} />
+      )}
     </button>
   )
 }
@@ -56,10 +77,12 @@ function SubItem({
   active,
   onClick,
   label,
+  external = false,
 }: {
   active: boolean
   onClick: () => void
   label: string
+  external?: boolean
 }) {
   return (
     <button
@@ -71,6 +94,7 @@ function SubItem({
       }`}
     >
       <span className="flex-1">{label}</span>
+      {external && <ExternalLinkIcon className="w-3 h-3 opacity-60" />}
     </button>
   )
 }
@@ -95,56 +119,250 @@ function ExpandableSubItems({ expanded, children }: { expanded: boolean; childre
   )
 }
 
-export default function SettingsPageClient() {
-  const [activeSubTab, setActiveSubTab] = useState<ProfileSubTab>('profile')
-  const [expanded, setExpanded] = useState(true)
+// --- Content Components ---
+
+function AccountManagementCard() {
+  const accountLinks = [
+    {
+      label: 'Profile & Personal Info',
+      description: 'Update your name, email, and avatar',
+      href: 'https://auth.ciphera.net/settings',
+      icon: UserIcon,
+    },
+    {
+      label: 'Security & 2FA',
+      description: 'Password, two-factor authentication, and passkeys',
+      href: 'https://auth.ciphera.net/settings?tab=security',
+      icon: LockIcon,
+    },
+    {
+      label: 'Active Sessions',
+      description: 'Manage devices logged into your account',
+      href: 'https://auth.ciphera.net/settings?tab=sessions',
+      icon: BoxIcon,
+    },
+  ]
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">Settings</h1>
-        <p className="mt-2 text-neutral-600 dark:text-neutral-400">
-          Manage your account settings and preferences.
-        </p>
+    <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-6 shadow-sm">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="p-2 rounded-lg bg-brand-orange/10">
+          <UserIcon className="w-5 h-5 text-brand-orange" />
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">Ciphera Account</h2>
+          <p className="text-sm text-neutral-500">Manage your account across all Ciphera products</p>
+        </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-8">
-        {/* Sidebar Navigation */}
-        <nav className="w-full lg:w-72 flex-shrink-0">
+      <div className="space-y-3">
+        {accountLinks.map((link) => (
+          <a
+            key={link.label}
+            href={link.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-start gap-3 p-3 rounded-xl border border-neutral-200 dark:border-neutral-800 hover:border-brand-orange/30 hover:bg-brand-orange/5 transition-all group"
+          >
+            <link.icon className="w-5 h-5 text-neutral-400 group-hover:text-brand-orange shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-neutral-900 dark:text-white group-hover:text-brand-orange">
+                  {link.label}
+                </span>
+                <ExternalLinkIcon className="w-3.5 h-3.5 text-neutral-400" />
+              </div>
+              <p className="text-sm text-neutral-500 mt-0.5">{link.description}</p>
+            </div>
+            <ChevronRightIcon className="w-4 h-4 text-neutral-400 shrink-0 mt-1" />
+          </a>
+        ))}
+      </div>
+
+      <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-800">
+        <p className="text-xs text-neutral-500">
+          These settings apply to your Ciphera Account and affect all products (Drop, Pulse, and Auth).
+        </p>
+      </div>
+    </div>
+  )
+}
+
+// --- Main Settings Section ---
+
+function AppSettingsSection() {
+  const [active, setActive] = useState<ActiveSelection>({ section: 'profile', subTab: 'profile' })
+  const [expanded, setExpanded] = useState<Set<ExpandableSection>>(new Set(['profile']))
+
+  const toggleSection = (section: ExpandableSection) => {
+    setExpanded(prev => {
+      const next = new Set(prev)
+      if (next.has(section)) {
+        next.delete(section)
+      } else {
+        next.add(section)
+      }
+      return next
+    })
+  }
+
+  const selectSubTab = (selection: ActiveSelection) => {
+    setActive(selection)
+    if ('subTab' in selection) {
+      setExpanded(prev => new Set(prev).add(selection.section as ExpandableSection))
+    }
+  }
+
+  const renderContent = () => {
+    switch (active.section) {
+      case 'profile':
+        return <ProfileSettings activeTab={active.subTab} />
+      case 'account':
+        return <AccountManagementCard />
+      default:
+        return null
+    }
+  }
+
+  return (
+    <div className="flex flex-col lg:flex-row gap-8">
+      {/* Sidebar Navigation */}
+      <nav className="w-full lg:w-72 flex-shrink-0 space-y-6">
+        {/* Pulse Settings Section */}
+        <div>
+          <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3 px-4">
+            Pulse Settings
+          </h3>
+          <div className="space-y-1">
+            <div>
+              <SectionHeader
+                expanded={expanded.has('profile')}
+                active={active.section === 'profile'}
+                onToggle={() => {
+                  toggleSection('profile')
+                  if (!expanded.has('profile')) {
+                    selectSubTab({ section: 'profile', subTab: 'profile' })
+                  }
+                }}
+                icon={UserIcon}
+                label="Profile & Preferences"
+                description="Your profile and sharing defaults"
+              />
+              <ExpandableSubItems expanded={expanded.has('profile')}>
+                <SubItem
+                  active={active.section === 'profile' && active.subTab === 'profile'}
+                  onClick={() => selectSubTab({ section: 'profile', subTab: 'profile' })}
+                  label="Profile"
+                />
+                <SubItem
+                  active={active.section === 'profile' && active.subTab === 'security'}
+                  onClick={() => selectSubTab({ section: 'profile', subTab: 'security' })}
+                  label="Security"
+                />
+                <SubItem
+                  active={active.section === 'profile' && active.subTab === 'preferences'}
+                  onClick={() => selectSubTab({ section: 'profile', subTab: 'preferences' })}
+                  label="Preferences"
+                />
+              </ExpandableSubItems>
+            </div>
+          </div>
+        </div>
+
+        {/* Ciphera Account Section */}
+        <div className="pt-4 border-t border-neutral-200 dark:border-neutral-800">
+          <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3 px-4">
+            Ciphera Account
+          </h3>
           <div>
             <SectionHeader
-              expanded={expanded}
-              active={true}
-              onToggle={() => setExpanded(!expanded)}
-              icon={UserIcon}
-              label="Profile & Preferences"
-              description="Your profile and sharing defaults"
+              expanded={expanded.has('account')}
+              active={active.section === 'account'}
+              onToggle={() => {
+                toggleSection('account')
+                if (!expanded.has('account')) {
+                  setActive({ section: 'account' })
+                }
+              }}
+              icon={LockIcon}
+              label="Manage Account"
+              description="Security, 2FA, and sessions"
             />
-            <ExpandableSubItems expanded={expanded}>
+            <ExpandableSubItems expanded={expanded.has('account')}>
               <SubItem
-                active={activeSubTab === 'profile'}
-                onClick={() => setActiveSubTab('profile')}
-                label="Profile"
+                active={false}
+                onClick={() => window.open('https://auth.ciphera.net/settings', '_blank')}
+                label="Profile & Personal Info"
+                external
               />
               <SubItem
-                active={activeSubTab === 'security'}
-                onClick={() => setActiveSubTab('security')}
-                label="Security"
+                active={false}
+                onClick={() => window.open('https://auth.ciphera.net/settings?tab=security', '_blank')}
+                label="Security & 2FA"
+                external
               />
               <SubItem
-                active={activeSubTab === 'preferences'}
-                onClick={() => setActiveSubTab('preferences')}
-                label="Preferences"
+                active={false}
+                onClick={() => window.open('https://auth.ciphera.net/settings?tab=sessions', '_blank')}
+                label="Active Sessions"
+                external
+              />
+              <SubItem
+                active={false}
+                onClick={() => window.open('https://auth.ciphera.net/devices', '_blank')}
+                label="Trusted Devices"
+                external
+              />
+              <SubItem
+                active={false}
+                onClick={() => window.open('https://auth.ciphera.net/activity', '_blank')}
+                label="Security Activity"
+                external
               />
             </ExpandableSubItems>
           </div>
-        </nav>
-
-        {/* Content Area */}
-        <div className="flex-1 min-w-0">
-          <ProfileSettings activeTab={activeSubTab} />
         </div>
+      </nav>
+
+      {/* Content Area */}
+      <div className="flex-1 min-w-0">
+        {renderContent()}
       </div>
+    </div>
+  )
+}
+
+export default function SettingsPageClient() {
+  const { user } = useAuth()
+
+  return (
+    <div className="space-y-8">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">Settings</h1>
+        <p className="mt-2 text-neutral-600 dark:text-neutral-400">
+          Manage your Pulse preferences and Ciphera account settings
+        </p>
+      </div>
+
+      {/* Breadcrumb / Context */}
+      <div className="flex items-center gap-2 text-sm text-neutral-500">
+        <span>You are signed in as</span>
+        <span className="font-medium text-neutral-900 dark:text-white">{user?.email}</span>
+        <span>&bull;</span>
+        <a
+          href="https://auth.ciphera.net/settings"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-brand-orange hover:underline inline-flex items-center gap-1"
+        >
+          Manage in Ciphera Account
+          <ExternalLinkIcon className="w-3 h-3" />
+        </a>
+      </div>
+
+      {/* Settings Content */}
+      <AppSettingsSection />
     </div>
   )
 }
