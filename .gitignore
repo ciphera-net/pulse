@@ -37,5 +37,6 @@ next-env.d.ts
 
 # PWA
 public/sw.js
+public/sw 2.js
 public/workbox-*.js
 public/swe-worker-*.js
