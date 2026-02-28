@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import apiRequest from '@/lib/api/client'
-import { LoadingOverlay } from '@ciphera-net/ui'
+import { LoadingOverlay, useSessionSync, SessionExpiryWarning } from '@ciphera-net/ui'
 import { logoutAction, getSessionAction, setSessionAction } from '@/app/actions/auth'
 import { getUserOrganizations, switchContext } from '@/lib/api/organization'
 import { logger } from '@/lib/utils/logger'
@@ -19,7 +19,9 @@ interface User {
     email_notifications?: {
       new_file_received: boolean
       file_downloaded: boolean
-      security_alerts: boolean
+      login_alerts: boolean
+      password_alerts: boolean
+      two_factor_alerts: boolean
     }
   }
 }
@@ -49,9 +51,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
 
+  const refreshToken = useCallback(async (): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        credentials: 'include',
+      })
+      if (res.ok) {
+        localStorage.setItem('ciphera_token_refreshed_at', Date.now().toString())
+      }
+      return res.ok
+    } catch {
+      return false
+    }
+  }, [])
+
   const login = (userData: User) => {
     // * We still store user profile in localStorage for optimistic UI, but NOT the token
     localStorage.setItem('user', JSON.stringify(userData))
+    localStorage.setItem('ciphera_token_refreshed_at', Date.now().toString())
     setUser(userData)
     router.refresh()
     // * Fetch full profile (including display_name) so header shows correct name without page refresh
@@ -74,10 +92,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoggingOut(true)
     await logoutAction()
     localStorage.removeItem('user')
-    // * Clear legacy tokens if they exist
-    localStorage.removeItem('token')
-    localStorage.removeItem('refreshToken')
-    
+    localStorage.removeItem('ciphera_token_refreshed_at')
+    localStorage.removeItem('ciphera_last_activity')
+    // * Broadcast logout to other tabs (BroadcastChannel will handle if available)
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      const channel = new BroadcastChannel('ciphera_session')
+      channel.postMessage({ type: 'LOGOUT' })
+      channel.close()
+    }
     setTimeout(() => {
       window.location.href = '/'
     }, 500)
@@ -127,6 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (session) {
             setUser(session)
             localStorage.setItem('user', JSON.stringify(session))
+            localStorage.setItem('ciphera_token_refreshed_at', Date.now().toString())
             // * Fetch full profile (including display_name) from API; preserve org_id/role from session
             try {
               const userData = await apiRequest<User>('/auth/user/me')
@@ -142,16 +165,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(null)
         }
 
-        // * Clear legacy tokens if they exist (migration)
-        if (localStorage.getItem('token')) {
-            localStorage.removeItem('token')
-            localStorage.removeItem('refreshToken')
-        }
-
         setLoading(false)
     }
     init()
   }, [])
+
+  // * Sync session across browser tabs using BroadcastChannel
+  useSessionSync({
+    onLogout: () => {
+      localStorage.removeItem('user')
+      window.location.href = '/'
+    },
+    onLogin: (userData) => {
+      setUser(userData as User)
+      router.refresh()
+    },
+    onRefresh: () => {
+      refresh()
+    },
+  })
 
   // * Organization Wall & Auto-Switch
   useEffect(() => {
@@ -206,6 +238,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider value={{ user, loading, login, logout, refresh, refreshSession }}>
       {isLoggingOut && <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" />}
+      <SessionExpiryWarning
+        isAuthenticated={!!user}
+        onRefreshToken={refreshToken}
+        onExpired={logout}
+      />
       {children}
     </AuthContext.Provider>
   )

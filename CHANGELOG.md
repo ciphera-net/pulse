@@ -6,9 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.12.0-alpha] - 2026-03-01
+
 ### Added
 
+- **Automated testing for improved reliability.** Pulse now has a comprehensive test suite that verifies critical parts of the app work correctly before every release. This covers login and session protection, error tracking, online/offline detection, and background data refreshing. These checks run automatically so regressions are caught before they reach you.
 - **App Switcher in User Menu.** Click your profile in the top right and you'll now see a "Ciphera Apps" section. Expand it to quickly jump between Pulse, Drop (file sharing), and your Ciphera Account settings. This makes it easier to discover and navigate between Ciphera products without signing in again.
+- **Session synchronization across tabs.** When you sign out in one browser tab, you're now automatically signed out in all other tabs of the same app. This prevents situations where you might still appear signed in on another tab after logging out. The same applies to signing in — when you sign in on one tab, other tabs will update to reflect your authenticated state.
+- **Session expiration warning.** You'll now see a heads-up banner 3 minutes before your session expires, giving you time to click "Stay signed in" to extend your session. If you ignore it or dismiss it, your session will end naturally after the 15-minute timeout for security. If you interact with the app (click, type, scroll) while the warning is showing, it automatically extends your session.
 - **Faster billing page loading.** Your subscription details now load much quicker when you visit the billing page. Previously, several requests to our payment provider were made one after another, which could add 1-2 seconds to the page load. Now these happen simultaneously, cutting the wait time significantly. If any request takes too long, we gracefully continue so you always see your billing information without frustrating delays.
 - **Faster funnel analysis for multi-step conversions.** We've significantly improved how conversion funnels are calculated. Instead of scanning your data multiple times for each step in a funnel, we now do it in a single efficient pass. This means complex funnels with multiple steps load almost instantly instead of taking seconds—or even timing out. We've also added a reasonable limit of 5 steps per funnel to ensure optimal performance.
 - **More reliable database connections under heavy load.** We've optimized how Pulse manages its database connections to handle much higher traffic without issues. By increasing the connection pool size and improving how connections are reused, your dashboard stays responsive even when thousands of users are viewing analytics simultaneously. We also added better monitoring so we can detect and address connection issues before they affect you.
@@ -30,6 +35,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Performance insights. Track how fast your site loads with Core Web Vitals (page load speed, layout shifts, responsiveness). Turn it on in Site Settings → Data & Privacy to see a performance widget on your dashboard.
 - **Goals & Events.** Define custom goals (e.g. signup, purchase) and track them with `pulse.track()` in your snippet. Counts appear on your dashboard once you add goals in Site Settings → Goals & Events.
 - **2FA recovery codes backup.** When you enable 2FA, you receive recovery codes. You can now regenerate new codes (with password confirmation) from Settings and download them as a `.txt` file. Regenerating invalidates all existing codes.
+
+### Changed
+
+- **Request ID tracing for debugging.** All API requests now include a unique Request ID header (`X-Request-ID`) that helps trace requests across frontend and backend services. When errors occur, the Request ID is included in the response, making it easy to find the exact request in server logs for debugging.
+- **App Switcher now shows consistent order.** The Ciphera Apps menu now always displays apps in the same order: Pulse, Drop, Auth — regardless of which app you're currently using. Previously, the current app was shown first, causing the order to change depending on context. This creates a more predictable navigation experience.
 
 ### Fixed
 
@@ -209,7 +219,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
-[Unreleased]: https://github.com/ciphera-net/pulse/compare/v0.11.1-alpha...HEAD
+[Unreleased]: https://github.com/ciphera-net/pulse/compare/v0.12.0-alpha...HEAD
+[0.12.0-alpha]: https://github.com/ciphera-net/pulse/compare/v0.11.1-alpha...v0.12.0-alpha
 [0.11.1-alpha]: https://github.com/ciphera-net/pulse/compare/v0.11.0-alpha...v0.11.1-alpha
 [0.11.0-alpha]: https://github.com/ciphera-net/pulse/compare/v0.10.0-alpha...v0.11.0-alpha
 [0.10.0-alpha]: https://github.com/ciphera-net/pulse/compare/v0.9.0-alpha...v0.10.0-alpha

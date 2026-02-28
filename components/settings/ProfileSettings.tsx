@@ -8,7 +8,11 @@ import { deleteAccount, getUserSessions, revokeSession, updateUserPreferences, u
 import { setup2FA, verify2FA, disable2FA, regenerateRecoveryCodes } from '@/lib/api/2fa'
 import { registerPasskey, listPasskeys, deletePasskey } from '@/lib/api/webauthn'
 
-export default function ProfileSettings() {
+interface Props {
+  activeTab?: 'profile' | 'security' | 'preferences'
+}
+
+export default function ProfileSettings({ activeTab }: Props = {}) {
   const { user, refresh, logout } = useAuth()
 
   if (!user) return null
@@ -54,6 +58,9 @@ export default function ProfileSettings() {
       deriveAuthKey={deriveAuthKey}
       refreshUser={refresh}
       logout={logout}
+      activeTab={activeTab}
+      hideNav={activeTab !== undefined}
+      hideNotifications
     />
   )
 }
