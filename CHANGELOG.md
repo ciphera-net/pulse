@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Improved
 
+- **Login page now shows a loading screen while redirecting.** Previously, the login page briefly showed a blank white screen before redirecting you to the sign-in page. You'll now see the Pulse logo and a "Redirecting to log in..." message, matching the signup page experience.
+- **Team members can now view real-time visitor data.** Previously, only the person who originally created a site could see live visitors and session details. Now any team member in the same organization can access real-time data for all their shared sites — the same way the rest of the dashboard already works.
+- **More reliable duplicate detection for goals.** When creating or updating a goal with a name that already exists, Pulse now uses the database's built-in error codes instead of checking error message text. This means duplicate goal detection works reliably regardless of database version or language settings.
+- **More consistent builds across environments.** The backend Docker image now uses a pinned operating system version instead of "latest," so builds produce identical results whether run today or months from now.
+- **Cleaner internal code for cookie handling.** Cookie domain logic that was duplicated in two places is now shared, reducing the chance of the two copies drifting out of sync during future changes.
+
 - **Smoother navigation across the app.** Switching pages, changing organizations, or signing in no longer triggers unnecessary background checks. Previously, an internal effect re-ran on every navigation because it watched the entire user object for changes — now it only reacts when your authentication state or organization actually changes. This makes page transitions faster and reduces redundant network requests.
 - **Faster uptime data cleanup under heavy usage.** Old uptime check records are now removed in small batches instead of all at once. Previously, a single large deletion could briefly slow down database performance when months of monitoring data had accumulated. Cleanup now runs incrementally so your dashboard stays responsive throughout.
 - **More reliable automated testing.** Backend tests that verify authentication and billing no longer rely on a fragile internal shortcut that could mask real bugs. If a code change accidentally reaches the database during a test, it now fails gracefully with a clear error instead of crashing silently.
