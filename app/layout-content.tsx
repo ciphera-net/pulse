@@ -9,7 +9,7 @@ import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { logger } from '@/lib/utils/logger'
-import { getUserOrganizations, switchContext } from '@/lib/api/organization'
+import { getUserOrganizations, switchContext, type OrganizationMember } from '@/lib/api/organization'
 import { setSessionAction } from '@/app/actions/auth'
 import { LoadingOverlay } from '@ciphera-net/ui'
 import { useRouter } from 'next/navigation'
@@ -48,7 +48,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
   const auth = useAuth()
   const router = useRouter()
   const isOnline = useOnlineStatus()
-  const [orgs, setOrgs] = useState<any[]>([])
+  const [orgs, setOrgs] = useState<OrganizationMember[]>([])
   const [isSwitchingOrg, setIsSwitchingOrg] = useState(() => {
     if (typeof window === 'undefined') return false
     return sessionStorage.getItem(ORG_SWITCH_KEY) === 'true'

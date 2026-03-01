@@ -2,15 +2,13 @@
 
 import { useAuth } from '@/lib/auth/context'
 import { logger } from '@/lib/utils/logger'
-import { useCallback, useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { getSite, type Site } from '@/lib/api/sites'
-import { getStats, getRealtime, getDailyStats, getTopPages, getTopReferrers, getCountries, getCities, getRegions, getBrowsers, getOS, getDevices, getScreenResolutions, getEntryPages, getExitPages, getDashboard, getCampaigns, getPerformanceByPage, type Stats, type DailyStat, type PerformanceByPageStat } from '@/lib/api/stats'
-import { formatNumber, formatDuration, getDateRange } from '@ciphera-net/ui'
+import { getPerformanceByPage, type Stats, type DailyStat } from '@/lib/api/stats'
+import { getDateRange } from '@ciphera-net/ui'
 import { toast } from '@ciphera-net/ui'
-import { getAuthErrorMessage } from '@ciphera-net/ui'
-import { LoadingOverlay, Button } from '@ciphera-net/ui'
+import { Button } from '@ciphera-net/ui'
 import { Select, DatePicker, DownloadIcon } from '@ciphera-net/ui'
 import { DashboardSkeleton, useMinimumLoading } from '@/components/skeletons'
 import ExportModal from '@/components/dashboard/ExportModal'
@@ -22,6 +20,45 @@ import Chart from '@/components/dashboard/Chart'
 import PerformanceStats from '@/components/dashboard/PerformanceStats'
 import GoalStats from '@/components/dashboard/GoalStats'
 import Campaigns from '@/components/dashboard/Campaigns'
+import {
+  useDashboardOverview,
+  useDashboardPages,
+  useDashboardLocations,
+  useDashboardDevices,
+  useDashboardReferrers,
+  useDashboardPerformance,
+  useDashboardGoals,
+  useRealtime,
+  useStats,
+  useDailyStats,
+  useCampaigns,
+} from '@/lib/swr/dashboard'
+
+function loadSavedSettings(): {
+  type?: string
+  dateRange?: { start: string; end: string }
+  todayInterval?: 'minute' | 'hour'
+  multiDayInterval?: 'hour' | 'day'
+} | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const saved = localStorage.getItem('pulse_dashboard_settings')
+    return saved ? JSON.parse(saved) : null
+  } catch {
+    return null
+  }
+}
+
+function getInitialDateRange(): { start: string; end: string } {
+  const settings = loadSavedSettings()
+  if (settings?.type === 'today') {
+    const today = new Date().toISOString().split('T')[0]
+    return { start: today, end: today }
+  }
+  if (settings?.type === '7') return getDateRange(7)
+  if (settings?.type === 'custom' && settings.dateRange) return settings.dateRange
+  return getDateRange(30)
+}
 
 export default function SiteDashboardPage() {
   const { user } = useAuth()
@@ -31,69 +68,75 @@ export default function SiteDashboardPage() {
   const router = useRouter()
   const siteId = params.id as string
 
-  const [site, setSite] = useState<Site | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [stats, setStats] = useState<Stats>({ pageviews: 0, visitors: 0, bounce_rate: 0, avg_duration: 0 })
-  const [prevStats, setPrevStats] = useState<Stats | undefined>(undefined)
-  const [realtime, setRealtime] = useState(0)
-  const [dailyStats, setDailyStats] = useState<DailyStat[]>([])
-  const [prevDailyStats, setPrevDailyStats] = useState<DailyStat[] | undefined>(undefined)
-  const [topPages, setTopPages] = useState<any[]>([])
-  const [entryPages, setEntryPages] = useState<any[]>([])
-  const [exitPages, setExitPages] = useState<any[]>([])
-  const [topReferrers, setTopReferrers] = useState<any[]>([])
-  const [countries, setCountries] = useState<any[]>([])
-  const [cities, setCities] = useState<any[]>([])
-  const [regions, setRegions] = useState<any[]>([])
-  const [browsers, setBrowsers] = useState<any[]>([])
-  const [os, setOS] = useState<any[]>([])
-  const [devices, setDevices] = useState<any[]>([])
-  const [screenResolutions, setScreenResolutions] = useState<any[]>([])
-  const [performance, setPerformance] = useState<{ lcp: number, cls: number, inp: number }>({ lcp: 0, cls: 0, inp: 0 })
-  const [performanceByPage, setPerformanceByPage] = useState<PerformanceByPageStat[] | null>(null)
-  const [goalCounts, setGoalCounts] = useState<Array<{ event_name: string; count: number }>>([])
-  const [campaigns, setCampaigns] = useState<any[]>([])
-  const [dateRange, setDateRange] = useState(getDateRange(30))
+  // UI state - initialized from localStorage synchronously to avoid double-fetch
+  const [dateRange, setDateRange] = useState(getInitialDateRange)
+  const [todayInterval, setTodayInterval] = useState<'minute' | 'hour'>(
+    () => loadSavedSettings()?.todayInterval || 'hour'
+  )
+  const [multiDayInterval, setMultiDayInterval] = useState<'hour' | 'day'>(
+    () => loadSavedSettings()?.multiDayInterval || 'day'
+  )
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
-  const [todayInterval, setTodayInterval] = useState<'minute' | 'hour'>('hour')
-  const [multiDayInterval, setMultiDayInterval] = useState<'hour' | 'day'>('day')
-  const [isSettingsLoaded, setIsSettingsLoaded] = useState(false)
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null)
   const [, setTick] = useState(0)
 
-  // Load settings from localStorage
-  useEffect(() => {
-    try {
-      const savedSettings = localStorage.getItem('pulse_dashboard_settings')
-      if (savedSettings) {
-        const settings = JSON.parse(savedSettings)
-        
-        // Restore date range
-        if (settings.type === 'today') {
-          const today = new Date().toISOString().split('T')[0]
-          setDateRange({ start: today, end: today })
-        } else if (settings.type === '7') {
-          setDateRange(getDateRange(7))
-        } else if (settings.type === '30') {
-          setDateRange(getDateRange(30))
-        } else if (settings.type === 'custom' && settings.dateRange) {
-          setDateRange(settings.dateRange)
-        }
+  const interval = dateRange.start === dateRange.end ? todayInterval : multiDayInterval
 
-        // Restore intervals
-        if (settings.todayInterval) setTodayInterval(settings.todayInterval)
-        if (settings.multiDayInterval) setMultiDayInterval(settings.multiDayInterval)
-      }
-    } catch (e) {
-      logger.error('Failed to load dashboard settings', e)
-    } finally {
-      setIsSettingsLoaded(true)
+  // Previous period date range for comparison
+  const prevRange = useMemo(() => {
+    const startDate = new Date(dateRange.start)
+    const endDate = new Date(dateRange.end)
+    const duration = endDate.getTime() - startDate.getTime()
+    if (duration === 0) {
+      const prevEnd = new Date(startDate.getTime() - 24 * 60 * 60 * 1000)
+      return { start: prevEnd.toISOString().split('T')[0], end: prevEnd.toISOString().split('T')[0] }
     }
+    const prevEnd = new Date(startDate.getTime() - 24 * 60 * 60 * 1000)
+    const prevStart = new Date(prevEnd.getTime() - duration)
+    return { start: prevStart.toISOString().split('T')[0], end: prevEnd.toISOString().split('T')[0] }
+  }, [dateRange])
+
+  // SWR hooks - replace manual useState + useEffect + setInterval polling
+  // Each hook handles its own refresh interval, deduplication, and error retry
+  const { data: overview, isLoading: overviewLoading, error: overviewError } = useDashboardOverview(siteId, dateRange.start, dateRange.end, interval)
+  const { data: pages } = useDashboardPages(siteId, dateRange.start, dateRange.end)
+  const { data: locations } = useDashboardLocations(siteId, dateRange.start, dateRange.end)
+  const { data: devicesData } = useDashboardDevices(siteId, dateRange.start, dateRange.end)
+  const { data: referrers } = useDashboardReferrers(siteId, dateRange.start, dateRange.end)
+  const { data: performanceData } = useDashboardPerformance(siteId, dateRange.start, dateRange.end)
+  const { data: goalsData } = useDashboardGoals(siteId, dateRange.start, dateRange.end)
+  const { data: realtimeData } = useRealtime(siteId)
+  const { data: prevStats } = useStats(siteId, prevRange.start, prevRange.end)
+  const { data: prevDailyStats } = useDailyStats(siteId, prevRange.start, prevRange.end, interval)
+  const { data: campaigns } = useCampaigns(siteId, dateRange.start, dateRange.end)
+
+  // Derive typed values from SWR data
+  const site = overview?.site ?? null
+  const stats: Stats = overview?.stats ?? { pageviews: 0, visitors: 0, bounce_rate: 0, avg_duration: 0 }
+  const realtime = realtimeData?.visitors ?? overview?.realtime_visitors ?? 0
+  const dailyStats: DailyStat[] = overview?.daily_stats ?? []
+
+  // Show error toast on fetch failure
+  useEffect(() => {
+    if (overviewError) {
+      toast.error('Failed to load dashboard analytics')
+    }
+  }, [overviewError])
+
+  // Track when data was last updated (for "Live · Xs ago" display)
+  useEffect(() => {
+    if (overview) setLastUpdatedAt(Date.now())
+  }, [overview])
+
+  // Tick every 1s so "Live · Xs ago" counts in real time
+  useEffect(() => {
+    const timer = setInterval(() => setTick((t) => t + 1), 1000)
+    return () => clearInterval(timer)
   }, [])
 
   // Save settings to localStorage
-  const saveSettings = (type: string, newDateRange?: { start: string, end: string }) => {
+  const saveSettings = (type: string, newDateRange?: { start: string; end: string }) => {
     try {
       const settings = {
         type,
@@ -110,9 +153,6 @@ export default function SiteDashboardPage() {
 
   // Save intervals when they change
   useEffect(() => {
-    if (!isSettingsLoaded) return
-    
-    // Determine current type
     let type = 'custom'
     const today = new Date().toISOString().split('T')[0]
     if (dateRange.start === today && dateRange.end === today) type = 'today'
@@ -127,160 +167,13 @@ export default function SiteDashboardPage() {
       lastUpdated: Date.now()
     }
     localStorage.setItem('pulse_dashboard_settings', JSON.stringify(settings))
-  }, [todayInterval, multiDayInterval, isSettingsLoaded]) // dateRange is handled in saveSettings/onChange
-
-  // * Tick every 1s so "Live · Xs ago" counts in real time
-  useEffect(() => {
-    const interval = setInterval(() => setTick((t) => t + 1), 1000)
-    return () => clearInterval(interval)
-  }, [])
-
-  const getPreviousDateRange = useCallback((start: string, end: string) => {
-    const startDate = new Date(start)
-    const endDate = new Date(end)
-    const duration = endDate.getTime() - startDate.getTime()
-    if (duration === 0) {
-      const prevEnd = new Date(startDate.getTime() - 24 * 60 * 60 * 1000)
-      return { start: prevEnd.toISOString().split('T')[0], end: prevEnd.toISOString().split('T')[0] }
-    }
-    const prevEnd = new Date(startDate.getTime() - 24 * 60 * 60 * 1000)
-    const prevStart = new Date(prevEnd.getTime() - duration)
-    return { start: prevStart.toISOString().split('T')[0], end: prevEnd.toISOString().split('T')[0] }
-  }, [])
-
-  // * Visibility-aware polling intervals
-  // * Historical data: 60s when visible, paused when hidden
-  // * Real-time data: 5s when visible, 30s when hidden
-  const [isVisible, setIsVisible] = useState(true)
-  const dashboardIntervalRef = useRef<NodeJS.Timeout | null>(null)
-  const realtimeIntervalRef = useRef<NodeJS.Timeout | null>(null)
-
-  // * Track visibility state
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      const visible = document.visibilityState === 'visible'
-      setIsVisible(visible)
-    }
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
-  }, [])
-
-  const loadData = useCallback(async (silent = false) => {
-    try {
-      if (!silent) setLoading(true)
-      const interval = dateRange.start === dateRange.end ? todayInterval : multiDayInterval
-      
-      const [data, prevStatsData, prevDailyStatsData, campaignsData] = await Promise.all([
-        getDashboard(siteId, dateRange.start, dateRange.end, 10, interval),
-        (async () => {
-          const prevRange = getPreviousDateRange(dateRange.start, dateRange.end)
-          return getStats(siteId, prevRange.start, prevRange.end)
-        })(),
-        (async () => {
-          const prevRange = getPreviousDateRange(dateRange.start, dateRange.end)
-          return getDailyStats(siteId, prevRange.start, prevRange.end, interval)
-        })(),
-        getCampaigns(siteId, dateRange.start, dateRange.end, 100),
-      ])
-
-      setSite(data.site)
-      setStats(data.stats || { pageviews: 0, visitors: 0, bounce_rate: 0, avg_duration: 0 })
-      setRealtime(data.realtime_visitors || 0)
-      setDailyStats(Array.isArray(data.daily_stats) ? data.daily_stats : [])
-      
-      setPrevStats(prevStatsData)
-      setPrevDailyStats(prevDailyStatsData)
-
-      setTopPages(Array.isArray(data.top_pages) ? data.top_pages : [])
-      setEntryPages(Array.isArray(data.entry_pages) ? data.entry_pages : [])
-      setExitPages(Array.isArray(data.exit_pages) ? data.exit_pages : [])
-      setTopReferrers(Array.isArray(data.top_referrers) ? data.top_referrers : [])
-      setCountries(Array.isArray(data.countries) ? data.countries : [])
-      setCities(Array.isArray(data.cities) ? data.cities : [])
-      setRegions(Array.isArray(data.regions) ? data.regions : [])
-      setBrowsers(Array.isArray(data.browsers) ? data.browsers : [])
-      setOS(Array.isArray(data.os) ? data.os : [])
-      setDevices(Array.isArray(data.devices) ? data.devices : [])
-      setScreenResolutions(Array.isArray(data.screen_resolutions) ? data.screen_resolutions : [])
-      setPerformance(data.performance || { lcp: 0, cls: 0, inp: 0 })
-      setPerformanceByPage(data.performance_by_page ?? null)
-      setGoalCounts(Array.isArray(data.goal_counts) ? data.goal_counts : [])
-      setCampaigns(Array.isArray(campaignsData) ? campaignsData : [])
-      setLastUpdatedAt(Date.now())
-    } catch (error: unknown) {
-      if (!silent) {
-        toast.error(getAuthErrorMessage(error) || 'Failed to load dashboard analytics')
-      }
-    } finally {
-      if (!silent) setLoading(false)
-    }
-  }, [siteId, dateRange, todayInterval, multiDayInterval])
-
-  const loadRealtime = useCallback(async () => {
-    try {
-      const data = await getRealtime(siteId)
-      setRealtime(data.visitors)
-    } catch (error) {
-      // * Silently fail for realtime updates
-    }
-  }, [siteId])
-
-  // * Visibility-aware polling for dashboard data (historical)
-  // * Refreshes every 60 seconds when tab is visible, pauses when hidden
-  useEffect(() => {
-    if (!isSettingsLoaded) return
-
-    // * Initial load
-    loadData()
-
-    // * Clear existing interval
-    if (dashboardIntervalRef.current) {
-      clearInterval(dashboardIntervalRef.current)
-    }
-
-    // * Only poll when visible (saves server resources when tab is backgrounded)
-    if (isVisible) {
-      dashboardIntervalRef.current = setInterval(() => {
-        loadData(true)
-      }, 60000) // * 60 seconds for historical data
-    }
-
-    return () => {
-      if (dashboardIntervalRef.current) {
-        clearInterval(dashboardIntervalRef.current)
-      }
-    }
-  }, [siteId, dateRange, todayInterval, multiDayInterval, isSettingsLoaded, loadData, isVisible])
-
-  // * Visibility-aware polling for realtime data
-  // * Refreshes every 5 seconds when visible, every 30 seconds when hidden
-  useEffect(() => {
-    if (!isSettingsLoaded) return
-
-    // * Clear existing interval
-    if (realtimeIntervalRef.current) {
-      clearInterval(realtimeIntervalRef.current)
-    }
-
-    // * Different intervals based on visibility
-    const interval = isVisible ? 5000 : 30000 // * 5s visible, 30s hidden
-    
-    realtimeIntervalRef.current = setInterval(() => {
-      loadRealtime()
-    }, interval)
-
-    return () => {
-      if (realtimeIntervalRef.current) {
-        clearInterval(realtimeIntervalRef.current)
-      }
-    }
-  }, [siteId, isSettingsLoaded, loadRealtime, isVisible])
+  }, [todayInterval, multiDayInterval]) // eslint-disable-line react-hooks/exhaustive-deps -- dateRange saved via saveSettings
 
   useEffect(() => {
     if (site?.domain) document.title = `${site.domain} | Pulse`
   }, [site?.domain])
 
-  const showSkeleton = useMinimumLoading(loading)
+  const showSkeleton = useMinimumLoading(overviewLoading)
 
   if (showSkeleton) {
     return <DashboardSkeleton />
@@ -312,7 +205,7 @@ export default function SiteDashboardPage() {
                 {site.domain}
               </p>
             </div>
-            
+
             {/* Realtime Indicator */}
             <button
               onClick={() => router.push(`/sites/${siteId}/realtime`)}
@@ -414,10 +307,10 @@ export default function SiteDashboardPage() {
 
       {/* Advanced Chart with Integrated Stats */}
       <div className="mb-8">
-        <Chart 
-          data={dailyStats} 
+        <Chart
+          data={dailyStats}
           prevData={prevDailyStats}
-          stats={stats} 
+          stats={stats}
           prevStats={prevStats}
           interval={dateRange.start === dateRange.end ? todayInterval : multiDayInterval}
           dateRange={dateRange}
@@ -433,8 +326,8 @@ export default function SiteDashboardPage() {
       {site.enable_performance_insights && (
         <div className="mb-8">
           <PerformanceStats
-            stats={performance}
-            performanceByPage={performanceByPage}
+            stats={performanceData?.performance ?? { lcp: 0, cls: 0, inp: 0 }}
+            performanceByPage={performanceData?.performance_by_page ?? null}
             siteId={siteId}
             startDate={dateRange.start}
             endDate={dateRange.end}
@@ -445,16 +338,16 @@ export default function SiteDashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-2 mb-8">
         <ContentStats
-          topPages={topPages}
-          entryPages={entryPages}
-          exitPages={exitPages}
+          topPages={pages?.top_pages ?? []}
+          entryPages={pages?.entry_pages ?? []}
+          exitPages={pages?.exit_pages ?? []}
           domain={site.domain}
           collectPagePaths={site.collect_page_paths ?? true}
           siteId={siteId}
           dateRange={dateRange}
         />
         <TopReferrers
-          referrers={topReferrers}
+          referrers={referrers?.top_referrers ?? []}
           collectReferrers={site.collect_referrers ?? true}
           siteId={siteId}
           dateRange={dateRange}
@@ -463,18 +356,18 @@ export default function SiteDashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-2 mb-8">
         <Locations
-          countries={countries}
-          cities={cities}
-          regions={regions}
+          countries={locations?.countries ?? []}
+          cities={locations?.cities ?? []}
+          regions={locations?.regions ?? []}
           geoDataLevel={site.collect_geo_data || 'full'}
           siteId={siteId}
           dateRange={dateRange}
         />
         <TechSpecs
-          browsers={browsers}
-          os={os}
-          devices={devices}
-          screenResolutions={screenResolutions}
+          browsers={devicesData?.browsers ?? []}
+          os={devicesData?.os ?? []}
+          devices={devicesData?.devices ?? []}
+          screenResolutions={devicesData?.screen_resolutions ?? []}
           collectDeviceInfo={site.collect_device_info ?? true}
           collectScreenResolution={site.collect_screen_resolution ?? true}
           siteId={siteId}
@@ -488,7 +381,7 @@ export default function SiteDashboardPage() {
       </div>
 
       <div className="mb-8">
-        <GoalStats goalCounts={goalCounts} />
+        <GoalStats goalCounts={goalsData?.goal_counts ?? []} />
       </div>
 
       <DatePicker
@@ -507,8 +400,8 @@ export default function SiteDashboardPage() {
         onClose={() => setIsExportModalOpen(false)}
         data={dailyStats}
         stats={stats}
-        topPages={topPages}
-        topReferrers={topReferrers}
+        topPages={pages?.top_pages}
+        topReferrers={referrers?.top_referrers}
         campaigns={campaigns}
       />
     </motion.div>

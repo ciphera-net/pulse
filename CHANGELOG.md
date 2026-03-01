@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Improved
+
+- **Faster, smarter dashboard data loading.** Your dashboard now loads each section independently using an intelligent caching strategy. Data refreshes happen automatically in the background, and when you switch tabs the app pauses updates to save resources — resuming instantly when you return. This replaces the previous approach where everything loaded in one large batch, meaning your charts, visitor maps, and stats now appear faster and update more reliably.
+- **Better data accuracy across the dashboard.** All data displayed on the dashboard — pages, locations, devices, referrers, performance metrics, and goals — is now fully typed end-to-end. This eliminates an entire class of potential display bugs where data could be misinterpreted between the server and your screen.
+
 ### Fixed
 
 - **Tracking script now works on all tracked websites.** Page views were silently failing to record when the tracking script ran on your website. Two issues were at play: the backend was rejecting analytics data sent from tracked sites, and even after that was resolved, events were silently dropped during processing because they were missing a required identifier. Both are now fixed — your dashboard receives visits from all registered domains as expected.
