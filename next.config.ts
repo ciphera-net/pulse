@@ -14,7 +14,7 @@ const cspDirectives = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://www.google.com https://*.gstatic.com https://ciphera.net",
   "font-src 'self'",
-  `connect-src 'self' https://*.ciphera.net https://cdn.jsdelivr.net${process.env.NODE_ENV === 'development' ? ' http://localhost:*' : ''}`,
+  `connect-src 'self' https://*.ciphera.net https://ciphera.net https://www.google.com https://*.gstatic.com https://cdn.jsdelivr.net${process.env.NODE_ENV === 'development' ? ' http://localhost:*' : ''}`,
   "worker-src 'self'",
   "frame-src 'none'",
   "object-src 'none'",
