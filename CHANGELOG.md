@@ -8,6 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Improved
 
+- **More reliable list rendering across the dashboard.** Pages, referrers, locations, devices, funnels, and other data lists now use stable identifiers (like page paths and referrer URLs) instead of array positions as their React keys. This prevents potential display glitches — such as stale data appearing in the wrong row — when lists are filtered, sorted, or updated in real time.
+- **Deleting a site now fully cleans up all its data.** Previously, deleting a site removed the site record but could leave behind orphaned analytics events in the database, slowly accumulating unused data. Now all events are cleaned up automatically in small batches before the site is removed, keeping your database tidy.
+
 - **Modern config loading for the app.** The app's configuration file now uses proper ES module imports instead of an older CommonJS pattern. This aligns with modern JavaScript standards and enables better tooling support.
 - **Complete API documentation in the backend README.** The developer documentation now lists all 80+ endpoints organized by category — ingestion, public dashboard, sites, analytics, real-time, goals, funnels, uptime, billing, notifications, admin, and audit. Previously only 12 endpoints were documented, which understated the full scope of the system.
 - **Login page now shows a loading screen while redirecting.** Previously, the login page briefly showed a blank white screen before redirecting you to the sign-in page. You'll now see the Pulse logo and a "Redirecting to log in..." message, matching the signup page experience.
