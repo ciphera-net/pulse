@@ -48,7 +48,9 @@ export interface UserPreferences {
   email_notifications: {
     new_file_received: boolean
     file_downloaded: boolean
-    security_alerts: boolean
+    login_alerts: boolean
+    password_alerts: boolean
+    two_factor_alerts: boolean
   }
 }
 
