@@ -14,6 +14,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Session list now correctly highlights your current session.** The active sessions list in settings now properly identifies which session you're currently using. Previously, the "current session" marker never appeared due to an internal mismatch in how sessions were identified.
 - **Notifications no longer fail to load on sign-in.** The notification bell now loads correctly even when the app is still setting up your workspace context. Previously, it could briefly show an error right after signing in.
 - **Fixed a service worker error on first visit.** Removed leftover icon files with invalid filenames that caused a caching error in the background. This had no visible effect but produced console warnings.
+- **Stronger browser protection with Content Security Policy.** The app now tells your browser exactly which resources it's allowed to load — scripts, styles, images, and API connections are restricted to trusted sources only. This adds an extra layer of defence against cross-site scripting (XSS) attacks.
+- **Tighter cross-origin request handling.** The backend now only accepts requests from known Pulse and Ciphera origins instead of any website. This prevents other sites from making authenticated requests on your behalf.
+- **Stricter environment security checks.** Staging and other non-development deployments now refuse to start if critical secrets haven't been configured, catching configuration mistakes before they reach users.
+- **Billing configuration validated at startup.** Stripe payment keys are now checked when the server starts instead of when a billing request comes in. Misconfigured payment settings surface immediately during deployment rather than silently failing when you try to manage your subscription.
+- **Faster real-time visitor cleanup.** The background process that keeps active visitor counts accurate no longer briefly blocks other operations while scanning for stale sessions. Cleanup now runs incrementally so your dashboard stays responsive at all times.
+- **Stricter input validation on admin pages.** The internal admin panel now validates organisation identifiers before processing requests, preventing malformed data from reaching the database.
 
 ## [0.12.0-alpha] - 2026-03-01
 

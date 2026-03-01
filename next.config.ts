@@ -6,6 +6,22 @@ const withPWA = require("@ducanh2912/next-pwa").default({
   disable: process.env.NODE_ENV === "development",
 });
 
+// * CSP directives — restrict resource loading to known origins
+const cspDirectives = [
+  "default-src 'self'",
+  // Next.js requires 'unsafe-inline' for its bootstrap scripts; 'unsafe-eval' only in dev (HMR)
+  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''}`,
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https://www.google.com",
+  "font-src 'self'",
+  `connect-src 'self' https://*.ciphera.net https://cdn.jsdelivr.net${process.env.NODE_ENV === 'development' ? ' http://localhost:*' : ''}`,
+  "worker-src 'self'",
+  "frame-src 'none'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self' https://*.ciphera.net",
+].join('; ')
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   // * Enable standalone output for production deployment
@@ -41,6 +57,7 @@ const nextConfig: NextConfig = {
             key: 'Strict-Transport-Security',
             value: 'max-age=63072000; includeSubDomains; preload',
           },
+          { key: 'Content-Security-Policy', value: cspDirectives },
         ],
       },
     ]
