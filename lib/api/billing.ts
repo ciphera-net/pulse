@@ -1,4 +1,4 @@
-import { API_URL } from './client'
+import apiRequest from './client'
 
 export interface TaxID {
   type: string
@@ -31,39 +31,12 @@ export interface SubscriptionDetails {
   next_invoice_period_end?: number
 }
 
-async function billingFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const url = `${API_URL}${endpoint}`
-  
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-    ...options.headers,
-  }
-
-  const response = await fetch(url, {
-    ...options,
-    headers,
-    credentials: 'include', // Send cookies
-  })
-
-  if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({
-      error: 'Unknown error',
-      message: `HTTP ${response.status}: ${response.statusText}`,
-    }))
-    throw new Error(errorBody.message || errorBody.error || 'Request failed')
-  }
-
-  return response.json()
-}
-
 export async function getSubscription(): Promise<SubscriptionDetails> {
-  return await billingFetch<SubscriptionDetails>('/api/billing/subscription', {
-    method: 'GET',
-  })
+  return apiRequest<SubscriptionDetails>('/api/billing/subscription')
 }
 
 export async function createPortalSession(): Promise<{ url: string }> {
-  return await billingFetch<{ url: string }>('/api/billing/portal', {
+  return apiRequest<{ url: string }>('/api/billing/portal', {
     method: 'POST',
   })
 }
@@ -74,7 +47,7 @@ export interface CancelSubscriptionParams {
 }
 
 export async function cancelSubscription(params?: CancelSubscriptionParams): Promise<{ ok: boolean; at_period_end: boolean }> {
-  return await billingFetch<{ ok: boolean; at_period_end: boolean }>('/api/billing/cancel', {
+  return apiRequest<{ ok: boolean; at_period_end: boolean }>('/api/billing/cancel', {
     method: 'POST',
     body: JSON.stringify({ at_period_end: params?.at_period_end ?? true }),
   })
@@ -82,7 +55,7 @@ export async function cancelSubscription(params?: CancelSubscriptionParams): Pro
 
 /** Clears cancel_at_period_end so the subscription continues past the current period. */
 export async function resumeSubscription(): Promise<{ ok: boolean }> {
-  return await billingFetch<{ ok: boolean }>('/api/billing/resume', {
+  return apiRequest<{ ok: boolean }>('/api/billing/resume', {
     method: 'POST',
   })
 }
@@ -100,7 +73,7 @@ export interface PreviewInvoiceResult {
 }
 
 export async function previewInvoice(params: ChangePlanParams): Promise<PreviewInvoiceResult | null> {
-  const res = await billingFetch<PreviewInvoiceResult | Record<string, never>>('/api/billing/preview-invoice', {
+  const res = await apiRequest<PreviewInvoiceResult | Record<string, never>>('/api/billing/preview-invoice', {
     method: 'POST',
     body: JSON.stringify(params),
   })
@@ -111,7 +84,7 @@ export async function previewInvoice(params: ChangePlanParams): Promise<PreviewI
 }
 
 export async function changePlan(params: ChangePlanParams): Promise<{ ok: boolean }> {
-  return await billingFetch<{ ok: boolean }>('/api/billing/change-plan', {
+  return apiRequest<{ ok: boolean }>('/api/billing/change-plan', {
     method: 'POST',
     body: JSON.stringify(params),
   })
@@ -124,7 +97,7 @@ export interface CreateCheckoutParams {
 }
 
 export async function createCheckoutSession(params: CreateCheckoutParams): Promise<{ url: string }> {
-  return await billingFetch<{ url: string }>('/api/billing/checkout', {
+  return apiRequest<{ url: string }>('/api/billing/checkout', {
     method: 'POST',
     body: JSON.stringify(params),
   })
@@ -142,7 +115,5 @@ export interface Invoice {
 }
 
 export async function getInvoices(): Promise<Invoice[]> {
-  return await billingFetch<Invoice[]>('/api/billing/invoices', {
-    method: 'GET',
-  })
+  return apiRequest<Invoice[]>('/api/billing/invoices')
 }
