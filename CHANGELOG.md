@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Lower resource usage under load.** The backend now uses a single shared connection to Redis instead of opening dozens of separate ones. Previously, each rate limiter and internal component created its own connection pool, which could waste resources and risk hitting connection limits during heavy traffic.
 - **More reliable billing operations.** Billing actions like changing your plan, cancelling, and viewing invoices now benefit from the same automatic session refresh, request tracing, and error handling as the rest of the app. Previously, these used a separate internal path that could fail silently if your session expired mid-action.
 - **Session list now correctly highlights your current session.** The active sessions list in settings now properly identifies which session you're currently using. Previously, the "current session" marker never appeared due to an internal mismatch in how sessions were identified.
+- **Notifications no longer fail to load on sign-in.** The notification bell now loads correctly even when the app is still setting up your workspace context. Previously, it could briefly show an error right after signing in.
+- **Fixed a service worker error on first visit.** Removed leftover icon files with invalid filenames that caused a caching error in the background. This had no visible effect but produced console warnings.
 
 ## [0.12.0-alpha] - 2026-03-01
 
