@@ -1,15 +1,8 @@
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import { getCookieDomain } from '@/lib/utils/cookies'
 
 const AUTH_API_URL = process.env.NEXT_PUBLIC_AUTH_API_URL || process.env.NEXT_PUBLIC_AUTH_URL || 'http://localhost:8081'
-
-// * Determine cookie domain dynamically
-const getCookieDomain = () => {
-  if (process.env.NODE_ENV === 'production') {
-    return '.ciphera.net'
-  }
-  return undefined
-}
 
 export async function POST() {
   const cookieStore = await cookies()
