@@ -1,6 +1,11 @@
 /**
  * Request ID utilities for tracing API calls across services
  * Request IDs help debug issues by correlating logs across frontend and backends
+ *
+ * IMPORTANT: This module stores mutable state (lastRequestId) at module scope.
+ * This is safe because apiRequest (the only caller) runs exclusively in the
+ * browser where JS is single-threaded. If this ever needs server-side use,
+ * replace the module variable with AsyncLocalStorage.
  */
 
 const REQUEST_ID_HEADER = 'X-Request-ID'
@@ -23,7 +28,8 @@ export function getRequestIdHeader(): string {
 }
 
 /**
- * Store the last request ID for error reporting
+ * Store the last request ID for error reporting.
+ * Browser-only — single-threaded, no concurrency risk.
  */
 let lastRequestId: string | null = null
 
