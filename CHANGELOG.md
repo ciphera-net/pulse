@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- **Tracking script now works on all tracked websites.** Page views were silently failing to record when the tracking script ran on your website. The backend was incorrectly rejecting analytics data sent from tracked sites. Your dashboard now receives visits from all registered domains as expected.
+- **Funnel details now load correctly.** Opening a funnel showed "Unable to load funnel" with a server error. An internal query was referencing data that no longer existed at that stage of processing, causing it to fail every time. Funnels now load and display step-by-step conversion data as expected.
 - **App switcher and site icons now load correctly.** The Pulse, Drop, and Auth logos in the app switcher — and site favicons on the dashboard — were blocked by the browser's Content Security Policy. The policy now allows images from Ciphera's own domain and Google's favicon service, so all icons display as expected.
 - **Safer campaign date handling.** Campaign analytics now use the same date validation as the rest of the app, including checks for invalid ranges and a maximum span of one year. Previously, campaigns used separate date parsing that skipped these checks.
 - **Better crash protection in goals and real-time views.** Fixed an issue where the backend could crash under rare conditions when checking permissions for goals or real-time visitor data. The app now handles unexpected values gracefully instead of crashing.
