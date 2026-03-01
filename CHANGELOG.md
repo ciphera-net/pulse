@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - **Faster, smarter dashboard data loading.** Your dashboard now loads each section independently using an intelligent caching strategy. Data refreshes happen automatically in the background, and when you switch tabs the app pauses updates to save resources — resuming instantly when you return. This replaces the previous approach where everything loaded in one large batch, meaning your charts, visitor maps, and stats now appear faster and update more reliably.
 - **Better data accuracy across the dashboard.** All data displayed on the dashboard — pages, locations, devices, referrers, performance metrics, and goals — is now fully typed end-to-end. This eliminates an entire class of potential display bugs where data could be misinterpreted between the server and your screen.
+- **Improved error visibility and debugging.** When something goes wrong behind the scenes, the backend now logs detailed, structured information about what happened — including exactly which site, page, or operation was affected. This means issues are diagnosed and fixed faster, reducing any downtime or data gaps you might experience.
+- **Clearer error trails across the system.** Every database operation now includes context about what was happening when an error occurred. Instead of vague failures, support can trace problems back to their exact source — so if an issue affects your analytics, it gets identified and resolved much more quickly.
 
 ### Fixed
 
