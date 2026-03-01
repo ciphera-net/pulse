@@ -9,6 +9,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Improved
 
 - **Cleaner internal API code.** The analytics data-fetching layer has been streamlined — 13 near-identical endpoint functions were consolidated using a shared pattern, cutting roughly half the code while keeping every feature working exactly as before. This makes it easier to add new analytics endpoints in the future and reduces the chance of inconsistencies between them.
+- **Simpler endpoint management on the backend.** The backend previously required adding every new analytics endpoint in two separate places — one for public dashboards and one for authenticated users. A shared route table now handles both automatically, so new endpoints only need to be defined once. This reduces the chance of one side getting out of sync with the other.
+
+### Fixed
+
+- **Rate limiting now works correctly for all visitors.** A bug in the backend meant that IP-based rate limiting — which protects against abuse on public dashboards and the tracking script — was treating all visitors as the same person. A single heavy user could hit the limit for everyone. Rate limiting now correctly identifies individual visitors, so one bad actor can't affect others.
 
 - **More reliable list rendering across the dashboard.** Pages, referrers, locations, devices, funnels, and other data lists now use stable identifiers (like page paths and referrer URLs) instead of array positions as their React keys. This prevents potential display glitches — such as stale data appearing in the wrong row — when lists are filtered, sorted, or updated in real time.
 - **Deleting a site now fully cleans up all its data.** Previously, deleting a site removed the site record but could leave behind orphaned analytics events in the database, slowly accumulating unused data. Now all events are cleaned up automatically in small batches before the site is removed, keeping your database tidy.
