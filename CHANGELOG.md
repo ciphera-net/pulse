@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Billing configuration validated at startup.** Stripe payment keys are now checked when the server starts instead of when a billing request comes in. Misconfigured payment settings surface immediately during deployment rather than silently failing when you try to manage your subscription.
 - **Faster real-time visitor cleanup.** The background process that keeps active visitor counts accurate no longer briefly blocks other operations while scanning for stale sessions. Cleanup now runs incrementally so your dashboard stays responsive at all times.
 - **Stricter input validation on admin pages.** The internal admin panel now validates organisation identifiers before processing requests, preventing malformed data from reaching the database.
+- **Error messages no longer reveal internal details.** When you submit an invalid form, the error message now says "Invalid request body" instead of exposing internal field names and validation rules. This makes error messages cleaner while keeping your data safer.
+- **Better request cancellation for billing operations.** All billing-related database operations can now be properly cancelled if you navigate away or your connection drops. Previously, some operations would continue running in the background even after you left the page.
+- **More reliable database migrations.** The migration system no longer silently skips partially failed database updates. If an update fails, it stops immediately so the issue can be identified and fixed — rather than marking it as complete and moving on with missing changes.
+- **More resilient event processing.** The background system that processes your analytics events now automatically recovers from unexpected errors instead of silently stopping. If something goes wrong, it restarts itself and continues processing — so you never lose incoming analytics data.
 
 ## [0.12.0-alpha] - 2026-03-01
 
