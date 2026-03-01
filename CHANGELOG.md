@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Improved
 
+- **Modern config loading for the app.** The app's configuration file now uses proper ES module imports instead of an older CommonJS pattern. This aligns with modern JavaScript standards and enables better tooling support.
+- **Complete API documentation in the backend README.** The developer documentation now lists all 80+ endpoints organized by category — ingestion, public dashboard, sites, analytics, real-time, goals, funnels, uptime, billing, notifications, admin, and audit. Previously only 12 endpoints were documented, which understated the full scope of the system.
 - **Login page now shows a loading screen while redirecting.** Previously, the login page briefly showed a blank white screen before redirecting you to the sign-in page. You'll now see the Pulse logo and a "Redirecting to log in..." message, matching the signup page experience.
 - **Team members can now view real-time visitor data.** Previously, only the person who originally created a site could see live visitors and session details. Now any team member in the same organization can access real-time data for all their shared sites — the same way the rest of the dashboard already works.
 - **More reliable duplicate detection for goals.** When creating or updating a goal with a name that already exists, Pulse now uses the database's built-in error codes instead of checking error message text. This means duplicate goal detection works reliably regardless of database version or language settings.
@@ -44,6 +46,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Removed
 
 - **Cleaned up unused files.** Removed six leftover component and utility files that were no longer used anywhere in the app, along with dead backend code. This reduces clutter and keeps the codebase easier to navigate.
+- **Removed unused backend code.** Deleted an old CORS middleware that was never wired up, and an 80-line legacy funnel query that had been superseded by a faster implementation. Less code means fewer things to maintain and audit.
 
 - **More reliable service health reporting.** The backend health check no longer falsely reports the service as unhealthy after sustained traffic. Previously, an internal counter grew over time and would eventually cross a fixed threshold — even under normal load — causing orchestrators to unnecessarily restart the service.
 - **Lower resource usage under load.** The backend now uses a single shared connection to Redis instead of opening dozens of separate ones. Previously, each rate limiter and internal component created its own connection pool, which could waste resources and risk hitting connection limits during heavy traffic.
