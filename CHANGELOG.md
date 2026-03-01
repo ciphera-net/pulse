@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- **More reliable background processing.** When multiple Pulse servers are running, background tasks like daily analytics calculations and data cleanup now coordinate more safely. Previously, under rare timing conditions, two servers could accidentally run the same task at the same time, which could lead to slightly inaccurate stats. Each server now holds a unique token that prevents one from interfering with another's work.
+
 ## [0.12.0-alpha] - 2026-03-01
 
 ### Added
