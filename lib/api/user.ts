@@ -18,24 +18,8 @@ export interface Session {
 }
 
 export async function getUserSessions(): Promise<{ sessions: Session[] }> {
-  // Hash the current refresh token to identify current session
-  const refreshToken = typeof window !== 'undefined' ? localStorage.getItem('refreshToken') : null
-  let currentTokenHash = ''
-  
-  if (refreshToken) {
-    // Hash the refresh token using SHA-256
-    const encoder = new TextEncoder()
-    const data = encoder.encode(refreshToken)
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-    const hashArray = Array.from(new Uint8Array(hashBuffer))
-    currentTokenHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
-  }
-
-  return apiRequest<{ sessions: Session[] }>('/auth/user/sessions', {
-    headers: currentTokenHash ? {
-      'X-Current-Session-Hash': currentTokenHash,
-    } : undefined,
-  })
+  // Current session is identified server-side via the httpOnly refresh token cookie
+  return apiRequest<{ sessions: Session[] }>('/auth/user/sessions')
 }
 
 export async function revokeSession(sessionId: string): Promise<void> {
