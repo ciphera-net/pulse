@@ -247,8 +247,8 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
           ) : (
             hasData ? (
               <>
-                {displayedData.map((item, index) => (
-                  <div key={index} className="flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
+                {displayedData.map((item) => (
+                  <div key={`${item.country ?? ''}-${item.region ?? ''}-${item.city ?? ''}`} className="flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
                     <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
                       {activeTab === 'countries' && <span className="shrink-0">{getFlagComponent(item.country ?? '')}</span>}
                       {activeTab !== 'countries' && <span className="shrink-0">{getFlagComponent(item.country ?? '')}</span>}
@@ -296,8 +296,8 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
               <ListSkeleton rows={10} />
             </div>
           ) : (
-            (fullData.length > 0 ? fullData : data).map((item, index) => (
-              <div key={index} className="flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
+            (fullData.length > 0 ? fullData : data).map((item) => (
+              <div key={`${item.country ?? ''}-${item.region ?? ''}-${item.city ?? ''}`} className="flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
                 <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
                   <span className="shrink-0">{getFlagComponent(item.country ?? '')}</span>
                   <span className="truncate">

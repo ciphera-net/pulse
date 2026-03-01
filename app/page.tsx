@@ -78,8 +78,8 @@ function ComparisonSection() {
               { feature: "GDPR Compliant", pulse: true, ga: "Complex" },
               { feature: "Script Size", pulse: "< 1 KB", ga: "45 KB+" },
               { feature: "Data Ownership", pulse: "Yours", ga: "Google's" },
-            ].map((row, i) => (
-              <tr key={i} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
+            ].map((row) => (
+              <tr key={row.feature} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
                 <td className="p-6 text-neutral-900 dark:text-white font-medium">{row.feature}</td>
                 <td className="p-6">
                   {row.pulse === true ? (
@@ -303,7 +303,7 @@ export default function HomePage() {
               { icon: ZapIcon, title: "Lightweight", desc: "Our script is less than 1kb. It won't slow down your site or affect your SEO." }
             ].map((feature, i) => (
               <motion.div
-                key={i}
+                key={feature.title}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}

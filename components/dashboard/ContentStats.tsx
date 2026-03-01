@@ -132,8 +132,8 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
             </div>
           ) : hasData ? (
             <>
-              {displayedData.map((page, index) => (
-                <div key={index} className="flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
+              {displayedData.map((page) => (
+                <div key={page.path} className="flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
                   <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center">
                     <a
                       href={`https://${domain.replace(/^https?:\/\//, '')}${page.path}`}
@@ -181,8 +181,8 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
               <ListSkeleton rows={10} />
             </div>
           ) : (
-            (fullData.length > 0 ? fullData : data).map((page, index) => (
-              <div key={index} className="flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
+            (fullData.length > 0 ? fullData : data).map((page) => (
+              <div key={page.path} className="flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
                 <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center">
                   <a
                     href={`https://${domain.replace(/^https?:\/\//, '')}${page.path}`}
