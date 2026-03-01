@@ -443,7 +443,7 @@ function AppSettingsSection() {
           <div>
             <SectionHeader
               expanded={expanded.has('account')}
-              active={active.section === 'account'}
+              active={active.section === 'account' || active.section === 'devices' || active.section === 'activity'}
               onToggle={() => {
                 toggleSection('account')
                 if (!expanded.has('account')) {

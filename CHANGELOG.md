@@ -9,6 +9,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Fixed
 
 - **More reliable background processing.** When multiple Pulse servers are running, background tasks like daily analytics calculations and data cleanup now coordinate more safely. Previously, under rare timing conditions, two servers could accidentally run the same task at the same time, which could lead to slightly inaccurate stats. Each server now holds a unique token that prevents one from interfering with another's work.
+- **Cross-tab sign-out cleanup.** Signing out in one tab now fully clears your session data in all other tabs. Previously, some session-related entries were left behind, which could briefly show stale state before the redirect completed.
+- **Settings sidebar highlight.** The "Manage Account" section in Settings now stays highlighted when you're viewing Trusted Devices or Security Activity. Previously, navigating to a sub-page removed the highlight from the parent section, making it unclear which group you were in.
 
 ## [0.12.0-alpha] - 2026-03-01
 

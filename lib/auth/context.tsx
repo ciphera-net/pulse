@@ -174,6 +174,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useSessionSync({
     onLogout: () => {
       localStorage.removeItem('user')
+      localStorage.removeItem('ciphera_token_refreshed_at')
+      localStorage.removeItem('ciphera_last_activity')
       window.location.href = '/'
     },
     onLogin: (userData) => {
