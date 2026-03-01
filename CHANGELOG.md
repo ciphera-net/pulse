@@ -6,12 +6,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-### Fixed
-
-- **More reliable background processing.** When multiple Pulse servers are running, background tasks like daily analytics calculations and data cleanup now coordinate more safely. Previously, under rare timing conditions, two servers could accidentally run the same task at the same time, which could lead to slightly inaccurate stats. Each server now holds a unique token that prevents one from interfering with another's work.
-- **Cross-tab sign-out cleanup.** Signing out in one tab now fully clears your session data in all other tabs. Previously, some session-related entries were left behind, which could briefly show stale state before the redirect completed.
-- **Settings sidebar highlight.** The "Manage Account" section in Settings now stays highlighted when you're viewing Trusted Devices or Security Activity. Previously, navigating to a sub-page removed the highlight from the parent section, making it unclear which group you were in.
-
 ## [0.12.0-alpha] - 2026-03-01
 
 ### Added
@@ -56,6 +50,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Frequent re-login.** You no longer have to sign in multiple times a day. When the access token expires after 15 minutes of inactivity, the app now automatically refreshes it using your refresh token on the next page load, so you stay logged in for up to 30 days.
 - **2FA disable now requires password confirmation.** Disabling 2FA sends the derived password to the backend for verification. This prevents an attacker with a hijacked session from stripping 2FA.
 - **More accurate visitor tracking.** We fixed rare edge cases where visitor counts could be slightly off during busy traffic spikes. Previously, the timestamp-based session ID generation could occasionally create overlapping identifiers. Every visitor now gets a truly unique UUID that never overlaps with others, ensuring your analytics are always precise.
+- **More reliable background processing.** When multiple Pulse servers are running, background tasks like daily analytics calculations and data cleanup now coordinate more safely. Previously, under rare timing conditions, two servers could accidentally run the same task at the same time, which could lead to slightly inaccurate stats. Each server now holds a unique token that prevents one from interfering with another's work.
+- **Cross-tab sign-out cleanup.** Signing out in one tab now fully clears your session data in all other tabs. Previously, some session-related entries were left behind, which could briefly show stale state before the redirect completed.
+- **Settings sidebar highlight.** The "Manage Account" section in Settings now stays highlighted when you're viewing Trusted Devices or Security Activity. Previously, navigating to a sub-page removed the highlight from the parent section, making it unclear which group you were in.
+- **More accurate readiness checks.** The service health endpoint now actively verifies that the cache and real-time tracker are reachable, not just configured. Previously, the readiness check only confirmed these services were set up—not that they were actually responding—so the API could report "ready" even when Redis or the tracker was down.
 
 ## [0.11.1-alpha] - 2026-02-23
 
