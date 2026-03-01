@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- **More reliable service health reporting.** The backend health check no longer falsely reports the service as unhealthy after sustained traffic. Previously, an internal counter grew over time and would eventually cross a fixed threshold — even under normal load — causing orchestrators to unnecessarily restart the service.
+
 ## [0.12.0-alpha] - 2026-03-01
 
 ### Added
