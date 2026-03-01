@@ -8,6 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- **App switcher and site icons now load correctly.** The Pulse, Drop, and Auth logos in the app switcher — and site favicons on the dashboard — were blocked by the browser's Content Security Policy. The policy now allows images from Ciphera's own domain and Google's favicon service, so all icons display as expected.
+- **Safer campaign date handling.** Campaign analytics now use the same date validation as the rest of the app, including checks for invalid ranges and a maximum span of one year. Previously, campaigns used separate date parsing that skipped these checks.
+- **Better crash protection in goals and real-time views.** Fixed an issue where the backend could crash under rare conditions when checking permissions for goals or real-time visitor data. The app now handles unexpected values gracefully instead of crashing.
+- **Full React 19 type coverage.** Upgraded TypeScript type definitions to match the React 19 runtime. Previously, the type definitions lagged behind at React 18, which could hide bugs and miss new React 19 APIs during development.
+
+### Removed
+
+- **Cleaned up unused files.** Removed six leftover component and utility files that were no longer used anywhere in the app, along with dead backend code. This reduces clutter and keeps the codebase easier to navigate.
+
 - **More reliable service health reporting.** The backend health check no longer falsely reports the service as unhealthy after sustained traffic. Previously, an internal counter grew over time and would eventually cross a fixed threshold — even under normal load — causing orchestrators to unnecessarily restart the service.
 - **Lower resource usage under load.** The backend now uses a single shared connection to Redis instead of opening dozens of separate ones. Previously, each rate limiter and internal component created its own connection pool, which could waste resources and risk hitting connection limits during heavy traffic.
 - **More reliable billing operations.** Billing actions like changing your plan, cancelling, and viewing invoices now benefit from the same automatic session refresh, request tracing, and error handling as the rest of the app. Previously, these used a separate internal path that could fail silently if your session expired mid-action.

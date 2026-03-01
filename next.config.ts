@@ -12,7 +12,7 @@ const cspDirectives = [
   // Next.js requires 'unsafe-inline' for its bootstrap scripts; 'unsafe-eval' only in dev (HMR)
   `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''}`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://www.google.com",
+  "img-src 'self' data: blob: https://www.google.com https://*.gstatic.com https://ciphera.net",
   "font-src 'self'",
   `connect-src 'self' https://*.ciphera.net https://cdn.jsdelivr.net${process.env.NODE_ENV === 'development' ? ' http://localhost:*' : ''}`,
   "worker-src 'self'",
@@ -37,6 +37,10 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'www.google.com',
         pathname: '/s2/favicons**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'ciphera.net',
       },
     ],
   },
