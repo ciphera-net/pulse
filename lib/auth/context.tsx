@@ -187,10 +187,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     },
   })
 
+  // * Stable primitives for the effect dependency array — avoids re-running
+  // * on every render when the `user` object reference changes.
+  const isAuthenticated = !!user
+  const userOrgId = user?.org_id
+
   // * Organization Wall & Auto-Switch
   useEffect(() => {
     const checkOrg = async () => {
-      if (!loading && user) {
+      if (!loading && isAuthenticated) {
         if (pathname?.startsWith('/onboarding')) return
         if (pathname?.startsWith('/auth/callback')) return
 
@@ -204,7 +209,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
 
           // * If user has organizations but no context (org_id), switch to the first one
-          if (!user.org_id && organizations.length > 0) {
+          if (!userOrgId && organizations.length > 0) {
              const firstOrg = organizations[0]
              
              try {
@@ -235,7 +240,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     
     checkOrg()
-  }, [loading, user, pathname, router])
+  }, [loading, isAuthenticated, userOrgId, pathname, router])
 
   return (
     <AuthContext.Provider value={{ user, loading, login, logout, refresh, refreshSession }}>
