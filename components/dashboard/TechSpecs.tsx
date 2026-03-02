@@ -156,8 +156,8 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
             </div>
           ) : hasData ? (
             <>
-              {displayedData.map((item, index) => (
-                <div key={index} className="flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
+              {displayedData.map((item) => (
+                <div key={item.name} className="flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
                   <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
                     {item.icon && <span className="text-lg">{item.icon}</span>}
                     <span className="truncate">{item.name}</span>
@@ -198,8 +198,8 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
               <ListSkeleton rows={10} />
             </div>
           ) : (
-            (fullData.length > 0 ? fullData : data).map((item, index) => (
-              <div key={index} className="flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
+            (fullData.length > 0 ? fullData : data).map((item) => (
+              <div key={item.name} className="flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
                 <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
                   {item.icon && <span className="text-lg">{item.icon}</span>}
                   <span className="truncate">{item.name === 'Unknown' ? 'Unknown' : item.name}</span>

@@ -1,6 +1,8 @@
 import apiRequest from './client'
 import { Site } from './sites'
 
+// ─── Types ──────────────────────────────────────────────────────────
+
 export interface Stats {
   pageviews: number
   visitors: number
@@ -11,7 +13,7 @@ export interface Stats {
 export interface TopPage {
   path: string
   pageviews: number
-  visits?: number // For entry/exit pages
+  visits?: number
 }
 
 export interface ScreenResolutionStat {
@@ -101,6 +103,8 @@ export interface AuthParams {
   captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
 }
 
+// ─── Helpers ────────────────────────────────────────────────────────
+
 function appendAuthParams(params: URLSearchParams, auth?: AuthParams) {
   if (auth?.password) params.append('password', auth.password)
   if (auth?.captcha?.captcha_id) params.append('captcha_id', auth.captcha.captcha_id)
@@ -108,198 +112,115 @@ function appendAuthParams(params: URLSearchParams, auth?: AuthParams) {
   if (auth?.captcha?.captcha_token) params.append('captcha_token', auth.captcha.captcha_token)
 }
 
-export async function getStats(siteId: string, startDate?: string, endDate?: string): Promise<Stats> {
+function buildQuery(
+  opts: {
+    startDate?: string
+    endDate?: string
+    limit?: number
+    interval?: string
+    countryLimit?: number
+    sort?: string
+  },
+  auth?: AuthParams
+): string {
   const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
+  if (opts.startDate) params.append('start_date', opts.startDate)
+  if (opts.endDate) params.append('end_date', opts.endDate)
+  if (opts.limit != null) params.append('limit', opts.limit.toString())
+  if (opts.interval) params.append('interval', opts.interval)
+  if (opts.countryLimit != null) params.append('country_limit', opts.countryLimit.toString())
+  if (opts.sort) params.append('sort', opts.sort)
+  if (auth) appendAuthParams(params, auth)
   const query = params.toString()
-  return apiRequest<Stats>(`/sites/${siteId}/stats${query ? `?${query}` : ''}`)
+  return query ? `?${query}` : ''
 }
 
-export async function getPublicStats(siteId: string, startDate?: string, endDate?: string, auth?: AuthParams): Promise<Stats> {
-  const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
-  appendAuthParams(params, auth)
-  const query = params.toString()
-  return apiRequest<Stats>(`/public/sites/${siteId}/stats${query ? `?${query}` : ''}`)
+/** Factory for endpoints that return an array nested under a response key. */
+function createListFetcher<T>(path: string, field: string, defaultLimit = 10) {
+  return (siteId: string, startDate?: string, endDate?: string, limit = defaultLimit): Promise<T[]> =>
+    apiRequest<Record<string, T[]>>(`/sites/${siteId}/${path}${buildQuery({ startDate, endDate, limit })}`)
+      .then(r => r?.[field] || [])
 }
 
-export async function getRealtime(siteId: string): Promise<RealtimeStats> {
+// ─── List Endpoints ─────────────────────────────────────────────────
+
+export const getTopPages = createListFetcher<TopPage>('pages', 'pages')
+export const getTopReferrers = createListFetcher<TopReferrer>('referrers', 'referrers')
+export const getCountries = createListFetcher<CountryStat>('countries', 'countries')
+export const getCities = createListFetcher<CityStat>('cities', 'cities')
+export const getRegions = createListFetcher<RegionStat>('regions', 'regions')
+export const getBrowsers = createListFetcher<BrowserStat>('browsers', 'browsers')
+export const getOS = createListFetcher<OSStat>('os', 'os')
+export const getDevices = createListFetcher<DeviceStat>('devices', 'devices')
+export const getEntryPages = createListFetcher<TopPage>('entry-pages', 'pages')
+export const getExitPages = createListFetcher<TopPage>('exit-pages', 'pages')
+export const getScreenResolutions = createListFetcher<ScreenResolutionStat>('screen-resolutions', 'screen_resolutions')
+export const getGoalStats = createListFetcher<GoalCountStat>('goals/stats', 'goal_counts', 20)
+export const getCampaigns = createListFetcher<CampaignStat>('campaigns', 'campaigns')
+
+// ─── Stats & Realtime ───────────────────────────────────────────────
+
+export function getStats(siteId: string, startDate?: string, endDate?: string): Promise<Stats> {
+  return apiRequest<Stats>(`/sites/${siteId}/stats${buildQuery({ startDate, endDate })}`)
+}
+
+export function getPublicStats(siteId: string, startDate?: string, endDate?: string, auth?: AuthParams): Promise<Stats> {
+  return apiRequest<Stats>(`/public/sites/${siteId}/stats${buildQuery({ startDate, endDate }, auth)}`)
+}
+
+export function getRealtime(siteId: string): Promise<RealtimeStats> {
   return apiRequest<RealtimeStats>(`/sites/${siteId}/realtime`)
 }
 
-export async function getPublicRealtime(siteId: string, auth?: AuthParams): Promise<RealtimeStats> {
-  const params = new URLSearchParams()
-  appendAuthParams(params, auth)
-  return apiRequest<RealtimeStats>(`/public/sites/${siteId}/realtime?${params.toString()}`)
+export function getPublicRealtime(siteId: string, auth?: AuthParams): Promise<RealtimeStats> {
+  return apiRequest<RealtimeStats>(`/public/sites/${siteId}/realtime${buildQuery({}, auth)}`)
 }
 
-export async function getTopPages(siteId: string, startDate?: string, endDate?: string, limit = 10): Promise<TopPage[]> {
-  const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
-  params.append('limit', limit.toString())
-  return apiRequest<{ pages: TopPage[] }>(`/sites/${siteId}/pages?${params.toString()}`).then(r => r?.pages || [])
+// ─── Daily Stats ────────────────────────────────────────────────────
+
+export function getDailyStats(siteId: string, startDate?: string, endDate?: string, interval?: string): Promise<DailyStat[]> {
+  return apiRequest<{ stats: DailyStat[] }>(`/sites/${siteId}/daily${buildQuery({ startDate, endDate, interval })}`)
+    .then(r => r?.stats || [])
 }
 
-export async function getTopReferrers(siteId: string, startDate?: string, endDate?: string, limit = 10): Promise<TopReferrer[]> {
-  const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
-  params.append('limit', limit.toString())
-  return apiRequest<{ referrers: TopReferrer[] }>(`/sites/${siteId}/referrers?${params.toString()}`).then(r => r?.referrers || [])
+export function getPublicDailyStats(siteId: string, startDate?: string, endDate?: string, interval?: string, auth?: AuthParams): Promise<DailyStat[]> {
+  return apiRequest<{ stats: DailyStat[] }>(`/public/sites/${siteId}/daily${buildQuery({ startDate, endDate, interval }, auth)}`)
+    .then(r => r?.stats || [])
 }
 
-export async function getCountries(siteId: string, startDate?: string, endDate?: string, limit = 10): Promise<CountryStat[]> {
-  const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
-  params.append('limit', limit.toString())
-  return apiRequest<{ countries: CountryStat[] }>(`/sites/${siteId}/countries?${params.toString()}`).then(r => r?.countries || [])
+// ─── Public Campaigns ───────────────────────────────────────────────
+
+export function getPublicCampaigns(siteId: string, startDate?: string, endDate?: string, limit = 10, auth?: AuthParams): Promise<CampaignStat[]> {
+  return apiRequest<{ campaigns: CampaignStat[] }>(`/public/sites/${siteId}/campaigns${buildQuery({ startDate, endDate, limit }, auth)}`)
+    .then(r => r?.campaigns || [])
 }
 
-export async function getCities(siteId: string, startDate?: string, endDate?: string, limit = 10): Promise<CityStat[]> {
-  const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
-  params.append('limit', limit.toString())
-  return apiRequest<{ cities: CityStat[] }>(`/sites/${siteId}/cities?${params.toString()}`).then(r => r?.cities || [])
-}
+// ─── Performance By Page ────────────────────────────────────────────
 
-export async function getRegions(siteId: string, startDate?: string, endDate?: string, limit = 10): Promise<RegionStat[]> {
-  const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
-  params.append('limit', limit.toString())
-  return apiRequest<{ regions: RegionStat[] }>(`/sites/${siteId}/regions?${params.toString()}`).then(r => r?.regions || [])
-}
-
-export async function getBrowsers(siteId: string, startDate?: string, endDate?: string, limit = 10): Promise<BrowserStat[]> {
-  const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
-  params.append('limit', limit.toString())
-  return apiRequest<{ browsers: BrowserStat[] }>(`/sites/${siteId}/browsers?${params.toString()}`).then(r => r?.browsers || [])
-}
-
-export async function getOS(siteId: string, startDate?: string, endDate?: string, limit = 10): Promise<OSStat[]> {
-  const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
-  params.append('limit', limit.toString())
-  return apiRequest<{ os: OSStat[] }>(`/sites/${siteId}/os?${params.toString()}`).then(r => r?.os || [])
-}
-
-export async function getDevices(siteId: string, startDate?: string, endDate?: string, limit = 10): Promise<DeviceStat[]> {
-  const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
-  params.append('limit', limit.toString())
-  return apiRequest<{ devices: DeviceStat[] }>(`/sites/${siteId}/devices?${params.toString()}`).then(r => r?.devices || [])
-}
-
-export async function getDailyStats(siteId: string, startDate?: string, endDate?: string, interval?: string): Promise<DailyStat[]> {
-  const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
-  if (interval) params.append('interval', interval)
-  return apiRequest<{ stats: DailyStat[] }>(`/sites/${siteId}/daily?${params.toString()}`).then(r => r?.stats || [])
-}
-
-export async function getPublicDailyStats(siteId: string, startDate?: string, endDate?: string, interval?: string, auth?: AuthParams): Promise<DailyStat[]> {
-  const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
-  if (interval) params.append('interval', interval)
-  appendAuthParams(params, auth)
-  return apiRequest<{ stats: DailyStat[] }>(`/public/sites/${siteId}/daily?${params.toString()}`).then(r => r?.stats || [])
-}
-
-export async function getEntryPages(siteId: string, startDate?: string, endDate?: string, limit = 10): Promise<TopPage[]> {
-  const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
-  params.append('limit', limit.toString())
-  return apiRequest<{ pages: TopPage[] }>(`/sites/${siteId}/entry-pages?${params.toString()}`).then(r => r?.pages || [])
-}
-
-export async function getExitPages(siteId: string, startDate?: string, endDate?: string, limit = 10): Promise<TopPage[]> {
-  const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
-  params.append('limit', limit.toString())
-  return apiRequest<{ pages: TopPage[] }>(`/sites/${siteId}/exit-pages?${params.toString()}`).then(r => r?.pages || [])
-}
-
-export async function getScreenResolutions(siteId: string, startDate?: string, endDate?: string, limit = 10): Promise<ScreenResolutionStat[]> {
-  const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
-  params.append('limit', limit.toString())
-  return apiRequest<{ screen_resolutions: ScreenResolutionStat[] }>(`/sites/${siteId}/screen-resolutions?${params.toString()}`).then(r => r?.screen_resolutions || [])
-}
-
-export async function getPerformanceByPage(
+export function getPerformanceByPage(
   siteId: string,
   startDate?: string,
   endDate?: string,
   opts?: { limit?: number; sort?: 'lcp' | 'cls' | 'inp' }
 ): Promise<PerformanceByPageStat[]> {
-  const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
-  if (opts?.limit != null) params.append('limit', String(opts.limit))
-  if (opts?.sort) params.append('sort', opts.sort)
-  const res = await apiRequest<{ performance_by_page: PerformanceByPageStat[] }>(
-    `/sites/${siteId}/performance-by-page?${params.toString()}`
-  )
-  return res?.performance_by_page ?? []
+  return apiRequest<{ performance_by_page: PerformanceByPageStat[] }>(
+    `/sites/${siteId}/performance-by-page${buildQuery({ startDate, endDate, limit: opts?.limit, sort: opts?.sort })}`
+  ).then(r => r?.performance_by_page ?? [])
 }
 
-export async function getPublicPerformanceByPage(
+export function getPublicPerformanceByPage(
   siteId: string,
   startDate?: string,
   endDate?: string,
   opts?: { limit?: number; sort?: 'lcp' | 'cls' | 'inp' },
   auth?: AuthParams
 ): Promise<PerformanceByPageStat[]> {
-  const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
-  if (opts?.limit != null) params.append('limit', String(opts.limit))
-  if (opts?.sort) params.append('sort', opts.sort)
-  appendAuthParams(params, auth)
-  const res = await apiRequest<{ performance_by_page: PerformanceByPageStat[] }>(
-    `/public/sites/${siteId}/performance-by-page?${params.toString()}`
-  )
-  return res?.performance_by_page ?? []
+  return apiRequest<{ performance_by_page: PerformanceByPageStat[] }>(
+    `/public/sites/${siteId}/performance-by-page${buildQuery({ startDate, endDate, limit: opts?.limit, sort: opts?.sort }, auth)}`
+  ).then(r => r?.performance_by_page ?? [])
 }
 
-export async function getGoalStats(siteId: string, startDate?: string, endDate?: string, limit = 20): Promise<GoalCountStat[]> {
-  const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
-  params.append('limit', limit.toString())
-  return apiRequest<{ goal_counts: GoalCountStat[] }>(`/sites/${siteId}/goals/stats?${params.toString()}`).then(r => r?.goal_counts || [])
-}
-
-export async function getCampaigns(siteId: string, startDate?: string, endDate?: string, limit = 10): Promise<CampaignStat[]> {
-  const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
-  params.append('limit', limit.toString())
-  return apiRequest<{ campaigns: CampaignStat[] }>(`/sites/${siteId}/campaigns?${params.toString()}`).then(r => r?.campaigns || [])
-}
-
-export async function getPublicCampaigns(siteId: string, startDate?: string, endDate?: string, limit = 10, auth?: AuthParams): Promise<CampaignStat[]> {
-  const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
-  params.append('limit', limit.toString())
-  appendAuthParams(params, auth)
-  return apiRequest<{ campaigns: CampaignStat[] }>(`/public/sites/${siteId}/campaigns?${params.toString()}`).then(r => r?.campaigns || [])
-}
+// ─── Full Dashboard ─────────────────────────────────────────────────
 
 export interface DashboardData {
   site: Site
@@ -322,16 +243,11 @@ export interface DashboardData {
   goal_counts?: GoalCountStat[]
 }
 
-export async function getDashboard(siteId: string, startDate?: string, endDate?: string, limit = 10, interval?: string): Promise<DashboardData> {
-  const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
-  if (interval) params.append('interval', interval)
-  params.append('limit', limit.toString())
-  return apiRequest<DashboardData>(`/sites/${siteId}/dashboard?${params.toString()}`)
+export function getDashboard(siteId: string, startDate?: string, endDate?: string, limit = 10, interval?: string): Promise<DashboardData> {
+  return apiRequest<DashboardData>(`/sites/${siteId}/dashboard${buildQuery({ startDate, endDate, limit, interval })}`)
 }
 
-export async function getPublicDashboard(
+export function getPublicDashboard(
   siteId: string,
   startDate?: string,
   endDate?: string,
@@ -340,21 +256,12 @@ export async function getPublicDashboard(
   password?: string,
   captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
 ): Promise<DashboardData> {
-  const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
-  if (interval) params.append('interval', interval)
-
-  appendAuthParams(params, { password, captcha })
-
-  params.append('limit', limit.toString())
-  return apiRequest<DashboardData>(`/public/sites/${siteId}/dashboard?${params.toString()}`)
+  return apiRequest<DashboardData>(
+    `/public/sites/${siteId}/dashboard${buildQuery({ startDate, endDate, limit, interval }, { password, captcha })}`
+  )
 }
 
-// * ============================================================================
-// * Focused Dashboard Endpoints (Fix 4.2: Efficient Data Transfer)
-// * These split the massive dashboard payload into smaller, focused chunks
-// * ============================================================================
+// ─── Focused Dashboard Endpoints ────────────────────────────────────
 
 export interface DashboardOverviewData {
   site: Site
@@ -363,107 +270,16 @@ export interface DashboardOverviewData {
   daily_stats: DailyStat[]
 }
 
-export async function getDashboardOverview(
-  siteId: string,
-  startDate?: string,
-  endDate?: string,
-  interval?: string
-): Promise<DashboardOverviewData> {
-  const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
-  if (interval) params.append('interval', interval)
-  return apiRequest<DashboardOverviewData>(`/sites/${siteId}/dashboard/overview?${params.toString()}`)
-}
-
-export async function getPublicDashboardOverview(
-  siteId: string,
-  startDate?: string,
-  endDate?: string,
-  interval?: string,
-  password?: string,
-  captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
-): Promise<DashboardOverviewData> {
-  const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
-  if (interval) params.append('interval', interval)
-  appendAuthParams(params, { password, captcha })
-  return apiRequest<DashboardOverviewData>(`/public/sites/${siteId}/dashboard/overview?${params.toString()}`)
-}
-
 export interface DashboardPagesData {
   top_pages: TopPage[]
   entry_pages: TopPage[]
   exit_pages: TopPage[]
 }
 
-export async function getDashboardPages(
-  siteId: string,
-  startDate?: string,
-  endDate?: string,
-  limit = 10
-): Promise<DashboardPagesData> {
-  const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
-  params.append('limit', limit.toString())
-  return apiRequest<DashboardPagesData>(`/sites/${siteId}/dashboard/pages?${params.toString()}`)
-}
-
-export async function getPublicDashboardPages(
-  siteId: string,
-  startDate?: string,
-  endDate?: string,
-  limit = 10,
-  password?: string,
-  captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
-): Promise<DashboardPagesData> {
-  const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
-  params.append('limit', limit.toString())
-  appendAuthParams(params, { password, captcha })
-  return apiRequest<DashboardPagesData>(`/public/sites/${siteId}/dashboard/pages?${params.toString()}`)
-}
-
 export interface DashboardLocationsData {
   countries: CountryStat[]
   cities: CityStat[]
   regions: RegionStat[]
-}
-
-export async function getDashboardLocations(
-  siteId: string,
-  startDate?: string,
-  endDate?: string,
-  limit = 10,
-  countryLimit = 250
-): Promise<DashboardLocationsData> {
-  const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
-  params.append('limit', limit.toString())
-  params.append('country_limit', countryLimit.toString())
-  return apiRequest<DashboardLocationsData>(`/sites/${siteId}/dashboard/locations?${params.toString()}`)
-}
-
-export async function getPublicDashboardLocations(
-  siteId: string,
-  startDate?: string,
-  endDate?: string,
-  limit = 10,
-  countryLimit = 250,
-  password?: string,
-  captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
-): Promise<DashboardLocationsData> {
-  const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
-  params.append('limit', limit.toString())
-  params.append('country_limit', countryLimit.toString())
-  appendAuthParams(params, { password, captcha })
-  return apiRequest<DashboardLocationsData>(`/public/sites/${siteId}/dashboard/locations?${params.toString()}`)
 }
 
 export interface DashboardDevicesData {
@@ -473,66 +289,8 @@ export interface DashboardDevicesData {
   screen_resolutions: ScreenResolutionStat[]
 }
 
-export async function getDashboardDevices(
-  siteId: string,
-  startDate?: string,
-  endDate?: string,
-  limit = 10
-): Promise<DashboardDevicesData> {
-  const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
-  params.append('limit', limit.toString())
-  return apiRequest<DashboardDevicesData>(`/sites/${siteId}/dashboard/devices?${params.toString()}`)
-}
-
-export async function getPublicDashboardDevices(
-  siteId: string,
-  startDate?: string,
-  endDate?: string,
-  limit = 10,
-  password?: string,
-  captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
-): Promise<DashboardDevicesData> {
-  const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
-  params.append('limit', limit.toString())
-  appendAuthParams(params, { password, captcha })
-  return apiRequest<DashboardDevicesData>(`/public/sites/${siteId}/dashboard/devices?${params.toString()}`)
-}
-
 export interface DashboardReferrersData {
   top_referrers: TopReferrer[]
-}
-
-export async function getDashboardReferrers(
-  siteId: string,
-  startDate?: string,
-  endDate?: string,
-  limit = 10
-): Promise<DashboardReferrersData> {
-  const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
-  params.append('limit', limit.toString())
-  return apiRequest<DashboardReferrersData>(`/sites/${siteId}/dashboard/referrers?${params.toString()}`)
-}
-
-export async function getPublicDashboardReferrers(
-  siteId: string,
-  startDate?: string,
-  endDate?: string,
-  limit = 10,
-  password?: string,
-  captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
-): Promise<DashboardReferrersData> {
-  const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
-  params.append('limit', limit.toString())
-  appendAuthParams(params, { password, captcha })
-  return apiRequest<DashboardReferrersData>(`/public/sites/${siteId}/dashboard/referrers?${params.toString()}`)
 }
 
 export interface DashboardPerformanceData {
@@ -540,60 +298,83 @@ export interface DashboardPerformanceData {
   performance_by_page?: PerformanceByPageStat[]
 }
 
-export async function getDashboardPerformance(
-  siteId: string,
-  startDate?: string,
-  endDate?: string
-): Promise<DashboardPerformanceData> {
-  const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
-  return apiRequest<DashboardPerformanceData>(`/sites/${siteId}/dashboard/performance?${params.toString()}`)
-}
-
-export async function getPublicDashboardPerformance(
-  siteId: string,
-  startDate?: string,
-  endDate?: string,
-  password?: string,
-  captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
-): Promise<DashboardPerformanceData> {
-  const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
-  appendAuthParams(params, { password, captcha })
-  return apiRequest<DashboardPerformanceData>(`/public/sites/${siteId}/dashboard/performance?${params.toString()}`)
-}
-
 export interface DashboardGoalsData {
   goal_counts: GoalCountStat[]
 }
 
-export async function getDashboardGoals(
-  siteId: string,
-  startDate?: string,
-  endDate?: string,
-  limit = 10
-): Promise<DashboardGoalsData> {
-  const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
-  params.append('limit', limit.toString())
-  return apiRequest<DashboardGoalsData>(`/sites/${siteId}/dashboard/goals?${params.toString()}`)
+export function getDashboardOverview(siteId: string, startDate?: string, endDate?: string, interval?: string): Promise<DashboardOverviewData> {
+  return apiRequest<DashboardOverviewData>(`/sites/${siteId}/dashboard/overview${buildQuery({ startDate, endDate, interval })}`)
 }
 
-export async function getPublicDashboardGoals(
-  siteId: string,
-  startDate?: string,
-  endDate?: string,
-  limit = 10,
-  password?: string,
-  captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
+export function getPublicDashboardOverview(
+  siteId: string, startDate?: string, endDate?: string, interval?: string,
+  password?: string, captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
+): Promise<DashboardOverviewData> {
+  return apiRequest<DashboardOverviewData>(`/public/sites/${siteId}/dashboard/overview${buildQuery({ startDate, endDate, interval }, { password, captcha })}`)
+}
+
+export function getDashboardPages(siteId: string, startDate?: string, endDate?: string, limit = 10): Promise<DashboardPagesData> {
+  return apiRequest<DashboardPagesData>(`/sites/${siteId}/dashboard/pages${buildQuery({ startDate, endDate, limit })}`)
+}
+
+export function getPublicDashboardPages(
+  siteId: string, startDate?: string, endDate?: string, limit = 10,
+  password?: string, captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
+): Promise<DashboardPagesData> {
+  return apiRequest<DashboardPagesData>(`/public/sites/${siteId}/dashboard/pages${buildQuery({ startDate, endDate, limit }, { password, captcha })}`)
+}
+
+export function getDashboardLocations(siteId: string, startDate?: string, endDate?: string, limit = 10, countryLimit = 250): Promise<DashboardLocationsData> {
+  return apiRequest<DashboardLocationsData>(`/sites/${siteId}/dashboard/locations${buildQuery({ startDate, endDate, limit, countryLimit })}`)
+}
+
+export function getPublicDashboardLocations(
+  siteId: string, startDate?: string, endDate?: string, limit = 10, countryLimit = 250,
+  password?: string, captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
+): Promise<DashboardLocationsData> {
+  return apiRequest<DashboardLocationsData>(`/public/sites/${siteId}/dashboard/locations${buildQuery({ startDate, endDate, limit, countryLimit }, { password, captcha })}`)
+}
+
+export function getDashboardDevices(siteId: string, startDate?: string, endDate?: string, limit = 10): Promise<DashboardDevicesData> {
+  return apiRequest<DashboardDevicesData>(`/sites/${siteId}/dashboard/devices${buildQuery({ startDate, endDate, limit })}`)
+}
+
+export function getPublicDashboardDevices(
+  siteId: string, startDate?: string, endDate?: string, limit = 10,
+  password?: string, captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
+): Promise<DashboardDevicesData> {
+  return apiRequest<DashboardDevicesData>(`/public/sites/${siteId}/dashboard/devices${buildQuery({ startDate, endDate, limit }, { password, captcha })}`)
+}
+
+export function getDashboardReferrers(siteId: string, startDate?: string, endDate?: string, limit = 10): Promise<DashboardReferrersData> {
+  return apiRequest<DashboardReferrersData>(`/sites/${siteId}/dashboard/referrers${buildQuery({ startDate, endDate, limit })}`)
+}
+
+export function getPublicDashboardReferrers(
+  siteId: string, startDate?: string, endDate?: string, limit = 10,
+  password?: string, captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
+): Promise<DashboardReferrersData> {
+  return apiRequest<DashboardReferrersData>(`/public/sites/${siteId}/dashboard/referrers${buildQuery({ startDate, endDate, limit }, { password, captcha })}`)
+}
+
+export function getDashboardPerformance(siteId: string, startDate?: string, endDate?: string): Promise<DashboardPerformanceData> {
+  return apiRequest<DashboardPerformanceData>(`/sites/${siteId}/dashboard/performance${buildQuery({ startDate, endDate })}`)
+}
+
+export function getPublicDashboardPerformance(
+  siteId: string, startDate?: string, endDate?: string,
+  password?: string, captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
+): Promise<DashboardPerformanceData> {
+  return apiRequest<DashboardPerformanceData>(`/public/sites/${siteId}/dashboard/performance${buildQuery({ startDate, endDate }, { password, captcha })}`)
+}
+
+export function getDashboardGoals(siteId: string, startDate?: string, endDate?: string, limit = 10): Promise<DashboardGoalsData> {
+  return apiRequest<DashboardGoalsData>(`/sites/${siteId}/dashboard/goals${buildQuery({ startDate, endDate, limit })}`)
+}
+
+export function getPublicDashboardGoals(
+  siteId: string, startDate?: string, endDate?: string, limit = 10,
+  password?: string, captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
 ): Promise<DashboardGoalsData> {
-  const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
-  params.append('limit', limit.toString())
-  appendAuthParams(params, { password, captcha })
-  return apiRequest<DashboardGoalsData>(`/public/sites/${siteId}/dashboard/goals?${params.toString()}`)
+  return apiRequest<DashboardGoalsData>(`/public/sites/${siteId}/dashboard/goals${buildQuery({ startDate, endDate, limit }, { password, captcha })}`)
 }
