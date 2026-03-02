@@ -11,6 +11,7 @@ import {
   getDashboardReferrers,
   getDashboardPerformance,
   getDashboardGoals,
+  getCampaigns,
   getRealtime,
   getStats,
   getDailyStats,
@@ -20,6 +21,7 @@ import type { Site } from '@/lib/api/sites'
 import type {
   Stats,
   DailyStat,
+  CampaignStat,
   DashboardOverviewData,
   DashboardPagesData,
   DashboardLocationsData,
@@ -33,7 +35,7 @@ import type {
 const fetchers = {
   site: (siteId: string) => getSite(siteId),
   dashboard: (siteId: string, start: string, end: string) => getDashboard(siteId, start, end),
-  dashboardOverview: (siteId: string, start: string, end: string) => getDashboardOverview(siteId, start, end),
+  dashboardOverview: (siteId: string, start: string, end: string, interval?: string) => getDashboardOverview(siteId, start, end, interval),
   dashboardPages: (siteId: string, start: string, end: string) => getDashboardPages(siteId, start, end),
   dashboardLocations: (siteId: string, start: string, end: string) => getDashboardLocations(siteId, start, end),
   dashboardDevices: (siteId: string, start: string, end: string) => getDashboardDevices(siteId, start, end),
@@ -44,6 +46,8 @@ const fetchers = {
   dailyStats: (siteId: string, start: string, end: string, interval: 'hour' | 'day' | 'minute') =>
     getDailyStats(siteId, start, end, interval),
   realtime: (siteId: string) => getRealtime(siteId),
+  campaigns: (siteId: string, start: string, end: string, limit: number) =>
+    getCampaigns(siteId, start, end, limit),
 }
 
 // * Standard SWR config for dashboard data
@@ -140,10 +144,10 @@ export function useRealtime(siteId: string, refreshInterval: number = 5000) {
 }
 
 // * Hook for focused dashboard overview data (Fix 4.2: Efficient Data Transfer)
-export function useDashboardOverview(siteId: string, start: string, end: string) {
+export function useDashboardOverview(siteId: string, start: string, end: string, interval?: string) {
   return useSWR<DashboardOverviewData>(
-    siteId && start && end ? ['dashboardOverview', siteId, start, end] : null,
-    () => fetchers.dashboardOverview(siteId, start, end),
+    siteId && start && end ? ['dashboardOverview', siteId, start, end, interval] : null,
+    () => fetchers.dashboardOverview(siteId, start, end, interval),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,
@@ -222,6 +226,19 @@ export function useDashboardGoals(siteId: string, start: string, end: string) {
   return useSWR<DashboardGoalsData>(
     siteId && start && end ? ['dashboardGoals', siteId, start, end] : null,
     () => fetchers.dashboardGoals(siteId, start, end),
+    {
+      ...dashboardSWRConfig,
+      refreshInterval: 60 * 1000,
+      dedupingInterval: 10 * 1000,
+    }
+  )
+}
+
+// * Hook for campaigns data (used by export modal)
+export function useCampaigns(siteId: string, start: string, end: string, limit = 100) {
+  return useSWR<CampaignStat[]>(
+    siteId && start && end ? ['campaigns', siteId, start, end, limit] : null,
+    () => fetchers.campaigns(siteId, start, end, limit),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,

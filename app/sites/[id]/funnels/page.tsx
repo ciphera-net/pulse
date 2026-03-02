@@ -117,7 +117,7 @@ export default function FunnelsPage() {
                       )}
                       <div className="flex items-center gap-2 mt-4">
                         {funnel.steps.map((step, i) => (
-                          <div key={i} className="flex items-center text-sm text-neutral-500">
+                          <div key={step.name} className="flex items-center text-sm text-neutral-500">
                             <span className="px-2 py-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg text-neutral-700 dark:text-neutral-300">
                               {step.name}
                             </span>

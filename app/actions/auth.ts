@@ -2,18 +2,9 @@
 
 import { cookies } from 'next/headers'
 import { logger } from '@/lib/utils/logger'
+import { getCookieDomain } from '@/lib/utils/cookies'
 
 const AUTH_API_URL = process.env.NEXT_PUBLIC_AUTH_API_URL || process.env.NEXT_PUBLIC_AUTH_URL || 'http://localhost:8081'
-
-// * Determine cookie domain dynamically
-// * In production (on ciphera.net), we want to share cookies with subdomains (e.g. pulse-api.ciphera.net)
-// * In local dev (localhost), we don't set a domain
-const getCookieDomain = () => {
-  if (process.env.NODE_ENV === 'production') {
-    return '.ciphera.net'
-  }
-  return undefined
-}
 
 interface AuthResponse {
   access_token: string

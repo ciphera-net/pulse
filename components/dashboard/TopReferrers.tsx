@@ -102,8 +102,8 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
             </div>
           ) : hasData ? (
             <>
-              {displayedReferrers.map((ref, index) => (
-                <div key={index} className="flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
+              {displayedReferrers.map((ref) => (
+                <div key={ref.referrer} className="flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
                   <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
                     {renderReferrerIcon(ref.referrer)}
                     <span className="truncate" title={ref.referrer}>{getReferrerDisplayName(ref.referrer)}</span>
@@ -144,8 +144,8 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
               <ListSkeleton rows={10} />
             </div>
           ) : (
-            mergeReferrersByDisplayName(fullData.length > 0 ? fullData : filteredReferrers).map((ref, index) => (
-              <div key={index} className="flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
+            mergeReferrersByDisplayName(fullData.length > 0 ? fullData : filteredReferrers).map((ref) => (
+              <div key={ref.referrer} className="flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
                 <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
                   {renderReferrerIcon(ref.referrer)}
                   <span className="truncate" title={ref.referrer}>{getReferrerDisplayName(ref.referrer)}</span>

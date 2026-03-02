@@ -114,7 +114,7 @@ export default function FAQPage() {
 
         <div className="max-w-3xl mx-auto">
           {faqs.map((faq, index) => (
-            <FAQItem key={index} faq={faq} index={index} />
+            <FAQItem key={faq.question} faq={faq} index={index} />
           ))}
         </div>
 

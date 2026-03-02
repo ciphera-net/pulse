@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
+import { LoadingOverlay } from '@ciphera-net/ui'
 
 export default function LoginPage() {
   useEffect(() => {
@@ -9,5 +10,10 @@ export default function LoginPage() {
     initiateOAuthFlow()
   }, [])
 
-  return null
+  return (
+    <LoadingOverlay
+      logoSrc="/pulse_icon_no_margins.png"
+      title="Redirecting to log in..."
+    />
+  )
 }
