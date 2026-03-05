@@ -13,6 +13,8 @@ import { getUserOrganizations, switchContext, type OrganizationMember } from '@/
 import { setSessionAction } from '@/app/actions/auth'
 import { LoadingOverlay } from '@ciphera-net/ui'
 import { useRouter } from 'next/navigation'
+import { SettingsModalProvider, useSettingsModal } from '@/lib/settings-modal-context'
+import SettingsModalWrapper from '@/components/settings/SettingsModalWrapper'
 
 const ORG_SWITCH_KEY = 'pulse_switching_org'
 
@@ -44,10 +46,11 @@ const CIPHERA_APPS: CipheraApp[] = [
   },
 ]
 
-export default function LayoutContent({ children }: { children: React.ReactNode }) {
+function LayoutInner({ children }: { children: React.ReactNode }) {
   const auth = useAuth()
   const router = useRouter()
   const isOnline = useOnlineStatus()
+  const { openSettings } = useSettingsModal()
   const [orgs, setOrgs] = useState<OrganizationMember[]>([])
   const [isSwitchingOrg, setIsSwitchingOrg] = useState(() => {
     if (typeof window === 'undefined') return false
@@ -87,7 +90,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
   const handleCreateOrganization = () => {
     router.push('/onboarding')
   }
-  
+
   const showOfflineBar = Boolean(auth.user && !isOnline);
   const barHeightRem = 2.5;
   const headerHeightRem = 6;
@@ -100,9 +103,9 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
   return (
     <>
       {auth.user && <OfflineBanner isOnline={isOnline} />}
-      <Header 
-        auth={auth} 
-        LinkComponent={Link} 
+      <Header
+        auth={auth}
+        LinkComponent={Link}
         logoSrc="/pulse_icon_no_margins.png"
         appName="Pulse"
         orgs={orgs}
@@ -117,6 +120,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         rightSideActions={auth.user ? <NotificationCenter /> : null}
         apps={CIPHERA_APPS}
         currentAppId="pulse"
+        onOpenSettings={openSettings}
         customNavItems={
           <>
             {!auth.user && (
@@ -136,11 +140,20 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
       >
         {children}
       </main>
-      <Footer 
+      <Footer
         LinkComponent={Link}
         appName="Pulse"
         isAuthenticated={!!auth.user}
       />
+      <SettingsModalWrapper />
     </>
+  )
+}
+
+export default function LayoutContent({ children }: { children: React.ReactNode }) {
+  return (
+    <SettingsModalProvider>
+      <LayoutInner>{children}</LayoutInner>
+    </SettingsModalProvider>
   )
 }
