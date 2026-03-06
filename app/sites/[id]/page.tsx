@@ -2,8 +2,8 @@
 
 import { useAuth } from '@/lib/auth/context'
 import { logger } from '@/lib/utils/logger'
-import { useEffect, useState, useMemo } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useCallback, useEffect, useState, useMemo } from 'react'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { getPerformanceByPage, type Stats, type DailyStat } from '@/lib/api/stats'
 import { getDateRange } from '@ciphera-net/ui'
@@ -21,6 +21,10 @@ import PerformanceStats from '@/components/dashboard/PerformanceStats'
 import GoalStats from '@/components/dashboard/GoalStats'
 import ScrollDepth from '@/components/dashboard/ScrollDepth'
 import Campaigns from '@/components/dashboard/Campaigns'
+import FilterBar from '@/components/dashboard/FilterBar'
+import AddFilterDropdown from '@/components/dashboard/AddFilterDropdown'
+import EventProperties from '@/components/dashboard/EventProperties'
+import { type DimensionFilter, serializeFilters, parseFiltersFromURL } from '@/lib/filters'
 import {
   useDashboardOverview,
   useDashboardPages,
@@ -82,6 +86,40 @@ export default function SiteDashboardPage() {
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null)
   const [, setTick] = useState(0)
 
+  // Dimension filters state
+  const searchParams = useSearchParams()
+  const [filters, setFilters] = useState<DimensionFilter[]>(() => {
+    const raw = searchParams.get('filters')
+    return raw ? parseFiltersFromURL(raw) : []
+  })
+  const filtersParam = useMemo(() => serializeFilters(filters), [filters])
+
+  // Selected event for property breakdown
+  const [selectedEvent, setSelectedEvent] = useState<string | null>(null)
+
+  const handleAddFilter = useCallback((filter: DimensionFilter) => {
+    setFilters(prev => [...prev, filter])
+  }, [])
+
+  const handleRemoveFilter = useCallback((index: number) => {
+    setFilters(prev => prev.filter((_, i) => i !== index))
+  }, [])
+
+  const handleClearFilters = useCallback(() => {
+    setFilters([])
+  }, [])
+
+  // Sync filters to URL
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    if (filtersParam) {
+      url.searchParams.set('filters', filtersParam)
+    } else {
+      url.searchParams.delete('filters')
+    }
+    window.history.replaceState({}, '', url.toString())
+  }, [filtersParam])
+
   const interval = dateRange.start === dateRange.end ? todayInterval : multiDayInterval
 
   // Previous period date range for comparison
@@ -100,13 +138,14 @@ export default function SiteDashboardPage() {
 
   // SWR hooks - replace manual useState + useEffect + setInterval polling
   // Each hook handles its own refresh interval, deduplication, and error retry
-  const { data: overview, isLoading: overviewLoading, error: overviewError } = useDashboardOverview(siteId, dateRange.start, dateRange.end, interval)
-  const { data: pages } = useDashboardPages(siteId, dateRange.start, dateRange.end)
-  const { data: locations } = useDashboardLocations(siteId, dateRange.start, dateRange.end)
-  const { data: devicesData } = useDashboardDevices(siteId, dateRange.start, dateRange.end)
-  const { data: referrers } = useDashboardReferrers(siteId, dateRange.start, dateRange.end)
-  const { data: performanceData } = useDashboardPerformance(siteId, dateRange.start, dateRange.end)
-  const { data: goalsData } = useDashboardGoals(siteId, dateRange.start, dateRange.end)
+  // Filters are included in cache keys so changing filters auto-refetches
+  const { data: overview, isLoading: overviewLoading, error: overviewError } = useDashboardOverview(siteId, dateRange.start, dateRange.end, interval, filtersParam || undefined)
+  const { data: pages } = useDashboardPages(siteId, dateRange.start, dateRange.end, filtersParam || undefined)
+  const { data: locations } = useDashboardLocations(siteId, dateRange.start, dateRange.end, filtersParam || undefined)
+  const { data: devicesData } = useDashboardDevices(siteId, dateRange.start, dateRange.end, filtersParam || undefined)
+  const { data: referrers } = useDashboardReferrers(siteId, dateRange.start, dateRange.end, filtersParam || undefined)
+  const { data: performanceData } = useDashboardPerformance(siteId, dateRange.start, dateRange.end, filtersParam || undefined)
+  const { data: goalsData } = useDashboardGoals(siteId, dateRange.start, dateRange.end, filtersParam || undefined)
   const { data: realtimeData } = useRealtime(siteId)
   const { data: prevStats } = useStats(siteId, prevRange.start, prevRange.end)
   const { data: prevDailyStats } = useDailyStats(siteId, prevRange.start, prevRange.end, interval)
@@ -306,6 +345,12 @@ export default function SiteDashboardPage() {
         </div>
       </div>
 
+      {/* Dimension Filters */}
+      <div className="flex items-center gap-2 flex-wrap mb-2">
+        <FilterBar filters={filters} onRemove={handleRemoveFilter} onClear={handleClearFilters} />
+        <AddFilterDropdown onAdd={handleAddFilter} />
+      </div>
+
       {/* Advanced Chart with Integrated Stats */}
       <div className="mb-8">
         <Chart
@@ -382,9 +427,24 @@ export default function SiteDashboardPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2 mb-8">
-        <GoalStats goalCounts={(goalsData?.goal_counts ?? []).filter(g => !/^scroll_\d+$/.test(g.event_name))} />
+        <GoalStats
+          goalCounts={(goalsData?.goal_counts ?? []).filter(g => !/^scroll_\d+$/.test(g.event_name))}
+          onSelectEvent={setSelectedEvent}
+        />
         <ScrollDepth goalCounts={goalsData?.goal_counts ?? []} totalPageviews={stats.pageviews} />
       </div>
+
+      {/* Event Properties Breakdown */}
+      {selectedEvent && (
+        <div className="mb-8">
+          <EventProperties
+            siteId={siteId}
+            eventName={selectedEvent}
+            dateRange={dateRange}
+            onClose={() => setSelectedEvent(null)}
+          />
+        </div>
+      )}
 
       <DatePicker
         isOpen={isDatePickerOpen}
