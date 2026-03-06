@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.13.1-alpha] - 2026-03-06
+
+### Added
+
+- **Hover percentages on dashboard panels.** When you hover over any item in the Content, Locations, Technology, or Top Referrers panels, a percentage now smoothly slides in next to the count — showing you at a glance how much of total traffic that item represents.
+- **Click any item to filter your dashboard.** Clicking a referrer, browser, country, city, page, OS, or device in any dashboard panel now instantly filters your entire dashboard to show only that traffic. No need to open the filter modal — just click the item you're curious about.
+- **Redesigned filter button.** The old dashed "Add filter" dropdown has been replaced with a clean modal. Pick a dimension from a visual grid, choose an operator, enter a value, and apply — all in a focused overlay.
+
+### Fixed
+
+- **Clicking the same item no longer creates duplicate filters.** Previously, clicking the same referrer or browser multiple times would stack identical filter pills. Now the dashboard recognizes you already have that filter active and ignores the duplicate.
+- **"Direct" traffic can now be filtered.** Typing "Direct" as a referrer filter value now correctly matches visitors who arrived without a referrer. Previously this showed zero results because the system didn't recognize "Direct" as a special value.
+- **Campaigns now respect active filters.** The Campaigns panel previously ignored your active filters — so if you filtered by a specific referrer or country, campaigns still showed all data. Campaigns now filter along with the rest of your dashboard.
+
 ## [0.13.0-alpha] - 2026-03-02
 
 ### Added

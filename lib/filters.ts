@@ -55,6 +55,8 @@ export function parseFiltersFromURL(raw: string): DimensionFilter[] {
 export function filterLabel(f: DimensionFilter): string {
   const dim = DIMENSION_LABELS[f.dimension] || f.dimension
   const op = OPERATOR_LABELS[f.operator] || f.operator
-  const val = f.values.length > 1 ? `${f.values[0]} +${f.values.length - 1}` : f.values[0]
+  const rawVal = f.values.length > 1 ? `${f.values[0]} +${f.values.length - 1}` : f.values[0]
+  // Show "Direct" for empty referrer values (direct traffic has no referrer in DB)
+  const val = f.dimension === 'referrer' && rawVal === '' ? 'Direct' : rawVal
   return `${dim} ${op} ${val}`
 }
