@@ -9,6 +9,7 @@ import { MdMonitor } from 'react-icons/md'
 import { Modal, GridIcon } from '@ciphera-net/ui'
 import { ListSkeleton } from '@/components/skeletons'
 import { getBrowsers, getOS, getDevices, getScreenResolutions } from '@/lib/api/stats'
+import { type DimensionFilter } from '@/lib/filters'
 
 interface TechSpecsProps {
   browsers: Array<{ browser: string; pageviews: number }>
@@ -19,13 +20,16 @@ interface TechSpecsProps {
   collectScreenResolution?: boolean
   siteId: string
   dateRange: { start: string, end: string }
+  onFilter?: (filter: DimensionFilter) => void
 }
 
 type Tab = 'browsers' | 'os' | 'devices' | 'screens'
 
 const LIMIT = 7
 
-export default function TechSpecs({ browsers, os, devices, screenResolutions, collectDeviceInfo = true, collectScreenResolution = true, siteId, dateRange }: TechSpecsProps) {
+const TAB_TO_DIMENSION: Record<string, string> = { browsers: 'browser', os: 'os', devices: 'device' }
+
+export default function TechSpecs({ browsers, os, devices, screenResolutions, collectDeviceInfo = true, collectScreenResolution = true, siteId, dateRange, onFilter }: TechSpecsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('browsers')
   const handleTabKeyDown = useTabListKeyboard()
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -156,17 +160,25 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
             </div>
           ) : hasData ? (
             <>
-              {displayedData.map((item) => (
-                <div key={item.name} className="flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
-                  <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
-                    {item.icon && <span className="text-lg">{item.icon}</span>}
-                    <span className="truncate">{item.name}</span>
+              {displayedData.map((item) => {
+                const dim = TAB_TO_DIMENSION[activeTab]
+                const canFilter = onFilter && dim
+                return (
+                  <div
+                    key={item.name}
+                    onClick={() => canFilter && onFilter({ dimension: dim, operator: 'is', values: [item.name] })}
+                    className={`flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors${canFilter ? ' cursor-pointer' : ''}`}
+                  >
+                    <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
+                      {item.icon && <span className="text-lg">{item.icon}</span>}
+                      <span className="truncate">{item.name}</span>
+                    </div>
+                    <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
+                      {formatNumber(item.pageviews)}
+                    </div>
                   </div>
-                  <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
-                    {formatNumber(item.pageviews)}
-                  </div>
-                </div>
-              ))}
+                )
+              })}
               {Array.from({ length: emptySlots }).map((_, i) => (
                 <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
               ))}

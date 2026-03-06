@@ -12,6 +12,7 @@ import { ListSkeleton } from '@/components/skeletons'
 import { SiTorproject } from 'react-icons/si'
 import { FaUserSecret, FaSatellite } from 'react-icons/fa'
 import { getCountries, getCities, getRegions } from '@/lib/api/stats'
+import { type DimensionFilter } from '@/lib/filters'
 
 interface LocationProps {
   countries: Array<{ country: string; pageviews: number }>
@@ -20,13 +21,16 @@ interface LocationProps {
   geoDataLevel?: 'full' | 'country' | 'none'
   siteId: string
   dateRange: { start: string, end: string }
+  onFilter?: (filter: DimensionFilter) => void
 }
 
 type Tab = 'map' | 'countries' | 'regions' | 'cities'
 
 const LIMIT = 7
 
-export default function Locations({ countries, cities, regions, geoDataLevel = 'full', siteId, dateRange }: LocationProps) {
+const TAB_TO_DIMENSION: Record<string, string> = { countries: 'country', regions: 'region', cities: 'city' }
+
+export default function Locations({ countries, cities, regions, geoDataLevel = 'full', siteId, dateRange, onFilter }: LocationProps) {
   const [activeTab, setActiveTab] = useState<Tab>('map')
   const handleTabKeyDown = useTabListKeyboard()
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -247,23 +251,30 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
           ) : (
             hasData ? (
               <>
-                {displayedData.map((item) => (
-                  <div key={`${item.country ?? ''}-${item.region ?? ''}-${item.city ?? ''}`} className="flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
-                    <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
-                      {activeTab === 'countries' && <span className="shrink-0">{getFlagComponent(item.country ?? '')}</span>}
-                      {activeTab !== 'countries' && <span className="shrink-0">{getFlagComponent(item.country ?? '')}</span>}
-
-                      <span className="truncate">
-                        {activeTab === 'countries' ? getCountryName(item.country ?? '') :
-                         activeTab === 'regions' ? getRegionName(item.region ?? '', item.country ?? '') :
-                         getCityName(item.city ?? '')}
-                      </span>
+                {displayedData.map((item) => {
+                  const dim = TAB_TO_DIMENSION[activeTab]
+                  const filterValue = activeTab === 'countries' ? item.country : activeTab === 'regions' ? item.region : item.city
+                  const canFilter = onFilter && dim && filterValue
+                  return (
+                    <div
+                      key={`${item.country ?? ''}-${item.region ?? ''}-${item.city ?? ''}`}
+                      onClick={() => canFilter && onFilter({ dimension: dim, operator: 'is', values: [filterValue!] })}
+                      className={`flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors${canFilter ? ' cursor-pointer' : ''}`}
+                    >
+                      <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
+                        <span className="shrink-0">{getFlagComponent(item.country ?? '')}</span>
+                        <span className="truncate">
+                          {activeTab === 'countries' ? getCountryName(item.country ?? '') :
+                           activeTab === 'regions' ? getRegionName(item.region ?? '', item.country ?? '') :
+                           getCityName(item.city ?? '')}
+                        </span>
+                      </div>
+                      <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
+                        {formatNumber(item.pageviews)}
+                      </div>
                     </div>
-                    <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
-                      {formatNumber(item.pageviews)}
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
                 {Array.from({ length: emptySlots }).map((_, i) => (
                   <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
               ))}
