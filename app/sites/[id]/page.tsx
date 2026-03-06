@@ -607,16 +607,15 @@ export default function SiteDashboardPage() {
         />
       </div>
 
-      {/* Campaigns Report */}
-      <div className="mb-8">
-        <Campaigns siteId={siteId} dateRange={dateRange} filters={filtersParam || undefined} onFilter={handleAddFilter} />
-      </div>
-
       <div className="grid gap-6 lg:grid-cols-2 mb-8">
+        <Campaigns siteId={siteId} dateRange={dateRange} filters={filtersParam || undefined} onFilter={handleAddFilter} />
         <GoalStats
           goalCounts={(goalsData?.goal_counts ?? []).filter(g => !/^scroll_\d+$/.test(g.event_name))}
           onSelectEvent={setSelectedEvent}
         />
+      </div>
+
+      <div className="mb-8">
         <ScrollDepth goalCounts={goalsData?.goal_counts ?? []} totalPageviews={stats.pageviews} />
       </div>
 
