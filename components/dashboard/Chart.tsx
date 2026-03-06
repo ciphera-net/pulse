@@ -219,9 +219,11 @@ export default function Chart({
     if (!chartContainerRef.current) return
     try {
       const { toPng } = await import('html-to-image')
+      // Resolve the actual background color from the DOM (CSS vars don't work in html-to-image)
+      const bg = getComputedStyle(chartContainerRef.current).backgroundColor || (resolvedTheme === 'dark' ? '#171717' : '#ffffff')
       const dataUrl = await toPng(chartContainerRef.current, {
         cacheBust: true,
-        backgroundColor: resolvedTheme === 'dark' ? 'var(--color-neutral-900)' : '#ffffff',
+        backgroundColor: bg,
       })
       const link = document.createElement('a')
       link.download = `chart-${dateRange.start}-${dateRange.end}.png`
