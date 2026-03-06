@@ -33,6 +33,7 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
 
   const mergedReferrers = mergeReferrersByDisplayName(filteredReferrers)
 
+  const totalPageviews = mergedReferrers.reduce((sum, r) => sum + r.pageviews, 0)
   const hasData = mergedReferrers.length > 0
   const displayedReferrers = hasData ? mergedReferrers.slice(0, LIMIT) : []
   const emptySlots = Math.max(0, LIMIT - displayedReferrers.length)
@@ -114,8 +115,13 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
                     {renderReferrerIcon(ref.referrer)}
                     <span className="truncate" title={ref.referrer}>{getReferrerDisplayName(ref.referrer)}</span>
                   </div>
-                  <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
-                    {formatNumber(ref.pageviews)}
+                  <div className="flex items-center gap-2 ml-4">
+                    <span className="text-xs text-neutral-400 dark:text-neutral-500 opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+                      {totalPageviews > 0 ? `${Math.round((ref.pageviews / totalPageviews) * 100)}%` : ''}
+                    </span>
+                    <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
+                      {formatNumber(ref.pageviews)}
+                    </span>
                   </div>
                 </div>
               ))}
