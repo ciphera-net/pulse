@@ -609,7 +609,7 @@ export default function SiteDashboardPage() {
 
       {/* Campaigns Report */}
       <div className="mb-8">
-        <Campaigns siteId={siteId} dateRange={dateRange} filters={filtersParam || undefined} />
+        <Campaigns siteId={siteId} dateRange={dateRange} filters={filtersParam || undefined} onFilter={handleAddFilter} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2 mb-8">
