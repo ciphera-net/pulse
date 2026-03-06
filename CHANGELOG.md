@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [0.13.0-alpha] - 2026-03-02
 
+### Added
+
+- **AI traffic source identification.** Pulse now automatically recognizes visitors coming from AI tools — ChatGPT, Perplexity, Claude, Gemini, Copilot, DeepSeek, Grok, Meta AI, You.com, and Phind. These sources appear in your Top Referrers with proper brand icons and display names instead of raw domain URLs. If someone clicks a link in an AI chat to visit your site, you'll see exactly which AI tool sent them.
+
 ### Improved
 
 - **Cleaner internal API code.** The analytics data-fetching layer has been streamlined — 13 near-identical endpoint functions were consolidated using a shared pattern, cutting roughly half the code while keeping every feature working exactly as before. This makes it easier to add new analytics endpoints in the future and reduces the chance of inconsistencies between them.
