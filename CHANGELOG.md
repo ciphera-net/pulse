@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-## [0.13.1-alpha] - 2026-03-06
+## [0.13.1-alpha] - 2026-03-07
 
 ### Added
 
@@ -17,6 +17,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Improved
 
 - **Stronger filter pills.** Active filters now use solid brand-colored pills that are easy to spot in both light and dark mode. Click any pill to remove it.
+- **Campaigns panel redesigned.** Rebuilt from a wide table layout to a clean row-based design matching all other dashboard panels. UTM medium and campaign are always visible below the source name. Campaigns now sits in a half-width grid next to Goals & Events instead of taking the full width.
+- **Underline tab switchers.** Content, Locations, and Technology panels now use minimal underline tabs instead of pill-style switchers.
+- **"View all" moved to bottom of list.** The expand button on each panel is now a subtle "View all ›" link at the bottom of the data list instead of an icon in the header.
+- **Filter button uses filter icon.** The filter dropdown button now shows a funnel icon instead of a plus sign.
 
 ### Fixed
 
@@ -24,6 +28,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Campaigns now respect your active filters.** Previously, the Campaigns panel ignored dashboard filters and always showed all campaigns. Now it filters along with everything else.
 - **Duplicate "Direct" entry removed from the referrer filter list.** The referrer suggestions no longer show "Direct" twice.
 - **Filter dropdowns now show all your data.** Previously, the filter value list only showed up to 10 items — so if you had 50 cities or 30 browsers, most were missing. Now up to 100 values are loaded when you open a filter, with a loading spinner while they're fetched.
+- **Chart average label no longer shows excessive decimals.** The "Avg" line label now displays one decimal place instead of raw floating-point numbers.
 
 ## [0.13.0-alpha] - 2026-03-02
 

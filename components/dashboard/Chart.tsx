@@ -166,8 +166,9 @@ function ChartTooltip({
 
 // * Compact Y-axis formatter: 1.5M, 12k, 99
 function formatAxisValue(value: number): string {
-  if (value >= 1e6) return `${value / 1e6}M`
-  if (value >= 1000) return `${value / 1000}k`
+  if (value >= 1e6) return `${+(value / 1e6).toFixed(1)}M`
+  if (value >= 1000) return `${+(value / 1000).toFixed(1)}k`
+  if (!Number.isInteger(value)) return value.toFixed(1)
   return String(value)
 }
 
