@@ -30,7 +30,8 @@ import {
   FaGlobe
 } from 'react-icons/fa'
 import { FaXTwitter } from 'react-icons/fa6'
-import { SiBrave } from 'react-icons/si'
+import { SiBrave, SiOpenai, SiPerplexity, SiAnthropic, SiGooglegemini } from 'react-icons/si'
+import { RiRobot2Fill } from 'react-icons/ri'
 import { MdDeviceUnknown, MdSmartphone, MdTabletMac, MdDesktopWindows } from 'react-icons/md'
 
 export function getBrowserIcon(browserName: string) {
@@ -79,7 +80,17 @@ export function getReferrerIcon(referrerName: string) {
   if (lower.includes('github')) return <FaGithub className="text-neutral-800 dark:text-neutral-200" />
   if (lower.includes('youtube')) return <FaYoutube className="text-red-600" />
   if (lower.includes('reddit')) return <FaReddit className="text-orange-600" />
-  
+  // AI assistants and search tools
+  if (lower.includes('chatgpt') || lower.includes('openai')) return <SiOpenai className="text-neutral-800 dark:text-neutral-200" />
+  if (lower.includes('perplexity')) return <SiPerplexity className="text-teal-600" />
+  if (lower.includes('claude') || lower.includes('anthropic')) return <SiAnthropic className="text-orange-500" />
+  if (lower.includes('gemini')) return <SiGooglegemini className="text-blue-500" />
+  if (lower.includes('copilot')) return <FaGlobe className="text-blue-500" />
+  if (lower.includes('deepseek')) return <RiRobot2Fill className="text-blue-600" />
+  if (lower.includes('grok') || lower.includes('x.ai')) return <FaXTwitter className="text-neutral-800 dark:text-neutral-200" />
+  if (lower.includes('phind')) return <RiRobot2Fill className="text-purple-600" />
+  if (lower.includes('you.com')) return <RiRobot2Fill className="text-indigo-600" />
+
   // Try to use a generic globe or maybe check if it is a URL
   return <FaGlobe className="text-neutral-400" />
 }
@@ -111,6 +122,17 @@ const REFERRER_DISPLAY_OVERRIDES: Record<string, string> = {
   quora: 'Quora',
   't.co': 'X',
   'x.com': 'X',
+  // AI assistants and search tools
+  openai: 'ChatGPT',
+  perplexity: 'Perplexity',
+  claude: 'Claude',
+  anthropic: 'Claude',
+  gemini: 'Gemini',
+  copilot: 'Copilot',
+  deepseek: 'DeepSeek',
+  grok: 'Grok',
+  'you': 'You.com',
+  phind: 'Phind',
 }
 
 /**
