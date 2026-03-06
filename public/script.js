@@ -346,4 +346,39 @@
   window.pulse = window.pulse || {};
   window.pulse.track = trackCustomEvent;
 
+  // * Auto-track outbound link clicks and file downloads (on by default)
+  // * Opt-out: add data-no-outbound or data-no-downloads to the script tag
+  var trackOutbound = !script.hasAttribute('data-no-outbound');
+  var trackDownloads = !script.hasAttribute('data-no-downloads');
+
+  if (trackOutbound || trackDownloads) {
+    var FILE_EXT_REGEX = /\.(pdf|zip|gz|tar|xlsx|xls|csv|docx|doc|pptx|ppt|mp4|mp3|wav|avi|mov|exe|dmg|pkg|deb|rpm|iso|7z|rar)($|\?|#)/i;
+
+    document.addEventListener('click', function(e) {
+      var el = e.target;
+      // * Walk up from clicked element to find nearest <a> tag
+      while (el && el.tagName !== 'A') el = el.parentElement;
+      if (!el || !el.href) return;
+
+      try {
+        var url = new URL(el.href, location.href);
+        // * Skip non-http links (mailto:, tel:, javascript:, etc.)
+        if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
+
+        // * Check file download first (download attribute or known file extension)
+        if (trackDownloads && (el.hasAttribute('download') || FILE_EXT_REGEX.test(url.pathname))) {
+          trackCustomEvent('file_download');
+          return;
+        }
+
+        // * Check outbound link (different hostname)
+        if (trackOutbound && url.hostname && url.hostname !== location.hostname) {
+          trackCustomEvent('outbound_link');
+        }
+      } catch (err) {
+        // * Invalid URL - skip silently
+      }
+    }, true); // * Capture phase: fires before default navigation
+  }
+
 })();
