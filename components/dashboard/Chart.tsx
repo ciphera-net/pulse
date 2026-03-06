@@ -360,7 +360,7 @@ export default function Chart({
                 {item.label}
               </div>
               <div className="flex items-baseline gap-2">
-                <span className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-white tabular-nums">
+                <span className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-white">
                   {item.value}
                 </span>
                 <TrendBadge trend={item.trend} invert={item.invertTrend} />
