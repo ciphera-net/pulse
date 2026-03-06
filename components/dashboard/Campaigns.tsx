@@ -17,6 +17,7 @@ import UtmBuilder from '@/components/tools/UtmBuilder'
 interface CampaignsProps {
   siteId: string
   dateRange: { start: string, end: string }
+  filters?: string
 }
 
 const LIMIT = 7
@@ -41,7 +42,7 @@ function campaignRowKey(item: CampaignStat): string {
   return `${item.source}|${item.medium}|${item.campaign}`
 }
 
-export default function Campaigns({ siteId, dateRange }: CampaignsProps) {
+export default function Campaigns({ siteId, dateRange, filters }: CampaignsProps) {
   const [data, setData] = useState<CampaignStat[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -56,7 +57,7 @@ export default function Campaigns({ siteId, dateRange }: CampaignsProps) {
     const fetchData = async () => {
       setIsLoading(true)
       try {
-        const result = await getCampaigns(siteId, dateRange.start, dateRange.end, 10)
+        const result = await getCampaigns(siteId, dateRange.start, dateRange.end, 10, filters)
         setData(result)
       } catch (e) {
         logger.error(e)
@@ -65,14 +66,14 @@ export default function Campaigns({ siteId, dateRange }: CampaignsProps) {
       }
     }
     fetchData()
-  }, [siteId, dateRange])
+  }, [siteId, dateRange, filters])
 
   useEffect(() => {
     if (isModalOpen) {
       const fetchFullData = async () => {
         setIsLoadingFull(true)
         try {
-          const result = await getCampaigns(siteId, dateRange.start, dateRange.end, 100)
+          const result = await getCampaigns(siteId, dateRange.start, dateRange.end, 100, filters)
           setFullData(result)
         } catch (e) {
           logger.error(e)
@@ -84,7 +85,7 @@ export default function Campaigns({ siteId, dateRange }: CampaignsProps) {
     } else {
       setFullData([])
     }
-  }, [isModalOpen, siteId, dateRange])
+  }, [isModalOpen, siteId, dateRange, filters])
 
   const sortedData = useMemo(
     () => sortCampaigns(data, sortKey, sortDir),

@@ -98,7 +98,18 @@ export default function SiteDashboardPage() {
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null)
 
   const handleAddFilter = useCallback((filter: DimensionFilter) => {
-    setFilters(prev => [...prev, filter])
+    // Normalize "Direct" referrer to empty string (direct traffic has no referrer in DB)
+    const normalized = { ...filter }
+    if (normalized.dimension === 'referrer') {
+      normalized.values = normalized.values.map(v => v.toLowerCase() === 'direct' ? '' : v)
+    }
+    setFilters(prev => {
+      const isDuplicate = prev.some(
+        f => f.dimension === normalized.dimension && f.operator === normalized.operator && f.values.join(';') === normalized.values.join(';')
+      )
+      if (isDuplicate) return prev
+      return [...prev, normalized]
+    })
   }, [])
 
   const handleRemoveFilter = useCallback((index: number) => {
@@ -427,7 +438,7 @@ export default function SiteDashboardPage() {
 
       {/* Campaigns Report */}
       <div className="mb-8">
-        <Campaigns siteId={siteId} dateRange={dateRange} />
+        <Campaigns siteId={siteId} dateRange={dateRange} filters={filtersParam || undefined} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2 mb-8">
