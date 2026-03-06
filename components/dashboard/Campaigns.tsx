@@ -99,13 +99,6 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
     return <span className="text-lg flex-shrink-0">{getReferrerIcon(source)}</span>
   }
 
-  function getSecondaryLabel(item: CampaignStat): string | null {
-    const parts: string[] = []
-    if (item.medium) parts.push(item.medium)
-    if (item.campaign) parts.push(item.campaign)
-    return parts.length > 0 ? parts.join(' · ') : null
-  }
-
   const handleExportCampaigns = () => {
     const rows = sortedFullData.length > 0 ? sortedFullData : sortedData
     if (rows.length === 0) return
@@ -148,7 +141,6 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
           ) : hasData ? (
             <>
               {displayedData.map((item) => {
-                const secondary = getSecondaryLabel(item)
                 return (
                   <div
                     key={`${item.source}|${item.medium}|${item.campaign}`}
@@ -161,10 +153,10 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
                         <div className="truncate font-medium text-sm" title={item.source}>
                           {getReferrerDisplayName(item.source)}
                         </div>
-                        <div className="flex items-center gap-1.5 text-xs text-neutral-400 dark:text-neutral-500">
-                          {item.medium && <span>{item.medium}</span>}
-                          {item.medium && item.campaign && <span>·</span>}
-                          {item.campaign && <span className="truncate">{item.campaign}</span>}
+                        <div className="flex items-center gap-1.5 text-[11px] text-neutral-400 dark:text-neutral-500">
+                          <span>{item.medium || '—'}</span>
+                          <span>·</span>
+                          <span className="truncate">{item.campaign || '—'}</span>
                         </div>
                       </div>
                     </div>
@@ -239,7 +231,6 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
                 </button>
               </div>
               {sortedFullData.map((item) => {
-                const secondary = getSecondaryLabel(item)
                 return (
                   <div
                     key={`${item.source}|${item.medium}|${item.campaign}`}
@@ -251,10 +242,10 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
                         <div className="text-neutral-900 dark:text-white font-medium truncate text-sm" title={item.source}>
                           {getReferrerDisplayName(item.source)}
                         </div>
-                        <div className="flex items-center gap-1.5 text-xs text-neutral-400 dark:text-neutral-500">
-                          {item.medium && <span>{item.medium}</span>}
-                          {item.medium && item.campaign && <span>·</span>}
-                          {item.campaign && <span className="truncate">{item.campaign}</span>}
+                        <div className="flex items-center gap-1.5 text-[11px] text-neutral-400 dark:text-neutral-500">
+                          <span>{item.medium || '—'}</span>
+                          <span>·</span>
+                          <span className="truncate">{item.campaign || '—'}</span>
                         </div>
                       </div>
                     </div>
