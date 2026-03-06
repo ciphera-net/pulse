@@ -13,6 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **AI traffic source identification.** Pulse now automatically recognizes visitors coming from AI tools — ChatGPT, Perplexity, Claude, Gemini, Copilot, DeepSeek, Grok, Meta AI, You.com, and Phind. These sources appear in your Top Referrers with proper brand icons and display names instead of raw domain URLs. If someone clicks a link in an AI chat to visit your site, you'll see exactly which AI tool sent them.
 - **Automatic outbound link tracking.** Pulse now tracks when visitors click links that take them to other websites. These show up as "outbound link" events in your Goals & Events panel — no setup needed. You can turn this off in your tracking snippet settings if you prefer.
 - **Automatic file download tracking.** When a visitor clicks a link to a downloadable file — PDF, ZIP, Excel, Word, MP3, and 20+ other formats — Pulse records it as a "file download" event. Like outbound links, this works automatically with no setup required.
+- **Automatic 404 error page detection.** Pulse now detects when a visitor lands on a page that doesn't exist and records it as a "404" event. You'll see these in your Goals & Events panel so you can find and fix broken links. Works automatically — no setup needed.
+- **Automatic scroll depth tracking.** Pulse now tracks how far visitors scroll down each page — at 25%, 50%, 75%, and 100% milestones. These show up as scroll events in your Goals & Events panel, helping you understand which content keeps people reading. Works automatically with no configuration required.
 
 ### Improved
 
