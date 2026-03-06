@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- **Dashboard filtering.** You can now filter your entire dashboard by any dimension — browser, country, page, device, OS, referrer, or UTM parameters. Click "Add filter" to pick a dimension, choose an operator (is, is not, contains, does not contain), and enter a value. Active filters appear as removable pills above your charts. You can also stack multiple filters to narrow down exactly the traffic you're looking at. Filter selections are saved in the URL, so you can bookmark or share a filtered view with your team.
+- **Custom event properties.** Your custom events can now carry extra context. For example, tracking a signup with `pulse.track('signup', { plan: 'pro', source: 'landing' })` records the plan and source alongside the event. Click any event in your Goals & Events panel to see a breakdown of its properties and values — no setup or registration needed. This helps you understand not just what happened, but why.
 - **AI traffic source identification.** Pulse now automatically recognizes visitors coming from AI tools — ChatGPT, Perplexity, Claude, Gemini, Copilot, DeepSeek, Grok, Meta AI, You.com, and Phind. These sources appear in your Top Referrers with proper brand icons and display names instead of raw domain URLs. If someone clicks a link in an AI chat to visit your site, you'll see exactly which AI tool sent them.
 - **Automatic outbound link tracking.** Pulse now tracks when visitors click links that take them to other websites. These show up as "outbound link" events in your Goals & Events panel — no setup needed. You can turn this off in your tracking snippet settings if you prefer.
 - **Automatic file download tracking.** When a visitor clicks a link to a downloadable file — PDF, ZIP, Excel, Word, MP3, and 20+ other formats — Pulse records it as a "file download" event. Like outbound links, this works automatically with no setup required.
@@ -294,7 +296,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ---
 
 [Unreleased]: https://github.com/ciphera-net/pulse/compare/v0.13.0-alpha...HEAD
-[0.13.0-alpha]: https://github.com/ciphera-net/pulse/compare/v0.12.0-alpha...v0.13.0-alpha
+[0.13.0-alpha]: https://github.com/ciphera-net/pulse/releases/tag/v0.13.0-alpha
 [0.12.0-alpha]: https://github.com/ciphera-net/pulse/compare/v0.11.1-alpha...v0.12.0-alpha
 [0.11.1-alpha]: https://github.com/ciphera-net/pulse/compare/v0.11.0-alpha...v0.11.1-alpha
 [0.11.0-alpha]: https://github.com/ciphera-net/pulse/compare/v0.10.0-alpha...v0.11.0-alpha

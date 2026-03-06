@@ -35,14 +35,14 @@ import type {
 const fetchers = {
   site: (siteId: string) => getSite(siteId),
   dashboard: (siteId: string, start: string, end: string) => getDashboard(siteId, start, end),
-  dashboardOverview: (siteId: string, start: string, end: string, interval?: string) => getDashboardOverview(siteId, start, end, interval),
-  dashboardPages: (siteId: string, start: string, end: string) => getDashboardPages(siteId, start, end),
-  dashboardLocations: (siteId: string, start: string, end: string) => getDashboardLocations(siteId, start, end),
-  dashboardDevices: (siteId: string, start: string, end: string) => getDashboardDevices(siteId, start, end),
-  dashboardReferrers: (siteId: string, start: string, end: string) => getDashboardReferrers(siteId, start, end),
-  dashboardPerformance: (siteId: string, start: string, end: string) => getDashboardPerformance(siteId, start, end),
-  dashboardGoals: (siteId: string, start: string, end: string) => getDashboardGoals(siteId, start, end),
-  stats: (siteId: string, start: string, end: string) => getStats(siteId, start, end),
+  dashboardOverview: (siteId: string, start: string, end: string, interval?: string, filters?: string) => getDashboardOverview(siteId, start, end, interval, filters),
+  dashboardPages: (siteId: string, start: string, end: string, filters?: string) => getDashboardPages(siteId, start, end, undefined, filters),
+  dashboardLocations: (siteId: string, start: string, end: string, filters?: string) => getDashboardLocations(siteId, start, end, undefined, undefined, filters),
+  dashboardDevices: (siteId: string, start: string, end: string, filters?: string) => getDashboardDevices(siteId, start, end, undefined, filters),
+  dashboardReferrers: (siteId: string, start: string, end: string, filters?: string) => getDashboardReferrers(siteId, start, end, undefined, filters),
+  dashboardPerformance: (siteId: string, start: string, end: string, filters?: string) => getDashboardPerformance(siteId, start, end, filters),
+  dashboardGoals: (siteId: string, start: string, end: string, filters?: string) => getDashboardGoals(siteId, start, end, undefined, filters),
+  stats: (siteId: string, start: string, end: string, filters?: string) => getStats(siteId, start, end, filters),
   dailyStats: (siteId: string, start: string, end: string, interval: 'hour' | 'day' | 'minute') =>
     getDailyStats(siteId, start, end, interval),
   realtime: (siteId: string) => getRealtime(siteId),
@@ -94,10 +94,10 @@ export function useDashboard(siteId: string, start: string, end: string) {
 }
 
 // * Hook for stats (refreshed less frequently)
-export function useStats(siteId: string, start: string, end: string) {
+export function useStats(siteId: string, start: string, end: string, filters?: string) {
   return useSWR<Stats>(
-    siteId && start && end ? ['stats', siteId, start, end] : null,
-    () => fetchers.stats(siteId, start, end),
+    siteId && start && end ? ['stats', siteId, start, end, filters] : null,
+    () => fetchers.stats(siteId, start, end, filters),
     {
       ...dashboardSWRConfig,
       // * Refresh every 60 seconds for stats
@@ -144,10 +144,10 @@ export function useRealtime(siteId: string, refreshInterval: number = 5000) {
 }
 
 // * Hook for focused dashboard overview data (Fix 4.2: Efficient Data Transfer)
-export function useDashboardOverview(siteId: string, start: string, end: string, interval?: string) {
+export function useDashboardOverview(siteId: string, start: string, end: string, interval?: string, filters?: string) {
   return useSWR<DashboardOverviewData>(
-    siteId && start && end ? ['dashboardOverview', siteId, start, end, interval] : null,
-    () => fetchers.dashboardOverview(siteId, start, end, interval),
+    siteId && start && end ? ['dashboardOverview', siteId, start, end, interval, filters] : null,
+    () => fetchers.dashboardOverview(siteId, start, end, interval, filters),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,
@@ -157,10 +157,10 @@ export function useDashboardOverview(siteId: string, start: string, end: string,
 }
 
 // * Hook for focused dashboard pages data
-export function useDashboardPages(siteId: string, start: string, end: string) {
+export function useDashboardPages(siteId: string, start: string, end: string, filters?: string) {
   return useSWR<DashboardPagesData>(
-    siteId && start && end ? ['dashboardPages', siteId, start, end] : null,
-    () => fetchers.dashboardPages(siteId, start, end),
+    siteId && start && end ? ['dashboardPages', siteId, start, end, filters] : null,
+    () => fetchers.dashboardPages(siteId, start, end, filters),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,
@@ -170,10 +170,10 @@ export function useDashboardPages(siteId: string, start: string, end: string) {
 }
 
 // * Hook for focused dashboard locations data
-export function useDashboardLocations(siteId: string, start: string, end: string) {
+export function useDashboardLocations(siteId: string, start: string, end: string, filters?: string) {
   return useSWR<DashboardLocationsData>(
-    siteId && start && end ? ['dashboardLocations', siteId, start, end] : null,
-    () => fetchers.dashboardLocations(siteId, start, end),
+    siteId && start && end ? ['dashboardLocations', siteId, start, end, filters] : null,
+    () => fetchers.dashboardLocations(siteId, start, end, filters),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,
@@ -183,10 +183,10 @@ export function useDashboardLocations(siteId: string, start: string, end: string
 }
 
 // * Hook for focused dashboard devices data
-export function useDashboardDevices(siteId: string, start: string, end: string) {
+export function useDashboardDevices(siteId: string, start: string, end: string, filters?: string) {
   return useSWR<DashboardDevicesData>(
-    siteId && start && end ? ['dashboardDevices', siteId, start, end] : null,
-    () => fetchers.dashboardDevices(siteId, start, end),
+    siteId && start && end ? ['dashboardDevices', siteId, start, end, filters] : null,
+    () => fetchers.dashboardDevices(siteId, start, end, filters),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,
@@ -196,10 +196,10 @@ export function useDashboardDevices(siteId: string, start: string, end: string) 
 }
 
 // * Hook for focused dashboard referrers data
-export function useDashboardReferrers(siteId: string, start: string, end: string) {
+export function useDashboardReferrers(siteId: string, start: string, end: string, filters?: string) {
   return useSWR<DashboardReferrersData>(
-    siteId && start && end ? ['dashboardReferrers', siteId, start, end] : null,
-    () => fetchers.dashboardReferrers(siteId, start, end),
+    siteId && start && end ? ['dashboardReferrers', siteId, start, end, filters] : null,
+    () => fetchers.dashboardReferrers(siteId, start, end, filters),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,
@@ -209,10 +209,10 @@ export function useDashboardReferrers(siteId: string, start: string, end: string
 }
 
 // * Hook for focused dashboard performance data
-export function useDashboardPerformance(siteId: string, start: string, end: string) {
+export function useDashboardPerformance(siteId: string, start: string, end: string, filters?: string) {
   return useSWR<DashboardPerformanceData>(
-    siteId && start && end ? ['dashboardPerformance', siteId, start, end] : null,
-    () => fetchers.dashboardPerformance(siteId, start, end),
+    siteId && start && end ? ['dashboardPerformance', siteId, start, end, filters] : null,
+    () => fetchers.dashboardPerformance(siteId, start, end, filters),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,
@@ -222,10 +222,10 @@ export function useDashboardPerformance(siteId: string, start: string, end: stri
 }
 
 // * Hook for focused dashboard goals data
-export function useDashboardGoals(siteId: string, start: string, end: string) {
+export function useDashboardGoals(siteId: string, start: string, end: string, filters?: string) {
   return useSWR<DashboardGoalsData>(
-    siteId && start && end ? ['dashboardGoals', siteId, start, end] : null,
-    () => fetchers.dashboardGoals(siteId, start, end),
+    siteId && start && end ? ['dashboardGoals', siteId, start, end, filters] : null,
+    () => fetchers.dashboardGoals(siteId, start, end, filters),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,

@@ -7,11 +7,12 @@ import type { GoalCountStat } from '@/lib/api/stats'
 
 interface GoalStatsProps {
   goalCounts: GoalCountStat[]
+  onSelectEvent?: (eventName: string) => void
 }
 
 const LIMIT = 10
 
-export default function GoalStats({ goalCounts }: GoalStatsProps) {
+export default function GoalStats({ goalCounts, onSelectEvent }: GoalStatsProps) {
   const list = (goalCounts || []).slice(0, LIMIT)
   const hasData = list.length > 0
 
@@ -28,7 +29,8 @@ export default function GoalStats({ goalCounts }: GoalStatsProps) {
           {list.map((row) => (
             <div
               key={row.event_name}
-              className="flex items-center justify-between py-2 px-3 rounded-lg bg-neutral-50 dark:bg-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+              onClick={() => onSelectEvent?.(row.event_name)}
+              className={`flex items-center justify-between py-2 px-3 rounded-lg bg-neutral-50 dark:bg-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors${onSelectEvent ? ' cursor-pointer' : ''}`}
             >
               <span className="text-sm font-medium text-neutral-900 dark:text-white truncate">
                 {row.display_name ?? row.event_name.replace(/_/g, ' ')}

@@ -322,7 +322,7 @@
   var EVENT_NAME_MAX = 64;
   var EVENT_NAME_REGEX = /^[a-zA-Z0-9_]+$/;
 
-  function trackCustomEvent(eventName) {
+  function trackCustomEvent(eventName, props) {
     if (typeof eventName !== 'string' || !eventName.trim()) return;
     var name = eventName.trim().toLowerCase();
     if (name.length > EVENT_NAME_MAX || !EVENT_NAME_REGEX.test(name)) {
@@ -342,6 +342,20 @@
       session_id: getSessionId(),
       name: name,
     };
+    // * Attach custom properties if provided (max 30 props, key max 200 chars, value max 2000 chars)
+    if (props && typeof props === 'object' && !Array.isArray(props)) {
+      var sanitized = {};
+      var count = 0;
+      for (var key in props) {
+        if (!props.hasOwnProperty(key)) continue;
+        if (count >= 30) break;
+        var k = String(key).substring(0, 200);
+        var v = String(props[key]).substring(0, 2000);
+        sanitized[k] = v;
+        count++;
+      }
+      if (count > 0) payload.props = sanitized;
+    }
     fetch(apiUrl + '/api/v1/events', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
