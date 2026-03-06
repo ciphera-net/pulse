@@ -10,7 +10,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  ReferenceLine,
 } from 'recharts'
 import type { TooltipProps } from 'recharts'
 import { formatNumber, formatDuration, formatUpdatedAgo } from '@ciphera-net/ui'
@@ -90,13 +89,6 @@ function formatAxisDuration(seconds: number): string {
   const s = Math.floor(seconds % 60)
   if (m > 0) return s > 0 ? `${m}m${s}s` : `${m}m`
   return `${s}s`
-}
-
-function formatAvgLabel(value: number, metric: MetricType): string {
-  if (metric === 'bounce_rate') return `${Math.round(value)}%`
-  if (metric === 'avg_duration') return formatAxisDuration(value)
-  if (metric === 'visitors' || metric === 'pageviews') return formatAxisValue(Math.round(value))
-  return formatAxisValue(value)
 }
 
 function getPrevDateRangeLabel(dateRange: { start: string; end: string }): string {
@@ -295,10 +287,6 @@ export default function Chart({
   const prevPeriodLabel = prevData?.length ? getPrevDateRangeLabel(dateRange) : ''
   const trendContext = getTrendContext(dateRange)
 
-  const avg = chartData.length
-    ? chartData.reduce((s, d) => s + (d[metric] as number), 0) / chartData.length
-    : 0
-
   const hasPrev = !!(prevData?.length && showComparison)
   const hasData = data.length > 0
   const hasAnyNonZero = hasData && chartData.some((d) => (d[metric] as number) > 0)
@@ -383,11 +371,6 @@ export default function Chart({
             <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
               {metricLabel}
             </span>
-            {hasAnyNonZero && avg > 0 && (
-              <span className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500 bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded-full">
-                Avg: {formatAvgLabel(avg, metric)}
-              </span>
-            )}
             {hasPrev && (
               <div className="hidden sm:flex items-center gap-3 text-[11px] font-medium text-neutral-400 dark:text-neutral-500 ml-2">
                 <span className="flex items-center gap-1.5">
@@ -511,14 +494,6 @@ export default function Chart({
                   cursor={{ stroke: colors.axis, strokeOpacity: 0.3, strokeWidth: 1 }}
                 />
 
-                {avg > 0 && (
-                  <ReferenceLine
-                    y={avg}
-                    stroke={colors.axis}
-                    strokeDasharray="4 4"
-                    strokeOpacity={0.4}
-                  />
-                )}
 
                 {hasPrev && (
                   <Area
