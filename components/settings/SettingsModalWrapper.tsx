@@ -90,13 +90,14 @@ export default function SettingsModalWrapper() {
   const sections: SettingsSection[] = [
     {
       id: 'pulse',
-      label: 'Pulse Settings',
+      label: 'Account',
       icon: UserIcon,
       defaultExpanded: true,
       items: [
-        { id: 'profile', label: 'Profile', content: <ProfileSettings activeTab="profile" borderless /> },
+        { id: 'profile', label: 'Profile', content: <ProfileSettings activeTab="profile" borderless hideDangerZone /> },
         { id: 'security', label: 'Security', content: <ProfileSettings activeTab="security" borderless /> },
         { id: 'preferences', label: 'Preferences', content: <ProfileSettings activeTab="preferences" borderless /> },
+        { id: 'danger-zone', label: 'Danger Zone', content: <ProfileSettings activeTab="danger-zone" borderless /> },
       ],
     },
     {
