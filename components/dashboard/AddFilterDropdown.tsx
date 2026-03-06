@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { DIMENSION_LABELS, OPERATORS, OPERATOR_LABELS, type DimensionFilter } from '@/lib/filters'
 
 export interface FilterSuggestion {
@@ -16,15 +16,18 @@ export interface FilterSuggestions {
 interface AddFilterDropdownProps {
   onAdd: (filter: DimensionFilter) => void
   suggestions?: FilterSuggestions
+  onFetchSuggestions?: (dimension: string) => Promise<FilterSuggestion[]>
 }
 
 const ALL_DIMS = ['page', 'referrer', 'country', 'region', 'city', 'browser', 'os', 'device', 'utm_source', 'utm_medium', 'utm_campaign']
 
-export default function AddFilterDropdown({ onAdd, suggestions = {} }: AddFilterDropdownProps) {
+export default function AddFilterDropdown({ onAdd, suggestions = {}, onFetchSuggestions }: AddFilterDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [selectedDim, setSelectedDim] = useState<string | null>(null)
   const [operator, setOperator] = useState<DimensionFilter['operator']>('is')
   const [search, setSearch] = useState('')
+  const [fetchedSuggestions, setFetchedSuggestions] = useState<FilterSuggestion[]>([])
+  const [isFetching, setIsFetching] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -52,12 +55,32 @@ export default function AddFilterDropdown({ onAdd, suggestions = {} }: AddFilter
     if (selectedDim) inputRef.current?.focus()
   }, [selectedDim])
 
-  function handleClose() {
+  // Fetch full suggestions when a dimension is selected
+  useEffect(() => {
+    if (!selectedDim || !onFetchSuggestions) {
+      setFetchedSuggestions([])
+      return
+    }
+    let cancelled = false
+    setIsFetching(true)
+    onFetchSuggestions(selectedDim).then(data => {
+      if (!cancelled) {
+        setFetchedSuggestions(data)
+        setIsFetching(false)
+      }
+    }).catch(() => {
+      if (!cancelled) setIsFetching(false)
+    })
+    return () => { cancelled = true }
+  }, [selectedDim, onFetchSuggestions])
+
+  const handleClose = useCallback(() => {
     setIsOpen(false)
     setSelectedDim(null)
     setOperator('is')
     setSearch('')
-  }
+    setFetchedSuggestions([])
+  }, [])
 
   function handleSelectValue(value: string) {
     onAdd({ dimension: selectedDim!, operator, values: [value] })
@@ -70,7 +93,10 @@ export default function AddFilterDropdown({ onAdd, suggestions = {} }: AddFilter
     handleClose()
   }
 
-  const dimSuggestions = selectedDim ? (suggestions[selectedDim] || []) : []
+  // Use fetched data if available, fall back to prop suggestions
+  const dimSuggestions = selectedDim
+    ? (fetchedSuggestions.length > 0 ? fetchedSuggestions : (suggestions[selectedDim] || []))
+    : []
   const filtered = dimSuggestions.filter(s =>
     s.label.toLowerCase().includes(search.toLowerCase()) ||
     s.value.toLowerCase().includes(search.toLowerCase())
@@ -118,7 +144,7 @@ export default function AddFilterDropdown({ onAdd, suggestions = {} }: AddFilter
               {/* Header with back button */}
               <div className="flex items-center gap-2 px-3 pt-3 pb-2">
                 <button
-                  onClick={() => { setSelectedDim(null); setSearch(''); setOperator('is') }}
+                  onClick={() => { setSelectedDim(null); setSearch(''); setOperator('is'); setFetchedSuggestions([]) }}
                   className="p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors cursor-pointer rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -168,7 +194,11 @@ export default function AddFilterDropdown({ onAdd, suggestions = {} }: AddFilter
               </div>
 
               {/* Values list */}
-              {filtered.length > 0 && (
+              {isFetching ? (
+                <div className="px-4 py-6 text-center">
+                  <div className="inline-block w-4 h-4 border-2 border-neutral-300 dark:border-neutral-600 border-t-brand-orange rounded-full animate-spin" />
+                </div>
+              ) : filtered.length > 0 ? (
                 <div className="max-h-52 overflow-y-auto border-t border-neutral-100 dark:border-neutral-800">
                   {filtered.map(s => (
                     <button
@@ -185,10 +215,7 @@ export default function AddFilterDropdown({ onAdd, suggestions = {} }: AddFilter
                     </button>
                   ))}
                 </div>
-              )}
-
-              {/* Custom value apply */}
-              {search.trim() && filtered.length === 0 && (
+              ) : search.trim() ? (
                 <div className="px-3 py-3 border-t border-neutral-100 dark:border-neutral-800">
                   <button
                     onClick={handleSubmitCustom}
@@ -197,7 +224,7 @@ export default function AddFilterDropdown({ onAdd, suggestions = {} }: AddFilter
                     Filter by &ldquo;{search.trim()}&rdquo;
                   </button>
                 </div>
-              )}
+              ) : null}
             </>
           )}
         </div>
