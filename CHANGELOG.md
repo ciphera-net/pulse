@@ -21,6 +21,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Underline tab switchers.** Content, Locations, and Technology panels now use minimal underline tabs instead of pill-style switchers.
 - **"View all" moved to bottom of list.** The expand button on each panel is now a subtle "View all ›" link at the bottom of the data list instead of an icon in the header.
 - **Filter button uses filter icon.** The filter dropdown button now shows a funnel icon instead of a plus sign.
+- **Chart component rebuilt from scratch.** Cleaner stat cards without sparklines, wider Y-axis that no longer clips labels, integer-only ticks for visitor/pageview counts, lighter grid lines, average moved to a subtle toolbar badge instead of overlapping the chart, streamlined toolbar with inline controls and icon-only export, and a properly positioned live indicator.
 
 ### Fixed
 
@@ -28,7 +29,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Campaigns now respect your active filters.** Previously, the Campaigns panel ignored dashboard filters and always showed all campaigns. Now it filters along with everything else.
 - **Duplicate "Direct" entry removed from the referrer filter list.** The referrer suggestions no longer show "Direct" twice.
 - **Filter dropdowns now show all your data.** Previously, the filter value list only showed up to 10 items — so if you had 50 cities or 30 browsers, most were missing. Now up to 100 values are loaded when you open a filter, with a loading spinner while they're fetched.
-- **Chart average label no longer shows excessive decimals.** The "Avg" line label now displays one decimal place instead of raw floating-point numbers.
+- **Chart Y-axis no longer shows fractional visitors.** Count metrics (visitors, pageviews) now use integer-only ticks — no more "0.75 visitors".
+- **Chart average label no longer shows excessive decimals.** The average is now shown as a rounded value in a toolbar badge instead of a floating label inside the chart.
 
 ## [0.13.0-alpha] - 2026-03-02
 
