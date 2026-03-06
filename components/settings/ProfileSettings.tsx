@@ -10,9 +10,10 @@ import { registerPasskey, listPasskeys, deletePasskey } from '@/lib/api/webauthn
 
 interface Props {
   activeTab?: 'profile' | 'security' | 'preferences'
+  borderless?: boolean
 }
 
-export default function ProfileSettings({ activeTab }: Props = {}) {
+export default function ProfileSettings({ activeTab, borderless }: Props = {}) {
   const { user, refresh, logout } = useAuth()
 
   if (!user) return null
@@ -61,6 +62,7 @@ export default function ProfileSettings({ activeTab }: Props = {}) {
       activeTab={activeTab}
       hideNav={activeTab !== undefined}
       hideNotifications
+      borderless={borderless}
     />
   )
 }
