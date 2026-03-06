@@ -129,23 +129,26 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
             {showViewAll && (
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="text-xs font-medium text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange focus:rounded"
+                className="p-1.5 text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange rounded-md cursor-pointer"
+                title="View all"
               >
-                View All
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                </svg>
               </button>
             )}
           </div>
-          <div className="flex p-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg" role="tablist" aria-label="Technology view tabs" onKeyDown={handleTabKeyDown}>
+          <div className="flex gap-1" role="tablist" aria-label="Technology view tabs" onKeyDown={handleTabKeyDown}>
             {(['browsers', 'os', 'devices', 'screens'] as Tab[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 role="tab"
                 aria-selected={activeTab === tab}
-                className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors capitalize focus:outline-none focus:ring-2 focus:ring-brand-orange ${
+                className={`px-2.5 py-1 text-xs font-medium transition-colors capitalize focus:outline-none focus:ring-2 focus:ring-brand-orange rounded cursor-pointer border-b-2 ${
                   activeTab === tab
-                    ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
-                    : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+                    ? 'border-brand-orange text-neutral-900 dark:text-white'
+                    : 'border-transparent text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
                 }`}
               >
                 {tab}

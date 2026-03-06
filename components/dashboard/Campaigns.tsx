@@ -192,13 +192,15 @@ export default function Campaigns({ siteId, dateRange, filters }: CampaignsProps
               Build URL
             </Button>
             {showViewAll && (
-              <Button
-                variant="ghost"
+              <button
                 onClick={() => setIsModalOpen(true)}
-                className="h-8 px-3 text-xs"
+                className="p-1.5 text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange rounded-md cursor-pointer"
+                title="View all"
               >
-                View All
-              </Button>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                </svg>
+              </button>
             )}
           </div>
         </div>
