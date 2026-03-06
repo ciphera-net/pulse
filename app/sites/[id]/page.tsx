@@ -19,6 +19,7 @@ import TechSpecs from '@/components/dashboard/TechSpecs'
 import Chart from '@/components/dashboard/Chart'
 import PerformanceStats from '@/components/dashboard/PerformanceStats'
 import GoalStats from '@/components/dashboard/GoalStats'
+import ScrollDepth from '@/components/dashboard/ScrollDepth'
 import Campaigns from '@/components/dashboard/Campaigns'
 import {
   useDashboardOverview,
@@ -380,8 +381,9 @@ export default function SiteDashboardPage() {
         <Campaigns siteId={siteId} dateRange={dateRange} />
       </div>
 
-      <div className="mb-8">
-        <GoalStats goalCounts={goalsData?.goal_counts ?? []} />
+      <div className="grid gap-6 lg:grid-cols-2 mb-8">
+        <GoalStats goalCounts={(goalsData?.goal_counts ?? []).filter(g => !/^scroll_\d+$/.test(g.event_name))} />
+        <ScrollDepth goalCounts={goalsData?.goal_counts ?? []} totalPageviews={stats.pageviews} />
       </div>
 
       <DatePicker
