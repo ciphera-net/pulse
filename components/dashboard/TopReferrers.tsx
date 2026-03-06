@@ -88,17 +88,6 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
           <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
             Top Referrers
           </h3>
-          {showViewAll && (
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="p-1.5 text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange rounded-md cursor-pointer"
-              title="View all"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
-              </svg>
-            </button>
-          )}
         </div>
 
         <div className="space-y-2 flex-1 min-h-[270px]">
@@ -128,9 +117,21 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
                   </div>
                 </div>
               ))}
-              {Array.from({ length: emptySlots }).map((_, i) => (
-                <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
-              ))}
+              {showViewAll ? (
+                <button
+                  onClick={() => setIsModalOpen(true)}
+                  className="flex items-center justify-center gap-1.5 h-9 w-full text-xs font-medium text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange transition-colors cursor-pointer rounded-lg px-2 -mx-2"
+                >
+                  View all
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                </button>
+              ) : (
+                Array.from({ length: emptySlots }).map((_, i) => (
+                  <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
+                ))
+              )}
             </>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
