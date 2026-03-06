@@ -460,7 +460,7 @@ export default function SiteDashboardPage() {
       </div>
 
       {/* Dimension Filters */}
-      <div className="space-y-2 mb-2">
+      <div className="flex items-center gap-2 flex-wrap mb-2">
         <AddFilterDropdown onAdd={handleAddFilter} suggestions={filterSuggestions} />
         <FilterBar filters={filters} onRemove={handleRemoveFilter} onClear={handleClearFilters} />
       </div>
