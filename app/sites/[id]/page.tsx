@@ -391,12 +391,14 @@ export default function SiteDashboardPage() {
           collectPagePaths={site.collect_page_paths ?? true}
           siteId={siteId}
           dateRange={dateRange}
+          onFilter={handleAddFilter}
         />
         <TopReferrers
           referrers={referrers?.top_referrers ?? []}
           collectReferrers={site.collect_referrers ?? true}
           siteId={siteId}
           dateRange={dateRange}
+          onFilter={handleAddFilter}
         />
       </div>
 
@@ -408,6 +410,7 @@ export default function SiteDashboardPage() {
           geoDataLevel={site.collect_geo_data || 'full'}
           siteId={siteId}
           dateRange={dateRange}
+          onFilter={handleAddFilter}
         />
         <TechSpecs
           browsers={devicesData?.browsers ?? []}
@@ -418,6 +421,7 @@ export default function SiteDashboardPage() {
           collectScreenResolution={site.collect_screen_resolution ?? true}
           siteId={siteId}
           dateRange={dateRange}
+          onFilter={handleAddFilter}
         />
       </div>
 

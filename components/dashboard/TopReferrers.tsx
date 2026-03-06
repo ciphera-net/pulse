@@ -8,17 +8,19 @@ import { getReferrerDisplayName, getReferrerFavicon, getReferrerIcon, mergeRefer
 import { Modal, GlobeIcon } from '@ciphera-net/ui'
 import { ListSkeleton } from '@/components/skeletons'
 import { getTopReferrers, TopReferrer } from '@/lib/api/stats'
+import { type DimensionFilter } from '@/lib/filters'
 
 interface TopReferrersProps {
   referrers: Array<{ referrer: string; pageviews: number }>
   collectReferrers?: boolean
   siteId: string
   dateRange: { start: string, end: string }
+  onFilter?: (filter: DimensionFilter) => void
 }
 
 const LIMIT = 7
 
-export default function TopReferrers({ referrers, collectReferrers = true, siteId, dateRange }: TopReferrersProps) {
+export default function TopReferrers({ referrers, collectReferrers = true, siteId, dateRange, onFilter }: TopReferrersProps) {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [fullData, setFullData] = useState<TopReferrer[]>([])
   const [isLoadingFull, setIsLoadingFull] = useState(false)
@@ -103,7 +105,11 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
           ) : hasData ? (
             <>
               {displayedReferrers.map((ref) => (
-                <div key={ref.referrer} className="flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
+                <div
+                  key={ref.referrer}
+                  onClick={() => onFilter?.({ dimension: 'referrer', operator: 'is', values: [ref.referrer] })}
+                  className={`flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors${onFilter ? ' cursor-pointer' : ''}`}
+                >
                   <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
                     {renderReferrerIcon(ref.referrer)}
                     <span className="truncate" title={ref.referrer}>{getReferrerDisplayName(ref.referrer)}</span>

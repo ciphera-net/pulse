@@ -7,6 +7,7 @@ import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
 import { TopPage, getTopPages, getEntryPages, getExitPages } from '@/lib/api/stats'
 import { Modal, ArrowUpRightIcon, LayoutDashboardIcon } from '@ciphera-net/ui'
 import { ListSkeleton } from '@/components/skeletons'
+import { type DimensionFilter } from '@/lib/filters'
 
 interface ContentStatsProps {
   topPages: TopPage[]
@@ -16,13 +17,14 @@ interface ContentStatsProps {
   collectPagePaths?: boolean
   siteId: string
   dateRange: { start: string, end: string }
+  onFilter?: (filter: DimensionFilter) => void
 }
 
 type Tab = 'top_pages' | 'entry_pages' | 'exit_pages'
 
 const LIMIT = 7
 
-export default function ContentStats({ topPages, entryPages, exitPages, domain, collectPagePaths = true, siteId, dateRange }: ContentStatsProps) {
+export default function ContentStats({ topPages, entryPages, exitPages, domain, collectPagePaths = true, siteId, dateRange, onFilter }: ContentStatsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('top_pages')
   const handleTabKeyDown = useTabListKeyboard()
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -133,16 +135,21 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
           ) : hasData ? (
             <>
               {displayedData.map((page) => (
-                <div key={page.path} className="flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
+                <div
+                  key={page.path}
+                  onClick={() => onFilter?.({ dimension: 'page', operator: 'is', values: [page.path] })}
+                  className={`flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors${onFilter ? ' cursor-pointer' : ''}`}
+                >
                   <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center">
+                    <span className="truncate">{page.path}</span>
                     <a
                       href={`https://${domain.replace(/^https?:\/\//, '')}${page.path}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="hover:underline flex items-center"
+                      onClick={e => e.stopPropagation()}
+                      className="ml-2 flex-shrink-0"
                     >
-                      {page.path}
-                      <ArrowUpRightIcon className="w-3 h-3 ml-2 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <ArrowUpRightIcon className="w-3 h-3 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-brand-orange" />
                     </a>
                   </div>
                   <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
