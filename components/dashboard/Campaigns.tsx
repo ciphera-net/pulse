@@ -153,19 +153,19 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
                   <div
                     key={`${item.source}|${item.medium}|${item.campaign}`}
                     onClick={() => onFilter?.({ dimension: 'utm_source', operator: 'is', values: [item.source] })}
-                    className={`flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors${onFilter ? ' cursor-pointer' : ''}`}
+                    className={`flex items-center justify-between py-1.5 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors${onFilter ? ' cursor-pointer' : ''}`}
                   >
-                    <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3 min-w-0">
+                    <div className="flex-1 text-neutral-900 dark:text-white flex items-center gap-3 min-w-0">
                       {renderSourceIcon(item.source)}
-                      <div className="truncate min-w-0">
-                        <span className="truncate font-medium" title={item.source}>
+                      <div className="min-w-0">
+                        <div className="truncate font-medium text-sm" title={item.source}>
                           {getReferrerDisplayName(item.source)}
-                        </span>
-                        {secondary && (
-                          <span className="text-neutral-400 dark:text-neutral-500 text-xs ml-1.5" title={secondary}>
-                            {secondary}
-                          </span>
-                        )}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs text-neutral-400 dark:text-neutral-500">
+                          {item.medium && <span>{item.medium}</span>}
+                          {item.medium && item.campaign && <span>·</span>}
+                          {item.campaign && <span className="truncate">{item.campaign}</span>}
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 ml-4">
@@ -245,17 +245,17 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
                     key={`${item.source}|${item.medium}|${item.campaign}`}
                     className="flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors"
                   >
-                    <div className="flex-1 truncate flex items-center gap-3 min-w-0">
+                    <div className="flex-1 flex items-center gap-3 min-w-0">
                       {renderSourceIcon(item.source)}
                       <div className="min-w-0">
-                        <span className="text-neutral-900 dark:text-white font-medium truncate" title={item.source}>
+                        <div className="text-neutral-900 dark:text-white font-medium truncate text-sm" title={item.source}>
                           {getReferrerDisplayName(item.source)}
-                        </span>
-                        {secondary && (
-                          <span className="text-neutral-400 dark:text-neutral-500 text-xs ml-1.5" title={secondary}>
-                            {secondary}
-                          </span>
-                        )}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs text-neutral-400 dark:text-neutral-500">
+                          {item.medium && <span>{item.medium}</span>}
+                          {item.medium && item.campaign && <span>·</span>}
+                          {item.campaign && <span className="truncate">{item.campaign}</span>}
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-4 ml-4 text-sm">
