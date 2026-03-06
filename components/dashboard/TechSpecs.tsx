@@ -112,6 +112,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
 
   const rawData = getRawData()
   const data = filterUnknown(rawData)
+  const totalPageviews = data.reduce((sum, item) => sum + item.pageviews, 0)
   const hasData = data && data.length > 0
   const displayedData = hasData ? data.slice(0, LIMIT) : []
   const emptySlots = Math.max(0, LIMIT - displayedData.length)
@@ -173,8 +174,13 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
                       {item.icon && <span className="text-lg">{item.icon}</span>}
                       <span className="truncate">{item.name}</span>
                     </div>
-                    <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
-                      {formatNumber(item.pageviews)}
+                    <div className="flex items-center gap-2 ml-4">
+                      <span className="text-xs text-neutral-400 dark:text-neutral-500 opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+                        {totalPageviews > 0 ? `${Math.round((item.pageviews / totalPageviews) * 100)}%` : ''}
+                      </span>
+                      <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
+                        {formatNumber(item.pageviews)}
+                      </span>
                     </div>
                   </div>
                 )

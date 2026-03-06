@@ -78,6 +78,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
   }
 
   const data = getData()
+  const totalPageviews = data.reduce((sum, p) => sum + p.pageviews, 0)
   const hasData = data && data.length > 0
   const displayedData = hasData ? data.slice(0, LIMIT) : []
   const emptySlots = Math.max(0, LIMIT - displayedData.length)
@@ -152,8 +153,13 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
                       <ArrowUpRightIcon className="w-3 h-3 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-brand-orange" />
                     </a>
                   </div>
-                  <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
-                    {formatNumber(page.pageviews)}
+                  <div className="flex items-center gap-2 ml-4">
+                    <span className="text-xs text-neutral-400 dark:text-neutral-500 opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+                      {totalPageviews > 0 ? `${Math.round((page.pageviews / totalPageviews) * 100)}%` : ''}
+                    </span>
+                    <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
+                      {formatNumber(page.pageviews)}
+                    </span>
                   </div>
                 </div>
               ))}
