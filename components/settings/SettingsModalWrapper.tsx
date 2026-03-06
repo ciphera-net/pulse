@@ -91,19 +91,17 @@ export default function SettingsModalWrapper() {
     {
       id: 'pulse',
       label: 'Pulse Settings',
-      description: 'Profile and preferences',
       icon: UserIcon,
       defaultExpanded: true,
       items: [
-        { id: 'profile', label: 'Profile', content: <ProfileSettings activeTab="profile" /> },
-        { id: 'security', label: 'Security', content: <ProfileSettings activeTab="security" /> },
-        { id: 'preferences', label: 'Preferences', content: <ProfileSettings activeTab="preferences" /> },
+        { id: 'profile', label: 'Profile', content: <ProfileSettings activeTab="profile" borderless /> },
+        { id: 'security', label: 'Security', content: <ProfileSettings activeTab="security" borderless /> },
+        { id: 'preferences', label: 'Preferences', content: <ProfileSettings activeTab="preferences" borderless /> },
       ],
     },
     {
       id: 'security-section',
       label: 'Security',
-      description: 'Devices and activity',
       icon: LockIcon,
       items: [
         { id: 'devices', label: 'Trusted Devices', content: <TrustedDevicesCard /> },
@@ -113,7 +111,6 @@ export default function SettingsModalWrapper() {
     {
       id: 'notifications',
       label: 'Notifications',
-      description: 'Email and in-app notifications',
       icon: BellIcon,
       items: [
         { id: 'security-alerts', label: 'Security Alerts', content: <SecurityAlertsCard /> },
