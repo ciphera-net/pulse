@@ -5,7 +5,20 @@ import { logger } from '@/lib/utils/logger'
 import { useCallback, useEffect, useState, useMemo } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { getPerformanceByPage, type Stats, type DailyStat } from '@/lib/api/stats'
+import {
+  getPerformanceByPage,
+  getTopPages,
+  getTopReferrers,
+  getCountries,
+  getCities,
+  getRegions,
+  getBrowsers,
+  getOS,
+  getDevices,
+  getCampaigns,
+  type Stats,
+  type DailyStat,
+} from '@/lib/api/stats'
 import { getDateRange } from '@ciphera-net/ui'
 import { toast } from '@ciphera-net/ui'
 import { Button } from '@ciphera-net/ui'
@@ -22,7 +35,7 @@ import GoalStats from '@/components/dashboard/GoalStats'
 import ScrollDepth from '@/components/dashboard/ScrollDepth'
 import Campaigns from '@/components/dashboard/Campaigns'
 import FilterBar from '@/components/dashboard/FilterBar'
-import AddFilterDropdown, { type FilterSuggestions } from '@/components/dashboard/AddFilterDropdown'
+import AddFilterDropdown, { type FilterSuggestion, type FilterSuggestions } from '@/components/dashboard/AddFilterDropdown'
 import EventProperties from '@/components/dashboard/EventProperties'
 import { type DimensionFilter, serializeFilters, parseFiltersFromURL } from '@/lib/filters'
 import {
@@ -98,17 +111,12 @@ export default function SiteDashboardPage() {
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null)
 
   const handleAddFilter = useCallback((filter: DimensionFilter) => {
-    // Normalize "Direct" referrer to empty string (direct traffic has no referrer in DB)
-    const normalized = { ...filter }
-    if (normalized.dimension === 'referrer') {
-      normalized.values = normalized.values.map(v => v.toLowerCase() === 'direct' ? '' : v)
-    }
     setFilters(prev => {
       const isDuplicate = prev.some(
-        f => f.dimension === normalized.dimension && f.operator === normalized.operator && f.values.join(';') === normalized.values.join(';')
+        f => f.dimension === filter.dimension && f.operator === filter.operator && f.values.join(';') === filter.values.join(';')
       )
       if (isDuplicate) return prev
-      return [...prev, normalized]
+      return [...prev, filter]
     })
   }, [])
 
@@ -119,6 +127,69 @@ export default function SiteDashboardPage() {
   const handleClearFilters = useCallback(() => {
     setFilters([])
   }, [])
+
+  // Fetch full suggestion list (up to 100) when a dimension is selected in the filter dropdown
+  const handleFetchSuggestions = useCallback(async (dimension: string): Promise<FilterSuggestion[]> => {
+    const start = dateRange.start
+    const end = dateRange.end
+    const f = filtersParam || undefined
+    const limit = 100
+
+    try {
+      const regionNames = (() => { try { return new Intl.DisplayNames(['en'], { type: 'region' }) } catch { return null } })()
+
+      switch (dimension) {
+        case 'page': {
+          const data = await getTopPages(siteId, start, end, limit, f)
+          return data.map(p => ({ value: p.path, label: p.path, count: p.pageviews }))
+        }
+        case 'referrer': {
+          const data = await getTopReferrers(siteId, start, end, limit, f)
+          return data.filter(r => r.referrer && r.referrer !== '').map(r => ({ value: r.referrer, label: r.referrer, count: r.pageviews }))
+        }
+        case 'country': {
+          const data = await getCountries(siteId, start, end, limit, f)
+          return data.filter(c => c.country && c.country !== 'Unknown').map(c => ({ value: c.country, label: regionNames?.of(c.country) ?? c.country, count: c.pageviews }))
+        }
+        case 'city': {
+          const data = await getCities(siteId, start, end, limit, f)
+          return data.filter(c => c.city && c.city !== 'Unknown').map(c => ({ value: c.city, label: c.city, count: c.pageviews }))
+        }
+        case 'region': {
+          const data = await getRegions(siteId, start, end, limit, f)
+          return data.filter(r => r.region && r.region !== 'Unknown').map(r => ({ value: r.region, label: r.region, count: r.pageviews }))
+        }
+        case 'browser': {
+          const data = await getBrowsers(siteId, start, end, limit, f)
+          return data.filter(b => b.browser && b.browser !== 'Unknown').map(b => ({ value: b.browser, label: b.browser, count: b.pageviews }))
+        }
+        case 'os': {
+          const data = await getOS(siteId, start, end, limit, f)
+          return data.filter(o => o.os && o.os !== 'Unknown').map(o => ({ value: o.os, label: o.os, count: o.pageviews }))
+        }
+        case 'device': {
+          const data = await getDevices(siteId, start, end, limit, f)
+          return data.filter(d => d.device && d.device !== 'Unknown').map(d => ({ value: d.device, label: d.device, count: d.pageviews }))
+        }
+        case 'utm_source':
+        case 'utm_medium':
+        case 'utm_campaign': {
+          const data = await getCampaigns(siteId, start, end, limit, f)
+          const map = new Map<string, number>()
+          const field = dimension === 'utm_source' ? 'source' : dimension === 'utm_medium' ? 'medium' : 'campaign'
+          data.forEach(c => {
+            const val = c[field]
+            if (val) map.set(val, (map.get(val) ?? 0) + c.pageviews)
+          })
+          return [...map.entries()].map(([v, count]) => ({ value: v, label: v, count }))
+        }
+        default:
+          return []
+      }
+    } catch {
+      return []
+    }
+  }, [siteId, dateRange.start, dateRange.end, filtersParam])
 
   // Sync filters to URL
   useEffect(() => {
@@ -181,14 +252,11 @@ export default function SiteDashboardPage() {
     // Referrers
     const refs = referrers?.top_referrers ?? []
     if (refs.length > 0) {
-      s.referrer = [
-        { value: '', label: 'Direct', count: undefined },
-        ...refs.filter(r => r.referrer && r.referrer !== '').map(r => ({
-          value: r.referrer,
-          label: r.referrer,
-          count: r.pageviews,
-        })),
-      ]
+      s.referrer = refs.filter(r => r.referrer && r.referrer !== '').map(r => ({
+        value: r.referrer,
+        label: r.referrer,
+        count: r.pageviews,
+      }))
     }
 
     // Countries
@@ -461,7 +529,7 @@ export default function SiteDashboardPage() {
 
       {/* Dimension Filters */}
       <div className="flex items-center gap-2 flex-wrap mb-2">
-        <AddFilterDropdown onAdd={handleAddFilter} suggestions={filterSuggestions} />
+        <AddFilterDropdown onAdd={handleAddFilter} suggestions={filterSuggestions} onFetchSuggestions={handleFetchSuggestions} />
         <FilterBar filters={filters} onRemove={handleRemoveFilter} onClear={handleClearFilters} />
       </div>
 
