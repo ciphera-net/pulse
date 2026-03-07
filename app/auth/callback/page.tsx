@@ -26,8 +26,15 @@ function AuthCallbackContent() {
     try {
       result = await exchangeAuthCode(code, codeVerifier, redirectUri)
     } catch {
-      // * Stale build — cached JS has old Server Action hashes. Hard reload to fix.
-      window.location.reload()
+      // * Stale build — cached JS has old Server Action hashes. Hard reload once to fix.
+      const key = 'pulse_reload_for_stale_build'
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, '1')
+        window.location.reload()
+        return
+      }
+      sessionStorage.removeItem(key)
+      setError('Something went wrong. Please try logging in again.')
       return
     }
     if (result.success && result.user) {
