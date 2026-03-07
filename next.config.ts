@@ -48,6 +48,14 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        // * Prevent CDN/browser from serving stale HTML after deploys.
+        // * Static assets (/_next/static/*) are content-hashed and cached separately by Next.js.
+        source: '/((?!_next/static|_next/image).*)',
+        headers: [
+          { key: 'Cache-Control', value: 'no-cache, must-revalidate' },
+        ],
+      },
+      {
         source: '/(.*)',
         headers: [
           { key: 'X-Frame-Options', value: 'DENY' },
