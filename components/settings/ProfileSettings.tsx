@@ -9,10 +9,12 @@ import { setup2FA, verify2FA, disable2FA, regenerateRecoveryCodes } from '@/lib/
 import { registerPasskey, listPasskeys, deletePasskey } from '@/lib/api/webauthn'
 
 interface Props {
-  activeTab?: 'profile' | 'security' | 'preferences'
+  activeTab?: 'profile' | 'security' | 'preferences' | 'danger-zone'
+  borderless?: boolean
+  hideDangerZone?: boolean
 }
 
-export default function ProfileSettings({ activeTab }: Props = {}) {
+export default function ProfileSettings({ activeTab, borderless, hideDangerZone }: Props = {}) {
   const { user, refresh, logout } = useAuth()
 
   if (!user) return null
@@ -61,6 +63,8 @@ export default function ProfileSettings({ activeTab }: Props = {}) {
       activeTab={activeTab}
       hideNav={activeTab !== undefined}
       hideNotifications
+      borderless={borderless}
+      hideDangerZone={hideDangerZone}
     />
   )
 }

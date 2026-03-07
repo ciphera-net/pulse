@@ -5,58 +5,37 @@ import { logger } from '@/lib/utils/logger'
 import Link from 'next/link'
 import Image from 'next/image'
 import { formatNumber } from '@ciphera-net/ui'
-import { Modal, ArrowRightIcon, Button } from '@ciphera-net/ui'
-import { TableSkeleton } from '@/components/skeletons'
-import { ChevronDownIcon, DownloadIcon } from '@ciphera-net/ui'
+import { Modal, ArrowRightIcon } from '@ciphera-net/ui'
+import { ListSkeleton } from '@/components/skeletons'
 import { getCampaigns, CampaignStat } from '@/lib/api/stats'
 import { getReferrerFavicon, getReferrerIcon, getReferrerDisplayName } from '@/lib/utils/icons'
 import { FaBullhorn } from 'react-icons/fa'
-import { PlusIcon } from '@radix-ui/react-icons'
 import UtmBuilder from '@/components/tools/UtmBuilder'
+import { type DimensionFilter } from '@/lib/filters'
 
 interface CampaignsProps {
   siteId: string
   dateRange: { start: string, end: string }
+  filters?: string
+  onFilter?: (filter: DimensionFilter) => void
 }
 
 const LIMIT = 7
-const EMPTY_LABEL = '—'
 
-type SortKey = 'source' | 'medium' | 'campaign' | 'visitors' | 'pageviews'
-type SortDir = 'asc' | 'desc'
-
-function sortCampaigns(data: CampaignStat[], key: SortKey, dir: SortDir): CampaignStat[] {
-  return [...data].sort((a, b) => {
-    const av = key === 'visitors' ? a.visitors : key === 'pageviews' ? a.pageviews : (a[key] || '').toLowerCase()
-    const bv = key === 'visitors' ? b.visitors : key === 'pageviews' ? b.pageviews : (b[key] || '').toLowerCase()
-    if (typeof av === 'number' && typeof bv === 'number') {
-      return dir === 'asc' ? av - bv : bv - av
-    }
-    const cmp = String(av).localeCompare(String(bv))
-    return dir === 'asc' ? cmp : -cmp
-  })
-}
-
-function campaignRowKey(item: CampaignStat): string {
-  return `${item.source}|${item.medium}|${item.campaign}`
-}
-
-export default function Campaigns({ siteId, dateRange }: CampaignsProps) {
+export default function Campaigns({ siteId, dateRange, filters, onFilter }: CampaignsProps) {
   const [data, setData] = useState<CampaignStat[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isBuilderOpen, setIsBuilderOpen] = useState(false)
   const [fullData, setFullData] = useState<CampaignStat[]>([])
   const [isLoadingFull, setIsLoadingFull] = useState(false)
-  const [sortKey, setSortKey] = useState<SortKey>('visitors')
-  const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [faviconFailed, setFaviconFailed] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true)
       try {
-        const result = await getCampaigns(siteId, dateRange.start, dateRange.end, 10)
+        const result = await getCampaigns(siteId, dateRange.start, dateRange.end, 10, filters)
         setData(result)
       } catch (e) {
         logger.error(e)
@@ -65,14 +44,14 @@ export default function Campaigns({ siteId, dateRange }: CampaignsProps) {
       }
     }
     fetchData()
-  }, [siteId, dateRange])
+  }, [siteId, dateRange, filters])
 
   useEffect(() => {
     if (isModalOpen) {
       const fetchFullData = async () => {
         setIsLoadingFull(true)
         try {
-          const result = await getCampaigns(siteId, dateRange.start, dateRange.end, 100)
+          const result = await getCampaigns(siteId, dateRange.start, dateRange.end, 100, filters)
           setFullData(result)
         } catch (e) {
           logger.error(e)
@@ -84,29 +63,22 @@ export default function Campaigns({ siteId, dateRange }: CampaignsProps) {
     } else {
       setFullData([])
     }
-  }, [isModalOpen, siteId, dateRange])
+  }, [isModalOpen, siteId, dateRange, filters])
 
   const sortedData = useMemo(
-    () => sortCampaigns(data, sortKey, sortDir),
-    [data, sortKey, sortDir]
+    () => [...data].sort((a, b) => b.visitors - a.visitors),
+    [data]
   )
   const sortedFullData = useMemo(
-    () => sortCampaigns(fullData.length > 0 ? fullData : data, sortKey, sortDir),
-    [fullData, data, sortKey, sortDir]
+    () => [...(fullData.length > 0 ? fullData : data)].sort((a, b) => b.visitors - a.visitors),
+    [fullData, data]
   )
+
+  const totalVisitors = sortedData.reduce((sum, c) => sum + c.visitors, 0)
   const hasData = data.length > 0
   const displayedData = hasData ? sortedData.slice(0, LIMIT) : []
-  const emptySlots = Math.max(0, LIMIT - displayedData.length)
   const showViewAll = hasData && data.length > LIMIT
-
-  const handleSort = (key: SortKey) => {
-    if (sortKey === key) {
-      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
-    } else {
-      setSortKey(key)
-      setSortDir(key === 'visitors' || key === 'pageviews' ? 'desc' : 'asc')
-    }
-  }
+  const emptySlots = Math.max(0, LIMIT - displayedData.length)
 
   function renderSourceIcon(source: string) {
     const faviconUrl = getReferrerFavicon(source)
@@ -128,13 +100,13 @@ export default function Campaigns({ siteId, dateRange }: CampaignsProps) {
   }
 
   const handleExportCampaigns = () => {
-    const rows = sortedData.length > 0 ? sortedData : data
+    const rows = sortedFullData.length > 0 ? sortedFullData : sortedData
     if (rows.length === 0) return
     const header = ['Source', 'Medium', 'Campaign', 'Visitors', 'Pageviews']
     const csvRows = [
       header.join(','),
       ...rows.map(r =>
-        [r.source, r.medium || EMPTY_LABEL, r.campaign || EMPTY_LABEL, r.visitors, r.pageviews].join(',')
+        [r.source, r.medium || '', r.campaign || '', r.visitors, r.pageviews].join(',')
       ),
     ]
     const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' })
@@ -148,22 +120,6 @@ export default function Campaigns({ siteId, dateRange }: CampaignsProps) {
     URL.revokeObjectURL(url)
   }
 
-  const SortHeader = ({ label, colKey, className = '' }: { label: string; colKey: SortKey; className?: string }) => (
-    <button
-      type="button"
-      onClick={() => handleSort(colKey)}
-      className={`inline-flex items-center gap-1 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-inset rounded ${className}`}
-      aria-label={`Sort by ${label}`}
-    >
-      {label}
-      {sortKey === colKey ? (
-        <ChevronDownIcon className={`w-3 h-3 text-brand-orange ${sortDir === 'asc' ? 'rotate-180' : ''}`} />
-      ) : (
-        <span className="w-3 h-3 inline-block text-neutral-400" aria-hidden />
-      )}
-    </button>
-  )
-
   return (
     <>
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
@@ -171,124 +127,87 @@ export default function Campaigns({ siteId, dateRange }: CampaignsProps) {
           <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
             Campaigns
           </h3>
-          <div className="flex items-center gap-2">
-            {hasData && (
-              <Button
-                variant="ghost"
-                onClick={handleExportCampaigns}
-                className="h-8 px-3 text-xs gap-2"
-              >
-                <DownloadIcon className="w-3.5 h-3.5" />
-                Export
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              onClick={() => setIsBuilderOpen(true)}
-              className="h-8 px-3 text-xs gap-2"
-            >
-              <PlusIcon className="w-3.5 h-3.5" />
-              Build URL
-            </Button>
-            {showViewAll && (
-              <Button
-                variant="ghost"
-                onClick={() => setIsModalOpen(true)}
-                className="h-8 px-3 text-xs"
-              >
-                View All
-              </Button>
-            )}
-          </div>
+          <button
+            onClick={() => setIsBuilderOpen(true)}
+            className="text-xs font-medium text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange transition-colors cursor-pointer"
+          >
+            Build URL
+          </button>
         </div>
 
-        {isLoading ? (
-          <div className="space-y-2 flex-1 min-h-[270px]">
-            <div className="grid grid-cols-12 gap-2 mb-2 px-2">
-              <div className="col-span-4 h-4 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
-              <div className="col-span-2 h-4 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
-              <div className="col-span-2 h-4 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
-              <div className="col-span-2 h-4 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
-              <div className="col-span-2 h-4 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
-            </div>
-            {Array.from({ length: 7 }).map((_, i) => (
-              <div key={`skeleton-${i}`} className="grid grid-cols-12 gap-2 h-9 px-2 -mx-2">
-                <div className="col-span-4 h-4 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
-                <div className="col-span-2 h-4 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
-                <div className="col-span-2 h-4 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
-                <div className="col-span-2 h-4 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
-                <div className="col-span-2 h-4 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
+        <div className="space-y-2 flex-1 min-h-[270px]">
+          {isLoading ? (
+            <ListSkeleton rows={LIMIT} />
+          ) : hasData ? (
+            <>
+              {displayedData.map((item) => {
+                return (
+                  <div
+                    key={`${item.source}|${item.medium}|${item.campaign}`}
+                    onClick={() => onFilter?.({ dimension: 'utm_source', operator: 'is', values: [item.source] })}
+                    className={`flex items-center justify-between py-1.5 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors${onFilter ? ' cursor-pointer' : ''}`}
+                  >
+                    <div className="flex-1 text-neutral-900 dark:text-white flex items-center gap-3 min-w-0">
+                      {renderSourceIcon(item.source)}
+                      <div className="min-w-0">
+                        <div className="truncate font-medium text-sm" title={item.source}>
+                          {getReferrerDisplayName(item.source)}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[11px] text-neutral-400 dark:text-neutral-500">
+                          <span>{item.medium || '—'}</span>
+                          <span>·</span>
+                          <span className="truncate">{item.campaign || '—'}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 ml-4">
+                      <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+                        {totalVisitors > 0 ? `${Math.round((item.visitors / totalVisitors) * 100)}%` : ''}
+                      </span>
+                      <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
+                        {formatNumber(item.visitors)}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })}
+              {showViewAll ? (
+                <button
+                  onClick={() => setIsModalOpen(true)}
+                  className="flex items-center justify-center gap-1.5 h-9 w-full text-xs font-medium text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange transition-colors cursor-pointer rounded-lg px-2 -mx-2"
+                >
+                  View all
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                </button>
+              ) : (
+                Array.from({ length: emptySlots }).map((_, i) => (
+                  <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
+                ))
+              )}
+            </>
+          ) : (
+            <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
+              <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
+                <FaBullhorn className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
               </div>
-            ))}
-          </div>
-        ) : hasData ? (
-          <div className="space-y-2 flex-1 min-h-[270px]">
-            <div className="grid grid-cols-12 gap-2 text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-2 px-2">
-              <div className="col-span-4">
-                <SortHeader label="Source" colKey="source" className="text-left" />
-              </div>
-              <div className="col-span-2">
-                <SortHeader label="Medium" colKey="medium" className="text-left" />
-              </div>
-              <div className="col-span-2">
-                <SortHeader label="Campaign" colKey="campaign" className="text-left" />
-              </div>
-              <div className="col-span-2 text-right">
-                <SortHeader label="Visitors" colKey="visitors" className="text-right justify-end" />
-              </div>
-              <div className="col-span-2 text-right">
-                <SortHeader label="Pageviews" colKey="pageviews" className="text-right justify-end" />
-              </div>
-            </div>
-            {displayedData.map((item) => (
-              <div
-                key={campaignRowKey(item)}
-                className="grid grid-cols-12 gap-2 items-center h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors text-sm"
+              <h4 className="font-semibold text-neutral-900 dark:text-white">
+                Track your marketing campaigns
+              </h4>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400 max-w-xs">
+                Add UTM parameters to your links to see campaign performance here.
+              </p>
+              <Link
+                href="/installation"
+                className="inline-flex items-center gap-2 text-sm font-medium text-brand-orange hover:text-brand-orange/90 hover:underline focus:outline-none focus:ring-2 focus:ring-brand-orange/20 rounded"
               >
-                <div className="col-span-4 flex items-center gap-3 truncate">
-                  {renderSourceIcon(item.source)}
-                  <span className="truncate text-neutral-900 dark:text-white font-medium" title={item.source}>
-                    {getReferrerDisplayName(item.source)}
-                  </span>
-                </div>
-                <div className="col-span-2 truncate text-neutral-500 dark:text-neutral-400" title={item.medium}>
-                  {item.medium || EMPTY_LABEL}
-                </div>
-                <div className="col-span-2 truncate text-neutral-500 dark:text-neutral-400" title={item.campaign}>
-                  {item.campaign || EMPTY_LABEL}
-                </div>
-                <div className="col-span-2 text-right font-semibold text-neutral-900 dark:text-white">
-                  {formatNumber(item.visitors)}
-                </div>
-                <div className="col-span-2 text-right text-neutral-600 dark:text-neutral-400">
-                  {formatNumber(item.pageviews)}
-                </div>
-              </div>
-            ))}
-            {Array.from({ length: emptySlots }).map((_, i) => (
-              <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
-            ))}
-          </div>
-        ) : (
-          <div className="flex-1 min-h-[270px] flex flex-col items-center justify-center text-center px-6 py-8 gap-4">
-            <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
-              <FaBullhorn className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
+                Learn more
+                <ArrowRightIcon className="w-4 h-4" />
+              </Link>
             </div>
-            <h4 className="font-semibold text-neutral-900 dark:text-white">
-              Track your marketing campaigns
-            </h4>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400 max-w-md">
-              Add <code className="px-1.5 py-0.5 rounded bg-neutral-200 dark:bg-neutral-700 text-xs font-mono">utm_source</code>, <code className="px-1.5 py-0.5 rounded bg-neutral-200 dark:bg-neutral-700 text-xs font-mono">utm_medium</code>, and <code className="px-1.5 py-0.5 rounded bg-neutral-200 dark:bg-neutral-700 text-xs font-mono">utm_campaign</code> parameters to your links to see them here.
-            </p>
-            <Link
-              href="/installation"
-              className="inline-flex items-center gap-2 text-sm font-medium text-brand-orange hover:text-brand-orange/90 hover:underline focus:outline-none focus:ring-2 focus:ring-brand-orange/20 rounded"
-            >
-              Read documentation
-              <ArrowRightIcon className="w-4 h-4" />
-            </Link>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <Modal
@@ -296,45 +215,51 @@ export default function Campaigns({ siteId, dateRange }: CampaignsProps) {
         onClose={() => setIsModalOpen(false)}
         title="All Campaigns"
       >
-        <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+        <div className="space-y-1 max-h-[60vh] overflow-y-auto pr-2">
           {isLoadingFull ? (
             <div className="py-4">
-              <TableSkeleton rows={10} cols={5} />
+              <ListSkeleton rows={10} />
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-12 gap-2 text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-2 px-2 sticky top-0 bg-white dark:bg-neutral-900 py-2 z-10">
-                <div className="col-span-4">Source</div>
-                <div className="col-span-2">Medium</div>
-                <div className="col-span-2">Campaign</div>
-                <div className="col-span-2 text-right">Visitors</div>
-                <div className="col-span-2 text-right">Pageviews</div>
-              </div>
-              {sortedFullData.map((item) => (
-                <div
-                  key={campaignRowKey(item)}
-                  className="grid grid-cols-12 gap-2 items-center py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors text-sm border-b border-neutral-100 dark:border-neutral-800 last:border-0"
+              <div className="flex items-center justify-end mb-2">
+                <button
+                  onClick={handleExportCampaigns}
+                  className="text-xs font-medium text-neutral-400 hover:text-brand-orange transition-colors cursor-pointer"
                 >
-                  <div className="col-span-4 flex items-center gap-3 truncate">
-                    {renderSourceIcon(item.source)}
-                    <span className="truncate text-neutral-900 dark:text-white font-medium" title={item.source}>
-                      {getReferrerDisplayName(item.source)}
-                    </span>
+                  Export CSV
+                </button>
+              </div>
+              {sortedFullData.map((item) => {
+                return (
+                  <div
+                    key={`${item.source}|${item.medium}|${item.campaign}`}
+                    className="flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors"
+                  >
+                    <div className="flex-1 flex items-center gap-3 min-w-0">
+                      {renderSourceIcon(item.source)}
+                      <div className="min-w-0">
+                        <div className="text-neutral-900 dark:text-white font-medium truncate text-sm" title={item.source}>
+                          {getReferrerDisplayName(item.source)}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[11px] text-neutral-400 dark:text-neutral-500">
+                          <span>{item.medium || '—'}</span>
+                          <span>·</span>
+                          <span className="truncate">{item.campaign || '—'}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 ml-4 text-sm">
+                      <span className="font-semibold text-neutral-900 dark:text-white">
+                        {formatNumber(item.visitors)}
+                      </span>
+                      <span className="text-neutral-400 dark:text-neutral-500 w-16 text-right">
+                        {formatNumber(item.pageviews)} pv
+                      </span>
+                    </div>
                   </div>
-                  <div className="col-span-2 truncate text-neutral-500 dark:text-neutral-400" title={item.medium}>
-                    {item.medium || EMPTY_LABEL}
-                  </div>
-                  <div className="col-span-2 truncate text-neutral-500 dark:text-neutral-400" title={item.campaign}>
-                    {item.campaign || EMPTY_LABEL}
-                  </div>
-                  <div className="col-span-2 text-right font-semibold text-neutral-900 dark:text-white">
-                    {formatNumber(item.visitors)}
-                  </div>
-                  <div className="col-span-2 text-right text-neutral-600 dark:text-neutral-400">
-                    {formatNumber(item.pageviews)}
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </>
           )}
         </div>
