@@ -15,6 +15,7 @@ import { APP_URL } from '@/lib/api/client'
 import { generatePrivacySnippet } from '@/lib/utils/privacySnippet'
 import { useUnsavedChanges } from '@/lib/hooks/useUnsavedChanges'
 import { getSubscription, type SubscriptionDetails } from '@/lib/api/billing'
+import SiteNav from '@/components/dashboard/SiteNav'
 import { getRetentionOptionsForPlan, formatRetentionMonths } from '@/lib/plans'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@/lib/auth/context'
@@ -403,6 +404,8 @@ export default function SiteSettingsPage() {
 
   return (
     <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
+      <SiteNav siteId={siteId} />
+
       <div className="space-y-8">
         <div>
           <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Site Settings</h1>
