@@ -6,103 +6,55 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-## [0.13.1-alpha] - 2026-03-07
+## [0.13.0-alpha] - 2026-03-07
 
 ### Added
 
-- **Hover percentages on dashboard panels.** Hover over any item in Content, Locations, Technology, or Top Referrers to see what percentage of total traffic it represents. The percentage slides in smoothly next to the count.
-- **Click any item to filter your dashboard.** Click a referrer, browser, country, page, or any other item in your dashboard panels to instantly filter the entire dashboard to just that traffic.
-- **New filter experience.** A single compact "Filter" button replaces the old filter UI. Click it to browse all available dimensions, see real values from your data with visitor counts, search or type a custom value, and apply — all in a quick dropdown without leaving the page.
+- **Dashboard filtering.** Filter your entire dashboard by any dimension — browser, country, page, device, OS, referrer, or UTM parameters. A single "Filter" button lets you browse dimensions, see real values from your data with visitor counts, search or type a custom value, and apply — all in a quick dropdown. Active filters appear as removable pills above your charts. Stack multiple filters to narrow things down. Filters are saved in the URL so you can bookmark or share a filtered view.
+- **Click any item to filter.** Click a referrer, browser, country, page, or any other item in your dashboard panels to instantly filter the entire dashboard to just that traffic.
+- **Hover percentages.** Hover over any item in Pages, Locations, Technology, or Referrers to see what percentage of total traffic it represents.
+- **Custom event properties.** Your custom events can now carry extra context — for example, `pulse.track('signup', { plan: 'pro', source: 'landing' })`. Click any event in Goals & Events to see a breakdown of its properties and values, no setup needed.
+- **AI traffic source identification.** Pulse recognizes visitors from ChatGPT, Perplexity, Claude, Gemini, Copilot, DeepSeek, Grok, Meta AI, You.com, and Phind. These appear in Referrers with proper icons and names instead of raw URLs.
+- **Automatic outbound link tracking.** Tracks when visitors click links to other websites. Shows up as "outbound link" events in Goals & Events — no setup needed.
+- **Automatic file download tracking.** Downloads of PDFs, ZIPs, Excel, Word, MP3s, and 20+ other formats are recorded as "file download" events automatically.
+- **Automatic 404 detection.** Detects when visitors land on pages that don't exist and records "404" events so you can find and fix broken links.
+- **Automatic scroll depth tracking.** Tracks how far visitors scroll — at 25%, 50%, 75%, and 100% — helping you understand which content keeps people reading.
 
 ### Improved
 
-- **Stronger filter pills.** Active filters now use solid brand-colored pills that are easy to spot in both light and dark mode. Click any pill to remove it.
-- **Campaigns panel redesigned.** Rebuilt from a wide table layout to a clean row-based design matching all other dashboard panels. UTM medium and campaign are always visible below the source name. Campaigns now sits in a half-width grid next to Goals & Events instead of taking the full width.
-- **Underline tab switchers.** Content, Locations, and Technology panels now use minimal underline tabs instead of pill-style switchers.
-- **"View all" moved to bottom of list.** The expand button on each panel is now a subtle "View all ›" link at the bottom of the data list instead of an icon in the header.
-- **Filter button uses filter icon.** The filter dropdown button now shows a funnel icon instead of a plus sign.
-- **Chart component rebuilt from scratch.** Cleaner stat cards without sparklines, wider Y-axis that no longer clips labels, integer-only ticks for visitor/pageview counts, lighter grid lines, average moved to a subtle toolbar badge instead of overlapping the chart, streamlined toolbar with inline controls and icon-only export, and a properly positioned live indicator.
+- **Chart rebuilt from scratch.** Cleaner stat cards, wider Y-axis that no longer clips labels, whole-number ticks for visitor and pageview counts, lighter grid lines, streamlined toolbar, and a properly positioned live indicator.
+- **Campaigns panel redesigned.** Clean row-based layout with UTM medium and campaign always visible below the source name. Now sits in a half-width grid next to Goals & Events.
+- **Better filter design.** Solid brand-colored filter pills that are easy to spot in light and dark mode. A funnel icon on the filter button. Click any pill to remove it.
+- **Underline tab switchers.** Pages, Locations, and Technology panels now use clean underline tabs instead of pill-style switchers.
+- **"View all" at the bottom.** The expand action on each panel is now a subtle "View all" link at the bottom of the list instead of an icon in the header.
+- **Faster dashboard loading.** Each section loads independently with smart caching. Data refreshes in the background, and switching tabs pauses updates to save resources — resuming when you return.
+- **Smoother navigation.** Switching pages, changing organizations, or signing in no longer triggers unnecessary background requests.
+- **Loading screen while redirecting to sign-in.** The login page now shows the Pulse logo and a message instead of a blank white screen.
+- **More reliable billing.** Plan changes, cancellations, and invoice views now handle session expiry and errors gracefully.
+- **Stronger browser security.** Your browser now only loads scripts, styles, and images from trusted sources, adding protection against cross-site scripting.
+- **More resilient analytics processing.** The system that processes your events now recovers automatically from unexpected errors instead of stopping silently.
+- **Dashboard stays responsive under heavy traffic.** Parallel queries are limited during peak usage, and in-progress queries are cancelled when you navigate away.
+- **Cleaner error messages.** Invalid form submissions show a simple message instead of exposing internal details.
 
 ### Fixed
 
+- **Tracking script now works on all tracked websites.** Page views were silently failing due to two separate issues. Both are fixed — your dashboard receives visits from all registered domains as expected.
+- **Rate limiting works correctly.** A bug was treating all visitors as the same person, so one heavy user could block everyone. Each visitor is now identified individually.
+- **Real-time visitor count no longer stops updating.** The live counter would hit a rate limit and stop refreshing. It now has enough headroom for normal usage.
+- **Team members can view real-time data.** Previously only the site creator could see live visitors. Now any team member in the same organization has access.
+- **Funnel details load correctly.** Opening a funnel previously showed an error. Funnels now display step-by-step conversion data as expected.
+- **Consistent date handling.** Funnels now use the same date format as the rest of Pulse, so date pickers and bookmarked links work correctly everywhere.
+- **Deleting a site cleans up all data.** Orphaned analytics events are now removed automatically before the site is deleted.
+- **App switcher and site icons load correctly.** Logos and favicons were blocked by a security policy. Fixed by allowing images from Ciphera and Google's favicon service.
+- **Current session highlighted in settings.** The active session marker now works correctly.
+- **Notifications load on sign-in.** The notification bell no longer errors briefly after signing in.
 - **Duplicate filters no longer stack.** Clicking the same item twice no longer adds the same filter again.
-- **Campaigns now respect your active filters.** Previously, the Campaigns panel ignored dashboard filters and always showed all campaigns. Now it filters along with everything else.
-- **Duplicate "Direct" entry removed from the referrer filter list.** The referrer suggestions no longer show "Direct" twice.
-- **Filter dropdowns now show all your data.** Previously, the filter value list only showed up to 10 items — so if you had 50 cities or 30 browsers, most were missing. Now up to 100 values are loaded when you open a filter, with a loading spinner while they're fetched.
-- **Chart Y-axis no longer shows fractional visitors.** Count metrics (visitors, pageviews) now use integer-only ticks — no more "0.75 visitors".
-- **Chart average label no longer shows excessive decimals.** The average is now shown as a rounded value in a toolbar badge instead of a floating label inside the chart.
-
-## [0.13.0-alpha] - 2026-03-02
-
-### Added
-
-- **Dashboard filtering.** You can now filter your entire dashboard by any dimension — browser, country, page, device, OS, referrer, or UTM parameters. Click "Add filter" to pick a dimension, choose an operator (is, is not, contains, does not contain), and enter a value. Active filters appear as removable pills above your charts. You can also stack multiple filters to narrow down exactly the traffic you're looking at. Filter selections are saved in the URL, so you can bookmark or share a filtered view with your team.
-- **Custom event properties.** Your custom events can now carry extra context. For example, tracking a signup with `pulse.track('signup', { plan: 'pro', source: 'landing' })` records the plan and source alongside the event. Click any event in your Goals & Events panel to see a breakdown of its properties and values — no setup or registration needed. This helps you understand not just what happened, but why.
-- **AI traffic source identification.** Pulse now automatically recognizes visitors coming from AI tools — ChatGPT, Perplexity, Claude, Gemini, Copilot, DeepSeek, Grok, Meta AI, You.com, and Phind. These sources appear in your Top Referrers with proper brand icons and display names instead of raw domain URLs. If someone clicks a link in an AI chat to visit your site, you'll see exactly which AI tool sent them.
-- **Automatic outbound link tracking.** Pulse now tracks when visitors click links that take them to other websites. These show up as "outbound link" events in your Goals & Events panel — no setup needed. You can turn this off in your tracking snippet settings if you prefer.
-- **Automatic file download tracking.** When a visitor clicks a link to a downloadable file — PDF, ZIP, Excel, Word, MP3, and 20+ other formats — Pulse records it as a "file download" event. Like outbound links, this works automatically with no setup required.
-- **Automatic 404 error page detection.** Pulse now detects when a visitor lands on a page that doesn't exist and records it as a "404" event. You'll see these in your Goals & Events panel so you can find and fix broken links. Works automatically — no setup needed.
-- **Automatic scroll depth tracking.** Pulse now tracks how far visitors scroll down each page — at 25%, 50%, 75%, and 100% milestones. These show up as scroll events in your Goals & Events panel, helping you understand which content keeps people reading. Works automatically with no configuration required.
-
-### Improved
-
-- **Cleaner internal API code.** The analytics data-fetching layer has been streamlined — 13 near-identical endpoint functions were consolidated using a shared pattern, cutting roughly half the code while keeping every feature working exactly as before. This makes it easier to add new analytics endpoints in the future and reduces the chance of inconsistencies between them.
-- **Simpler endpoint management on the backend.** The backend previously required adding every new analytics endpoint in two separate places — one for public dashboards and one for authenticated users. A shared route table now handles both automatically, so new endpoints only need to be defined once. This reduces the chance of one side getting out of sync with the other.
-- **Modern config loading for the app.** The app's configuration file now uses proper ES module imports instead of an older CommonJS pattern. This aligns with modern JavaScript standards and enables better tooling support.
-- **Complete API documentation in the backend README.** The developer documentation now lists all 80+ endpoints organized by category — ingestion, public dashboard, sites, analytics, real-time, goals, funnels, uptime, billing, notifications, admin, and audit. Previously only 12 endpoints were documented, which understated the full scope of the system.
-- **Login page now shows a loading screen while redirecting.** Previously, the login page briefly showed a blank white screen before redirecting you to the sign-in page. You'll now see the Pulse logo and a "Redirecting to log in..." message, matching the signup page experience.
-- **More reliable duplicate detection for goals.** When creating or updating a goal with a name that already exists, Pulse now uses the database's built-in error codes instead of checking error message text. This means duplicate goal detection works reliably regardless of database version or language settings.
-- **More consistent builds across environments.** The backend Docker image now uses a pinned operating system version instead of "latest," so builds produce identical results whether run today or months from now.
-- **Cleaner internal code for cookie handling.** Cookie domain logic that was duplicated in two places is now shared, reducing the chance of the two copies drifting out of sync during future changes.
-- **Smoother navigation across the app.** Switching pages, changing organizations, or signing in no longer triggers unnecessary background checks. Previously, an internal effect re-ran on every navigation because it watched the entire user object for changes — now it only reacts when your authentication state or organization actually changes. This makes page transitions faster and reduces redundant network requests.
-- **Faster uptime data cleanup under heavy usage.** Old uptime check records are now removed in small batches instead of all at once. Previously, a single large deletion could briefly slow down database performance when months of monitoring data had accumulated. Cleanup now runs incrementally so your dashboard stays responsive throughout.
-- **More reliable automated testing.** Backend tests that verify authentication and billing no longer rely on a fragile internal shortcut that could mask real bugs. If a code change accidentally reaches the database during a test, it now fails gracefully with a clear error instead of crashing silently.
-- **Database queries are now verified automatically before every release.** A new step in our release process runs all database operations against a real PostgreSQL database — including applying all schema migrations — so we catch query errors, missing columns, and data-access bugs before they reach production.
-- **Safer database schema changes.** The large migration that restructured how your analytics data is stored now has a documented rollback procedure. If anything goes wrong during a database upgrade, we can revert cleanly instead of requiring manual intervention.
-- **Easier setup for new developers.** Building and testing Pulse no longer requires a specific directory layout on your machine. All builds use a pre-packaged snapshot of dependencies, so you can clone the project and start working immediately without extra setup steps.
-- **Faster, smarter dashboard data loading.** Your dashboard now loads each section independently using an intelligent caching strategy. Data refreshes happen automatically in the background, and when you switch tabs the app pauses updates to save resources — resuming instantly when you return. This replaces the previous approach where everything loaded in one large batch, meaning your charts, visitor maps, and stats now appear faster and update more reliably.
-- **Better data accuracy across the dashboard.** All data displayed on the dashboard — pages, locations, devices, referrers, performance metrics, and goals — is now fully typed end-to-end. This eliminates an entire class of potential display bugs where data could be misinterpreted between the server and your screen.
-- **Dashboard stays fast under heavy traffic.** When many users view their dashboards at the same time, the backend now limits how many data queries run in parallel so it doesn't overwhelm the database. If you navigate away while the dashboard is loading, queries are cancelled immediately instead of continuing to run in the background.
-- **Improved error visibility and debugging.** When something goes wrong behind the scenes, the backend now logs detailed, structured information about what happened — including exactly which site, page, or operation was affected. This means issues are diagnosed and fixed faster, reducing any downtime or data gaps you might experience.
-- **Clearer error trails across the system.** Every database operation now includes context about what was happening when an error occurred. Instead of vague failures, support can trace problems back to their exact source — so if an issue affects your analytics, it gets identified and resolved much more quickly.
-- **Clearer rate limiting for analytics tracking.** When your tracking script sends too many events from the same session, Pulse now tells the script explicitly that the request was rejected. Previously, these events were silently accepted but never recorded, which could make your visitor counts look lower than expected without any visible explanation.
-- **Earlier detection of configuration problems.** The server now checks your email and internal integration settings at startup and warns you immediately if anything looks incomplete. Previously, you might not discover a misconfigured email setting until a billing alert or uptime notification failed to send.
-- **Safer campaign date handling.** Campaign analytics now use the same date validation as the rest of the app, including checks for invalid ranges and a maximum span of one year. Previously, campaigns used separate date parsing that skipped these checks.
-- **Full React 19 type coverage.** Upgraded TypeScript type definitions to match the React 19 runtime. Previously, the type definitions lagged behind at React 18, which could hide bugs and miss new React 19 APIs during development.
-- **Lower resource usage under load.** The backend now uses a single shared connection to Redis instead of opening dozens of separate ones. Previously, each rate limiter and internal component created its own connection pool, which could waste resources and risk hitting connection limits during heavy traffic.
-- **More reliable billing operations.** Billing actions like changing your plan, cancelling, and viewing invoices now benefit from the same automatic session refresh, request tracing, and error handling as the rest of the app. Previously, these used a separate internal path that could fail silently if your session expired mid-action.
-- **Stronger browser protection with Content Security Policy.** The app now tells your browser exactly which resources it's allowed to load — scripts, styles, images, and API connections are restricted to trusted sources only. This adds an extra layer of defence against cross-site scripting (XSS) attacks.
-- **Tighter cross-origin request handling.** The backend now only accepts requests from known Pulse and Ciphera origins instead of any website. This prevents other sites from making authenticated requests on your behalf.
-- **Stricter environment security checks.** Staging and other non-development deployments now refuse to start if critical secrets haven't been configured, catching configuration mistakes before they reach users.
-- **Billing configuration validated at startup.** Stripe payment keys are now checked when the server starts instead of when a billing request comes in. Misconfigured payment settings surface immediately during deployment rather than silently failing when you try to manage your subscription.
-- **Faster real-time visitor cleanup.** The background process that keeps active visitor counts accurate no longer briefly blocks other operations while scanning for stale sessions. Cleanup now runs incrementally so your dashboard stays responsive at all times.
-- **Stricter input validation on admin pages.** The internal admin panel now validates organisation identifiers before processing requests, preventing malformed data from reaching the database.
-- **Error messages no longer reveal internal details.** When you submit an invalid form, the error message now says "Invalid request body" instead of exposing internal field names and validation rules. This makes error messages cleaner while keeping your data safer.
-- **Better request cancellation for billing operations.** All billing-related database operations can now be properly cancelled if you navigate away or your connection drops. Previously, some operations would continue running in the background even after you left the page.
-- **More resilient event processing.** The background system that processes your analytics events now automatically recovers from unexpected errors instead of silently stopping. If something goes wrong, it restarts itself and continues processing — so you never lose incoming analytics data.
-
-### Fixed
-
-- **Rate limiting now works correctly for all visitors.** A bug in the backend meant that IP-based rate limiting — which protects against abuse on public dashboards and the tracking script — was treating all visitors as the same person. A single heavy user could hit the limit for everyone. Rate limiting now correctly identifies individual visitors, so one bad actor can't affect others.
-- **More reliable list rendering across the dashboard.** Pages, referrers, locations, devices, funnels, and other data lists now use stable identifiers (like page paths and referrer URLs) instead of array positions as their React keys. This prevents potential display glitches — such as stale data appearing in the wrong row — when lists are filtered, sorted, or updated in real time.
-- **Deleting a site now fully cleans up all its data.** Previously, deleting a site removed the site record but could leave behind orphaned analytics events in the database, slowly accumulating unused data. Now all events are cleaned up automatically in small batches before the site is removed, keeping your database tidy.
-- **Team members can now view real-time visitor data.** Previously, only the person who originally created a site could see live visitors and session details. Now any team member in the same organization can access real-time data for all their shared sites — the same way the rest of the dashboard already works.
-- **Consistent date handling across all analytics.** Funnel analytics now use the same date format (`YYYY-MM-DD`) as every other part of Pulse. Previously, funnels required a different, more technical date format, which meant date range pickers and bookmarked links didn't always work correctly between funnels and the rest of the dashboard.
-- **Tracking script now works on all tracked websites.** Page views were silently failing to record when the tracking script ran on your website. Two issues were at play: the backend was rejecting analytics data sent from tracked sites, and even after that was resolved, events were silently dropped during processing because they were missing a required identifier. Both are now fixed — your dashboard receives visits from all registered domains as expected.
-- **Real-time visitor count no longer stops updating.** The dashboard's live visitor counter would quickly hit a rate limit and stop refreshing, showing "Site not found" errors. The limit was too low for normal polling, especially with multiple tabs open. It now has enough headroom for typical usage.
-- **Funnel details now load correctly.** Opening a funnel showed "Unable to load funnel" with a server error. An internal query was referencing data that no longer existed at that stage of processing, causing it to fail every time. Funnels now load and display step-by-step conversion data as expected.
-- **App switcher and site icons now load correctly.** The Pulse, Drop, and Auth logos in the app switcher — and site favicons on the dashboard — were blocked by the browser's Content Security Policy. The policy now allows images from Ciphera's own domain and Google's favicon service, so all icons display as expected.
-- **Better crash protection in goals and real-time views.** Fixed an issue where the backend could crash under rare conditions when checking permissions for goals or real-time visitor data. The app now handles unexpected values gracefully instead of crashing.
-- **More reliable service health reporting.** The backend health check no longer falsely reports the service as unhealthy after sustained traffic. Previously, an internal counter grew over time and would eventually cross a fixed threshold — even under normal load — causing orchestrators to unnecessarily restart the service.
-- **Session list now correctly highlights your current session.** The active sessions list in settings now properly identifies which session you're currently using. Previously, the "current session" marker never appeared due to an internal mismatch in how sessions were identified.
-- **Notifications no longer fail to load on sign-in.** The notification bell now loads correctly even when the app is still setting up your workspace context. Previously, it could briefly show an error right after signing in.
-- **Fixed a service worker error on first visit.** Removed leftover icon files with invalid filenames that caused a caching error in the background. This had no visible effect but produced console warnings.
-- **More reliable database migrations.** The migration system no longer silently skips partially failed database updates. If an update fails, it stops immediately so the issue can be identified and fixed — rather than marking it as complete and moving on with missing changes.
-
-### Removed
-
-- **Cleaned up unused files.** Removed six leftover component and utility files that were no longer used anywhere in the app, along with dead backend code. This reduces clutter and keeps the codebase easier to navigate.
-- **Removed unused backend code.** Deleted an old CORS middleware that was never wired up, and an 80-line legacy funnel query that had been superseded by a faster implementation. Less code means fewer things to maintain and audit.
+- **Campaigns respect active filters.** The Campaigns panel now filters along with everything else instead of always showing all campaigns.
+- **No duplicate "Direct" in referrer filter.** The referrer suggestions no longer show "Direct" twice.
+- **Filter dropdowns show all your data.** Previously limited to 10 items — now loads up to 100 values.
+- **Chart Y-axis shows whole numbers.** Visitor and pageview counts no longer show fractional values like "0.75 visitors".
+- **Duplicate goal names detected reliably.** Goal name uniqueness checks now work correctly regardless of your setup.
+- **Health checks stay accurate.** The backend health check no longer falsely reports the service as unhealthy after sustained traffic.
 
 ## [0.12.0-alpha] - 2026-03-01
 
