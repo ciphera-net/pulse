@@ -22,7 +22,14 @@ function AuthCallbackContent() {
     const codeVerifier = localStorage.getItem('oauth_code_verifier')
     const redirectUri = typeof window !== 'undefined' ? window.location.origin + '/auth/callback' : ''
     if (!code) return
-    const result = await exchangeAuthCode(code, codeVerifier, redirectUri)
+    let result: Awaited<ReturnType<typeof exchangeAuthCode>>
+    try {
+      result = await exchangeAuthCode(code, codeVerifier, redirectUri)
+    } catch {
+      // * Stale build — cached JS has old Server Action hashes. Hard reload to fix.
+      window.location.reload()
+      return
+    }
     if (result.success && result.user) {
       // * Fetch full profile (including display_name) before navigating so header shows correct name on first paint
       try {
