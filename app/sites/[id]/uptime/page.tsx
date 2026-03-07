@@ -21,6 +21,7 @@ import { toast } from '@ciphera-net/ui'
 import { useTheme } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { Button, Modal } from '@ciphera-net/ui'
+import SiteNav from '@/components/dashboard/SiteNav'
 import { UptimeSkeleton, ChecksSkeleton, useMinimumLoading } from '@/components/skeletons'
 import {
   AreaChart,
@@ -723,21 +724,14 @@ export default function UptimePage() {
       transition={{ duration: 0.2 }}
       className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8"
     >
+      <SiteNav siteId={siteId} />
+
       {/* Header */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <button
-              onClick={() => router.push(`/sites/${siteId}`)}
-              className="text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors"
-            >
-              {site.name}
-            </button>
-            <span className="text-neutral-300 dark:text-neutral-600">/</span>
-            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
-              Uptime
-            </h1>
-          </div>
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">
+            Uptime
+          </h1>
           <p className="text-sm text-neutral-500 dark:text-neutral-400">
             Monitor your endpoints and track availability over time
           </p>

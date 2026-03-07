@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Improved
+
+- **Cleaner site navigation.** Dashboard, Uptime, Funnels, and Settings now use an underline tab bar instead of floating buttons. The active section is highlighted with an orange underline, making it easy to see where you are and switch between views.
+
+### Fixed
+
+- **Login no longer gets stuck after updates.** If you happened to have Pulse open when a new version was deployed, logging back in could get stuck on a loading screen. The app now automatically refreshes itself to pick up the latest version.
+- **City and region data is now accurate.** Location data was incorrectly showing the CDN server's location (e.g. Paris, Villeurbanne) instead of the visitor's actual city. Fixed by reading the correct visitor IP header from Bunny CDN.
+- **"Reset Data" now clears everything.** Previously, resetting a site's data in Settings only removed pageviews and daily stats. Uptime check history, uptime daily stats, and cached dashboard data were left behind. All collected data is now properly cleared when you reset, while your site configuration, goals, funnels, and uptime monitors are kept.
+
 ## [0.13.0-alpha] - 2026-03-07
 
 ### Added

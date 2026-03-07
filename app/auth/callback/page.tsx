@@ -22,7 +22,14 @@ function AuthCallbackContent() {
     const codeVerifier = localStorage.getItem('oauth_code_verifier')
     const redirectUri = typeof window !== 'undefined' ? window.location.origin + '/auth/callback' : ''
     if (!code) return
-    const result = await exchangeAuthCode(code, codeVerifier, redirectUri)
+    let result: Awaited<ReturnType<typeof exchangeAuthCode>>
+    try {
+      result = await exchangeAuthCode(code, codeVerifier, redirectUri)
+    } catch {
+      // * Stale build or network error — show error so user can retry via full navigation
+      setError('Something went wrong. Please try logging in again.')
+      return
+    }
     if (result.success && result.user) {
       // * Fetch full profile (including display_name) before navigating so header shows correct name on first paint
       try {

@@ -6,6 +6,7 @@ import { listFunnels, deleteFunnel, type Funnel } from '@/lib/api/funnels'
 import { toast, PlusIcon, ArrowRightIcon, ChevronLeftIcon, TrashIcon, Button } from '@ciphera-net/ui'
 import { FunnelsListSkeleton, useMinimumLoading } from '@/components/skeletons'
 import Link from 'next/link'
+import SiteNav from '@/components/dashboard/SiteNav'
 
 export default function FunnelsPage() {
   const params = useParams()
@@ -52,14 +53,10 @@ export default function FunnelsPage() {
 
   return (
     <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
+      <SiteNav siteId={siteId} />
+
       <div className="mb-8">
-        <div className="flex items-center gap-4 mb-6">
-          <Link 
-            href={`/sites/${siteId}`}
-            className="p-2 -ml-2 text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-          >
-            <ChevronLeftIcon className="w-5 h-5" />
-          </Link>
+        <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
               Funnels
@@ -68,14 +65,12 @@ export default function FunnelsPage() {
               Track user journeys and identify drop-off points
             </p>
           </div>
-          <div className="ml-auto">
-            <Link href={`/sites/${siteId}/funnels/new`}>
-              <Button variant="primary" className="inline-flex items-center gap-2">
-                <PlusIcon className="w-4 h-4" />
-                <span>Create Funnel</span>
-              </Button>
-            </Link>
-          </div>
+          <Link href={`/sites/${siteId}/funnels/new`}>
+            <Button variant="primary" className="inline-flex items-center gap-2">
+              <PlusIcon className="w-4 h-4" />
+              <span>Create Funnel</span>
+            </Button>
+          </Link>
         </div>
 
         {funnels.length === 0 ? (
