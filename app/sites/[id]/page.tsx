@@ -1,6 +1,6 @@
 'use client'
 
-import { useAuth } from '@/lib/auth/context'
+
 import { logger } from '@/lib/utils/logger'
 import { useCallback, useEffect, useState, useMemo } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
@@ -34,6 +34,7 @@ import PerformanceStats from '@/components/dashboard/PerformanceStats'
 import GoalStats from '@/components/dashboard/GoalStats'
 import ScrollDepth from '@/components/dashboard/ScrollDepth'
 import Campaigns from '@/components/dashboard/Campaigns'
+import SiteNav from '@/components/dashboard/SiteNav'
 import FilterBar from '@/components/dashboard/FilterBar'
 import AddFilterDropdown, { type FilterSuggestion, type FilterSuggestions } from '@/components/dashboard/AddFilterDropdown'
 import EventProperties from '@/components/dashboard/EventProperties'
@@ -79,8 +80,8 @@ function getInitialDateRange(): { start: string; end: string } {
 }
 
 export default function SiteDashboardPage() {
-  const { user } = useAuth()
-  const canEdit = user?.role === 'owner' || user?.role === 'admin'
+
+
 
   const params = useParams()
   const router = useRouter()
@@ -494,38 +495,11 @@ export default function SiteDashboardPage() {
                   ]}
                 />
               </div>
-              <div
-                className="h-6 w-px bg-neutral-200 dark:bg-neutral-700 flex-shrink-0"
-                aria-hidden
-              />
-              <div className="flex items-center gap-1">
-                <Button
-                  onClick={() => router.push(`/sites/${siteId}/uptime`)}
-                  variant="ghost"
-                  className="text-sm"
-                >
-                  Uptime
-                </Button>
-                <Button
-                  onClick={() => router.push(`/sites/${siteId}/funnels`)}
-                  variant="ghost"
-                  className="text-sm"
-                >
-                  Funnels
-                </Button>
-                {canEdit && (
-                  <Button
-                    onClick={() => router.push(`/sites/${siteId}/settings`)}
-                    variant="ghost"
-                    className="text-sm"
-                  >
-                    Settings
-                  </Button>
-                )}
-              </div>
             </div>
         </div>
       </div>
+
+      <SiteNav siteId={siteId} />
 
       {/* Dimension Filters */}
       <div className="flex items-center gap-2 flex-wrap mb-2">
