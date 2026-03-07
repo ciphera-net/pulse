@@ -135,20 +135,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         let session: Awaited<ReturnType<typeof getSessionAction>> = null
         try {
           session = await getSessionAction()
-          sessionStorage.removeItem('pulse_reload_for_stale_build')
         } catch {
-          // * Stale build — browser has cached JS with old Server Action hashes.
-          // * Force a hard reload once to fetch fresh bundles. Guard prevents infinite loop.
-          const key = 'pulse_reload_for_stale_build'
-          if (!sessionStorage.getItem(key)) {
-            sessionStorage.setItem(key, '1')
-            window.location.reload()
-            return
-          }
-          sessionStorage.removeItem(key)
-          // * Reload didn't fix it — treat as no session
-          setLoading(false)
-          return
+          // * Stale build — treat as no session. The login page will redirect
+          // * to the auth service via window.location.href (full navigation),
+          // * which fetches fresh HTML/JS from the server on return.
         }
 
         // * 2. If no access_token but refresh_token may exist, try refresh (fixes 15-min inactivity logout)
@@ -162,15 +152,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             try {
               session = await getSessionAction()
             } catch {
-              const key = 'pulse_reload_for_stale_build'
-              if (!sessionStorage.getItem(key)) {
-                sessionStorage.setItem(key, '1')
-                window.location.reload()
-                return
-              }
-              sessionStorage.removeItem(key)
-              setLoading(false)
-              return
+              // * Stale build — fall through as no session
             }
           }
         }
