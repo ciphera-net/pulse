@@ -90,7 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     setIsLoggingOut(true)
-    await logoutAction()
+    try { await logoutAction() } catch { /* stale build — continue with client-side cleanup */ }
     localStorage.removeItem('user')
     localStorage.removeItem('ciphera_token_refreshed_at')
     localStorage.removeItem('ciphera_last_activity')
@@ -132,7 +132,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const init = async () => {
         // * 1. Check server-side session (cookies)
-        let session = await getSessionAction()
+        let session: Awaited<ReturnType<typeof getSessionAction>> = null
+        try {
+          session = await getSessionAction()
+        } catch {
+          // * Stale build — treat as no session. The login page will redirect
+          // * to the auth service via window.location.href (full navigation),
+          // * which fetches fresh HTML/JS from the server on return.
+        }
 
         // * 2. If no access_token but refresh_token may exist, try refresh (fixes 15-min inactivity logout)
         if (!session && typeof window !== 'undefined') {
@@ -142,7 +149,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             credentials: 'include',
           })
           if (refreshRes.ok) {
-            session = await getSessionAction()
+            try {
+              session = await getSessionAction()
+            } catch {
+              // * Stale build — fall through as no session
+            }
           }
         }
 
