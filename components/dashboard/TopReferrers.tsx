@@ -8,17 +8,19 @@ import { getReferrerDisplayName, getReferrerFavicon, getReferrerIcon, mergeRefer
 import { Modal, GlobeIcon } from '@ciphera-net/ui'
 import { ListSkeleton } from '@/components/skeletons'
 import { getTopReferrers, TopReferrer } from '@/lib/api/stats'
+import { type DimensionFilter } from '@/lib/filters'
 
 interface TopReferrersProps {
   referrers: Array<{ referrer: string; pageviews: number }>
   collectReferrers?: boolean
   siteId: string
   dateRange: { start: string, end: string }
+  onFilter?: (filter: DimensionFilter) => void
 }
 
 const LIMIT = 7
 
-export default function TopReferrers({ referrers, collectReferrers = true, siteId, dateRange }: TopReferrersProps) {
+export default function TopReferrers({ referrers, collectReferrers = true, siteId, dateRange, onFilter }: TopReferrersProps) {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [fullData, setFullData] = useState<TopReferrer[]>([])
   const [isLoadingFull, setIsLoadingFull] = useState(false)
@@ -31,6 +33,7 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
 
   const mergedReferrers = mergeReferrersByDisplayName(filteredReferrers)
 
+  const totalPageviews = mergedReferrers.reduce((sum, r) => sum + r.pageviews, 0)
   const hasData = mergedReferrers.length > 0
   const displayedReferrers = hasData ? mergedReferrers.slice(0, LIMIT) : []
   const emptySlots = Math.max(0, LIMIT - displayedReferrers.length)
@@ -83,16 +86,8 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
-            Top Referrers
+            Referrers
           </h3>
-          {showViewAll && (
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="text-xs font-medium text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange focus:rounded"
-            >
-              View All
-            </button>
-          )}
         </div>
 
         <div className="space-y-2 flex-1 min-h-[270px]">
@@ -103,19 +98,40 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
           ) : hasData ? (
             <>
               {displayedReferrers.map((ref) => (
-                <div key={ref.referrer} className="flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
+                <div
+                  key={ref.referrer}
+                  onClick={() => onFilter?.({ dimension: 'referrer', operator: 'is', values: [ref.referrer] })}
+                  className={`flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors${onFilter ? ' cursor-pointer' : ''}`}
+                >
                   <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
                     {renderReferrerIcon(ref.referrer)}
                     <span className="truncate" title={ref.referrer}>{getReferrerDisplayName(ref.referrer)}</span>
                   </div>
-                  <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
-                    {formatNumber(ref.pageviews)}
+                  <div className="flex items-center gap-2 ml-4">
+                    <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+                      {totalPageviews > 0 ? `${Math.round((ref.pageviews / totalPageviews) * 100)}%` : ''}
+                    </span>
+                    <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
+                      {formatNumber(ref.pageviews)}
+                    </span>
                   </div>
                 </div>
               ))}
-              {Array.from({ length: emptySlots }).map((_, i) => (
-                <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
-              ))}
+              {showViewAll ? (
+                <button
+                  onClick={() => setIsModalOpen(true)}
+                  className="flex items-center justify-center gap-1.5 h-9 w-full text-xs font-medium text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange transition-colors cursor-pointer rounded-lg px-2 -mx-2"
+                >
+                  View all
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                </button>
+              ) : (
+                Array.from({ length: emptySlots }).map((_, i) => (
+                  <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
+                ))
+              )}
             </>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
@@ -136,7 +152,7 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title="Top Referrers"
+        title="Referrers"
       >
         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
           {isLoadingFull ? (

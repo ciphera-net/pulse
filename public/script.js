@@ -299,6 +299,10 @@
     if (url !== lastUrl) {
       lastUrl = url;
       trackPageview();
+      // * Check for 404 after SPA navigation (deferred so title updates first)
+      setTimeout(check404, 100);
+      // * Reset scroll depth tracking for the new page
+      if (trackScroll) scrollFired = {};
     }
   }
   new MutationObserver(onUrlChange).observe(document, { subtree: true, childList: true });
@@ -308,13 +312,17 @@
   history.replaceState = function() { _replace.apply(this, arguments); onUrlChange(); };
 
   // * Track popstate (browser back/forward)
-  window.addEventListener('popstate', trackPageview);
+  window.addEventListener('popstate', function() {
+    trackPageview();
+    setTimeout(check404, 100);
+    if (trackScroll) scrollFired = {};
+  });
 
   // * Custom events / goals: validate event name (letters, numbers, underscores only; max 64 chars)
   var EVENT_NAME_MAX = 64;
   var EVENT_NAME_REGEX = /^[a-zA-Z0-9_]+$/;
 
-  function trackCustomEvent(eventName) {
+  function trackCustomEvent(eventName, props) {
     if (typeof eventName !== 'string' || !eventName.trim()) return;
     var name = eventName.trim().toLowerCase();
     if (name.length > EVENT_NAME_MAX || !EVENT_NAME_REGEX.test(name)) {
@@ -334,6 +342,20 @@
       session_id: getSessionId(),
       name: name,
     };
+    // * Attach custom properties if provided (max 30 props, key max 200 chars, value max 2000 chars)
+    if (props && typeof props === 'object' && !Array.isArray(props)) {
+      var sanitized = {};
+      var count = 0;
+      for (var key in props) {
+        if (!props.hasOwnProperty(key)) continue;
+        if (count >= 30) break;
+        var k = String(key).substring(0, 200);
+        var v = String(props[key]).substring(0, 2000);
+        sanitized[k] = v;
+        count++;
+      }
+      if (count > 0) payload.props = sanitized;
+    }
     fetch(apiUrl + '/api/v1/events', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -345,5 +367,96 @@
   // * Expose pulse.track() for custom events (e.g. pulse.track('signup_click'))
   window.pulse = window.pulse || {};
   window.pulse.track = trackCustomEvent;
+
+  // * Auto-track 404 error pages (on by default)
+  // * Detects pages where document.title contains "404" or "not found"
+  // * Opt-out: add data-no-404 to the script tag
+  var track404 = !script.hasAttribute('data-no-404');
+  var sent404ForUrl = '';
+
+  function check404() {
+    if (!track404) return;
+    // * Only fire once per URL
+    var currentUrl = location.href;
+    if (sent404ForUrl === currentUrl) return;
+    if (/404|not found/i.test(document.title)) {
+      sent404ForUrl = currentUrl;
+      trackCustomEvent('404');
+    }
+  }
+
+  // * Check on initial load (deferred so SPAs can set title)
+  setTimeout(check404, 0);
+
+  // * Auto-track scroll depth at 25%, 50%, 75%, and 100% (on by default)
+  // * Each threshold fires once per pageview; resets on SPA navigation
+  // * Opt-out: add data-no-scroll to the script tag
+  var trackScroll = !script.hasAttribute('data-no-scroll');
+
+  if (trackScroll) {
+    var scrollThresholds = [25, 50, 75, 100];
+    var scrollFired = {};
+    var scrollTicking = false;
+
+    function checkScroll() {
+      var docHeight = document.documentElement.scrollHeight;
+      var viewHeight = window.innerHeight;
+      // * Page fits in viewport — nothing to scroll
+      if (docHeight <= viewHeight) return;
+      var scrollTop = window.scrollY;
+      var scrollPercent = Math.round((scrollTop + viewHeight) / docHeight * 100);
+
+      for (var i = 0; i < scrollThresholds.length; i++) {
+        var t = scrollThresholds[i];
+        if (!scrollFired[t] && scrollPercent >= t) {
+          scrollFired[t] = true;
+          trackCustomEvent('scroll_' + t);
+        }
+      }
+      scrollTicking = false;
+    }
+
+    window.addEventListener('scroll', function() {
+      if (!scrollTicking) {
+        scrollTicking = true;
+        requestAnimationFrame(checkScroll);
+      }
+    }, { passive: true });
+  }
+
+  // * Auto-track outbound link clicks and file downloads (on by default)
+  // * Opt-out: add data-no-outbound or data-no-downloads to the script tag
+  var trackOutbound = !script.hasAttribute('data-no-outbound');
+  var trackDownloads = !script.hasAttribute('data-no-downloads');
+
+  if (trackOutbound || trackDownloads) {
+    var FILE_EXT_REGEX = /\.(pdf|zip|gz|tar|xlsx|xls|csv|docx|doc|pptx|ppt|mp4|mp3|wav|avi|mov|exe|dmg|pkg|deb|rpm|iso|7z|rar)($|\?|#)/i;
+
+    document.addEventListener('click', function(e) {
+      var el = e.target;
+      // * Walk up from clicked element to find nearest <a> tag
+      while (el && el.tagName !== 'A') el = el.parentElement;
+      if (!el || !el.href) return;
+
+      try {
+        var url = new URL(el.href, location.href);
+        // * Skip non-http links (mailto:, tel:, javascript:, etc.)
+        if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
+
+        // * Check file download first (download attribute or known file extension)
+        if (trackDownloads && (el.hasAttribute('download') || FILE_EXT_REGEX.test(url.pathname))) {
+          trackCustomEvent('file_download');
+          return;
+        }
+
+        // * Check outbound link (different hostname)
+        if (trackOutbound && url.hostname && url.hostname !== location.hostname) {
+          trackCustomEvent('outbound_link');
+        }
+      } catch (err) {
+        // * Invalid URL - skip silently
+      }
+    }, true); // * Capture phase: fires before default navigation
+  }
 
 })();

@@ -9,6 +9,7 @@ import { MdMonitor } from 'react-icons/md'
 import { Modal, GridIcon } from '@ciphera-net/ui'
 import { ListSkeleton } from '@/components/skeletons'
 import { getBrowsers, getOS, getDevices, getScreenResolutions } from '@/lib/api/stats'
+import { type DimensionFilter } from '@/lib/filters'
 
 interface TechSpecsProps {
   browsers: Array<{ browser: string; pageviews: number }>
@@ -19,13 +20,16 @@ interface TechSpecsProps {
   collectScreenResolution?: boolean
   siteId: string
   dateRange: { start: string, end: string }
+  onFilter?: (filter: DimensionFilter) => void
 }
 
 type Tab = 'browsers' | 'os' | 'devices' | 'screens'
 
 const LIMIT = 7
 
-export default function TechSpecs({ browsers, os, devices, screenResolutions, collectDeviceInfo = true, collectScreenResolution = true, siteId, dateRange }: TechSpecsProps) {
+const TAB_TO_DIMENSION: Record<string, string> = { browsers: 'browser', os: 'os', devices: 'device' }
+
+export default function TechSpecs({ browsers, os, devices, screenResolutions, collectDeviceInfo = true, collectScreenResolution = true, siteId, dateRange, onFilter }: TechSpecsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('browsers')
   const handleTabKeyDown = useTabListKeyboard()
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -108,6 +112,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
 
   const rawData = getRawData()
   const data = filterUnknown(rawData)
+  const totalPageviews = data.reduce((sum, item) => sum + item.pageviews, 0)
   const hasData = data && data.length > 0
   const displayedData = hasData ? data.slice(0, LIMIT) : []
   const emptySlots = Math.max(0, LIMIT - displayedData.length)
@@ -117,30 +122,20 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
     <>
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
-              Technology
-            </h3>
-            {showViewAll && (
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="text-xs font-medium text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange focus:rounded"
-              >
-                View All
-              </button>
-            )}
-          </div>
-          <div className="flex p-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg" role="tablist" aria-label="Technology view tabs" onKeyDown={handleTabKeyDown}>
+          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
+            Technology
+          </h3>
+          <div className="flex gap-1" role="tablist" aria-label="Technology view tabs" onKeyDown={handleTabKeyDown}>
             {(['browsers', 'os', 'devices', 'screens'] as Tab[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 role="tab"
                 aria-selected={activeTab === tab}
-                className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors capitalize focus:outline-none focus:ring-2 focus:ring-brand-orange ${
+                className={`px-2.5 py-1 text-xs font-medium transition-colors capitalize focus:outline-none focus:ring-2 focus:ring-brand-orange rounded cursor-pointer border-b-2 ${
                   activeTab === tab
-                    ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
-                    : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+                    ? 'border-brand-orange text-neutral-900 dark:text-white'
+                    : 'border-transparent text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
                 }`}
               >
                 {tab}
@@ -156,20 +151,45 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
             </div>
           ) : hasData ? (
             <>
-              {displayedData.map((item) => (
-                <div key={item.name} className="flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
-                  <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
-                    {item.icon && <span className="text-lg">{item.icon}</span>}
-                    <span className="truncate">{item.name}</span>
+              {displayedData.map((item) => {
+                const dim = TAB_TO_DIMENSION[activeTab]
+                const canFilter = onFilter && dim
+                return (
+                  <div
+                    key={item.name}
+                    onClick={() => canFilter && onFilter({ dimension: dim, operator: 'is', values: [item.name] })}
+                    className={`flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors${canFilter ? ' cursor-pointer' : ''}`}
+                  >
+                    <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
+                      {item.icon && <span className="text-lg">{item.icon}</span>}
+                      <span className="truncate">{item.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2 ml-4">
+                      <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+                        {totalPageviews > 0 ? `${Math.round((item.pageviews / totalPageviews) * 100)}%` : ''}
+                      </span>
+                      <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
+                        {formatNumber(item.pageviews)}
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
-                    {formatNumber(item.pageviews)}
-                  </div>
-                </div>
-              ))}
-              {Array.from({ length: emptySlots }).map((_, i) => (
-                <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
-              ))}
+                )
+              })}
+              {showViewAll ? (
+                <button
+                  onClick={() => setIsModalOpen(true)}
+                  className="flex items-center justify-center gap-1.5 h-9 w-full text-xs font-medium text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange transition-colors cursor-pointer rounded-lg px-2 -mx-2"
+                >
+                  View all
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                </button>
+              ) : (
+                Array.from({ length: emptySlots }).map((_, i) => (
+                  <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
+                ))
+              )}
             </>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-3">

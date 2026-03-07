@@ -10,12 +10,10 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  ReferenceLine,
 } from 'recharts'
 import type { TooltipProps } from 'recharts'
 import { formatNumber, formatDuration, formatUpdatedAgo } from '@ciphera-net/ui'
-import Sparkline from './Sparkline'
-import { ArrowUpRightIcon, ArrowDownRightIcon, BarChartIcon, Select, Button, DownloadIcon } from '@ciphera-net/ui'
+import { ArrowUpRightIcon, ArrowDownRightIcon, BarChartIcon, Select, DownloadIcon } from '@ciphera-net/ui'
 import { Checkbox } from '@ciphera-net/ui'
 
 const COLORS = {
@@ -26,6 +24,7 @@ const COLORS = {
 
 const CHART_COLORS_LIGHT = {
   border: 'var(--color-neutral-200)',
+  grid: 'var(--color-neutral-100)',
   text: 'var(--color-neutral-900)',
   textMuted: 'var(--color-neutral-500)',
   axis: 'var(--color-neutral-400)',
@@ -35,6 +34,7 @@ const CHART_COLORS_LIGHT = {
 
 const CHART_COLORS_DARK = {
   border: 'var(--color-neutral-700)',
+  grid: 'var(--color-neutral-800)',
   text: 'var(--color-neutral-50)',
   textMuted: 'var(--color-neutral-400)',
   axis: 'var(--color-neutral-500)',
@@ -68,119 +68,29 @@ interface ChartProps {
   setTodayInterval: (interval: 'minute' | 'hour') => void
   multiDayInterval: 'hour' | 'day'
   setMultiDayInterval: (interval: 'hour' | 'day') => void
-  /** Optional: callback when user requests chart export (parent can open ExportModal or handle export) */
   onExportChart?: () => void
-  /** Optional: timestamp of last data fetch for "Live · Xs ago" indicator */
   lastUpdatedAt?: number | null
 }
 
 type MetricType = 'pageviews' | 'visitors' | 'bounce_rate' | 'avg_duration'
 
-// * Custom tooltip with comparison and theme-aware styling
-function ChartTooltip({
-  active,
-  payload,
-  label,
-  metric,
-  metricLabel,
-  formatNumberFn,
-  showComparison,
-  prevPeriodLabel,
-  colors,
-}: {
-  active?: boolean
-  payload?: Array<{ payload: { prevPageviews?: number; prevVisitors?: number; prevBounceRate?: number; prevAvgDuration?: number }; value: number }>
-  label?: string
-  metric: MetricType
-  metricLabel: string
-  formatNumberFn: (n: number) => string
-  showComparison: boolean
-  prevPeriodLabel?: string
-  colors: typeof CHART_COLORS_LIGHT
-}) {
-  if (!active || !payload?.length || !label) return null
-  // * Recharts sends one payload entry per Area; order can be [prevSeries, currentSeries].
-  // * Use the entry for the current metric so the tooltip shows today's value, not yesterday's.
-  type PayloadItem = { dataKey?: string; value?: number; payload: { prevPageviews?: number; prevVisitors?: number; prevBounceRate?: number; prevAvgDuration?: number; visitors?: number; pageviews?: number; bounce_rate?: number; avg_duration?: number } }
-  const items = payload as PayloadItem[]
-  const current = items.find((p) => p.dataKey === metric) ?? items[items.length - 1]
-  const value = Number(current?.value ?? (current?.payload as Record<string, number>)?.[metric] ?? 0)
-  
-  let prev: number | undefined
-  switch (metric) {
-    case 'visitors': prev = current?.payload?.prevVisitors; break;
-    case 'pageviews': prev = current?.payload?.prevPageviews; break;
-    case 'bounce_rate': prev = current?.payload?.prevBounceRate; break;
-    case 'avg_duration': prev = current?.payload?.prevAvgDuration; break;
-  }
+// ─── Helpers ─────────────────────────────────────────────────────────
 
-  const hasPrev = showComparison && prev != null
-  const delta =
-    hasPrev && (prev as number) > 0
-      ? Math.round(((value - (prev as number)) / (prev as number)) * 100)
-      : null
-
-  const formatValue = (v: number) => {
-    if (metric === 'bounce_rate') return `${Math.round(v)}%`
-    if (metric === 'avg_duration') return formatDuration(v)
-    return formatNumberFn(v)
-  }
-
-  return (
-    <div
-      className="rounded-lg border px-4 py-3 shadow-lg transition-shadow duration-300"
-      style={{
-        backgroundColor: colors.tooltipBg,
-        borderColor: colors.tooltipBorder,
-      }}
-    >
-      <div className="text-xs font-medium" style={{ color: colors.textMuted, marginBottom: 6 }}>
-        {label}
-      </div>
-      <div className="flex items-baseline gap-2">
-        <span className="text-base font-bold" style={{ color: colors.text }}>
-          {formatValue(value)}
-        </span>
-        <span className="text-xs" style={{ color: colors.textMuted }}>
-          {metricLabel}
-        </span>
-      </div>
-      {hasPrev && (
-        <div className="mt-1.5 flex items-center gap-2 text-xs" style={{ color: colors.textMuted }}>
-          <span>vs {formatValue(prev as number)} {prevPeriodLabel ? `(${prevPeriodLabel})` : 'prev'}</span>
-          {delta !== null && (
-            <span
-              className="font-medium"
-              style={{
-                color: delta > 0 ? (metric === 'bounce_rate' ? COLORS.danger : COLORS.success) : delta < 0 ? (metric === 'bounce_rate' ? COLORS.success : COLORS.danger) : colors.textMuted,
-              }}
-            >
-              {delta > 0 ? '+' : ''}{delta}%
-            </span>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// * Compact Y-axis formatter: 1.5M, 12k, 99
 function formatAxisValue(value: number): string {
-  if (value >= 1e6) return `${value / 1e6}M`
-  if (value >= 1000) return `${value / 1000}k`
+  if (value >= 1e6) return `${+(value / 1e6).toFixed(1)}M`
+  if (value >= 1000) return `${+(value / 1000).toFixed(1)}k`
+  if (!Number.isInteger(value)) return value.toFixed(1)
   return String(value)
 }
 
-// * Compact duration for Y-axis ticks (avoids truncation: "5m" not "5m 0s")
 function formatAxisDuration(seconds: number): string {
   if (!seconds) return '0s'
   const m = Math.floor(seconds / 60)
   const s = Math.floor(seconds % 60)
-  if (m > 0) return s > 0 ? `${m}m ${s}s` : `${m}m`
+  if (m > 0) return s > 0 ? `${m}m${s}s` : `${m}m`
   return `${s}s`
 }
 
-// * Returns human-readable label for the previous comparison period (e.g. "Feb 10" or "Jan 5 – Feb 4")
 function getPrevDateRangeLabel(dateRange: { start: string; end: string }): string {
   const startDate = new Date(dateRange.start)
   const endDate = new Date(dateRange.end)
@@ -197,7 +107,6 @@ function getPrevDateRangeLabel(dateRange: { start: string; end: string }): strin
   return `${fmt(prevStart)} – ${fmt(prevEnd)}`
 }
 
-// * Returns short trend context (e.g. "vs yesterday", "vs previous 7 days")
 function getTrendContext(dateRange: { start: string; end: string }): string {
   const startDate = new Date(dateRange.start)
   const endDate = new Date(dateRange.end)
@@ -209,11 +118,88 @@ function getTrendContext(dateRange: { start: string; end: string }): string {
   return `vs previous ${days} days`
 }
 
-export default function Chart({ 
-  data, 
-  prevData, 
-  stats, 
-  prevStats, 
+// ─── Tooltip ─────────────────────────────────────────────────────────
+
+function ChartTooltip({
+  active,
+  payload,
+  label,
+  metric,
+  metricLabel,
+  formatNumberFn,
+  showComparison,
+  prevPeriodLabel,
+  colors,
+}: {
+  active?: boolean
+  payload?: Array<{ payload: Record<string, number>; value: number; dataKey?: string }>
+  label?: string
+  metric: MetricType
+  metricLabel: string
+  formatNumberFn: (n: number) => string
+  showComparison: boolean
+  prevPeriodLabel?: string
+  colors: typeof CHART_COLORS_LIGHT
+}) {
+  if (!active || !payload?.length || !label) return null
+
+  const current = payload.find((p) => p.dataKey === metric) ?? payload[payload.length - 1]
+  const value = Number(current?.value ?? current?.payload?.[metric] ?? 0)
+
+  const prevKey = metric === 'visitors' ? 'prevVisitors' : metric === 'pageviews' ? 'prevPageviews' : metric === 'bounce_rate' ? 'prevBounceRate' : 'prevAvgDuration'
+  const prev = current?.payload?.[prevKey]
+
+  const hasPrev = showComparison && prev != null
+  const delta = hasPrev && prev > 0 ? Math.round(((value - prev) / prev) * 100) : null
+
+  const formatValue = (v: number) => {
+    if (metric === 'bounce_rate') return `${Math.round(v)}%`
+    if (metric === 'avg_duration') return formatDuration(v)
+    return formatNumberFn(v)
+  }
+
+  return (
+    <div
+      className="rounded-lg border px-3.5 py-2.5 shadow-lg"
+      style={{ backgroundColor: colors.tooltipBg, borderColor: colors.tooltipBorder }}
+    >
+      <div className="text-[11px] font-medium mb-1" style={{ color: colors.textMuted }}>
+        {label}
+      </div>
+      <div className="flex items-baseline gap-1.5">
+        <span className="text-sm font-bold" style={{ color: colors.text }}>
+          {formatValue(value)}
+        </span>
+        <span className="text-[11px]" style={{ color: colors.textMuted }}>
+          {metricLabel}
+        </span>
+      </div>
+      {hasPrev && (
+        <div className="mt-1 flex items-center gap-1.5 text-[11px]" style={{ color: colors.textMuted }}>
+          <span>vs {formatValue(prev)} {prevPeriodLabel ? `(${prevPeriodLabel})` : ''}</span>
+          {delta !== null && (
+            <span
+              className="font-medium"
+              style={{
+                color: delta > 0 ? (metric === 'bounce_rate' ? COLORS.danger : COLORS.success) : delta < 0 ? (metric === 'bounce_rate' ? COLORS.success : COLORS.danger) : colors.textMuted,
+              }}
+            >
+              {delta > 0 ? '+' : ''}{delta}%
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Chart Component ─────────────────────────────────────────────────
+
+export default function Chart({
+  data,
+  prevData,
+  stats,
+  prevStats,
   interval,
   dateRange,
   todayInterval,
@@ -229,24 +215,21 @@ export default function Chart({
   const { resolvedTheme } = useTheme()
 
   const handleExportChart = useCallback(async () => {
-    if (onExportChart) {
-      onExportChart()
-      return
-    }
+    if (onExportChart) { onExportChart(); return }
     if (!chartContainerRef.current) return
     try {
       const { toPng } = await import('html-to-image')
+      // Resolve the actual background color from the DOM (CSS vars don't work in html-to-image)
+      const bg = getComputedStyle(chartContainerRef.current).backgroundColor || (resolvedTheme === 'dark' ? '#171717' : '#ffffff')
       const dataUrl = await toPng(chartContainerRef.current, {
         cacheBust: true,
-        backgroundColor: resolvedTheme === 'dark' ? 'var(--color-neutral-900)' : '#ffffff',
+        backgroundColor: bg,
       })
       const link = document.createElement('a')
       link.download = `chart-${dateRange.start}-${dateRange.end}.png`
       link.href = dataUrl
       link.click()
-    } catch {
-      // Fallback: do nothing if export fails
-    }
+    } catch { /* noop */ }
   }, [onExportChart, dateRange, resolvedTheme])
 
   const colors = useMemo(
@@ -254,27 +237,24 @@ export default function Chart({
     [resolvedTheme]
   )
 
-  // * Align current and previous data
+  // ─── Data ──────────────────────────────────────────────────────────
+
   const chartData = data.map((item, i) => {
-    // * Try to find matching previous item (assuming same length/order)
-    // * For more robustness, we could match by relative index
     const prevItem = prevData?.[i]
-    
-    // * Format date based on interval
+
     let formattedDate: string
     if (interval === 'minute') {
       formattedDate = new Date(item.date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
     } else if (interval === 'hour') {
       const d = new Date(item.date)
       const isMidnight = d.getHours() === 0 && d.getMinutes() === 0
-      // * At 12:00 AM: date only (used for X-axis ticks). Non-midnight: date + time for tooltip only.
       formattedDate = isMidnight
         ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' 12:00 AM'
         : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ', ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric' })
     } else {
       formattedDate = new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     }
-    
+
     return {
       date: formattedDate,
       originalDate: item.date,
@@ -289,7 +269,8 @@ export default function Chart({
     }
   })
 
-  // * Calculate trends
+  // ─── Metrics ───────────────────────────────────────────────────────
+
   const calculateTrend = (current: number, previous?: number) => {
     if (!previous) return null
     if (previous === 0) return current > 0 ? 100 : 0
@@ -297,282 +278,201 @@ export default function Chart({
   }
 
   const metrics = [
-    {
-      id: 'visitors',
-      label: 'Unique Visitors',
-      value: formatNumber(stats.visitors),
-      trend: calculateTrend(stats.visitors, prevStats?.visitors),
-      color: COLORS.brand,
-      invertTrend: false,
-    },
-    {
-      id: 'pageviews',
-      label: 'Total Pageviews',
-      value: formatNumber(stats.pageviews),
-      trend: calculateTrend(stats.pageviews, prevStats?.pageviews),
-      color: COLORS.brand,
-      invertTrend: false,
-    },
-    {
-      id: 'bounce_rate',
-      label: 'Bounce Rate',
-      value: `${Math.round(stats.bounce_rate)}%`,
-      trend: calculateTrend(stats.bounce_rate, prevStats?.bounce_rate),
-      color: COLORS.brand,
-      invertTrend: true, // Lower bounce rate is better
-    },
-    {
-      id: 'avg_duration',
-      label: 'Visit Duration',
-      value: formatDuration(stats.avg_duration),
-      trend: calculateTrend(stats.avg_duration, prevStats?.avg_duration),
-      color: COLORS.brand,
-      invertTrend: false,
-    },
-  ] as const
+    { id: 'visitors' as const, label: 'Unique Visitors', value: formatNumber(stats.visitors), trend: calculateTrend(stats.visitors, prevStats?.visitors), invertTrend: false },
+    { id: 'pageviews' as const, label: 'Total Pageviews', value: formatNumber(stats.pageviews), trend: calculateTrend(stats.pageviews, prevStats?.pageviews), invertTrend: false },
+    { id: 'bounce_rate' as const, label: 'Bounce Rate', value: `${Math.round(stats.bounce_rate)}%`, trend: calculateTrend(stats.bounce_rate, prevStats?.bounce_rate), invertTrend: true },
+    { id: 'avg_duration' as const, label: 'Visit Duration', value: formatDuration(stats.avg_duration), trend: calculateTrend(stats.avg_duration, prevStats?.avg_duration), invertTrend: false },
+  ]
 
   const activeMetric = metrics.find((m) => m.id === metric) || metrics[0]
-  const chartMetric = metric
-  const metricLabel = metrics.find(m => m.id === metric)?.label || 'visitors'
+  const metricLabel = activeMetric.label
   const prevPeriodLabel = prevData?.length ? getPrevDateRangeLabel(dateRange) : ''
   const trendContext = getTrendContext(dateRange)
 
-  const avg = chartData.length
-    ? chartData.reduce((s, d) => s + (d[chartMetric] as number), 0) / chartData.length
-    : 0
-
   const hasPrev = !!(prevData?.length && showComparison)
   const hasData = data.length > 0
-  const hasAnyNonZero = hasData && chartData.some((d) => (d[chartMetric] as number) > 0)
+  const hasAnyNonZero = hasData && chartData.some((d) => (d[metric] as number) > 0)
 
-  // * In hourly view, only show X-axis labels at 12:00 AM (date + 12:00 AM).
-  const midnightTicks =
-    interval === 'hour'
-      ? (() => {
-          const t = chartData
-            .filter((_, i) => {
-              const d = new Date(data[i].date)
-              return d.getHours() === 0 && d.getMinutes() === 0
-            })
-            .map((c) => c.date)
-          return t.length > 0 ? t : undefined
-        })()
-      : undefined
+  // Count metrics should never show decimal Y-axis ticks
+  const isCountMetric = metric === 'visitors' || metric === 'pageviews'
 
-  // * In daily view, only show the date at each day (12:00 AM / start-of-day mark), no time.
+  // ─── X-Axis Ticks ─────────────────────────────────────────────────
+
+  const midnightTicks = interval === 'hour'
+    ? (() => {
+        const t = chartData
+          .filter((_, i) => { const d = new Date(data[i].date); return d.getHours() === 0 && d.getMinutes() === 0 })
+          .map((c) => c.date)
+        return t.length > 0 ? t : undefined
+      })()
+    : undefined
+
   const dayTicks = interval === 'day' && chartData.length > 0 ? chartData.map((c) => c.date) : undefined
+
+  // ─── Trend Badge ──────────────────────────────────────────────────
+
+  function TrendBadge({ trend, invert }: { trend: number | null; invert: boolean }) {
+    if (trend === null) return <span className="text-neutral-400 dark:text-neutral-500">—</span>
+    const effective = invert ? -trend : trend
+    const isPositive = effective > 0
+    const isNegative = effective < 0
+    return (
+      <span className={`inline-flex items-center text-xs font-medium ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : isNegative ? 'text-red-500 dark:text-red-400' : 'text-neutral-400'}`}>
+        {isPositive ? <ArrowUpRightIcon className="w-3 h-3 mr-0.5" /> : isNegative ? <ArrowDownRightIcon className="w-3 h-3 mr-0.5" /> : null}
+        {Math.abs(trend)}%
+      </span>
+    )
+  }
+
+  // ─── Render ────────────────────────────────────────────────────────
 
   return (
     <div
       ref={chartContainerRef}
-      className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm relative"
+      className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden relative"
       role="region"
       aria-label={`Analytics chart showing ${metricLabel} over time`}
     >
-      {/* * Subtle live/updated indicator in bottom-right corner */}
-      {lastUpdatedAt != null && (
-        <div
-          className="absolute bottom-3 right-6 flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400 pointer-events-none"
-          title="Data refreshes every 30 seconds"
-        >
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
-            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
-          </span>
-          Live · {formatUpdatedAgo(lastUpdatedAt)}
-        </div>
-      )}
-      {/* Stats Header (Interactive Tabs) */}
+      {/* Stat Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-neutral-200 dark:divide-neutral-800 border-b border-neutral-200 dark:border-neutral-800">
-        {metrics.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => setMetric(item.id as MetricType)}
-            aria-pressed={metric === item.id}
-            aria-label={`Show ${item.label} chart`}
-            className={`
-              p-4 sm:p-6 text-left transition-colors relative group
-              hover:bg-neutral-50 dark:hover:bg-neutral-800/50
-              ${metric === item.id ? 'bg-neutral-50 dark:bg-neutral-800/50' : ''}
-              cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2
-            `}
-          >
-            <div className={`text-xs font-semibold uppercase tracking-wider mb-1 flex items-center gap-2 ${metric === item.id ? 'text-neutral-900 dark:text-white' : 'text-neutral-500'}`}>
-              {item.label}
-            </div>
-            <div className="flex items-baseline gap-2 flex-wrap">
-              <span className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-white">
-                {item.value}
-              </span>
-              <span className="flex items-center text-sm font-medium">
-                {item.trend !== null ? (
-                  <>
-                    <span className={
-                      (item.invertTrend ? -item.trend : item.trend) > 0 
-                        ? 'text-emerald-600 dark:text-emerald-500' 
-                        : (item.invertTrend ? -item.trend : item.trend) < 0 
-                          ? 'text-red-600 dark:text-red-500' 
-                          : 'text-neutral-500'
-                    }>
-                      {(item.invertTrend ? -item.trend : item.trend) > 0 ? (
-                        <ArrowUpRightIcon className="w-3 h-3 mr-0.5 inline" />
-                      ) : (item.invertTrend ? -item.trend : item.trend) < 0 ? (
-                        <ArrowDownRightIcon className="w-3 h-3 mr-0.5 inline" />
-                      ) : null}
-                      {Math.abs(item.trend)}%
-                    </span>
-                  </>
-                ) : (
-                  <span className="text-neutral-500 dark:text-neutral-400">—</span>
-                )}
-              </span>
-            </div>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{trendContext}</p>
-            {hasData && (
-              <div className="mt-2">
-                <Sparkline data={chartData} dataKey={item.id} color={item.color} />
+        {metrics.map((item) => {
+          const isActive = metric === item.id
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setMetric(item.id)}
+              aria-pressed={isActive}
+              aria-label={`Show ${item.label} chart`}
+              className={`p-4 sm:px-6 sm:py-5 text-left transition-colors relative cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/50 ${isActive ? 'bg-neutral-50 dark:bg-neutral-800/40' : 'hover:bg-neutral-50/50 dark:hover:bg-neutral-800/20'}`}
+            >
+              <div className={`text-[11px] font-semibold uppercase tracking-wider mb-1.5 ${isActive ? 'text-neutral-900 dark:text-white' : 'text-neutral-400 dark:text-neutral-500'}`}>
+                {item.label}
               </div>
-            )}
-            {metric === item.id && (
-               <div className="absolute bottom-0 left-0 right-0 h-1" style={{ backgroundColor: item.color }} />
-            )}
-          </button>
-        ))}
+              <div className="flex items-baseline gap-2">
+                <span className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-white">
+                  {item.value}
+                </span>
+                <TrendBadge trend={item.trend} invert={item.invertTrend} />
+              </div>
+              <p className="text-[11px] text-neutral-400 dark:text-neutral-500 mt-0.5">{trendContext}</p>
+              {isActive && (
+                <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-brand-orange" />
+              )}
+            </button>
+          )
+        })}
       </div>
 
       {/* Chart Area */}
-      <div className="p-6">
-        {/* Toolbar Row */}
-        <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          {/* Left side: Legend */}
-          <div className="flex items-center">
+      <div className="px-4 sm:px-6 pt-4 pb-2">
+        {/* Toolbar */}
+        <div className="flex items-center justify-between gap-3 mb-4">
+          {/* Left: metric label + avg badge */}
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
+              {metricLabel}
+            </span>
             {hasPrev && (
-              <div className="flex items-center gap-4 text-xs font-medium" style={{ color: colors.textMuted }}>
-                <span className="flex items-center gap-2">
-                  <span
-                    className="h-2 w-2 rounded-full"
-                    style={{ backgroundColor: activeMetric.color }}
-                  />
+              <div className="hidden sm:flex items-center gap-3 text-[11px] font-medium text-neutral-400 dark:text-neutral-500 ml-2">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-brand-orange" />
                   Current
                 </span>
-                <span className="flex items-center gap-2">
-                  <span
-                    className="h-2 w-2 rounded-full border border-dashed"
-                    style={{ borderColor: colors.axis }}
-                  />
+                <span className="flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full border border-dashed" style={{ borderColor: colors.axis }} />
                   Previous{prevPeriodLabel ? ` (${prevPeriodLabel})` : ''}
                 </span>
               </div>
             )}
           </div>
 
-          {/* Right side: Controls */}
-          <div className="flex flex-wrap items-center gap-3 self-end sm:self-auto">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-neutral-500 dark:text-neutral-400">Group by:</span>
-              {dateRange.start === dateRange.end && (
-                <Select
-                  value={todayInterval}
-                  onChange={(value) => setTodayInterval(value as 'minute' | 'hour')}
-                  options={[
-                    { value: 'minute', label: '1 min' },
-                    { value: 'hour', label: '1 hour' },
-                  ]}
-                  className="min-w-[100px]"
-                />
-              )}
-              {dateRange.start !== dateRange.end && (
-                <Select
-                  value={multiDayInterval}
-                  onChange={(value) => setMultiDayInterval(value as 'hour' | 'day')}
-                  options={[
-                    { value: 'hour', label: '1 hour' },
-                    { value: 'day', label: '1 day' },
-                  ]}
-                  className="min-w-[100px]"
-                />
-              )}
-            </div>
+          {/* Right: controls */}
+          <div className="flex items-center gap-2">
+            {dateRange.start === dateRange.end ? (
+              <Select
+                value={todayInterval}
+                onChange={(value) => setTodayInterval(value as 'minute' | 'hour')}
+                options={[
+                  { value: 'minute', label: '1 min' },
+                  { value: 'hour', label: '1 hour' },
+                ]}
+                className="min-w-[90px]"
+              />
+            ) : (
+              <Select
+                value={multiDayInterval}
+                onChange={(value) => setMultiDayInterval(value as 'hour' | 'day')}
+                options={[
+                  { value: 'hour', label: '1 hour' },
+                  { value: 'day', label: '1 day' },
+                ]}
+                className="min-w-[90px]"
+              />
+            )}
 
             {prevData?.length ? (
-              <div className="flex flex-col gap-1">
-                <Checkbox
-                  checked={showComparison}
-                  onCheckedChange={setShowComparison}
-                  label="Compare"
-                />
-                {showComparison && prevPeriodLabel && (
-                  <span className="text-xs text-neutral-500 dark:text-neutral-400">
-                    ({prevPeriodLabel})
-                  </span>
-                )}
-              </div>
+              <Checkbox
+                checked={showComparison}
+                onCheckedChange={setShowComparison}
+                label="Compare"
+              />
             ) : null}
 
-            <Button
-              variant="ghost"
+            <button
               onClick={handleExportChart}
               disabled={!hasData}
-              className="gap-2 py-1.5 px-3 text-sm text-neutral-600 dark:text-neutral-400"
+              className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors disabled:opacity-30 cursor-pointer"
+              title="Export chart as PNG"
             >
               <DownloadIcon className="w-4 h-4" />
-              Export chart
-            </Button>
-
-            {/* Vertical Separator */}
-            <div className="h-4 w-px bg-neutral-200 dark:bg-neutral-800" />
+            </button>
           </div>
         </div>
 
         {!hasData ? (
-          <div className="flex h-80 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30">
-            <BarChartIcon className="h-12 w-12 text-neutral-300 dark:text-neutral-600" aria-hidden />
-            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
-              No data for this period
-            </p>
-            <p className="text-xs text-neutral-400 dark:text-neutral-500">Try a different date range</p>
+          <div className="flex h-72 flex-col items-center justify-center gap-2">
+            <BarChartIcon className="h-10 w-10 text-neutral-200 dark:text-neutral-700" aria-hidden />
+            <p className="text-sm text-neutral-400 dark:text-neutral-500">No data for this period</p>
           </div>
         ) : !hasAnyNonZero ? (
-          <div className="flex h-80 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30">
-            <BarChartIcon className="h-12 w-12 text-neutral-300 dark:text-neutral-600" aria-hidden />
-            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
-              No {metricLabel.toLowerCase()} data for this period
-            </p>
-            <p className="text-xs text-neutral-400 dark:text-neutral-500">Try selecting another metric or date range</p>
+          <div className="flex h-72 flex-col items-center justify-center gap-2">
+            <BarChartIcon className="h-10 w-10 text-neutral-200 dark:text-neutral-700" aria-hidden />
+            <p className="text-sm text-neutral-400 dark:text-neutral-500">No {metricLabel.toLowerCase()} recorded</p>
           </div>
         ) : (
-          <div className="h-[360px] w-full flex flex-col">
-            <div className="text-xs font-medium mb-1 flex-shrink-0" style={{ color: colors.axis }}>
-              {metricLabel}
-            </div>
-            <div className="flex-1 min-h-0 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 4, right: 8, left: 24, bottom: 24 }}>
+          <div className="h-[320px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
                 <defs>
                   <linearGradient id={`gradient-${metric}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={activeMetric.color} stopOpacity={0.35} />
-                    <stop offset="50%" stopColor={activeMetric.color} stopOpacity={0.12} />
-                    <stop offset="100%" stopColor={activeMetric.color} stopOpacity={0} />
+                    <stop offset="0%" stopColor={COLORS.brand} stopOpacity={0.25} />
+                    <stop offset="100%" stopColor={COLORS.brand} stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={colors.border} />
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke={colors.grid}
+                />
                 <XAxis
                   dataKey="date"
                   stroke={colors.axis}
-                  fontSize={12}
+                  fontSize={11}
                   tickLine={false}
                   axisLine={false}
-                  minTickGap={28}
+                  minTickGap={40}
                   ticks={midnightTicks ?? dayTicks}
+                  dy={8}
                 />
                 <YAxis
                   stroke={colors.axis}
-                  fontSize={12}
+                  fontSize={11}
                   tickLine={false}
                   axisLine={false}
                   domain={[0, 'auto']}
-                  width={24}
+                  width={40}
+                  allowDecimals={!isCountMetric}
                   tickFormatter={(val) => {
                     if (metric === 'bounce_rate') return `${val}%`
                     if (metric === 'avg_duration') return formatAxisDuration(val)
@@ -583,12 +483,9 @@ export default function Chart({
                   content={(p: TooltipProps<number, string>) => (
                     <ChartTooltip
                       active={p.active}
-                      payload={p.payload as Array<{
-                        payload: { prevPageviews?: number; prevVisitors?: number }
-                        value: number
-                      }>}
+                      payload={p.payload as Array<{ payload: Record<string, number>; value: number; dataKey?: string }>}
                       label={p.label as string}
-                      metric={chartMetric}
+                      metric={metric}
                       metricLabel={metricLabel}
                       formatNumberFn={formatNumber}
                       showComparison={hasPrev}
@@ -596,42 +493,23 @@ export default function Chart({
                       colors={colors}
                     />
                   )}
-                  cursor={{ stroke: activeMetric.color, strokeDasharray: '4 4', strokeWidth: 1 }}
+                  cursor={{ stroke: colors.axis, strokeOpacity: 0.3, strokeWidth: 1 }}
                 />
 
-                {avg > 0 && (
-                  <ReferenceLine
-                    y={avg}
-                    stroke={colors.axis}
-                    strokeDasharray="4 4"
-                    strokeOpacity={0.7}
-                    label={{
-                      value: `Avg: ${metric === 'bounce_rate' ? `${Math.round(avg)}%` : metric === 'avg_duration' ? formatAxisDuration(avg) : formatAxisValue(avg)}`,
-                      position: 'insideTopRight',
-                      fill: colors.axis,
-                      fontSize: 11,
-                    }}
-                  />
-                )}
 
                 {hasPrev && (
                   <Area
                     type="monotone"
-                    dataKey={
-                      chartMetric === 'visitors' ? 'prevVisitors' : 
-                      chartMetric === 'pageviews' ? 'prevPageviews' :
-                      chartMetric === 'bounce_rate' ? 'prevBounceRate' :
-                      'prevAvgDuration'
-                    }
+                    dataKey={metric === 'visitors' ? 'prevVisitors' : metric === 'pageviews' ? 'prevPageviews' : metric === 'bounce_rate' ? 'prevBounceRate' : 'prevAvgDuration'}
                     stroke={colors.axis}
-                    strokeWidth={2}
-                    strokeDasharray="5 5"
+                    strokeWidth={1.5}
+                    strokeDasharray="4 4"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     fill="none"
                     dot={false}
                     isAnimationActive
-                    animationDuration={500}
+                    animationDuration={400}
                     animationEasing="ease-out"
                   />
                 )}
@@ -639,30 +517,42 @@ export default function Chart({
                 <Area
                   type="monotone"
                   baseValue={0}
-                  dataKey={chartMetric}
-                  stroke={activeMetric.color}
-                  strokeWidth={2.5}
+                  dataKey={metric}
+                  stroke={COLORS.brand}
+                  strokeWidth={2}
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   fillOpacity={1}
                   fill={`url(#gradient-${metric})`}
                   dot={false}
                   activeDot={{
-                    r: 5,
+                    r: 4,
                     strokeWidth: 2,
-                    fill: resolvedTheme === 'dark' ? 'var(--color-neutral-800)' : '#ffffff',
-                    stroke: activeMetric.color,
+                    fill: resolvedTheme === 'dark' ? 'var(--color-neutral-900)' : '#ffffff',
+                    stroke: COLORS.brand,
                   }}
                   isAnimationActive
-                  animationDuration={500}
+                  animationDuration={400}
                   animationEasing="ease-out"
                 />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
         )}
       </div>
+
+      {/* Live indicator */}
+      {lastUpdatedAt != null && (
+        <div className="px-4 sm:px-6 pb-3 flex justify-end">
+          <div className="flex items-center gap-1.5 text-[11px] text-neutral-400 dark:text-neutral-500">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
+            </span>
+            Live · {formatUpdatedAgo(lastUpdatedAt)}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

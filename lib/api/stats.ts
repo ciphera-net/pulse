@@ -120,6 +120,7 @@ function buildQuery(
     interval?: string
     countryLimit?: number
     sort?: string
+    filters?: string
   },
   auth?: AuthParams
 ): string {
@@ -130,6 +131,7 @@ function buildQuery(
   if (opts.interval) params.append('interval', opts.interval)
   if (opts.countryLimit != null) params.append('country_limit', opts.countryLimit.toString())
   if (opts.sort) params.append('sort', opts.sort)
+  if (opts.filters) params.append('filters', opts.filters)
   if (auth) appendAuthParams(params, auth)
   const query = params.toString()
   return query ? `?${query}` : ''
@@ -137,8 +139,8 @@ function buildQuery(
 
 /** Factory for endpoints that return an array nested under a response key. */
 function createListFetcher<T>(path: string, field: string, defaultLimit = 10) {
-  return (siteId: string, startDate?: string, endDate?: string, limit = defaultLimit): Promise<T[]> =>
-    apiRequest<Record<string, T[]>>(`/sites/${siteId}/${path}${buildQuery({ startDate, endDate, limit })}`)
+  return (siteId: string, startDate?: string, endDate?: string, limit = defaultLimit, filters?: string): Promise<T[]> =>
+    apiRequest<Record<string, T[]>>(`/sites/${siteId}/${path}${buildQuery({ startDate, endDate, limit, filters })}`)
       .then(r => r?.[field] || [])
 }
 
@@ -160,8 +162,8 @@ export const getCampaigns = createListFetcher<CampaignStat>('campaigns', 'campai
 
 // ─── Stats & Realtime ───────────────────────────────────────────────
 
-export function getStats(siteId: string, startDate?: string, endDate?: string): Promise<Stats> {
-  return apiRequest<Stats>(`/sites/${siteId}/stats${buildQuery({ startDate, endDate })}`)
+export function getStats(siteId: string, startDate?: string, endDate?: string, filters?: string): Promise<Stats> {
+  return apiRequest<Stats>(`/sites/${siteId}/stats${buildQuery({ startDate, endDate, filters })}`)
 }
 
 export function getPublicStats(siteId: string, startDate?: string, endDate?: string, auth?: AuthParams): Promise<Stats> {
@@ -178,8 +180,8 @@ export function getPublicRealtime(siteId: string, auth?: AuthParams): Promise<Re
 
 // ─── Daily Stats ────────────────────────────────────────────────────
 
-export function getDailyStats(siteId: string, startDate?: string, endDate?: string, interval?: string): Promise<DailyStat[]> {
-  return apiRequest<{ stats: DailyStat[] }>(`/sites/${siteId}/daily${buildQuery({ startDate, endDate, interval })}`)
+export function getDailyStats(siteId: string, startDate?: string, endDate?: string, interval?: string, filters?: string): Promise<DailyStat[]> {
+  return apiRequest<{ stats: DailyStat[] }>(`/sites/${siteId}/daily${buildQuery({ startDate, endDate, interval, filters })}`)
     .then(r => r?.stats || [])
 }
 
@@ -302,8 +304,8 @@ export interface DashboardGoalsData {
   goal_counts: GoalCountStat[]
 }
 
-export function getDashboardOverview(siteId: string, startDate?: string, endDate?: string, interval?: string): Promise<DashboardOverviewData> {
-  return apiRequest<DashboardOverviewData>(`/sites/${siteId}/dashboard/overview${buildQuery({ startDate, endDate, interval })}`)
+export function getDashboardOverview(siteId: string, startDate?: string, endDate?: string, interval?: string, filters?: string): Promise<DashboardOverviewData> {
+  return apiRequest<DashboardOverviewData>(`/sites/${siteId}/dashboard/overview${buildQuery({ startDate, endDate, interval, filters })}`)
 }
 
 export function getPublicDashboardOverview(
@@ -313,8 +315,8 @@ export function getPublicDashboardOverview(
   return apiRequest<DashboardOverviewData>(`/public/sites/${siteId}/dashboard/overview${buildQuery({ startDate, endDate, interval }, { password, captcha })}`)
 }
 
-export function getDashboardPages(siteId: string, startDate?: string, endDate?: string, limit = 10): Promise<DashboardPagesData> {
-  return apiRequest<DashboardPagesData>(`/sites/${siteId}/dashboard/pages${buildQuery({ startDate, endDate, limit })}`)
+export function getDashboardPages(siteId: string, startDate?: string, endDate?: string, limit = 10, filters?: string): Promise<DashboardPagesData> {
+  return apiRequest<DashboardPagesData>(`/sites/${siteId}/dashboard/pages${buildQuery({ startDate, endDate, limit, filters })}`)
 }
 
 export function getPublicDashboardPages(
@@ -324,8 +326,8 @@ export function getPublicDashboardPages(
   return apiRequest<DashboardPagesData>(`/public/sites/${siteId}/dashboard/pages${buildQuery({ startDate, endDate, limit }, { password, captcha })}`)
 }
 
-export function getDashboardLocations(siteId: string, startDate?: string, endDate?: string, limit = 10, countryLimit = 250): Promise<DashboardLocationsData> {
-  return apiRequest<DashboardLocationsData>(`/sites/${siteId}/dashboard/locations${buildQuery({ startDate, endDate, limit, countryLimit })}`)
+export function getDashboardLocations(siteId: string, startDate?: string, endDate?: string, limit = 10, countryLimit = 250, filters?: string): Promise<DashboardLocationsData> {
+  return apiRequest<DashboardLocationsData>(`/sites/${siteId}/dashboard/locations${buildQuery({ startDate, endDate, limit, countryLimit, filters })}`)
 }
 
 export function getPublicDashboardLocations(
@@ -335,8 +337,8 @@ export function getPublicDashboardLocations(
   return apiRequest<DashboardLocationsData>(`/public/sites/${siteId}/dashboard/locations${buildQuery({ startDate, endDate, limit, countryLimit }, { password, captcha })}`)
 }
 
-export function getDashboardDevices(siteId: string, startDate?: string, endDate?: string, limit = 10): Promise<DashboardDevicesData> {
-  return apiRequest<DashboardDevicesData>(`/sites/${siteId}/dashboard/devices${buildQuery({ startDate, endDate, limit })}`)
+export function getDashboardDevices(siteId: string, startDate?: string, endDate?: string, limit = 10, filters?: string): Promise<DashboardDevicesData> {
+  return apiRequest<DashboardDevicesData>(`/sites/${siteId}/dashboard/devices${buildQuery({ startDate, endDate, limit, filters })}`)
 }
 
 export function getPublicDashboardDevices(
@@ -346,8 +348,8 @@ export function getPublicDashboardDevices(
   return apiRequest<DashboardDevicesData>(`/public/sites/${siteId}/dashboard/devices${buildQuery({ startDate, endDate, limit }, { password, captcha })}`)
 }
 
-export function getDashboardReferrers(siteId: string, startDate?: string, endDate?: string, limit = 10): Promise<DashboardReferrersData> {
-  return apiRequest<DashboardReferrersData>(`/sites/${siteId}/dashboard/referrers${buildQuery({ startDate, endDate, limit })}`)
+export function getDashboardReferrers(siteId: string, startDate?: string, endDate?: string, limit = 10, filters?: string): Promise<DashboardReferrersData> {
+  return apiRequest<DashboardReferrersData>(`/sites/${siteId}/dashboard/referrers${buildQuery({ startDate, endDate, limit, filters })}`)
 }
 
 export function getPublicDashboardReferrers(
@@ -357,8 +359,8 @@ export function getPublicDashboardReferrers(
   return apiRequest<DashboardReferrersData>(`/public/sites/${siteId}/dashboard/referrers${buildQuery({ startDate, endDate, limit }, { password, captcha })}`)
 }
 
-export function getDashboardPerformance(siteId: string, startDate?: string, endDate?: string): Promise<DashboardPerformanceData> {
-  return apiRequest<DashboardPerformanceData>(`/sites/${siteId}/dashboard/performance${buildQuery({ startDate, endDate })}`)
+export function getDashboardPerformance(siteId: string, startDate?: string, endDate?: string, filters?: string): Promise<DashboardPerformanceData> {
+  return apiRequest<DashboardPerformanceData>(`/sites/${siteId}/dashboard/performance${buildQuery({ startDate, endDate, filters })}`)
 }
 
 export function getPublicDashboardPerformance(
@@ -368,8 +370,8 @@ export function getPublicDashboardPerformance(
   return apiRequest<DashboardPerformanceData>(`/public/sites/${siteId}/dashboard/performance${buildQuery({ startDate, endDate }, { password, captcha })}`)
 }
 
-export function getDashboardGoals(siteId: string, startDate?: string, endDate?: string, limit = 10): Promise<DashboardGoalsData> {
-  return apiRequest<DashboardGoalsData>(`/sites/${siteId}/dashboard/goals${buildQuery({ startDate, endDate, limit })}`)
+export function getDashboardGoals(siteId: string, startDate?: string, endDate?: string, limit = 10, filters?: string): Promise<DashboardGoalsData> {
+  return apiRequest<DashboardGoalsData>(`/sites/${siteId}/dashboard/goals${buildQuery({ startDate, endDate, limit, filters })}`)
 }
 
 export function getPublicDashboardGoals(
@@ -377,4 +379,26 @@ export function getPublicDashboardGoals(
   password?: string, captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
 ): Promise<DashboardGoalsData> {
   return apiRequest<DashboardGoalsData>(`/public/sites/${siteId}/dashboard/goals${buildQuery({ startDate, endDate, limit }, { password, captcha })}`)
+}
+
+// ─── Event Properties ────────────────────────────────────────────────
+
+export interface EventPropertyKey {
+  key: string
+  count: number
+}
+
+export interface EventPropertyValue {
+  value: string
+  count: number
+}
+
+export function getEventPropertyKeys(siteId: string, eventName: string, startDate?: string, endDate?: string): Promise<EventPropertyKey[]> {
+  return apiRequest<{ keys: EventPropertyKey[] }>(`/sites/${siteId}/goals/${encodeURIComponent(eventName)}/properties${buildQuery({ startDate, endDate })}`)
+    .then(r => r?.keys || [])
+}
+
+export function getEventPropertyValues(siteId: string, eventName: string, propName: string, startDate?: string, endDate?: string, limit = 20): Promise<EventPropertyValue[]> {
+  return apiRequest<{ values: EventPropertyValue[] }>(`/sites/${siteId}/goals/${encodeURIComponent(eventName)}/properties/${encodeURIComponent(propName)}${buildQuery({ startDate, endDate, limit })}`)
+    .then(r => r?.values || [])
 }

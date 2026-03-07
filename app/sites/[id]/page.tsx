@@ -2,10 +2,23 @@
 
 import { useAuth } from '@/lib/auth/context'
 import { logger } from '@/lib/utils/logger'
-import { useEffect, useState, useMemo } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useCallback, useEffect, useState, useMemo } from 'react'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { getPerformanceByPage, type Stats, type DailyStat } from '@/lib/api/stats'
+import {
+  getPerformanceByPage,
+  getTopPages,
+  getTopReferrers,
+  getCountries,
+  getCities,
+  getRegions,
+  getBrowsers,
+  getOS,
+  getDevices,
+  getCampaigns,
+  type Stats,
+  type DailyStat,
+} from '@/lib/api/stats'
 import { getDateRange } from '@ciphera-net/ui'
 import { toast } from '@ciphera-net/ui'
 import { Button } from '@ciphera-net/ui'
@@ -19,7 +32,12 @@ import TechSpecs from '@/components/dashboard/TechSpecs'
 import Chart from '@/components/dashboard/Chart'
 import PerformanceStats from '@/components/dashboard/PerformanceStats'
 import GoalStats from '@/components/dashboard/GoalStats'
+import ScrollDepth from '@/components/dashboard/ScrollDepth'
 import Campaigns from '@/components/dashboard/Campaigns'
+import FilterBar from '@/components/dashboard/FilterBar'
+import AddFilterDropdown, { type FilterSuggestion, type FilterSuggestions } from '@/components/dashboard/AddFilterDropdown'
+import EventProperties from '@/components/dashboard/EventProperties'
+import { type DimensionFilter, serializeFilters, parseFiltersFromURL } from '@/lib/filters'
 import {
   useDashboardOverview,
   useDashboardPages,
@@ -81,6 +99,109 @@ export default function SiteDashboardPage() {
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null)
   const [, setTick] = useState(0)
 
+  // Dimension filters state
+  const searchParams = useSearchParams()
+  const [filters, setFilters] = useState<DimensionFilter[]>(() => {
+    const raw = searchParams.get('filters')
+    return raw ? parseFiltersFromURL(raw) : []
+  })
+  const filtersParam = useMemo(() => serializeFilters(filters), [filters])
+
+  // Selected event for property breakdown
+  const [selectedEvent, setSelectedEvent] = useState<string | null>(null)
+
+  const handleAddFilter = useCallback((filter: DimensionFilter) => {
+    setFilters(prev => {
+      const isDuplicate = prev.some(
+        f => f.dimension === filter.dimension && f.operator === filter.operator && f.values.join(';') === filter.values.join(';')
+      )
+      if (isDuplicate) return prev
+      return [...prev, filter]
+    })
+  }, [])
+
+  const handleRemoveFilter = useCallback((index: number) => {
+    setFilters(prev => prev.filter((_, i) => i !== index))
+  }, [])
+
+  const handleClearFilters = useCallback(() => {
+    setFilters([])
+  }, [])
+
+  // Fetch full suggestion list (up to 100) when a dimension is selected in the filter dropdown
+  const handleFetchSuggestions = useCallback(async (dimension: string): Promise<FilterSuggestion[]> => {
+    const start = dateRange.start
+    const end = dateRange.end
+    const f = filtersParam || undefined
+    const limit = 100
+
+    try {
+      const regionNames = (() => { try { return new Intl.DisplayNames(['en'], { type: 'region' }) } catch { return null } })()
+
+      switch (dimension) {
+        case 'page': {
+          const data = await getTopPages(siteId, start, end, limit, f)
+          return data.map(p => ({ value: p.path, label: p.path, count: p.pageviews }))
+        }
+        case 'referrer': {
+          const data = await getTopReferrers(siteId, start, end, limit, f)
+          return data.filter(r => r.referrer && r.referrer !== '').map(r => ({ value: r.referrer, label: r.referrer, count: r.pageviews }))
+        }
+        case 'country': {
+          const data = await getCountries(siteId, start, end, limit, f)
+          return data.filter(c => c.country && c.country !== 'Unknown').map(c => ({ value: c.country, label: regionNames?.of(c.country) ?? c.country, count: c.pageviews }))
+        }
+        case 'city': {
+          const data = await getCities(siteId, start, end, limit, f)
+          return data.filter(c => c.city && c.city !== 'Unknown').map(c => ({ value: c.city, label: c.city, count: c.pageviews }))
+        }
+        case 'region': {
+          const data = await getRegions(siteId, start, end, limit, f)
+          return data.filter(r => r.region && r.region !== 'Unknown').map(r => ({ value: r.region, label: r.region, count: r.pageviews }))
+        }
+        case 'browser': {
+          const data = await getBrowsers(siteId, start, end, limit, f)
+          return data.filter(b => b.browser && b.browser !== 'Unknown').map(b => ({ value: b.browser, label: b.browser, count: b.pageviews }))
+        }
+        case 'os': {
+          const data = await getOS(siteId, start, end, limit, f)
+          return data.filter(o => o.os && o.os !== 'Unknown').map(o => ({ value: o.os, label: o.os, count: o.pageviews }))
+        }
+        case 'device': {
+          const data = await getDevices(siteId, start, end, limit, f)
+          return data.filter(d => d.device && d.device !== 'Unknown').map(d => ({ value: d.device, label: d.device, count: d.pageviews }))
+        }
+        case 'utm_source':
+        case 'utm_medium':
+        case 'utm_campaign': {
+          const data = await getCampaigns(siteId, start, end, limit, f)
+          const map = new Map<string, number>()
+          const field = dimension === 'utm_source' ? 'source' : dimension === 'utm_medium' ? 'medium' : 'campaign'
+          data.forEach(c => {
+            const val = c[field]
+            if (val) map.set(val, (map.get(val) ?? 0) + c.pageviews)
+          })
+          return [...map.entries()].map(([v, count]) => ({ value: v, label: v, count }))
+        }
+        default:
+          return []
+      }
+    } catch {
+      return []
+    }
+  }, [siteId, dateRange.start, dateRange.end, filtersParam])
+
+  // Sync filters to URL
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    if (filtersParam) {
+      url.searchParams.set('filters', filtersParam)
+    } else {
+      url.searchParams.delete('filters')
+    }
+    window.history.replaceState({}, '', url.toString())
+  }, [filtersParam])
+
   const interval = dateRange.start === dateRange.end ? todayInterval : multiDayInterval
 
   // Previous period date range for comparison
@@ -99,13 +220,14 @@ export default function SiteDashboardPage() {
 
   // SWR hooks - replace manual useState + useEffect + setInterval polling
   // Each hook handles its own refresh interval, deduplication, and error retry
-  const { data: overview, isLoading: overviewLoading, error: overviewError } = useDashboardOverview(siteId, dateRange.start, dateRange.end, interval)
-  const { data: pages } = useDashboardPages(siteId, dateRange.start, dateRange.end)
-  const { data: locations } = useDashboardLocations(siteId, dateRange.start, dateRange.end)
-  const { data: devicesData } = useDashboardDevices(siteId, dateRange.start, dateRange.end)
-  const { data: referrers } = useDashboardReferrers(siteId, dateRange.start, dateRange.end)
-  const { data: performanceData } = useDashboardPerformance(siteId, dateRange.start, dateRange.end)
-  const { data: goalsData } = useDashboardGoals(siteId, dateRange.start, dateRange.end)
+  // Filters are included in cache keys so changing filters auto-refetches
+  const { data: overview, isLoading: overviewLoading, error: overviewError } = useDashboardOverview(siteId, dateRange.start, dateRange.end, interval, filtersParam || undefined)
+  const { data: pages } = useDashboardPages(siteId, dateRange.start, dateRange.end, filtersParam || undefined)
+  const { data: locations } = useDashboardLocations(siteId, dateRange.start, dateRange.end, filtersParam || undefined)
+  const { data: devicesData } = useDashboardDevices(siteId, dateRange.start, dateRange.end, filtersParam || undefined)
+  const { data: referrers } = useDashboardReferrers(siteId, dateRange.start, dateRange.end, filtersParam || undefined)
+  const { data: performanceData } = useDashboardPerformance(siteId, dateRange.start, dateRange.end, filtersParam || undefined)
+  const { data: goalsData } = useDashboardGoals(siteId, dateRange.start, dateRange.end, filtersParam || undefined)
   const { data: realtimeData } = useRealtime(siteId)
   const { data: prevStats } = useStats(siteId, prevRange.start, prevRange.end)
   const { data: prevDailyStats } = useDailyStats(siteId, prevRange.start, prevRange.end, interval)
@@ -116,6 +238,106 @@ export default function SiteDashboardPage() {
   const stats: Stats = overview?.stats ?? { pageviews: 0, visitors: 0, bounce_rate: 0, avg_duration: 0 }
   const realtime = realtimeData?.visitors ?? overview?.realtime_visitors ?? 0
   const dailyStats: DailyStat[] = overview?.daily_stats ?? []
+
+  // Build filter suggestions from current dashboard data
+  const filterSuggestions = useMemo<FilterSuggestions>(() => {
+    const s: FilterSuggestions = {}
+
+    // Pages
+    const topPages = pages?.top_pages ?? []
+    if (topPages.length > 0) {
+      s.page = topPages.map(p => ({ value: p.path, label: p.path, count: p.pageviews }))
+    }
+
+    // Referrers
+    const refs = referrers?.top_referrers ?? []
+    if (refs.length > 0) {
+      s.referrer = refs.filter(r => r.referrer && r.referrer !== '').map(r => ({
+        value: r.referrer,
+        label: r.referrer,
+        count: r.pageviews,
+      }))
+    }
+
+    // Countries
+    const ctrs = locations?.countries ?? []
+    if (ctrs.length > 0) {
+      const regionNames = (() => { try { return new Intl.DisplayNames(['en'], { type: 'region' }) } catch { return null } })()
+      s.country = ctrs.filter(c => c.country && c.country !== 'Unknown').map(c => ({
+        value: c.country,
+        label: regionNames?.of(c.country) ?? c.country,
+        count: c.pageviews,
+      }))
+    }
+
+    // Regions
+    const regs = locations?.regions ?? []
+    if (regs.length > 0) {
+      s.region = regs.filter(r => r.region && r.region !== 'Unknown').map(r => ({
+        value: r.region,
+        label: r.region,
+        count: r.pageviews,
+      }))
+    }
+
+    // Cities
+    const cts = locations?.cities ?? []
+    if (cts.length > 0) {
+      s.city = cts.filter(c => c.city && c.city !== 'Unknown').map(c => ({
+        value: c.city,
+        label: c.city,
+        count: c.pageviews,
+      }))
+    }
+
+    // Browsers
+    const brs = devicesData?.browsers ?? []
+    if (brs.length > 0) {
+      s.browser = brs.filter(b => b.browser && b.browser !== 'Unknown').map(b => ({
+        value: b.browser,
+        label: b.browser,
+        count: b.pageviews,
+      }))
+    }
+
+    // OS
+    const oses = devicesData?.os ?? []
+    if (oses.length > 0) {
+      s.os = oses.filter(o => o.os && o.os !== 'Unknown').map(o => ({
+        value: o.os,
+        label: o.os,
+        count: o.pageviews,
+      }))
+    }
+
+    // Devices
+    const devs = devicesData?.devices ?? []
+    if (devs.length > 0) {
+      s.device = devs.filter(d => d.device && d.device !== 'Unknown').map(d => ({
+        value: d.device,
+        label: d.device,
+        count: d.pageviews,
+      }))
+    }
+
+    // UTM from campaigns
+    const camps = campaigns ?? []
+    if (camps.length > 0) {
+      const sources = new Map<string, number>()
+      const mediums = new Map<string, number>()
+      const campNames = new Map<string, number>()
+      camps.forEach(c => {
+        if (c.source) sources.set(c.source, (sources.get(c.source) ?? 0) + c.pageviews)
+        if (c.medium) mediums.set(c.medium, (mediums.get(c.medium) ?? 0) + c.pageviews)
+        if (c.campaign) campNames.set(c.campaign, (campNames.get(c.campaign) ?? 0) + c.pageviews)
+      })
+      if (sources.size > 0) s.utm_source = [...sources.entries()].map(([v, c]) => ({ value: v, label: v, count: c }))
+      if (mediums.size > 0) s.utm_medium = [...mediums.entries()].map(([v, c]) => ({ value: v, label: v, count: c }))
+      if (campNames.size > 0) s.utm_campaign = [...campNames.entries()].map(([v, c]) => ({ value: v, label: v, count: c }))
+    }
+
+    return s
+  }, [pages, referrers, locations, devicesData, campaigns])
 
   // Show error toast on fetch failure
   useEffect(() => {
@@ -305,6 +527,12 @@ export default function SiteDashboardPage() {
         </div>
       </div>
 
+      {/* Dimension Filters */}
+      <div className="flex items-center gap-2 flex-wrap mb-2">
+        <AddFilterDropdown onAdd={handleAddFilter} suggestions={filterSuggestions} onFetchSuggestions={handleFetchSuggestions} />
+        <FilterBar filters={filters} onRemove={handleRemoveFilter} onClear={handleClearFilters} />
+      </div>
+
       {/* Advanced Chart with Integrated Stats */}
       <div className="mb-8">
         <Chart
@@ -345,12 +573,14 @@ export default function SiteDashboardPage() {
           collectPagePaths={site.collect_page_paths ?? true}
           siteId={siteId}
           dateRange={dateRange}
+          onFilter={handleAddFilter}
         />
         <TopReferrers
           referrers={referrers?.top_referrers ?? []}
           collectReferrers={site.collect_referrers ?? true}
           siteId={siteId}
           dateRange={dateRange}
+          onFilter={handleAddFilter}
         />
       </div>
 
@@ -362,6 +592,7 @@ export default function SiteDashboardPage() {
           geoDataLevel={site.collect_geo_data || 'full'}
           siteId={siteId}
           dateRange={dateRange}
+          onFilter={handleAddFilter}
         />
         <TechSpecs
           browsers={devicesData?.browsers ?? []}
@@ -372,17 +603,33 @@ export default function SiteDashboardPage() {
           collectScreenResolution={site.collect_screen_resolution ?? true}
           siteId={siteId}
           dateRange={dateRange}
+          onFilter={handleAddFilter}
         />
       </div>
 
-      {/* Campaigns Report */}
-      <div className="mb-8">
-        <Campaigns siteId={siteId} dateRange={dateRange} />
+      <div className="grid gap-6 lg:grid-cols-2 mb-8">
+        <Campaigns siteId={siteId} dateRange={dateRange} filters={filtersParam || undefined} onFilter={handleAddFilter} />
+        <GoalStats
+          goalCounts={(goalsData?.goal_counts ?? []).filter(g => !/^scroll_\d+$/.test(g.event_name))}
+          onSelectEvent={setSelectedEvent}
+        />
       </div>
 
       <div className="mb-8">
-        <GoalStats goalCounts={goalsData?.goal_counts ?? []} />
+        <ScrollDepth goalCounts={goalsData?.goal_counts ?? []} totalPageviews={stats.pageviews} />
       </div>
+
+      {/* Event Properties Breakdown */}
+      {selectedEvent && (
+        <div className="mb-8">
+          <EventProperties
+            siteId={siteId}
+            eventName={selectedEvent}
+            dateRange={dateRange}
+            onClose={() => setSelectedEvent(null)}
+          />
+        </div>
+      )}
 
       <DatePicker
         isOpen={isDatePickerOpen}
