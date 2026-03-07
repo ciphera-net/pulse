@@ -26,14 +26,7 @@ function AuthCallbackContent() {
     try {
       result = await exchangeAuthCode(code, codeVerifier, redirectUri)
     } catch {
-      // * Stale build — cached JS has old Server Action hashes. Hard reload once to fix.
-      const key = 'pulse_reload_for_stale_build'
-      if (!sessionStorage.getItem(key)) {
-        sessionStorage.setItem(key, '1')
-        window.location.reload()
-        return
-      }
-      sessionStorage.removeItem(key)
+      // * Stale build or network error — show error so user can retry via full navigation
       setError('Something went wrong. Please try logging in again.')
       return
     }
