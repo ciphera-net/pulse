@@ -135,10 +135,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         let session: Awaited<ReturnType<typeof getSessionAction>> = null
         try {
           session = await getSessionAction()
+          sessionStorage.removeItem('pulse_reload_for_stale_build')
         } catch {
           // * Stale build — browser has cached JS with old Server Action hashes.
-          // * Force a hard reload to fetch fresh bundles from the server.
-          window.location.reload()
+          // * Force a hard reload once to fetch fresh bundles. Guard prevents infinite loop.
+          const key = 'pulse_reload_for_stale_build'
+          if (!sessionStorage.getItem(key)) {
+            sessionStorage.setItem(key, '1')
+            window.location.reload()
+            return
+          }
+          sessionStorage.removeItem(key)
+          // * Reload didn't fix it — treat as no session
+          setLoading(false)
           return
         }
 
@@ -153,7 +162,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             try {
               session = await getSessionAction()
             } catch {
-              window.location.reload()
+              const key = 'pulse_reload_for_stale_build'
+              if (!sessionStorage.getItem(key)) {
+                sessionStorage.setItem(key, '1')
+                window.location.reload()
+                return
+              }
+              sessionStorage.removeItem(key)
+              setLoading(false)
               return
             }
           }
