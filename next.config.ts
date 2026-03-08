@@ -30,7 +30,7 @@ const nextConfig: NextConfig = {
   // * Privacy-first: Disable analytics and telemetry
   productionBrowserSourceMaps: false,
   experimental: {
-    optimizePackageImports: ['react-icons'],
+    optimizePackageImports: ['@phosphor-icons/react'],
   },
   images: {
     remotePatterns: [

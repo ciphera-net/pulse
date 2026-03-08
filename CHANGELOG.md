@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Improved
 
 - **Cleaner site navigation.** Dashboard, Uptime, Funnels, and Settings now use an underline tab bar instead of floating buttons. The active section is highlighted with an orange underline, making it easy to see where you are and switch between views.
+- **Consistent icon style.** All dashboard icons now use a single, unified icon set for a cleaner look across Technology, Locations, Campaigns, and Referrers panels.
 
 ### Fixed
 
