@@ -19,7 +19,7 @@ import {
   type Stats,
   type DailyStat,
 } from '@/lib/api/stats'
-import { getDateRange } from '@ciphera-net/ui'
+import { getDateRange, formatDate } from '@ciphera-net/ui'
 import { toast } from '@ciphera-net/ui'
 import { Button } from '@ciphera-net/ui'
 import { Select, DatePicker, DownloadIcon } from '@ciphera-net/ui'
@@ -71,7 +71,7 @@ function loadSavedSettings(): {
 function getInitialDateRange(): { start: string; end: string } {
   const settings = loadSavedSettings()
   if (settings?.type === 'today') {
-    const today = new Date().toISOString().split('T')[0]
+    const today = formatDate(new Date())
     return { start: today, end: today }
   }
   if (settings?.type === '7') return getDateRange(7)
@@ -377,7 +377,7 @@ export default function SiteDashboardPage() {
   // Save intervals when they change
   useEffect(() => {
     let type = 'custom'
-    const today = new Date().toISOString().split('T')[0]
+    const today = formatDate(new Date())
     if (dateRange.start === today && dateRange.end === today) type = 'today'
     else if (dateRange.start === getDateRange(7).start) type = '7'
     else if (dateRange.start === getDateRange(30).start) type = '30'
@@ -458,7 +458,7 @@ export default function SiteDashboardPage() {
                   variant="input"
                   className="min-w-[140px]"
                   value={
-                    dateRange.start === new Date().toISOString().split('T')[0] && dateRange.end === new Date().toISOString().split('T')[0]
+                    dateRange.start === formatDate(new Date()) && dateRange.end === formatDate(new Date())
                       ? 'today'
                       : dateRange.start === getDateRange(7).start
                         ? '7'
@@ -478,7 +478,7 @@ export default function SiteDashboardPage() {
                       saveSettings('30', range)
                     }
                     else if (value === 'today') {
-                      const today = new Date().toISOString().split('T')[0]
+                      const today = formatDate(new Date())
                       const range = { start: today, end: today }
                       setDateRange(range)
                       saveSettings('today', range)
