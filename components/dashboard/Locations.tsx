@@ -9,8 +9,7 @@ import iso3166 from 'iso-3166-2'
 import WorldMap from './WorldMap'
 import { Modal, GlobeIcon } from '@ciphera-net/ui'
 import { ListSkeleton } from '@/components/skeletons'
-import { SiTorproject } from 'react-icons/si'
-import { FaUserSecret, FaSatellite } from 'react-icons/fa'
+import { ShieldCheck, Detective, Broadcast } from '@phosphor-icons/react'
 import { getCountries, getCities, getRegions } from '@/lib/api/stats'
 import { type DimensionFilter } from '@/lib/filters'
 
@@ -69,11 +68,11 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
     
     switch (countryCode) {
       case 'T1':
-        return <SiTorproject className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+        return <ShieldCheck className="w-5 h-5 text-purple-600 dark:text-purple-400" />
       case 'A1':
-        return <FaUserSecret className="w-5 h-5 text-neutral-600 dark:text-neutral-400" />
+        return <Detective className="w-5 h-5 text-neutral-600 dark:text-neutral-400" />
       case 'A2':
-        return <FaSatellite className="w-5 h-5 text-blue-500 dark:text-blue-400" />
+        return <Broadcast className="w-5 h-5 text-blue-500 dark:text-blue-400" />
       case 'O1':
       case 'EU':
       case 'AP':

@@ -5,7 +5,7 @@ import { logger } from '@/lib/utils/logger'
 import { formatNumber } from '@ciphera-net/ui'
 import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
 import { getBrowserIcon, getOSIcon, getDeviceIcon } from '@/lib/utils/icons'
-import { MdMonitor } from 'react-icons/md'
+import { Monitor } from '@phosphor-icons/react'
 import { Modal, GridIcon } from '@ciphera-net/ui'
 import { ListSkeleton } from '@/components/skeletons'
 import { getBrowsers, getOS, getDevices, getScreenResolutions } from '@/lib/api/stats'
@@ -64,7 +64,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
             data = res.map(d => ({ name: d.device, pageviews: d.pageviews, icon: getDeviceIcon(d.device) }))
           } else if (activeTab === 'screens') {
             const res = await getScreenResolutions(siteId, dateRange.start, dateRange.end, 100)
-            data = res.map(s => ({ name: s.screen_resolution, pageviews: s.pageviews, icon: <MdMonitor className="text-neutral-500" /> }))
+            data = res.map(s => ({ name: s.screen_resolution, pageviews: s.pageviews, icon: <Monitor className="text-neutral-500" /> }))
           }
           setFullData(filterUnknown(data))
         } catch (e) {
@@ -88,7 +88,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
       case 'devices':
         return devices.map(d => ({ name: d.device, pageviews: d.pageviews, icon: getDeviceIcon(d.device) }))
       case 'screens':
-        return screenResolutions.map(s => ({ name: s.screen_resolution, pageviews: s.pageviews, icon: <MdMonitor className="text-neutral-500" /> }))
+        return screenResolutions.map(s => ({ name: s.screen_resolution, pageviews: s.pageviews, icon: <Monitor className="text-neutral-500" /> }))
       default:
         return []
     }

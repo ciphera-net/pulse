@@ -9,7 +9,7 @@ import { Modal, ArrowRightIcon } from '@ciphera-net/ui'
 import { ListSkeleton } from '@/components/skeletons'
 import { getCampaigns, CampaignStat } from '@/lib/api/stats'
 import { getReferrerFavicon, getReferrerIcon, getReferrerDisplayName } from '@/lib/utils/icons'
-import { FaBullhorn } from 'react-icons/fa'
+import { Megaphone } from '@phosphor-icons/react'
 import UtmBuilder from '@/components/tools/UtmBuilder'
 import { type DimensionFilter } from '@/lib/filters'
 
@@ -190,7 +190,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
               <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
-                <FaBullhorn className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
+                <Megaphone className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
               </div>
               <h4 className="font-semibold text-neutral-900 dark:text-white">
                 Track your marketing campaigns

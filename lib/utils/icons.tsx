@@ -1,98 +1,80 @@
 import React from 'react'
+import {
+  Globe,
+  WindowsLogo,
+  AppleLogo,
+  LinuxLogo,
+  AndroidLogo,
+  Question,
+  DeviceMobile,
+  DeviceTablet,
+  Desktop,
+  GoogleLogo,
+  FacebookLogo,
+  XLogo,
+  LinkedinLogo,
+  InstagramLogo,
+  GithubLogo,
+  YoutubeLogo,
+  RedditLogo,
+  Robot,
+} from '@phosphor-icons/react'
 
 /**
  * Google's public favicon service base URL.
  * Append `?domain=<host>&sz=<px>` to get a favicon.
  */
 export const FAVICON_SERVICE_URL = 'https://www.google.com/s2/favicons'
-import { 
-  FaChrome, 
-  FaFirefox, 
-  FaSafari, 
-  FaEdge, 
-  FaOpera, 
-  FaInternetExplorer, 
-  FaWindows, 
-  FaApple, 
-  FaLinux, 
-  FaAndroid, 
-  FaDesktop, 
-  FaMobileAlt, 
-  FaTabletAlt, 
-  FaGoogle, 
-  FaFacebook, 
-  FaLinkedin, 
-  FaInstagram, 
-  FaGithub, 
-  FaYoutube, 
-  FaReddit,
-  FaQuestion,
-  FaGlobe
-} from 'react-icons/fa'
-import { FaXTwitter } from 'react-icons/fa6'
-import { SiBrave, SiOpenai, SiPerplexity, SiAnthropic, SiGooglegemini } from 'react-icons/si'
-import { RiRobot2Fill } from 'react-icons/ri'
-import { MdDeviceUnknown, MdSmartphone, MdTabletMac, MdDesktopWindows } from 'react-icons/md'
 
 export function getBrowserIcon(browserName: string) {
-  if (!browserName) return <FaGlobe className="text-neutral-400" />
-  const lower = browserName.toLowerCase()
-  if (lower.includes('chrome')) return <FaChrome className="text-blue-500" />
-  if (lower.includes('firefox')) return <FaFirefox className="text-orange-500" />
-  if (lower.includes('safari')) return <FaSafari className="text-blue-400" />
-  if (lower.includes('edge')) return <FaEdge className="text-blue-600" />
-  if (lower.includes('opera')) return <FaOpera className="text-red-500" />
-  if (lower.includes('ie') || lower.includes('explorer')) return <FaInternetExplorer className="text-blue-500" />
-  if (lower.includes('brave')) return <SiBrave className="text-orange-600" />
-  
-  return <FaGlobe className="text-neutral-400" />
+  if (!browserName) return <Globe className="text-neutral-400" />
+  return <Globe className="text-neutral-500" />
 }
 
 export function getOSIcon(osName: string) {
-  if (!osName) return <MdDeviceUnknown className="text-neutral-400" />
+  if (!osName) return <Question className="text-neutral-400" />
   const lower = osName.toLowerCase()
-  if (lower.includes('win')) return <FaWindows className="text-blue-500" />
-  if (lower.includes('mac') || lower.includes('ios')) return <FaApple className="text-neutral-800 dark:text-neutral-200" />
-  if (lower.includes('linux') || lower.includes('ubuntu') || lower.includes('debian')) return <FaLinux className="text-neutral-800 dark:text-neutral-200" />
-  if (lower.includes('android')) return <FaAndroid className="text-green-500" />
-  
-  return <MdDeviceUnknown className="text-neutral-400" />
+  if (lower.includes('win')) return <WindowsLogo className="text-blue-500" />
+  if (lower.includes('mac') || lower.includes('ios')) return <AppleLogo className="text-neutral-800 dark:text-neutral-200" />
+  if (lower.includes('linux') || lower.includes('ubuntu') || lower.includes('debian')) return <LinuxLogo className="text-neutral-800 dark:text-neutral-200" />
+  if (lower.includes('android')) return <AndroidLogo className="text-green-500" />
+
+  return <Question className="text-neutral-400" />
 }
 
 export function getDeviceIcon(deviceName: string) {
-  if (!deviceName) return <MdDeviceUnknown className="text-neutral-400" />
+  if (!deviceName) return <Question className="text-neutral-400" />
   const lower = deviceName.toLowerCase()
-  if (lower.includes('mobile') || lower.includes('phone')) return <MdSmartphone className="text-neutral-500" />
-  if (lower.includes('tablet') || lower.includes('ipad')) return <MdTabletMac className="text-neutral-500" />
-  if (lower.includes('desktop') || lower.includes('laptop')) return <MdDesktopWindows className="text-neutral-500" />
-  
-  return <MdDeviceUnknown className="text-neutral-400" />
+  if (lower.includes('mobile') || lower.includes('phone')) return <DeviceMobile className="text-neutral-500" />
+  if (lower.includes('tablet') || lower.includes('ipad')) return <DeviceTablet className="text-neutral-500" />
+  if (lower.includes('desktop') || lower.includes('laptop')) return <Desktop className="text-neutral-500" />
+
+  return <Question className="text-neutral-400" />
 }
 
 export function getReferrerIcon(referrerName: string) {
-  if (!referrerName) return <FaGlobe className="text-neutral-400" />
+  if (!referrerName) return <Globe className="text-neutral-400" />
   const lower = referrerName.toLowerCase()
-  if (lower.includes('google')) return <FaGoogle className="text-blue-500" />
-  if (lower.includes('facebook')) return <FaFacebook className="text-blue-600" />
-  if (lower.includes('twitter') || lower.includes('t.co') || lower.includes('x.com')) return <FaXTwitter className="text-neutral-800 dark:text-neutral-200" />
-  if (lower.includes('linkedin')) return <FaLinkedin className="text-blue-700" />
-  if (lower.includes('instagram')) return <FaInstagram className="text-pink-600" />
-  if (lower.includes('github')) return <FaGithub className="text-neutral-800 dark:text-neutral-200" />
-  if (lower.includes('youtube')) return <FaYoutube className="text-red-600" />
-  if (lower.includes('reddit')) return <FaReddit className="text-orange-600" />
+  if (lower.includes('google')) return <GoogleLogo className="text-blue-500" />
+  if (lower.includes('facebook')) return <FacebookLogo className="text-blue-600" />
+  if (lower.includes('twitter') || lower.includes('t.co') || lower.includes('x.com')) return <XLogo className="text-neutral-800 dark:text-neutral-200" />
+  if (lower.includes('linkedin')) return <LinkedinLogo className="text-blue-700" />
+  if (lower.includes('instagram')) return <InstagramLogo className="text-pink-600" />
+  if (lower.includes('github')) return <GithubLogo className="text-neutral-800 dark:text-neutral-200" />
+  if (lower.includes('youtube')) return <YoutubeLogo className="text-red-600" />
+  if (lower.includes('reddit')) return <RedditLogo className="text-orange-600" />
   // AI assistants and search tools
-  if (lower.includes('chatgpt') || lower.includes('openai')) return <SiOpenai className="text-neutral-800 dark:text-neutral-200" />
-  if (lower.includes('perplexity')) return <SiPerplexity className="text-teal-600" />
-  if (lower.includes('claude') || lower.includes('anthropic')) return <SiAnthropic className="text-orange-500" />
-  if (lower.includes('gemini')) return <SiGooglegemini className="text-blue-500" />
-  if (lower.includes('copilot')) return <FaGlobe className="text-blue-500" />
-  if (lower.includes('deepseek')) return <RiRobot2Fill className="text-blue-600" />
-  if (lower.includes('grok') || lower.includes('x.ai')) return <FaXTwitter className="text-neutral-800 dark:text-neutral-200" />
-  if (lower.includes('phind')) return <RiRobot2Fill className="text-purple-600" />
-  if (lower.includes('you.com')) return <RiRobot2Fill className="text-indigo-600" />
+  if (lower.includes('chatgpt') || lower.includes('openai')) return <Robot className="text-neutral-800 dark:text-neutral-200" />
+  if (lower.includes('perplexity')) return <Robot className="text-teal-600" />
+  if (lower.includes('claude') || lower.includes('anthropic')) return <Robot className="text-orange-500" />
+  if (lower.includes('gemini')) return <Robot className="text-blue-500" />
+  if (lower.includes('copilot')) return <Robot className="text-blue-500" />
+  if (lower.includes('deepseek')) return <Robot className="text-blue-600" />
+  if (lower.includes('grok') || lower.includes('x.ai')) return <XLogo className="text-neutral-800 dark:text-neutral-200" />
+  if (lower.includes('phind')) return <Robot className="text-purple-600" />
+  if (lower.includes('you.com')) return <Robot className="text-indigo-600" />
 
-  // Try to use a generic globe or maybe check if it is a URL
-  return <FaGlobe className="text-neutral-400" />
+  return <Globe className="text-neutral-400" />
 }
 
 const REFERRER_NO_FAVICON = ['direct', 'unknown', '']
