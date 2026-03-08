@@ -25,6 +25,11 @@ interface TechSpecsProps {
 
 type Tab = 'browsers' | 'os' | 'devices' | 'screens'
 
+function capitalize(s: string): string {
+  if (!s) return s
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
 const LIMIT = 7
 
 const TAB_TO_DIMENSION: Record<string, string> = { browsers: 'browser', os: 'os', devices: 'device' }
@@ -162,7 +167,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
                   >
                     <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
                       {item.icon && <span className="text-lg">{item.icon}</span>}
-                      <span className="truncate">{item.name}</span>
+                      <span className="truncate">{capitalize(item.name)}</span>
                     </div>
                     <div className="flex items-center gap-2 ml-4">
                       <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
@@ -222,7 +227,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
               <div key={item.name} className="flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
                 <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
                   {item.icon && <span className="text-lg">{item.icon}</span>}
-                  <span className="truncate">{item.name === 'Unknown' ? 'Unknown' : item.name}</span>
+                  <span className="truncate">{capitalize(item.name)}</span>
                 </div>
                 <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
                   {formatNumber(item.pageviews)}

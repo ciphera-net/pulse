@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Fixed
 
 - **Charts no longer show tomorrow's date.** The visitor chart on 7-day and 30-day views could display the next day with zero traffic, making it look like a sudden drop. The chart now ends on today.
+- **Capitalized technology labels.** Device types, browsers, and OS names in the Technology panel now display with a capital first letter (e.g. "Desktop" instead of "desktop").
 - **Login no longer gets stuck after updates.** If you happened to have Pulse open when a new version was deployed, logging back in could get stuck on a loading screen. The app now automatically refreshes itself to pick up the latest version.
 - **City and region data is now accurate.** Location data was incorrectly showing the CDN server's location (e.g. Paris, Villeurbanne) instead of the visitor's actual city. Fixed by reading the correct visitor IP header from Bunny CDN.
 - **"Reset Data" now clears everything.** Previously, resetting a site's data in Settings only removed pageviews and daily stats. Uptime check history, uptime daily stats, and cached dashboard data were left behind. All collected data is now properly cleared when you reset, while your site configuration, goals, funnels, and uptime monitors are kept.
