@@ -416,7 +416,9 @@ export default function SiteDashboardPage() {
     if (site?.domain) document.title = `${site.domain} | Pulse`
   }, [site?.domain])
 
-  const showSkeleton = useMinimumLoading(overviewLoading)
+  // Skip the minimum-loading skeleton when SWR already has cached data
+  // (prevents the 300ms flash when navigating back to the dashboard)
+  const showSkeleton = useMinimumLoading(overviewLoading && !overview)
 
   if (showSkeleton) {
     return <DashboardSkeleton />
