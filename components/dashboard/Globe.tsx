@@ -91,14 +91,14 @@ export default function Globe({ data, className }: GlobeProps) {
           onMouseMove={(e) => {
             if (pointerRef.current !== null) {
               const delta = e.clientX - pointerRef.current
-              dragRef.current += delta / 3000
+              dragRef.current += delta / 800
               pointerRef.current = e.clientX
             }
           }}
           onTouchMove={(e) => {
             if (pointerRef.current !== null && e.touches[0]) {
               const delta = e.touches[0].clientX - pointerRef.current
-              dragRef.current += delta / 3000
+              dragRef.current += delta / 800
               pointerRef.current = e.touches[0].clientX
             }
           }}
