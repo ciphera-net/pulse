@@ -6,7 +6,7 @@ import { formatNumber } from '@ciphera-net/ui'
 import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
 import * as Flags from 'country-flag-icons/react/3x2'
 import iso3166 from 'iso-3166-2'
-import WorldMap from './WorldMap'
+import DottedMap from './DottedMap'
 import { Modal, GlobeIcon } from '@ciphera-net/ui'
 import { ListSkeleton } from '@/components/skeletons'
 import { ShieldCheck, Detective, Broadcast } from '@phosphor-icons/react'
@@ -225,7 +225,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
               <p className="text-neutral-500 dark:text-neutral-400 text-sm">{getDisabledMessage()}</p>
             </div>
           ) : activeTab === 'map' ? (
-            hasData ? <WorldMap data={filterUnknown(countries) as { country: string; pageviews: number }[]} /> : (
+            hasData ? <DottedMap data={filterUnknown(countries) as { country: string; pageviews: number }[]} /> : (
               <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
                 <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
                   <GlobeIcon className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
