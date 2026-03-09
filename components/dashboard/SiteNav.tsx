@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { motion } from 'framer-motion'
 import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
 import { useAuth } from '@/lib/auth/context'
 
@@ -39,13 +40,20 @@ export default function SiteNav({ siteId }: SiteNavProps) {
             role="tab"
             aria-selected={isActive(tab.href)}
             tabIndex={isActive(tab.href) ? 0 : -1}
-            className={`px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange rounded-t cursor-pointer border-b-2 -mb-px ${
+            className={`relative px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange rounded-t cursor-pointer -mb-px ${
               isActive(tab.href)
-                ? 'border-brand-orange text-neutral-900 dark:text-white'
-                : 'border-transparent text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
+                ? 'text-neutral-900 dark:text-white'
+                : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
             }`}
           >
             {tab.label}
+            {isActive(tab.href) && (
+              <motion.div
+                layoutId="activeTab"
+                className="absolute inset-x-0 -bottom-px h-0.5 bg-brand-orange"
+                transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+              />
+            )}
           </Link>
         ))}
       </nav>

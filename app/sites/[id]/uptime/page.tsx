@@ -688,12 +688,7 @@ export default function UptimePage() {
   const overallStatus = uptimeData?.status ?? 'operational'
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.2 }}
-      className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8"
-    >
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
       {/* Header */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -813,7 +808,7 @@ export default function UptimePage() {
           siteDomain={site.domain}
         />
       </Modal>
-    </motion.div>
+    </div>
   )
 }
 
