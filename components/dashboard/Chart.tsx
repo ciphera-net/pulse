@@ -3,8 +3,8 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useTheme } from '@ciphera-net/ui'
 import {
-  AreaChart,
-  Area,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -567,15 +567,8 @@ export default function Chart({
         ) : (
           <div className="h-[320px] w-full" onContextMenu={handleChartContextMenu}>
             <ChartContainer config={dashboardChartConfig} className="h-full w-full">
-              <AreaChart accessibilityLayer data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
-                <defs>
-                  <linearGradient id={`gradient-${metric}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={COLORS.brand} stopOpacity={0.25} />
-                    <stop offset="100%" stopColor={COLORS.brand} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
+              <BarChart accessibilityLayer data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
                 <CartesianGrid
-                  strokeDasharray="3 3"
                   vertical={false}
                   stroke="var(--chart-grid)"
                   strokeOpacity={0.5}
@@ -614,43 +607,25 @@ export default function Chart({
                       prevPeriodLabel={prevPeriodLabel}
                     />
                   }
-                  cursor={{ stroke: 'var(--chart-axis)', strokeOpacity: 0.3, strokeWidth: 1 }}
+                  cursor={false}
                 />
 
                 {hasPrev && (
-                  <Area
-                    type="monotone"
+                  <Bar
                     dataKey={metric === 'visitors' ? 'prevVisitors' : metric === 'pageviews' ? 'prevPageviews' : metric === 'bounce_rate' ? 'prevBounceRate' : 'prevAvgDuration'}
-                    stroke="var(--chart-axis)"
-                    strokeWidth={1.5}
-                    strokeDasharray="4 4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    fill="none"
-                    dot={false}
+                    fill="var(--chart-axis)"
+                    fillOpacity={0.2}
+                    radius={[4, 4, 0, 0]}
                     isAnimationActive
                     animationDuration={400}
                     animationEasing="ease-out"
                   />
                 )}
 
-                <Area
-                  type="monotone"
-                  baseValue={0}
+                <Bar
                   dataKey={metric}
-                  stroke={COLORS.brand}
-                  strokeWidth={2}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  fillOpacity={1}
-                  fill={`url(#gradient-${metric})`}
-                  dot={false}
-                  activeDot={{
-                    r: 4,
-                    strokeWidth: 2,
-                    fill: resolvedTheme === 'dark' ? 'var(--color-neutral-900)' : '#ffffff',
-                    stroke: COLORS.brand,
-                  }}
+                  fill={COLORS.brand}
+                  radius={[4, 4, 0, 0]}
                   isAnimationActive
                   animationDuration={400}
                   animationEasing="ease-out"
@@ -670,7 +645,7 @@ export default function Chart({
                     />
                   )
                 })}
-              </AreaChart>
+              </BarChart>
             </ChartContainer>
           </div>
         )}
