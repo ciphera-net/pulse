@@ -238,13 +238,13 @@ export default function SiteDashboardPage() {
   const { data: annotations, mutate: mutateAnnotations } = useAnnotations(siteId, dateRange.start, dateRange.end)
 
   // Annotation mutation handlers
-  const handleCreateAnnotation = async (data: { date: string; text: string; category: string }) => {
+  const handleCreateAnnotation = async (data: { date: string; time?: string; text: string; category: string }) => {
     await createAnnotation(siteId, { ...data, category: data.category as AnnotationCategory })
     mutateAnnotations()
     toast.success('Annotation added')
   }
 
-  const handleUpdateAnnotation = async (id: string, data: { date: string; text: string; category: string }) => {
+  const handleUpdateAnnotation = async (id: string, data: { date: string; time?: string; text: string; category: string }) => {
     await updateAnnotation(siteId, id, { ...data, category: data.category as AnnotationCategory })
     mutateAnnotations()
     toast.success('Annotation updated')

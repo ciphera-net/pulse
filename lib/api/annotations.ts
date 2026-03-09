@@ -6,6 +6,7 @@ export interface Annotation {
   id: string
   site_id: string
   date: string
+  time?: string | null
   text: string
   category: AnnotationCategory
   created_by: string
@@ -15,12 +16,14 @@ export interface Annotation {
 
 export interface CreateAnnotationRequest {
   date: string
+  time?: string
   text: string
   category?: AnnotationCategory
 }
 
 export interface UpdateAnnotationRequest {
   date: string
+  time?: string
   text: string
   category: AnnotationCategory
 }

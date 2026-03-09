@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useRef, useCallback } from 'react'
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useTheme } from '@ciphera-net/ui'
 import {
   AreaChart,
@@ -13,8 +13,8 @@ import {
   ReferenceLine,
 } from 'recharts'
 import type { TooltipProps } from 'recharts'
-import { formatNumber, formatDuration, formatUpdatedAgo } from '@ciphera-net/ui'
-import { ArrowUpRightIcon, ArrowDownRightIcon, BarChartIcon, Select, DownloadIcon, PlusIcon } from '@ciphera-net/ui'
+import { formatNumber, formatDuration, formatUpdatedAgo, DatePicker } from '@ciphera-net/ui'
+import { ArrowUpRightIcon, ArrowDownRightIcon, BarChartIcon, Select, DownloadIcon, PlusIcon, XIcon } from '@ciphera-net/ui'
 import { Checkbox } from '@ciphera-net/ui'
 
 const COLORS = {
@@ -57,9 +57,17 @@ const ANNOTATION_LABELS: Record<string, string> = {
   other: 'Note',
 }
 
+const CATEGORY_OPTIONS = [
+  { value: 'deploy', label: 'Deploy' },
+  { value: 'campaign', label: 'Campaign' },
+  { value: 'incident', label: 'Incident' },
+  { value: 'other', label: 'Other' },
+]
+
 interface AnnotationData {
   id: string
   date: string
+  time?: string | null
   text: string
   category: string
 }
@@ -94,14 +102,19 @@ interface ChartProps {
   lastUpdatedAt?: number | null
   annotations?: AnnotationData[]
   canManageAnnotations?: boolean
-  onCreateAnnotation?: (data: { date: string; text: string; category: string }) => Promise<void>
-  onUpdateAnnotation?: (id: string, data: { date: string; text: string; category: string }) => Promise<void>
+  onCreateAnnotation?: (data: { date: string; time?: string; text: string; category: string }) => Promise<void>
+  onUpdateAnnotation?: (id: string, data: { date: string; time?: string; text: string; category: string }) => Promise<void>
   onDeleteAnnotation?: (id: string) => Promise<void>
 }
 
 type MetricType = 'pageviews' | 'visitors' | 'bounce_rate' | 'avg_duration'
 
 // ─── Helpers ─────────────────────────────────────────────────────────
+
+function formatEU(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-')
+  return `${d}/${m}/${y}`
+}
 
 function formatAxisValue(value: number): string {
   if (value >= 1e6) return `${+(value / 1e6).toFixed(1)}M`
@@ -246,12 +259,32 @@ export default function Chart({
   const chartContainerRef = useRef<HTMLDivElement>(null)
   const { resolvedTheme } = useTheme()
 
+  // ─── Annotation state ─────────────────────────────────────────────
+  const [annotationForm, setAnnotationForm] = useState<{
+    visible: boolean; editingId?: string; date: string; time: string; text: string; category: string
+  }>({ visible: false, date: new Date().toISOString().slice(0, 10), time: '', text: '', category: 'other' })
+  const [calendarOpen, setCalendarOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; date: string } | null>(null)
+
+  // Close context menu and annotation form on Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (calendarOpen) { setCalendarOpen(false); return }
+        if (contextMenu) { setContextMenu(null); return }
+        if (annotationForm.visible) { setAnnotationForm(f => ({ ...f, visible: false })); return }
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [calendarOpen, contextMenu, annotationForm.visible])
+
   const handleExportChart = useCallback(async () => {
     if (onExportChart) { onExportChart(); return }
     if (!chartContainerRef.current) return
     try {
       const { toPng } = await import('html-to-image')
-      // Resolve the actual background color from the DOM (CSS vars don't work in html-to-image)
       const bg = getComputedStyle(chartContainerRef.current).backgroundColor || (resolvedTheme === 'dark' ? '#171717' : '#ffffff')
       const dataUrl = await toPng(chartContainerRef.current, {
         cacheBust: true,
@@ -322,9 +355,55 @@ export default function Chart({
     return markers
   }, [annotations, chartData])
 
-  const [annotationForm, setAnnotationForm] = useState<{ visible: boolean; editingId?: string; date: string; text: string; category: string }>({
-    visible: false, date: new Date().toISOString().slice(0, 10), text: '', category: 'other'
-  })
+  // ─── Right-click handler ──────────────────────────────────────────
+  const handleChartContextMenu = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!canManageAnnotations) return
+    e.preventDefault()
+    const rect = e.currentTarget.getBoundingClientRect()
+    const relX = e.clientX - rect.left
+    const leftMargin = 48
+    const rightMargin = 16
+    const plotWidth = rect.width - leftMargin - rightMargin
+    const fraction = Math.max(0, Math.min(1, (relX - leftMargin) / plotWidth))
+    const index = Math.min(Math.round(fraction * (chartData.length - 1)), chartData.length - 1)
+    const point = chartData[index]
+    if (point) {
+      setContextMenu({ x: e.clientX, y: e.clientY, date: point.originalDate.slice(0, 10) })
+    }
+  }, [canManageAnnotations, chartData])
+
+  // ─── Annotation form handlers ─────────────────────────────────────
+  const handleSaveAnnotation = useCallback(async () => {
+    if (saving) return
+    const payload = {
+      date: annotationForm.date,
+      time: annotationForm.time || undefined,
+      text: annotationForm.text.trim(),
+      category: annotationForm.category,
+    }
+    setSaving(true)
+    try {
+      if (annotationForm.editingId && onUpdateAnnotation) {
+        await onUpdateAnnotation(annotationForm.editingId, payload)
+      } else if (onCreateAnnotation) {
+        await onCreateAnnotation(payload)
+      }
+      setAnnotationForm({ visible: false, date: '', time: '', text: '', category: 'other' })
+    } finally {
+      setSaving(false)
+    }
+  }, [annotationForm, saving, onCreateAnnotation, onUpdateAnnotation])
+
+  const handleDeleteAnnotation = useCallback(async () => {
+    if (!annotationForm.editingId || !onDeleteAnnotation) return
+    setSaving(true)
+    try {
+      await onDeleteAnnotation(annotationForm.editingId)
+      setAnnotationForm({ visible: false, date: '', time: '', text: '', category: 'other' })
+    } finally {
+      setSaving(false)
+    }
+  }, [annotationForm.editingId, onDeleteAnnotation])
 
   // ─── Metrics ───────────────────────────────────────────────────────
 
@@ -350,7 +429,6 @@ export default function Chart({
   const hasData = data.length > 0
   const hasAnyNonZero = hasData && chartData.some((d) => (d[metric] as number) > 0)
 
-  // Count metrics should never show decimal Y-axis ticks
   const isCountMetric = metric === 'visitors' || metric === 'pageviews'
 
   // ─── X-Axis Ticks ─────────────────────────────────────────────────
@@ -487,7 +565,7 @@ export default function Chart({
 
             {canManageAnnotations && (
               <button
-                onClick={() => setAnnotationForm({ visible: true, date: new Date().toISOString().slice(0, 10), text: '', category: 'other' })}
+                onClick={() => setAnnotationForm({ visible: true, date: new Date().toISOString().slice(0, 10), time: '', text: '', category: 'other' })}
                 className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors cursor-pointer"
                 title="Add annotation"
               >
@@ -508,7 +586,7 @@ export default function Chart({
             <p className="text-sm text-neutral-400 dark:text-neutral-500">No {metricLabel.toLowerCase()} recorded</p>
           </div>
         ) : (
-          <div className="h-[320px] w-full">
+          <div className="h-[320px] w-full" onContextMenu={handleChartContextMenu}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
                 <defs>
@@ -641,6 +719,7 @@ export default function Chart({
                       visible: true,
                       editingId: primary.id,
                       date: primary.date,
+                      time: primary.time || '',
                       text: primary.text,
                       category: primary.category,
                     })
@@ -657,7 +736,9 @@ export default function Chart({
                       <div key={a.id} className="flex items-start gap-1.5 text-[11px] mb-1 last:mb-0">
                         <span className="w-1.5 h-1.5 rounded-full mt-1 shrink-0" style={{ backgroundColor: ANNOTATION_COLORS[a.category] || ANNOTATION_COLORS.other }} />
                         <div>
-                          <span className="font-medium text-neutral-400 dark:text-neutral-500">{ANNOTATION_LABELS[a.category] || 'Note'} &middot; {a.date}</span>
+                          <span className="font-medium text-neutral-400 dark:text-neutral-500">
+                            {ANNOTATION_LABELS[a.category] || 'Note'} &middot; {formatEU(a.date)}{a.time ? ` at ${a.time}` : ''}
+                          </span>
                           <p className="text-neutral-900 dark:text-white">{a.text}</p>
                         </div>
                       </div>
@@ -683,6 +764,39 @@ export default function Chart({
         </div>
       )}
 
+      {/* ─── Right-click Context Menu ──────────────────────────────── */}
+      {contextMenu && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setContextMenu(null)} onContextMenu={(e) => { e.preventDefault(); setContextMenu(null) }} />
+          <div
+            className="fixed z-50 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-lg py-1 min-w-[180px]"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+          >
+            <button
+              className="w-full text-left px-3 py-2 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2"
+              onClick={() => {
+                setAnnotationForm({ visible: true, date: contextMenu.date, time: '', text: '', category: 'other' })
+                setContextMenu(null)
+              }}
+            >
+              <PlusIcon className="w-3.5 h-3.5" />
+              Add annotation ({formatEU(contextMenu.date)})
+            </button>
+            <button
+              className="w-full text-left px-3 py-2 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2"
+              onClick={() => {
+                handleExportChart()
+                setContextMenu(null)
+              }}
+            >
+              <DownloadIcon className="w-3.5 h-3.5" />
+              Export chart
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* ─── Annotation Form Modal ─────────────────────────────────── */}
       {annotationForm.visible && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/20 dark:bg-black/40 rounded-2xl">
           <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl p-5 w-[340px] max-w-[90%]">
@@ -690,15 +804,45 @@ export default function Chart({
               {annotationForm.editingId ? 'Edit annotation' : 'Add annotation'}
             </h3>
             <div className="space-y-3">
+              {/* Date picker trigger */}
               <div>
                 <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Date</label>
-                <input
-                  type="date"
-                  value={annotationForm.date}
-                  onChange={(e) => setAnnotationForm((f) => ({ ...f, date: e.target.value }))}
-                  className="w-full px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
-                />
+                <button
+                  type="button"
+                  onClick={() => setCalendarOpen(true)}
+                  className="w-full px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-orange/30 text-left flex items-center justify-between"
+                >
+                  <span>{annotationForm.date ? formatEU(annotationForm.date) : 'Select date'}</span>
+                  <svg className="w-4 h-4 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </button>
               </div>
+              {/* Time input */}
+              <div>
+                <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">
+                  Time <span className="text-neutral-400 dark:text-neutral-500">(optional)</span>
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="time"
+                    value={annotationForm.time}
+                    onChange={(e) => setAnnotationForm((f) => ({ ...f, time: e.target.value }))}
+                    className="flex-1 px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
+                  />
+                  {annotationForm.time && (
+                    <button
+                      type="button"
+                      onClick={() => setAnnotationForm((f) => ({ ...f, time: '' }))}
+                      className="p-1.5 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+                      title="Clear time"
+                    >
+                      <XIcon className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+              {/* Note */}
               <div>
                 <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Note</label>
                 <input
@@ -712,18 +856,17 @@ export default function Chart({
                 />
                 <span className="text-[10px] text-neutral-400 mt-0.5 block text-right">{annotationForm.text.length}/200</span>
               </div>
+              {/* Category - custom Select */}
               <div>
                 <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Category</label>
-                <select
+                <Select
                   value={annotationForm.category}
-                  onChange={(e) => setAnnotationForm((f) => ({ ...f, category: e.target.value }))}
-                  className="w-full px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
-                >
-                  <option value="deploy">Deploy</option>
-                  <option value="campaign">Campaign</option>
-                  <option value="incident">Incident</option>
-                  <option value="other">Other</option>
-                </select>
+                  onChange={(v) => setAnnotationForm((f) => ({ ...f, category: v }))}
+                  options={CATEGORY_OPTIONS}
+                  variant="input"
+                  fullWidth
+                  align="left"
+                />
               </div>
             </div>
             <div className="flex items-center justify-between mt-4">
@@ -731,13 +874,9 @@ export default function Chart({
                 {annotationForm.editingId && (
                   <button
                     type="button"
-                    onClick={async () => {
-                      if (annotationForm.editingId && onDeleteAnnotation) {
-                        await onDeleteAnnotation(annotationForm.editingId)
-                        setAnnotationForm({ visible: false, date: '', text: '', category: 'other' })
-                      }
-                    }}
-                    className="text-xs text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 font-medium cursor-pointer"
+                    onClick={handleDeleteAnnotation}
+                    disabled={saving}
+                    className="text-xs text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 font-medium cursor-pointer disabled:opacity-50"
                   >
                     Delete
                   </button>
@@ -746,32 +885,37 @@ export default function Chart({
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setAnnotationForm({ visible: false, date: '', text: '', category: 'other' })}
+                  onClick={() => setAnnotationForm({ visible: false, date: '', time: '', text: '', category: 'other' })}
                   className="px-3 py-1.5 text-xs font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
-                  disabled={!annotationForm.text.trim() || !annotationForm.date}
-                  onClick={async () => {
-                    const data = { date: annotationForm.date, text: annotationForm.text.trim(), category: annotationForm.category }
-                    if (annotationForm.editingId && onUpdateAnnotation) {
-                      await onUpdateAnnotation(annotationForm.editingId, data)
-                    } else if (onCreateAnnotation) {
-                      await onCreateAnnotation(data)
-                    }
-                    setAnnotationForm({ visible: false, date: '', text: '', category: 'other' })
-                  }}
+                  disabled={!annotationForm.text.trim() || !annotationForm.date || saving}
+                  onClick={handleSaveAnnotation}
                   className="px-3 py-1.5 text-xs font-medium text-white bg-brand-orange hover:bg-brand-orange/90 rounded-lg disabled:opacity-50 cursor-pointer"
                 >
-                  {annotationForm.editingId ? 'Save' : 'Add'}
+                  {saving ? 'Saving...' : annotationForm.editingId ? 'Save' : 'Add'}
                 </button>
               </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* ─── DatePicker overlay (single mode) ─────────────────────── */}
+      <DatePicker
+        isOpen={calendarOpen}
+        onClose={() => setCalendarOpen(false)}
+        onApply={() => {}}
+        initialRange={{ start: annotationForm.date || new Date().toISOString().slice(0, 10), end: annotationForm.date || new Date().toISOString().slice(0, 10) }}
+        mode="single"
+        onSelect={(date) => {
+          setAnnotationForm((f) => ({ ...f, date }))
+          setCalendarOpen(false)
+        }}
+      />
     </div>
   )
 }
