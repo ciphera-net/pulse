@@ -4,7 +4,6 @@
 import { logger } from '@/lib/utils/logger'
 import { useCallback, useEffect, useState, useMemo } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import { motion } from 'framer-motion'
 import {
   getPerformanceByPage,
   getTopPages,
@@ -432,12 +431,7 @@ export default function SiteDashboardPage() {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.2 }}
-      className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8"
-    >
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">
@@ -649,6 +643,6 @@ export default function SiteDashboardPage() {
         topReferrers={referrers?.top_referrers}
         campaigns={campaigns}
       />
-    </motion.div>
+    </div>
   )
 }
