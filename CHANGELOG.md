@@ -8,11 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- **Interactive 3D Globe.** The Locations panel now has a "Globe" tab showing your visitor locations on a beautiful, interactive 3D globe. Drag to rotate, and orange markers highlight where your visitors are — sized by how much traffic each country sends. The globe slowly auto-rotates and adapts to light and dark mode.
+- **Dotted world map.** The "Map" tab in Locations now uses a sleek dotted map style instead of the old filled map. Country markers glow in brand orange and show a tooltip with the country name and pageview count when you hover.
 - **Hide unknown locations.** New toggle in Site Settings under Data & Privacy to hide "Unknown" entries from your Locations panel. When geographic data can't be determined for a visitor, it normally shows as "Unknown" in countries, cities, and regions. Turn this on to keep your location stats clean and only show resolved locations.
 - **Chart annotations.** Mark events on your dashboard timeline — like deploys, campaigns, or incidents — so you always know why traffic changed. Click the + button on the chart to add a note on any date. Annotations appear as colored markers on the chart: blue for deploys, green for campaigns, red for incidents. Hover to see the details. Team owners and admins can add, edit, and delete annotations; everyone else (including public dashboard viewers) can see them.
 
 ### Improved
 
+- **Smoother theme switching.** Toggling between light and dark mode now plays a satisfying circular reveal animation that expands from the toggle button, instead of everything just flipping instantly.
+- **Dashboard chart restyled.** The main dashboard chart now uses a clean bar chart style with a more polished, minimal look.
 - **Cleaner site navigation.** Dashboard, Uptime, Funnels, and Settings now use an underline tab bar instead of floating buttons. The active section is highlighted with an orange underline, making it easy to see where you are and switch between views.
 - **Consistent icon style.** All dashboard icons now use a single, unified icon set for a cleaner look across Technology, Locations, Campaigns, and Referrers panels.
 
