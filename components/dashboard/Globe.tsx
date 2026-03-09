@@ -92,6 +92,7 @@ export default function Globe({ data, className }: GlobeProps) {
       width: widthRef.current * 2,
       height: widthRef.current * 2,
       onRender: (state) => {
+        if (!pointerInteracting.current) phiRef.current += 0.002
         state.phi = phiRef.current + rs.get()
         state.width = widthRef.current * 2
         state.height = widthRef.current * 2
