@@ -16,7 +16,6 @@ interface GlobeProps {
 export default function Globe({ data, className }: GlobeProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const phiRef = useRef(0)
-  const widthRef = useRef(0)
   const pointerInteracting = useRef<number | null>(null)
   const pointerInteractionMovement = useRef(0)
   const { resolvedTheme } = useTheme()
@@ -39,8 +38,8 @@ export default function Globe({ data, className }: GlobeProps) {
   const r = useMotionValue(0)
   const rs = useSpring(r, {
     mass: 1,
-    damping: 50,
-    stiffness: 80,
+    damping: 60,
+    stiffness: 60,
   })
 
   const updatePointerInteraction = (value: number | null) => {
@@ -61,20 +60,13 @@ export default function Globe({ data, className }: GlobeProps) {
   useEffect(() => {
     if (!canvasRef.current) return
 
-    const onResize = () => {
-      if (canvasRef.current) {
-        widthRef.current = canvasRef.current.offsetWidth
-      }
-    }
+    const size = canvasRef.current.offsetWidth
+    const pixelRatio = Math.min(window.devicePixelRatio, 2)
 
-    window.addEventListener('resize', onResize)
-    onResize()
-
-    const config: COBEOptions = {
-      width: widthRef.current * 2,
-      height: widthRef.current * 2,
-      onRender: () => {},
-      devicePixelRatio: 2,
+    const globe = createGlobe(canvasRef.current, {
+      width: size * pixelRatio,
+      height: size * pixelRatio,
+      devicePixelRatio: pixelRatio,
       phi: 0,
       theta: 0.3,
       dark: isDark ? 1 : 0,
@@ -85,19 +77,11 @@ export default function Globe({ data, className }: GlobeProps) {
       markerColor: [253 / 255, 94 / 255, 15 / 255],
       glowColor: isDark ? [0.15, 0.15, 0.15] : [1, 1, 1],
       markers,
-    }
-
-    const globe = createGlobe(canvasRef.current, {
-      ...config,
-      width: widthRef.current * 2,
-      height: widthRef.current * 2,
       onRender: (state) => {
         if (!pointerInteracting.current) phiRef.current += 0.002
         state.phi = phiRef.current + rs.get()
-        state.width = widthRef.current * 2
-        state.height = widthRef.current * 2
       },
-    })
+    } as COBEOptions)
 
     setTimeout(() => {
       if (canvasRef.current) canvasRef.current.style.opacity = '1'
@@ -105,7 +89,6 @@ export default function Globe({ data, className }: GlobeProps) {
 
     return () => {
       globe.destroy()
-      window.removeEventListener('resize', onResize)
     }
   }, [rs, markers, isDark])
 
