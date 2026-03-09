@@ -2,34 +2,15 @@
 
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useTheme } from '@ciphera-net/ui'
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  CartesianGrid,
-  ReferenceLine,
-} from 'recharts'
-import { ChartContainer, ChartTooltip, type ChartConfig } from '@/components/charts'
+import { Line, LineChart, XAxis, YAxis, ReferenceLine } from 'recharts'
+import { ChartContainer, ChartTooltip, type ChartConfig } from '@/components/ui/line-charts-6'
+import { Badge } from '@/components/ui/badge-2'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { formatNumber, formatDuration, formatUpdatedAgo, DatePicker } from '@ciphera-net/ui'
-import { ArrowUpRightIcon, ArrowDownRightIcon, BarChartIcon, Select, DownloadIcon, PlusIcon, XIcon } from '@ciphera-net/ui'
+import { Select, DownloadIcon, PlusIcon, XIcon } from '@ciphera-net/ui'
 import { Checkbox } from '@ciphera-net/ui'
-
-const COLORS = {
-  brand: 'var(--chart-1)',
-  success: 'var(--color-success)',
-  danger: 'var(--color-error)',
-}
-
-const dashboardChartConfig = {
-  visitors: { label: 'Visitors', color: 'var(--chart-1)' },
-  pageviews: { label: 'Pageviews', color: 'var(--chart-1)' },
-  bounce_rate: { label: 'Bounce Rate', color: 'var(--chart-1)' },
-  avg_duration: { label: 'Visit Duration', color: 'var(--chart-1)' },
-  prevVisitors: { label: 'Previous', color: 'var(--chart-axis)' },
-  prevPageviews: { label: 'Previous', color: 'var(--chart-axis)' },
-  prevBounceRate: { label: 'Previous', color: 'var(--chart-axis)' },
-  prevAvgDuration: { label: 'Previous', color: 'var(--chart-axis)' },
-} satisfies ChartConfig
+import { ArrowUp, ArrowDown } from '@phosphor-icons/react'
+import { cn } from '@/lib/utils'
 
 const ANNOTATION_COLORS: Record<string, string> = {
   deploy: '#3b82f6',
@@ -104,102 +85,54 @@ function formatEU(dateStr: string): string {
   return `${d}/${m}/${y}`
 }
 
+// ─── Metric configurations ──────────────────────────────────────────
 
-function getPrevDateRangeLabel(dateRange: { start: string; end: string }): string {
-  const startDate = new Date(dateRange.start)
-  const endDate = new Date(dateRange.end)
-  const duration = endDate.getTime() - startDate.getTime()
+const METRIC_CONFIGS: {
+  key: MetricType
+  label: string
+  format: (v: number) => string
+  isNegative?: boolean
+}[] = [
+  { key: 'visitors', label: 'Unique Visitors', format: (v) => formatNumber(v) },
+  { key: 'pageviews', label: 'Total Pageviews', format: (v) => formatNumber(v) },
+  { key: 'bounce_rate', label: 'Bounce Rate', format: (v) => `${Math.round(v)}%`, isNegative: true },
+  { key: 'avg_duration', label: 'Visit Duration', format: (v) => formatDuration(v) },
+]
 
-  if (duration === 0) {
-    const prev = new Date(startDate.getTime() - 24 * 60 * 60 * 1000)
-    return prev.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  }
+const chartConfig = {
+  visitors: { label: 'Unique Visitors', color: '#FD5E0F' },
+  pageviews: { label: 'Total Pageviews', color: '#3b82f6' },
+  bounce_rate: { label: 'Bounce Rate', color: '#a855f7' },
+  avg_duration: { label: 'Visit Duration', color: '#10b981' },
+} satisfies ChartConfig
 
-  const prevEnd = new Date(startDate.getTime() - 24 * 60 * 60 * 1000)
-  const prevStart = new Date(prevEnd.getTime() - duration)
-  const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  return `${fmt(prevStart)} – ${fmt(prevEnd)}`
-}
+// ─── Custom Tooltip ─────────────────────────────────────────────────
 
-function getTrendContext(dateRange: { start: string; end: string }): string {
-  const startDate = new Date(dateRange.start)
-  const endDate = new Date(dateRange.end)
-  const duration = endDate.getTime() - startDate.getTime()
-
-  if (duration === 0) return 'vs yesterday'
-  const days = Math.round(duration / (24 * 60 * 60 * 1000))
-  if (days === 1) return 'vs yesterday'
-  return `vs previous ${days} days`
-}
-
-// ─── Tooltip ─────────────────────────────────────────────────────────
-
-function DashboardTooltipContent({
-  active,
-  payload,
-  label,
-  metric,
-  metricLabel,
-  formatNumberFn,
-  showComparison,
-  prevPeriodLabel,
-}: {
+interface TooltipProps {
   active?: boolean
-  payload?: Array<{ payload: Record<string, number>; value: number; dataKey?: string }>
+  payload?: Array<{ dataKey: string; value: number; color: string }>
   label?: string
   metric: MetricType
-  metricLabel: string
-  formatNumberFn: (n: number) => string
-  showComparison: boolean
-  prevPeriodLabel?: string
-}) {
-  if (!active || !payload?.length || !label) return null
+}
 
-  const current = payload.find((p) => p.dataKey === metric) ?? payload[payload.length - 1]
-  const value = Number(current?.value ?? current?.payload?.[metric] ?? 0)
+function CustomTooltip({ active, payload, metric }: TooltipProps) {
+  if (active && payload && payload.length) {
+    const entry = payload[0]
+    const config = METRIC_CONFIGS.find((m) => m.key === metric)
 
-  const prevKey = metric === 'visitors' ? 'prevVisitors' : metric === 'pageviews' ? 'prevPageviews' : metric === 'bounce_rate' ? 'prevBounceRate' : 'prevAvgDuration'
-  const prev = current?.payload?.[prevKey]
-
-  const hasPrev = showComparison && prev != null
-  const delta = hasPrev && prev > 0 ? Math.round(((value - prev) / prev) * 100) : null
-
-  const formatValue = (v: number) => {
-    if (metric === 'bounce_rate') return `${Math.round(v)}%`
-    if (metric === 'avg_duration') return formatDuration(v)
-    return formatNumberFn(v)
-  }
-
-  return (
-    <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3.5 py-2.5 shadow-xl">
-      <div className="text-[11px] font-medium mb-1 text-neutral-500 dark:text-neutral-400">
-        {label}
-      </div>
-      <div className="flex items-baseline gap-1.5">
-        <span className="text-sm font-bold text-neutral-900 dark:text-neutral-50">
-          {formatValue(value)}
-        </span>
-        <span className="text-[11px] text-neutral-500 dark:text-neutral-400">
-          {metricLabel}
-        </span>
-      </div>
-      {hasPrev && (
-        <div className="mt-1 flex items-center gap-1.5 text-[11px] text-neutral-500 dark:text-neutral-400">
-          <span>vs {formatValue(prev)} {prevPeriodLabel ? `(${prevPeriodLabel})` : ''}</span>
-          {delta !== null && (
-            <span
-              className="font-medium"
-              style={{
-                color: delta > 0 ? (metric === 'bounce_rate' ? COLORS.danger : COLORS.success) : delta < 0 ? (metric === 'bounce_rate' ? COLORS.success : COLORS.danger) : undefined,
-              }}
-            >
-              {delta > 0 ? '+' : ''}{delta}%
-            </span>
-          )}
+    if (config) {
+      return (
+        <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-3 shadow-sm shadow-black/5 min-w-[120px]">
+          <div className="flex items-center gap-2 text-sm">
+            <div className="size-1.5 rounded-full" style={{ backgroundColor: entry.color }}></div>
+            <span className="text-neutral-500 dark:text-neutral-400">{config.label}:</span>
+            <span className="font-semibold text-neutral-900 dark:text-white">{config.format(entry.value)}</span>
+          </div>
         </div>
-      )}
-    </div>
-  )
+      )
+    }
+  }
+  return null
 }
 
 // ─── Chart Component ─────────────────────────────────────────────────
@@ -224,9 +157,9 @@ export default function Chart({
   onDeleteAnnotation,
 }: ChartProps) {
   const [metric, setMetric] = useState<MetricType>('visitors')
-  const [showComparison, setShowComparison] = useState(false)
   const chartContainerRef = useRef<HTMLDivElement>(null)
   const { resolvedTheme } = useTheme()
+  const [showComparison, setShowComparison] = useState(false)
 
   // ─── Annotation state ─────────────────────────────────────────────
   const [annotationForm, setAnnotationForm] = useState<{
@@ -268,9 +201,7 @@ export default function Chart({
 
   // ─── Data ──────────────────────────────────────────────────────────
 
-  const chartData = data.map((item, i) => {
-    const prevItem = prevData?.[i]
-
+  const chartData = data.map((item) => {
     let formattedDate: string
     if (interval === 'minute') {
       formattedDate = new Date(item.date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
@@ -291,10 +222,6 @@ export default function Chart({
       visitors: item.visitors,
       bounce_rate: item.bounce_rate,
       avg_duration: item.avg_duration,
-      prevPageviews: prevItem?.pageviews,
-      prevVisitors: prevItem?.visitors,
-      prevBounceRate: prevItem?.bounce_rate,
-      prevAvgDuration: prevItem?.avg_duration,
     }
   })
 
@@ -369,228 +296,232 @@ export default function Chart({
     }
   }, [annotationForm.editingId, onDeleteAnnotation])
 
-  // ─── Metrics ───────────────────────────────────────────────────────
+  // ─── Metrics with trends ──────────────────────────────────────────
 
-  const calculateTrend = (current: number, previous?: number) => {
-    if (!previous) return null
-    if (previous === 0) return current > 0 ? 100 : 0
-    return Math.round(((current - previous) / previous) * 100)
-  }
+  const metricsWithTrends = METRIC_CONFIGS.map((m) => {
+    const value = stats[m.key]
+    const previousValue = prevStats?.[m.key]
+    const change = previousValue != null && previousValue > 0
+      ? ((value - previousValue) / previousValue) * 100
+      : null
+    const isPositive = change !== null ? (m.isNegative ? change < 0 : change > 0) : null
 
-  const metrics = [
-    { id: 'visitors' as const, label: 'Unique Visitors', value: formatNumber(stats.visitors), trend: calculateTrend(stats.visitors, prevStats?.visitors), invertTrend: false },
-    { id: 'pageviews' as const, label: 'Total Pageviews', value: formatNumber(stats.pageviews), trend: calculateTrend(stats.pageviews, prevStats?.pageviews), invertTrend: false },
-    { id: 'bounce_rate' as const, label: 'Bounce Rate', value: `${Math.round(stats.bounce_rate)}%`, trend: calculateTrend(stats.bounce_rate, prevStats?.bounce_rate), invertTrend: true },
-    { id: 'avg_duration' as const, label: 'Visit Duration', value: formatDuration(stats.avg_duration), trend: calculateTrend(stats.avg_duration, prevStats?.avg_duration), invertTrend: false },
-  ]
+    return {
+      ...m,
+      value,
+      previousValue,
+      change,
+      isPositive,
+    }
+  })
 
-  const activeMetric = metrics.find((m) => m.id === metric) || metrics[0]
-  const metricLabel = activeMetric.label
-  const prevPeriodLabel = prevData?.length ? getPrevDateRangeLabel(dateRange) : ''
-  const trendContext = getTrendContext(dateRange)
-
-  const hasPrev = !!(prevData?.length && showComparison)
   const hasData = data.length > 0
-  const hasAnyNonZero = hasData && chartData.some((d) => (d[metric] as number) > 0)
-
-  // ─── Trend Badge ──────────────────────────────────────────────────
-
-  function TrendBadge({ trend, invert }: { trend: number | null; invert: boolean }) {
-    if (trend === null) return <span className="text-neutral-400 dark:text-neutral-500">—</span>
-    const effective = invert ? -trend : trend
-    const isPositive = effective > 0
-    const isNegative = effective < 0
-    return (
-      <span className={`inline-flex items-center text-xs font-medium ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : isNegative ? 'text-red-500 dark:text-red-400' : 'text-neutral-400'}`}>
-        {isPositive ? <ArrowUpRightIcon className="w-3 h-3 mr-0.5" /> : isNegative ? <ArrowDownRightIcon className="w-3 h-3 mr-0.5" /> : null}
-        {Math.abs(trend)}%
-      </span>
-    )
-  }
+  const hasAnyNonZero = hasData && chartData.some((d) => (d[metric] as number) > 0
+  )
 
   // ─── Render ────────────────────────────────────────────────────────
 
   return (
-    <div
-      ref={chartContainerRef}
-      className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden relative"
-      role="region"
-      aria-label={`Analytics chart showing ${metricLabel} over time`}
-    >
-      {/* Stat Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-neutral-200 dark:divide-neutral-800 border-b border-neutral-200 dark:border-neutral-800">
-        {metrics.map((item) => {
-          const isActive = metric === item.id
-          return (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setMetric(item.id)}
-              aria-pressed={isActive}
-              aria-label={`Show ${item.label} chart`}
-              className={`p-4 sm:px-6 sm:py-5 text-left transition-colors relative cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/50 ${isActive ? 'bg-neutral-50 dark:bg-neutral-800/40' : 'hover:bg-neutral-50/50 dark:hover:bg-neutral-800/20'}`}
-            >
-              <div className={`text-[11px] font-semibold uppercase tracking-wider mb-1.5 ${isActive ? 'text-neutral-900 dark:text-white' : 'text-neutral-400 dark:text-neutral-500'}`}>
-                {item.label}
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-white">
-                  {item.value}
-                </span>
-                <TrendBadge trend={item.trend} invert={item.invertTrend} />
-              </div>
-              <p className="text-[11px] text-neutral-400 dark:text-neutral-500 mt-0.5">{trendContext}</p>
-              {isActive && (
-                <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-brand-orange" />
-              )}
-            </button>
-          )
-        })}
-      </div>
-
-      {/* Chart Area */}
-      <div className="px-4 sm:px-6 pt-4 pb-2">
-        {/* Toolbar */}
-        <div className="flex items-center justify-between gap-3 mb-4">
-          {/* Left: metric label + avg badge */}
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
-              {metricLabel}
-            </span>
-            {hasPrev && (
-              <div className="hidden sm:flex items-center gap-3 text-[11px] font-medium text-neutral-400 dark:text-neutral-500 ml-2">
-                <span className="flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-brand-orange" />
-                  Current
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-neutral-300 dark:bg-neutral-600" />
-                  Previous{prevPeriodLabel ? ` (${prevPeriodLabel})` : ''}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Right: controls */}
-          <div className="flex items-center gap-2">
-            {dateRange.start === dateRange.end ? (
-              <Select
-                value={todayInterval}
-                onChange={(value) => setTodayInterval(value as 'minute' | 'hour')}
-                options={[
-                  { value: 'minute', label: '1 min' },
-                  { value: 'hour', label: '1 hour' },
-                ]}
-                className="min-w-[90px]"
-              />
-            ) : (
-              <Select
-                value={multiDayInterval}
-                onChange={(value) => setMultiDayInterval(value as 'hour' | 'day')}
-                options={[
-                  { value: 'hour', label: '1 hour' },
-                  { value: 'day', label: '1 day' },
-                ]}
-                className="min-w-[90px]"
-              />
-            )}
-
-            {prevData?.length ? (
-              <Checkbox
-                checked={showComparison}
-                onCheckedChange={setShowComparison}
-                label="Compare"
-              />
-            ) : null}
-
-            <button
-              onClick={handleExportChart}
-              disabled={!hasData}
-              className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors disabled:opacity-30 cursor-pointer"
-              title="Export chart as PNG"
-            >
-              <DownloadIcon className="w-4 h-4" />
-            </button>
-
-            {canManageAnnotations && (
+    <div ref={chartContainerRef} className="relative">
+      <Card className="@container w-full overflow-hidden rounded-2xl">
+        <CardHeader className="p-0 mb-0">
+          {/* Metrics Grid - 21st.dev style */}
+          <div className="grid grid-cols-2 @2xl:grid-cols-2 @3xl:grid-cols-4 grow w-full">
+            {metricsWithTrends.map((m) => (
               <button
-                onClick={() => setAnnotationForm({ visible: true, date: new Date().toISOString().slice(0, 10), time: '', text: '', category: 'other' })}
-                className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors cursor-pointer"
-                title="Add annotation"
-              >
-                <PlusIcon className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {!hasData ? (
-          <div className="flex h-[250px] flex-col items-center justify-center gap-2">
-            <BarChartIcon className="h-10 w-10 text-neutral-200 dark:text-neutral-700" aria-hidden />
-            <p className="text-sm text-neutral-400 dark:text-neutral-500">No data for this period</p>
-          </div>
-        ) : !hasAnyNonZero ? (
-          <div className="flex h-[250px] flex-col items-center justify-center gap-2">
-            <BarChartIcon className="h-10 w-10 text-neutral-200 dark:text-neutral-700" aria-hidden />
-            <p className="text-sm text-neutral-400 dark:text-neutral-500">No {metricLabel.toLowerCase()} recorded</p>
-          </div>
-        ) : (
-          <div className="w-full" onContextMenu={handleChartContextMenu}>
-            <ChartContainer config={dashboardChartConfig} className="aspect-auto h-[250px] w-full">
-              <BarChart
-                accessibilityLayer
-                data={chartData}
-                margin={{ left: 12, right: 12 }}
-              >
-                <CartesianGrid vertical={false} />
-                <XAxis
-                  dataKey="date"
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={8}
-                  minTickGap={32}
-                />
-                <ChartTooltip
-                  content={
-                    <DashboardTooltipContent
-                      metric={metric}
-                      metricLabel={metricLabel}
-                      formatNumberFn={formatNumber}
-                      showComparison={hasPrev}
-                      prevPeriodLabel={prevPeriodLabel}
-                    />
-                  }
-                />
-                {hasPrev && (
-                  <Bar
-                    dataKey={metric === 'visitors' ? 'prevVisitors' : metric === 'pageviews' ? 'prevPageviews' : metric === 'bounce_rate' ? 'prevBounceRate' : 'prevAvgDuration'}
-                    fill="var(--chart-axis)"
-                    fillOpacity={0.15}
-                  />
+                key={m.key}
+                onClick={() => setMetric(m.key)}
+                className={cn(
+                  'cursor-pointer flex-1 text-start p-4 last:border-b-0 border-b @2xl:border-b @2xl:even:border-r @3xl:border-b-0 @3xl:border-r @3xl:last:border-r-0 border-neutral-200 dark:border-neutral-800 transition-all',
+                  metric === m.key && 'bg-neutral-50 dark:bg-neutral-800/40',
                 )}
-                <Bar dataKey={metric} fill={`var(--color-${metric})`} />
-                {annotationMarkers.map((marker) => {
-                  const primaryCategory = marker.annotations[0].category
-                  const color = ANNOTATION_COLORS[primaryCategory] || ANNOTATION_COLORS.other
-                  return (
-                    <ReferenceLine
-                      key={`ann-${marker.x}`}
-                      x={marker.x}
-                      stroke={color}
-                      strokeDasharray="4 4"
-                      strokeWidth={1.5}
-                      strokeOpacity={0.6}
-                    />
-                  )
-                })}
-              </BarChart>
-            </ChartContainer>
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-neutral-500 dark:text-neutral-400">{m.label}</span>
+                  {m.change !== null && (
+                    <Badge variant={m.isPositive ? 'success' : 'destructive'} appearance="outline">
+                      {m.isPositive ? <ArrowUp weight="bold" className="size-3" /> : <ArrowDown weight="bold" className="size-3" />}
+                      {Math.abs(m.change).toFixed(1)}%
+                    </Badge>
+                  )}
+                </div>
+                <div className="text-2xl font-bold text-neutral-900 dark:text-white">{m.format(m.value)}</div>
+                {m.previousValue != null && (
+                  <div className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">from {m.format(m.previousValue)}</div>
+                )}
+              </button>
+            ))}
           </div>
-        )}
-      </div>
+        </CardHeader>
 
+        <CardContent className="px-2.5 py-4">
+          {/* Toolbar */}
+          <div className="flex items-center justify-between gap-3 mb-4 px-2">
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
+                {METRIC_CONFIGS.find((m) => m.key === metric)?.label}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              {dateRange.start === dateRange.end ? (
+                <Select
+                  value={todayInterval}
+                  onChange={(value) => setTodayInterval(value as 'minute' | 'hour')}
+                  options={[
+                    { value: 'minute', label: '1 min' },
+                    { value: 'hour', label: '1 hour' },
+                  ]}
+                  className="min-w-[90px]"
+                />
+              ) : (
+                <Select
+                  value={multiDayInterval}
+                  onChange={(value) => setMultiDayInterval(value as 'hour' | 'day')}
+                  options={[
+                    { value: 'hour', label: '1 hour' },
+                    { value: 'day', label: '1 day' },
+                  ]}
+                  className="min-w-[90px]"
+                />
+              )}
+
+              {prevData?.length ? (
+                <Checkbox
+                  checked={showComparison}
+                  onCheckedChange={setShowComparison}
+                  label="Compare"
+                />
+              ) : null}
+
+              <button
+                onClick={handleExportChart}
+                disabled={!hasData}
+                className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors disabled:opacity-30 cursor-pointer"
+                title="Export chart as PNG"
+              >
+                <DownloadIcon className="w-4 h-4" />
+              </button>
+
+              {canManageAnnotations && (
+                <button
+                  onClick={() => setAnnotationForm({ visible: true, date: new Date().toISOString().slice(0, 10), time: '', text: '', category: 'other' })}
+                  className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors cursor-pointer"
+                  title="Add annotation"
+                >
+                  <PlusIcon className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {!hasData || !hasAnyNonZero ? (
+            <div className="flex h-96 flex-col items-center justify-center gap-2">
+              <p className="text-sm text-neutral-400 dark:text-neutral-500">
+                {!hasData ? 'No data for this period' : `No ${METRIC_CONFIGS.find((m) => m.key === metric)?.label.toLowerCase()} recorded`}
+              </p>
+            </div>
+          ) : (
+            <div className="w-full" onContextMenu={handleChartContextMenu}>
+              <ChartContainer
+                config={chartConfig}
+                className="h-96 w-full overflow-visible [&_.recharts-curve.recharts-tooltip-cursor]:stroke-[initial]"
+              >
+                <LineChart
+                  data={chartData}
+                  margin={{ top: 20, right: 20, left: 5, bottom: 20 }}
+                  style={{ overflow: 'visible' }}
+                >
+                  <defs>
+                    <pattern id="dotGrid" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+                      <circle cx="10" cy="10" r="1" fill="var(--chart-grid)" fillOpacity="1" />
+                    </pattern>
+                    <filter id="lineShadow" x="-100%" y="-100%" width="300%" height="300%">
+                      <feDropShadow
+                        dx="4"
+                        dy="6"
+                        stdDeviation="25"
+                        floodColor={`${chartConfig[metric]?.color}60`}
+                      />
+                    </filter>
+                    <filter id="dotShadow" x="-50%" y="-50%" width="200%" height="200%">
+                      <feDropShadow dx="2" dy="2" stdDeviation="3" floodColor="rgba(0,0,0,0.5)" />
+                    </filter>
+                  </defs>
+
+                  <XAxis
+                    dataKey="date"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: 'var(--chart-axis)' }}
+                    tickMargin={10}
+                    minTickGap={32}
+                  />
+
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: 'var(--chart-axis)' }}
+                    tickMargin={10}
+                    tickCount={6}
+                    tickFormatter={(value) => {
+                      const config = METRIC_CONFIGS.find((m) => m.key === metric)
+                      return config ? config.format(value) : value.toString()
+                    }}
+                  />
+
+                  <ChartTooltip content={<CustomTooltip metric={metric} />} cursor={{ strokeDasharray: '3 3', stroke: '#9ca3af' }} />
+
+                  {/* Background dot grid pattern */}
+                  <rect
+                    x="60px"
+                    y="-20px"
+                    width="calc(100% - 75px)"
+                    height="calc(100% - 10px)"
+                    fill="url(#dotGrid)"
+                    style={{ pointerEvents: 'none' }}
+                  />
+
+                  {/* Annotation reference lines */}
+                  {annotationMarkers.map((marker) => {
+                    const primaryCategory = marker.annotations[0].category
+                    const color = ANNOTATION_COLORS[primaryCategory] || ANNOTATION_COLORS.other
+                    return (
+                      <ReferenceLine
+                        key={`ann-${marker.x}`}
+                        x={marker.x}
+                        stroke={color}
+                        strokeDasharray="4 4"
+                        strokeWidth={1.5}
+                        strokeOpacity={0.6}
+                      />
+                    )
+                  })}
+
+                  <Line
+                    type="monotone"
+                    dataKey={metric}
+                    stroke={chartConfig[metric]?.color}
+                    strokeWidth={2}
+                    filter="url(#lineShadow)"
+                    dot={false}
+                    activeDot={{
+                      r: 6,
+                      fill: chartConfig[metric]?.color,
+                      stroke: 'white',
+                      strokeWidth: 2,
+                      filter: 'url(#dotShadow)',
+                    }}
+                  />
+                </LineChart>
+              </ChartContainer>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Annotation tags */}
       {annotationMarkers.length > 0 && (
-        <div className="px-4 sm:px-6 flex items-center gap-1 flex-wrap py-1.5 border-t border-neutral-100 dark:border-neutral-800">
+        <div className="px-4 sm:px-6 flex items-center gap-1 flex-wrap py-1.5 border-t border-neutral-100 dark:border-neutral-800 -mt-px rounded-b-2xl bg-white dark:bg-neutral-900 border-x border-b border-neutral-200 dark:border-neutral-800">
           <span className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500 mr-1">Annotations:</span>
           {annotationMarkers.map((marker) => {
             const primary = marker.annotations[0]
@@ -617,7 +548,6 @@ export default function Chart({
                 <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
                 <span className="max-w-[120px] truncate">{primary.text}</span>
                 {count > 1 && <span className="text-neutral-400">+{count - 1}</span>}
-                {/* Hover tooltip */}
                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-50 pointer-events-none">
                   <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-lg p-2 min-w-[180px] max-w-[240px]">
                     {marker.annotations.map((a) => (
@@ -641,7 +571,7 @@ export default function Chart({
 
       {/* Live indicator */}
       {lastUpdatedAt != null && (
-        <div className="px-4 sm:px-6 pb-3 flex justify-end">
+        <div className="px-4 sm:px-6 pb-3 pt-2 flex justify-end">
           <div className="flex items-center gap-1.5 text-[11px] text-neutral-400 dark:text-neutral-500">
             <span className="relative flex h-1.5 w-1.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
@@ -692,7 +622,6 @@ export default function Chart({
               {annotationForm.editingId ? 'Edit annotation' : 'Add annotation'}
             </h3>
             <div className="space-y-3">
-              {/* Date picker trigger */}
               <div>
                 <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Date</label>
                 <button
@@ -706,7 +635,6 @@ export default function Chart({
                   </svg>
                 </button>
               </div>
-              {/* Time input */}
               <div>
                 <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">
                   Time <span className="text-neutral-400 dark:text-neutral-500">(optional)</span>
@@ -730,7 +658,6 @@ export default function Chart({
                   )}
                 </div>
               </div>
-              {/* Note */}
               <div>
                 <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Note</label>
                 <input
@@ -744,7 +671,6 @@ export default function Chart({
                 />
                 <span className="text-[10px] text-neutral-400 mt-0.5 block text-right">{annotationForm.text.length}/200</span>
               </div>
-              {/* Category - custom Select */}
               <div>
                 <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Category</label>
                 <Select
@@ -792,7 +718,7 @@ export default function Chart({
         </div>
       )}
 
-      {/* ─── DatePicker overlay (single mode) ─────────────────────── */}
+      {/* ─── DatePicker overlay ─────────────────────── */}
       <DatePicker
         isOpen={calendarOpen}
         onClose={() => setCalendarOpen(false)}
