@@ -22,20 +22,22 @@ import { getDateRange, formatDate } from '@ciphera-net/ui'
 import { toast } from '@ciphera-net/ui'
 import { Button } from '@ciphera-net/ui'
 import { Select, DatePicker, DownloadIcon } from '@ciphera-net/ui'
+import dynamic from 'next/dynamic'
 import { DashboardSkeleton, useMinimumLoading } from '@/components/skeletons'
-import ExportModal from '@/components/dashboard/ExportModal'
-import ContentStats from '@/components/dashboard/ContentStats'
-import TopReferrers from '@/components/dashboard/TopReferrers'
-import Locations from '@/components/dashboard/Locations'
-import TechSpecs from '@/components/dashboard/TechSpecs'
-import Chart from '@/components/dashboard/Chart'
-import PerformanceStats from '@/components/dashboard/PerformanceStats'
-import GoalStats from '@/components/dashboard/GoalStats'
-import ScrollDepth from '@/components/dashboard/ScrollDepth'
-import Campaigns from '@/components/dashboard/Campaigns'
 import FilterBar from '@/components/dashboard/FilterBar'
 import AddFilterDropdown, { type FilterSuggestion, type FilterSuggestions } from '@/components/dashboard/AddFilterDropdown'
-import EventProperties from '@/components/dashboard/EventProperties'
+
+const Chart = dynamic(() => import('@/components/dashboard/Chart'))
+const ContentStats = dynamic(() => import('@/components/dashboard/ContentStats'))
+const TopReferrers = dynamic(() => import('@/components/dashboard/TopReferrers'))
+const Locations = dynamic(() => import('@/components/dashboard/Locations'))
+const TechSpecs = dynamic(() => import('@/components/dashboard/TechSpecs'))
+const PerformanceStats = dynamic(() => import('@/components/dashboard/PerformanceStats'))
+const GoalStats = dynamic(() => import('@/components/dashboard/GoalStats'))
+const ScrollDepth = dynamic(() => import('@/components/dashboard/ScrollDepth'))
+const Campaigns = dynamic(() => import('@/components/dashboard/Campaigns'))
+const EventProperties = dynamic(() => import('@/components/dashboard/EventProperties'))
+const ExportModal = dynamic(() => import('@/components/dashboard/ExportModal'))
 import { type DimensionFilter, serializeFilters, parseFiltersFromURL } from '@/lib/filters'
 import {
   useDashboardOverview,
