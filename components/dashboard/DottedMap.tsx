@@ -22,7 +22,7 @@ function getCountryName(code: string): string {
 export default function DottedMap({ data, className }: DottedMapProps) {
   const width = 150
   const height = 68
-  const dotRadius = 0.2
+  const dotRadius = 0.25
   const [tooltip, setTooltip] = useState<{ x: number; y: number; country: string; pageviews: number } | null>(null)
 
   const { points, addMarkers } = createMap({ width, height, mapSamples: 8000 })
@@ -78,7 +78,7 @@ export default function DottedMap({ data, className }: DottedMapProps) {
     <div className="relative w-full h-full flex items-center justify-center">
       <svg
         viewBox={`0 0 ${width} ${height}`}
-        className={cn('text-neutral-300 dark:text-neutral-700', className)}
+        className={cn('text-neutral-400 dark:text-neutral-500', className)}
         style={{ width: '100%', height: 'auto', maxHeight: '100%' }}
       >
         <defs>
