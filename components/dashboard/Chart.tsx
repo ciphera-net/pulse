@@ -494,7 +494,7 @@ export default function Chart({
                   Current
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full border border-dashed" style={{ borderColor: 'var(--chart-axis)' }} />
+                  <span className="h-1.5 w-1.5 rounded-full bg-neutral-300 dark:bg-neutral-600" />
                   Previous{prevPeriodLabel ? ` (${prevPeriodLabel})` : ''}
                 </span>
               </div>
@@ -555,40 +555,31 @@ export default function Chart({
         </div>
 
         {!hasData ? (
-          <div className="flex h-72 flex-col items-center justify-center gap-2">
+          <div className="flex h-[250px] flex-col items-center justify-center gap-2">
             <BarChartIcon className="h-10 w-10 text-neutral-200 dark:text-neutral-700" aria-hidden />
             <p className="text-sm text-neutral-400 dark:text-neutral-500">No data for this period</p>
           </div>
         ) : !hasAnyNonZero ? (
-          <div className="flex h-72 flex-col items-center justify-center gap-2">
+          <div className="flex h-[250px] flex-col items-center justify-center gap-2">
             <BarChartIcon className="h-10 w-10 text-neutral-200 dark:text-neutral-700" aria-hidden />
             <p className="text-sm text-neutral-400 dark:text-neutral-500">No {metricLabel.toLowerCase()} recorded</p>
           </div>
         ) : (
-          <div className="h-[320px] w-full" onContextMenu={handleChartContextMenu}>
-            <ChartContainer config={dashboardChartConfig} className="h-full w-full">
-              <BarChart accessibilityLayer data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
-                <CartesianGrid
-                  vertical={false}
-                  stroke="var(--chart-grid)"
-                  strokeOpacity={0.5}
-                />
+          <div className="h-[250px] w-full" onContextMenu={handleChartContextMenu}>
+            <ChartContainer config={dashboardChartConfig} className="aspect-auto h-full w-full">
+              <BarChart accessibilityLayer data={chartData} margin={{ left: 12, right: 12 }}>
+                <CartesianGrid vertical={false} />
                 <XAxis
                   dataKey="date"
-                  stroke="var(--chart-axis)"
-                  fontSize={11}
                   tickLine={false}
                   axisLine={false}
-                  minTickGap={40}
-                  ticks={midnightTicks ?? dayTicks}
-                  dy={8}
+                  tickMargin={8}
+                  minTickGap={32}
                 />
                 <YAxis
-                  stroke="var(--chart-axis)"
-                  fontSize={11}
                   tickLine={false}
                   axisLine={false}
-                  domain={[0, 'auto']}
+                  tickMargin={8}
                   width={40}
                   allowDecimals={!isCountMetric}
                   tickFormatter={(val) => {
@@ -607,28 +598,19 @@ export default function Chart({
                       prevPeriodLabel={prevPeriodLabel}
                     />
                   }
-                  cursor={false}
                 />
 
                 {hasPrev && (
                   <Bar
                     dataKey={metric === 'visitors' ? 'prevVisitors' : metric === 'pageviews' ? 'prevPageviews' : metric === 'bounce_rate' ? 'prevBounceRate' : 'prevAvgDuration'}
                     fill="var(--chart-axis)"
-                    fillOpacity={0.2}
-                    radius={[4, 4, 0, 0]}
-                    isAnimationActive
-                    animationDuration={400}
-                    animationEasing="ease-out"
+                    fillOpacity={0.15}
                   />
                 )}
 
                 <Bar
                   dataKey={metric}
-                  fill={COLORS.brand}
-                  radius={[4, 4, 0, 0]}
-                  isAnimationActive
-                  animationDuration={400}
-                  animationEasing="ease-out"
+                  fill={`var(--color-${metric})`}
                 />
 
                 {annotationMarkers.map((marker) => {
