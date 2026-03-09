@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 
 - **Hide unknown locations.** New toggle in Site Settings under Data & Privacy to hide "Unknown" entries from your Locations panel. When geographic data can't be determined for a visitor, it normally shows as "Unknown" in countries, cities, and regions. Turn this on to keep your location stats clean and only show resolved locations.
+- **Chart annotations.** Mark events on your dashboard timeline — like deploys, campaigns, or incidents — so you always know why traffic changed. Click the + button on the chart to add a note on any date. Annotations appear as colored markers on the chart: blue for deploys, green for campaigns, red for incidents. Hover to see the details. Team owners and admins can add, edit, and delete annotations; everyone else (including public dashboard viewers) can see them.
 
 ### Improved
 
