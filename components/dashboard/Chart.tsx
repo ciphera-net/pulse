@@ -8,40 +8,29 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
   ReferenceLine,
 } from 'recharts'
-import type { TooltipProps } from 'recharts'
+import { ChartContainer, ChartTooltip, type ChartConfig } from '@/components/charts'
 import { formatNumber, formatDuration, formatUpdatedAgo, DatePicker } from '@ciphera-net/ui'
 import { ArrowUpRightIcon, ArrowDownRightIcon, BarChartIcon, Select, DownloadIcon, PlusIcon, XIcon } from '@ciphera-net/ui'
 import { Checkbox } from '@ciphera-net/ui'
 
 const COLORS = {
-  brand: 'var(--color-brand-orange)',
+  brand: 'var(--chart-1)',
   success: 'var(--color-success)',
   danger: 'var(--color-error)',
 }
 
-const CHART_COLORS_LIGHT = {
-  border: 'var(--color-neutral-200)',
-  grid: 'var(--color-neutral-100)',
-  text: 'var(--color-neutral-900)',
-  textMuted: 'var(--color-neutral-500)',
-  axis: 'var(--color-neutral-400)',
-  tooltipBg: '#ffffff',
-  tooltipBorder: 'var(--color-neutral-200)',
-}
-
-const CHART_COLORS_DARK = {
-  border: 'var(--color-neutral-700)',
-  grid: 'var(--color-neutral-800)',
-  text: 'var(--color-neutral-50)',
-  textMuted: 'var(--color-neutral-400)',
-  axis: 'var(--color-neutral-500)',
-  tooltipBg: 'var(--color-neutral-800)',
-  tooltipBorder: 'var(--color-neutral-700)',
-}
+const dashboardChartConfig = {
+  visitors: { label: 'Visitors', color: 'var(--chart-1)' },
+  pageviews: { label: 'Pageviews', color: 'var(--chart-1)' },
+  bounce_rate: { label: 'Bounce Rate', color: 'var(--chart-1)' },
+  avg_duration: { label: 'Visit Duration', color: 'var(--chart-1)' },
+  prevVisitors: { label: 'Previous', color: 'var(--chart-axis)' },
+  prevPageviews: { label: 'Previous', color: 'var(--chart-axis)' },
+  prevBounceRate: { label: 'Previous', color: 'var(--chart-axis)' },
+  prevAvgDuration: { label: 'Previous', color: 'var(--chart-axis)' },
+} satisfies ChartConfig
 
 const ANNOTATION_COLORS: Record<string, string> = {
   deploy: '#3b82f6',
@@ -160,7 +149,7 @@ function getTrendContext(dateRange: { start: string; end: string }): string {
 
 // ─── Tooltip ─────────────────────────────────────────────────────────
 
-function ChartTooltip({
+function DashboardTooltipContent({
   active,
   payload,
   label,
@@ -169,7 +158,6 @@ function ChartTooltip({
   formatNumberFn,
   showComparison,
   prevPeriodLabel,
-  colors,
 }: {
   active?: boolean
   payload?: Array<{ payload: Record<string, number>; value: number; dataKey?: string }>
@@ -179,7 +167,6 @@ function ChartTooltip({
   formatNumberFn: (n: number) => string
   showComparison: boolean
   prevPeriodLabel?: string
-  colors: typeof CHART_COLORS_LIGHT
 }) {
   if (!active || !payload?.length || !label) return null
 
@@ -199,29 +186,26 @@ function ChartTooltip({
   }
 
   return (
-    <div
-      className="rounded-lg border px-3.5 py-2.5 shadow-lg"
-      style={{ backgroundColor: colors.tooltipBg, borderColor: colors.tooltipBorder }}
-    >
-      <div className="text-[11px] font-medium mb-1" style={{ color: colors.textMuted }}>
+    <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3.5 py-2.5 shadow-xl">
+      <div className="text-[11px] font-medium mb-1 text-neutral-500 dark:text-neutral-400">
         {label}
       </div>
       <div className="flex items-baseline gap-1.5">
-        <span className="text-sm font-bold" style={{ color: colors.text }}>
+        <span className="text-sm font-bold text-neutral-900 dark:text-neutral-50">
           {formatValue(value)}
         </span>
-        <span className="text-[11px]" style={{ color: colors.textMuted }}>
+        <span className="text-[11px] text-neutral-500 dark:text-neutral-400">
           {metricLabel}
         </span>
       </div>
       {hasPrev && (
-        <div className="mt-1 flex items-center gap-1.5 text-[11px]" style={{ color: colors.textMuted }}>
+        <div className="mt-1 flex items-center gap-1.5 text-[11px] text-neutral-500 dark:text-neutral-400">
           <span>vs {formatValue(prev)} {prevPeriodLabel ? `(${prevPeriodLabel})` : ''}</span>
           {delta !== null && (
             <span
               className="font-medium"
               style={{
-                color: delta > 0 ? (metric === 'bounce_rate' ? COLORS.danger : COLORS.success) : delta < 0 ? (metric === 'bounce_rate' ? COLORS.success : COLORS.danger) : colors.textMuted,
+                color: delta > 0 ? (metric === 'bounce_rate' ? COLORS.danger : COLORS.success) : delta < 0 ? (metric === 'bounce_rate' ? COLORS.success : COLORS.danger) : undefined,
               }}
             >
               {delta > 0 ? '+' : ''}{delta}%
@@ -296,11 +280,6 @@ export default function Chart({
       link.click()
     } catch { /* noop */ }
   }, [onExportChart, dateRange, resolvedTheme])
-
-  const colors = useMemo(
-    () => (resolvedTheme === 'dark' ? CHART_COLORS_DARK : CHART_COLORS_LIGHT),
-    [resolvedTheme]
-  )
 
   // ─── Data ──────────────────────────────────────────────────────────
 
@@ -515,7 +494,7 @@ export default function Chart({
                   Current
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full border border-dashed" style={{ borderColor: colors.axis }} />
+                  <span className="h-1.5 w-1.5 rounded-full border border-dashed" style={{ borderColor: 'var(--chart-axis)' }} />
                   Previous{prevPeriodLabel ? ` (${prevPeriodLabel})` : ''}
                 </span>
               </div>
@@ -587,8 +566,8 @@ export default function Chart({
           </div>
         ) : (
           <div className="h-[320px] w-full" onContextMenu={handleChartContextMenu}>
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
+            <ChartContainer config={dashboardChartConfig} className="h-full w-full">
+              <AreaChart accessibilityLayer data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
                 <defs>
                   <linearGradient id={`gradient-${metric}`} x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor={COLORS.brand} stopOpacity={0.25} />
@@ -598,11 +577,12 @@ export default function Chart({
                 <CartesianGrid
                   strokeDasharray="3 3"
                   vertical={false}
-                  stroke={colors.grid}
+                  stroke="var(--chart-grid)"
+                  strokeOpacity={0.5}
                 />
                 <XAxis
                   dataKey="date"
-                  stroke={colors.axis}
+                  stroke="var(--chart-axis)"
                   fontSize={11}
                   tickLine={false}
                   axisLine={false}
@@ -611,7 +591,7 @@ export default function Chart({
                   dy={8}
                 />
                 <YAxis
-                  stroke={colors.axis}
+                  stroke="var(--chart-axis)"
                   fontSize={11}
                   tickLine={false}
                   axisLine={false}
@@ -624,29 +604,24 @@ export default function Chart({
                     return formatAxisValue(val)
                   }}
                 />
-                <Tooltip
-                  content={(p: TooltipProps<number, string>) => (
-                    <ChartTooltip
-                      active={p.active}
-                      payload={p.payload as Array<{ payload: Record<string, number>; value: number; dataKey?: string }>}
-                      label={p.label as string}
+                <ChartTooltip
+                  content={
+                    <DashboardTooltipContent
                       metric={metric}
                       metricLabel={metricLabel}
                       formatNumberFn={formatNumber}
                       showComparison={hasPrev}
                       prevPeriodLabel={prevPeriodLabel}
-                      colors={colors}
                     />
-                  )}
-                  cursor={{ stroke: colors.axis, strokeOpacity: 0.3, strokeWidth: 1 }}
+                  }
+                  cursor={{ stroke: 'var(--chart-axis)', strokeOpacity: 0.3, strokeWidth: 1 }}
                 />
-
 
                 {hasPrev && (
                   <Area
                     type="monotone"
                     dataKey={metric === 'visitors' ? 'prevVisitors' : metric === 'pageviews' ? 'prevPageviews' : metric === 'bounce_rate' ? 'prevBounceRate' : 'prevAvgDuration'}
-                    stroke={colors.axis}
+                    stroke="var(--chart-axis)"
                     strokeWidth={1.5}
                     strokeDasharray="4 4"
                     strokeLinecap="round"
@@ -696,7 +671,7 @@ export default function Chart({
                   )
                 })}
               </AreaChart>
-            </ResponsiveContainer>
+            </ChartContainer>
           </div>
         )}
       </div>

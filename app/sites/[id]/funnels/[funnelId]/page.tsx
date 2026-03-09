@@ -1,10 +1,10 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ApiError } from '@/lib/api/client'
 import { getFunnel, getFunnelStats, deleteFunnel, type Funnel, type FunnelStats } from '@/lib/api/funnels'
-import { toast, Select, DatePicker, ChevronLeftIcon, ArrowRightIcon, TrashIcon, useTheme, Button } from '@ciphera-net/ui'
+import { toast, Select, DatePicker, ChevronLeftIcon, ArrowRightIcon, TrashIcon, Button } from '@ciphera-net/ui'
 import { FunnelDetailSkeleton, useMinimumLoading } from '@/components/skeletons'
 import Link from 'next/link'
 import {
@@ -13,27 +13,17 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
   Cell
 } from 'recharts'
+import { ChartContainer, ChartTooltip, type ChartConfig } from '@/components/charts'
 import { getDateRange } from '@ciphera-net/ui'
 
-const CHART_COLORS_LIGHT = {
-  border: 'var(--color-neutral-200)',
-  axis: 'var(--color-neutral-400)',
-  tooltipBg: '#ffffff',
-  tooltipBorder: 'var(--color-neutral-200)',
-}
-
-const CHART_COLORS_DARK = {
-  border: 'var(--color-neutral-700)',
-  axis: 'var(--color-neutral-500)',
-  tooltipBg: 'var(--color-neutral-800)',
-  tooltipBorder: 'var(--color-neutral-700)',
-}
-
-const BRAND_ORANGE = 'var(--color-brand-orange)'
+const chartConfig = {
+  visitors: {
+    label: 'Visitors',
+    color: 'var(--chart-1)',
+  },
+} satisfies ChartConfig
 
 export default function FunnelReportPage() {
   const params = useParams()
@@ -73,12 +63,6 @@ export default function FunnelReportPage() {
   useEffect(() => {
     loadData()
   }, [loadData])
-
-  const { resolvedTheme } = useTheme()
-  const chartColors = useMemo(
-    () => (resolvedTheme === 'dark' ? CHART_COLORS_DARK : CHART_COLORS_LIGHT),
-    [resolvedTheme]
-  )
 
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this funnel?')) return
@@ -204,64 +188,56 @@ export default function FunnelReportPage() {
           <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-6">
             Funnel Visualization
           </h3>
-          <div className="h-[400px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartColors.border} />
-                <XAxis 
-                  dataKey="name" 
-                  stroke={chartColors.axis} 
-                  fontSize={12} 
-                  tickLine={false} 
-                  axisLine={false} 
-                />
-                <YAxis 
-                  stroke={chartColors.axis} 
-                  fontSize={12} 
-                  tickLine={false} 
-                  axisLine={false} 
-                />
-                <Tooltip 
-                  cursor={{ fill: 'transparent' }}
-                  content={({ active, payload, label }) => {
-                    if (active && payload && payload.length) {
-                      const data = payload[0].payload;
-                      return (
-                        <div
-                          className="p-3 rounded-xl shadow-lg border transition-shadow duration-300"
-                          style={{
-                            backgroundColor: chartColors.tooltipBg,
-                            borderColor: chartColors.tooltipBorder,
-                          }}
-                        >
-                          <p className="font-medium text-neutral-900 dark:text-white mb-1">{label}</p>
-                          <p className="text-brand-orange font-bold text-lg">
-                            {data.visitors.toLocaleString()} visitors
+          <ChartContainer config={chartConfig} className="h-[400px] w-full">
+            <BarChart accessibilityLayer data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--chart-grid)" strokeOpacity={0.5} />
+              <XAxis
+                dataKey="name"
+                stroke="var(--chart-axis)"
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis
+                stroke="var(--chart-axis)"
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
+              />
+              <ChartTooltip
+                cursor={{ fill: 'transparent' }}
+                content={({ active, payload, label }) => {
+                  if (active && payload && payload.length) {
+                    const data = payload[0].payload;
+                    return (
+                      <div className="p-3 rounded-lg shadow-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800">
+                        <p className="font-medium text-neutral-900 dark:text-white mb-1">{label}</p>
+                        <p className="text-brand-orange font-bold text-lg">
+                          {data.visitors.toLocaleString()} visitors
+                        </p>
+                        {data.dropoff > 0 && (
+                          <p className="text-red-500 text-sm">
+                            {Math.round(data.dropoff)}% drop-off
                           </p>
-                          {data.dropoff > 0 && (
-                            <p className="text-red-500 text-sm">
-                              {Math.round(data.dropoff)}% drop-off
-                            </p>
-                          )}
-                          {data.conversion > 0 && (
-                            <p className="text-green-500 text-sm">
-                              {Math.round(data.conversion)}% conversion (overall)
-                            </p>
-                          )}
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Bar dataKey="visitors" radius={[4, 4, 0, 0]} barSize={60}>
-                  {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={BRAND_ORANGE} fillOpacity={Math.max(0.1, 1 - index * 0.15)} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+                        )}
+                        {data.conversion > 0 && (
+                          <p className="text-green-500 text-sm">
+                            {Math.round(data.conversion)}% conversion (overall)
+                          </p>
+                        )}
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
+              />
+              <Bar dataKey="visitors" radius={[6, 6, 0, 0]} barSize={60}>
+                {chartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill="var(--color-visitors)" fillOpacity={Math.max(0.1, 1 - index * 0.15)} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ChartContainer>
         </div>
 
         {/* Detailed Stats Table */}
