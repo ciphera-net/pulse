@@ -110,7 +110,7 @@ export default function Globe({ data, className }: GlobeProps) {
 
   return (
     <div className={`relative w-full h-full overflow-hidden ${className ?? ''}`}>
-      <div className="absolute inset-x-0 top-[30%] mx-auto aspect-square w-[140%] max-w-none">
+      <div className="absolute left-1/2 -translate-x-1/2 top-[15%] aspect-square w-[130%]">
         <canvas
           className="size-full opacity-0 transition-opacity duration-500"
           style={{ contain: 'layout paint size' }}
