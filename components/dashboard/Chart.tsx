@@ -323,16 +323,16 @@ export default function Chart({
 
   return (
     <div ref={chartContainerRef} className="relative">
-      <Card className="@container w-full overflow-hidden rounded-2xl">
+      <Card className="w-full overflow-hidden rounded-2xl">
         <CardHeader className="p-0 mb-0">
           {/* Metrics Grid - 21st.dev style */}
-          <div className="grid grid-cols-2 @2xl:grid-cols-2 @3xl:grid-cols-4 grow w-full">
+          <div className="grid grid-cols-2 md:grid-cols-4 grow w-full">
             {metricsWithTrends.map((m) => (
               <button
                 key={m.key}
                 onClick={() => setMetric(m.key)}
                 className={cn(
-                  'cursor-pointer flex-1 text-start p-4 last:border-b-0 border-b @2xl:border-b @2xl:even:border-r @3xl:border-b-0 @3xl:border-r @3xl:last:border-r-0 border-neutral-200 dark:border-neutral-800 transition-all',
+                  'cursor-pointer flex-1 text-start p-4 border-b md:border-b-0 md:border-r md:last:border-r-0 border-neutral-200 dark:border-neutral-800 transition-all',
                   metric === m.key && 'bg-neutral-50 dark:bg-neutral-800/40',
                 )}
               >
