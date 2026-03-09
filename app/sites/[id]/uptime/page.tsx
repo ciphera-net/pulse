@@ -21,7 +21,6 @@ import { toast } from '@ciphera-net/ui'
 import { useTheme } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { Button, Modal } from '@ciphera-net/ui'
-import SiteNav from '@/components/dashboard/SiteNav'
 import { UptimeSkeleton, ChecksSkeleton, useMinimumLoading } from '@/components/skeletons'
 import {
   AreaChart,
@@ -693,10 +692,8 @@ export default function UptimePage() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.2 }}
-      className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8"
+      className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8"
     >
-      <SiteNav siteId={siteId} />
-
       {/* Header */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

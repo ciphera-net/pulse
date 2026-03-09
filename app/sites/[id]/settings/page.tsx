@@ -15,7 +15,6 @@ import { APP_URL } from '@/lib/api/client'
 import { generatePrivacySnippet } from '@/lib/utils/privacySnippet'
 import { useUnsavedChanges } from '@/lib/hooks/useUnsavedChanges'
 import { getSubscription, type SubscriptionDetails } from '@/lib/api/billing'
-import SiteNav from '@/components/dashboard/SiteNav'
 import { getRetentionOptionsForPlan, formatRetentionMonths } from '@/lib/plans'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@/lib/auth/context'
@@ -382,7 +381,7 @@ export default function SiteSettingsPage() {
 
   if (showSkeleton) {
     return (
-      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
+      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
         <div className="space-y-8">
           <div>
             <div className="h-8 w-40 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800 mb-2" />
@@ -405,15 +404,14 @@ export default function SiteSettingsPage() {
 
   if (!site) {
     return (
-      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
+      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
         <p className="text-neutral-600 dark:text-neutral-400">Site not found</p>
       </div>
     )
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
-      <SiteNav siteId={siteId} />
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
 
       <div className="space-y-8">
         <div>
