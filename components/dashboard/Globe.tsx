@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import createGlobe from 'cobe'
 import { useTheme } from '@ciphera-net/ui'
 import { countryCentroids } from '@/lib/country-centroids'
@@ -22,16 +22,19 @@ export default function Globe({ data, className }: GlobeProps) {
   // Update refs without causing effect re-runs
   isDarkRef.current = resolvedTheme === 'dark'
 
-  // Compute markers into ref
-  const max = data.length ? Math.max(...data.map((d) => d.pageviews)) : 0
-  markersRef.current = max > 0
-    ? data
-        .filter((d) => d.country && d.country !== 'Unknown' && countryCentroids[d.country])
-        .map((d) => ({
-          location: [countryCentroids[d.country].lat, countryCentroids[d.country].lng] as [number, number],
-          size: 0.03 + (d.pageviews / max) * 0.12,
-        }))
-    : []
+  // Compute markers into ref (memoized to avoid recalculating on every render)
+  const markers = useMemo(() => {
+    const max = data.length ? Math.max(...data.map((d) => d.pageviews)) : 0
+    return max > 0
+      ? data
+          .filter((d) => d.country && d.country !== 'Unknown' && countryCentroids[d.country])
+          .map((d) => ({
+            location: [countryCentroids[d.country].lat, countryCentroids[d.country].lng] as [number, number],
+            size: 0.03 + (d.pageviews / max) * 0.12,
+          }))
+      : []
+  }, [data])
+  markersRef.current = markers
 
   useEffect(() => {
     if (!canvasRef.current) return

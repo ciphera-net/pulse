@@ -201,7 +201,7 @@ export default function Chart({
 
   // ─── Data ──────────────────────────────────────────────────────────
 
-  const chartData = data.map((item) => {
+  const chartData = useMemo(() => data.map((item) => {
     let formattedDate: string
     if (interval === 'minute') {
       formattedDate = new Date(item.date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
@@ -223,7 +223,7 @@ export default function Chart({
       bounce_rate: item.bounce_rate,
       avg_duration: item.avg_duration,
     }
-  })
+  }), [data, interval])
 
   const annotationMarkers = useMemo(() => {
     if (!annotations?.length) return []
@@ -298,7 +298,7 @@ export default function Chart({
 
   // ─── Metrics with trends ──────────────────────────────────────────
 
-  const metricsWithTrends = METRIC_CONFIGS.map((m) => {
+  const metricsWithTrends = useMemo(() => METRIC_CONFIGS.map((m) => {
     const value = stats[m.key]
     const previousValue = prevStats?.[m.key]
     const change = previousValue != null && previousValue > 0
@@ -313,7 +313,7 @@ export default function Chart({
       change,
       isPositive,
     }
-  })
+  }), [stats, prevStats])
 
   const hasData = data.length > 0
   const hasAnyNonZero = hasData && chartData.some((d) => (d[metric] as number) > 0
