@@ -25,7 +25,10 @@ export default function DottedMap({ data, className }: DottedMapProps) {
   const dotRadius = 0.25
   const [tooltip, setTooltip] = useState<{ x: number; y: number; country: string; pageviews: number } | null>(null)
 
-  const { points, addMarkers } = createMap({ width, height, mapSamples: 8000 })
+  const { points, addMarkers } = useMemo(
+    () => createMap({ width, height, mapSamples: 8000 }),
+    [width, height],
+  )
 
   const markerData = useMemo(() => {
     if (!data.length) return []
@@ -48,7 +51,7 @@ export default function DottedMap({ data, className }: DottedMapProps) {
     () => markerData.map((d) => ({ lat: d.lat, lng: d.lng, size: d.size })),
     [markerData],
   )
-  const processedMarkers = addMarkers(markerInputs)
+  const processedMarkers = useMemo(() => addMarkers(markerInputs), [addMarkers, markerInputs])
 
   // Compute stagger helpers
   const { xStep, yToRowIndex } = useMemo(() => {
