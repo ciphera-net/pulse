@@ -78,12 +78,12 @@ export default function Globe({ data, className }: GlobeProps) {
       phi: 0,
       theta: 0.3,
       dark: isDark ? 1 : 0,
-      diffuse: isDark ? 1.2 : 0.4,
+      diffuse: isDark ? 2 : 0.4,
       mapSamples: 16000,
-      mapBrightness: isDark ? 6 : 1.2,
-      baseColor: isDark ? [0.3, 0.3, 0.3] : [1, 1, 1],
+      mapBrightness: isDark ? 2 : 1.2,
+      baseColor: isDark ? [0.5, 0.5, 0.5] : [1, 1, 1],
       markerColor: [253 / 255, 94 / 255, 15 / 255],
-      glowColor: isDark ? [0.08, 0.08, 0.08] : [1, 1, 1],
+      glowColor: isDark ? [0.15, 0.15, 0.15] : [1, 1, 1],
       markers,
     }
 
