@@ -61,12 +61,10 @@ const ChartContainer = React.forwardRef<
         data-chart={chartId}
         ref={ref}
         className={cn(
-          '[&_.recharts-cartesian-grid_line[stroke=\'#ccc\']]:stroke-border/50',
-          '[&_.recharts-curve.recharts-tooltip-cursor]:stroke-border',
-          '[&_.recharts-polar-grid_[stroke=\'#ccc\']]:stroke-border',
-          '[&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted',
-          '[&_.recharts-reference-line_[stroke=\'#ccc\']]:stroke-border',
-          '[&_.recharts-sector[stroke=\'#fff\']]:stroke-transparent',
+          "[&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-[var(--chart-grid)]",
+          "[&_.recharts-curve.recharts-tooltip-cursor]:stroke-[var(--chart-grid)]",
+          "[&_.recharts-rectangle.recharts-tooltip-cursor]:fill-[var(--chart-grid)]",
+          "[&_.recharts-reference-line_[stroke='#ccc']]:stroke-[var(--chart-grid)]",
           '[&_.recharts-sector]:outline-none',
           '[&_.recharts-surface]:outline-none',
           className,
