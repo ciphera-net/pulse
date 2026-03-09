@@ -79,7 +79,7 @@ export default function DottedMap({ data, className }: DottedMapProps) {
       <svg
         viewBox={`0 0 ${width} ${height}`}
         className={cn('text-neutral-400 dark:text-neutral-500', className)}
-        style={{ width: '100%', height: 'auto', maxHeight: '100%' }}
+        style={{ width: '100%', height: '100%' }}
       >
         <defs>
           <filter id="marker-glow" x="-50%" y="-50%" width="200%" height="200%">
