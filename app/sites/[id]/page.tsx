@@ -26,12 +26,12 @@ import dynamic from 'next/dynamic'
 import { DashboardSkeleton, useMinimumLoading } from '@/components/skeletons'
 import FilterBar from '@/components/dashboard/FilterBar'
 import AddFilterDropdown, { type FilterSuggestion, type FilterSuggestions } from '@/components/dashboard/AddFilterDropdown'
+import Chart from '@/components/dashboard/Chart'
+import ContentStats from '@/components/dashboard/ContentStats'
+import TopReferrers from '@/components/dashboard/TopReferrers'
+import Locations from '@/components/dashboard/Locations'
+import TechSpecs from '@/components/dashboard/TechSpecs'
 
-const Chart = dynamic(() => import('@/components/dashboard/Chart'))
-const ContentStats = dynamic(() => import('@/components/dashboard/ContentStats'))
-const TopReferrers = dynamic(() => import('@/components/dashboard/TopReferrers'))
-const Locations = dynamic(() => import('@/components/dashboard/Locations'))
-const TechSpecs = dynamic(() => import('@/components/dashboard/TechSpecs'))
 const PerformanceStats = dynamic(() => import('@/components/dashboard/PerformanceStats'))
 const GoalStats = dynamic(() => import('@/components/dashboard/GoalStats'))
 const ScrollDepth = dynamic(() => import('@/components/dashboard/ScrollDepth'))
