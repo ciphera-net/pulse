@@ -1,14 +1,16 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import { motion } from 'framer-motion'
 import { logger } from '@/lib/utils/logger'
 import { formatNumber } from '@ciphera-net/ui'
 import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
 import * as Flags from 'country-flag-icons/react/3x2'
 import iso3166 from 'iso-3166-2'
-import DottedMap from './DottedMap'
-import Globe from './Globe'
+
+const DottedMap = dynamic(() => import('./DottedMap'), { ssr: false })
+const Globe = dynamic(() => import('./Globe'), { ssr: false })
 import { Modal, GlobeIcon } from '@ciphera-net/ui'
 import { ListSkeleton } from '@/components/skeletons'
 import { ShieldCheck, Detective, Broadcast } from '@phosphor-icons/react'
