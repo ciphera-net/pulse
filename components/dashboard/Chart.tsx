@@ -6,7 +6,6 @@ import {
   BarChart,
   Bar,
   XAxis,
-  YAxis,
   CartesianGrid,
   ReferenceLine,
 } from 'recharts'
@@ -105,20 +104,6 @@ function formatEU(dateStr: string): string {
   return `${d}/${m}/${y}`
 }
 
-function formatAxisValue(value: number): string {
-  if (value >= 1e6) return `${+(value / 1e6).toFixed(1)}M`
-  if (value >= 1000) return `${+(value / 1000).toFixed(1)}k`
-  if (!Number.isInteger(value)) return value.toFixed(1)
-  return String(value)
-}
-
-function formatAxisDuration(seconds: number): string {
-  if (!seconds) return '0s'
-  const m = Math.floor(seconds / 60)
-  const s = Math.floor(seconds % 60)
-  if (m > 0) return s > 0 ? `${m}m${s}s` : `${m}m`
-  return `${s}s`
-}
 
 function getPrevDateRangeLabel(dateRange: { start: string; end: string }): string {
   const startDate = new Date(dateRange.start)
@@ -408,21 +393,6 @@ export default function Chart({
   const hasData = data.length > 0
   const hasAnyNonZero = hasData && chartData.some((d) => (d[metric] as number) > 0)
 
-  const isCountMetric = metric === 'visitors' || metric === 'pageviews'
-
-  // ─── X-Axis Ticks ─────────────────────────────────────────────────
-
-  const midnightTicks = interval === 'hour'
-    ? (() => {
-        const t = chartData
-          .filter((_, i) => { const d = new Date(data[i].date); return d.getHours() === 0 && d.getMinutes() === 0 })
-          .map((c) => c.date)
-        return t.length > 0 ? t : undefined
-      })()
-    : undefined
-
-  const dayTicks = interval === 'day' && chartData.length > 0 ? chartData.map((c) => c.date) : undefined
-
   // ─── Trend Badge ──────────────────────────────────────────────────
 
   function TrendBadge({ trend, invert }: { trend: number | null; invert: boolean }) {
@@ -565,9 +535,13 @@ export default function Chart({
             <p className="text-sm text-neutral-400 dark:text-neutral-500">No {metricLabel.toLowerCase()} recorded</p>
           </div>
         ) : (
-          <div className="h-[250px] w-full" onContextMenu={handleChartContextMenu}>
-            <ChartContainer config={dashboardChartConfig} className="aspect-auto h-full w-full">
-              <BarChart accessibilityLayer data={chartData} margin={{ left: 12, right: 12 }}>
+          <div className="w-full" onContextMenu={handleChartContextMenu}>
+            <ChartContainer config={dashboardChartConfig} className="aspect-auto h-[250px] w-full">
+              <BarChart
+                accessibilityLayer
+                data={chartData}
+                margin={{ left: 12, right: 12 }}
+              >
                 <CartesianGrid vertical={false} />
                 <XAxis
                   dataKey="date"
@@ -575,18 +549,6 @@ export default function Chart({
                   axisLine={false}
                   tickMargin={8}
                   minTickGap={32}
-                />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={8}
-                  width={40}
-                  allowDecimals={!isCountMetric}
-                  tickFormatter={(val) => {
-                    if (metric === 'bounce_rate') return `${val}%`
-                    if (metric === 'avg_duration') return formatAxisDuration(val)
-                    return formatAxisValue(val)
-                  }}
                 />
                 <ChartTooltip
                   content={
@@ -599,7 +561,6 @@ export default function Chart({
                     />
                   }
                 />
-
                 {hasPrev && (
                   <Bar
                     dataKey={metric === 'visitors' ? 'prevVisitors' : metric === 'pageviews' ? 'prevPageviews' : metric === 'bounce_rate' ? 'prevBounceRate' : 'prevAvgDuration'}
@@ -607,12 +568,7 @@ export default function Chart({
                     fillOpacity={0.15}
                   />
                 )}
-
-                <Bar
-                  dataKey={metric}
-                  fill={`var(--color-${metric})`}
-                />
-
+                <Bar dataKey={metric} fill={`var(--color-${metric})`} />
                 {annotationMarkers.map((marker) => {
                   const primaryCategory = marker.annotations[0].category
                   const color = ANNOTATION_COLORS[primaryCategory] || ANNOTATION_COLORS.other
