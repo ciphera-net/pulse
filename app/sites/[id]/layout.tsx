@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import SiteLayoutShell from './SiteLayoutShell'
 
 export const metadata: Metadata = {
   title: 'Dashboard | Pulse',
@@ -6,10 +7,13 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 }
 
-export default function SiteLayout({
+export default async function SiteLayout({
   children,
+  params,
 }: {
   children: React.ReactNode
+  params: Promise<{ id: string }>
 }) {
-  return children
+  const { id } = await params
+  return <SiteLayoutShell siteId={id}>{children}</SiteLayoutShell>
 }

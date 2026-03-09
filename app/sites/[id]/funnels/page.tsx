@@ -6,7 +6,6 @@ import { listFunnels, deleteFunnel, type Funnel } from '@/lib/api/funnels'
 import { toast, PlusIcon, ArrowRightIcon, ChevronLeftIcon, TrashIcon, Button } from '@ciphera-net/ui'
 import { FunnelsListSkeleton, useMinimumLoading } from '@/components/skeletons'
 import Link from 'next/link'
-import SiteNav from '@/components/dashboard/SiteNav'
 
 export default function FunnelsPage() {
   const params = useParams()
@@ -52,9 +51,7 @@ export default function FunnelsPage() {
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
-      <SiteNav siteId={siteId} />
-
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
       <div className="mb-8">
         <div className="flex items-center justify-between mb-6">
           <div>

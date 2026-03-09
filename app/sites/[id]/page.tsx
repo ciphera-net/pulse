@@ -34,7 +34,6 @@ import PerformanceStats from '@/components/dashboard/PerformanceStats'
 import GoalStats from '@/components/dashboard/GoalStats'
 import ScrollDepth from '@/components/dashboard/ScrollDepth'
 import Campaigns from '@/components/dashboard/Campaigns'
-import SiteNav from '@/components/dashboard/SiteNav'
 import FilterBar from '@/components/dashboard/FilterBar'
 import AddFilterDropdown, { type FilterSuggestion, type FilterSuggestions } from '@/components/dashboard/AddFilterDropdown'
 import EventProperties from '@/components/dashboard/EventProperties'
@@ -426,7 +425,7 @@ export default function SiteDashboardPage() {
 
   if (!site) {
     return (
-      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
+      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
         <p className="text-neutral-600 dark:text-neutral-400">Site not found</p>
       </div>
     )
@@ -437,10 +436,8 @@ export default function SiteDashboardPage() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.2 }}
-      className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8"
+      className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8"
     >
-      <SiteNav siteId={siteId} />
-
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">
