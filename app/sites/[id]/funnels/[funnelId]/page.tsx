@@ -176,6 +176,7 @@ export default function FunnelReportPage() {
             orientation="vertical"
             color="var(--chart-1)"
             layers={3}
+            className="mx-auto max-w-md"
           />
         </div>
 
