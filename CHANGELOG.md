@@ -15,8 +15,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Improved
 
+- **Beautiful funnel visualization.** Funnel reports now show a smooth, animated funnel shape instead of a plain bar chart. Each step flows into the next with curved segments, hover effects, and labels showing visitor counts and conversion percentages at a glance.
+- **Tidier dashboard layout.** The tab navigation (Dashboard, Uptime, Funnels, Settings) now sits above your site name and controls, keeping the tabs front and center.
 - **Smoother theme switching.** Toggling between light and dark mode now plays a satisfying circular reveal animation that expands from the toggle button, instead of everything just flipping instantly.
-- **Dashboard chart restyled.** The main dashboard chart now uses a clean bar chart style with a more polished, minimal look.
 - **Cleaner site navigation.** Dashboard, Uptime, Funnels, and Settings now use an underline tab bar instead of floating buttons. The active section is highlighted with an orange underline, making it easy to see where you are and switch between views.
 - **Consistent icon style.** All dashboard icons now use a single, unified icon set for a cleaner look across Technology, Locations, Campaigns, and Referrers panels.
 
