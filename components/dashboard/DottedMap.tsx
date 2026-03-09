@@ -5,6 +5,55 @@ import { createMap } from 'svg-dotted-map'
 import { cn, formatNumber } from '@ciphera-net/ui'
 import { countryCentroids } from '@/lib/country-centroids'
 
+// ─── Module-level constants ────────────────────────────────────────
+// Computed once when the module loads, survives component unmount/remount.
+const MAP_WIDTH = 150
+const MAP_HEIGHT = 68
+const DOT_RADIUS = 0.25
+
+const { points: MAP_POINTS, addMarkers } = createMap({ width: MAP_WIDTH, height: MAP_HEIGHT, mapSamples: 8000 })
+
+// Pre-compute stagger helpers (row offsets for hex-grid pattern)
+const _stagger = (() => {
+  const sorted = [...MAP_POINTS].sort((a, b) => a.y - b.y || a.x - b.x)
+  const rowMap = new Map<number, number>()
+  let step = 0
+  let prevY = Number.NaN
+  let prevXInRow = Number.NaN
+
+  for (const p of sorted) {
+    if (p.y !== prevY) {
+      prevY = p.y
+      prevXInRow = Number.NaN
+      if (!rowMap.has(p.y)) rowMap.set(p.y, rowMap.size)
+    }
+    if (!Number.isNaN(prevXInRow)) {
+      const delta = p.x - prevXInRow
+      if (delta > 0) step = step === 0 ? delta : Math.min(step, delta)
+    }
+    prevXInRow = p.x
+  }
+
+  return { xStep: step || 1, yToRowIndex: rowMap }
+})()
+
+// Pre-compute the base map dots as a single SVG path string (~8000 circles → 1 path)
+const BASE_DOTS_PATH = (() => {
+  const r = DOT_RADIUS
+  const d = r * 2
+  const parts: string[] = []
+  for (const point of MAP_POINTS) {
+    const rowIndex = _stagger.yToRowIndex.get(point.y) ?? 0
+    const offsetX = rowIndex % 2 === 1 ? _stagger.xStep / 2 : 0
+    const cx = point.x + offsetX
+    const cy = point.y
+    parts.push(`M${cx - r},${cy}a${r},${r} 0 1,0 ${d},0a${r},${r} 0 1,0 ${-d},0`)
+  }
+  return parts.join('')
+})()
+
+// ─── Component ─────────────────────────────────────────────────────
+
 interface DottedMapProps {
   data: Array<{ country: string; pageviews: number }>
   className?: string
@@ -20,15 +69,7 @@ function getCountryName(code: string): string {
 }
 
 export default function DottedMap({ data, className }: DottedMapProps) {
-  const width = 150
-  const height = 68
-  const dotRadius = 0.25
   const [tooltip, setTooltip] = useState<{ x: number; y: number; country: string; pageviews: number } | null>(null)
-
-  const { points, addMarkers } = useMemo(
-    () => createMap({ width, height, mapSamples: 8000 }),
-    [width, height],
-  )
 
   const markerData = useMemo(() => {
     if (!data.length) return []
@@ -47,55 +88,15 @@ export default function DottedMap({ data, className }: DottedMapProps) {
       }))
   }, [data])
 
-  const markerInputs = useMemo(
-    () => markerData.map((d) => ({ lat: d.lat, lng: d.lng, size: d.size })),
+  const processedMarkers = useMemo(
+    () => addMarkers(markerData.map((d) => ({ lat: d.lat, lng: d.lng, size: d.size }))),
     [markerData],
   )
-  const processedMarkers = useMemo(() => addMarkers(markerInputs), [addMarkers, markerInputs])
-
-  // Compute stagger helpers
-  const { xStep, yToRowIndex } = useMemo(() => {
-    const sorted = [...points].sort((a, b) => a.y - b.y || a.x - b.x)
-    const rowMap = new Map<number, number>()
-    let step = 0
-    let prevY = Number.NaN
-    let prevXInRow = Number.NaN
-
-    for (const p of sorted) {
-      if (p.y !== prevY) {
-        prevY = p.y
-        prevXInRow = Number.NaN
-        if (!rowMap.has(p.y)) rowMap.set(p.y, rowMap.size)
-      }
-      if (!Number.isNaN(prevXInRow)) {
-        const delta = p.x - prevXInRow
-        if (delta > 0) step = step === 0 ? delta : Math.min(step, delta)
-      }
-      prevXInRow = p.x
-    }
-
-    return { xStep: step || 1, yToRowIndex: rowMap }
-  }, [points])
-
-  // Batch all 8000 base dots into a single <path> instead of 8000 <circle> elements
-  const dotsPath = useMemo(() => {
-    const r = dotRadius
-    const d = r * 2
-    const parts: string[] = []
-    for (const point of points) {
-      const rowIndex = yToRowIndex.get(point.y) ?? 0
-      const offsetX = rowIndex % 2 === 1 ? xStep / 2 : 0
-      const cx = point.x + offsetX
-      const cy = point.y
-      parts.push(`M${cx - r},${cy}a${r},${r} 0 1,0 ${d},0a${r},${r} 0 1,0 ${-d},0`)
-    }
-    return parts.join('')
-  }, [points, dotRadius, xStep, yToRowIndex])
 
   return (
     <div className="relative w-full h-full flex items-center justify-center">
       <svg
-        viewBox={`0 0 ${width} ${height}`}
+        viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`}
         className={cn('text-neutral-400 dark:text-neutral-500', className)}
         style={{ width: '100%', height: '100%' }}
       >
@@ -110,18 +111,18 @@ export default function DottedMap({ data, className }: DottedMapProps) {
           </filter>
         </defs>
         <path
-          d={dotsPath}
+          d={BASE_DOTS_PATH}
           fill="currentColor"
         />
         {processedMarkers.map((marker, index) => {
-          const rowIndex = yToRowIndex.get(marker.y) ?? 0
-          const offsetX = rowIndex % 2 === 1 ? xStep / 2 : 0
+          const rowIndex = _stagger.yToRowIndex.get(marker.y) ?? 0
+          const offsetX = rowIndex % 2 === 1 ? _stagger.xStep / 2 : 0
           const info = markerData[index]
           return (
             <circle
               cx={marker.x + offsetX}
               cy={marker.y}
-              r={marker.size ?? dotRadius}
+              r={marker.size ?? DOT_RADIUS}
               fill="#FD5E0F"
               filter="url(#marker-glow)"
               className="cursor-pointer"
@@ -132,8 +133,8 @@ export default function DottedMap({ data, className }: DottedMapProps) {
                   const svgX = marker.x + offsetX
                   const svgY = marker.y
                   setTooltip({
-                    x: rect.left + (svgX / width) * rect.width,
-                    y: rect.top + (svgY / height) * rect.height,
+                    x: rect.left + (svgX / MAP_WIDTH) * rect.width,
+                    y: rect.top + (svgY / MAP_HEIGHT) * rect.height,
                     country: info.country,
                     pageviews: info.pageviews,
                   })
