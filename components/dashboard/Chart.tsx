@@ -10,10 +10,11 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  ReferenceLine,
 } from 'recharts'
 import type { TooltipProps } from 'recharts'
 import { formatNumber, formatDuration, formatUpdatedAgo } from '@ciphera-net/ui'
-import { ArrowUpRightIcon, ArrowDownRightIcon, BarChartIcon, Select, DownloadIcon } from '@ciphera-net/ui'
+import { ArrowUpRightIcon, ArrowDownRightIcon, BarChartIcon, Select, DownloadIcon, PlusIcon } from '@ciphera-net/ui'
 import { Checkbox } from '@ciphera-net/ui'
 
 const COLORS = {
@@ -40,6 +41,27 @@ const CHART_COLORS_DARK = {
   axis: 'var(--color-neutral-500)',
   tooltipBg: 'var(--color-neutral-800)',
   tooltipBorder: 'var(--color-neutral-700)',
+}
+
+const ANNOTATION_COLORS: Record<string, string> = {
+  deploy: '#3b82f6',
+  campaign: '#22c55e',
+  incident: '#ef4444',
+  other: '#a3a3a3',
+}
+
+const ANNOTATION_LABELS: Record<string, string> = {
+  deploy: 'Deploy',
+  campaign: 'Campaign',
+  incident: 'Incident',
+  other: 'Note',
+}
+
+interface AnnotationData {
+  id: string
+  date: string
+  text: string
+  category: string
 }
 
 export interface DailyStat {
@@ -70,6 +92,11 @@ interface ChartProps {
   setMultiDayInterval: (interval: 'hour' | 'day') => void
   onExportChart?: () => void
   lastUpdatedAt?: number | null
+  annotations?: AnnotationData[]
+  canManageAnnotations?: boolean
+  onCreateAnnotation?: (data: { date: string; text: string; category: string }) => Promise<void>
+  onUpdateAnnotation?: (id: string, data: { date: string; text: string; category: string }) => Promise<void>
+  onDeleteAnnotation?: (id: string) => Promise<void>
 }
 
 type MetricType = 'pageviews' | 'visitors' | 'bounce_rate' | 'avg_duration'
@@ -208,6 +235,11 @@ export default function Chart({
   setMultiDayInterval,
   onExportChart,
   lastUpdatedAt,
+  annotations,
+  canManageAnnotations,
+  onCreateAnnotation,
+  onUpdateAnnotation,
+  onDeleteAnnotation,
 }: ChartProps) {
   const [metric, setMetric] = useState<MetricType>('visitors')
   const [showComparison, setShowComparison] = useState(false)
@@ -267,6 +299,31 @@ export default function Chart({
       prevBounceRate: prevItem?.bounce_rate,
       prevAvgDuration: prevItem?.avg_duration,
     }
+  })
+
+  const annotationMarkers = useMemo(() => {
+    if (!annotations?.length) return []
+    const byDate = new Map<string, AnnotationData[]>()
+    for (const a of annotations) {
+      const existing = byDate.get(a.date) || []
+      existing.push(a)
+      byDate.set(a.date, existing)
+    }
+    const markers: { x: string; annotations: AnnotationData[] }[] = []
+    for (const [date, anns] of byDate) {
+      const match = chartData.find((d) => {
+        const orig = d.originalDate
+        return orig.startsWith(date) || orig === date
+      })
+      if (match) {
+        markers.push({ x: match.date, annotations: anns })
+      }
+    }
+    return markers
+  }, [annotations, chartData])
+
+  const [annotationForm, setAnnotationForm] = useState<{ visible: boolean; editingId?: string; date: string; text: string; category: string }>({
+    visible: false, date: new Date().toISOString().slice(0, 10), text: '', category: 'other'
   })
 
   // ─── Metrics ───────────────────────────────────────────────────────
@@ -427,6 +484,16 @@ export default function Chart({
             >
               <DownloadIcon className="w-4 h-4" />
             </button>
+
+            {canManageAnnotations && (
+              <button
+                onClick={() => setAnnotationForm({ visible: true, date: new Date().toISOString().slice(0, 10), text: '', category: 'other' })}
+                className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors cursor-pointer"
+                title="Add annotation"
+              >
+                <PlusIcon className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -535,11 +602,73 @@ export default function Chart({
                   animationDuration={400}
                   animationEasing="ease-out"
                 />
+
+                {annotationMarkers.map((marker) => {
+                  const primaryCategory = marker.annotations[0].category
+                  const color = ANNOTATION_COLORS[primaryCategory] || ANNOTATION_COLORS.other
+                  return (
+                    <ReferenceLine
+                      key={`ann-${marker.x}`}
+                      x={marker.x}
+                      stroke={color}
+                      strokeDasharray="4 4"
+                      strokeWidth={1.5}
+                      strokeOpacity={0.6}
+                    />
+                  )
+                })}
               </AreaChart>
             </ResponsiveContainer>
           </div>
         )}
       </div>
+
+      {annotationMarkers.length > 0 && (
+        <div className="px-4 sm:px-6 flex items-center gap-1 flex-wrap py-1.5 border-t border-neutral-100 dark:border-neutral-800">
+          <span className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500 mr-1">Annotations:</span>
+          {annotationMarkers.map((marker) => {
+            const primary = marker.annotations[0]
+            const color = ANNOTATION_COLORS[primary.category] || ANNOTATION_COLORS.other
+            const count = marker.annotations.length
+            return (
+              <button
+                key={`ann-btn-${marker.x}`}
+                type="button"
+                className="relative group inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
+                onClick={() => {
+                  if (canManageAnnotations) {
+                    setAnnotationForm({
+                      visible: true,
+                      editingId: primary.id,
+                      date: primary.date,
+                      text: primary.text,
+                      category: primary.category,
+                    })
+                  }
+                }}
+              >
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                <span className="max-w-[120px] truncate">{primary.text}</span>
+                {count > 1 && <span className="text-neutral-400">+{count - 1}</span>}
+                {/* Hover tooltip */}
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-50 pointer-events-none">
+                  <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-lg p-2 min-w-[180px] max-w-[240px]">
+                    {marker.annotations.map((a) => (
+                      <div key={a.id} className="flex items-start gap-1.5 text-[11px] mb-1 last:mb-0">
+                        <span className="w-1.5 h-1.5 rounded-full mt-1 shrink-0" style={{ backgroundColor: ANNOTATION_COLORS[a.category] || ANNOTATION_COLORS.other }} />
+                        <div>
+                          <span className="font-medium text-neutral-400 dark:text-neutral-500">{ANNOTATION_LABELS[a.category] || 'Note'} &middot; {a.date}</span>
+                          <p className="text-neutral-900 dark:text-white">{a.text}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       {/* Live indicator */}
       {lastUpdatedAt != null && (
@@ -550,6 +679,96 @@ export default function Chart({
               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
             </span>
             Live · {formatUpdatedAgo(lastUpdatedAt)}
+          </div>
+        </div>
+      )}
+
+      {annotationForm.visible && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/20 dark:bg-black/40 rounded-2xl">
+          <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl p-5 w-[340px] max-w-[90%]">
+            <h3 className="text-sm font-semibold text-neutral-900 dark:text-white mb-3">
+              {annotationForm.editingId ? 'Edit annotation' : 'Add annotation'}
+            </h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Date</label>
+                <input
+                  type="date"
+                  value={annotationForm.date}
+                  onChange={(e) => setAnnotationForm((f) => ({ ...f, date: e.target.value }))}
+                  className="w-full px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Note</label>
+                <input
+                  type="text"
+                  value={annotationForm.text}
+                  onChange={(e) => setAnnotationForm((f) => ({ ...f, text: e.target.value.slice(0, 200) }))}
+                  placeholder="e.g. Launched new homepage"
+                  maxLength={200}
+                  className="w-full px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
+                  autoFocus
+                />
+                <span className="text-[10px] text-neutral-400 mt-0.5 block text-right">{annotationForm.text.length}/200</span>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Category</label>
+                <select
+                  value={annotationForm.category}
+                  onChange={(e) => setAnnotationForm((f) => ({ ...f, category: e.target.value }))}
+                  className="w-full px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
+                >
+                  <option value="deploy">Deploy</option>
+                  <option value="campaign">Campaign</option>
+                  <option value="incident">Incident</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex items-center justify-between mt-4">
+              <div>
+                {annotationForm.editingId && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (annotationForm.editingId && onDeleteAnnotation) {
+                        await onDeleteAnnotation(annotationForm.editingId)
+                        setAnnotationForm({ visible: false, date: '', text: '', category: 'other' })
+                      }
+                    }}
+                    className="text-xs text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 font-medium cursor-pointer"
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAnnotationForm({ visible: false, date: '', text: '', category: 'other' })}
+                  className="px-3 py-1.5 text-xs font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={!annotationForm.text.trim() || !annotationForm.date}
+                  onClick={async () => {
+                    const data = { date: annotationForm.date, text: annotationForm.text.trim(), category: annotationForm.category }
+                    if (annotationForm.editingId && onUpdateAnnotation) {
+                      await onUpdateAnnotation(annotationForm.editingId, data)
+                    } else if (onCreateAnnotation) {
+                      await onCreateAnnotation(data)
+                    }
+                    setAnnotationForm({ visible: false, date: '', text: '', category: 'other' })
+                  }}
+                  className="px-3 py-1.5 text-xs font-medium text-white bg-brand-orange hover:bg-brand-orange/90 rounded-lg disabled:opacity-50 cursor-pointer"
+                >
+                  {annotationForm.editingId ? 'Save' : 'Add'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

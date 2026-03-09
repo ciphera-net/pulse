@@ -51,7 +51,9 @@ import {
   useStats,
   useDailyStats,
   useCampaigns,
+  useAnnotations,
 } from '@/lib/swr/dashboard'
+import { createAnnotation, updateAnnotation, deleteAnnotation, type AnnotationCategory } from '@/lib/api/annotations'
 
 function loadSavedSettings(): {
   type?: string
@@ -233,6 +235,26 @@ export default function SiteDashboardPage() {
   const { data: prevStats } = useStats(siteId, prevRange.start, prevRange.end)
   const { data: prevDailyStats } = useDailyStats(siteId, prevRange.start, prevRange.end, interval)
   const { data: campaigns } = useCampaigns(siteId, dateRange.start, dateRange.end)
+  const { data: annotations, mutate: mutateAnnotations } = useAnnotations(siteId, dateRange.start, dateRange.end)
+
+  // Annotation mutation handlers
+  const handleCreateAnnotation = async (data: { date: string; text: string; category: string }) => {
+    await createAnnotation(siteId, { ...data, category: data.category as AnnotationCategory })
+    mutateAnnotations()
+    toast.success('Annotation added')
+  }
+
+  const handleUpdateAnnotation = async (id: string, data: { date: string; text: string; category: string }) => {
+    await updateAnnotation(siteId, id, { ...data, category: data.category as AnnotationCategory })
+    mutateAnnotations()
+    toast.success('Annotation updated')
+  }
+
+  const handleDeleteAnnotation = async (id: string) => {
+    await deleteAnnotation(siteId, id)
+    mutateAnnotations()
+    toast.success('Annotation deleted')
+  }
 
   // Derive typed values from SWR data
   const site = overview?.site ?? null
@@ -521,6 +543,11 @@ export default function SiteDashboardPage() {
           multiDayInterval={multiDayInterval}
           setMultiDayInterval={setMultiDayInterval}
           lastUpdatedAt={lastUpdatedAt}
+          annotations={annotations}
+          canManageAnnotations={true}
+          onCreateAnnotation={handleCreateAnnotation}
+          onUpdateAnnotation={handleUpdateAnnotation}
+          onDeleteAnnotation={handleDeleteAnnotation}
         />
       </div>
 
