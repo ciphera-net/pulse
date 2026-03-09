@@ -439,6 +439,8 @@ export default function SiteDashboardPage() {
       transition={{ duration: 0.2 }}
       className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8"
     >
+      <SiteNav siteId={siteId} />
+
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">
@@ -520,8 +522,6 @@ export default function SiteDashboardPage() {
             </div>
         </div>
       </div>
-
-      <SiteNav siteId={siteId} />
 
       {/* Dimension Filters */}
       <div className="flex items-center gap-2 flex-wrap mb-2">
