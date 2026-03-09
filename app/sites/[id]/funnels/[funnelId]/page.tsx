@@ -7,7 +7,7 @@ import { getFunnel, getFunnelStats, deleteFunnel, type Funnel, type FunnelStats 
 import { toast, Select, DatePicker, ChevronLeftIcon, ArrowRightIcon, TrashIcon, Button } from '@ciphera-net/ui'
 import { FunnelDetailSkeleton, useMinimumLoading } from '@/components/skeletons'
 import Link from 'next/link'
-import FunnelChart from '@/components/dashboard/FunnelChart'
+import { FunnelChart } from '@/components/ui/funnel-chart'
 import { getDateRange } from '@ciphera-net/ui'
 
 export default function FunnelReportPage() {
@@ -108,10 +108,8 @@ export default function FunnelReportPage() {
   }
 
   const chartData = stats.steps.map(s => ({
-    name: s.step.name,
-    visitors: s.visitors,
-    dropoff: s.dropoff,
-    conversion: s.conversion
+    label: s.step.name,
+    value: s.visitors,
   }))
 
   return (
@@ -173,7 +171,12 @@ export default function FunnelReportPage() {
           <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-6">
             Funnel Visualization
           </h3>
-          <FunnelChart steps={chartData} className="h-[350px]" />
+          <FunnelChart
+            data={chartData}
+            orientation="vertical"
+            color="var(--chart-1)"
+            layers={3}
+          />
         </div>
 
         {/* Detailed Stats Table */}
