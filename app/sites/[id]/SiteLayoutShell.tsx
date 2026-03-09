@@ -18,7 +18,7 @@ export default function SiteLayoutShell({
       <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-8">
         <SiteNav siteId={siteId} />
       </div>
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="popLayout">
         <motion.div
           key={pathname}
           initial={{ opacity: 0, y: 6 }}
