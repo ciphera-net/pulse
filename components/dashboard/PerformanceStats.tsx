@@ -114,7 +114,7 @@ export default function PerformanceStats({ stats, performanceByPage, siteId, sta
       <button
         type="button"
         onClick={() => setMainExpanded((o) => !o)}
-        className="flex w-full items-center justify-between gap-4 text-left rounded cursor-pointer hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-900"
+        className="flex w-full items-center justify-between gap-4 text-left rounded cursor-pointer hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 dark:focus-visible:ring-neutral-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-neutral-900"
         aria-expanded={mainExpanded}
       >
         <div className="flex items-center gap-2 min-w-0">
@@ -170,7 +170,7 @@ export default function PerformanceStats({ stats, performanceByPage, siteId, sta
               <button
                 type="button"
                 onClick={() => setWorstPagesOpen((o) => !o)}
-                className="flex items-center gap-2 text-left rounded cursor-pointer hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-900"
+                className="flex items-center gap-2 text-left rounded cursor-pointer hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 dark:focus-visible:ring-neutral-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-neutral-900"
                 aria-expanded={worstPagesOpen}
               >
                 <ChevronDownIcon

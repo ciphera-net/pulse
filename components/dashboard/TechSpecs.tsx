@@ -137,7 +137,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
                 onClick={() => setActiveTab(tab)}
                 role="tab"
                 aria-selected={activeTab === tab}
-                className={`px-2.5 py-1 text-xs font-medium transition-colors capitalize focus:outline-none focus:ring-2 focus:ring-brand-orange rounded cursor-pointer border-b-2 ${
+                className={`px-2.5 py-1 text-xs font-medium transition-colors capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded cursor-pointer border-b-2 ${
                   activeTab === tab
                     ? 'border-brand-orange text-neutral-900 dark:text-white'
                     : 'border-transparent text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'

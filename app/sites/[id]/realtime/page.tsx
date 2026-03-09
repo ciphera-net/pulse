@@ -105,7 +105,7 @@ export default function RealtimePage() {
       <div className="mb-6 flex items-center justify-between">
         <div>
             <div className="flex items-center gap-2 mb-1">
-                <button onClick={() => router.push(`/sites/${siteId}`)} className="text-sm text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange focus:rounded">
+                <button onClick={() => router.push(`/sites/${siteId}`)} className="text-sm text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:rounded">
                     &larr; Back to Dashboard
                 </button>
             </div>
@@ -152,7 +152,7 @@ export default function RealtimePage() {
                       exit={{ opacity: 0, x: -10 }}
                       transition={{ duration: 0.2 }}
                       onClick={() => handleSelectVisitor(visitor)}
-                      className={`w-full text-left p-4 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-inset ${
+                      className={`w-full text-left p-4 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-inset ${
                         selectedVisitor?.session_id === visitor.session_id ? 'bg-neutral-50 dark:bg-neutral-800/50 ring-1 ring-inset ring-neutral-200 dark:ring-neutral-700' : ''
                       }`}
                     >
