@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- **Hide unknown locations.** New toggle in Site Settings under Data & Privacy to hide "Unknown" entries from your Locations panel. When geographic data can't be determined for a visitor, it normally shows as "Unknown" in countries, cities, and regions. Turn this on to keep your location stats clean and only show resolved locations.
+
 ### Improved
 
 - **Cleaner site navigation.** Dashboard, Uptime, Funnels, and Settings now use an underline tab bar instead of floating buttons. The active section is highlighted with an orange underline, making it easy to see where you are and switch between views.
