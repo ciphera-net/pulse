@@ -6,7 +6,7 @@ import { useMotionValue, useSpring } from 'framer-motion'
 import { useTheme } from '@ciphera-net/ui'
 import { countryCentroids } from '@/lib/country-centroids'
 
-const MOVEMENT_DAMPING = 1400
+const MOVEMENT_DAMPING = 3000
 
 interface GlobeProps {
   data: Array<{ country: string; pageviews: number }>
@@ -109,8 +109,8 @@ export default function Globe({ data, className }: GlobeProps) {
   }, [rs, markers, isDark])
 
   return (
-    <div className={`relative w-full h-full flex items-center justify-center ${className ?? ''}`}>
-      <div className="relative aspect-square w-full max-w-[320px]">
+    <div className={`relative w-full h-full overflow-hidden ${className ?? ''}`}>
+      <div className="absolute inset-x-0 top-[30%] mx-auto aspect-square w-[140%] max-w-none">
         <canvas
           className="size-full opacity-0 transition-opacity duration-500"
           style={{ contain: 'layout paint size' }}
@@ -127,6 +127,7 @@ export default function Globe({ data, className }: GlobeProps) {
           }
         />
       </div>
+      <div className="pointer-events-none absolute inset-0 h-full bg-[radial-gradient(circle_at_50%_200%,rgba(0,0,0,0.2),rgba(255,255,255,0))]" />
     </div>
   )
 }
