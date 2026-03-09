@@ -518,66 +518,70 @@ export default function Chart({
           )}
         </CardContent>
 
-        {/* Annotation tags */}
-        {annotationMarkers.length > 0 && (
-          <div className="px-4 sm:px-6 flex items-center gap-1 flex-wrap py-1.5 border-t border-neutral-100 dark:border-neutral-800">
-            <span className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500 mr-1">Annotations:</span>
-            {annotationMarkers.map((marker) => {
-              const primary = marker.annotations[0]
-              const color = ANNOTATION_COLORS[primary.category] || ANNOTATION_COLORS.other
-              const count = marker.annotations.length
-              return (
-                <button
-                  key={`ann-btn-${marker.x}`}
-                  type="button"
-                  className="relative group inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
-                  onClick={() => {
-                    if (canManageAnnotations) {
-                      setAnnotationForm({
-                        visible: true,
-                        editingId: primary.id,
-                        date: primary.date,
-                        time: primary.time || '',
-                        text: primary.text,
-                        category: primary.category,
-                      })
-                    }
-                  }}
-                >
-                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
-                  <span className="max-w-[120px] truncate">{primary.text}</span>
-                  {count > 1 && <span className="text-neutral-400">+{count - 1}</span>}
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-50 pointer-events-none">
-                    <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-lg p-2 min-w-[180px] max-w-[240px]">
-                      {marker.annotations.map((a) => (
-                        <div key={a.id} className="flex items-start gap-1.5 text-[11px] mb-1 last:mb-0">
-                          <span className="w-1.5 h-1.5 rounded-full mt-1 shrink-0" style={{ backgroundColor: ANNOTATION_COLORS[a.category] || ANNOTATION_COLORS.other }} />
-                          <div>
-                            <span className="font-medium text-neutral-400 dark:text-neutral-500">
-                              {ANNOTATION_LABELS[a.category] || 'Note'} &middot; {formatEU(a.date)}{a.time ? ` at ${a.time}` : ''}
-                            </span>
-                            <p className="text-neutral-900 dark:text-white">{a.text}</p>
+        {/* Footer: Annotations + Live indicator on same row */}
+        {(annotationMarkers.length > 0 || lastUpdatedAt != null) && (
+          <div className="px-4 sm:px-6 flex items-center justify-between gap-2 flex-wrap py-1.5 border-t border-neutral-100 dark:border-neutral-800">
+            {/* Annotations left */}
+            <div className="flex items-center gap-1 flex-wrap">
+              {annotationMarkers.length > 0 && (
+                <>
+                  <span className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500 mr-1">Annotations:</span>
+                  {annotationMarkers.map((marker) => {
+                    const primary = marker.annotations[0]
+                    const color = ANNOTATION_COLORS[primary.category] || ANNOTATION_COLORS.other
+                    const count = marker.annotations.length
+                    return (
+                      <button
+                        key={`ann-btn-${marker.x}`}
+                        type="button"
+                        className="relative group inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
+                        onClick={() => {
+                          if (canManageAnnotations) {
+                            setAnnotationForm({
+                              visible: true,
+                              editingId: primary.id,
+                              date: primary.date,
+                              time: primary.time || '',
+                              text: primary.text,
+                              category: primary.category,
+                            })
+                          }
+                        }}
+                      >
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                        <span className="max-w-[120px] truncate">{primary.text}</span>
+                        {count > 1 && <span className="text-neutral-400">+{count - 1}</span>}
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-50 pointer-events-none">
+                          <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-lg p-2 min-w-[180px] max-w-[240px]">
+                            {marker.annotations.map((a) => (
+                              <div key={a.id} className="flex items-start gap-1.5 text-[11px] mb-1 last:mb-0">
+                                <span className="w-1.5 h-1.5 rounded-full mt-1 shrink-0" style={{ backgroundColor: ANNOTATION_COLORS[a.category] || ANNOTATION_COLORS.other }} />
+                                <div>
+                                  <span className="font-medium text-neutral-400 dark:text-neutral-500">
+                                    {ANNOTATION_LABELS[a.category] || 'Note'} &middot; {formatEU(a.date)}{a.time ? ` at ${a.time}` : ''}
+                                  </span>
+                                  <p className="text-neutral-900 dark:text-white">{a.text}</p>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-        )}
-
-        {/* Live indicator */}
-        {lastUpdatedAt != null && (
-          <div className="px-4 sm:px-6 pb-3 pt-2 flex justify-end">
-            <div className="flex items-center gap-1.5 text-[11px] text-neutral-400 dark:text-neutral-500">
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
-              </span>
-              Live · {formatUpdatedAgo(lastUpdatedAt)}
+                      </button>
+                    )
+                  })}
+                </>
+              )}
             </div>
+            {/* Live indicator right */}
+            {lastUpdatedAt != null && (
+              <div className="flex items-center gap-1.5 text-[11px] text-neutral-400 dark:text-neutral-500">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
+                </span>
+                Live · {formatUpdatedAgo(lastUpdatedAt)}
+              </div>
+            )}
           </div>
         )}
       </Card>
