@@ -267,7 +267,7 @@ export default function PricingSection() {
                 onClick={() => setIsYearly(false)}
                 role="radio"
                 aria-checked={!isYearly}
-                className={`min-w-[88px] px-4 py-2 rounded-lg text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-brand-orange ${
+                className={`min-w-[88px] px-4 py-2 rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ${
                   !isYearly
                     ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
                     : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
@@ -279,7 +279,7 @@ export default function PricingSection() {
                 onClick={() => setIsYearly(true)}
                 role="radio"
                 aria-checked={isYearly}
-                className={`min-w-[88px] px-4 py-2 rounded-lg text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-brand-orange ${
+                className={`min-w-[88px] px-4 py-2 rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ${
                   isYearly
                     ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
                     : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
