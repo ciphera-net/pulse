@@ -7,23 +7,8 @@ import { getFunnel, getFunnelStats, deleteFunnel, type Funnel, type FunnelStats 
 import { toast, Select, DatePicker, ChevronLeftIcon, ArrowRightIcon, TrashIcon, Button } from '@ciphera-net/ui'
 import { FunnelDetailSkeleton, useMinimumLoading } from '@/components/skeletons'
 import Link from 'next/link'
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Cell
-} from 'recharts'
-import { ChartContainer, ChartTooltip, type ChartConfig } from '@/components/charts'
+import FunnelChart from '@/components/dashboard/FunnelChart'
 import { getDateRange } from '@ciphera-net/ui'
-
-const chartConfig = {
-  visitors: {
-    label: 'Visitors',
-    color: 'var(--chart-1)',
-  },
-} satisfies ChartConfig
 
 export default function FunnelReportPage() {
   const params = useParams()
@@ -188,56 +173,7 @@ export default function FunnelReportPage() {
           <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-6">
             Funnel Visualization
           </h3>
-          <ChartContainer config={chartConfig} className="h-[400px] w-full">
-            <BarChart accessibilityLayer data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--chart-grid)" strokeOpacity={0.5} />
-              <XAxis
-                dataKey="name"
-                stroke="var(--chart-axis)"
-                fontSize={12}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis
-                stroke="var(--chart-axis)"
-                fontSize={12}
-                tickLine={false}
-                axisLine={false}
-              />
-              <ChartTooltip
-                cursor={{ fill: 'transparent' }}
-                content={({ active, payload, label }) => {
-                  if (active && payload && payload.length) {
-                    const data = payload[0].payload;
-                    return (
-                      <div className="p-3 rounded-lg shadow-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800">
-                        <p className="font-medium text-neutral-900 dark:text-white mb-1">{label}</p>
-                        <p className="text-brand-orange font-bold text-lg">
-                          {data.visitors.toLocaleString()} visitors
-                        </p>
-                        {data.dropoff > 0 && (
-                          <p className="text-red-500 text-sm">
-                            {Math.round(data.dropoff)}% drop-off
-                          </p>
-                        )}
-                        {data.conversion > 0 && (
-                          <p className="text-green-500 text-sm">
-                            {Math.round(data.conversion)}% conversion (overall)
-                          </p>
-                        )}
-                      </div>
-                    );
-                  }
-                  return null;
-                }}
-              />
-              <Bar dataKey="visitors" radius={[6, 6, 0, 0]} barSize={60}>
-                {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill="var(--color-visitors)" fillOpacity={Math.max(0.1, 1 - index * 0.15)} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ChartContainer>
+          <FunnelChart steps={chartData} className="h-[350px]" />
         </div>
 
         {/* Detailed Stats Table */}
