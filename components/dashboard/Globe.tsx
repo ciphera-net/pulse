@@ -39,8 +39,8 @@ export default function Globe({ data, className }: GlobeProps) {
   const r = useMotionValue(0)
   const rs = useSpring(r, {
     mass: 1,
-    damping: 30,
-    stiffness: 100,
+    damping: 50,
+    stiffness: 80,
   })
 
   const updatePointerInteraction = (value: number | null) => {
@@ -78,12 +78,12 @@ export default function Globe({ data, className }: GlobeProps) {
       phi: 0,
       theta: 0.3,
       dark: isDark ? 1 : 0,
-      diffuse: 0.4,
+      diffuse: isDark ? 1.2 : 0.4,
       mapSamples: 16000,
-      mapBrightness: isDark ? 1.8 : 1.2,
-      baseColor: isDark ? [0.15, 0.15, 0.15] : [1, 1, 1],
+      mapBrightness: isDark ? 6 : 1.2,
+      baseColor: isDark ? [0.3, 0.3, 0.3] : [1, 1, 1],
       markerColor: [253 / 255, 94 / 255, 15 / 255],
-      glowColor: isDark ? [0.15, 0.15, 0.15] : [1, 1, 1],
+      glowColor: isDark ? [0.08, 0.08, 0.08] : [1, 1, 1],
       markers,
     }
 
@@ -92,7 +92,6 @@ export default function Globe({ data, className }: GlobeProps) {
       width: widthRef.current * 2,
       height: widthRef.current * 2,
       onRender: (state) => {
-        if (!pointerInteracting.current) phiRef.current += 0.005
         state.phi = phiRef.current + rs.get()
         state.width = widthRef.current * 2
         state.height = widthRef.current * 2
