@@ -77,6 +77,21 @@ export default function DottedMap({ data, className }: DottedMapProps) {
     return { xStep: step || 1, yToRowIndex: rowMap }
   }, [points])
 
+  // Batch all 8000 base dots into a single <path> instead of 8000 <circle> elements
+  const dotsPath = useMemo(() => {
+    const r = dotRadius
+    const d = r * 2
+    const parts: string[] = []
+    for (const point of points) {
+      const rowIndex = yToRowIndex.get(point.y) ?? 0
+      const offsetX = rowIndex % 2 === 1 ? xStep / 2 : 0
+      const cx = point.x + offsetX
+      const cy = point.y
+      parts.push(`M${cx - r},${cy}a${r},${r} 0 1,0 ${d},0a${r},${r} 0 1,0 ${-d},0`)
+    }
+    return parts.join('')
+  }, [points, dotRadius, xStep, yToRowIndex])
+
   return (
     <div className="relative w-full h-full flex items-center justify-center">
       <svg
@@ -94,19 +109,10 @@ export default function DottedMap({ data, className }: DottedMapProps) {
             </feMerge>
           </filter>
         </defs>
-        {points.map((point, index) => {
-          const rowIndex = yToRowIndex.get(point.y) ?? 0
-          const offsetX = rowIndex % 2 === 1 ? xStep / 2 : 0
-          return (
-            <circle
-              cx={point.x + offsetX}
-              cy={point.y}
-              r={dotRadius}
-              fill="currentColor"
-              key={`${point.x}-${point.y}-${index}`}
-            />
-          )
-        })}
+        <path
+          d={dotsPath}
+          fill="currentColor"
+        />
         {processedMarkers.map((marker, index) => {
           const rowIndex = yToRowIndex.get(marker.y) ?? 0
           const offsetX = rowIndex % 2 === 1 ? xStep / 2 : 0
