@@ -1,12 +1,9 @@
 'use client'
 
-import { useEffect, useRef, useMemo } from 'react'
-import createGlobe, { type COBEOptions } from 'cobe'
-import { useMotionValue, useSpring } from 'framer-motion'
+import { useEffect, useRef } from 'react'
+import createGlobe from 'cobe'
 import { useTheme } from '@ciphera-net/ui'
 import { countryCentroids } from '@/lib/country-centroids'
-
-const MOVEMENT_DAMPING = 3000
 
 interface GlobeProps {
   data: Array<{ country: string; pageviews: number }>
@@ -16,58 +13,38 @@ interface GlobeProps {
 export default function Globe({ data, className }: GlobeProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const phiRef = useRef(0)
-  const pointerInteracting = useRef<number | null>(null)
-  const pointerInteractionMovement = useRef(0)
+  const dragRef = useRef(0)
+  const pointerRef = useRef<number | null>(null)
   const { resolvedTheme } = useTheme()
+  const isDarkRef = useRef(resolvedTheme === 'dark')
+  const markersRef = useRef<Array<{ location: [number, number]; size: number }>>([])
 
-  const isDark = resolvedTheme === 'dark'
+  // Update refs without causing effect re-runs
+  isDarkRef.current = resolvedTheme === 'dark'
 
-  const markers = useMemo(() => {
-    if (!data.length) return []
-    const max = Math.max(...data.map((d) => d.pageviews))
-    if (max === 0) return []
-
-    return data
-      .filter((d) => d.country && d.country !== 'Unknown' && countryCentroids[d.country])
-      .map((d) => ({
-        location: [countryCentroids[d.country].lat, countryCentroids[d.country].lng] as [number, number],
-        size: 0.03 + (d.pageviews / max) * 0.12,
-      }))
-  }, [data])
-
-  const r = useMotionValue(0)
-  const rs = useSpring(r, {
-    mass: 1,
-    damping: 60,
-    stiffness: 60,
-  })
-
-  const updatePointerInteraction = (value: number | null) => {
-    pointerInteracting.current = value
-    if (canvasRef.current) {
-      canvasRef.current.style.cursor = value !== null ? 'grabbing' : 'grab'
-    }
-  }
-
-  const updateMovement = (clientX: number) => {
-    if (pointerInteracting.current !== null) {
-      const delta = clientX - pointerInteracting.current
-      pointerInteractionMovement.current = delta
-      r.set(r.get() + delta / MOVEMENT_DAMPING)
-    }
-  }
+  // Compute markers into ref
+  const max = data.length ? Math.max(...data.map((d) => d.pageviews)) : 0
+  markersRef.current = max > 0
+    ? data
+        .filter((d) => d.country && d.country !== 'Unknown' && countryCentroids[d.country])
+        .map((d) => ({
+          location: [countryCentroids[d.country].lat, countryCentroids[d.country].lng] as [number, number],
+          size: 0.03 + (d.pageviews / max) * 0.12,
+        }))
+    : []
 
   useEffect(() => {
     if (!canvasRef.current) return
 
     const size = canvasRef.current.offsetWidth
     const pixelRatio = Math.min(window.devicePixelRatio, 2)
+    const isDark = isDarkRef.current
 
     const globe = createGlobe(canvasRef.current, {
       width: size * pixelRatio,
       height: size * pixelRatio,
       devicePixelRatio: pixelRatio,
-      phi: 0,
+      phi: phiRef.current,
       theta: 0.3,
       dark: isDark ? 1 : 0,
       diffuse: isDark ? 2 : 0.4,
@@ -76,21 +53,21 @@ export default function Globe({ data, className }: GlobeProps) {
       baseColor: isDark ? [0.5, 0.5, 0.5] : [1, 1, 1],
       markerColor: [253 / 255, 94 / 255, 15 / 255],
       glowColor: isDark ? [0.15, 0.15, 0.15] : [1, 1, 1],
-      markers,
+      markers: markersRef.current,
       onRender: (state) => {
-        if (!pointerInteracting.current) phiRef.current += 0.002
-        state.phi = phiRef.current + rs.get()
+        if (!pointerRef.current) phiRef.current += 0.002
+        state.phi = phiRef.current + dragRef.current
       },
-    } as COBEOptions)
+    })
 
     setTimeout(() => {
       if (canvasRef.current) canvasRef.current.style.opacity = '1'
     }, 0)
 
-    return () => {
-      globe.destroy()
-    }
-  }, [rs, markers, isDark])
+    return () => { globe.destroy() }
+  // Only recreate on theme change
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resolvedTheme])
 
   return (
     <div className={`relative w-full h-full overflow-hidden ${className ?? ''}`}>
@@ -100,15 +77,31 @@ export default function Globe({ data, className }: GlobeProps) {
           style={{ contain: 'layout paint size' }}
           ref={canvasRef}
           onPointerDown={(e) => {
-            pointerInteracting.current = e.clientX
-            updatePointerInteraction(e.clientX)
+            pointerRef.current = e.clientX
+            canvasRef.current!.style.cursor = 'grabbing'
           }}
-          onPointerUp={() => updatePointerInteraction(null)}
-          onPointerOut={() => updatePointerInteraction(null)}
-          onMouseMove={(e) => updateMovement(e.clientX)}
-          onTouchMove={(e) =>
-            e.touches[0] && updateMovement(e.touches[0].clientX)
-          }
+          onPointerUp={() => {
+            pointerRef.current = null
+            canvasRef.current!.style.cursor = 'grab'
+          }}
+          onPointerOut={() => {
+            pointerRef.current = null
+            if (canvasRef.current) canvasRef.current.style.cursor = 'grab'
+          }}
+          onMouseMove={(e) => {
+            if (pointerRef.current !== null) {
+              const delta = e.clientX - pointerRef.current
+              dragRef.current += delta / 3000
+              pointerRef.current = e.clientX
+            }
+          }}
+          onTouchMove={(e) => {
+            if (pointerRef.current !== null && e.touches[0]) {
+              const delta = e.touches[0].clientX - pointerRef.current
+              dragRef.current += delta / 3000
+              pointerRef.current = e.touches[0].clientX
+            }
+          }}
         />
       </div>
       <div className="pointer-events-none absolute inset-0 h-full bg-[radial-gradient(circle_at_50%_200%,rgba(0,0,0,0.2),rgba(255,255,255,0))]" />
