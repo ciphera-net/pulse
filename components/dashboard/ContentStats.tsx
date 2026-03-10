@@ -99,6 +99,9 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
+            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
+              Pages
+            </h3>
             {showViewAll && (
               <button
                 onClick={() => setIsModalOpen(true)}
@@ -108,9 +111,6 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
                 <FrameCornersIcon className="w-4 h-4" weight="bold" />
               </button>
             )}
-            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
-              Pages
-            </h3>
           </div>
           <div className="flex gap-1" role="tablist" aria-label="Pages view tabs" onKeyDown={handleTabKeyDown}>
             {(['top_pages', 'entry_pages', 'exit_pages'] as Tab[]).map((tab) => (

@@ -87,6 +87,9 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
+            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
+              Referrers
+            </h3>
             {showViewAll && (
               <button
                 onClick={() => setIsModalOpen(true)}
@@ -96,9 +99,6 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
                 <FrameCornersIcon className="w-4 h-4" weight="bold" />
               </button>
             )}
-            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
-              Referrers
-            </h3>
           </div>
         </div>
 
