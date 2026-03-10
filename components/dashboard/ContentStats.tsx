@@ -6,6 +6,7 @@ import { logger } from '@/lib/utils/logger'
 import { formatNumber } from '@ciphera-net/ui'
 import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
 import { TopPage, getTopPages, getEntryPages, getExitPages } from '@/lib/api/stats'
+import { ArrowsOutSimpleIcon } from '@phosphor-icons/react'
 import { Modal, ArrowUpRightIcon, LayoutDashboardIcon } from '@ciphera-net/ui'
 import { ListSkeleton } from '@/components/skeletons'
 import { type DimensionFilter } from '@/lib/filters'
@@ -97,9 +98,20 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
     <>
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
-            Pages
-          </h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
+              Pages
+            </h3>
+            {showViewAll && (
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="p-1 text-neutral-300 dark:text-neutral-600 hover:text-brand-orange dark:hover:text-brand-orange transition-colors cursor-pointer rounded"
+                aria-label="View all pages"
+              >
+                <ArrowsOutSimpleIcon className="w-3.5 h-3.5" weight="bold" />
+              </button>
+            )}
+          </div>
           <div className="flex gap-1" role="tablist" aria-label="Pages view tabs" onKeyDown={handleTabKeyDown}>
             {(['top_pages', 'entry_pages', 'exit_pages'] as Tab[]).map((tab) => (
               <button
@@ -161,21 +173,9 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
                   </div>
                 </div>
               ))}
-              {showViewAll ? (
-                <button
-                  onClick={() => setIsModalOpen(true)}
-                  className="flex items-center justify-center gap-1.5 h-9 w-full text-xs font-medium text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange transition-colors cursor-pointer rounded-lg px-2 -mx-2"
-                >
-                  View all
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                  </svg>
-                </button>
-              ) : (
-                Array.from({ length: emptySlots }).map((_, i) => (
-                  <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
-                ))
-              )}
+              {Array.from({ length: emptySlots }).map((_, i) => (
+                <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
+              ))}
             </>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
