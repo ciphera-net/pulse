@@ -161,6 +161,14 @@ export default function Chart({
   const { resolvedTheme } = useTheme()
   const [showComparison, setShowComparison] = useState(false)
 
+  // Tick every 1s so "Live · Xs ago" counts in real time (scoped to Chart only)
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    if (lastUpdatedAt == null) return
+    const timer = setInterval(() => setTick((t) => t + 1), 1000)
+    return () => clearInterval(timer)
+  }, [lastUpdatedAt])
+
   // ─── Annotation state ─────────────────────────────────────────────
   const [annotationForm, setAnnotationForm] = useState<{
     visible: boolean; editingId?: string; date: string; time: string; text: string; category: string

@@ -100,7 +100,6 @@ export default function SiteDashboardPage() {
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const lastUpdatedAtRef = useRef<number | null>(null)
-  const [, setTick] = useState(0)
 
   // Dimension filters state
   const searchParams = useSearchParams()
@@ -373,12 +372,6 @@ export default function SiteDashboardPage() {
   useEffect(() => {
     if (overview) lastUpdatedAtRef.current = Date.now()
   }, [overview])
-
-  // Tick every 1s so "Live · Xs ago" counts in real time
-  useEffect(() => {
-    const timer = setInterval(() => setTick((t) => t + 1), 1000)
-    return () => clearInterval(timer)
-  }, [])
 
   // Save settings to localStorage
   const saveSettings = (type: string, newDateRange?: { start: string; end: string }) => {
