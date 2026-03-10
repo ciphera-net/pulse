@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Smoother real-time updates.** The real-time visitors page now streams updates instantly from the server instead of checking for new data every few seconds. Visitors appear and disappear in real-time with no delay, and the page uses far fewer server resources — especially when many people are watching their live traffic at the same time.
 - **More reliable under heavy load.** Database queries now have automatic time limits so a single slow query can never lock up the system. If your dashboard or stats take too long to load, the request is gracefully cancelled instead of hanging forever — keeping everything responsive even during traffic spikes.
 - **Smarter caching for dashboard data.** Your dashboard stats are now cached for longer and shared more efficiently between requests. When the cache refreshes, only one request does the work while others wait for the result — so your dashboard loads consistently fast even when lots of people are viewing their analytics at the same time.
+- **Faster filtered views.** When you filter your dashboard by country, browser, page, or any other dimension, the results are now cached so repeat views load instantly. If multiple people apply the same filter, only one lookup runs and the result is shared — making filtered views much snappier under heavy use.
+- **Faster entry and exit page stats.** The queries that figure out which pages visitors land on and leave from have been rewritten to be much more efficient. Instead of sorting through every single event, they now look up just the first and last page per visit — so your Entry Pages and Exit Pages panels load noticeably faster, especially on high-traffic sites.
 
 ### Added
 
