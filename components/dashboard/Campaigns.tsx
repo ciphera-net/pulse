@@ -124,26 +124,26 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
     <>
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
+            Campaigns
+          </h3>
           <div className="flex items-center gap-2">
-            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
-              Campaigns
-            </h3>
+            <button
+              onClick={() => setIsBuilderOpen(true)}
+              className="text-xs font-medium text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange transition-colors cursor-pointer"
+          >
+              Build URL
+            </button>
             {showViewAll && (
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="p-1 text-neutral-300 dark:text-neutral-600 hover:text-brand-orange dark:hover:text-brand-orange transition-colors cursor-pointer rounded"
+                className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all cursor-pointer rounded-lg"
                 aria-label="View all campaigns"
               >
-                <FrameCornersIcon className="w-3.5 h-3.5" weight="bold" />
+                <FrameCornersIcon className="w-4 h-4" weight="bold" />
               </button>
             )}
           </div>
-          <button
-            onClick={() => setIsBuilderOpen(true)}
-            className="text-xs font-medium text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange transition-colors cursor-pointer"
-          >
-            Build URL
-          </button>
         </div>
 
         <div className="space-y-2 flex-1 min-h-[270px]">
