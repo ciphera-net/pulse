@@ -213,7 +213,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
       <Modal
         isOpen={isModalOpen}
         onClose={() => { setIsModalOpen(false); setModalSearch('') }}
-        title="All Campaigns"
+        title="Campaigns"
         className="max-w-2xl"
       >
         <div>
@@ -250,7 +250,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
                   <div
                     key={`${item.source}|${item.medium}|${item.campaign}`}
                     onClick={() => { if (onFilter) { onFilter({ dimension: 'utm_source', operator: 'is', values: [item.source] }); setIsModalOpen(false) } }}
-                    className={`flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors${onFilter ? ' cursor-pointer' : ''}`}
+                    className={`flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 transition-colors${onFilter ? ' cursor-pointer' : ''}`}
                   >
                     <div className="flex-1 flex items-center gap-3 min-w-0">
                       {renderSourceIcon(item.source)}
