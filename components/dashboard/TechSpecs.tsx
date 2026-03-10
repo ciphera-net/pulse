@@ -6,7 +6,7 @@ import { logger } from '@/lib/utils/logger'
 import { formatNumber } from '@ciphera-net/ui'
 import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
 import { getBrowserIcon, getOSIcon, getDeviceIcon } from '@/lib/utils/icons'
-import { Monitor, ArrowsOutSimpleIcon } from '@phosphor-icons/react'
+import { Monitor, FrameCornersIcon } from '@phosphor-icons/react'
 import { Modal, GridIcon } from '@ciphera-net/ui'
 import { ListSkeleton } from '@/components/skeletons'
 import { getBrowsers, getOS, getDevices, getScreenResolutions } from '@/lib/api/stats'
@@ -138,7 +138,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
                 className="p-1 text-neutral-300 dark:text-neutral-600 hover:text-brand-orange dark:hover:text-brand-orange transition-colors cursor-pointer rounded"
                 aria-label="View all technology"
               >
-                <ArrowsOutSimpleIcon className="w-3.5 h-3.5" weight="bold" />
+                <FrameCornersIcon className="w-3.5 h-3.5" weight="bold" />
               </button>
             )}
           </div>

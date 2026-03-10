@@ -9,7 +9,7 @@ import { Modal, ArrowRightIcon } from '@ciphera-net/ui'
 import { ListSkeleton } from '@/components/skeletons'
 import { getCampaigns, CampaignStat } from '@/lib/api/stats'
 import { getReferrerFavicon, getReferrerIcon, getReferrerDisplayName } from '@/lib/utils/icons'
-import { Megaphone, ArrowsOutSimpleIcon } from '@phosphor-icons/react'
+import { Megaphone, FrameCornersIcon } from '@phosphor-icons/react'
 import UtmBuilder from '@/components/tools/UtmBuilder'
 import { type DimensionFilter } from '@/lib/filters'
 
@@ -134,7 +134,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
                 className="p-1 text-neutral-300 dark:text-neutral-600 hover:text-brand-orange dark:hover:text-brand-orange transition-colors cursor-pointer rounded"
                 aria-label="View all campaigns"
               >
-                <ArrowsOutSimpleIcon className="w-3.5 h-3.5" weight="bold" />
+                <FrameCornersIcon className="w-3.5 h-3.5" weight="bold" />
               </button>
             )}
           </div>
