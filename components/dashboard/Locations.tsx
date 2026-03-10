@@ -13,7 +13,7 @@ const DottedMap = dynamic(() => import('./DottedMap'), { ssr: false })
 const Globe = dynamic(() => import('./Globe'), { ssr: false })
 import { Modal, GlobeIcon } from '@ciphera-net/ui'
 import { ListSkeleton } from '@/components/skeletons'
-import { ShieldCheck, Detective, Broadcast, ArrowsOutSimpleIcon } from '@phosphor-icons/react'
+import { ShieldCheck, Detective, Broadcast, FrameCornersIcon } from '@phosphor-icons/react'
 import { getCountries, getCities, getRegions } from '@/lib/api/stats'
 import { type DimensionFilter } from '@/lib/filters'
 
@@ -212,7 +212,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
                 className="p-1 text-neutral-300 dark:text-neutral-600 hover:text-brand-orange dark:hover:text-brand-orange transition-colors cursor-pointer rounded"
                 aria-label="View all locations"
               >
-                <ArrowsOutSimpleIcon className="w-3.5 h-3.5" weight="bold" />
+                <FrameCornersIcon className="w-3.5 h-3.5" weight="bold" />
               </button>
             )}
           </div>

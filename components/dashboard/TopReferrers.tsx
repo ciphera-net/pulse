@@ -5,7 +5,7 @@ import { logger } from '@/lib/utils/logger'
 import Image from 'next/image'
 import { formatNumber } from '@ciphera-net/ui'
 import { getReferrerDisplayName, getReferrerFavicon, getReferrerIcon, mergeReferrersByDisplayName } from '@/lib/utils/icons'
-import { ArrowsOutSimpleIcon } from '@phosphor-icons/react'
+import { FrameCornersIcon } from '@phosphor-icons/react'
 import { Modal, GlobeIcon } from '@ciphera-net/ui'
 import { ListSkeleton } from '@/components/skeletons'
 import { getTopReferrers, TopReferrer } from '@/lib/api/stats'
@@ -96,7 +96,7 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
                 className="p-1 text-neutral-300 dark:text-neutral-600 hover:text-brand-orange dark:hover:text-brand-orange transition-colors cursor-pointer rounded"
                 aria-label="View all referrers"
               >
-                <ArrowsOutSimpleIcon className="w-3.5 h-3.5" weight="bold" />
+                <FrameCornersIcon className="w-3.5 h-3.5" weight="bold" />
               </button>
             )}
           </div>
