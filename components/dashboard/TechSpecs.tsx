@@ -39,6 +39,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
   const [activeTab, setActiveTab] = useState<Tab>('browsers')
   const handleTabKeyDown = useTabListKeyboard()
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [modalSearch, setModalSearch] = useState('')
   type TechItem = { name: string; pageviews: number; icon: React.ReactNode }
   const [fullData, setFullData] = useState<TechItem[]>([])
   const [isLoadingFull, setIsLoadingFull] = useState(false)
@@ -221,17 +222,26 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
 
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => { setIsModalOpen(false); setModalSearch('') }}
         title={`Technology - ${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}`}
         className="max-w-2xl"
       >
+        <div>
+          <input
+            type="text"
+            value={modalSearch}
+            onChange={(e) => setModalSearch(e.target.value)}
+            placeholder="Search technology..."
+            className="w-full px-3 py-2 mb-3 text-sm bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
+          />
+        </div>
         <div className="space-y-1 max-h-[80vh] overflow-y-auto pr-2">
           {isLoadingFull ? (
             <div className="py-4">
               <ListSkeleton rows={10} />
             </div>
           ) : (() => {
-            const modalData = fullData.length > 0 ? fullData : data
+            const modalData = (fullData.length > 0 ? fullData : data).filter(item => !modalSearch || item.name.toLowerCase().includes(modalSearch.toLowerCase()))
             const modalTotal = modalData.reduce((sum, item) => sum + item.pageviews, 0)
             const dim = TAB_TO_DIMENSION[activeTab]
             return modalData.map((item) => {

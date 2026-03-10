@@ -30,6 +30,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
   const [activeTab, setActiveTab] = useState<Tab>('top_pages')
   const handleTabKeyDown = useTabListKeyboard()
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [modalSearch, setModalSearch] = useState('')
   const [fullData, setFullData] = useState<TopPage[]>([])
   const [isLoadingFull, setIsLoadingFull] = useState(false)
 
@@ -195,17 +196,26 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
 
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => { setIsModalOpen(false); setModalSearch('') }}
         title={`Pages - ${getTabLabel(activeTab)}`}
         className="max-w-2xl"
       >
+        <div>
+          <input
+            type="text"
+            value={modalSearch}
+            onChange={(e) => setModalSearch(e.target.value)}
+            placeholder="Search pages..."
+            className="w-full px-3 py-2 mb-3 text-sm bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
+          />
+        </div>
         <div className="space-y-1 max-h-[80vh] overflow-y-auto pr-2">
           {isLoadingFull ? (
             <div className="py-4">
               <ListSkeleton rows={10} />
             </div>
           ) : (() => {
-            const modalData = fullData.length > 0 ? fullData : data
+            const modalData = (fullData.length > 0 ? fullData : data).filter(p => !modalSearch || p.path.toLowerCase().includes(modalSearch.toLowerCase()))
             const modalTotal = modalData.reduce((sum, p) => sum + p.pageviews, 0)
             return modalData.map((page) => {
               const canFilter = onFilter && page.path

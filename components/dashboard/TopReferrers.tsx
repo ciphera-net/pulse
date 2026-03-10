@@ -23,6 +23,7 @@ const LIMIT = 7
 
 export default function TopReferrers({ referrers, collectReferrers = true, siteId, dateRange, onFilter }: TopReferrersProps) {
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [modalSearch, setModalSearch] = useState('')
   const [fullData, setFullData] = useState<TopReferrer[]>([])
   const [isLoadingFull, setIsLoadingFull] = useState(false)
   const [faviconFailed, setFaviconFailed] = useState<Set<string>>(new Set())
@@ -151,17 +152,26 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
 
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => { setIsModalOpen(false); setModalSearch('') }}
         title="Referrers"
         className="max-w-2xl"
       >
+        <div>
+          <input
+            type="text"
+            value={modalSearch}
+            onChange={(e) => setModalSearch(e.target.value)}
+            placeholder="Search referrers..."
+            className="w-full px-3 py-2 mb-3 text-sm bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
+          />
+        </div>
         <div className="space-y-1 max-h-[80vh] overflow-y-auto pr-2">
           {isLoadingFull ? (
             <div className="py-4">
               <ListSkeleton rows={10} />
             </div>
           ) : (() => {
-            const modalData = mergeReferrersByDisplayName(fullData.length > 0 ? fullData : filteredReferrers)
+            const modalData = mergeReferrersByDisplayName(fullData.length > 0 ? fullData : filteredReferrers).filter(r => !modalSearch || getReferrerDisplayName(r.referrer).toLowerCase().includes(modalSearch.toLowerCase()))
             const modalTotal = modalData.reduce((sum, r) => sum + r.pageviews, 0)
             return modalData.map((ref) => (
               <div

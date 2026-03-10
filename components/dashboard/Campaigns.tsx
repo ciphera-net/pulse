@@ -26,6 +26,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
   const [data, setData] = useState<CampaignStat[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [modalSearch, setModalSearch] = useState('')
   const [isBuilderOpen, setIsBuilderOpen] = useState(false)
   const [fullData, setFullData] = useState<CampaignStat[]>([])
   const [isLoadingFull, setIsLoadingFull] = useState(false)
@@ -211,17 +212,30 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
 
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => { setIsModalOpen(false); setModalSearch('') }}
         title="All Campaigns"
         className="max-w-2xl"
       >
+        <div>
+          <input
+            type="text"
+            value={modalSearch}
+            onChange={(e) => setModalSearch(e.target.value)}
+            placeholder="Search campaigns..."
+            className="w-full px-3 py-2 mb-3 text-sm bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
+          />
+        </div>
         <div className="space-y-1 max-h-[80vh] overflow-y-auto pr-2">
           {isLoadingFull ? (
             <div className="py-4">
               <ListSkeleton rows={10} />
             </div>
           ) : (() => {
-            const modalTotal = sortedFullData.reduce((sum, item) => sum + item.visitors, 0)
+            const filteredCampaigns = !modalSearch ? sortedFullData : sortedFullData.filter(item => {
+              const search = modalSearch.toLowerCase()
+              return item.source.toLowerCase().includes(search) || (item.medium || '').toLowerCase().includes(search) || (item.campaign || '').toLowerCase().includes(search)
+            })
+            const modalTotal = filteredCampaigns.reduce((sum, item) => sum + item.visitors, 0)
             return (
               <>
                 <div className="flex items-center justify-end mb-2">
@@ -232,7 +246,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
                     Export CSV
                   </button>
                 </div>
-                {sortedFullData.map((item) => (
+                {filteredCampaigns.map((item) => (
                   <div
                     key={`${item.source}|${item.medium}|${item.campaign}`}
                     onClick={() => { if (onFilter) { onFilter({ dimension: 'utm_source', operator: 'is', values: [item.source] }); setIsModalOpen(false) } }}
