@@ -13,6 +13,7 @@ const DottedMap = dynamic(() => import('./DottedMap'), { ssr: false })
 const Globe = dynamic(() => import('./Globe'), { ssr: false })
 import { Modal, GlobeIcon } from '@ciphera-net/ui'
 import { ListSkeleton } from '@/components/skeletons'
+import VirtualList from './VirtualList'
 import { ShieldCheck, Detective, Broadcast, FrameCornersIcon } from '@phosphor-icons/react'
 import { getCountries, getCities, getRegions } from '@/lib/api/stats'
 import { type DimensionFilter } from '@/lib/filters'
@@ -334,7 +335,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
             className="w-full px-3 py-2 mb-3 text-sm bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
           />
         </div>
-        <div className="space-y-1 max-h-[80vh] overflow-y-auto pr-2">
+        <div className="max-h-[80vh]">
           {isLoadingFull ? (
             <div className="py-4">
               <ListSkeleton rows={10} />
@@ -347,35 +348,42 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
               return label.toLowerCase().includes(search)
             })
             const modalTotal = modalData.reduce((sum, item) => sum + item.pageviews, 0)
-            return modalData.map((item) => {
-              const dim = TAB_TO_DIMENSION[activeTab]
-              const filterValue = activeTab === 'countries' ? item.country : activeTab === 'regions' ? item.region : item.city
-              const canFilter = onFilter && dim && filterValue
-              return (
-                <div
-                  key={`${item.country ?? ''}-${item.region ?? ''}-${item.city ?? ''}`}
-                  onClick={() => { if (canFilter) { onFilter({ dimension: dim, operator: 'is', values: [filterValue!] }); setIsModalOpen(false) } }}
-                  className={`flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 transition-colors${canFilter ? ' cursor-pointer' : ''}`}
-                >
-                  <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
-                    <span className="shrink-0">{getFlagComponent(item.country ?? '')}</span>
-                    <span className="truncate">
-                      {activeTab === 'countries' ? getCountryName(item.country ?? '') :
-                       activeTab === 'regions' ? getRegionName(item.region ?? '', item.country ?? '') :
-                       getCityName(item.city ?? '')}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 ml-4">
-                    <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
-                      {modalTotal > 0 ? `${Math.round((item.pageviews / modalTotal) * 100)}%` : ''}
-                    </span>
-                    <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
-                      {formatNumber(item.pageviews)}
-                    </span>
-                  </div>
-                </div>
-              )
-            })
+            return (
+              <VirtualList
+                items={modalData}
+                estimateSize={36}
+                className="max-h-[80vh] overflow-y-auto pr-2"
+                renderItem={(item) => {
+                  const dim = TAB_TO_DIMENSION[activeTab]
+                  const filterValue = activeTab === 'countries' ? item.country : activeTab === 'regions' ? item.region : item.city
+                  const canFilter = onFilter && dim && filterValue
+                  return (
+                    <div
+                      key={`${item.country ?? ''}-${item.region ?? ''}-${item.city ?? ''}`}
+                      onClick={() => { if (canFilter) { onFilter({ dimension: dim, operator: 'is', values: [filterValue!] }); setIsModalOpen(false) } }}
+                      className={`flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 transition-colors${canFilter ? ' cursor-pointer' : ''}`}
+                    >
+                      <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
+                        <span className="shrink-0">{getFlagComponent(item.country ?? '')}</span>
+                        <span className="truncate">
+                          {activeTab === 'countries' ? getCountryName(item.country ?? '') :
+                           activeTab === 'regions' ? getRegionName(item.region ?? '', item.country ?? '') :
+                           getCityName(item.city ?? '')}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 ml-4">
+                        <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+                          {modalTotal > 0 ? `${Math.round((item.pageviews / modalTotal) * 100)}%` : ''}
+                        </span>
+                        <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
+                          {formatNumber(item.pageviews)}
+                        </span>
+                      </div>
+                    </div>
+                  )
+                }}
+              />
+            )
           })()}
         </div>
       </Modal>
