@@ -19,6 +19,8 @@ const ANNOTATION_COLORS: Record<string, string> = {
   other: '#a3a3a3',
 }
 
+const MAX_VISIBLE_ANNOTATIONS = 20
+
 const ANNOTATION_LABELS: Record<string, string> = {
   deploy: 'Deploy',
   campaign: 'Campaign',
@@ -253,6 +255,9 @@ export default function Chart({
     }
     return markers
   }, [annotations, chartData])
+
+  const visibleAnnotationMarkers = annotationMarkers.slice(0, MAX_VISIBLE_ANNOTATIONS)
+  const hiddenAnnotationCount = Math.max(0, annotationMarkers.length - MAX_VISIBLE_ANNOTATIONS)
 
   // ─── Right-click handler ──────────────────────────────────────────
   const handleChartContextMenu = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -490,7 +495,7 @@ export default function Chart({
                   />
 
                   {/* Annotation reference lines */}
-                  {annotationMarkers.map((marker) => {
+                  {visibleAnnotationMarkers.map((marker) => {
                     const primaryCategory = marker.annotations[0].category
                     const color = ANNOTATION_COLORS[primaryCategory] || ANNOTATION_COLORS.other
                     return (
@@ -534,7 +539,7 @@ export default function Chart({
               {annotationMarkers.length > 0 && (
                 <>
                   <span className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500 mr-1">Annotations:</span>
-                  {annotationMarkers.map((marker) => {
+                  {visibleAnnotationMarkers.map((marker) => {
                     const primary = marker.annotations[0]
                     const color = ANNOTATION_COLORS[primary.category] || ANNOTATION_COLORS.other
                     const count = marker.annotations.length
@@ -577,6 +582,11 @@ export default function Chart({
                       </button>
                     )
                   })}
+                  {hiddenAnnotationCount > 0 && (
+                    <span className="text-[10px] text-neutral-400 dark:text-neutral-500 ml-1">
+                      +{hiddenAnnotationCount} more
+                    </span>
+                  )}
                 </>
               )}
             </div>

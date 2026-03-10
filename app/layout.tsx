@@ -1,5 +1,6 @@
 import { ThemeProviders, Toaster } from '@ciphera-net/ui'
 import { AuthProvider } from '@/lib/auth/context'
+import SWRProvider from '@/components/SWRProvider'
 import type { Metadata, Viewport } from 'next'
 import { Plus_Jakarta_Sans } from 'next/font/google'
 import LayoutContent from './layout-content'
@@ -46,12 +47,14 @@ export default function RootLayout({
   return (
     <html lang="en" className={plusJakartaSans.variable} suppressHydrationWarning>
       <body className="antialiased min-h-screen flex flex-col bg-white dark:bg-neutral-950 text-neutral-900 dark:text-neutral-50">
-        <ThemeProviders>
-          <AuthProvider>
-            <LayoutContent>{children}</LayoutContent>
-            <Toaster />
-          </AuthProvider>
-        </ThemeProviders>
+        <SWRProvider>
+          <ThemeProviders>
+            <AuthProvider>
+              <LayoutContent>{children}</LayoutContent>
+              <Toaster />
+            </AuthProvider>
+          </ThemeProviders>
+        </SWRProvider>
       </body>
     </html>
   )

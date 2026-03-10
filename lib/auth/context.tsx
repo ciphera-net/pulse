@@ -7,6 +7,7 @@ import { LoadingOverlay, useSessionSync, SessionExpiryWarning } from '@ciphera-n
 import { logoutAction, getSessionAction, setSessionAction } from '@/app/actions/auth'
 import { getUserOrganizations, switchContext } from '@/lib/api/organization'
 import { logger } from '@/lib/utils/logger'
+import { cleanupStaleStorage } from '@/lib/utils/storage-cleanup'
 
 interface User {
   id: string
@@ -131,6 +132,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Initial load
   useEffect(() => {
     const init = async () => {
+        cleanupStaleStorage()
+
         // * 1. Check server-side session (cookies)
         let session: Awaited<ReturnType<typeof getSessionAction>> = null
         try {
