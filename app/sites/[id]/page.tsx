@@ -40,13 +40,7 @@ const EventProperties = dynamic(() => import('@/components/dashboard/EventProper
 const ExportModal = dynamic(() => import('@/components/dashboard/ExportModal'))
 import { type DimensionFilter, serializeFilters, parseFiltersFromURL } from '@/lib/filters'
 import {
-  useDashboardOverview,
-  useDashboardPages,
-  useDashboardLocations,
-  useDashboardDevices,
-  useDashboardReferrers,
-  useDashboardPerformance,
-  useDashboardGoals,
+  useDashboard,
   useRealtime,
   useStats,
   useDailyStats,
@@ -220,16 +214,10 @@ export default function SiteDashboardPage() {
     return { start: prevStart.toISOString().split('T')[0], end: prevEnd.toISOString().split('T')[0] }
   }, [dateRange])
 
-  // SWR hooks - replace manual useState + useEffect + setInterval polling
-  // Each hook handles its own refresh interval, deduplication, and error retry
-  // Filters are included in cache keys so changing filters auto-refetches
-  const { data: overview, isLoading: overviewLoading, error: overviewError } = useDashboardOverview(siteId, dateRange.start, dateRange.end, interval, filtersParam || undefined)
-  const { data: pages } = useDashboardPages(siteId, dateRange.start, dateRange.end, filtersParam || undefined)
-  const { data: locations } = useDashboardLocations(siteId, dateRange.start, dateRange.end, filtersParam || undefined)
-  const { data: devicesData } = useDashboardDevices(siteId, dateRange.start, dateRange.end, filtersParam || undefined)
-  const { data: referrers } = useDashboardReferrers(siteId, dateRange.start, dateRange.end, filtersParam || undefined)
-  const { data: performanceData } = useDashboardPerformance(siteId, dateRange.start, dateRange.end, filtersParam || undefined)
-  const { data: goalsData } = useDashboardGoals(siteId, dateRange.start, dateRange.end, filtersParam || undefined)
+  // Single dashboard request replaces 7 focused hooks (overview, pages, locations,
+  // devices, referrers, performance, goals). The backend runs all queries in parallel
+  // and caches the result in Redis, reducing requests from 12 to 6 per refresh cycle.
+  const { data: dashboard, isLoading: dashboardLoading, error: dashboardError } = useDashboard(siteId, dateRange.start, dateRange.end, interval, filtersParam || undefined)
   const { data: realtimeData } = useRealtime(siteId)
   const { data: prevStats } = useStats(siteId, prevRange.start, prevRange.end)
   const { data: prevDailyStats } = useDailyStats(siteId, prevRange.start, prevRange.end, interval)
@@ -255,24 +243,24 @@ export default function SiteDashboardPage() {
     toast.success('Annotation deleted')
   }
 
-  // Derive typed values from SWR data
-  const site = overview?.site ?? null
-  const stats: Stats = overview?.stats ?? { pageviews: 0, visitors: 0, bounce_rate: 0, avg_duration: 0 }
-  const realtime = realtimeData?.visitors ?? overview?.realtime_visitors ?? 0
-  const dailyStats: DailyStat[] = overview?.daily_stats ?? []
+  // Derive typed values from single dashboard response
+  const site = dashboard?.site ?? null
+  const stats: Stats = dashboard?.stats ?? { pageviews: 0, visitors: 0, bounce_rate: 0, avg_duration: 0 }
+  const realtime = realtimeData?.visitors ?? dashboard?.realtime_visitors ?? 0
+  const dailyStats: DailyStat[] = dashboard?.daily_stats ?? []
 
   // Build filter suggestions from current dashboard data
   const filterSuggestions = useMemo<FilterSuggestions>(() => {
     const s: FilterSuggestions = {}
 
     // Pages
-    const topPages = pages?.top_pages ?? []
+    const topPages = dashboard?.top_pages ?? []
     if (topPages.length > 0) {
       s.page = topPages.map(p => ({ value: p.path, label: p.path, count: p.pageviews }))
     }
 
     // Referrers
-    const refs = referrers?.top_referrers ?? []
+    const refs = dashboard?.top_referrers ?? []
     if (refs.length > 0) {
       s.referrer = refs.filter(r => r.referrer && r.referrer !== '').map(r => ({
         value: r.referrer,
@@ -282,7 +270,7 @@ export default function SiteDashboardPage() {
     }
 
     // Countries
-    const ctrs = locations?.countries ?? []
+    const ctrs = dashboard?.countries ?? []
     if (ctrs.length > 0) {
       const regionNames = (() => { try { return new Intl.DisplayNames(['en'], { type: 'region' }) } catch { return null } })()
       s.country = ctrs.filter(c => c.country && c.country !== 'Unknown').map(c => ({
@@ -293,7 +281,7 @@ export default function SiteDashboardPage() {
     }
 
     // Regions
-    const regs = locations?.regions ?? []
+    const regs = dashboard?.regions ?? []
     if (regs.length > 0) {
       s.region = regs.filter(r => r.region && r.region !== 'Unknown').map(r => ({
         value: r.region,
@@ -303,7 +291,7 @@ export default function SiteDashboardPage() {
     }
 
     // Cities
-    const cts = locations?.cities ?? []
+    const cts = dashboard?.cities ?? []
     if (cts.length > 0) {
       s.city = cts.filter(c => c.city && c.city !== 'Unknown').map(c => ({
         value: c.city,
@@ -313,7 +301,7 @@ export default function SiteDashboardPage() {
     }
 
     // Browsers
-    const brs = devicesData?.browsers ?? []
+    const brs = dashboard?.browsers ?? []
     if (brs.length > 0) {
       s.browser = brs.filter(b => b.browser && b.browser !== 'Unknown').map(b => ({
         value: b.browser,
@@ -323,7 +311,7 @@ export default function SiteDashboardPage() {
     }
 
     // OS
-    const oses = devicesData?.os ?? []
+    const oses = dashboard?.os ?? []
     if (oses.length > 0) {
       s.os = oses.filter(o => o.os && o.os !== 'Unknown').map(o => ({
         value: o.os,
@@ -333,7 +321,7 @@ export default function SiteDashboardPage() {
     }
 
     // Devices
-    const devs = devicesData?.devices ?? []
+    const devs = dashboard?.devices ?? []
     if (devs.length > 0) {
       s.device = devs.filter(d => d.device && d.device !== 'Unknown').map(d => ({
         value: d.device,
@@ -359,19 +347,19 @@ export default function SiteDashboardPage() {
     }
 
     return s
-  }, [pages, referrers, locations, devicesData, campaigns])
+  }, [dashboard, campaigns])
 
   // Show error toast on fetch failure
   useEffect(() => {
-    if (overviewError) {
+    if (dashboardError) {
       toast.error('Failed to load dashboard analytics')
     }
-  }, [overviewError])
+  }, [dashboardError])
 
   // Track when data was last updated (for "Live · Xs ago" display)
   useEffect(() => {
-    if (overview) lastUpdatedAtRef.current = Date.now()
-  }, [overview])
+    if (dashboard) lastUpdatedAtRef.current = Date.now()
+  }, [dashboard])
 
   // Save settings to localStorage
   const saveSettings = (type: string, newDateRange?: { start: string; end: string }) => {
@@ -413,7 +401,7 @@ export default function SiteDashboardPage() {
 
   // Skip the minimum-loading skeleton when SWR already has cached data
   // (prevents the 300ms flash when navigating back to the dashboard)
-  const showSkeleton = useMinimumLoading(overviewLoading && !overview)
+  const showSkeleton = useMinimumLoading(dashboardLoading && !dashboard)
 
   if (showSkeleton) {
     return <DashboardSkeleton />
@@ -543,8 +531,8 @@ export default function SiteDashboardPage() {
       {site.enable_performance_insights && (
         <div className="mb-8">
           <PerformanceStats
-            stats={performanceData?.performance ?? { lcp: 0, cls: 0, inp: 0 }}
-            performanceByPage={performanceData?.performance_by_page ?? null}
+            stats={dashboard?.performance ?? { lcp: 0, cls: 0, inp: 0 }}
+            performanceByPage={dashboard?.performance_by_page ?? null}
             siteId={siteId}
             startDate={dateRange.start}
             endDate={dateRange.end}
@@ -555,9 +543,9 @@ export default function SiteDashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-2 mb-8">
         <ContentStats
-          topPages={pages?.top_pages ?? []}
-          entryPages={pages?.entry_pages ?? []}
-          exitPages={pages?.exit_pages ?? []}
+          topPages={dashboard?.top_pages ?? []}
+          entryPages={dashboard?.entry_pages ?? []}
+          exitPages={dashboard?.exit_pages ?? []}
           domain={site.domain}
           collectPagePaths={site.collect_page_paths ?? true}
           siteId={siteId}
@@ -565,7 +553,7 @@ export default function SiteDashboardPage() {
           onFilter={handleAddFilter}
         />
         <TopReferrers
-          referrers={referrers?.top_referrers ?? []}
+          referrers={dashboard?.top_referrers ?? []}
           collectReferrers={site.collect_referrers ?? true}
           siteId={siteId}
           dateRange={dateRange}
@@ -575,19 +563,19 @@ export default function SiteDashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-2 mb-8">
         <Locations
-          countries={locations?.countries ?? []}
-          cities={locations?.cities ?? []}
-          regions={locations?.regions ?? []}
+          countries={dashboard?.countries ?? []}
+          cities={dashboard?.cities ?? []}
+          regions={dashboard?.regions ?? []}
           geoDataLevel={site.collect_geo_data || 'full'}
           siteId={siteId}
           dateRange={dateRange}
           onFilter={handleAddFilter}
         />
         <TechSpecs
-          browsers={devicesData?.browsers ?? []}
-          os={devicesData?.os ?? []}
-          devices={devicesData?.devices ?? []}
-          screenResolutions={devicesData?.screen_resolutions ?? []}
+          browsers={dashboard?.browsers ?? []}
+          os={dashboard?.os ?? []}
+          devices={dashboard?.devices ?? []}
+          screenResolutions={dashboard?.screen_resolutions ?? []}
           collectDeviceInfo={site.collect_device_info ?? true}
           collectScreenResolution={site.collect_screen_resolution ?? true}
           siteId={siteId}
@@ -599,13 +587,13 @@ export default function SiteDashboardPage() {
       <div className="grid gap-6 lg:grid-cols-2 mb-8">
         <Campaigns siteId={siteId} dateRange={dateRange} filters={filtersParam || undefined} onFilter={handleAddFilter} />
         <GoalStats
-          goalCounts={(goalsData?.goal_counts ?? []).filter(g => !/^scroll_\d+$/.test(g.event_name))}
+          goalCounts={(dashboard?.goal_counts ?? []).filter(g => !/^scroll_\d+$/.test(g.event_name))}
           onSelectEvent={setSelectedEvent}
         />
       </div>
 
       <div className="mb-8">
-        <ScrollDepth goalCounts={goalsData?.goal_counts ?? []} totalPageviews={stats.pageviews} />
+        <ScrollDepth goalCounts={dashboard?.goal_counts ?? []} totalPageviews={stats.pageviews} />
       </div>
 
       {/* Event Properties Breakdown */}
@@ -636,8 +624,8 @@ export default function SiteDashboardPage() {
         onClose={() => setIsExportModalOpen(false)}
         data={dailyStats}
         stats={stats}
-        topPages={pages?.top_pages}
-        topReferrers={referrers?.top_referrers}
+        topPages={dashboard?.top_pages}
+        topReferrers={dashboard?.top_referrers}
         campaigns={campaigns}
       />
     </div>

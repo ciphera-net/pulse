@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Improved
+
+- **Even faster dashboard loading.** Your dashboard now fetches all its data — pages, locations, devices, referrers, performance, and goals — in a single request instead of seven separate ones. This means the entire dashboard appears at once rather than sections loading one by one, and puts much less strain on the server when many people are viewing their analytics at the same time.
+
 ### Added
 
 - **Interactive 3D Globe.** The Locations panel now has a "Globe" tab showing your visitor locations on a beautiful, interactive 3D globe. Drag to rotate, and orange markers highlight where your visitors are — sized by how much traffic each country sends. The globe slowly auto-rotates and adapts to light and dark mode.
