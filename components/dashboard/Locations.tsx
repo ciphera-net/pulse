@@ -202,12 +202,22 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
     <>
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
-            Locations
-          </h3>
           <div className="flex items-center gap-2">
-            <div className="flex gap-1" role="tablist" aria-label="Location view tabs" onKeyDown={handleTabKeyDown}>
-              {(['map', 'globe', 'countries', 'regions', 'cities'] as Tab[]).map((tab) => (
+            {showViewAll && (
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all cursor-pointer rounded-lg"
+                aria-label="View all locations"
+              >
+                <FrameCornersIcon className="w-4 h-4" weight="bold" />
+              </button>
+            )}
+            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
+              Locations
+            </h3>
+          </div>
+          <div className="flex gap-1" role="tablist" aria-label="Location view tabs" onKeyDown={handleTabKeyDown}>
+            {(['map', 'globe', 'countries', 'regions', 'cities'] as Tab[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -228,17 +238,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
                   />
                 )}
               </button>
-              ))}
-            </div>
-            {showViewAll && (
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all cursor-pointer rounded-lg"
-                aria-label="View all locations"
-              >
-                <FrameCornersIcon className="w-4 h-4" weight="bold" />
-              </button>
-            )}
+            ))}
           </div>
         </div>
 
