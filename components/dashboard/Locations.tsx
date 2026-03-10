@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { motion } from 'framer-motion'
 import { logger } from '@/lib/utils/logger'
@@ -42,6 +42,20 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
   type LocationItem = { country?: string; city?: string; region?: string; pageviews: number }
   const [fullData, setFullData] = useState<LocationItem[]>([])
   const [isLoadingFull, setIsLoadingFull] = useState(false)
+
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [inView, setInView] = useState(false)
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setInView(true) },
+      { rootMargin: '200px' }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   useEffect(() => {
     if (isModalOpen) {
@@ -202,7 +216,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
 
   return (
     <>
-      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
+      <div ref={containerRef} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
             <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
@@ -252,8 +266,8 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
           ) : isVisualTab ? (
             hasData ? (
               activeTab === 'globe'
-                ? <Globe data={filterUnknown(countries) as { country: string; pageviews: number }[]} />
-                : <DottedMap data={filterUnknown(countries) as { country: string; pageviews: number }[]} />
+                ? (inView ? <Globe data={filterUnknown(countries) as { country: string; pageviews: number }[]} /> : null)
+                : (inView ? <DottedMap data={filterUnknown(countries) as { country: string; pageviews: number }[]} /> : null)
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
                 <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
