@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { getSite, type Site } from '@/lib/api/sites'
-import { getRealtimeVisitors, getSessionDetails, type Visitor, type SessionEvent } from '@/lib/api/realtime'
+import { getSessionDetails, type Visitor, type SessionEvent } from '@/lib/api/realtime'
+import { useRealtimeSSE } from '@/lib/hooks/useRealtimeSSE'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { UserIcon } from '@ciphera-net/ui'
@@ -27,28 +28,20 @@ export default function RealtimePage() {
   const siteId = params.id as string
 
   const [site, setSite] = useState<Site | null>(null)
-  const [visitors, setVisitors] = useState<Visitor[]>([])
+  const { visitors } = useRealtimeSSE(siteId)
   const [selectedVisitor, setSelectedVisitor] = useState<Visitor | null>(null)
   const [sessionEvents, setSessionEvents] = useState<SessionEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingEvents, setLoadingEvents] = useState(false)
 
-  // Load site info and initial visitors
+  // Load site info
   useEffect(() => {
     const init = async () => {
       try {
-        const [siteData, visitorsData] = await Promise.all([
-          getSite(siteId),
-          getRealtimeVisitors(siteId)
-        ])
+        const siteData = await getSite(siteId)
         setSite(siteData)
-        setVisitors(visitorsData || [])
-        // Select first visitor if available
-        if (visitorsData && visitorsData.length > 0) {
-          handleSelectVisitor(visitorsData[0])
-        }
       } catch (error: unknown) {
-        toast.error(getAuthErrorMessage(error) || 'Failed to load realtime visitors')
+        toast.error(getAuthErrorMessage(error) || 'Failed to load site')
       } finally {
         setLoading(false)
       }
@@ -56,27 +49,12 @@ export default function RealtimePage() {
     init()
   }, [siteId])
 
-  // Poll for updates
+  // Auto-select the first visitor when the list populates and nothing is selected
   useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const data = await getRealtimeVisitors(siteId)
-        setVisitors(data || [])
-        
-        // Update selected visitor reference if they are still in the list
-        if (selectedVisitor) {
-            const updatedVisitor = data?.find(v => v.session_id === selectedVisitor.session_id)
-            if (updatedVisitor) {
-                // Don't overwrite the selectedVisitor state directly to avoid flickering details
-                // But we could update "last seen" indicators if we wanted
-            }
-        }
-      } catch (e) {
-        // Silent fail
-      }
-    }, 5000)
-    return () => clearInterval(interval)
-  }, [siteId, selectedVisitor])
+    if (visitors.length > 0 && !selectedVisitor) {
+      handleSelectVisitor(visitors[0])
+    }
+  }, [visitors]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSelectVisitor = async (visitor: Visitor) => {
     setSelectedVisitor(visitor)
