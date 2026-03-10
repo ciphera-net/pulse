@@ -2,7 +2,7 @@
 
 
 import { logger } from '@/lib/utils/logger'
-import { useCallback, useEffect, useState, useMemo } from 'react'
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
   getPerformanceByPage,
@@ -99,7 +99,7 @@ export default function SiteDashboardPage() {
   )
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null)
+  const lastUpdatedAtRef = useRef<number | null>(null)
   const [, setTick] = useState(0)
 
   // Dimension filters state
@@ -371,7 +371,7 @@ export default function SiteDashboardPage() {
 
   // Track when data was last updated (for "Live · Xs ago" display)
   useEffect(() => {
-    if (overview) setLastUpdatedAt(Date.now())
+    if (overview) lastUpdatedAtRef.current = Date.now()
   }, [overview])
 
   // Tick every 1s so "Live · Xs ago" counts in real time
@@ -537,7 +537,7 @@ export default function SiteDashboardPage() {
           setTodayInterval={setTodayInterval}
           multiDayInterval={multiDayInterval}
           setMultiDayInterval={setMultiDayInterval}
-          lastUpdatedAt={lastUpdatedAt}
+          lastUpdatedAt={lastUpdatedAtRef.current}
           annotations={annotations}
           canManageAnnotations={true}
           onCreateAnnotation={handleCreateAnnotation}
