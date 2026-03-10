@@ -98,21 +98,11 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
     <>
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
+            Pages
+          </h3>
           <div className="flex items-center gap-2">
-            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
-              Pages
-            </h3>
-            {showViewAll && (
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="p-1 text-neutral-300 dark:text-neutral-600 hover:text-brand-orange dark:hover:text-brand-orange transition-colors cursor-pointer rounded"
-                aria-label="View all pages"
-              >
-                <FrameCornersIcon className="w-3.5 h-3.5" weight="bold" />
-              </button>
-            )}
-          </div>
-          <div className="flex gap-1" role="tablist" aria-label="Pages view tabs" onKeyDown={handleTabKeyDown}>
+            <div className="flex gap-1" role="tablist" aria-label="Pages view tabs" onKeyDown={handleTabKeyDown}>
             {(['top_pages', 'entry_pages', 'exit_pages'] as Tab[]).map((tab) => (
               <button
                 key={tab}
@@ -135,6 +125,16 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
                 )}
               </button>
             ))}
+            </div>
+            {showViewAll && (
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all cursor-pointer rounded-lg"
+                aria-label="View all pages"
+              >
+                <FrameCornersIcon className="w-4 h-4" weight="bold" />
+              </button>
+            )}
           </div>
         </div>
 
