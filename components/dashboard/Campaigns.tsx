@@ -7,6 +7,7 @@ import Image from 'next/image'
 import { formatNumber } from '@ciphera-net/ui'
 import { Modal, ArrowRightIcon } from '@ciphera-net/ui'
 import { ListSkeleton } from '@/components/skeletons'
+import VirtualList from './VirtualList'
 import { getCampaigns, CampaignStat } from '@/lib/api/stats'
 import { getReferrerFavicon, getReferrerIcon, getReferrerDisplayName } from '@/lib/utils/icons'
 import { Megaphone, FrameCornersIcon } from '@phosphor-icons/react'
@@ -225,7 +226,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
             className="w-full px-3 py-2 mb-3 text-sm bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
           />
         </div>
-        <div className="space-y-1 max-h-[80vh] overflow-y-auto pr-2">
+        <div className="max-h-[80vh]">
           {isLoadingFull ? (
             <div className="py-4">
               <ListSkeleton rows={10} />
@@ -246,38 +247,43 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
                     Export CSV
                   </button>
                 </div>
-                {filteredCampaigns.map((item) => (
-                  <div
-                    key={`${item.source}|${item.medium}|${item.campaign}`}
-                    onClick={() => { if (onFilter) { onFilter({ dimension: 'utm_source', operator: 'is', values: [item.source] }); setIsModalOpen(false) } }}
-                    className={`flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 transition-colors${onFilter ? ' cursor-pointer' : ''}`}
-                  >
-                    <div className="flex-1 flex items-center gap-3 min-w-0">
-                      {renderSourceIcon(item.source)}
-                      <div className="min-w-0">
-                        <div className="text-neutral-900 dark:text-white font-medium truncate text-sm" title={item.source}>
-                          {getReferrerDisplayName(item.source)}
-                        </div>
-                        <div className="flex items-center gap-1.5 text-[11px] text-neutral-400 dark:text-neutral-500">
-                          <span>{item.medium || '—'}</span>
-                          <span>·</span>
-                          <span className="truncate">{item.campaign || '—'}</span>
+                <VirtualList
+                  items={filteredCampaigns}
+                  estimateSize={36}
+                  className="max-h-[80vh] overflow-y-auto pr-2"
+                  renderItem={(item) => (
+                    <div
+                      key={`${item.source}|${item.medium}|${item.campaign}`}
+                      onClick={() => { if (onFilter) { onFilter({ dimension: 'utm_source', operator: 'is', values: [item.source] }); setIsModalOpen(false) } }}
+                      className={`flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 transition-colors${onFilter ? ' cursor-pointer' : ''}`}
+                    >
+                      <div className="flex-1 flex items-center gap-3 min-w-0">
+                        {renderSourceIcon(item.source)}
+                        <div className="min-w-0">
+                          <div className="text-neutral-900 dark:text-white font-medium truncate text-sm" title={item.source}>
+                            {getReferrerDisplayName(item.source)}
+                          </div>
+                          <div className="flex items-center gap-1.5 text-[11px] text-neutral-400 dark:text-neutral-500">
+                            <span>{item.medium || '—'}</span>
+                            <span>·</span>
+                            <span className="truncate">{item.campaign || '—'}</span>
+                          </div>
                         </div>
                       </div>
+                      <div className="flex items-center gap-4 ml-4 text-sm">
+                        <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+                          {modalTotal > 0 ? `${Math.round((item.visitors / modalTotal) * 100)}%` : ''}
+                        </span>
+                        <span className="font-semibold text-neutral-900 dark:text-white">
+                          {formatNumber(item.visitors)}
+                        </span>
+                        <span className="text-neutral-400 dark:text-neutral-500 w-16 text-right">
+                          {formatNumber(item.pageviews)} pv
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-4 ml-4 text-sm">
-                      <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
-                        {modalTotal > 0 ? `${Math.round((item.visitors / modalTotal) * 100)}%` : ''}
-                      </span>
-                      <span className="font-semibold text-neutral-900 dark:text-white">
-                        {formatNumber(item.visitors)}
-                      </span>
-                      <span className="text-neutral-400 dark:text-neutral-500 w-16 text-right">
-                        {formatNumber(item.pageviews)} pv
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  )}
+                />
               </>
             )
           })()}

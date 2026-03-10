@@ -9,6 +9,7 @@ import { getBrowserIcon, getOSIcon, getDeviceIcon } from '@/lib/utils/icons'
 import { Monitor, FrameCornersIcon } from '@phosphor-icons/react'
 import { Modal, GridIcon } from '@ciphera-net/ui'
 import { ListSkeleton } from '@/components/skeletons'
+import VirtualList from './VirtualList'
 import { getBrowsers, getOS, getDevices, getScreenResolutions } from '@/lib/api/stats'
 import { type DimensionFilter } from '@/lib/filters'
 
@@ -235,7 +236,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
             className="w-full px-3 py-2 mb-3 text-sm bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
           />
         </div>
-        <div className="space-y-1 max-h-[80vh] overflow-y-auto pr-2">
+        <div className="max-h-[80vh]">
           {isLoadingFull ? (
             <div className="py-4">
               <ListSkeleton rows={10} />
@@ -244,29 +245,36 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
             const modalData = (fullData.length > 0 ? fullData : data).filter(item => !modalSearch || item.name.toLowerCase().includes(modalSearch.toLowerCase()))
             const modalTotal = modalData.reduce((sum, item) => sum + item.pageviews, 0)
             const dim = TAB_TO_DIMENSION[activeTab]
-            return modalData.map((item) => {
-              const canFilter = onFilter && dim
-              return (
-                <div
-                  key={item.name}
-                  onClick={() => { if (canFilter) { onFilter({ dimension: dim, operator: 'is', values: [item.name] }); setIsModalOpen(false) } }}
-                  className={`flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 transition-colors${canFilter ? ' cursor-pointer' : ''}`}
-                >
-                  <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
-                    {item.icon && <span className="text-lg">{item.icon}</span>}
-                    <span className="truncate">{capitalize(item.name)}</span>
-                  </div>
-                  <div className="flex items-center gap-2 ml-4">
-                    <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
-                      {modalTotal > 0 ? `${Math.round((item.pageviews / modalTotal) * 100)}%` : ''}
-                    </span>
-                    <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
-                      {formatNumber(item.pageviews)}
-                    </span>
-                  </div>
-                </div>
-              )
-            })
+            return (
+              <VirtualList
+                items={modalData}
+                estimateSize={36}
+                className="max-h-[80vh] overflow-y-auto pr-2"
+                renderItem={(item) => {
+                  const canFilter = onFilter && dim
+                  return (
+                    <div
+                      key={item.name}
+                      onClick={() => { if (canFilter) { onFilter({ dimension: dim, operator: 'is', values: [item.name] }); setIsModalOpen(false) } }}
+                      className={`flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 transition-colors${canFilter ? ' cursor-pointer' : ''}`}
+                    >
+                      <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
+                        {item.icon && <span className="text-lg">{item.icon}</span>}
+                        <span className="truncate">{capitalize(item.name)}</span>
+                      </div>
+                      <div className="flex items-center gap-2 ml-4">
+                        <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+                          {modalTotal > 0 ? `${Math.round((item.pageviews / modalTotal) * 100)}%` : ''}
+                        </span>
+                        <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
+                          {formatNumber(item.pageviews)}
+                        </span>
+                      </div>
+                    </div>
+                  )
+                }}
+              />
+            )
           })()}
         </div>
       </Modal>
