@@ -322,7 +322,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
       <Modal
         isOpen={isModalOpen}
         onClose={() => { setIsModalOpen(false); setModalSearch('') }}
-        title={`Locations - ${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}`}
+        title={activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
         className="max-w-2xl"
       >
         <div>
@@ -355,7 +355,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
                 <div
                   key={`${item.country ?? ''}-${item.region ?? ''}-${item.city ?? ''}`}
                   onClick={() => { if (canFilter) { onFilter({ dimension: dim, operator: 'is', values: [filterValue!] }); setIsModalOpen(false) } }}
-                  className={`flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors${canFilter ? ' cursor-pointer' : ''}`}
+                  className={`flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 transition-colors${canFilter ? ' cursor-pointer' : ''}`}
                 >
                   <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
                     <span className="shrink-0">{getFlagComponent(item.country ?? '')}</span>

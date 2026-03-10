@@ -177,7 +177,7 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
               <div
                 key={ref.referrer}
                 onClick={() => { if (onFilter) { onFilter({ dimension: 'referrer', operator: 'is', values: [ref.referrer] }); setIsModalOpen(false) } }}
-                className={`flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors${onFilter ? ' cursor-pointer' : ''}`}
+                className={`flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 transition-colors${onFilter ? ' cursor-pointer' : ''}`}
               >
                 <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
                   {renderReferrerIcon(ref.referrer)}

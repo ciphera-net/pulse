@@ -197,7 +197,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
       <Modal
         isOpen={isModalOpen}
         onClose={() => { setIsModalOpen(false); setModalSearch('') }}
-        title={`Pages - ${getTabLabel(activeTab)}`}
+        title={getTabLabel(activeTab)}
         className="max-w-2xl"
       >
         <div>
@@ -222,8 +222,8 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
               return (
                 <div
                   key={page.path}
-                  onClick={() => { if (canFilter) { onFilter({ dimension: 'path', operator: 'is', values: [page.path] }); setIsModalOpen(false) } }}
-                  className={`flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors${canFilter ? ' cursor-pointer' : ''}`}
+                  onClick={() => { if (canFilter) { onFilter({ dimension: 'page', operator: 'is', values: [page.path] }); setIsModalOpen(false) } }}
+                  className={`flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 transition-colors${canFilter ? ' cursor-pointer' : ''}`}
                 >
                   <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center">
                     <span className="truncate">{page.path}</span>
