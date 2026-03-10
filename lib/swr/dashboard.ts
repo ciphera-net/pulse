@@ -24,6 +24,7 @@ import type {
   Stats,
   DailyStat,
   CampaignStat,
+  DashboardData,
   DashboardOverviewData,
   DashboardPagesData,
   DashboardLocationsData,
@@ -36,7 +37,7 @@ import type {
 // * SWR fetcher functions
 const fetchers = {
   site: (siteId: string) => getSite(siteId),
-  dashboard: (siteId: string, start: string, end: string) => getDashboard(siteId, start, end),
+  dashboard: (siteId: string, start: string, end: string, interval?: string, filters?: string) => getDashboard(siteId, start, end, 10, interval, filters),
   dashboardOverview: (siteId: string, start: string, end: string, interval?: string, filters?: string) => getDashboardOverview(siteId, start, end, interval, filters),
   dashboardPages: (siteId: string, start: string, end: string, filters?: string) => getDashboardPages(siteId, start, end, undefined, filters),
   dashboardLocations: (siteId: string, start: string, end: string, filters?: string) => getDashboardLocations(siteId, start, end, undefined, undefined, filters),
@@ -81,14 +82,15 @@ export function useSite(siteId: string) {
   )
 }
 
-// * Hook for dashboard summary data (refreshed less frequently)
-export function useDashboard(siteId: string, start: string, end: string) {
-  return useSWR(
-    siteId && start && end ? ['dashboard', siteId, start, end] : null,
-    () => fetchers.dashboard(siteId, start, end),
+// * Hook for full dashboard data (single request replaces 7 focused hooks)
+// * The backend runs all queries in parallel and caches the result in Redis (30s TTL)
+export function useDashboard(siteId: string, start: string, end: string, interval?: string, filters?: string) {
+  return useSWR<DashboardData>(
+    siteId && start && end ? ['dashboard', siteId, start, end, interval, filters] : null,
+    () => fetchers.dashboard(siteId, start, end, interval, filters),
     {
       ...dashboardSWRConfig,
-      // * Refresh every 60 seconds for dashboard summary
+      // * Refresh every 60 seconds for dashboard data
       refreshInterval: 60 * 1000,
       // * Deduping interval to prevent duplicate requests
       dedupingInterval: 10 * 1000,
