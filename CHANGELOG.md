@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Even faster dashboard loading.** Your dashboard now fetches all its data — pages, locations, devices, referrers, performance, and goals — in a single request instead of seven separate ones. This means the entire dashboard appears at once rather than sections loading one by one, and puts much less strain on the server when many people are viewing their analytics at the same time.
 - **Smoother real-time updates.** The real-time visitors page now streams updates instantly from the server instead of checking for new data every few seconds. Visitors appear and disappear in real-time with no delay, and the page uses far fewer server resources — especially when many people are watching their live traffic at the same time.
 - **More reliable under heavy load.** Database queries now have automatic time limits so a single slow query can never lock up the system. If your dashboard or stats take too long to load, the request is gracefully cancelled instead of hanging forever — keeping everything responsive even during traffic spikes.
+- **Smarter caching for dashboard data.** Your dashboard stats are now cached for longer and shared more efficiently between requests. When the cache refreshes, only one request does the work while others wait for the result — so your dashboard loads consistently fast even when lots of people are viewing their analytics at the same time.
 
 ### Added
 
