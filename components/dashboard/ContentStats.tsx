@@ -197,32 +197,39 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={`Pages - ${getTabLabel(activeTab)}`}
+        className="max-w-2xl"
       >
-        <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+        <div className="space-y-1 max-h-[80vh] overflow-y-auto pr-2">
           {isLoadingFull ? (
             <div className="py-4">
               <ListSkeleton rows={10} />
             </div>
-          ) : (
-            (fullData.length > 0 ? fullData : data).map((page) => (
-              <div key={page.path} className="flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
-                <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center">
-                  <a
-                    href={`https://${domain.replace(/^https?:\/\//, '')}${page.path}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:underline flex items-center"
-                  >
-                    {page.path}
-                    <ArrowUpRightIcon className="w-3 h-3 ml-2 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </a>
+          ) : (() => {
+            const modalData = fullData.length > 0 ? fullData : data
+            const modalTotal = modalData.reduce((sum, p) => sum + p.pageviews, 0)
+            return modalData.map((page) => {
+              const canFilter = onFilter && page.path
+              return (
+                <div
+                  key={page.path}
+                  onClick={() => { if (canFilter) { onFilter({ dimension: 'path', operator: 'is', values: [page.path] }); setIsModalOpen(false) } }}
+                  className={`flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors${canFilter ? ' cursor-pointer' : ''}`}
+                >
+                  <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center">
+                    <span className="truncate">{page.path}</span>
+                  </div>
+                  <div className="flex items-center gap-2 ml-4">
+                    <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+                      {modalTotal > 0 ? `${Math.round((page.pageviews / modalTotal) * 100)}%` : ''}
+                    </span>
+                    <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
+                      {formatNumber(page.pageviews)}
+                    </span>
+                  </div>
                 </div>
-                <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
-                  {formatNumber(page.pageviews)}
-                </div>
-              </div>
-            ))
-          )}
+              )
+            })
+          })()}
         </div>
       </Modal>
     </>

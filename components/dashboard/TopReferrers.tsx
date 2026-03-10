@@ -153,25 +153,37 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title="Referrers"
+        className="max-w-2xl"
       >
-        <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+        <div className="space-y-1 max-h-[80vh] overflow-y-auto pr-2">
           {isLoadingFull ? (
             <div className="py-4">
               <ListSkeleton rows={10} />
             </div>
-          ) : (
-            mergeReferrersByDisplayName(fullData.length > 0 ? fullData : filteredReferrers).map((ref) => (
-              <div key={ref.referrer} className="flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
+          ) : (() => {
+            const modalData = mergeReferrersByDisplayName(fullData.length > 0 ? fullData : filteredReferrers)
+            const modalTotal = modalData.reduce((sum, r) => sum + r.pageviews, 0)
+            return modalData.map((ref) => (
+              <div
+                key={ref.referrer}
+                onClick={() => { if (onFilter) { onFilter({ dimension: 'referrer', operator: 'is', values: [ref.referrer] }); setIsModalOpen(false) } }}
+                className={`flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors${onFilter ? ' cursor-pointer' : ''}`}
+              >
                 <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
                   {renderReferrerIcon(ref.referrer)}
                   <span className="truncate" title={ref.referrer}>{getReferrerDisplayName(ref.referrer)}</span>
                 </div>
-                <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
-                  {formatNumber(ref.pageviews)}
+                <div className="flex items-center gap-2 ml-4">
+                  <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+                    {modalTotal > 0 ? `${Math.round((ref.pageviews / modalTotal) * 100)}%` : ''}
+                  </span>
+                  <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
+                    {formatNumber(ref.pageviews)}
+                  </span>
                 </div>
               </div>
             ))
-          )}
+          })()}
         </div>
       </Modal>
     </>

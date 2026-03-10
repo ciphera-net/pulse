@@ -213,27 +213,30 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title="All Campaigns"
+        className="max-w-2xl"
       >
-        <div className="space-y-1 max-h-[60vh] overflow-y-auto pr-2">
+        <div className="space-y-1 max-h-[80vh] overflow-y-auto pr-2">
           {isLoadingFull ? (
             <div className="py-4">
               <ListSkeleton rows={10} />
             </div>
-          ) : (
-            <>
-              <div className="flex items-center justify-end mb-2">
-                <button
-                  onClick={handleExportCampaigns}
-                  className="text-xs font-medium text-neutral-400 hover:text-brand-orange transition-colors cursor-pointer"
-                >
-                  Export CSV
-                </button>
-              </div>
-              {sortedFullData.map((item) => {
-                return (
+          ) : (() => {
+            const modalTotal = sortedFullData.reduce((sum, item) => sum + item.visitors, 0)
+            return (
+              <>
+                <div className="flex items-center justify-end mb-2">
+                  <button
+                    onClick={handleExportCampaigns}
+                    className="text-xs font-medium text-neutral-400 hover:text-brand-orange transition-colors cursor-pointer"
+                  >
+                    Export CSV
+                  </button>
+                </div>
+                {sortedFullData.map((item) => (
                   <div
                     key={`${item.source}|${item.medium}|${item.campaign}`}
-                    className="flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors"
+                    onClick={() => { if (onFilter) { onFilter({ dimension: 'utm_source', operator: 'is', values: [item.source] }); setIsModalOpen(false) } }}
+                    className={`flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors${onFilter ? ' cursor-pointer' : ''}`}
                   >
                     <div className="flex-1 flex items-center gap-3 min-w-0">
                       {renderSourceIcon(item.source)}
@@ -249,6 +252,9 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
                       </div>
                     </div>
                     <div className="flex items-center gap-4 ml-4 text-sm">
+                      <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+                        {modalTotal > 0 ? `${Math.round((item.visitors / modalTotal) * 100)}%` : ''}
+                      </span>
                       <span className="font-semibold text-neutral-900 dark:text-white">
                         {formatNumber(item.visitors)}
                       </span>
@@ -257,10 +263,10 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
                       </span>
                     </div>
                   </div>
-                )
-              })}
-            </>
-          )}
+                ))}
+              </>
+            )
+          })()}
         </div>
       </Modal>
 
