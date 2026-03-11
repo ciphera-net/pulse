@@ -733,6 +733,7 @@ export default function OrganizationSettings() {
                                 setCaptchaToken(token || '')
                             }}
                             apiUrl={process.env.NEXT_PUBLIC_CAPTCHA_API_URL}
+                            action="org-settings"
                         />
                     </div>
                   </div>
