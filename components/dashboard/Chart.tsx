@@ -9,6 +9,7 @@ import { formatNumber, formatDuration, formatUpdatedAgo, DatePicker } from '@cip
 import { Select, DownloadIcon, PlusIcon, XIcon } from '@ciphera-net/ui'
 import { Checkbox } from '@ciphera-net/ui'
 import { ArrowUpRight, ArrowDownRight } from '@phosphor-icons/react'
+import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
 const ANNOTATION_COLORS: Record<string, string> = {
@@ -372,7 +373,11 @@ export default function Chart({
                     })()
                 }</div>
                 {metric === m.key && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-orange" />
+                  <motion.div
+                    layoutId="activeMetric"
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-orange"
+                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                  />
                 )}
               </button>
             ))}
