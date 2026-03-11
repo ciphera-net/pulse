@@ -27,7 +27,7 @@ export default function GoalStats({ goalCounts, onSelectEvent }: GoalStatsProps)
       </div>
 
       {hasData ? (
-        <div className="flex-1 min-h-[200px]">
+        <div className="flex-1 min-h-[270px]">
           {list.map((row) => (
             <div
               key={row.event_name}
@@ -54,7 +54,7 @@ export default function GoalStats({ goalCounts, onSelectEvent }: GoalStatsProps)
           ))}
         </div>
       ) : (
-        <div className="flex-1 min-h-[200px] flex flex-col items-center justify-center text-center px-6 py-8 gap-4">
+        <div className="flex-1 min-h-[270px] flex flex-col items-center justify-center text-center px-6 py-8 gap-4">
           <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
             <BookOpenIcon className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
           </div>

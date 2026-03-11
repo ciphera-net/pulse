@@ -39,12 +39,12 @@ export default function ScrollDepth({ goalCounts, totalPageviews }: ScrollDepthP
       </p>
 
       {hasData ? (
-        <div className="flex-1 min-h-[200px] flex items-center justify-center">
+        <div className="flex-1 min-h-[270px] flex items-center justify-center">
           <RadarChart
-            width={420}
-            height={380}
+            width={320}
+            height={260}
             data={chartData}
-            margin={{ top: 20, right: 40, bottom: 20, left: 40 }}
+            margin={{ top: 16, right: 32, bottom: 16, left: 32 }}
           >
             <PolarGrid stroke="#404040" />
             <PolarAngleAxis
@@ -72,7 +72,7 @@ export default function ScrollDepth({ goalCounts, totalPageviews }: ScrollDepthP
           </RadarChart>
         </div>
       ) : (
-        <div className="flex-1 min-h-[200px] flex flex-col items-center justify-center text-center px-6 py-8 gap-4">
+        <div className="flex-1 min-h-[270px] flex flex-col items-center justify-center text-center px-6 py-8 gap-4">
           <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
             <BarChartIcon className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
           </div>
