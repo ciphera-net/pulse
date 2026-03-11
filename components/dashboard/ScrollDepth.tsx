@@ -1,6 +1,6 @@
 'use client'
 
-import { formatNumber } from '@ciphera-net/ui'
+import { PolarAngleAxis, PolarGrid, Radar, RadarChart, Tooltip } from 'recharts'
 import { BarChartIcon } from '@ciphera-net/ui'
 import type { GoalCountStat } from '@/lib/api/stats'
 
@@ -22,6 +22,11 @@ export default function ScrollDepth({ goalCounts, totalPageviews }: ScrollDepthP
 
   const hasData = scrollCounts.size > 0 && totalPageviews > 0
 
+  const chartData = THRESHOLDS.map((threshold) => ({
+    label: `${threshold}%`,
+    value: totalPageviews > 0 ? Math.round(((scrollCounts.get(threshold) ?? 0) / totalPageviews) * 100) : 0,
+  }))
+
   return (
     <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
       <div className="flex items-center justify-between mb-4">
@@ -31,36 +36,37 @@ export default function ScrollDepth({ goalCounts, totalPageviews }: ScrollDepthP
       </div>
 
       {hasData ? (
-        <div className="space-y-3 flex-1 min-h-[200px]">
-          {THRESHOLDS.map((threshold) => {
-            const count = scrollCounts.get(threshold) ?? 0
-            const pct = totalPageviews > 0 ? Math.round((count / totalPageviews) * 100) : 0
-            const barWidth = Math.max(pct, 2)
-
-            return (
-              <div key={threshold} className="space-y-1">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-neutral-900 dark:text-white">
-                    {threshold}%
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-neutral-500 dark:text-neutral-400 tabular-nums">
-                      {formatNumber(count)}
-                    </span>
-                    <span className="font-semibold text-brand-orange tabular-nums w-12 text-right">
-                      {pct}%
-                    </span>
-                  </div>
-                </div>
-                <div className="h-2 rounded-full bg-neutral-100 dark:bg-neutral-800 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-brand-orange transition-all duration-500"
-                    style={{ width: `${barWidth}%` }}
-                  />
-                </div>
-              </div>
-            )
-          })}
+        <div className="flex-1 min-h-[200px] flex items-center justify-center">
+          <RadarChart
+            width={260}
+            height={220}
+            data={chartData}
+            margin={{ top: 10, right: 20, bottom: 10, left: 20 }}
+          >
+            <PolarGrid stroke="#404040" />
+            <PolarAngleAxis
+              dataKey="label"
+              tick={{ fill: '#a3a3a3', fontSize: 12, fontWeight: 500 }}
+            />
+            <Tooltip
+              cursor={false}
+              contentStyle={{
+                backgroundColor: '#171717',
+                border: '1px solid #404040',
+                borderRadius: 8,
+                fontSize: 12,
+                color: '#fff',
+              }}
+              formatter={(value: number) => [`${value}%`, 'Reached']}
+            />
+            <Radar
+              dataKey="value"
+              stroke="#FD5E0F"
+              fill="#FD5E0F"
+              fillOpacity={0.25}
+              dot={{ r: 4, fill: '#FD5E0F', fillOpacity: 1, strokeWidth: 0 }}
+            />
+          </RadarChart>
         </div>
       ) : (
         <div className="flex-1 min-h-[200px] flex flex-col items-center justify-center text-center px-6 py-8 gap-4">
