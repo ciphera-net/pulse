@@ -100,7 +100,7 @@ const badgeVariants = cva(
         variant: 'success',
         appearance: 'outline',
         className:
-          'text-green-700 border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-900 dark:text-green-600',
+          'text-[#10B981] border-[#10B981]/20 bg-[#10B981]/10',
       },
       {
         variant: 'warning',
@@ -118,7 +118,7 @@ const badgeVariants = cva(
         variant: 'destructive',
         appearance: 'outline',
         className:
-          'text-red-700 border-red-100 bg-red-50 dark:bg-red-950 dark:border-red-900 dark:text-red-600',
+          'text-[#EF4444] border-[#EF4444]/20 bg-[#EF4444]/10',
       },
       /* Ghost */
       {
