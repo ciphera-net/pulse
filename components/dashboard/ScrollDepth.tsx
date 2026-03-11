@@ -22,10 +22,13 @@ export default function ScrollDepth({ goalCounts, totalPageviews }: ScrollDepthP
 
   const hasData = scrollCounts.size > 0 && totalPageviews > 0
 
-  const chartData = THRESHOLDS.map((threshold) => ({
-    label: `${threshold}%`,
-    value: totalPageviews > 0 ? Math.round(((scrollCounts.get(threshold) ?? 0) / totalPageviews) * 100) : 0,
-  }))
+  const chartData = [
+    { label: '0%', value: 100 },
+    ...THRESHOLDS.map((threshold) => ({
+      label: `${threshold}%`,
+      value: totalPageviews > 0 ? Math.round(((scrollCounts.get(threshold) ?? 0) / totalPageviews) * 100) : 0,
+    })),
+  ]
 
   return (
     <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
