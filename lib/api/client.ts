@@ -202,9 +202,9 @@ async function apiRequest<T>(
   // * We rely on HttpOnly cookies, so no manual Authorization header injection.
   // * We MUST set credentials: 'include' for the browser to send cookies cross-origin (or same-site).
   
-  // * Add CSRF token for state-changing requests to Auth API
-  // * Auth API uses Double Submit Cookie pattern for CSRF protection
-  if (isAuthRequest && isStateChangingMethod(method)) {
+  // * Add CSRF token for all state-changing requests (Pulse API and Auth API).
+  // * Both backends enforce the double-submit cookie pattern server-side.
+  if (isStateChangingMethod(method)) {
     const csrfToken = getCSRFToken()
     if (csrfToken) {
       headers['X-CSRF-Token'] = csrfToken
