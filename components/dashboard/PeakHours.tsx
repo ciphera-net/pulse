@@ -137,7 +137,7 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
         </div>
       ) : hasData ? (
         <>
-          <div className="flex-1 min-h-[270px] flex flex-col justify-center gap-[3px] relative" ref={gridRef}>
+          <div className="flex-1 min-h-[270px] flex flex-col justify-center gap-[5px] relative" ref={gridRef}>
             {grid.map((hours, dayIdx) => (
               <div key={dayIdx} className="flex items-center gap-1.5">
                 <span className="text-[11px] text-neutral-400 dark:text-neutral-500 w-7 flex-shrink-0 text-right leading-none">
@@ -154,7 +154,7 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
                       <div
                         key={`${animKey}-${dayIdx}-${hour}`}
                         className={[
-                          'flex-1 aspect-square rounded-[3px] border cursor-default transition-transform duration-100',
+                          'flex-1 h-7 rounded-[3px] border cursor-default transition-transform duration-100',
                           'border-neutral-200 dark:border-neutral-800',
                           isActive ? 'animate-cell-highlight' : '',
                           !isActive && isBestCell ? '' : '',
