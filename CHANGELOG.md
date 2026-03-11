@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Improved
 
+- **New date range options.** The period selector now includes "This week" (Monday to today) and "This month" (1st to today) alongside the existing rolling windows. Your selection is remembered between sessions.
+- **Smarter comparison labels.** The "vs …" label under each stat now matches the period you're viewing — "vs yesterday" for today, "vs last week" for this week, "vs last month" for this month, and "vs previous N days" for rolling windows.
+- **Refreshed stat headers.** The Unique Visitors, Total Pageviews, Bounce Rate, and Visit Duration stats at the top of the chart have a new look — uppercase labels, the percentage change shown inline next to the number, and an orange underline on whichever metric you're currently graphing.
+- **Consistent green and red colors.** The up/down percentage indicators now use the same green and red as the rest of the app, instead of slightly different shades.
 - **Scroll Depth is now a radar chart.** The Scroll Depth panel has been redesigned from a bar chart into a radar chart. The four scroll milestones (25%, 50%, 75%, 100%) are plotted as axes, with the filled shape showing how far visitors are getting through your pages at a glance.
 - **Polished Goals & Events panel.** The Goals & Events block on your dashboard got a visual refresh to match the style of the Pages, Referrers, and Locations panels. Events are now ranked with a number on the left, counts are shown in a consistent style, and hovering any row reveals what percentage of total events that action accounts for — sliding in smoothly from the right.
 - **Smarter bot protection.** The security checks on shared dashboard access and organization settings now use action-specific tokens tied to each page. A token earned on one page can't be reused on another, making it harder for automated tools to bypass the captcha.

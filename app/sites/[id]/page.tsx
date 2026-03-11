@@ -64,6 +64,20 @@ function loadSavedSettings(): {
   }
 }
 
+function getThisWeekRange(): { start: string; end: string } {
+  const today = new Date()
+  const dayOfWeek = today.getDay()
+  const monday = new Date(today)
+  monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1))
+  return { start: formatDate(monday), end: formatDate(today) }
+}
+
+function getThisMonthRange(): { start: string; end: string } {
+  const today = new Date()
+  const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+  return { start: formatDate(firstOfMonth), end: formatDate(today) }
+}
+
 function getInitialDateRange(): { start: string; end: string } {
   const settings = loadSavedSettings()
   if (settings?.type === 'today') {
@@ -71,8 +85,14 @@ function getInitialDateRange(): { start: string; end: string } {
     return { start: today, end: today }
   }
   if (settings?.type === '7') return getDateRange(7)
+  if (settings?.type === 'week') return getThisWeekRange()
+  if (settings?.type === 'month') return getThisMonthRange()
   if (settings?.type === 'custom' && settings.dateRange) return settings.dateRange
   return getDateRange(30)
+}
+
+function getInitialPeriod(): string {
+  return loadSavedSettings()?.type || '30'
 }
 
 export default function SiteDashboardPage() {
@@ -84,6 +104,7 @@ export default function SiteDashboardPage() {
   const siteId = params.id as string
 
   // UI state - initialized from localStorage synchronously to avoid double-fetch
+  const [period, setPeriod] = useState(getInitialPeriod)
   const [dateRange, setDateRange] = useState(getInitialDateRange)
   const [todayInterval, setTodayInterval] = useState<'minute' | 'hour'>(
     () => loadSavedSettings()?.todayInterval || 'hour'
@@ -457,40 +478,44 @@ export default function SiteDashboardPage() {
                 <Select
                   variant="input"
                   className="min-w-[140px]"
-                  value={
-                    dateRange.start === formatDate(new Date()) && dateRange.end === formatDate(new Date())
-                      ? 'today'
-                      : dateRange.start === getDateRange(7).start
-                        ? '7'
-                        : dateRange.start === getDateRange(30).start
-                          ? '30'
-                          : 'custom'
-                  }
+                  value={period}
                   onChange={(value) => {
-                    if (value === '7') {
-                      const range = getDateRange(7)
-                      setDateRange(range)
-                      saveSettings('7', range)
-                    }
-                    else if (value === '30') {
-                      const range = getDateRange(30)
-                      setDateRange(range)
-                      saveSettings('30', range)
-                    }
-                    else if (value === 'today') {
+                    if (value === 'today') {
                       const today = formatDate(new Date())
                       const range = { start: today, end: today }
                       setDateRange(range)
+                      setPeriod('today')
                       saveSettings('today', range)
-                    }
-                    else if (value === 'custom') {
+                    } else if (value === '7') {
+                      const range = getDateRange(7)
+                      setDateRange(range)
+                      setPeriod('7')
+                      saveSettings('7', range)
+                    } else if (value === 'week') {
+                      const range = getThisWeekRange()
+                      setDateRange(range)
+                      setPeriod('week')
+                      saveSettings('week', range)
+                    } else if (value === '30') {
+                      const range = getDateRange(30)
+                      setDateRange(range)
+                      setPeriod('30')
+                      saveSettings('30', range)
+                    } else if (value === 'month') {
+                      const range = getThisMonthRange()
+                      setDateRange(range)
+                      setPeriod('month')
+                      saveSettings('month', range)
+                    } else if (value === 'custom') {
                       setIsDatePickerOpen(true)
                     }
                   }}
                   options={[
                     { value: 'today', label: 'Today' },
                     { value: '7', label: 'Last 7 days' },
+                    { value: 'week', label: 'This week' },
                     { value: '30', label: 'Last 30 days' },
+                    { value: 'month', label: 'This month' },
                     { value: 'custom', label: 'Custom' },
                   ]}
                 />
@@ -514,6 +539,7 @@ export default function SiteDashboardPage() {
           prevStats={prevStats}
           interval={dateRange.start === dateRange.end ? todayInterval : multiDayInterval}
           dateRange={dateRange}
+          period={period}
           todayInterval={todayInterval}
           setTodayInterval={setTodayInterval}
           multiDayInterval={multiDayInterval}
@@ -613,6 +639,7 @@ export default function SiteDashboardPage() {
         onClose={() => setIsDatePickerOpen(false)}
         onApply={(range) => {
           setDateRange(range)
+          setPeriod('custom')
           saveSettings('custom', range)
           setIsDatePickerOpen(false)
         }}
