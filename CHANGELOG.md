@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Improved
 
+- **Scroll Depth is now a radar chart.** The Scroll Depth panel has been redesigned from a bar chart into a radar chart. The four scroll milestones (25%, 50%, 75%, 100%) are plotted as axes, with the filled shape showing how far visitors are getting through your pages at a glance.
 - **Polished Goals & Events panel.** The Goals & Events block on your dashboard got a visual refresh to match the style of the Pages, Referrers, and Locations panels. Events are now ranked with a number on the left, counts are shown in a consistent style, and hovering any row reveals what percentage of total events that action accounts for — sliding in smoothly from the right.
 - **Smarter bot protection.** The security checks on shared dashboard access and organization settings now use action-specific tokens tied to each page. A token earned on one page can't be reused on another, making it harder for automated tools to bypass the captcha.
 - **More resilient under Redis outages.** If the caching layer goes down temporarily, Pulse now continues enforcing rate limits using an in-memory fallback instead of letting all traffic through unchecked. This prevents one infrastructure hiccup from snowballing into a bigger problem.
