@@ -132,10 +132,6 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
                 <div className="flex flex-1 gap-[2px]">
                   {hours.map((value, hour) => {
                     const isHoveredCell = hovered?.day === dayIdx && hovered?.hour === hour
-                    const inRow = hovered?.day === dayIdx
-                    const inCol = hovered?.hour === hour
-                    const highlight = inRow || inCol
-                    const dimmed = hovered !== null && !highlight
 
                     return (
                       <motion.div
@@ -143,11 +139,10 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
                         className="flex-1 rounded-[2px] cursor-default"
                         initial={{ opacity: 0, scale: 0.5 }}
                         animate={{
-                          opacity: dimmed ? 0.3 : 1,
                           scale: isHoveredCell ? 1.3 : 1,
                         }}
                         transition={
-                          dimmed || isHoveredCell || highlight
+                          isHoveredCell
                             ? { duration: 0.12 }
                             : {
                                 opacity: { duration: 0.3, delay: (dayIdx * 24 + hour) * 0.003 },
