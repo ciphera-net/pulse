@@ -238,6 +238,7 @@ export default function PublicDashboardPage() {
                         setCaptchaToken(token || '')
                     }}
                     apiUrl={process.env.NEXT_PUBLIC_CAPTCHA_API_URL}
+                    action="share-access"
                 />
             </div>
             <Button
