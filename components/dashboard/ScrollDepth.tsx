@@ -1,6 +1,6 @@
 'use client'
 
-import { Bar, BarChart, CartesianGrid, LabelList, XAxis, ResponsiveContainer, Tooltip } from 'recharts'
+import { PolarAngleAxis, PolarGrid, Radar, RadarChart, Tooltip } from 'recharts'
 import { BarChartIcon } from '@ciphera-net/ui'
 import type { GoalCountStat } from '@/lib/api/stats'
 
@@ -29,50 +29,44 @@ export default function ScrollDepth({ goalCounts, totalPageviews }: ScrollDepthP
 
   return (
     <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
           Scroll Depth
         </h3>
       </div>
-      <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
-        % of visitors who scrolled this far
-      </p>
 
       {hasData ? (
-        <div className="flex-1 min-h-[200px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 24, right: 0, bottom: 0, left: 0 }}>
-              <CartesianGrid vertical={false} stroke="#262626" />
-              <XAxis
-                dataKey="label"
-                tickLine={false}
-                tickMargin={10}
-                axisLine={false}
-                tick={{ fill: '#a3a3a3', fontSize: 12 }}
-              />
-              <Tooltip
-                cursor={false}
-                contentStyle={{
-                  backgroundColor: '#171717',
-                  border: '1px solid #404040',
-                  borderRadius: 8,
-                  fontSize: 12,
-                  color: '#fff',
-                }}
-                formatter={(value: number) => [`${value}%`, 'Reached']}
-              />
-              <Bar dataKey="value" fill="#FD5E0F" radius={8}>
-                <LabelList
-                  dataKey="value"
-                  position="top"
-                  offset={10}
-                  fontSize={12}
-                  fill="#a3a3a3"
-                  formatter={(v: number) => `${v}%`}
-                />
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+        <div className="flex-1 min-h-[200px] flex items-center justify-center">
+          <RadarChart
+            width={340}
+            height={300}
+            data={chartData}
+            margin={{ top: 16, right: 32, bottom: 16, left: 32 }}
+          >
+            <PolarGrid stroke="#404040" />
+            <PolarAngleAxis
+              dataKey="label"
+              tick={{ fill: '#a3a3a3', fontSize: 12, fontWeight: 500 }}
+            />
+            <Tooltip
+              cursor={false}
+              contentStyle={{
+                backgroundColor: '#171717',
+                border: '1px solid #404040',
+                borderRadius: 8,
+                fontSize: 12,
+                color: '#fff',
+              }}
+              formatter={(value: number) => [`${value}%`, 'Reached']}
+            />
+            <Radar
+              dataKey="value"
+              stroke="#FD5E0F"
+              fill="#FD5E0F"
+              fillOpacity={0.25}
+              dot={{ r: 4, fill: '#FD5E0F', fillOpacity: 1, strokeWidth: 0 }}
+            />
+          </RadarChart>
         </div>
       ) : (
         <div className="flex-1 min-h-[200px] flex flex-col items-center justify-center text-center px-6 py-8 gap-4">
