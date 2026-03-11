@@ -39,6 +39,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- **Peak Hours heatmap.** A new panel on your dashboard shows a 7×24 grid of when your visitors are most active — every day of the week against every hour of the day. Cells glow brighter in brand orange the busier that hour is. Hover any cell to see the exact pageview count. No other indie analytics tool surfaces this on the main dashboard.
 - **Interactive 3D Globe.** The Locations panel now has a "Globe" tab showing your visitor locations on a beautiful, interactive 3D globe. Drag to rotate, and orange markers highlight where your visitors are — sized by how much traffic each country sends. The globe slowly auto-rotates and adapts to light and dark mode.
 - **Dotted world map.** The "Map" tab in Locations now uses a sleek dotted map style instead of the old filled map. Country markers glow in brand orange and show a tooltip with the country name and pageview count when you hover.
 - **Hide unknown locations.** New toggle in Site Settings under Data & Privacy to hide "Unknown" entries from your Locations panel. When geographic data can't be determined for a visitor, it normally shows as "Unknown" in countries, cities, and regions. Turn this on to keep your location stats clean and only show resolved locations.
