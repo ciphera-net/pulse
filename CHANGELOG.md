@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Improved
 
 - **Dashboard blocks are now consistent in height.** The Goals & Events and Scroll Depth panels now match the height of every other block on the dashboard.
+- **Cleaner period picker.** The date range dropdown now has visual separators between the rolling windows (Today, Last 7 days, Last 30 days), the calendar periods (This week, This month), and Custom — so it's easy to tell them apart at a glance.
 - **New date range options.** The period selector now includes "This week" (Monday to today) and "This month" (1st to today) alongside the existing rolling windows. Your selection is remembered between sessions.
 - **Smarter comparison labels.** The "vs …" label under each stat now matches the period you're viewing — "vs yesterday" for today, "vs last week" for this week, "vs last month" for this month, and "vs previous N days" for rolling windows.
 - **Refreshed stat headers.** The Unique Visitors, Total Pageviews, Bounce Rate, and Visit Duration stats at the top of the chart have a new look — uppercase labels, the percentage change shown inline next to the number, and an orange underline on whichever metric you're currently graphing.
