@@ -143,7 +143,7 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
                 <span className="text-[11px] text-neutral-400 dark:text-neutral-500 w-7 flex-shrink-0 text-right leading-none">
                   {DAYS[dayIdx]}
                 </span>
-                <div className="flex flex-1 gap-[3px]">
+                <div className="flex-1" style={{ display: 'grid', gridTemplateColumns: 'repeat(24, 1fr)', gap: '3px' }}>
                   {hours.map((value, hour) => {
                     const isHoveredCell = hovered?.day === dayIdx && hovered?.hour === hour
                     const isBestCell = bestTime?.day === dayIdx && bestTime?.hour === hour
@@ -154,7 +154,7 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
                       <div
                         key={`${animKey}-${dayIdx}-${hour}`}
                         className={[
-                          'flex-1 h-7 rounded-[3px] border cursor-default transition-transform duration-100',
+                          'aspect-square w-full rounded-[3px] border cursor-default transition-transform duration-100',
                           'border-neutral-200 dark:border-neutral-800',
                           isActive ? 'animate-cell-highlight' : '',
                           !isActive && isBestCell ? '' : '',
