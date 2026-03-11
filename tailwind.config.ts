@@ -13,6 +13,21 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      keyframes: {
+        'cell-highlight': {
+          '0%': { backgroundColor: 'transparent' },
+          '100%': { backgroundColor: 'var(--highlight)' },
+        },
+        'cell-flash': {
+          '0%': { backgroundColor: 'transparent' },
+          '50%': { backgroundColor: 'var(--highlight)' },
+          '100%': { backgroundColor: 'transparent' },
+        },
+      },
+      animation: {
+        'cell-highlight': 'cell-highlight 0.5s ease forwards',
+        'cell-flash': 'cell-flash 0.6s ease forwards',
+      },
       fontFamily: {
         sans: ['var(--font-plus-jakarta-sans)', 'system-ui', 'sans-serif'],
       },
