@@ -15,6 +15,8 @@ const LIMIT = 10
 export default function GoalStats({ goalCounts, onSelectEvent }: GoalStatsProps) {
   const list = (goalCounts || []).slice(0, LIMIT)
   const hasData = list.length > 0
+  const total = list.reduce((sum, r) => sum + r.count, 0)
+  const emptySlots = Math.max(0, 6 - list.length)
 
   return (
     <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
@@ -25,20 +27,33 @@ export default function GoalStats({ goalCounts, onSelectEvent }: GoalStatsProps)
       </div>
 
       {hasData ? (
-        <div className="space-y-2 flex-1 min-h-[200px]">
-          {list.map((row) => (
+        <div className="flex-1 min-h-[200px]">
+          {list.map((row, i) => (
             <div
               key={row.event_name}
               onClick={() => onSelectEvent?.(row.event_name)}
-              className={`flex items-center justify-between py-2 px-3 rounded-lg bg-neutral-50 dark:bg-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors${onSelectEvent ? ' cursor-pointer' : ''}`}
+              className={`flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors${onSelectEvent ? ' cursor-pointer' : ''}`}
             >
-              <span className="text-sm font-medium text-neutral-900 dark:text-white truncate">
-                {row.display_name ?? row.event_name.replace(/_/g, ' ')}
-              </span>
-              <span className="text-sm font-semibold text-brand-orange tabular-nums">
-                {formatNumber(row.count)}
-              </span>
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <span className="text-xs font-medium text-neutral-400 dark:text-neutral-600 w-4 text-right flex-shrink-0 tabular-nums">
+                  {i + 1}
+                </span>
+                <span className="text-sm font-medium text-neutral-900 dark:text-white truncate">
+                  {row.display_name ?? row.event_name.replace(/_/g, ' ')}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 ml-4">
+                <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+                  {total > 0 ? `${Math.round((row.count / total) * 100)}%` : ''}
+                </span>
+                <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 tabular-nums">
+                  {formatNumber(row.count)}
+                </span>
+              </div>
             </div>
+          ))}
+          {Array.from({ length: emptySlots }).map((_, i) => (
+            <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
           ))}
         </div>
       ) : (
