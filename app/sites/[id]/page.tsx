@@ -513,9 +513,11 @@ export default function SiteDashboardPage() {
                   options={[
                     { value: 'today', label: 'Today' },
                     { value: '7', label: 'Last 7 days' },
-                    { value: 'week', label: 'This week' },
                     { value: '30', label: 'Last 30 days' },
+                    { value: 'divider-1', label: '', divider: true },
+                    { value: 'week', label: 'This week' },
                     { value: 'month', label: 'This month' },
+                    { value: 'divider-2', label: '', divider: true },
                     { value: 'custom', label: 'Custom' },
                   ]}
                 />
