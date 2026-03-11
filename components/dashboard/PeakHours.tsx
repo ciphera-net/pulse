@@ -26,6 +26,7 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
   const [animKey, setAnimKey] = useState(0)
   const [hovered, setHovered] = useState<{ day: number; hour: number } | null>(null)
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null)
+  const [blobMode, setBlobMode] = useState(false)
   const gridRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -81,10 +82,8 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
     if (!hovered) return null
     const { day, hour } = hovered
     const value = grid[day][hour]
-    const dayTotal = dayTotals[day]
-    const hourTotal = hourTotals[hour]
     const pct = weekTotal > 0 ? Math.round((value / weekTotal) * 100) : 0
-    return { value, dayTotal, hourTotal, pct }
+    return { value, dayTotal: dayTotals[day], hourTotal: hourTotals[hour], pct }
   }, [hovered, grid, dayTotals, hourTotals, weekTotal])
 
   const handleCellMouseEnter = (
@@ -107,6 +106,18 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
     <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
       <div className="flex items-center justify-between mb-1">
         <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Peak Hours</h3>
+        {hasData && !isLoading && (
+          <button
+            onClick={() => setBlobMode(b => !b)}
+            className="text-[11px] font-medium px-2.5 py-1 rounded-lg border transition-colors duration-200"
+            style={blobMode
+              ? { borderColor: 'rgba(253,94,15,0.4)', color: '#FD5E0F', backgroundColor: 'rgba(253,94,15,0.08)' }
+              : { borderColor: 'transparent', color: 'var(--color-neutral-400, #a3a3a3)', backgroundColor: 'rgba(128,128,128,0.08)' }
+            }
+          >
+            {blobMode ? 'Thermal' : 'Grid'}
+          </button>
+        )}
       </div>
       <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-5">
         When your visitors are most active
@@ -129,31 +140,54 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
                 <span className="text-[11px] text-neutral-400 dark:text-neutral-500 w-7 flex-shrink-0 text-right leading-none">
                   {DAYS[dayIdx]}
                 </span>
-                <div className="flex flex-1 gap-[2px]">
+                <div
+                  className="flex flex-1 gap-[2px]"
+                  style={blobMode ? {
+                    filter: 'blur(6px) saturate(1.4)',
+                    transform: 'scaleX(1.04)',
+                    transformOrigin: 'center',
+                  } : undefined}
+                >
                   {hours.map((value, hour) => {
                     const isHoveredCell = hovered?.day === dayIdx && hovered?.hour === hour
+                    const isBestCell = bestTime?.day === dayIdx && bestTime?.hour === hour
+
+                    const bgColor = value === 0
+                      ? (blobMode ? 'rgba(253,94,15,0.0)' : 'rgba(253,94,15,0.07)')
+                      : `rgba(253,94,15,${Math.max(blobMode ? 0.25 : 0.15, (value / max) * (blobMode ? 1 : 0.92))})`
 
                     return (
                       <motion.div
                         key={`${animKey}-${dayIdx}-${hour}`}
-                        className="flex-1 rounded-[2px] cursor-default"
+                        className="flex-1 rounded-[2px] cursor-default relative"
                         initial={{ opacity: 0, scale: 0.5 }}
-                        animate={{
-                          scale: isHoveredCell ? 1.3 : 1,
-                        }}
+                        animate={
+                          isBestCell && !isHoveredCell
+                            ? {
+                                opacity: [1, 0.5, 1],
+                                scale: [1, 1.15, 1],
+                              }
+                            : {
+                                opacity: 1,
+                                scale: isHoveredCell ? 1.3 : 1,
+                              }
+                        }
                         transition={
-                          isHoveredCell
+                          isBestCell && !isHoveredCell
+                            ? {
+                                opacity: { duration: 2.5, repeat: Infinity, ease: 'easeInOut', delay: 0.8 },
+                                scale: { duration: 2.5, repeat: Infinity, ease: 'easeInOut', delay: 0.8 },
+                              }
+                            : isHoveredCell
                             ? { duration: 0.12 }
                             : {
-                                opacity: { duration: 0.3, delay: (dayIdx * 24 + hour) * 0.003 },
-                                scale: { duration: 0.3, delay: (dayIdx * 24 + hour) * 0.003, type: 'spring', stiffness: 300 },
+                                opacity: { duration: 0.35, delay: (dayIdx * 24 + hour) * 0.003 },
+                                scale: { duration: 0.35, delay: (dayIdx * 24 + hour) * 0.003, type: 'spring', stiffness: 300 },
                               }
                         }
                         style={{
                           aspectRatio: '1',
-                          backgroundColor: value === 0
-                            ? 'rgba(253,94,15,0.07)'
-                            : `rgba(253,94,15,${Math.max(0.15, (value / max) * 0.92)})`,
+                          backgroundColor: bgColor,
                           zIndex: isHoveredCell ? 2 : 'auto',
                         }}
                         onMouseEnter={(e) => handleCellMouseEnter(e, dayIdx, hour)}
@@ -209,9 +243,10 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
                       <span>{tooltipData.pct}% of week&apos;s traffic</span>
                     </div>
                   </div>
-                  {/* Arrow */}
-                  <div className="absolute left-1/2 -translate-x-1/2 bottom-0 translate-y-full w-0 h-0"
-                    style={{ borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderTop: '5px solid #404040' }} />
+                  <div
+                    className="absolute left-1/2 -translate-x-1/2 bottom-0 translate-y-full w-0 h-0"
+                    style={{ borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderTop: '5px solid #404040' }}
+                  />
                 </motion.div>
               )}
             </AnimatePresence>
