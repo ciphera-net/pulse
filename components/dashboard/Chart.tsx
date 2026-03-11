@@ -4,12 +4,11 @@ import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useTheme } from '@ciphera-net/ui'
 import { Line, LineChart, XAxis, YAxis, ReferenceLine } from 'recharts'
 import { ChartContainer, ChartTooltip, type ChartConfig } from '@/components/ui/line-charts-6'
-import { Badge } from '@/components/ui/badge-2'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { formatNumber, formatDuration, formatUpdatedAgo, DatePicker } from '@ciphera-net/ui'
 import { Select, DownloadIcon, PlusIcon, XIcon } from '@ciphera-net/ui'
 import { Checkbox } from '@ciphera-net/ui'
-import { ArrowUp, ArrowDown } from '@phosphor-icons/react'
+import { ArrowUpRight, ArrowDownRight } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 
 const ANNOTATION_COLORS: Record<string, string> = {
@@ -345,22 +344,23 @@ export default function Chart({
                 key={m.key}
                 onClick={() => setMetric(m.key)}
                 className={cn(
-                  'cursor-pointer flex-1 text-start p-4 border-b md:border-b-0 md:border-r md:last:border-r-0 border-neutral-200 dark:border-neutral-800 transition-all',
+                  'relative cursor-pointer flex-1 text-start p-4 border-b md:border-b-0 md:border-r md:last:border-r-0 border-neutral-200 dark:border-neutral-800 transition-all',
                   metric === m.key && 'bg-neutral-50 dark:bg-neutral-800/40',
                 )}
               >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-neutral-500 dark:text-neutral-400">{m.label}</span>
+                <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400 dark:text-neutral-500 mb-2">{m.label}</div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-bold text-neutral-900 dark:text-white">{m.format(m.value)}</span>
                   {m.change !== null && (
-                    <Badge variant={m.isPositive ? 'success' : 'destructive'} appearance="outline">
-                      {m.isPositive ? <ArrowUp weight="bold" className="size-3" /> : <ArrowDown weight="bold" className="size-3" />}
-                      {Math.abs(m.change).toFixed(1)}%
-                    </Badge>
+                    <span className={cn('flex items-center gap-0.5 text-sm font-semibold', m.isPositive ? 'text-[#10B981]' : 'text-[#EF4444]')}>
+                      {m.isPositive ? <ArrowUpRight weight="bold" className="size-3.5" /> : <ArrowDownRight weight="bold" className="size-3.5" />}
+                      {Math.abs(m.change).toFixed(0)}%
+                    </span>
                   )}
                 </div>
-                <div className="text-2xl font-bold text-neutral-900 dark:text-white">{m.format(m.value)}</div>
-                {m.previousValue != null && (
-                  <div className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">from {m.format(m.previousValue)}</div>
+                <div className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">vs yesterday</div>
+                {metric === m.key && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-orange" />
                 )}
               </button>
             ))}
