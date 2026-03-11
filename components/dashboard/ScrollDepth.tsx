@@ -38,10 +38,10 @@ export default function ScrollDepth({ goalCounts, totalPageviews }: ScrollDepthP
       {hasData ? (
         <div className="flex-1 min-h-[200px] flex items-center justify-center">
           <RadarChart
-            width={260}
-            height={220}
+            width={340}
+            height={300}
             data={chartData}
-            margin={{ top: 10, right: 20, bottom: 10, left: 20 }}
+            margin={{ top: 16, right: 32, bottom: 16, left: 32 }}
           >
             <PolarGrid stroke="#404040" />
             <PolarAngleAxis
