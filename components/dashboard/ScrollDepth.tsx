@@ -29,11 +29,14 @@ export default function ScrollDepth({ goalCounts, totalPageviews }: ScrollDepthP
 
   return (
     <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-1">
         <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
           Scroll Depth
         </h3>
       </div>
+      <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
+        % of visitors who scrolled this far
+      </p>
 
       {hasData ? (
         <div className="flex-1 min-h-[200px] flex items-center justify-center">
