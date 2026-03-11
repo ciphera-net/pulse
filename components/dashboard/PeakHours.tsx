@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, type CSSProperties } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { logger } from '@/lib/utils/logger'
 import { getDailyStats } from '@/lib/api/stats'
@@ -14,10 +14,26 @@ interface PeakHoursProps {
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const HOUR_LABELS: Record<number, string> = { 0: '12am', 6: '6am', 12: '12pm', 18: '6pm' }
 
+// Orange intensity palette (light → dark)
+const HIGHLIGHT_COLORS = [
+  'rgba(253,94,15,0.18)',
+  'rgba(253,94,15,0.38)',
+  'rgba(253,94,15,0.62)',
+  '#FD5E0F',
+]
+
 function formatHour(hour: number): string {
   if (hour === 0) return '12am'
   if (hour === 12) return '12pm'
   return hour < 12 ? `${hour}am` : `${hour - 12}pm`
+}
+
+function getHighlightColor(value: number, max: number): string {
+  if (value === 0) return HIGHLIGHT_COLORS[0]
+  const ratio = value / max
+  if (ratio < 0.25) return HIGHLIGHT_COLORS[1]
+  if (ratio < 0.6) return HIGHLIGHT_COLORS[2]
+  return HIGHLIGHT_COLORS[3]
 }
 
 export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
@@ -26,7 +42,6 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
   const [animKey, setAnimKey] = useState(0)
   const [hovered, setHovered] = useState<{ day: number; hour: number } | null>(null)
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null)
-  const [blobMode, setBlobMode] = useState(false)
   const gridRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -106,18 +121,6 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
     <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
       <div className="flex items-center justify-between mb-1">
         <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Peak Hours</h3>
-        {hasData && !isLoading && (
-          <button
-            onClick={() => setBlobMode(b => !b)}
-            className="text-[11px] font-medium px-2.5 py-1 rounded-lg border transition-colors duration-200"
-            style={blobMode
-              ? { borderColor: 'rgba(253,94,15,0.4)', color: '#FD5E0F', backgroundColor: 'rgba(253,94,15,0.08)' }
-              : { borderColor: 'transparent', color: 'var(--color-neutral-400, #a3a3a3)', backgroundColor: 'rgba(128,128,128,0.08)' }
-            }
-          >
-            {blobMode ? 'Thermal' : 'Grid'}
-          </button>
-        )}
       </div>
       <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-5">
         When your visitors are most active
@@ -134,62 +137,36 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
         </div>
       ) : hasData ? (
         <>
-          <div className="flex-1 min-h-[270px] flex flex-col justify-center gap-1 relative" ref={gridRef}>
+          <div className="flex-1 min-h-[270px] flex flex-col justify-center gap-[3px] relative" ref={gridRef}>
             {grid.map((hours, dayIdx) => (
               <div key={dayIdx} className="flex items-center gap-1.5">
                 <span className="text-[11px] text-neutral-400 dark:text-neutral-500 w-7 flex-shrink-0 text-right leading-none">
                   {DAYS[dayIdx]}
                 </span>
-                <div
-                  className="flex flex-1 gap-[2px]"
-                  style={blobMode ? {
-                    filter: 'blur(6px) saturate(1.4)',
-                    transform: 'scaleX(1.04)',
-                    transformOrigin: 'center',
-                  } : undefined}
-                >
+                <div className="flex flex-1 gap-[3px]">
                   {hours.map((value, hour) => {
                     const isHoveredCell = hovered?.day === dayIdx && hovered?.hour === hour
                     const isBestCell = bestTime?.day === dayIdx && bestTime?.hour === hour
-
-                    const bgColor = value === 0
-                      ? (blobMode ? 'rgba(253,94,15,0.0)' : 'rgba(253,94,15,0.07)')
-                      : `rgba(253,94,15,${Math.max(blobMode ? 0.25 : 0.15, (value / max) * (blobMode ? 1 : 0.92))})`
+                    const isActive = value > 0
+                    const highlightColor = getHighlightColor(value, max)
 
                     return (
-                      <motion.div
+                      <div
                         key={`${animKey}-${dayIdx}-${hour}`}
-                        className="flex-1 rounded-[2px] cursor-default relative"
-                        initial={{ opacity: 0, scale: 0.5 }}
-                        animate={
-                          isBestCell && !isHoveredCell
-                            ? {
-                                opacity: [1, 0.5, 1],
-                                scale: [1, 1.15, 1],
-                              }
-                            : {
-                                opacity: 1,
-                                scale: isHoveredCell ? 1.3 : 1,
-                              }
-                        }
-                        transition={
-                          isBestCell && !isHoveredCell
-                            ? {
-                                opacity: { duration: 2.5, repeat: Infinity, ease: 'easeInOut', delay: 0.8 },
-                                scale: { duration: 2.5, repeat: Infinity, ease: 'easeInOut', delay: 0.8 },
-                              }
-                            : isHoveredCell
-                            ? { duration: 0.12 }
-                            : {
-                                opacity: { duration: 0.35, delay: (dayIdx * 24 + hour) * 0.003 },
-                                scale: { duration: 0.35, delay: (dayIdx * 24 + hour) * 0.003, type: 'spring', stiffness: 300 },
-                              }
-                        }
+                        className={[
+                          'flex-1 aspect-square rounded-[3px] border cursor-default transition-transform duration-100',
+                          'border-neutral-200 dark:border-neutral-800',
+                          isActive ? 'animate-cell-highlight' : '',
+                          !isActive && isBestCell ? '' : '',
+                          isHoveredCell ? 'scale-125 z-10 relative' : '',
+                        ].join(' ')}
                         style={{
-                          aspectRatio: '1',
-                          backgroundColor: bgColor,
-                          zIndex: isHoveredCell ? 2 : 'auto',
-                        }}
+                          animationDelay: isActive
+                            ? `${((dayIdx * 24 + hour) * 0.003).toFixed(3)}s`
+                            : undefined,
+                          '--highlight': highlightColor,
+                          ...(isBestCell && !isActive ? {} : {}),
+                        } as CSSProperties}
                         onMouseEnter={(e) => handleCellMouseEnter(e, dayIdx, hour)}
                         onMouseLeave={() => { setHovered(null); setTooltipPos(null) }}
                       />
@@ -212,7 +189,10 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
                     {label}
                   </span>
                 ))}
-                <span className="absolute text-[10px] text-neutral-400 dark:text-neutral-600 -translate-x-full" style={{ left: '100%' }}>
+                <span
+                  className="absolute text-[10px] text-neutral-400 dark:text-neutral-600 -translate-x-full"
+                  style={{ left: '100%' }}
+                >
                   12am
                 </span>
               </div>
@@ -257,7 +237,7 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
             <motion.p
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.5 }}
+              transition={{ duration: 0.4, delay: 0.8 }}
               className="mt-4 text-xs text-neutral-500 dark:text-neutral-400 text-center"
             >
               Your busiest time is{' '}
