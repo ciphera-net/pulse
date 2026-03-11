@@ -28,16 +28,13 @@ export default function GoalStats({ goalCounts, onSelectEvent }: GoalStatsProps)
 
       {hasData ? (
         <div className="flex-1 min-h-[200px]">
-          {list.map((row, i) => (
+          {list.map((row) => (
             <div
               key={row.event_name}
               onClick={() => onSelectEvent?.(row.event_name)}
               className={`flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors${onSelectEvent ? ' cursor-pointer' : ''}`}
             >
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <span className="text-xs font-medium text-neutral-400 dark:text-neutral-600 w-4 text-right flex-shrink-0 tabular-nums">
-                  {i + 1}
-                </span>
+              <div className="flex items-center flex-1 min-w-0">
                 <span className="text-sm font-medium text-neutral-900 dark:text-white truncate">
                   {row.display_name ?? row.event_name.replace(/_/g, ' ')}
                 </span>
