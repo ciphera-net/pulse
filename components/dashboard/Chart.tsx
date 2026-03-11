@@ -358,7 +358,10 @@ export default function Chart({
                     </span>
                   )}
                 </div>
-                <div className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">vs yesterday</div>
+                <div className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">{(() => {
+                  const days = Math.round((new Date(dateRange.end).getTime() - new Date(dateRange.start).getTime()) / 86400000) + 1
+                  return days <= 1 ? 'vs yesterday' : `vs previous ${days} days`
+                })()}</div>
                 {metric === m.key && (
                   <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-orange" />
                 )}
