@@ -63,7 +63,7 @@ export default function ScrollDepth({ goalCounts, totalPageviews }: ScrollDepthP
               dataKey="value"
               stroke="#FD5E0F"
               fill="#FD5E0F"
-              fillOpacity={0.25}
+              fillOpacity={0.6}
               dot={{ r: 4, fill: '#FD5E0F', fillOpacity: 1, strokeWidth: 0 }}
             />
           </RadarChart>
