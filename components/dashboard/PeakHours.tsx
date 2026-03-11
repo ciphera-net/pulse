@@ -12,15 +12,23 @@ interface PeakHoursProps {
 }
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-const HOUR_LABELS: Record<number, string> = { 0: '12am', 6: '6am', 12: '12pm', 18: '6pm' }
+const BUCKETS = 12 // 2-hour buckets
+// Label at bucket index 0=12am, 3=6am, 6=12pm, 9=6pm
+const BUCKET_LABELS: Record<number, string> = { 0: '12am', 3: '6am', 6: '12pm', 9: '6pm' }
 
-// Orange intensity palette (light → dark)
 const HIGHLIGHT_COLORS = [
   'rgba(253,94,15,0.18)',
   'rgba(253,94,15,0.38)',
   'rgba(253,94,15,0.62)',
   '#FD5E0F',
 ]
+
+function formatBucket(bucket: number): string {
+  const hour = bucket * 2
+  if (hour === 0) return '12am–2am'
+  if (hour === 12) return '12pm–2pm'
+  return hour < 12 ? `${hour}am–${hour + 2}am` : `${hour - 12}pm–${hour - 10}pm`
+}
 
 function formatHour(hour: number): string {
   if (hour === 0) return '12am'
@@ -40,7 +48,7 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
   const [data, setData] = useState<DailyStat[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [animKey, setAnimKey] = useState(0)
-  const [hovered, setHovered] = useState<{ day: number; hour: number } | null>(null)
+  const [hovered, setHovered] = useState<{ day: number; bucket: number } | null>(null)
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null)
   const gridRef = useRef<HTMLDivElement>(null)
 
@@ -60,53 +68,55 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
     fetchData()
   }, [siteId, dateRange])
 
-  const { grid, max, dayTotals, hourTotals, weekTotal } = useMemo(() => {
-    const grid: number[][] = Array.from({ length: 7 }, () => Array(24).fill(0))
+  const { grid, max, dayTotals, bucketTotals, weekTotal } = useMemo(() => {
+    // grid[day][bucket] — aggregate 2-hour buckets
+    const grid: number[][] = Array.from({ length: 7 }, () => Array(BUCKETS).fill(0))
     for (const d of data) {
       const date = new Date(d.date)
       const day = date.getDay()
       const hour = date.getHours()
       const adjustedDay = day === 0 ? 6 : day - 1
-      grid[adjustedDay][hour] += d.pageviews
+      const bucket = Math.floor(hour / 2)
+      grid[adjustedDay][bucket] += d.pageviews
     }
     const max = Math.max(...grid.flat(), 1)
-    const dayTotals = grid.map(hours => hours.reduce((a, b) => a + b, 0))
-    const hourTotals = Array.from({ length: 24 }, (_, h) => grid.reduce((a, row) => a + row[h], 0))
+    const dayTotals = grid.map(buckets => buckets.reduce((a, b) => a + b, 0))
+    const bucketTotals = Array.from({ length: BUCKETS }, (_, b) => grid.reduce((a, row) => a + row[b], 0))
     const weekTotal = dayTotals.reduce((a, b) => a + b, 0)
-    return { grid, max, dayTotals, hourTotals, weekTotal }
+    return { grid, max, dayTotals, bucketTotals, weekTotal }
   }, [data])
 
   const hasData = data.some(d => d.pageviews > 0)
 
   const bestTime = useMemo(() => {
     if (!hasData) return null
-    let bestDay = 0, bestHour = 0, bestVal = 0
+    let bestDay = 0, bestBucket = 0, bestVal = 0
     for (let d = 0; d < 7; d++) {
-      for (let h = 0; h < 24; h++) {
-        if (grid[d][h] > bestVal) {
-          bestVal = grid[d][h]
+      for (let b = 0; b < BUCKETS; b++) {
+        if (grid[d][b] > bestVal) {
+          bestVal = grid[d][b]
           bestDay = d
-          bestHour = h
+          bestBucket = b
         }
       }
     }
-    return { day: bestDay, hour: bestHour }
+    return { day: bestDay, bucket: bestBucket }
   }, [grid, hasData])
 
   const tooltipData = useMemo(() => {
     if (!hovered) return null
-    const { day, hour } = hovered
-    const value = grid[day][hour]
+    const { day, bucket } = hovered
+    const value = grid[day][bucket]
     const pct = weekTotal > 0 ? Math.round((value / weekTotal) * 100) : 0
-    return { value, dayTotal: dayTotals[day], hourTotal: hourTotals[hour], pct }
-  }, [hovered, grid, dayTotals, hourTotals, weekTotal])
+    return { value, dayTotal: dayTotals[day], bucketTotal: bucketTotals[bucket], pct }
+  }, [hovered, grid, dayTotals, bucketTotals, weekTotal])
 
   const handleCellMouseEnter = (
     e: React.MouseEvent<HTMLDivElement>,
     dayIdx: number,
-    hour: number
+    bucket: number
   ) => {
-    setHovered({ day: dayIdx, hour })
+    setHovered({ day: dayIdx, bucket })
     if (gridRef.current) {
       const gridRect = gridRef.current.getBoundingClientRect()
       const cellRect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
@@ -138,36 +148,38 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
       ) : hasData ? (
         <>
           <div className="flex-1 min-h-[270px] flex flex-col justify-center gap-[5px] relative" ref={gridRef}>
-            {grid.map((hours, dayIdx) => (
+            {grid.map((buckets, dayIdx) => (
               <div key={dayIdx} className="flex items-center gap-1.5">
                 <span className="text-[11px] text-neutral-400 dark:text-neutral-500 w-7 flex-shrink-0 text-right leading-none">
                   {DAYS[dayIdx]}
                 </span>
-                <div className="flex-1" style={{ display: 'grid', gridTemplateColumns: 'repeat(24, 1fr)', gap: '3px' }}>
-                  {hours.map((value, hour) => {
-                    const isHoveredCell = hovered?.day === dayIdx && hovered?.hour === hour
-                    const isBestCell = bestTime?.day === dayIdx && bestTime?.hour === hour
+                <div
+                  className="flex-1"
+                  style={{ display: 'grid', gridTemplateColumns: `repeat(${BUCKETS}, 1fr)`, gap: '5px' }}
+                >
+                  {buckets.map((value, bucket) => {
+                    const isHoveredCell = hovered?.day === dayIdx && hovered?.bucket === bucket
+                    const isBestCell = bestTime?.day === dayIdx && bestTime?.bucket === bucket
                     const isActive = value > 0
                     const highlightColor = getHighlightColor(value, max)
 
                     return (
                       <div
-                        key={`${animKey}-${dayIdx}-${hour}`}
+                        key={`${animKey}-${dayIdx}-${bucket}`}
                         className={[
-                          'aspect-square w-full rounded-[3px] border cursor-default transition-transform duration-100',
+                          'aspect-square w-full rounded-[4px] border cursor-default transition-transform duration-100',
                           'border-neutral-200 dark:border-neutral-800',
                           isActive ? 'animate-cell-highlight' : '',
-                          !isActive && isBestCell ? '' : '',
-                          isHoveredCell ? 'scale-125 z-10 relative' : '',
+                          isHoveredCell ? 'scale-110 z-10 relative' : '',
+                          isBestCell && !isHoveredCell ? 'ring-1 ring-brand-orange/40' : '',
                         ].join(' ')}
                         style={{
                           animationDelay: isActive
-                            ? `${((dayIdx * 24 + hour) * 0.003).toFixed(3)}s`
+                            ? `${((dayIdx * BUCKETS + bucket) * 0.008).toFixed(3)}s`
                             : undefined,
                           '--highlight': highlightColor,
-                          ...(isBestCell && !isActive ? {} : {}),
                         } as CSSProperties}
-                        onMouseEnter={(e) => handleCellMouseEnter(e, dayIdx, hour)}
+                        onMouseEnter={(e) => handleCellMouseEnter(e, dayIdx, bucket)}
                         onMouseLeave={() => { setHovered(null); setTooltipPos(null) }}
                       />
                     )
@@ -180,11 +192,11 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
             <div className="flex items-center gap-1.5 mt-1">
               <span className="w-7 flex-shrink-0" />
               <div className="flex-1 relative h-3">
-                {Object.entries(HOUR_LABELS).map(([h, label]) => (
+                {Object.entries(BUCKET_LABELS).map(([b, label]) => (
                   <span
-                    key={h}
+                    key={b}
                     className="absolute text-[10px] text-neutral-400 dark:text-neutral-600 -translate-x-1/2"
-                    style={{ left: `${(Number(h) / 24) * 100}%` }}
+                    style={{ left: `${(Number(b) / BUCKETS) * 100}%` }}
                   >
                     {label}
                   </span>
@@ -216,7 +228,7 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
                 >
                   <div className="bg-neutral-900 dark:bg-neutral-800 border border-neutral-700 text-white text-xs px-3 py-2 rounded-lg shadow-xl whitespace-nowrap">
                     <div className="font-semibold mb-1">
-                      {DAYS[hovered.day]} {formatHour(hovered.hour)}
+                      {DAYS[hovered.day]} {formatBucket(hovered.bucket)}
                     </div>
                     <div className="flex flex-col gap-0.5 text-neutral-300">
                       <span>{tooltipData.value.toLocaleString()} pageviews</span>
@@ -237,12 +249,12 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
             <motion.p
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.8 }}
+              transition={{ duration: 0.4, delay: 0.6 }}
               className="mt-4 text-xs text-neutral-500 dark:text-neutral-400 text-center"
             >
               Your busiest time is{' '}
               <span className="text-brand-orange font-medium">
-                {DAYS[bestTime.day]}s at {formatHour(bestTime.hour)}
+                {DAYS[bestTime.day]}s at {formatHour(bestTime.bucket * 2)}
               </span>
             </motion.p>
           )}
