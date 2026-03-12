@@ -295,13 +295,19 @@ export default function SankeyDiagram({
   const numColumns = depth + 1
   const isLastColumn = (col: number) => col === numColumns - 1
 
-  // Colors
-  const nodeFill = isDark ? '#a3a3a3' : '#525252'
-  const labelFill = isDark ? '#a3a3a3' : '#737373'
-  const linkDefault = isDark ? 'rgba(163, 163, 163, 0.1)' : 'rgba(163, 163, 163, 0.15)'
-  const linkHover = 'rgba(249, 115, 22, 0.4)'
-  const linkDimmed = isDark ? 'rgba(163, 163, 163, 0.04)' : 'rgba(163, 163, 163, 0.06)'
-  const exitNodeFill = isDark ? '#525252' : '#a3a3a3'
+  // Colors — brand orange nodes with column-based fade
+  const brandOrange = '#FD5E0F'
+  const labelFill = isDark ? '#d4d4d4' : '#525252'
+  const linkDefault = isDark ? 'rgba(253, 94, 15, 0.15)' : 'rgba(253, 94, 15, 0.12)'
+  const linkHover = isDark ? 'rgba(253, 94, 15, 0.45)' : 'rgba(253, 94, 15, 0.35)'
+  const linkDimmed = isDark ? 'rgba(253, 94, 15, 0.04)' : 'rgba(253, 94, 15, 0.05)'
+  const exitNodeFill = isDark ? '#404040' : '#d4d4d4'
+
+  // Fade node opacity from 1.0 (entry) to 0.45 (deepest)
+  const nodeOpacity = (col: number) => {
+    if (numColumns <= 1) return 1
+    return 1 - (col / (numColumns - 1)) * 0.55
+  }
 
   return (
     <svg
@@ -357,8 +363,8 @@ export default function SankeyDiagram({
               height={node.height}
               rx={3}
               ry={3}
-              fill={isExit ? exitNodeFill : nodeFill}
-              opacity={isExit ? 0.5 : 1}
+              fill={isExit ? exitNodeFill : brandOrange}
+              opacity={isExit ? 0.4 : nodeOpacity(node.column)}
               className={onNodeClick && !isExit ? 'cursor-pointer' : 'cursor-default'}
               onClick={() => {
                 if (onNodeClick && !isExit) onNodeClick(node.path)
