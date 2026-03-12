@@ -107,6 +107,8 @@ export default function SiteSettingsPage() {
     frequency: 'weekly' as string,
     reportType: 'summary' as string,
     timezone: '',
+    sendHour: 9,
+    sendDay: 1,
   })
 
   useEffect(() => {
@@ -235,6 +237,8 @@ export default function SiteSettingsPage() {
       frequency: 'weekly',
       reportType: 'summary',
       timezone: site?.timezone || '',
+      sendHour: 9,
+      sendDay: 1,
     })
   }
 
@@ -248,6 +252,8 @@ export default function SiteSettingsPage() {
       frequency: schedule.frequency,
       reportType: schedule.report_type,
       timezone: schedule.timezone || site?.timezone || '',
+      sendHour: schedule.send_hour ?? 9,
+      sendDay: schedule.send_day ?? (schedule.frequency === 'monthly' ? 1 : 0),
     })
     setReportModalOpen(true)
   }
@@ -277,6 +283,8 @@ export default function SiteSettingsPage() {
       frequency: reportForm.frequency,
       timezone: reportForm.timezone || undefined,
       report_type: reportForm.reportType,
+      send_hour: reportForm.sendHour,
+      ...(reportForm.frequency !== 'daily' ? { send_day: reportForm.sendDay } : {}),
     }
 
     setReportSaving(true)
@@ -346,6 +354,34 @@ export default function SiteSettingsPage() {
       case 'weekly': return 'Weekly'
       case 'monthly': return 'Monthly'
       default: return frequency
+    }
+  }
+
+  const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+  const formatHour = (hour: number) => {
+    if (hour === 0) return '12:00 AM'
+    if (hour === 12) return '12:00 PM'
+    return hour < 12 ? `${hour}:00 AM` : `${hour - 12}:00 PM`
+  }
+
+  const getScheduleDescription = (schedule: ReportSchedule) => {
+    const hour = formatHour(schedule.send_hour ?? 9)
+    const tz = schedule.timezone || 'UTC'
+    switch (schedule.frequency) {
+      case 'daily':
+        return `Every day at ${hour} (${tz})`
+      case 'weekly': {
+        const day = WEEKDAY_NAMES[schedule.send_day ?? 0] || 'Monday'
+        return `Every ${day} at ${hour} (${tz})`
+      }
+      case 'monthly': {
+        const d = schedule.send_day ?? 1
+        const suffix = d === 1 ? 'st' : d === 2 ? 'nd' : d === 3 ? 'rd' : 'th'
+        return `${d}${suffix} of each month at ${hour} (${tz})`
+      }
+      default:
+        return schedule.frequency
     }
   }
 
@@ -1367,7 +1403,10 @@ export default function SiteSettingsPage() {
                                   ? (schedule.channel_config as EmailConfig).recipients.join(', ')
                                   : (schedule.channel_config as WebhookConfig).url}
                               </p>
-                              <div className="flex items-center gap-3 mt-1.5 text-xs text-neutral-400 dark:text-neutral-500">
+                              <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
+                                {getScheduleDescription(schedule)}
+                              </p>
+                              <div className="flex items-center gap-3 mt-1 text-xs text-neutral-400 dark:text-neutral-500">
                                 <span>
                                   Last sent: {schedule.last_sent_at
                                     ? new Date(schedule.last_sent_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -1550,6 +1589,65 @@ export default function SiteSettingsPage() {
                 { value: 'weekly', label: 'Weekly' },
                 { value: 'monthly', label: 'Monthly' },
               ]}
+              variant="input"
+              fullWidth
+              align="left"
+            />
+          </div>
+
+          {reportForm.frequency === 'weekly' && (
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Day of week</label>
+              <Select
+                value={String(reportForm.sendDay)}
+                onChange={(v) => setReportForm({ ...reportForm, sendDay: parseInt(v) })}
+                options={WEEKDAY_NAMES.map((name, i) => ({ value: String(i), label: name }))}
+                variant="input"
+                fullWidth
+                align="left"
+              />
+            </div>
+          )}
+
+          {reportForm.frequency === 'monthly' && (
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Day of month</label>
+              <Select
+                value={String(reportForm.sendDay)}
+                onChange={(v) => setReportForm({ ...reportForm, sendDay: parseInt(v) })}
+                options={Array.from({ length: 28 }, (_, i) => {
+                  const d = i + 1
+                  const suffix = d === 1 ? 'st' : d === 2 ? 'nd' : d === 3 ? 'rd' : 'th'
+                  return { value: String(d), label: `${d}${suffix}` }
+                })}
+                variant="input"
+                fullWidth
+                align="left"
+              />
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Time</label>
+            <Select
+              value={String(reportForm.sendHour)}
+              onChange={(v) => setReportForm({ ...reportForm, sendHour: parseInt(v) })}
+              options={Array.from({ length: 24 }, (_, i) => ({
+                value: String(i),
+                label: formatHour(i),
+              }))}
+              variant="input"
+              fullWidth
+              align="left"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Timezone</label>
+            <Select
+              value={reportForm.timezone || 'UTC'}
+              onChange={(v) => setReportForm({ ...reportForm, timezone: v })}
+              options={TIMEZONES.map((tz) => ({ value: tz, label: tz }))}
               variant="input"
               fullWidth
               align="left"
