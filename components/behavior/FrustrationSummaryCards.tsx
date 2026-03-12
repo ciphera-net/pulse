@@ -58,7 +58,7 @@ export default function FrustrationSummaryCards({ data, loading }: FrustrationSu
   const rageChange = pctChange(data.rage_clicks, data.prev_rage_clicks)
   const deadChange = pctChange(data.dead_clicks, data.prev_dead_clicks)
   const topPage = data.rage_top_page || data.dead_top_page
-  const topPageTotal = data.rage_clicks + data.dead_clicks
+  const totalSignals = data.rage_clicks + data.dead_clicks
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
@@ -94,22 +94,20 @@ export default function FrustrationSummaryCards({ data, loading }: FrustrationSu
         </p>
       </div>
 
-      {/* Most Frustrated Page */}
+      {/* Total Frustration Signals */}
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6">
         <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">
-          Most Frustrated Page
+          Total Signals
         </p>
+        <span className="text-2xl font-bold text-neutral-900 dark:text-white tabular-nums">
+          {totalSignals.toLocaleString()}
+        </span>
         {topPage ? (
-          <>
-            <p className="text-lg font-bold text-neutral-900 dark:text-white truncate" title={topPage}>
-              {topPage}
-            </p>
-            <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
-              {topPageTotal.toLocaleString()} total signals
-            </p>
-          </>
+          <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
+            Top page: {topPage}
+          </p>
         ) : (
-          <p className="text-sm text-neutral-400 dark:text-neutral-500 mt-2">
+          <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
             No data in this period
           </p>
         )}
