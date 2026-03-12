@@ -255,20 +255,6 @@ export default function SankeyDiagram({
           const w = (node.x1 ?? 0) - (node.x0 ?? 0)
           const h = (node.y1 ?? 0) - (node.y0 ?? 0)
 
-          // Check if this node is connected to the hovered node
-          const isThisHovered = hoveredNode === node.id!.toString()
-          const isConnected =
-            hoveredNode !== null &&
-            layout.links.some((l) => {
-              const s = (l.source as LayoutNode).id
-              const t = (l.target as LayoutNode).id
-              return (
-                (s === hoveredNode && t === node.id) ||
-                (t === hoveredNode && s === node.id)
-              )
-            })
-          const dimNode = hasHover && !isThisHovered && !isConnected
-
           return (
             <rect
               key={node.id}
@@ -280,7 +266,7 @@ export default function SankeyDiagram({
               stroke={nodeStroke}
               strokeWidth={1}
               rx={2}
-              opacity={dimNode ? 0.25 : 1}
+              opacity={1}
               style={{ transition: 'opacity 0.15s ease' }}
               className={
                 onNodeClick && !isExit ? 'cursor-pointer' : 'cursor-default'
