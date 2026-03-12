@@ -26,7 +26,7 @@ export default function SiteNav({ siteId }: SiteNavProps) {
 
   const isActive = (href: string) => {
     if (href === `/sites/${siteId}`) {
-      return pathname === href || pathname === `${href}/realtime`
+      return pathname === href
     }
     return pathname.startsWith(href)
   }
