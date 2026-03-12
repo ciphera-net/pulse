@@ -1,29 +1,18 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { getDateRange, formatDate } from '@ciphera-net/ui'
 import { Select, DatePicker } from '@ciphera-net/ui'
-import { toast } from '@ciphera-net/ui'
 import dynamic from 'next/dynamic'
-import {
-  getFrustrationSummary,
-  getRageClicks,
-  getDeadClicks,
-  getFrustrationByPage,
-  type FrustrationSummary,
-  type FrustrationElement,
-  type FrustrationByPage,
-} from '@/lib/api/stats'
+import { getRageClicks, getDeadClicks } from '@/lib/api/stats'
 import FrustrationSummaryCards from '@/components/behavior/FrustrationSummaryCards'
 import FrustrationTable from '@/components/behavior/FrustrationTable'
 import FrustrationByPageTable from '@/components/behavior/FrustrationByPageTable'
 import FrustrationTrend from '@/components/behavior/FrustrationTrend'
-import { useDashboard } from '@/lib/swr/dashboard'
+import { useDashboard, useBehavior } from '@/lib/swr/dashboard'
 
 const ScrollDepth = dynamic(() => import('@/components/dashboard/ScrollDepth'))
-
-const TABLE_LIMIT = 7
 
 function getThisWeekRange(): { start: string; end: string } {
   const today = new Date()
@@ -47,58 +36,18 @@ export default function BehaviorPage() {
   const [dateRange, setDateRange] = useState(() => getDateRange(30))
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
 
-  // Frustration data
-  const [summary, setSummary] = useState<FrustrationSummary | null>(null)
-  const [rageClicks, setRageClicks] = useState<{ items: FrustrationElement[]; total: number }>({ items: [], total: 0 })
-  const [deadClicks, setDeadClicks] = useState<{ items: FrustrationElement[]; total: number }>({ items: [], total: 0 })
-  const [byPage, setByPage] = useState<FrustrationByPage[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
-  const refreshRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // Single request for all frustration data
+  const { data: behavior, isLoading: loading, error: behaviorError } = useBehavior(siteId, dateRange.start, dateRange.end)
 
   // Fetch dashboard data for scroll depth (goal_counts + stats)
   const { data: dashboard } = useDashboard(siteId, dateRange.start, dateRange.end)
-
-  const fetchData = useCallback(async () => {
-    try {
-      const [summaryData, rageData, deadData, pageData] = await Promise.all([
-        getFrustrationSummary(siteId, dateRange.start, dateRange.end),
-        getRageClicks(siteId, dateRange.start, dateRange.end, TABLE_LIMIT),
-        getDeadClicks(siteId, dateRange.start, dateRange.end, TABLE_LIMIT),
-        getFrustrationByPage(siteId, dateRange.start, dateRange.end),
-      ])
-      setSummary(summaryData)
-      setRageClicks(rageData)
-      setDeadClicks(deadData)
-      setByPage(pageData)
-      setError(false)
-    } catch {
-      setError(true)
-      toast.error('Failed to load behavior data')
-    } finally {
-      setLoading(false)
-    }
-  }, [siteId, dateRange.start, dateRange.end])
-
-  // Fetch on mount and when date range changes
-  useEffect(() => {
-    setLoading(true)
-    fetchData()
-  }, [fetchData])
-
-  // 60-second refresh interval
-  useEffect(() => {
-    refreshRef.current = setInterval(fetchData, 60_000)
-    return () => {
-      if (refreshRef.current) clearInterval(refreshRef.current)
-    }
-  }, [fetchData])
 
   useEffect(() => {
     const domain = dashboard?.site?.domain
     document.title = domain ? `Behavior · ${domain} | Pulse` : 'Behavior | Pulse'
   }, [dashboard?.site?.domain])
 
+  // On-demand fetchers for modal "view all"
   const fetchAllRage = useCallback(
     () => getRageClicks(siteId, dateRange.start, dateRange.end, 100),
     [siteId, dateRange.start, dateRange.end]
@@ -108,6 +57,11 @@ export default function BehaviorPage() {
     () => getDeadClicks(siteId, dateRange.start, dateRange.end, 100),
     [siteId, dateRange.start, dateRange.end]
   )
+
+  const summary = behavior?.summary ?? null
+  const rageClicks = behavior?.rage_clicks ?? { items: [], total: 0 }
+  const deadClicks = behavior?.dead_clicks ?? { items: [], total: 0 }
+  const byPage = behavior?.by_page ?? []
 
   return (
     <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
@@ -189,7 +143,7 @@ export default function BehaviorPage() {
       <FrustrationByPageTable pages={byPage} loading={loading} />
 
       {/* Scroll depth + Frustration trend — hide when data failed to load */}
-      {!error && (
+      {!behaviorError && (
         <div className="grid gap-6 lg:grid-cols-2 mb-8">
           <ScrollDepth
             goalCounts={dashboard?.goal_counts ?? []}
