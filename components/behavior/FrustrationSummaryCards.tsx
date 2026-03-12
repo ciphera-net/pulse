@@ -7,16 +7,23 @@ interface FrustrationSummaryCardsProps {
   loading: boolean
 }
 
-function pctChange(current: number, previous: number): number | null {
+function pctChange(current: number, previous: number): { type: 'pct'; value: number } | { type: 'new' } | null {
   if (previous === 0 && current === 0) return null
-  if (previous === 0) return 100
-  return Math.round(((current - previous) / previous) * 100)
+  if (previous === 0) return { type: 'new' }
+  return { type: 'pct', value: Math.round(((current - previous) / previous) * 100) }
 }
 
-function ChangeIndicator({ change }: { change: number | null }) {
+function ChangeIndicator({ change }: { change: ReturnType<typeof pctChange> }) {
   if (change === null) return null
-  const isUp = change > 0
-  const isDown = change < 0
+  if (change.type === 'new') {
+    return (
+      <span className="text-xs font-medium bg-brand-orange/10 text-brand-orange px-1.5 py-0.5 rounded">
+        New
+      </span>
+    )
+  }
+  const isUp = change.value > 0
+  const isDown = change.value < 0
   return (
     <span
       className={`text-xs font-medium ${
@@ -27,7 +34,7 @@ function ChangeIndicator({ change }: { change: number | null }) {
             : 'text-neutral-500 dark:text-neutral-400'
       }`}
     >
-      {isUp ? '+' : ''}{change}%
+      {isUp ? '+' : ''}{change.value}%
     </span>
   )
 }

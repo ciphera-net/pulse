@@ -1,6 +1,7 @@
 'use client'
 
 import { formatNumber } from '@ciphera-net/ui'
+import { Files } from '@phosphor-icons/react'
 import type { FrustrationByPage } from '@/lib/api/stats'
 
 interface FrustrationByPageTableProps {
@@ -96,9 +97,15 @@ export default function FrustrationByPageTable({ pages, loading }: FrustrationBy
           </div>
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">
-            No frustration signals detected in this period
+        <div className="flex flex-col items-center justify-center text-center px-6 py-8 gap-4 min-h-[200px]">
+          <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
+            <Files className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
+          </div>
+          <h4 className="font-semibold text-neutral-900 dark:text-white">
+            No frustration signals detected
+          </h4>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 max-w-md">
+            Page-level frustration data will appear here once rage clicks or dead clicks are detected on your site.
           </p>
         </div>
       )}
