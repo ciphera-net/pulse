@@ -35,14 +35,14 @@ export default function JourneysPage() {
   const [period, setPeriod] = useState('30')
   const [dateRange, setDateRange] = useState(() => getDateRange(30))
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
-  const [depth, setDepth] = useState(5)
+  const [depth, setDepth] = useState(3)
   const [entryPath, setEntryPath] = useState('')
 
   const { data: transitionsData, isLoading: transitionsLoading } = useJourneyTransitions(
-    siteId, dateRange.start, dateRange.end, depth, 1, entryPath || undefined
+    siteId, dateRange.start, dateRange.end, depth, 2, entryPath || undefined
   )
   const { data: topPaths, isLoading: topPathsLoading } = useJourneyTopPaths(
-    siteId, dateRange.start, dateRange.end, 20, 1, entryPath || undefined
+    siteId, dateRange.start, dateRange.end, 20, 2, entryPath || undefined
   )
   const { data: entryPoints } = useJourneyEntryPoints(siteId, dateRange.start, dateRange.end)
   const { data: dashboard } = useDashboard(siteId, dateRange.start, dateRange.end)
@@ -117,7 +117,7 @@ export default function JourneysPage() {
           <input
             type="range"
             min={2}
-            max={10}
+            max={5}
             step={1}
             value={depth}
             onChange={(e) => setDepth(Number(e.target.value))}
@@ -134,9 +134,9 @@ export default function JourneysPage() {
           options={entryPointOptions}
         />
 
-        {(depth !== 5 || entryPath) && (
+        {(depth !== 3 || entryPath) && (
           <button
-            onClick={() => { setDepth(5); setEntryPath('') }}
+            onClick={() => { setDepth(3); setEntryPath('') }}
             className="text-sm text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors"
           >
             Reset
