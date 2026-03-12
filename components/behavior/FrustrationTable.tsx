@@ -65,6 +65,9 @@ function SelectorCell({ selector }: { selector: string }) {
   )
 }
 
+const GRID_WITH_AVG = 'grid grid-cols-[1fr_60px_50px_64px_64px_40px] items-center gap-2 h-9 px-2 -mx-2'
+const GRID_NO_AVG = 'grid grid-cols-[1fr_60px_64px_64px_40px] items-center gap-2 h-9 px-2 -mx-2'
+
 function Row({
   item,
   showAvgClicks,
@@ -73,32 +76,30 @@ function Row({
   showAvgClicks?: boolean
 }) {
   return (
-    <div className="flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
-      <div className="flex items-center gap-3 flex-1 min-w-0">
+    <div className={`${showAvgClicks ? GRID_WITH_AVG : GRID_NO_AVG} group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg transition-colors`}>
+      <div className="flex items-center gap-2 min-w-0">
         <SelectorCell selector={item.selector} />
         <span
-          className="text-xs text-neutral-400 dark:text-neutral-500 truncate max-w-[120px]"
+          className="text-xs text-neutral-400 dark:text-neutral-500 truncate"
           title={item.page_path}
         >
           {item.page_path}
         </span>
       </div>
-      <div className="flex items-center gap-4 ml-4 shrink-0">
-        {showAvgClicks && item.avg_click_count != null && (
-          <span className="text-xs text-neutral-400 dark:text-neutral-500 tabular-nums">
-            avg {item.avg_click_count.toFixed(1)}
-          </span>
-        )}
-        <span className="text-xs text-neutral-400 dark:text-neutral-500 tabular-nums">
-          {item.sessions} {item.sessions === 1 ? 'session' : 'sessions'}
+      {showAvgClicks && (
+        <span className="text-xs text-neutral-400 dark:text-neutral-500 tabular-nums text-right">
+          {item.avg_click_count != null ? item.avg_click_count.toFixed(1) : '–'}
         </span>
-        <span className="text-xs text-neutral-400 dark:text-neutral-500 tabular-nums" title={item.last_seen}>
-          {formatRelativeTime(item.last_seen)}
-        </span>
-        <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 tabular-nums">
-          {formatNumber(item.count)}
-        </span>
-      </div>
+      )}
+      <span className="text-xs text-neutral-400 dark:text-neutral-500 tabular-nums text-right">
+        {item.sessions}
+      </span>
+      <span className="text-xs text-neutral-400 dark:text-neutral-500 tabular-nums text-right" title={item.last_seen}>
+        {formatRelativeTime(item.last_seen)}
+      </span>
+      <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 tabular-nums text-right">
+        {formatNumber(item.count)}
+      </span>
     </div>
   )
 }
@@ -166,17 +167,12 @@ export default function FrustrationTable({
           ) : hasData ? (
             <div>
               {/* Column headers */}
-              <div className="flex items-center justify-between px-2 -mx-2 mb-2 text-xs font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
-                <div className="flex items-center gap-3">
-                  <span>Selector</span>
-                  <span>Page</span>
-                </div>
-                <div className="flex items-center gap-4">
-                  {showAvgClicks && <span>Avg</span>}
-                  <span>Sessions</span>
-                  <span>Last Seen</span>
-                  <span>Count</span>
-                </div>
+              <div className={`${showAvgClicks ? GRID_WITH_AVG : GRID_NO_AVG} mb-2 text-xs font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wider !h-auto`}>
+                <span>Selector / Page</span>
+                {showAvgClicks && <span className="text-right">Avg</span>}
+                <span className="text-right">Sessions</span>
+                <span className="text-right">Last Seen</span>
+                <span className="text-right">Count</span>
               </div>
               <div className="space-y-0.5">
                 {items.map((item, i) => (
