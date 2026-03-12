@@ -424,6 +424,62 @@
     }, { passive: true });
   }
 
+  // * Strip HTML tags from a string (used for sanitizing attribute values)
+  function stripHtml(str) {
+    if (typeof str !== 'string') return '';
+    return str.replace(/<[^>]*>/g, '').trim();
+  }
+
+  // * Build a compact element identifier string for frustration tracking
+  // * Format: tag#id.class1.class2[href="/path"]
+  function getElementIdentifier(el) {
+    if (!el || !el.tagName) return '';
+    var result = el.tagName.toLowerCase();
+
+    // * Add #id if present
+    if (el.id) {
+      result += '#' + stripHtml(el.id);
+    }
+
+    // * Add classes (handle SVG elements where className is SVGAnimatedString)
+    var rawClassName = el.className;
+    if (rawClassName && typeof rawClassName !== 'string' && rawClassName.baseVal !== undefined) {
+      rawClassName = rawClassName.baseVal;
+    }
+    if (typeof rawClassName === 'string' && rawClassName.trim()) {
+      var classes = rawClassName.trim().split(/\s+/);
+      var filtered = [];
+      for (var ci = 0; ci < classes.length && filtered.length < 5; ci++) {
+        var cls = classes[ci];
+        if (cls.length > 50) continue;
+        if (/^(ng-|js-|is-|has-|animate)/.test(cls)) continue;
+        filtered.push(cls);
+      }
+      if (filtered.length > 0) {
+        result += '.' + filtered.join('.');
+      }
+    }
+
+    // * Add key attributes
+    var attrs = ['href', 'role', 'type', 'name', 'data-action'];
+    for (var ai = 0; ai < attrs.length; ai++) {
+      var attrName = attrs[ai];
+      var attrVal = el.getAttribute(attrName);
+      if (attrVal !== null && attrVal !== '') {
+        var sanitized = stripHtml(attrVal);
+        if (sanitized.length > 50) sanitized = sanitized.substring(0, 50);
+        result += '[' + attrName + '="' + sanitized + '"]';
+      }
+    }
+
+    // * Truncate to max 200 chars
+    if (result.length > 200) {
+      result = result.substring(0, 200);
+    }
+
+    return result;
+  }
+
   // * Auto-track outbound link clicks and file downloads (on by default)
   // * Opt-out: add data-no-outbound or data-no-downloads to the script tag
   var trackOutbound = !script.hasAttribute('data-no-outbound');
