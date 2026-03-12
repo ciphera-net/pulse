@@ -225,10 +225,41 @@
     return cachedSessionId;
   }
 
+  // * Refresh dedup: skip pageview if the same path was tracked within 5 seconds
+  // * Prevents inflated pageview counts from F5/refresh while allowing genuine revisits
+  var REFRESH_DEDUP_WINDOW = 5000;
+  var DEDUP_STORAGE_KEY = 'ciphera_last_pv';
+
+  function isDuplicatePageview(path) {
+    try {
+      var raw = sessionStorage.getItem(DEDUP_STORAGE_KEY);
+      if (raw) {
+        var last = JSON.parse(raw);
+        if (last.p === path && Date.now() - last.t < REFRESH_DEDUP_WINDOW) {
+          return true;
+        }
+      }
+    } catch (e) {}
+    return false;
+  }
+
+  function recordPageview(path) {
+    try {
+      sessionStorage.setItem(DEDUP_STORAGE_KEY, JSON.stringify({ p: path, t: Date.now() }));
+    } catch (e) {}
+  }
+
   // * Track pageview
   function trackPageview() {
     var routeChangeTime = performance.now();
     var isSpaNav = !!currentEventId;
+
+    const path = window.location.pathname + window.location.search;
+
+    // * Skip if same path was just tracked (refresh dedup)
+    if (isDuplicatePageview(path)) {
+      return;
+    }
 
     if (currentEventId) {
         // * SPA nav: visibilitychange may not fire, so send previous page's metrics now
@@ -239,8 +270,6 @@
     lcpObserved = false;
     clsObserved = false;
     currentEventId = null;
-
-    const path = window.location.pathname + window.location.search;
     const referrer = document.referrer || '';
     const screen = {
       width: window.innerWidth || screen.width,
@@ -265,6 +294,7 @@
       keepalive: true,
     }).then(res => res.json())
     .then(data => {
+      recordPageview(path);
       if (data && data.id) {
         currentEventId = data.id;
         // * For SPA navigations the browser never emits a new largest-contentful-paint
