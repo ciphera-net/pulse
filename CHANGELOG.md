@@ -4,7 +4,32 @@ All notable changes to Pulse (frontend and product) are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and Pulse uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with a **0.x.y** version scheme while in initial development. The leading `0` indicates that the public API and behaviour may change until we release **1.0.0**.
 
-## [Unreleased]
+## [0.15.0-alpha] - 2026-03-13
+
+### Added
+
+- **User Journeys tab.** A new "Journeys" tab on your site dashboard visualizes how visitors navigate through your site. A Sankey flow diagram shows the most common paths users take — from landing page through to exit — so you can see where traffic flows and where it drops off. Filter by entry page, adjust the depth (2-10 steps), and click any page in the diagram to drill into paths through it. Below the diagram, a "Top Paths" table ranks the most common full navigation sequences with session counts and average duration.
+
+### Removed
+
+- **Realtime visitors detail page.** The page that showed individual active visitors and their page-by-page session journey has been removed. The live visitor count on your dashboard still works — it just no longer links to a separate page.
+
+### Added
+
+- **Rage click detection.** Pulse now detects when visitors rapidly click the same element 3 or more times — a strong signal of UI frustration. Rage clicks are tracked automatically (no setup required) and surfaced in the new Behavior tab with the element, page, click count, and number of affected sessions.
+- **Dead click detection.** Clicks on buttons, links, and other interactive elements that produce no visible result (no navigation, no DOM change, no network request) are now detected and reported. This helps you find broken buttons, disabled links, and unresponsive UI elements your visitors are struggling with.
+- **Behavior tab.** A new tab in your site dashboard — alongside Dashboard, Uptime, and Funnels — dedicated to user behavior signals. Houses rage clicks, dead clicks, a by-page frustration breakdown, and scroll depth (moved from the main dashboard for a cleaner layout).
+- **Frustration summary cards.** The Behavior tab opens with three at-a-glance cards: total rage clicks, total dead clicks, and total frustration signals with the most affected page — each with a percentage change compared to the previous period.
+- **Scheduled Reports.** You can now get your analytics delivered automatically — set up daily, weekly, or monthly reports sent straight to your email, Slack, Discord, or any webhook. Each report includes your key stats (visitors, pageviews, bounce rate), top pages, and traffic sources, all in a clean branded format. Set them up in your site settings under the new "Reports" tab, and hit "Test" to preview before going live. You can create up to 10 schedules per site.
+- **Time-of-day report scheduling.** Choose when your reports arrive — pick the hour, day of week (for weekly), or day of month (for monthly). Schedule cards show a human-readable description like "Every Monday at 9:00 AM (UTC)."
+
+### Changed
+
+- **Scroll depth moved to Behavior tab.** The scroll depth radar chart has been relocated from the main dashboard to the new Behavior tab, where it fits more naturally alongside other user behavior metrics.
+
+### Fixed
+
+- **Region names now display correctly.** Some regions were showing as cryptic codes like "14" (Poland), "KKC" (Thailand), or "IDF" (France) instead of their actual names. The Locations panel now shows proper region names like "Masovian", "Khon Kaen", and "Île-de-France."
 
 ## [0.14.0-alpha] - 2026-03-12
 

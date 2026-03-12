@@ -166,74 +166,31 @@ export function DashboardSkeleton() {
   )
 }
 
-// ─── Realtime page skeleton ──────────────────────────────────
+// ─── Journeys page skeleton ─────────────────────────────────
 
-export function RealtimeSkeleton() {
+export function JourneysSkeleton() {
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8 h-[calc(100vh-64px)] flex flex-col">
-      <div className="mb-6">
-        <SkeletonLine className="h-4 w-32 mb-2" />
-        <SkeletonLine className="h-8 w-64" />
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+      {/* Header */}
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <SkeletonLine className="h-8 w-32 mb-2" />
+          <SkeletonLine className="h-4 w-64" />
+        </div>
+        <SkeletonLine className="h-9 w-36 rounded-lg" />
       </div>
-      <div className="flex flex-col md:flex-row flex-1 gap-6 min-h-0">
-        {/* Visitors list */}
-        <div className="w-full md:w-1/3 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden flex flex-col bg-white dark:bg-neutral-900">
-          <div className="p-4 border-b border-neutral-200 dark:border-neutral-800">
-            <SkeletonLine className="h-6 w-32" />
-          </div>
-          <div className="p-2 space-y-1">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="p-4 space-y-2">
-                <div className="flex justify-between">
-                  <SkeletonLine className="h-4 w-32" />
-                  <SkeletonLine className="h-4 w-16" />
-                </div>
-                <SkeletonLine className="h-3 w-48" />
-                <div className="flex gap-2">
-                  <SkeletonLine className="h-3 w-16" />
-                  <SkeletonLine className="h-3 w-16" />
-                  <SkeletonLine className="h-3 w-16" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-        {/* Session details */}
-        <div className="flex-1 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden bg-white dark:bg-neutral-900">
-          <div className="p-4 border-b border-neutral-200 dark:border-neutral-800">
-            <SkeletonLine className="h-6 w-40" />
-          </div>
-          <div className="p-6 space-y-6">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex gap-4 pl-6">
-                <SkeletonCircle className="h-3 w-3 shrink-0 mt-1" />
-                <div className="space-y-1 flex-1">
-                  <SkeletonLine className="h-4 w-48" />
-                  <SkeletonLine className="h-3 w-32" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+      {/* Controls */}
+      <div className="flex items-center gap-4 mb-6">
+        <SkeletonLine className="h-9 w-48 rounded-lg" />
+        <SkeletonLine className="h-9 w-48 rounded-lg" />
       </div>
-    </div>
-  )
-}
-
-// ─── Session events skeleton (for loading events panel) ──────
-
-export function SessionEventsSkeleton() {
-  return (
-    <div className="relative pl-6 border-l-2 border-neutral-100 dark:border-neutral-800 space-y-8">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className="relative">
-          <span className={`absolute -left-[29px] top-1 h-3 w-3 rounded-full ${SK}`} />
-          <div className="space-y-1">
-            <SkeletonLine className="h-4 w-48" />
-            <SkeletonLine className="h-3 w-32" />
-          </div>
-        </div>
-      ))}
+      {/* Sankey area */}
+      <SkeletonCard className="h-[400px] mb-6" />
+      {/* Top paths table */}
+      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6">
+        <SkeletonLine className="h-6 w-24 mb-4" />
+        <TableSkeleton rows={5} cols={4} />
+      </div>
     </div>
   )
 }
