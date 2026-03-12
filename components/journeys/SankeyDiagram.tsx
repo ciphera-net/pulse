@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTheme } from '@ciphera-net/ui'
 import { TreeStructure } from '@phosphor-icons/react'
 import { sankey, sankeyJustify } from 'd3-sankey'
@@ -153,6 +153,7 @@ export default function SankeyDiagram({
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const [hovered, setHovered] = useState<{ type: 'link' | 'node'; id: string } | null>(null)
+  const svgRef = useRef<SVGSVGElement>(null)
 
   const data = useMemo(
     () => buildSankeyData(transitions, depth),
@@ -178,6 +179,24 @@ export default function SankeyDiagram({
     })
   }, [data])
 
+  // Single event handler on SVG — reads data-* attrs from e.target
+  const handleMouseOver = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
+    const target = e.target as SVGElement
+    const el = target.closest('[data-node-id], [data-link-id]') as SVGElement | null
+    if (!el) return
+    const nodeId = el.getAttribute('data-node-id')
+    const linkId = el.getAttribute('data-link-id')
+    if (nodeId) {
+      setHovered((prev) => (prev?.type === 'node' && prev.id === nodeId) ? prev : { type: 'node', id: nodeId })
+    } else if (linkId) {
+      setHovered((prev) => (prev?.type === 'link' && prev.id === linkId) ? prev : { type: 'link', id: linkId })
+    }
+  }, [])
+
+  const handleMouseLeave = useCallback(() => {
+    setHovered(null)
+  }, [])
+
   // ─── Empty state ────────────────────────────────────────────────
   if (!transitions.length || !layout) {
     return (
@@ -202,25 +221,29 @@ export default function SankeyDiagram({
 
   return (
     <svg
+      ref={svgRef}
       viewBox={`0 0 ${SVG_W} ${SVG_H}`}
       preserveAspectRatio="xMidYMid meet"
       className="w-full"
       role="img"
       aria-label="User journey Sankey diagram"
+      onMouseMove={handleMouseOver}
+      onMouseLeave={handleMouseLeave}
     >
       {/* Links */}
       <g>
         {layout.links.map((link, i) => {
           const src = link.source as LayoutNode
           const tgt = link.target as LayoutNode
-          const linkId = `${String(src.id)}->${String(tgt.id)}`
+          const srcId = String(src.id)
+          const tgtId = String(tgt.id)
+          const linkId = `${srcId}->${tgtId}`
 
           let isHighlighted = false
           if (hovered?.type === 'link') {
             isHighlighted = hovered.id === linkId
           } else if (hovered?.type === 'node') {
-            isHighlighted =
-              String(src.id) === hovered.id || String(tgt.id) === hovered.id
+            isHighlighted = srcId === hovered.id || tgtId === hovered.id
           }
 
           let opacity = isDark ? 0.45 : 0.5
@@ -235,8 +258,7 @@ export default function SankeyDiagram({
               fill={src.color}
               opacity={opacity}
               style={{ transition: 'opacity 0.15s ease' }}
-              onMouseEnter={() => setHovered({ type: 'link', id: linkId })}
-              onMouseLeave={() => setHovered(null)}
+              data-link-id={linkId}
             >
               <title>
                 {src.label} → {tgt.label}:{' '}
@@ -269,8 +291,7 @@ export default function SankeyDiagram({
               className={
                 onNodeClick && !isExit ? 'cursor-pointer' : 'cursor-default'
               }
-              onMouseEnter={() => setHovered({ type: 'node', id: nodeId })}
-              onMouseLeave={() => setHovered(null)}
+              data-node-id={nodeId}
               onClick={() => {
                 if (onNodeClick && !isExit) onNodeClick(node.label)
               }}
@@ -296,7 +317,6 @@ export default function SankeyDiagram({
           const label = truncateLabel(node.label, 28)
           const textW = estimateTextWidth(label)
           const padX = 6
-          const padY = 3
           const rectW = textW + padX * 2
           const rectH = 20
 
@@ -312,11 +332,7 @@ export default function SankeyDiagram({
           const isExit = nodeId.startsWith('exit')
 
           return (
-            <g
-              key={`label-${nodeId}`}
-              onMouseEnter={() => setHovered({ type: 'node', id: nodeId })}
-              onMouseLeave={() => setHovered(null)}
-            >
+            <g key={`label-${nodeId}`} data-node-id={nodeId}>
               <rect
                 x={bgX}
                 y={bgY}
