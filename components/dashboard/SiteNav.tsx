@@ -20,6 +20,7 @@ export default function SiteNav({ siteId }: SiteNavProps) {
     { label: 'Dashboard', href: `/sites/${siteId}` },
     { label: 'Uptime', href: `/sites/${siteId}/uptime` },
     { label: 'Funnels', href: `/sites/${siteId}/funnels` },
+    { label: 'Behavior', href: `/sites/${siteId}/behavior` },
     ...(canEdit ? [{ label: 'Settings', href: `/sites/${siteId}/settings` }] : []),
   ]
 
