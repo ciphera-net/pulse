@@ -217,13 +217,14 @@ export default function SankeyDiagram({
           const tgt = link.target as LayoutNode
           const linkId = `${src.id}->${tgt.id}`
           const isLinkHovered = hoveredLink === linkId
+          const srcId = String(src.id)
+          const tgtId = String(tgt.id)
           const isConnectedToNode =
             hoveredNode !== null &&
-            (src.id === hoveredNode || tgt.id === hoveredNode)
+            (srcId === hoveredNode || tgtId === hoveredNode)
           const isHighlighted = isLinkHovered || isConnectedToNode
 
-          const isExitLink = tgt.id!.toString().startsWith('exit-')
-          const linkColor = isExitLink ? EXIT_GREY : src.color
+          const linkColor = src.color
 
           let opacity = isDark ? 0.45 : 0.5
           if (isHighlighted) opacity = 0.75
@@ -251,13 +252,14 @@ export default function SankeyDiagram({
       {/* Nodes */}
       <g>
         {layout.nodes.map((node) => {
-          const isExit = node.id!.toString().startsWith('exit-')
+          const nodeId = String(node.id)
+          const isExit = nodeId.startsWith('exit-')
           const w = (node.x1 ?? 0) - (node.x0 ?? 0)
           const h = (node.y1 ?? 0) - (node.y0 ?? 0)
 
           return (
             <rect
-              key={node.id}
+              key={nodeId}
               x={node.x0}
               y={node.y0}
               width={w}
@@ -266,12 +268,10 @@ export default function SankeyDiagram({
               stroke={nodeStroke}
               strokeWidth={1}
               rx={2}
-              opacity={1}
-              style={{ transition: 'opacity 0.15s ease' }}
               className={
                 onNodeClick && !isExit ? 'cursor-pointer' : 'cursor-default'
               }
-              onMouseEnter={() => setHoveredNode(node.id!.toString())}
+              onMouseEnter={() => setHoveredNode(nodeId)}
               onMouseLeave={() => setHoveredNode(null)}
               onClick={() => {
                 if (onNodeClick && !isExit) onNodeClick(node.label)
@@ -310,8 +310,15 @@ export default function SankeyDiagram({
           const bgX = isRight ? textX - textW - padX : textX - padX
           const bgY = textY - rectH / 2
 
+          const nodeId = String(node.id)
+          const isExit = nodeId.startsWith('exit-')
+
           return (
-            <g key={`label-${node.id}`}>
+            <g
+              key={`label-${nodeId}`}
+              onMouseEnter={() => setHoveredNode(nodeId)}
+              onMouseLeave={() => setHoveredNode(null)}
+            >
               <rect
                 x={bgX}
                 y={bgY}
@@ -329,16 +336,10 @@ export default function SankeyDiagram({
                 fontSize={12}
                 fontFamily="system-ui, -apple-system, sans-serif"
                 className={
-                  onNodeClick && !node.id!.toString().startsWith('exit-')
-                    ? 'cursor-pointer'
-                    : 'cursor-default'
+                  onNodeClick && !isExit ? 'cursor-pointer' : 'cursor-default'
                 }
                 onClick={() => {
-                  if (
-                    onNodeClick &&
-                    !node.id!.toString().startsWith('exit-')
-                  )
-                    onNodeClick(node.label)
+                  if (onNodeClick && !isExit) onNodeClick(node.label)
                 }}
               >
                 {label}
