@@ -56,7 +56,7 @@ export default function JourneysPage() {
     { value: '', label: 'All entry points' },
     ...(entryPoints ?? []).map((ep) => ({
       value: ep.path,
-      label: `${ep.path} (${ep.sessions.toLocaleString()})`,
+      label: `${ep.path} (${ep.session_count.toLocaleString()})`,
     })),
   ]
 
