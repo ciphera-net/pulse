@@ -35,27 +35,27 @@ type LayoutLink = D3SankeyLink<NodeExtra, LinkExtra>
 
 // ─── Constants ──────────────────────────────────────────────────────
 
-// Orange palette — warm to cool as depth increases
+// Multi-hue palette — distinct colors per column for visual separation
 const COLUMN_COLORS = [
   '#FD5E0F', // brand orange (entry)
-  '#F97316', // orange-500
-  '#EA580C', // orange-600
-  '#C2410C', // orange-700
-  '#9A3412', // orange-800
-  '#7C2D12', // orange-900
-  '#6C2710', // deeper
-  '#5C2110', // deepest
-  '#4C1B10',
-  '#3C1510',
-  '#2C0F10',
+  '#3B82F6', // blue
+  '#10B981', // emerald
+  '#F59E0B', // amber
+  '#8B5CF6', // violet
+  '#EC4899', // pink
+  '#06B6D4', // cyan
+  '#EF4444', // red
+  '#84CC16', // lime
+  '#F97316', // orange again
+  '#6366F1', // indigo
 ]
 const EXIT_GREY = '#52525b'
 const SVG_W = 1100
-const SVG_H = 520
+const SVG_H = 540
 const MARGIN = { top: 30, right: 140, bottom: 30, left: 10 }
 
 function colorForColumn(col: number): string {
-  return COLUMN_COLORS[Math.min(col, COLUMN_COLORS.length - 1)]
+  return COLUMN_COLORS[col % COLUMN_COLORS.length]
 }
 
 // ─── Data transformation ────────────────────────────────────────────
@@ -164,8 +164,8 @@ export default function SankeyDiagram({
 
     const generator = sankey<NodeExtra, LinkExtra>()
       .nodeId((d) => d.id)
-      .nodeWidth(10)
-      .nodePadding(24)
+      .nodeWidth(18)
+      .nodePadding(32)
       .nodeAlign(sankeyJustify)
       .extent([
         [MARGIN.left, MARGIN.top],
@@ -220,9 +220,9 @@ export default function SankeyDiagram({
           const isExitLink = tgt.id!.toString().startsWith('exit-')
           const linkColor = isExitLink ? EXIT_GREY : src.color
 
-          let opacity = isDark ? 0.18 : 0.22
-          if (isHovered) opacity = 0.45
-          else if (someHovered) opacity = 0.04
+          let opacity = isDark ? 0.45 : 0.5
+          if (isHovered) opacity = 0.75
+          else if (someHovered) opacity = 0.08
 
           return (
             <path
