@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- **User Journeys tab.** A new "Journeys" tab on your site dashboard visualizes how visitors navigate through your site. A Sankey flow diagram shows the most common paths users take — from landing page through to exit — so you can see where traffic flows and where it drops off. Filter by entry page, adjust the depth (2-10 steps), and click any page in the diagram to drill into paths through it. Below the diagram, a "Top Paths" table ranks the most common full navigation sequences with session counts and average duration.
+
 ### Removed
 
 - **Realtime visitors detail page.** The page that showed individual active visitors and their page-by-page session journey has been removed. The live visitor count on your dashboard still works — it just no longer links to a separate page.
