@@ -8,11 +8,14 @@ import type { FrustrationElement } from '@/lib/api/stats'
 import { formatRelativeTime } from '@/lib/utils/formatDate'
 import { ListSkeleton } from '@/components/skeletons'
 
+const DISPLAY_LIMIT = 7
+
 interface FrustrationTableProps {
   title: string
   description: string
   items: FrustrationElement[]
   total: number
+  totalSignals: number
   showAvgClicks?: boolean
   loading: boolean
   fetchAll?: () => Promise<{ items: FrustrationElement[]; total: number }>
@@ -21,7 +24,7 @@ interface FrustrationTableProps {
 function SkeletonRows() {
   return (
     <div className="space-y-2">
-      {Array.from({ length: 5 }).map((_, i) => (
+      {Array.from({ length: DISPLAY_LIMIT }).map((_, i) => (
         <div key={i} className="animate-pulse flex items-center justify-between h-9 px-2">
           <div className="flex items-center gap-3 flex-1">
             <div className="h-4 w-32 bg-neutral-200 dark:bg-neutral-700 rounded" />
@@ -51,7 +54,7 @@ function SelectorCell({ selector }: { selector: string }) {
       className="flex items-center gap-1 min-w-0 group/copy cursor-pointer"
       title={selector}
     >
-      <span className="text-sm font-mono text-neutral-900 dark:text-white truncate max-w-[180px]">
+      <span className="text-sm font-mono text-neutral-900 dark:text-white truncate">
         {selector}
       </span>
       <span className="opacity-0 group-hover/copy:opacity-100 transition-opacity shrink-0">
@@ -65,41 +68,44 @@ function SelectorCell({ selector }: { selector: string }) {
   )
 }
 
-const GRID_WITH_AVG = 'grid grid-cols-[1fr_60px_50px_64px_64px_40px] items-center gap-2 h-9 px-2 -mx-2'
-const GRID_NO_AVG = 'grid grid-cols-[1fr_60px_64px_64px_40px] items-center gap-2 h-9 px-2 -mx-2'
-
 function Row({
   item,
   showAvgClicks,
+  totalSignals,
 }: {
   item: FrustrationElement
   showAvgClicks?: boolean
+  totalSignals: number
 }) {
+  const pct = totalSignals > 0 ? `${Math.round((item.count / totalSignals) * 100)}%` : ''
+
   return (
-    <div className={`${showAvgClicks ? GRID_WITH_AVG : GRID_NO_AVG} group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg transition-colors`}>
-      <div className="flex items-center gap-2 min-w-0">
-        <SelectorCell selector={item.selector} />
-        <span
-          className="text-xs text-neutral-400 dark:text-neutral-500 truncate"
-          title={item.page_path}
-        >
-          {item.page_path}
+    <div className="flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <SelectorCell selector={item.selector} />
+          <span
+            className="text-xs text-neutral-400 dark:text-neutral-500 truncate shrink-0"
+            title={item.page_path}
+          >
+            {item.page_path}
+          </span>
+        </div>
+      </div>
+      <div className="flex items-center gap-2 ml-4 shrink-0">
+        {/* Secondary info: visible on hover */}
+        <span className="text-xs text-neutral-400 dark:text-neutral-500 tabular-nums opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+          {showAvgClicks && item.avg_click_count != null ? `avg ${item.avg_click_count.toFixed(1)} · ` : ''}
+          {item.sessions} {item.sessions === 1 ? 'sess' : 'sess'} · {formatRelativeTime(item.last_seen)}
+        </span>
+        {/* Percentage badge: slides in on hover */}
+        <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 tabular-nums">
+          {pct}
+        </span>
+        <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 tabular-nums">
+          {formatNumber(item.count)}
         </span>
       </div>
-      {showAvgClicks && (
-        <span className="text-xs text-neutral-400 dark:text-neutral-500 tabular-nums text-right">
-          {item.avg_click_count != null ? item.avg_click_count.toFixed(1) : '–'}
-        </span>
-      )}
-      <span className="text-xs text-neutral-400 dark:text-neutral-500 tabular-nums text-right">
-        {item.sessions}
-      </span>
-      <span className="text-xs text-neutral-400 dark:text-neutral-500 tabular-nums text-right" title={item.last_seen}>
-        {formatRelativeTime(item.last_seen)}
-      </span>
-      <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 tabular-nums text-right">
-        {formatNumber(item.count)}
-      </span>
     </div>
   )
 }
@@ -109,6 +115,7 @@ export default function FrustrationTable({
   description,
   items,
   total,
+  totalSignals,
   showAvgClicks,
   loading,
   fetchAll,
@@ -118,6 +125,7 @@ export default function FrustrationTable({
   const [isLoadingFull, setIsLoadingFull] = useState(false)
   const hasData = items.length > 0
   const showViewAll = hasData && total > items.length
+  const emptySlots = Math.max(0, DISPLAY_LIMIT - items.length)
 
   useEffect(() => {
     if (isModalOpen && fetchAll) {
@@ -165,21 +173,14 @@ export default function FrustrationTable({
           {loading ? (
             <SkeletonRows />
           ) : hasData ? (
-            <div>
-              {/* Column headers */}
-              <div className={`${showAvgClicks ? GRID_WITH_AVG : GRID_NO_AVG} mb-2 text-xs font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wider !h-auto`}>
-                <span>Selector / Page</span>
-                {showAvgClicks && <span className="text-right">Avg</span>}
-                <span className="text-right">Sessions</span>
-                <span className="text-right">Last Seen</span>
-                <span className="text-right">Count</span>
-              </div>
-              <div className="space-y-0.5">
-                {items.map((item, i) => (
-                  <Row key={`${item.selector}-${item.page_path}-${i}`} item={item} showAvgClicks={showAvgClicks} />
-                ))}
-              </div>
-            </div>
+            <>
+              {items.map((item, i) => (
+                <Row key={`${item.selector}-${item.page_path}-${i}`} item={item} showAvgClicks={showAvgClicks} totalSignals={totalSignals} />
+              ))}
+              {Array.from({ length: emptySlots }).map((_, i) => (
+                <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
+              ))}
+            </>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-4">
               <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
@@ -210,7 +211,7 @@ export default function FrustrationTable({
           ) : fullData.length > 0 ? (
             <div className="space-y-0.5">
               {fullData.map((item, i) => (
-                <Row key={`${item.selector}-${item.page_path}-${i}`} item={item} showAvgClicks={showAvgClicks} />
+                <Row key={`${item.selector}-${item.page_path}-${i}`} item={item} showAvgClicks={showAvgClicks} totalSignals={totalSignals} />
               ))}
             </div>
           ) : (
