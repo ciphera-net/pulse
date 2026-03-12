@@ -69,7 +69,6 @@ function buildSankeyData(transitions: PathTransition[], depth: number) {
 
   for (const t of transitions) {
     if (t.step_index >= numCols || t.step_index + 1 >= numCols) continue
-    if (t.from_path === t.to_path) continue // skip same-page transitions (reloads)
 
     const fromId = `${t.step_index}:${t.from_path}`
     const toId = `${t.step_index + 1}:${t.to_path}`
