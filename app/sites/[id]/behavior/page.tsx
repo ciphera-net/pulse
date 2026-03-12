@@ -166,6 +166,7 @@ export default function BehaviorPage() {
           description="Elements users clicked repeatedly in frustration"
           items={rageClicks.items}
           total={rageClicks.total}
+          totalSignals={summary?.rage_clicks ?? 0}
           showAvgClicks
           loading={loading}
           fetchAll={fetchAllRage}
@@ -175,6 +176,7 @@ export default function BehaviorPage() {
           description="Elements users clicked that produced no response"
           items={deadClicks.items}
           total={deadClicks.total}
+          totalSignals={summary?.dead_clicks ?? 0}
           loading={loading}
           fetchAll={fetchAllDead}
         />
