@@ -35,11 +35,28 @@ type LayoutLink = D3SankeyLink<NodeExtra, LinkExtra>
 
 // ─── Constants ──────────────────────────────────────────────────────
 
-const BRAND_ORANGE = '#FD5E0F'
-const EXIT_GREY = '#595b63'
-const SVG_W = 1000
-const SVG_H = 500
-const MARGIN = { top: 10, right: 130, bottom: 10, left: 10 }
+// Orange palette — warm to cool as depth increases
+const COLUMN_COLORS = [
+  '#FD5E0F', // brand orange (entry)
+  '#F97316', // orange-500
+  '#EA580C', // orange-600
+  '#C2410C', // orange-700
+  '#9A3412', // orange-800
+  '#7C2D12', // orange-900
+  '#6C2710', // deeper
+  '#5C2110', // deepest
+  '#4C1B10',
+  '#3C1510',
+  '#2C0F10',
+]
+const EXIT_GREY = '#52525b'
+const SVG_W = 1100
+const SVG_H = 520
+const MARGIN = { top: 30, right: 140, bottom: 30, left: 10 }
+
+function colorForColumn(col: number): string {
+  return COLUMN_COLORS[Math.min(col, COLUMN_COLORS.length - 1)]
+}
 
 // ─── Data transformation ────────────────────────────────────────────
 
@@ -57,10 +74,10 @@ function buildSankeyData(transitions: PathTransition[], depth: number) {
     const toId = `${t.step_index + 1}:${t.to_path}`
 
     if (!nodeMap.has(fromId)) {
-      nodeMap.set(fromId, { id: fromId, label: t.from_path, color: BRAND_ORANGE })
+      nodeMap.set(fromId, { id: fromId, label: t.from_path, color: colorForColumn(t.step_index) })
     }
     if (!nodeMap.has(toId)) {
-      nodeMap.set(toId, { id: toId, label: t.to_path, color: BRAND_ORANGE })
+      nodeMap.set(toId, { id: toId, label: t.to_path, color: colorForColumn(t.step_index + 1) })
     }
 
     links.push({ source: fromId, target: toId, value: t.session_count })
@@ -120,9 +137,9 @@ function truncateLabel(s: string, max: number) {
   return s.length > max ? s.slice(0, max - 1) + '\u2026' : s
 }
 
-// Approximate text width at 11px system font (~6.5px per char)
+// Approximate text width at 12px system font (~7px per char)
 function estimateTextWidth(s: string) {
-  return s.length * 6.5
+  return s.length * 7
 }
 
 // ─── Component ──────────────────────────────────────────────────────
@@ -147,8 +164,8 @@ export default function SankeyDiagram({
 
     const generator = sankey<NodeExtra, LinkExtra>()
       .nodeId((d) => d.id)
-      .nodeWidth(9)
-      .nodePadding(20)
+      .nodeWidth(10)
+      .nodePadding(24)
       .nodeAlign(sankeyJustify)
       .extent([
         [MARGIN.left, MARGIN.top],
@@ -179,8 +196,9 @@ export default function SankeyDiagram({
   }
 
   // ─── Colors ─────────────────────────────────────────────────────
-  const labelColor = isDark ? '#d4d4d4' : '#525252'
-  const labelBg = isDark ? 'rgba(23, 23, 23, 0.85)' : 'rgba(255, 255, 255, 0.85)'
+  const labelColor = isDark ? '#e5e5e5' : '#404040'
+  const labelBg = isDark ? 'rgba(23, 23, 23, 0.9)' : 'rgba(255, 255, 255, 0.9)'
+  const nodeStroke = isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)'
 
   return (
     <svg
@@ -199,15 +217,18 @@ export default function SankeyDiagram({
           const isHovered = hovered === linkId
           const someHovered = hovered !== null
 
-          let opacity = 0.6
-          if (isHovered) opacity = 0.8
-          else if (someHovered) opacity = 0.15
+          const isExitLink = tgt.id!.toString().startsWith('exit-')
+          const linkColor = isExitLink ? EXIT_GREY : src.color
+
+          let opacity = isDark ? 0.18 : 0.22
+          if (isHovered) opacity = 0.45
+          else if (someHovered) opacity = 0.04
 
           return (
             <path
               key={i}
               d={ribbonPath(link)}
-              fill={src.color}
+              fill={linkColor}
               opacity={opacity}
               style={{ transition: 'opacity 0.15s ease' }}
               onMouseEnter={() => setHovered(linkId)}
@@ -237,6 +258,8 @@ export default function SankeyDiagram({
               width={w}
               height={h}
               fill={node.color}
+              stroke={nodeStroke}
+              strokeWidth={1}
               rx={2}
               className={
                 onNodeClick && !isExit ? 'cursor-pointer' : 'cursor-default'
@@ -265,10 +288,10 @@ export default function SankeyDiagram({
 
           const label = truncateLabel(node.label, 28)
           const textW = estimateTextWidth(label)
-          const padX = 4
-          const padY = 2
+          const padX = 6
+          const padY = 3
           const rectW = textW + padX * 2
-          const rectH = 16
+          const rectH = 20
 
           // Labels go right of node; last-column labels go left
           const isRight = x1 > SVG_W - MARGIN.right - 60
@@ -294,7 +317,7 @@ export default function SankeyDiagram({
                 dy="0.35em"
                 textAnchor={anchor}
                 fill={labelColor}
-                fontSize={11}
+                fontSize={12}
                 fontFamily="system-ui, -apple-system, sans-serif"
                 className={
                   onNodeClick && !node.id!.toString().startsWith('exit-')
