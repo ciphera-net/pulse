@@ -7,9 +7,10 @@ import Image from 'next/image'
 import { formatNumber } from '@ciphera-net/ui'
 import { Modal, ArrowRightIcon } from '@ciphera-net/ui'
 import { ListSkeleton } from '@/components/skeletons'
+import VirtualList from './VirtualList'
 import { getCampaigns, CampaignStat } from '@/lib/api/stats'
 import { getReferrerFavicon, getReferrerIcon, getReferrerDisplayName } from '@/lib/utils/icons'
-import { FaBullhorn } from 'react-icons/fa'
+import { Megaphone, FrameCornersIcon } from '@phosphor-icons/react'
 import UtmBuilder from '@/components/tools/UtmBuilder'
 import { type DimensionFilter } from '@/lib/filters'
 
@@ -26,6 +27,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
   const [data, setData] = useState<CampaignStat[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [modalSearch, setModalSearch] = useState('')
   const [isBuilderOpen, setIsBuilderOpen] = useState(false)
   const [fullData, setFullData] = useState<CampaignStat[]>([])
   const [isLoadingFull, setIsLoadingFull] = useState(false)
@@ -124,9 +126,20 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
     <>
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
-            Campaigns
-          </h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
+              Campaigns
+            </h3>
+            {showViewAll && (
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all cursor-pointer rounded-lg"
+                aria-label="View all campaigns"
+              >
+                <FrameCornersIcon className="w-4 h-4" weight="bold" />
+              </button>
+            )}
+          </div>
           <button
             onClick={() => setIsBuilderOpen(true)}
             className="text-xs font-medium text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange transition-colors cursor-pointer"
@@ -171,26 +184,14 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
                   </div>
                 )
               })}
-              {showViewAll ? (
-                <button
-                  onClick={() => setIsModalOpen(true)}
-                  className="flex items-center justify-center gap-1.5 h-9 w-full text-xs font-medium text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange transition-colors cursor-pointer rounded-lg px-2 -mx-2"
-                >
-                  View all
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                  </svg>
-                </button>
-              ) : (
-                Array.from({ length: emptySlots }).map((_, i) => (
-                  <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
-                ))
-              )}
+              {Array.from({ length: emptySlots }).map((_, i) => (
+                <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
+              ))}
             </>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
               <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
-                <FaBullhorn className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
+                <Megaphone className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
               </div>
               <h4 className="font-semibold text-neutral-900 dark:text-white">
                 Track your marketing campaigns
@@ -200,7 +201,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
               </p>
               <Link
                 href="/installation"
-                className="inline-flex items-center gap-2 text-sm font-medium text-brand-orange hover:text-brand-orange/90 hover:underline focus:outline-none focus:ring-2 focus:ring-brand-orange/20 rounded"
+                className="inline-flex items-center gap-2 text-sm font-medium text-brand-orange hover:text-brand-orange/90 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/20 rounded"
               >
                 Learn more
                 <ArrowRightIcon className="w-4 h-4" />
@@ -212,56 +213,80 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
 
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="All Campaigns"
+        onClose={() => { setIsModalOpen(false); setModalSearch('') }}
+        title="Campaigns"
+        className="max-w-2xl"
       >
-        <div className="space-y-1 max-h-[60vh] overflow-y-auto pr-2">
+        <div>
+          <input
+            type="text"
+            value={modalSearch}
+            onChange={(e) => setModalSearch(e.target.value)}
+            placeholder="Search campaigns..."
+            className="w-full px-3 py-2 mb-3 text-sm bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
+          />
+        </div>
+        <div className="max-h-[80vh]">
           {isLoadingFull ? (
             <div className="py-4">
               <ListSkeleton rows={10} />
             </div>
-          ) : (
-            <>
-              <div className="flex items-center justify-end mb-2">
-                <button
-                  onClick={handleExportCampaigns}
-                  className="text-xs font-medium text-neutral-400 hover:text-brand-orange transition-colors cursor-pointer"
-                >
-                  Export CSV
-                </button>
-              </div>
-              {sortedFullData.map((item) => {
-                return (
-                  <div
-                    key={`${item.source}|${item.medium}|${item.campaign}`}
-                    className="flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors"
+          ) : (() => {
+            const filteredCampaigns = !modalSearch ? sortedFullData : sortedFullData.filter(item => {
+              const search = modalSearch.toLowerCase()
+              return item.source.toLowerCase().includes(search) || (item.medium || '').toLowerCase().includes(search) || (item.campaign || '').toLowerCase().includes(search)
+            })
+            const modalTotal = filteredCampaigns.reduce((sum, item) => sum + item.visitors, 0)
+            return (
+              <>
+                <div className="flex items-center justify-end mb-2">
+                  <button
+                    onClick={handleExportCampaigns}
+                    className="text-xs font-medium text-neutral-400 hover:text-brand-orange transition-colors cursor-pointer"
                   >
-                    <div className="flex-1 flex items-center gap-3 min-w-0">
-                      {renderSourceIcon(item.source)}
-                      <div className="min-w-0">
-                        <div className="text-neutral-900 dark:text-white font-medium truncate text-sm" title={item.source}>
-                          {getReferrerDisplayName(item.source)}
-                        </div>
-                        <div className="flex items-center gap-1.5 text-[11px] text-neutral-400 dark:text-neutral-500">
-                          <span>{item.medium || '—'}</span>
-                          <span>·</span>
-                          <span className="truncate">{item.campaign || '—'}</span>
+                    Export CSV
+                  </button>
+                </div>
+                <VirtualList
+                  items={filteredCampaigns}
+                  estimateSize={36}
+                  className="max-h-[80vh] overflow-y-auto pr-2"
+                  renderItem={(item) => (
+                    <div
+                      key={`${item.source}|${item.medium}|${item.campaign}`}
+                      onClick={() => { if (onFilter) { onFilter({ dimension: 'utm_source', operator: 'is', values: [item.source] }); setIsModalOpen(false) } }}
+                      className={`flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 transition-colors${onFilter ? ' cursor-pointer' : ''}`}
+                    >
+                      <div className="flex-1 flex items-center gap-3 min-w-0">
+                        {renderSourceIcon(item.source)}
+                        <div className="min-w-0">
+                          <div className="text-neutral-900 dark:text-white font-medium truncate text-sm" title={item.source}>
+                            {getReferrerDisplayName(item.source)}
+                          </div>
+                          <div className="flex items-center gap-1.5 text-[11px] text-neutral-400 dark:text-neutral-500">
+                            <span>{item.medium || '—'}</span>
+                            <span>·</span>
+                            <span className="truncate">{item.campaign || '—'}</span>
+                          </div>
                         </div>
                       </div>
+                      <div className="flex items-center gap-4 ml-4 text-sm">
+                        <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+                          {modalTotal > 0 ? `${Math.round((item.visitors / modalTotal) * 100)}%` : ''}
+                        </span>
+                        <span className="font-semibold text-neutral-900 dark:text-white">
+                          {formatNumber(item.visitors)}
+                        </span>
+                        <span className="text-neutral-400 dark:text-neutral-500 w-16 text-right">
+                          {formatNumber(item.pageviews)} pv
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-4 ml-4 text-sm">
-                      <span className="font-semibold text-neutral-900 dark:text-white">
-                        {formatNumber(item.visitors)}
-                      </span>
-                      <span className="text-neutral-400 dark:text-neutral-500 w-16 text-right">
-                        {formatNumber(item.pageviews)} pv
-                      </span>
-                    </div>
-                  </div>
-                )
-              })}
-            </>
-          )}
+                  )}
+                />
+              </>
+            )
+          })()}
         </div>
       </Modal>
 

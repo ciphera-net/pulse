@@ -1,39 +1,14 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ApiError } from '@/lib/api/client'
 import { getFunnel, getFunnelStats, deleteFunnel, type Funnel, type FunnelStats } from '@/lib/api/funnels'
-import { toast, Select, DatePicker, ChevronLeftIcon, ArrowRightIcon, TrashIcon, useTheme, Button } from '@ciphera-net/ui'
+import { toast, Select, DatePicker, ChevronLeftIcon, ArrowRightIcon, TrashIcon, Button } from '@ciphera-net/ui'
 import { FunnelDetailSkeleton, useMinimumLoading } from '@/components/skeletons'
 import Link from 'next/link'
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Cell
-} from 'recharts'
+import { FunnelChart } from '@/components/ui/funnel-chart'
 import { getDateRange } from '@ciphera-net/ui'
-
-const CHART_COLORS_LIGHT = {
-  border: 'var(--color-neutral-200)',
-  axis: 'var(--color-neutral-400)',
-  tooltipBg: '#ffffff',
-  tooltipBorder: 'var(--color-neutral-200)',
-}
-
-const CHART_COLORS_DARK = {
-  border: 'var(--color-neutral-700)',
-  axis: 'var(--color-neutral-500)',
-  tooltipBg: 'var(--color-neutral-800)',
-  tooltipBorder: 'var(--color-neutral-700)',
-}
-
-const BRAND_ORANGE = 'var(--color-brand-orange)'
 
 export default function FunnelReportPage() {
   const params = useParams()
@@ -74,12 +49,6 @@ export default function FunnelReportPage() {
     loadData()
   }, [loadData])
 
-  const { resolvedTheme } = useTheme()
-  const chartColors = useMemo(
-    () => (resolvedTheme === 'dark' ? CHART_COLORS_DARK : CHART_COLORS_LIGHT),
-    [resolvedTheme]
-  )
-
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this funnel?')) return
 
@@ -100,7 +69,7 @@ export default function FunnelReportPage() {
 
   if (loadError === 'not_found' || (!funnel && !stats && !loadError)) {
     return (
-      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
+      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
         <p className="text-neutral-600 dark:text-neutral-400">Funnel not found</p>
       </div>
     )
@@ -108,7 +77,7 @@ export default function FunnelReportPage() {
 
   if (loadError === 'forbidden') {
     return (
-      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
+      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
         <p className="text-neutral-600 dark:text-neutral-400">Access denied</p>
         <Link href={`/sites/${siteId}/funnels`}>
           <Button variant="primary" className="mt-4">
@@ -121,7 +90,7 @@ export default function FunnelReportPage() {
 
   if (loadError === 'error') {
     return (
-      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
+      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
         <p className="text-neutral-600 dark:text-neutral-400 mb-4">Unable to load funnel</p>
         <Button type="button" onClick={() => loadData()} variant="primary">
           Try again
@@ -132,21 +101,19 @@ export default function FunnelReportPage() {
 
   if (!funnel || !stats) {
     return (
-      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
+      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
         <p className="text-neutral-600 dark:text-neutral-400">Funnel not found</p>
       </div>
     )
   }
 
   const chartData = stats.steps.map(s => ({
-    name: s.step.name,
-    visitors: s.visitors,
-    dropoff: s.dropoff,
-    conversion: s.conversion
+    label: s.step.name,
+    value: s.visitors,
   }))
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
       <div className="mb-8">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
@@ -204,64 +171,13 @@ export default function FunnelReportPage() {
           <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-6">
             Funnel Visualization
           </h3>
-          <div className="h-[400px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartColors.border} />
-                <XAxis 
-                  dataKey="name" 
-                  stroke={chartColors.axis} 
-                  fontSize={12} 
-                  tickLine={false} 
-                  axisLine={false} 
-                />
-                <YAxis 
-                  stroke={chartColors.axis} 
-                  fontSize={12} 
-                  tickLine={false} 
-                  axisLine={false} 
-                />
-                <Tooltip 
-                  cursor={{ fill: 'transparent' }}
-                  content={({ active, payload, label }) => {
-                    if (active && payload && payload.length) {
-                      const data = payload[0].payload;
-                      return (
-                        <div
-                          className="p-3 rounded-xl shadow-lg border transition-shadow duration-300"
-                          style={{
-                            backgroundColor: chartColors.tooltipBg,
-                            borderColor: chartColors.tooltipBorder,
-                          }}
-                        >
-                          <p className="font-medium text-neutral-900 dark:text-white mb-1">{label}</p>
-                          <p className="text-brand-orange font-bold text-lg">
-                            {data.visitors.toLocaleString()} visitors
-                          </p>
-                          {data.dropoff > 0 && (
-                            <p className="text-red-500 text-sm">
-                              {Math.round(data.dropoff)}% drop-off
-                            </p>
-                          )}
-                          {data.conversion > 0 && (
-                            <p className="text-green-500 text-sm">
-                              {Math.round(data.conversion)}% conversion (overall)
-                            </p>
-                          )}
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Bar dataKey="visitors" radius={[4, 4, 0, 0]} barSize={60}>
-                  {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={BRAND_ORANGE} fillOpacity={Math.max(0.1, 1 - index * 0.15)} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <FunnelChart
+            data={chartData}
+            orientation="vertical"
+            color="var(--chart-1)"
+            layers={3}
+            className="mx-auto max-w-md"
+          />
         </div>
 
         {/* Detailed Stats Table */}

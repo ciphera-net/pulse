@@ -245,8 +245,8 @@ export interface DashboardData {
   goal_counts?: GoalCountStat[]
 }
 
-export function getDashboard(siteId: string, startDate?: string, endDate?: string, limit = 10, interval?: string): Promise<DashboardData> {
-  return apiRequest<DashboardData>(`/sites/${siteId}/dashboard${buildQuery({ startDate, endDate, limit, interval })}`)
+export function getDashboard(siteId: string, startDate?: string, endDate?: string, limit = 10, interval?: string, filters?: string): Promise<DashboardData> {
+  return apiRequest<DashboardData>(`/sites/${siteId}/dashboard${buildQuery({ startDate, endDate, limit, interval, filters })}`)
 }
 
 export function getPublicDashboard(

@@ -16,12 +16,15 @@ import {
   getStats,
   getDailyStats,
 } from '@/lib/api/stats'
+import { listAnnotations } from '@/lib/api/annotations'
+import type { Annotation } from '@/lib/api/annotations'
 import { getSite } from '@/lib/api/sites'
 import type { Site } from '@/lib/api/sites'
 import type {
   Stats,
   DailyStat,
   CampaignStat,
+  DashboardData,
   DashboardOverviewData,
   DashboardPagesData,
   DashboardLocationsData,
@@ -34,7 +37,7 @@ import type {
 // * SWR fetcher functions
 const fetchers = {
   site: (siteId: string) => getSite(siteId),
-  dashboard: (siteId: string, start: string, end: string) => getDashboard(siteId, start, end),
+  dashboard: (siteId: string, start: string, end: string, interval?: string, filters?: string) => getDashboard(siteId, start, end, 10, interval, filters),
   dashboardOverview: (siteId: string, start: string, end: string, interval?: string, filters?: string) => getDashboardOverview(siteId, start, end, interval, filters),
   dashboardPages: (siteId: string, start: string, end: string, filters?: string) => getDashboardPages(siteId, start, end, undefined, filters),
   dashboardLocations: (siteId: string, start: string, end: string, filters?: string) => getDashboardLocations(siteId, start, end, undefined, undefined, filters),
@@ -48,6 +51,7 @@ const fetchers = {
   realtime: (siteId: string) => getRealtime(siteId),
   campaigns: (siteId: string, start: string, end: string, limit: number) =>
     getCampaigns(siteId, start, end, limit),
+  annotations: (siteId: string, start: string, end: string) => listAnnotations(siteId, start, end),
 }
 
 // * Standard SWR config for dashboard data
@@ -78,14 +82,15 @@ export function useSite(siteId: string) {
   )
 }
 
-// * Hook for dashboard summary data (refreshed less frequently)
-export function useDashboard(siteId: string, start: string, end: string) {
-  return useSWR(
-    siteId && start && end ? ['dashboard', siteId, start, end] : null,
-    () => fetchers.dashboard(siteId, start, end),
+// * Hook for full dashboard data (single request replaces 7 focused hooks)
+// * The backend runs all queries in parallel and caches the result in Redis (30s TTL)
+export function useDashboard(siteId: string, start: string, end: string, interval?: string, filters?: string) {
+  return useSWR<DashboardData>(
+    siteId && start && end ? ['dashboard', siteId, start, end, interval, filters] : null,
+    () => fetchers.dashboard(siteId, start, end, interval, filters),
     {
       ...dashboardSWRConfig,
-      // * Refresh every 60 seconds for dashboard summary
+      // * Refresh every 60 seconds for dashboard data
       refreshInterval: 60 * 1000,
       // * Deduping interval to prevent duplicate requests
       dedupingInterval: 10 * 1000,
@@ -239,6 +244,19 @@ export function useCampaigns(siteId: string, start: string, end: string, limit =
   return useSWR<CampaignStat[]>(
     siteId && start && end ? ['campaigns', siteId, start, end, limit] : null,
     () => fetchers.campaigns(siteId, start, end, limit),
+    {
+      ...dashboardSWRConfig,
+      refreshInterval: 60 * 1000,
+      dedupingInterval: 10 * 1000,
+    }
+  )
+}
+
+// * Hook for annotations data
+export function useAnnotations(siteId: string, startDate: string, endDate: string) {
+  return useSWR<Annotation[]>(
+    siteId && startDate && endDate ? ['annotations', siteId, startDate, endDate] : null,
+    () => fetchers.annotations(siteId, startDate, endDate),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,

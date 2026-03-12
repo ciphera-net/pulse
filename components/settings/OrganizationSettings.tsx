@@ -515,7 +515,7 @@ export default function OrganizationSettings() {
             onClick={() => handleTabChange('general')}
             role="tab"
             aria-selected={activeTab === 'general'}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2 ${
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 ${
               activeTab === 'general'
                 ? 'bg-brand-orange/10 text-brand-orange'
                 : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
@@ -528,7 +528,7 @@ export default function OrganizationSettings() {
             onClick={() => handleTabChange('members')}
             role="tab"
             aria-selected={activeTab === 'members'}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2 ${
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 ${
               activeTab === 'members'
                 ? 'bg-brand-orange/10 text-brand-orange'
                 : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
@@ -541,7 +541,7 @@ export default function OrganizationSettings() {
             onClick={() => handleTabChange('billing')}
             role="tab"
             aria-selected={activeTab === 'billing'}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2 ${
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 ${
               activeTab === 'billing'
                 ? 'bg-brand-orange/10 text-brand-orange'
                 : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
@@ -555,7 +555,7 @@ export default function OrganizationSettings() {
               onClick={() => handleTabChange('notifications')}
               role="tab"
               aria-selected={activeTab === 'notifications'}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2 ${
+              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 ${
                 activeTab === 'notifications'
                   ? 'bg-brand-orange/10 text-brand-orange'
                   : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
@@ -569,7 +569,7 @@ export default function OrganizationSettings() {
             onClick={() => handleTabChange('audit')}
             role="tab"
             aria-selected={activeTab === 'audit'}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2 ${
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 ${
               activeTab === 'audit'
                 ? 'bg-brand-orange/10 text-brand-orange'
                 : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
@@ -733,6 +733,7 @@ export default function OrganizationSettings() {
                                 setCaptchaToken(token || '')
                             }}
                             apiUrl={process.env.NEXT_PUBLIC_CAPTCHA_API_URL}
+                            action="org-settings"
                         />
                     </div>
                   </div>
@@ -1026,7 +1027,7 @@ export default function OrganizationSettings() {
                           type="button"
                           onClick={handleManageSubscription}
                           disabled={isRedirectingToPortal}
-                          className="inline-flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:rounded"
+                          className="inline-flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:rounded"
                         >
                           <ExternalLinkIcon className="w-4 h-4" />
                           Payment method & invoices
@@ -1036,7 +1037,7 @@ export default function OrganizationSettings() {
                         <button
                           type="button"
                           onClick={() => setShowCancelPrompt(true)}
-                          className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 dark:border-neutral-700 px-3.5 py-1.5 text-sm text-neutral-600 dark:text-neutral-400 hover:border-red-300 hover:text-red-600 dark:hover:border-red-800 dark:hover:text-red-400 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                          className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 dark:border-neutral-700 px-3.5 py-1.5 text-sm text-neutral-600 dark:text-neutral-400 hover:border-red-300 hover:text-red-600 dark:hover:border-red-800 dark:hover:text-red-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
                         >
                           Cancel subscription
                         </button>
@@ -1077,14 +1078,14 @@ export default function OrganizationSettings() {
                                   </span>
                                   {invoice.invoice_pdf && (
                                     <a href={invoice.invoice_pdf} target="_blank" rel="noopener noreferrer"
-                                       className="inline-flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange" title="Download PDF">
+                                       className="inline-flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange" title="Download PDF">
                                       <DownloadIcon className="w-3.5 h-3.5" />
                                       Download PDF
                                     </a>
                                   )}
                                   {invoice.hosted_invoice_url && (
                                     <a href={invoice.hosted_invoice_url} target="_blank" rel="noopener noreferrer"
-                                       className={`inline-flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange ${
+                                       className={`inline-flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ${
                                          invoice.status === 'open'
                                            ? 'bg-brand-orange text-white hover:bg-brand-orange-hover'
                                            : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800'
@@ -1153,7 +1154,7 @@ export default function OrganizationSettings() {
                                   .finally(() => setIsSavingNotificationSettings(false))
                               }}
                               disabled={isSavingNotificationSettings}
-                              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
                                 notificationSettings[cat.id] !== false ? 'bg-brand-orange' : 'bg-neutral-200 dark:bg-neutral-700'
                               }`}
                             >
@@ -1461,7 +1462,7 @@ export default function OrganizationSettings() {
                 <button
                   type="button"
                   onClick={() => setShowChangePlanModal(false)}
-                  className="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-orange rounded-lg p-1"
+                  className="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded-lg p-1"
                   disabled={isChangingPlan}
                   aria-label="Close dialog"
                 >
@@ -1487,7 +1488,7 @@ export default function OrganizationSettings() {
                           key={plan.id}
                           type="button"
                           onClick={() => setChangePlanId(plan.id)}
-                          className={`relative p-3 rounded-xl border text-left transition-all focus:outline-none focus:ring-2 focus:ring-brand-orange ${
+                          className={`relative p-3 rounded-xl border text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ${
                             isSelected
                               ? 'border-brand-orange bg-brand-orange/5 dark:bg-brand-orange/10'
                               : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
@@ -1527,14 +1528,14 @@ export default function OrganizationSettings() {
                     <button
                       type="button"
                       onClick={() => setChangePlanYearly(false)}
-                      className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange ${!changePlanYearly ? 'bg-brand-orange text-white' : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'}`}
+                      className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ${!changePlanYearly ? 'bg-brand-orange text-white' : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'}`}
                     >
                       Monthly
                     </button>
                     <button
                       type="button"
                       onClick={() => setChangePlanYearly(true)}
-                      className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange ${changePlanYearly ? 'bg-brand-orange text-white' : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'}`}
+                      className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ${changePlanYearly ? 'bg-brand-orange text-white' : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'}`}
                     >
                       Yearly
                     </button>

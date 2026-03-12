@@ -1,12 +1,15 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
 import { logger } from '@/lib/utils/logger'
 import { formatNumber } from '@ciphera-net/ui'
 import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
 import { TopPage, getTopPages, getEntryPages, getExitPages } from '@/lib/api/stats'
+import { FrameCornersIcon } from '@phosphor-icons/react'
 import { Modal, ArrowUpRightIcon, LayoutDashboardIcon } from '@ciphera-net/ui'
 import { ListSkeleton } from '@/components/skeletons'
+import VirtualList from './VirtualList'
 import { type DimensionFilter } from '@/lib/filters'
 
 interface ContentStatsProps {
@@ -28,6 +31,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
   const [activeTab, setActiveTab] = useState<Tab>('top_pages')
   const handleTabKeyDown = useTabListKeyboard()
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [modalSearch, setModalSearch] = useState('')
   const [fullData, setFullData] = useState<TopPage[]>([])
   const [isLoadingFull, setIsLoadingFull] = useState(false)
 
@@ -96,9 +100,20 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
     <>
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
-            Pages
-          </h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
+              Pages
+            </h3>
+            {showViewAll && (
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all cursor-pointer rounded-lg"
+                aria-label="View all pages"
+              >
+                <FrameCornersIcon className="w-4 h-4" weight="bold" />
+              </button>
+            )}
+          </div>
           <div className="flex gap-1" role="tablist" aria-label="Pages view tabs" onKeyDown={handleTabKeyDown}>
             {(['top_pages', 'entry_pages', 'exit_pages'] as Tab[]).map((tab) => (
               <button
@@ -106,13 +121,20 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
                 onClick={() => setActiveTab(tab)}
                 role="tab"
                 aria-selected={activeTab === tab}
-                className={`px-2.5 py-1 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange rounded cursor-pointer border-b-2 ${
+                className={`relative px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded cursor-pointer ${
                   activeTab === tab
-                    ? 'border-brand-orange text-neutral-900 dark:text-white'
-                    : 'border-transparent text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
+                    ? 'text-neutral-900 dark:text-white'
+                    : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
                 }`}
               >
                 {getTabLabel(tab)}
+                {activeTab === tab && (
+                  <motion.div
+                    layoutId="contentStatsTab"
+                    className="absolute inset-x-0 -bottom-px h-0.5 bg-brand-orange"
+                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                  />
+                )}
               </button>
             ))}
           </div>
@@ -153,21 +175,9 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
                   </div>
                 </div>
               ))}
-              {showViewAll ? (
-                <button
-                  onClick={() => setIsModalOpen(true)}
-                  className="flex items-center justify-center gap-1.5 h-9 w-full text-xs font-medium text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange transition-colors cursor-pointer rounded-lg px-2 -mx-2"
-                >
-                  View all
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                  </svg>
-                </button>
-              ) : (
-                Array.from({ length: emptySlots }).map((_, i) => (
-                  <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
-                ))
-              )}
+              {Array.from({ length: emptySlots }).map((_, i) => (
+                <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
+              ))}
             </>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
@@ -187,34 +197,57 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
 
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title={`Pages - ${getTabLabel(activeTab)}`}
+        onClose={() => { setIsModalOpen(false); setModalSearch('') }}
+        title={getTabLabel(activeTab)}
+        className="max-w-2xl"
       >
-        <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+        <div>
+          <input
+            type="text"
+            value={modalSearch}
+            onChange={(e) => setModalSearch(e.target.value)}
+            placeholder="Search pages..."
+            className="w-full px-3 py-2 mb-3 text-sm bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
+          />
+        </div>
+        <div className="max-h-[80vh]">
           {isLoadingFull ? (
             <div className="py-4">
               <ListSkeleton rows={10} />
             </div>
-          ) : (
-            (fullData.length > 0 ? fullData : data).map((page) => (
-              <div key={page.path} className="flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
-                <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center">
-                  <a
-                    href={`https://${domain.replace(/^https?:\/\//, '')}${page.path}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:underline flex items-center"
-                  >
-                    {page.path}
-                    <ArrowUpRightIcon className="w-3 h-3 ml-2 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </a>
-                </div>
-                <div className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
-                  {formatNumber(page.pageviews)}
-                </div>
-              </div>
-            ))
-          )}
+          ) : (() => {
+            const modalData = (fullData.length > 0 ? fullData : data).filter(p => !modalSearch || p.path.toLowerCase().includes(modalSearch.toLowerCase()))
+            const modalTotal = modalData.reduce((sum, p) => sum + p.pageviews, 0)
+            return (
+              <VirtualList
+                items={modalData}
+                estimateSize={36}
+                className="max-h-[80vh] overflow-y-auto pr-2"
+                renderItem={(page) => {
+                  const canFilter = onFilter && page.path
+                  return (
+                    <div
+                      key={page.path}
+                      onClick={() => { if (canFilter) { onFilter({ dimension: 'page', operator: 'is', values: [page.path] }); setIsModalOpen(false) } }}
+                      className={`flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 transition-colors${canFilter ? ' cursor-pointer' : ''}`}
+                    >
+                      <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center">
+                        <span className="truncate">{page.path}</span>
+                      </div>
+                      <div className="flex items-center gap-2 ml-4">
+                        <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+                          {modalTotal > 0 ? `${Math.round((page.pageviews / modalTotal) * 100)}%` : ''}
+                        </span>
+                        <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
+                          {formatNumber(page.pageviews)}
+                        </span>
+                      </div>
+                    </div>
+                  )
+                }}
+              />
+            )
+          })()}
         </div>
       </Modal>
     </>

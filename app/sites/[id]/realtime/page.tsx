@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { getSite, type Site } from '@/lib/api/sites'
-import { getRealtimeVisitors, getSessionDetails, type Visitor, type SessionEvent } from '@/lib/api/realtime'
+import { getSessionDetails, type Visitor, type SessionEvent } from '@/lib/api/realtime'
+import { useRealtimeSSE } from '@/lib/hooks/useRealtimeSSE'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { UserIcon } from '@ciphera-net/ui'
@@ -27,28 +28,20 @@ export default function RealtimePage() {
   const siteId = params.id as string
 
   const [site, setSite] = useState<Site | null>(null)
-  const [visitors, setVisitors] = useState<Visitor[]>([])
+  const { visitors } = useRealtimeSSE(siteId)
   const [selectedVisitor, setSelectedVisitor] = useState<Visitor | null>(null)
   const [sessionEvents, setSessionEvents] = useState<SessionEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingEvents, setLoadingEvents] = useState(false)
 
-  // Load site info and initial visitors
+  // Load site info
   useEffect(() => {
     const init = async () => {
       try {
-        const [siteData, visitorsData] = await Promise.all([
-          getSite(siteId),
-          getRealtimeVisitors(siteId)
-        ])
+        const siteData = await getSite(siteId)
         setSite(siteData)
-        setVisitors(visitorsData || [])
-        // Select first visitor if available
-        if (visitorsData && visitorsData.length > 0) {
-          handleSelectVisitor(visitorsData[0])
-        }
       } catch (error: unknown) {
-        toast.error(getAuthErrorMessage(error) || 'Failed to load realtime visitors')
+        toast.error(getAuthErrorMessage(error) || 'Failed to load site')
       } finally {
         setLoading(false)
       }
@@ -56,27 +49,12 @@ export default function RealtimePage() {
     init()
   }, [siteId])
 
-  // Poll for updates
+  // Auto-select the first visitor when the list populates and nothing is selected
   useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const data = await getRealtimeVisitors(siteId)
-        setVisitors(data || [])
-        
-        // Update selected visitor reference if they are still in the list
-        if (selectedVisitor) {
-            const updatedVisitor = data?.find(v => v.session_id === selectedVisitor.session_id)
-            if (updatedVisitor) {
-                // Don't overwrite the selectedVisitor state directly to avoid flickering details
-                // But we could update "last seen" indicators if we wanted
-            }
-        }
-      } catch (e) {
-        // Silent fail
-      }
-    }, 5000)
-    return () => clearInterval(interval)
-  }, [siteId, selectedVisitor])
+    if (visitors.length > 0 && !selectedVisitor) {
+      handleSelectVisitor(visitors[0])
+    }
+  }, [visitors]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSelectVisitor = async (visitor: Visitor) => {
     setSelectedVisitor(visitor)
@@ -101,11 +79,11 @@ export default function RealtimePage() {
   if (!site) return <div className="p-8">Site not found</div>
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8 h-[calc(100vh-64px)] flex flex-col">
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8 h-[calc(100vh-64px)] flex flex-col">
       <div className="mb-6 flex items-center justify-between">
         <div>
             <div className="flex items-center gap-2 mb-1">
-                <button onClick={() => router.push(`/sites/${siteId}`)} className="text-sm text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange focus:rounded">
+                <button onClick={() => router.push(`/sites/${siteId}`)} className="text-sm text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:rounded">
                     &larr; Back to Dashboard
                 </button>
             </div>
@@ -152,7 +130,7 @@ export default function RealtimePage() {
                       exit={{ opacity: 0, x: -10 }}
                       transition={{ duration: 0.2 }}
                       onClick={() => handleSelectVisitor(visitor)}
-                      className={`w-full text-left p-4 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-inset ${
+                      className={`w-full text-left p-4 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-inset ${
                         selectedVisitor?.session_id === visitor.session_id ? 'bg-neutral-50 dark:bg-neutral-800/50 ring-1 ring-inset ring-neutral-200 dark:ring-neutral-700' : ''
                       }`}
                     >
