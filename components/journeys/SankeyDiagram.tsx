@@ -117,9 +117,10 @@ function ribbonPath(link: LayoutLink): string {
   const tgt = link.target as LayoutNode
   const sx = src.x1!
   const tx = tgt.x0!
-  const sy = link.y0!
-  const ty = link.y1!
   const w = link.width!
+  // d3-sankey y0/y1 are the CENTER of the link band, not the top
+  const sy = link.y0! - w / 2
+  const ty = link.y1! - w / 2
   const mx = (sx + tx) / 2
 
   return [
