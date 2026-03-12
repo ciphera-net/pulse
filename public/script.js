@@ -480,6 +480,73 @@
     return result;
   }
 
+  // * Auto-track rage clicks (rapid repeated clicks on the same element)
+  // * Fires rage_click when same element is clicked 3+ times within 800ms
+  // * Opt-out: add data-no-rage to the script tag
+  if (!script.getAttribute('data-no-rage')) {
+    var rageClickHistory = {};  // * selector -> { times: [timestamps], lastFired: 0 }
+    var RAGE_CLICK_THRESHOLD = 3;
+    var RAGE_CLICK_WINDOW = 800;
+    var RAGE_CLICK_DEBOUNCE = 5000;
+    var RAGE_CLEANUP_INTERVAL = 10000;
+
+    // * Cleanup stale rage click entries every 10 seconds
+    setInterval(function() {
+      var now = Date.now();
+      for (var key in rageClickHistory) {
+        if (!rageClickHistory.hasOwnProperty(key)) continue;
+        var entry = rageClickHistory[key];
+        // * Remove if last click was more than 10 seconds ago
+        if (entry.times.length === 0 || now - entry.times[entry.times.length - 1] > RAGE_CLEANUP_INTERVAL) {
+          delete rageClickHistory[key];
+        }
+      }
+    }, RAGE_CLEANUP_INTERVAL);
+
+    document.addEventListener('click', function(e) {
+      var el = e.target;
+      if (!el || !el.tagName) return;
+
+      var selector = getElementIdentifier(el);
+      if (!selector) return;
+
+      var now = Date.now();
+      var currentPath = window.location.pathname + window.location.search;
+
+      if (!rageClickHistory[selector]) {
+        rageClickHistory[selector] = { times: [], lastFired: 0 };
+      }
+
+      var entry = rageClickHistory[selector];
+
+      // * Add current click timestamp
+      entry.times.push(now);
+
+      // * Remove clicks outside the time window
+      while (entry.times.length > 0 && now - entry.times[0] > RAGE_CLICK_WINDOW) {
+        entry.times.shift();
+      }
+
+      // * Check if rage click threshold is met
+      if (entry.times.length >= RAGE_CLICK_THRESHOLD) {
+        // * Debounce: max one rage_click per element per 5 seconds
+        if (now - entry.lastFired >= RAGE_CLICK_DEBOUNCE) {
+          var clickCount = entry.times.length;
+          trackCustomEvent('rage_click', {
+            selector: selector,
+            click_count: String(clickCount),
+            page_path: currentPath,
+            x: String(Math.round(e.clientX)),
+            y: String(Math.round(e.clientY))
+          });
+          entry.lastFired = now;
+        }
+        // * Reset tracker after firing or debounce skip
+        entry.times = [];
+      }
+    }, true); // * Capture phase
+  }
+
   // * Auto-track outbound link clicks and file downloads (on by default)
   // * Opt-out: add data-no-outbound or data-no-downloads to the script tag
   var trackOutbound = !script.hasAttribute('data-no-outbound');
