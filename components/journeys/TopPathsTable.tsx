@@ -2,6 +2,7 @@
 
 import type { TopPath } from '@/lib/api/journeys'
 import { TableSkeleton } from '@/components/skeletons'
+import { Path } from '@phosphor-icons/react'
 
 interface TopPathsTableProps {
   paths: TopPath[]
@@ -69,9 +70,15 @@ export default function TopPathsTable({ paths, loading }: TopPathsTableProps) {
           </div>
         </div>
       ) : (
-        <div className="flex items-center justify-center py-12">
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">
-            No path data available
+        <div className="flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
+          <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
+            <Path className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
+          </div>
+          <h4 className="font-semibold text-neutral-900 dark:text-white">
+            No path data yet
+          </h4>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 max-w-xs">
+            Common navigation paths will appear here as visitors browse your site.
           </p>
         </div>
       )}
