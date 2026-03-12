@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useTheme } from '@ciphera-net/ui'
+import { TreeStructure } from '@phosphor-icons/react'
 import type { PathTransition } from '@/lib/api/journeys'
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -277,8 +278,16 @@ export default function SankeyDiagram({
 
   if (!transitions.length || !links.length) {
     return (
-      <div className="flex items-center justify-center h-[400px] text-neutral-500 dark:text-neutral-400 text-sm">
-        No journey data available
+      <div className="h-[400px] flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
+        <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
+          <TreeStructure className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
+        </div>
+        <h4 className="font-semibold text-neutral-900 dark:text-white">
+          No journey data yet
+        </h4>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400 max-w-xs">
+          Navigation flows will appear here as visitors browse through your site.
+        </p>
       </div>
     )
   }
