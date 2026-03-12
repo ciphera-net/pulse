@@ -96,7 +96,7 @@ function buildSankeyData(transitions: PathTransition[], depth: number) {
     const exitCount = flow - totalOut
 
     if (exitCount > 0) {
-      const exitId = `exit-${col + 1}`
+      const exitId = 'exit'
       if (!nodeMap.has(exitId)) {
         nodeMap.set(exitId, { id: exitId, label: '(exit)', color: EXIT_GREY })
       }
