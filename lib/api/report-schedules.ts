@@ -42,8 +42,8 @@ export interface UpdateReportScheduleRequest {
 }
 
 export async function listReportSchedules(siteId: string): Promise<ReportSchedule[]> {
-  const res = await apiRequest<{ schedules: ReportSchedule[] }>(`/sites/${siteId}/report-schedules`)
-  return res?.schedules ?? []
+  const res = await apiRequest<{ report_schedules: ReportSchedule[] }>(`/sites/${siteId}/report-schedules`)
+  return res?.report_schedules ?? []
 }
 
 export async function createReportSchedule(siteId: string, data: CreateReportScheduleRequest): Promise<ReportSchedule> {
