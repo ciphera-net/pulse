@@ -35,7 +35,6 @@ type LayoutLink = D3SankeyLink<NodeExtra, LinkExtra>
 
 // ─── Constants ──────────────────────────────────────────────────────
 
-// Multi-hue palette — distinct colors per column for visual separation
 const COLUMN_COLORS = [
   '#FD5E0F', // brand orange (entry)
   '#3B82F6', // blue
@@ -51,11 +50,31 @@ const COLUMN_COLORS = [
 ]
 const EXIT_GREY = '#52525b'
 const SVG_W = 1100
-const SVG_H = 540
-const MARGIN = { top: 30, right: 140, bottom: 30, left: 10 }
+const MARGIN = { top: 24, right: 140, bottom: 24, left: 10 }
+const MAX_NODES_PER_COLUMN = 8
 
 function colorForColumn(col: number): string {
   return COLUMN_COLORS[col % COLUMN_COLORS.length]
+}
+
+// ─── Smart label: show last meaningful path segment ─────────────────
+
+function smartLabel(path: string): string {
+  if (path === '/' || path === '(exit)') return path
+  // Remove trailing slash, split, take last 2 segments
+  const segments = path.replace(/\/$/, '').split('/')
+  if (segments.length <= 2) return path
+  // Show /last-segment for short paths, or …/last-segment for deep ones
+  const last = segments[segments.length - 1]
+  return `…/${last}`
+}
+
+function truncateLabel(s: string, max: number) {
+  return s.length > max ? s.slice(0, max - 1) + '\u2026' : s
+}
+
+function estimateTextWidth(s: string) {
+  return s.length * 7
 }
 
 // ─── Data transformation ────────────────────────────────────────────
@@ -85,10 +104,71 @@ function buildSankeyData(transitions: PathTransition[], depth: number) {
     flowIn.set(toId, (flowIn.get(toId) ?? 0) + t.session_count)
   }
 
-  // Add exit nodes for flows that don't continue to the next step
+  // ─── Cap nodes per column: keep top N by flow, merge rest into (other) ──
+  const columns = new Map<number, string[]>()
   for (const [nodeId] of nodeMap) {
+    if (nodeId === 'exit') continue
     const col = parseInt(nodeId.split(':')[0], 10)
-    if (col >= numCols - 1) continue // last column — all exit implicitly
+    if (!columns.has(col)) columns.set(col, [])
+    columns.get(col)!.push(nodeId)
+  }
+
+  for (const [col, nodeIds] of columns) {
+    if (nodeIds.length <= MAX_NODES_PER_COLUMN) continue
+
+    // Sort by total flow (max of in/out) descending
+    nodeIds.sort((a, b) => {
+      const flowA = Math.max(flowIn.get(a) ?? 0, flowOut.get(a) ?? 0)
+      const flowB = Math.max(flowIn.get(b) ?? 0, flowOut.get(b) ?? 0)
+      return flowB - flowA
+    })
+
+    const keep = new Set(nodeIds.slice(0, MAX_NODES_PER_COLUMN))
+    const otherId = `${col}:(other)`
+    nodeMap.set(otherId, { id: otherId, label: '(other)', color: colorForColumn(col) })
+
+    // Redirect links from/to pruned nodes to (other)
+    for (let i = 0; i < links.length; i++) {
+      const l = links[i]
+      if (!keep.has(l.source) && nodeIds.includes(l.source)) {
+        links[i] = { ...l, source: otherId }
+      }
+      if (!keep.has(l.target) && nodeIds.includes(l.target)) {
+        links[i] = { ...l, target: otherId }
+      }
+    }
+
+    // Remove pruned nodes
+    for (const id of nodeIds) {
+      if (!keep.has(id)) nodeMap.delete(id)
+    }
+  }
+
+  // Deduplicate links after merging (same source→target pairs)
+  const linkMap = new Map<string, { source: string; target: string; value: number }>()
+  for (const l of links) {
+    const key = `${l.source}->${l.target}`
+    const existing = linkMap.get(key)
+    if (existing) {
+      existing.value += l.value
+    } else {
+      linkMap.set(key, { ...l })
+    }
+  }
+
+  // Recalculate flowOut/flowIn after merge
+  flowOut.clear()
+  flowIn.clear()
+  for (const l of linkMap.values()) {
+    flowOut.set(l.source, (flowOut.get(l.source) ?? 0) + l.value)
+    flowIn.set(l.target, (flowIn.get(l.target) ?? 0) + l.value)
+  }
+
+  // Add exit nodes for flows that don't continue
+  for (const [nodeId] of nodeMap) {
+    if (nodeId === 'exit') continue
+    const col = parseInt(nodeId.split(':')[0], 10)
+    if (col >= numCols - 1) continue
 
     const totalIn = flowIn.get(nodeId) ?? 0
     const totalOut = flowOut.get(nodeId) ?? 0
@@ -100,13 +180,19 @@ function buildSankeyData(transitions: PathTransition[], depth: number) {
       if (!nodeMap.has(exitId)) {
         nodeMap.set(exitId, { id: exitId, label: '(exit)', color: EXIT_GREY })
       }
-      links.push({ source: nodeId, target: exitId, value: exitCount })
+      const key = `${nodeId}->exit`
+      const existing = linkMap.get(key)
+      if (existing) {
+        existing.value += exitCount
+      } else {
+        linkMap.set(key, { source: nodeId, target: exitId, value: exitCount })
+      }
     }
   }
 
   return {
     nodes: Array.from(nodeMap.values()),
-    links,
+    links: Array.from(linkMap.values()),
   }
 }
 
@@ -132,17 +218,6 @@ function ribbonPath(link: LayoutLink): string {
   ].join(' ')
 }
 
-// ─── Label helpers ──────────────────────────────────────────────────
-
-function truncateLabel(s: string, max: number) {
-  return s.length > max ? s.slice(0, max - 1) + '\u2026' : s
-}
-
-// Approximate text width at 12px system font (~7px per char)
-function estimateTextWidth(s: string) {
-  return s.length * 7
-}
-
 // ─── Component ──────────────────────────────────────────────────────
 
 export default function SankeyDiagram({
@@ -161,24 +236,37 @@ export default function SankeyDiagram({
     [transitions, depth],
   )
 
+  // Dynamic SVG height based on max nodes in any column
+  const svgH = useMemo(() => {
+    const columns = new Map<number, number>()
+    for (const node of data.nodes) {
+      if (node.id === 'exit') continue
+      const col = parseInt(node.id.split(':')[0], 10)
+      columns.set(col, (columns.get(col) ?? 0) + 1)
+    }
+    const maxNodes = Math.max(1, ...columns.values())
+    // Base 400 + 50px per node beyond 4
+    return Math.max(400, Math.min(800, 400 + Math.max(0, maxNodes - 4) * 50))
+  }, [data])
+
   const layout = useMemo(() => {
     if (!data.links.length) return null
 
     const generator = sankey<NodeExtra, LinkExtra>()
       .nodeId((d) => d.id)
       .nodeWidth(18)
-      .nodePadding(32)
+      .nodePadding(16)
       .nodeAlign(sankeyJustify)
       .extent([
         [MARGIN.left, MARGIN.top],
-        [SVG_W - MARGIN.right, SVG_H - MARGIN.bottom],
+        [SVG_W - MARGIN.right, svgH - MARGIN.bottom],
       ])
 
     return generator({
       nodes: data.nodes.map((d) => ({ ...d })),
       links: data.links.map((d) => ({ ...d })),
     })
-  }, [data])
+  }, [data, svgH])
 
   // Single event handler on SVG — reads data-* attrs from e.target
   const handleMouseOver = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
@@ -223,7 +311,7 @@ export default function SankeyDiagram({
   return (
     <svg
       ref={svgRef}
-      viewBox={`0 0 ${SVG_W} ${SVG_H}`}
+      viewBox={`0 0 ${SVG_W} ${svgH}`}
       preserveAspectRatio="xMidYMid meet"
       className="w-full"
       role="img"
@@ -274,14 +362,15 @@ export default function SankeyDiagram({
       <g>
         {layout.nodes.map((node) => {
           const nodeId = String(node.id)
-          const isExit = nodeId.startsWith('exit')
-          const w = (node.x1 ?? 0) - (node.x0 ?? 0)
+          const isExit = nodeId === 'exit'
+          const w = isExit ? 8 : (node.x1 ?? 0) - (node.x0 ?? 0)
           const h = (node.y1 ?? 0) - (node.y0 ?? 0)
+          const x = isExit ? (node.x0 ?? 0) + 5 : (node.x0 ?? 0)
 
           return (
             <rect
               key={nodeId}
-              x={node.x0}
+              x={x}
               y={node.y0}
               width={w}
               height={h}
@@ -305,7 +394,7 @@ export default function SankeyDiagram({
         })}
       </g>
 
-      {/* Labels with background */}
+      {/* Labels — only for nodes tall enough to avoid overlap */}
       <g>
         {layout.nodes.map((node) => {
           const x0 = node.x0 ?? 0
@@ -313,15 +402,15 @@ export default function SankeyDiagram({
           const y0 = node.y0 ?? 0
           const y1 = node.y1 ?? 0
           const nodeH = y1 - y0
-          if (nodeH < 14) return null
+          if (nodeH < 22) return null // hide labels for tiny nodes
 
-          const label = truncateLabel(node.label, 28)
+          const rawLabel = smartLabel(node.label)
+          const label = truncateLabel(rawLabel, 24)
           const textW = estimateTextWidth(label)
           const padX = 6
           const rectW = textW + padX * 2
           const rectH = 20
 
-          // Labels go right of node; last-column labels go left
           const isRight = x1 > SVG_W - MARGIN.right - 60
           const textX = isRight ? x0 - 6 : x1 + 6
           const textY = y0 + nodeH / 2
@@ -330,7 +419,7 @@ export default function SankeyDiagram({
           const bgY = textY - rectH / 2
 
           const nodeId = String(node.id)
-          const isExit = nodeId.startsWith('exit')
+          const isExit = nodeId === 'exit'
 
           return (
             <g key={`label-${nodeId}`} data-node-id={nodeId}>
