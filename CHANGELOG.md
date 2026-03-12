@@ -4,7 +4,7 @@ All notable changes to Pulse (frontend and product) are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and Pulse uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with a **0.x.y** version scheme while in initial development. The leading `0` indicates that the public API and behaviour may change until we release **1.0.0**.
 
-## [Unreleased]
+## [0.15.0-alpha] - 2026-03-13
 
 ### Added
 
