@@ -152,7 +152,9 @@ export default function SankeyDiagram({
 }: SankeyDiagramProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
-  const [hovered, setHovered] = useState<string | null>(null)
+  const [hoveredLink, setHoveredLink] = useState<string | null>(null)
+  const [hoveredNode, setHoveredNode] = useState<string | null>(null)
+  const hasHover = hoveredLink !== null || hoveredNode !== null
 
   const data = useMemo(
     () => buildSankeyData(transitions, depth),
@@ -214,15 +216,18 @@ export default function SankeyDiagram({
           const src = link.source as LayoutNode
           const tgt = link.target as LayoutNode
           const linkId = `${src.id}->${tgt.id}`
-          const isHovered = hovered === linkId
-          const someHovered = hovered !== null
+          const isLinkHovered = hoveredLink === linkId
+          const isConnectedToNode =
+            hoveredNode !== null &&
+            (src.id === hoveredNode || tgt.id === hoveredNode)
+          const isHighlighted = isLinkHovered || isConnectedToNode
 
           const isExitLink = tgt.id!.toString().startsWith('exit-')
           const linkColor = isExitLink ? EXIT_GREY : src.color
 
           let opacity = isDark ? 0.45 : 0.5
-          if (isHovered) opacity = 0.75
-          else if (someHovered) opacity = 0.08
+          if (isHighlighted) opacity = 0.75
+          else if (hasHover) opacity = 0.08
 
           return (
             <path
@@ -231,8 +236,8 @@ export default function SankeyDiagram({
               fill={linkColor}
               opacity={opacity}
               style={{ transition: 'opacity 0.15s ease' }}
-              onMouseEnter={() => setHovered(linkId)}
-              onMouseLeave={() => setHovered(null)}
+              onMouseEnter={() => setHoveredLink(linkId)}
+              onMouseLeave={() => setHoveredLink(null)}
             >
               <title>
                 {src.label} → {tgt.label}:{' '}
@@ -250,6 +255,20 @@ export default function SankeyDiagram({
           const w = (node.x1 ?? 0) - (node.x0 ?? 0)
           const h = (node.y1 ?? 0) - (node.y0 ?? 0)
 
+          // Check if this node is connected to the hovered node
+          const isThisHovered = hoveredNode === node.id!.toString()
+          const isConnected =
+            hoveredNode !== null &&
+            layout.links.some((l) => {
+              const s = (l.source as LayoutNode).id
+              const t = (l.target as LayoutNode).id
+              return (
+                (s === hoveredNode && t === node.id) ||
+                (t === hoveredNode && s === node.id)
+              )
+            })
+          const dimNode = hasHover && !isThisHovered && !isConnected
+
           return (
             <rect
               key={node.id}
@@ -261,9 +280,13 @@ export default function SankeyDiagram({
               stroke={nodeStroke}
               strokeWidth={1}
               rx={2}
+              opacity={dimNode ? 0.25 : 1}
+              style={{ transition: 'opacity 0.15s ease' }}
               className={
                 onNodeClick && !isExit ? 'cursor-pointer' : 'cursor-default'
               }
+              onMouseEnter={() => setHoveredNode(node.id!.toString())}
+              onMouseLeave={() => setHoveredNode(null)}
               onClick={() => {
                 if (onNodeClick && !isExit) onNodeClick(node.label)
               }}
