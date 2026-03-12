@@ -18,6 +18,12 @@ import {
   YoutubeLogo,
   RedditLogo,
   Robot,
+  Link,
+  WhatsappLogo,
+  TelegramLogo,
+  SnapchatLogo,
+  PinterestLogo,
+  ThreadsLogo,
 } from '@phosphor-icons/react'
 
 /**
@@ -63,6 +69,11 @@ export function getReferrerIcon(referrerName: string) {
   if (lower.includes('github')) return <GithubLogo className="text-neutral-800 dark:text-neutral-200" />
   if (lower.includes('youtube')) return <YoutubeLogo className="text-red-600" />
   if (lower.includes('reddit')) return <RedditLogo className="text-orange-600" />
+  if (lower.includes('whatsapp')) return <WhatsappLogo className="text-green-500" />
+  if (lower.includes('telegram')) return <TelegramLogo className="text-blue-500" />
+  if (lower.includes('snapchat')) return <SnapchatLogo className="text-yellow-400" />
+  if (lower.includes('pinterest')) return <PinterestLogo className="text-red-600" />
+  if (lower.includes('threads')) return <ThreadsLogo className="text-neutral-800 dark:text-neutral-200" />
   // AI assistants and search tools
   if (lower.includes('chatgpt') || lower.includes('openai')) return <Robot className="text-neutral-800 dark:text-neutral-200" />
   if (lower.includes('perplexity')) return <Robot className="text-teal-600" />
@@ -73,11 +84,13 @@ export function getReferrerIcon(referrerName: string) {
   if (lower.includes('grok') || lower.includes('x.ai')) return <XLogo className="text-neutral-800 dark:text-neutral-200" />
   if (lower.includes('phind')) return <Robot className="text-purple-600" />
   if (lower.includes('you.com')) return <Robot className="text-indigo-600" />
+  // Shared Link (unattributed deep-page traffic)
+  if (lower === 'shared link') return <Link className="text-neutral-500" />
 
   return <Globe className="text-neutral-400" />
 }
 
-const REFERRER_NO_FAVICON = ['direct', 'unknown', '']
+const REFERRER_NO_FAVICON = ['direct', 'shared link', 'unknown', '']
 
 /** Common subdomains to skip when deriving the main label (e.g. l.instagram.com → instagram). */
 const REFERRER_SUBDOMAIN_SKIP = new Set([
@@ -100,6 +113,7 @@ const REFERRER_DISPLAY_OVERRIDES: Record<string, string> = {
   telegram: 'Telegram',
   pinterest: 'Pinterest',
   snapchat: 'Snapchat',
+  threads: 'Threads',
   tumblr: 'Tumblr',
   quora: 'Quora',
   't.co': 'X',
