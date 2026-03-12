@@ -4,14 +4,6 @@ import { TrendUp } from '@phosphor-icons/react'
 import { Pie, PieChart } from 'recharts'
 
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
-import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
@@ -48,7 +40,7 @@ const chartConfig = {
   },
   dead_clicks: {
     label: 'Dead Clicks',
-    color: '#F59E0B',
+    color: '#E04E0A',
   },
   prev_rage_clicks: {
     label: 'Prev Rage Clicks',
@@ -106,12 +98,17 @@ export default function FrustrationTrend({ summary, loading }: FrustrationTrendP
   }
 
   return (
-    <Card className="flex flex-col h-full">
-      <CardHeader className="items-center pb-0">
-        <CardTitle>Frustration Trend</CardTitle>
-        <CardDescription>Current vs. previous period</CardDescription>
-      </CardHeader>
-      <CardContent className="flex-1 pb-0">
+    <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
+      <div className="flex items-center justify-between mb-1">
+        <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
+          Frustration Trend
+        </h3>
+      </div>
+      <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
+        Rage and dead clicks split across current and previous period
+      </p>
+
+      <div className="flex-1">
         <ChartContainer
           config={chartConfig}
           className="mx-auto aspect-square max-h-[250px]"
@@ -129,25 +126,21 @@ export default function FrustrationTrend({ summary, loading }: FrustrationTrendP
             />
           </PieChart>
         </ChartContainer>
-      </CardContent>
-      <CardFooter className="flex-col gap-2 text-sm">
-        <div className="flex items-center gap-2 leading-none font-medium">
-          {totalChange !== null ? (
-            <>
-              {totalChange > 0 ? 'Up' : totalChange < 0 ? 'Down' : 'No change'} by {Math.abs(totalChange)}% vs previous period <TrendUp className="h-4 w-4" />
-            </>
-          ) : totalCurrent > 0 ? (
-            <>
-              {totalCurrent.toLocaleString()} new signals this period <TrendUp className="h-4 w-4" />
-            </>
-          ) : (
-            'No frustration signals detected'
-          )}
-        </div>
-        <div className="leading-none text-muted-foreground">
-          {totalCurrent.toLocaleString()} total signals in current period
-        </div>
-      </CardFooter>
-    </Card>
+      </div>
+
+      <div className="flex items-center justify-center gap-2 text-sm font-medium pt-2">
+        {totalChange !== null ? (
+          <>
+            {totalChange > 0 ? 'Up' : totalChange < 0 ? 'Down' : 'No change'} by {Math.abs(totalChange)}% vs previous period <TrendUp className="h-4 w-4" />
+          </>
+        ) : totalCurrent > 0 ? (
+          <>
+            {totalCurrent.toLocaleString()} new signals this period <TrendUp className="h-4 w-4" />
+          </>
+        ) : (
+          'No frustration signals detected'
+        )}
+      </div>
+    </div>
   )
 }
