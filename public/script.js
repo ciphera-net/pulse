@@ -483,7 +483,7 @@
   // * Auto-track rage clicks (rapid repeated clicks on the same element)
   // * Fires rage_click when same element is clicked 3+ times within 800ms
   // * Opt-out: add data-no-rage to the script tag
-  if (!script.getAttribute('data-no-rage')) {
+  if (!script.hasAttribute('data-no-rage')) {
     var rageClickHistory = {};  // * selector -> { times: [timestamps], lastFired: 0 }
     var RAGE_CLICK_THRESHOLD = 3;
     var RAGE_CLICK_WINDOW = 800;
@@ -551,7 +551,7 @@
   // * Fires dead_click when an interactive element is clicked but no DOM change, navigation,
   // * or network request occurs within 1 second
   // * Opt-out: add data-no-dead to the script tag
-  if (!script.getAttribute('data-no-dead')) {
+  if (!script.hasAttribute('data-no-dead')) {
     var INTERACTIVE_SELECTOR = 'a,button,input,select,textarea,[role="button"],[role="link"],[role="tab"],[role="menuitem"],[onclick],[tabindex]';
     var DEAD_CLICK_DEBOUNCE = 10000;
     var DEAD_CLEANUP_INTERVAL = 30000;
