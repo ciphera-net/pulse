@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- **Scheduled Reports.** You can now get your analytics delivered automatically — set up daily, weekly, or monthly reports sent straight to your email, Slack, Discord, or any webhook. Each report includes your key stats (visitors, pageviews, bounce rate), top pages, and traffic sources, all in a clean branded format. Set them up in your site settings under the new "Reports" tab, and hit "Test" to preview before going live. You can create up to 10 schedules per site.
+
 ### Fixed
 
 - **Region names now display correctly.** Some regions were showing as cryptic codes like "14" (Poland), "KKC" (Thailand), or "IDF" (France) instead of their actual names. The Locations panel now shows proper region names like "Masovian", "Khon Kaen", and "Île-de-France."
