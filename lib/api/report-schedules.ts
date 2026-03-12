@@ -10,6 +10,9 @@ export interface ReportSchedule {
   timezone: string
   enabled: boolean
   report_type: 'summary' | 'pages' | 'sources' | 'goals'
+  send_hour: number
+  send_day: number | null
+  next_send_at: string | null
   last_sent_at: string | null
   last_error: string | null
   created_at: string
@@ -30,6 +33,8 @@ export interface CreateReportScheduleRequest {
   frequency: string
   timezone?: string
   report_type?: string
+  send_hour?: number
+  send_day?: number
 }
 
 export interface UpdateReportScheduleRequest {
@@ -39,6 +44,8 @@ export interface UpdateReportScheduleRequest {
   timezone?: string
   report_type?: string
   enabled?: boolean
+  send_hour?: number
+  send_day?: number
 }
 
 export async function listReportSchedules(siteId: string): Promise<ReportSchedule[]> {
