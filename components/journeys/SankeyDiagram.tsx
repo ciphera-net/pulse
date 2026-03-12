@@ -51,7 +51,7 @@ const COLUMN_COLORS = [
 const EXIT_GREY = '#52525b'
 const SVG_W = 1100
 const MARGIN = { top: 24, right: 140, bottom: 24, left: 10 }
-const MAX_NODES_PER_COLUMN = 8
+const MAX_NODES_PER_COLUMN = 5
 
 function colorForColumn(col: number): string {
   return COLUMN_COLORS[col % COLUMN_COLORS.length]
@@ -402,7 +402,7 @@ export default function SankeyDiagram({
           const y0 = node.y0 ?? 0
           const y1 = node.y1 ?? 0
           const nodeH = y1 - y0
-          if (nodeH < 22) return null // hide labels for tiny nodes
+          if (nodeH < 36) return null // hide labels for small nodes — hover for details
 
           const rawLabel = smartLabel(node.label)
           const label = truncateLabel(rawLabel, 24)
