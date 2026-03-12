@@ -6,12 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.14.0-alpha] - 2026-03-12
+
 ### Improved
 
 - **Smarter referrer attribution.** Traffic that arrives without a referrer on a deep page (like a blog post) is now shown as "Shared Link" instead of "Direct." Real direct traffic — visitors who land on your homepage — still shows as "Direct." This gives you a much clearer picture of where your traffic actually comes from, since most unattributed deep-page visits are people clicking links shared in messaging apps or AI chatbots that strip the referrer header.
 - **More in-app browsers detected.** Pulse now recognises visits from WhatsApp, Telegram, Snapchat, Pinterest, Reddit, and Threads in-app browsers and attributes them correctly instead of lumping them into "Direct."
-- **Correct Instagram attribution.** Visits from Instagram's in-app browser were showing as "Facebook" because Instagram routes shared links through Facebook's URL redirector. Pulse now checks the User-Agent to detect the real source app.
-- **Android and iOS now show up in OS stats.** A bug in the User-Agent parsing order meant Android was always classified as "Linux" (because Android UAs contain "Linux") and iOS as "macOS" (because iPhone UAs contain "like Mac OS X"). Both are now detected correctly.
 - **Dashboard blocks are now consistent in height.** The Goals & Events and Scroll Depth panels now match the height of every other block on the dashboard.
 - **Cleaner period picker.** The date range dropdown now has visual separators between the rolling windows (Today, Last 7 days, Last 30 days), the calendar periods (This week, This month), and Custom — so it's easy to tell them apart at a glance.
 - **New date range options.** The period selector now includes "This week" (Monday to today) and "This month" (1st to today) alongside the existing rolling windows. Your selection is remembered between sessions.
@@ -65,6 +65,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- **Correct Instagram attribution.** Visits from Instagram's in-app browser were showing as "Facebook" because Instagram routes shared links through Facebook's URL redirector. Pulse now checks the User-Agent to detect the real source app.
+- **Android and iOS now show up in OS stats.** A bug in the User-Agent parsing order meant Android was always classified as "Linux" (because Android UAs contain "Linux") and iOS as "macOS" (because iPhone UAs contain "like Mac OS X"). Both are now detected correctly.
 - **Charts no longer show tomorrow's date.** The visitor chart on 7-day and 30-day views could display the next day with zero traffic, making it look like a sudden drop. The chart now ends on today.
 - **Capitalized technology labels.** Device types, browsers, and OS names in the Technology panel now display with a capital first letter (e.g. "Desktop" instead of "desktop").
 - **Login no longer gets stuck after updates.** If you happened to have Pulse open when a new version was deployed, logging back in could get stuck on a loading screen. The app now automatically refreshes itself to pick up the latest version.
