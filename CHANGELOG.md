@@ -8,8 +8,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- **Rage click detection.** Pulse now detects when visitors rapidly click the same element 3 or more times — a strong signal of UI frustration. Rage clicks are tracked automatically (no setup required) and surfaced in the new Behavior tab with the element, page, click count, and number of affected sessions.
+- **Dead click detection.** Clicks on buttons, links, and other interactive elements that produce no visible result (no navigation, no DOM change, no network request) are now detected and reported. This helps you find broken buttons, disabled links, and unresponsive UI elements your visitors are struggling with.
+- **Behavior tab.** A new tab in your site dashboard — alongside Dashboard, Uptime, and Funnels — dedicated to user behavior signals. Houses rage clicks, dead clicks, a by-page frustration breakdown, and scroll depth (moved from the main dashboard for a cleaner layout).
+- **Frustration summary cards.** The Behavior tab opens with three at-a-glance cards: total rage clicks, total dead clicks, and total frustration signals with the most affected page — each with a percentage change compared to the previous period.
 - **Scheduled Reports.** You can now get your analytics delivered automatically — set up daily, weekly, or monthly reports sent straight to your email, Slack, Discord, or any webhook. Each report includes your key stats (visitors, pageviews, bounce rate), top pages, and traffic sources, all in a clean branded format. Set them up in your site settings under the new "Reports" tab, and hit "Test" to preview before going live. You can create up to 10 schedules per site.
 - **Time-of-day report scheduling.** Choose when your reports arrive — pick the hour, day of week (for weekly), or day of month (for monthly). Schedule cards show a human-readable description like "Every Monday at 9:00 AM (UTC)."
+
+### Changed
+
+- **Scroll depth moved to Behavior tab.** The scroll depth radar chart has been relocated from the main dashboard to the new Behavior tab, where it fits more naturally alongside other user behavior metrics.
 
 ### Fixed
 
