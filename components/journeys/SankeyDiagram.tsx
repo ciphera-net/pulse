@@ -38,8 +38,8 @@ interface PositionedLink {
 
 const PADDING_X = 60
 const PADDING_Y = 40
-const NODE_WIDTH = 12
-const NODE_GAP = 4
+const NODE_WIDTH = 8
+const NODE_GAP = 6
 const MIN_NODE_HEIGHT = 4
 const LABEL_MAX_LENGTH = 24
 const EXIT_LABEL = '(exit)'
@@ -295,18 +295,18 @@ export default function SankeyDiagram({
   const numColumns = depth + 1
   const isLastColumn = (col: number) => col === numColumns - 1
 
-  // Colors — brand orange nodes with column-based fade
+  // Colors — brand orange nodes, subtle neutral links
   const brandOrange = '#FD5E0F'
   const labelFill = isDark ? '#d4d4d4' : '#525252'
-  const linkDefault = isDark ? 'rgba(253, 94, 15, 0.15)' : 'rgba(253, 94, 15, 0.12)'
-  const linkHover = isDark ? 'rgba(253, 94, 15, 0.45)' : 'rgba(253, 94, 15, 0.35)'
-  const linkDimmed = isDark ? 'rgba(253, 94, 15, 0.04)' : 'rgba(253, 94, 15, 0.05)'
+  const linkDefault = isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)'
+  const linkHover = isDark ? 'rgba(253, 94, 15, 0.35)' : 'rgba(253, 94, 15, 0.25)'
+  const linkDimmed = isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)'
   const exitNodeFill = isDark ? '#404040' : '#d4d4d4'
 
-  // Fade node opacity from 1.0 (entry) to 0.45 (deepest)
+  // Fade node opacity from 1.0 (entry) to 0.5 (deepest)
   const nodeOpacity = (col: number) => {
     if (numColumns <= 1) return 1
-    return 1 - (col / (numColumns - 1)) * 0.55
+    return 1 - (col / (numColumns - 1)) * 0.5
   }
 
   return (
