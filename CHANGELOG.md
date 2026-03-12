@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Removed
+
+- **Realtime visitors detail page.** The page that showed individual active visitors and their page-by-page session journey has been removed. The live visitor count on your dashboard still works — it just no longer links to a separate page.
+
 ### Added
 
 - **Rage click detection.** Pulse now detects when visitors rapidly click the same element 3 or more times — a strong signal of UI frustration. Rage clicks are tracked automatically (no setup required) and surfaced in the new Behavior tab with the element, page, click count, and number of affected sessions.
