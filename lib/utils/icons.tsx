@@ -218,6 +218,8 @@ export function getReferrerFavicon(referrer: string): string | null {
   if (!referrer || typeof referrer !== 'string') return null
   const normalized = referrer.trim().toLowerCase()
   if (REFERRER_NO_FAVICON.includes(normalized)) return null
+  // Plain names without a dot (e.g. "Instagram", "WhatsApp") are not real domains
+  if (!normalized.includes('.')) return null
   try {
     const url = new URL(referrer.startsWith('http') ? referrer : `https://${referrer}`)
     if (REFERRER_USE_X_ICON.has(url.hostname.toLowerCase())) return null
