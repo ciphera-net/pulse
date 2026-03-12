@@ -30,25 +30,32 @@ function SkeletonCard() {
   )
 }
 
+const COLORS = {
+  rage_clicks: '#FD5E0F',
+  dead_clicks: '#3B82F6',
+  prev_rage_clicks: '#9A3412',
+  prev_dead_clicks: '#1E40AF',
+} as const
+
 const chartConfig = {
   count: {
     label: 'Count',
   },
   rage_clicks: {
     label: 'Rage Clicks',
-    color: '#FD5E0F',
+    color: COLORS.rage_clicks,
   },
   dead_clicks: {
     label: 'Dead Clicks',
-    color: '#E04E0A',
+    color: COLORS.dead_clicks,
   },
   prev_rage_clicks: {
     label: 'Prev Rage Clicks',
-    color: '#78350F',
+    color: COLORS.prev_rage_clicks,
   },
   prev_dead_clicks: {
     label: 'Prev Dead Clicks',
-    color: '#92400E',
+    color: COLORS.prev_dead_clicks,
   },
 } satisfies ChartConfig
 
@@ -65,10 +72,10 @@ export default function FrustrationTrend({ summary, loading }: FrustrationTrendP
     : null
 
   const chartData = [
-    { type: 'rage_clicks', count: summary.rage_clicks, fill: 'var(--color-rage_clicks)' },
-    { type: 'dead_clicks', count: summary.dead_clicks, fill: 'var(--color-dead_clicks)' },
-    { type: 'prev_rage_clicks', count: summary.prev_rage_clicks, fill: 'var(--color-prev_rage_clicks)' },
-    { type: 'prev_dead_clicks', count: summary.prev_dead_clicks, fill: 'var(--color-prev_dead_clicks)' },
+    { type: 'rage_clicks', count: summary.rage_clicks, fill: COLORS.rage_clicks },
+    { type: 'dead_clicks', count: summary.dead_clicks, fill: COLORS.dead_clicks },
+    { type: 'prev_rage_clicks', count: summary.prev_rage_clicks, fill: COLORS.prev_rage_clicks },
+    { type: 'prev_dead_clicks', count: summary.prev_dead_clicks, fill: COLORS.prev_dead_clicks },
   ]
 
   if (!hasData) {
