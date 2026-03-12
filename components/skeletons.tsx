@@ -166,6 +166,35 @@ export function DashboardSkeleton() {
   )
 }
 
+// ─── Journeys page skeleton ─────────────────────────────────
+
+export function JourneysSkeleton() {
+  return (
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+      {/* Header */}
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <SkeletonLine className="h-8 w-32 mb-2" />
+          <SkeletonLine className="h-4 w-64" />
+        </div>
+        <SkeletonLine className="h-9 w-36 rounded-lg" />
+      </div>
+      {/* Controls */}
+      <div className="flex items-center gap-4 mb-6">
+        <SkeletonLine className="h-9 w-48 rounded-lg" />
+        <SkeletonLine className="h-9 w-48 rounded-lg" />
+      </div>
+      {/* Sankey area */}
+      <SkeletonCard className="h-[400px] mb-6" />
+      {/* Top paths table */}
+      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6">
+        <SkeletonLine className="h-6 w-24 mb-4" />
+        <TableSkeleton rows={5} cols={4} />
+      </div>
+    </div>
+  )
+}
+
 // ─── Uptime page skeleton ────────────────────────────────────
 
 export function UptimeSkeleton() {
