@@ -15,6 +15,7 @@ import {
   getRealtime,
   getStats,
   getDailyStats,
+  getBehavior,
 } from '@/lib/api/stats'
 import { listAnnotations } from '@/lib/api/annotations'
 import type { Annotation } from '@/lib/api/annotations'
@@ -32,6 +33,7 @@ import type {
   DashboardReferrersData,
   DashboardPerformanceData,
   DashboardGoalsData,
+  BehaviorData,
 } from '@/lib/api/stats'
 
 // * SWR fetcher functions
@@ -52,6 +54,7 @@ const fetchers = {
   campaigns: (siteId: string, start: string, end: string, limit: number) =>
     getCampaigns(siteId, start, end, limit),
   annotations: (siteId: string, start: string, end: string) => listAnnotations(siteId, start, end),
+  behavior: (siteId: string, start: string, end: string) => getBehavior(siteId, start, end),
 }
 
 // * Standard SWR config for dashboard data
@@ -257,6 +260,19 @@ export function useAnnotations(siteId: string, startDate: string, endDate: strin
   return useSWR<Annotation[]>(
     siteId && startDate && endDate ? ['annotations', siteId, startDate, endDate] : null,
     () => fetchers.annotations(siteId, startDate, endDate),
+    {
+      ...dashboardSWRConfig,
+      refreshInterval: 60 * 1000,
+      dedupingInterval: 10 * 1000,
+    }
+  )
+}
+
+// * Hook for bundled behavior data (all frustration signals in one request)
+export function useBehavior(siteId: string, start: string, end: string) {
+  return useSWR<BehaviorData>(
+    siteId && start && end ? ['behavior', siteId, start, end] : null,
+    () => fetchers.behavior(siteId, start, end),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,

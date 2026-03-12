@@ -433,6 +433,25 @@ export function getEventPropertyValues(siteId: string, eventName: string, propNa
 
 // ─── Frustration Signals ────────────────────────────────────────────
 
+export interface BehaviorData {
+  summary: FrustrationSummary
+  rage_clicks: { items: FrustrationElement[]; total: number }
+  dead_clicks: { items: FrustrationElement[]; total: number }
+  by_page: FrustrationByPage[]
+}
+
+const emptyBehavior: BehaviorData = {
+  summary: { rage_clicks: 0, rage_unique_elements: 0, rage_top_page: '', dead_clicks: 0, dead_unique_elements: 0, dead_top_page: '', prev_rage_clicks: 0, prev_dead_clicks: 0 },
+  rage_clicks: { items: [], total: 0 },
+  dead_clicks: { items: [], total: 0 },
+  by_page: [],
+}
+
+export function getBehavior(siteId: string, startDate?: string, endDate?: string, limit = 7): Promise<BehaviorData> {
+  return apiRequest<BehaviorData>(`/sites/${siteId}/behavior${buildQuery({ startDate, endDate, limit })}`)
+    .then(r => r ?? emptyBehavior)
+}
+
 export function getFrustrationSummary(siteId: string, startDate?: string, endDate?: string): Promise<FrustrationSummary> {
   return apiRequest<FrustrationSummary>(`/sites/${siteId}/frustration/summary${buildQuery({ startDate, endDate })}`)
     .then(r => r ?? { rage_clicks: 0, rage_unique_elements: 0, rage_top_page: '', dead_clicks: 0, dead_unique_elements: 0, dead_top_page: '', prev_rage_clicks: 0, prev_dead_clicks: 0 })
