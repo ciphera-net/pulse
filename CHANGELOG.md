@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Improved
 
+- **Smarter referrer attribution.** Traffic that arrives without a referrer on a deep page (like a blog post) is now shown as "Shared Link" instead of "Direct." Real direct traffic — visitors who land on your homepage — still shows as "Direct." This gives you a much clearer picture of where your traffic actually comes from, since most unattributed deep-page visits are people clicking links shared in messaging apps or AI chatbots that strip the referrer header.
+- **More in-app browsers detected.** Pulse now recognises visits from WhatsApp, Telegram, Snapchat, Pinterest, Reddit, and Threads in-app browsers and attributes them correctly instead of lumping them into "Direct."
 - **Dashboard blocks are now consistent in height.** The Goals & Events and Scroll Depth panels now match the height of every other block on the dashboard.
 - **Cleaner period picker.** The date range dropdown now has visual separators between the rolling windows (Today, Last 7 days, Last 30 days), the calendar periods (This week, This month), and Custom — so it's easy to tell them apart at a glance.
 - **New date range options.** The period selector now includes "This week" (Monday to today) and "This month" (1st to today) alongside the existing rolling windows. Your selection is remembered between sessions.
