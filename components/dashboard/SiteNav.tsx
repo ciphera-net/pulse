@@ -18,14 +18,16 @@ export default function SiteNav({ siteId }: SiteNavProps) {
 
   const tabs = [
     { label: 'Dashboard', href: `/sites/${siteId}` },
-    { label: 'Uptime', href: `/sites/${siteId}/uptime` },
+    { label: 'Journeys', href: `/sites/${siteId}/journeys` },
     { label: 'Funnels', href: `/sites/${siteId}/funnels` },
+    { label: 'Behavior', href: `/sites/${siteId}/behavior` },
+    { label: 'Uptime', href: `/sites/${siteId}/uptime` },
     ...(canEdit ? [{ label: 'Settings', href: `/sites/${siteId}/settings` }] : []),
   ]
 
   const isActive = (href: string) => {
     if (href === `/sites/${siteId}`) {
-      return pathname === href || pathname === `${href}/realtime`
+      return pathname === href
     }
     return pathname.startsWith(href)
   }

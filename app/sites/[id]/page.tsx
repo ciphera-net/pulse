@@ -34,7 +34,6 @@ import TechSpecs from '@/components/dashboard/TechSpecs'
 
 const PerformanceStats = dynamic(() => import('@/components/dashboard/PerformanceStats'))
 const GoalStats = dynamic(() => import('@/components/dashboard/GoalStats'))
-const ScrollDepth = dynamic(() => import('@/components/dashboard/ScrollDepth'))
 const Campaigns = dynamic(() => import('@/components/dashboard/Campaigns'))
 const PeakHours = dynamic(() => import('@/components/dashboard/PeakHours'))
 const EventProperties = dynamic(() => import('@/components/dashboard/EventProperties'))
@@ -452,9 +451,8 @@ export default function SiteDashboardPage() {
             </div>
 
             {/* Realtime Indicator */}
-            <button
-              onClick={() => router.push(`/sites/${siteId}/realtime`)}
-              className="flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded-full border border-green-500/20 hover:bg-green-500/20 transition-colors cursor-pointer"
+            <div
+              className="flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded-full border border-green-500/20"
             >
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
@@ -463,7 +461,7 @@ export default function SiteDashboardPage() {
               <span className="text-sm font-medium text-green-700 dark:text-green-400">
                 {realtime} current visitors
               </span>
-            </button>
+            </div>
           </div>
 
             <div className="flex items-center gap-2">
@@ -618,12 +616,11 @@ export default function SiteDashboardPage() {
         <PeakHours siteId={siteId} dateRange={dateRange} />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2 mb-8">
+      <div className="mb-8">
         <GoalStats
           goalCounts={(dashboard?.goal_counts ?? []).filter(g => !/^scroll_\d+$/.test(g.event_name))}
           onSelectEvent={setSelectedEvent}
         />
-        <ScrollDepth goalCounts={dashboard?.goal_counts ?? []} totalPageviews={stats.pageviews} />
       </div>
 
       {/* Event Properties Breakdown */}

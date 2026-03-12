@@ -103,6 +103,34 @@ export interface AuthParams {
   captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
 }
 
+export interface FrustrationSummary {
+  rage_clicks: number
+  rage_unique_elements: number
+  rage_top_page: string
+  dead_clicks: number
+  dead_unique_elements: number
+  dead_top_page: string
+  prev_rage_clicks: number
+  prev_dead_clicks: number
+}
+
+export interface FrustrationElement {
+  selector: string
+  page_path: string
+  count: number
+  avg_click_count?: number
+  sessions: number
+  last_seen: string
+}
+
+export interface FrustrationByPage {
+  page_path: string
+  rage_clicks: number
+  dead_clicks: number
+  total: number
+  unique_elements: number
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────
 
 function appendAuthParams(params: URLSearchParams, auth?: AuthParams) {
@@ -401,4 +429,49 @@ export function getEventPropertyKeys(siteId: string, eventName: string, startDat
 export function getEventPropertyValues(siteId: string, eventName: string, propName: string, startDate?: string, endDate?: string, limit = 20): Promise<EventPropertyValue[]> {
   return apiRequest<{ values: EventPropertyValue[] }>(`/sites/${siteId}/goals/${encodeURIComponent(eventName)}/properties/${encodeURIComponent(propName)}${buildQuery({ startDate, endDate, limit })}`)
     .then(r => r?.values || [])
+}
+
+// ─── Frustration Signals ────────────────────────────────────────────
+
+export interface BehaviorData {
+  summary: FrustrationSummary
+  rage_clicks: { items: FrustrationElement[]; total: number }
+  dead_clicks: { items: FrustrationElement[]; total: number }
+  by_page: FrustrationByPage[]
+}
+
+const emptyBehavior: BehaviorData = {
+  summary: { rage_clicks: 0, rage_unique_elements: 0, rage_top_page: '', dead_clicks: 0, dead_unique_elements: 0, dead_top_page: '', prev_rage_clicks: 0, prev_dead_clicks: 0 },
+  rage_clicks: { items: [], total: 0 },
+  dead_clicks: { items: [], total: 0 },
+  by_page: [],
+}
+
+export function getBehavior(siteId: string, startDate?: string, endDate?: string, limit = 7): Promise<BehaviorData> {
+  return apiRequest<BehaviorData>(`/sites/${siteId}/behavior${buildQuery({ startDate, endDate, limit })}`)
+    .then(r => r ?? emptyBehavior)
+}
+
+export function getFrustrationSummary(siteId: string, startDate?: string, endDate?: string): Promise<FrustrationSummary> {
+  return apiRequest<FrustrationSummary>(`/sites/${siteId}/frustration/summary${buildQuery({ startDate, endDate })}`)
+    .then(r => r ?? { rage_clicks: 0, rage_unique_elements: 0, rage_top_page: '', dead_clicks: 0, dead_unique_elements: 0, dead_top_page: '', prev_rage_clicks: 0, prev_dead_clicks: 0 })
+}
+
+export function getRageClicks(siteId: string, startDate?: string, endDate?: string, limit = 10, pagePath?: string): Promise<{ items: FrustrationElement[], total: number }> {
+  const params = buildQuery({ startDate, endDate, limit })
+  const pageFilter = pagePath ? `&page_path=${encodeURIComponent(pagePath)}` : ''
+  return apiRequest<{ items: FrustrationElement[], total: number }>(`/sites/${siteId}/frustration/rage-clicks${params}${pageFilter}`)
+    .then(r => r ?? { items: [], total: 0 })
+}
+
+export function getDeadClicks(siteId: string, startDate?: string, endDate?: string, limit = 10, pagePath?: string): Promise<{ items: FrustrationElement[], total: number }> {
+  const params = buildQuery({ startDate, endDate, limit })
+  const pageFilter = pagePath ? `&page_path=${encodeURIComponent(pagePath)}` : ''
+  return apiRequest<{ items: FrustrationElement[], total: number }>(`/sites/${siteId}/frustration/dead-clicks${params}${pageFilter}`)
+    .then(r => r ?? { items: [], total: 0 })
+}
+
+export function getFrustrationByPage(siteId: string, startDate?: string, endDate?: string, limit = 20): Promise<FrustrationByPage[]> {
+  return apiRequest<{ pages: FrustrationByPage[] }>(`/sites/${siteId}/frustration/by-page${buildQuery({ startDate, endDate, limit })}`)
+    .then(r => r?.pages ?? [])
 }
