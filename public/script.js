@@ -631,8 +631,9 @@
           });
           var mutOpts = { childList: true, attributes: true, characterData: true, subtree: true };
           mutationObs.observe(target, mutOpts);
-          if (target.parentElement) {
-            mutationObs.observe(target.parentElement, mutOpts);
+          var parent = target.parentElement;
+          if (parent && parent.tagName !== 'HTML' && parent.tagName !== 'BODY') {
+            mutationObs.observe(parent, { childList: true });
           }
         } catch (ex) {
           mutationObs = null;
