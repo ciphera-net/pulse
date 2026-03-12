@@ -475,7 +475,7 @@ function WelcomeContent() {
               <button
                 type="button"
                 onClick={() => setStep(1)}
-                className="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 mb-6 focus:outline-none focus:ring-2 focus:ring-brand-orange rounded"
+                className="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 mb-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded"
                 aria-label="Back to welcome"
               >
                 <ArrowLeftIcon className="h-4 w-4" />
@@ -546,7 +546,7 @@ function WelcomeContent() {
               <button
                 type="button"
                 onClick={() => setStep(2)}
-                className="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 mb-6 focus:outline-none focus:ring-2 focus:ring-brand-orange rounded"
+                className="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 mb-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded"
                 aria-label="Back to organization"
               >
                 <ArrowLeftIcon className="h-4 w-4" />
@@ -604,14 +604,14 @@ function WelcomeContent() {
                   <button
                     type="button"
                     onClick={() => router.push('/pricing')}
-                    className="text-sm text-brand-orange hover:underline focus:outline-none focus:ring-2 focus:ring-brand-orange rounded"
+                    className="text-sm text-brand-orange hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded"
                   >
                     Choose a different plan
                   </button>
                 </p>
               ) : (
                 <p className="mt-4 text-center">
-                  <Link href="/pricing" className="text-sm text-brand-orange hover:underline focus:outline-none focus:ring-2 focus:ring-brand-orange rounded">
+                  <Link href="/pricing" className="text-sm text-brand-orange hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded">
                     View pricing
                   </Link>
                 </p>
@@ -631,7 +631,7 @@ function WelcomeContent() {
               <button
                 type="button"
                 onClick={() => setStep(3)}
-                className="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 mb-6 focus:outline-none focus:ring-2 focus:ring-brand-orange rounded"
+                className="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 mb-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded"
                 aria-label="Back to plan"
               >
                 <ArrowLeftIcon className="h-4 w-4" />
@@ -750,7 +750,7 @@ function WelcomeContent() {
                   <button
                     type="button"
                     onClick={() => setShowVerificationModal(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-all text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2"
+                    className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-all text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2"
                   >
                     <span className="text-brand-orange">Verify installation</span>
                   </button>

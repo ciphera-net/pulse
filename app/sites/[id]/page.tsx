@@ -2,9 +2,8 @@
 
 
 import { logger } from '@/lib/utils/logger'
-import { useCallback, useEffect, useState, useMemo } from 'react'
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import { motion } from 'framer-motion'
 import {
   getPerformanceByPage,
   getTopPages,
@@ -19,39 +18,37 @@ import {
   type Stats,
   type DailyStat,
 } from '@/lib/api/stats'
-import { getDateRange } from '@ciphera-net/ui'
+import { getDateRange, formatDate } from '@ciphera-net/ui'
 import { toast } from '@ciphera-net/ui'
 import { Button } from '@ciphera-net/ui'
 import { Select, DatePicker, DownloadIcon } from '@ciphera-net/ui'
+import dynamic from 'next/dynamic'
 import { DashboardSkeleton, useMinimumLoading } from '@/components/skeletons'
-import ExportModal from '@/components/dashboard/ExportModal'
+import FilterBar from '@/components/dashboard/FilterBar'
+import AddFilterDropdown, { type FilterSuggestion, type FilterSuggestions } from '@/components/dashboard/AddFilterDropdown'
+import Chart from '@/components/dashboard/Chart'
 import ContentStats from '@/components/dashboard/ContentStats'
 import TopReferrers from '@/components/dashboard/TopReferrers'
 import Locations from '@/components/dashboard/Locations'
 import TechSpecs from '@/components/dashboard/TechSpecs'
-import Chart from '@/components/dashboard/Chart'
-import PerformanceStats from '@/components/dashboard/PerformanceStats'
-import GoalStats from '@/components/dashboard/GoalStats'
-import ScrollDepth from '@/components/dashboard/ScrollDepth'
-import Campaigns from '@/components/dashboard/Campaigns'
-import SiteNav from '@/components/dashboard/SiteNav'
-import FilterBar from '@/components/dashboard/FilterBar'
-import AddFilterDropdown, { type FilterSuggestion, type FilterSuggestions } from '@/components/dashboard/AddFilterDropdown'
-import EventProperties from '@/components/dashboard/EventProperties'
+
+const PerformanceStats = dynamic(() => import('@/components/dashboard/PerformanceStats'))
+const GoalStats = dynamic(() => import('@/components/dashboard/GoalStats'))
+const ScrollDepth = dynamic(() => import('@/components/dashboard/ScrollDepth'))
+const Campaigns = dynamic(() => import('@/components/dashboard/Campaigns'))
+const PeakHours = dynamic(() => import('@/components/dashboard/PeakHours'))
+const EventProperties = dynamic(() => import('@/components/dashboard/EventProperties'))
+const ExportModal = dynamic(() => import('@/components/dashboard/ExportModal'))
 import { type DimensionFilter, serializeFilters, parseFiltersFromURL } from '@/lib/filters'
 import {
-  useDashboardOverview,
-  useDashboardPages,
-  useDashboardLocations,
-  useDashboardDevices,
-  useDashboardReferrers,
-  useDashboardPerformance,
-  useDashboardGoals,
+  useDashboard,
   useRealtime,
   useStats,
   useDailyStats,
   useCampaigns,
+  useAnnotations,
 } from '@/lib/swr/dashboard'
+import { createAnnotation, updateAnnotation, deleteAnnotation, type AnnotationCategory } from '@/lib/api/annotations'
 
 function loadSavedSettings(): {
   type?: string
@@ -68,15 +65,35 @@ function loadSavedSettings(): {
   }
 }
 
+function getThisWeekRange(): { start: string; end: string } {
+  const today = new Date()
+  const dayOfWeek = today.getDay()
+  const monday = new Date(today)
+  monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1))
+  return { start: formatDate(monday), end: formatDate(today) }
+}
+
+function getThisMonthRange(): { start: string; end: string } {
+  const today = new Date()
+  const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+  return { start: formatDate(firstOfMonth), end: formatDate(today) }
+}
+
 function getInitialDateRange(): { start: string; end: string } {
   const settings = loadSavedSettings()
   if (settings?.type === 'today') {
-    const today = new Date().toISOString().split('T')[0]
+    const today = formatDate(new Date())
     return { start: today, end: today }
   }
   if (settings?.type === '7') return getDateRange(7)
+  if (settings?.type === 'week') return getThisWeekRange()
+  if (settings?.type === 'month') return getThisMonthRange()
   if (settings?.type === 'custom' && settings.dateRange) return settings.dateRange
   return getDateRange(30)
+}
+
+function getInitialPeriod(): string {
+  return loadSavedSettings()?.type || '30'
 }
 
 export default function SiteDashboardPage() {
@@ -88,6 +105,7 @@ export default function SiteDashboardPage() {
   const siteId = params.id as string
 
   // UI state - initialized from localStorage synchronously to avoid double-fetch
+  const [period, setPeriod] = useState(getInitialPeriod)
   const [dateRange, setDateRange] = useState(getInitialDateRange)
   const [todayInterval, setTodayInterval] = useState<'minute' | 'hour'>(
     () => loadSavedSettings()?.todayInterval || 'hour'
@@ -97,8 +115,7 @@ export default function SiteDashboardPage() {
   )
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null)
-  const [, setTick] = useState(0)
+  const lastUpdatedAtRef = useRef<number | null>(null)
 
   // Dimension filters state
   const searchParams = useSearchParams()
@@ -219,39 +236,53 @@ export default function SiteDashboardPage() {
     return { start: prevStart.toISOString().split('T')[0], end: prevEnd.toISOString().split('T')[0] }
   }, [dateRange])
 
-  // SWR hooks - replace manual useState + useEffect + setInterval polling
-  // Each hook handles its own refresh interval, deduplication, and error retry
-  // Filters are included in cache keys so changing filters auto-refetches
-  const { data: overview, isLoading: overviewLoading, error: overviewError } = useDashboardOverview(siteId, dateRange.start, dateRange.end, interval, filtersParam || undefined)
-  const { data: pages } = useDashboardPages(siteId, dateRange.start, dateRange.end, filtersParam || undefined)
-  const { data: locations } = useDashboardLocations(siteId, dateRange.start, dateRange.end, filtersParam || undefined)
-  const { data: devicesData } = useDashboardDevices(siteId, dateRange.start, dateRange.end, filtersParam || undefined)
-  const { data: referrers } = useDashboardReferrers(siteId, dateRange.start, dateRange.end, filtersParam || undefined)
-  const { data: performanceData } = useDashboardPerformance(siteId, dateRange.start, dateRange.end, filtersParam || undefined)
-  const { data: goalsData } = useDashboardGoals(siteId, dateRange.start, dateRange.end, filtersParam || undefined)
+  // Single dashboard request replaces 7 focused hooks (overview, pages, locations,
+  // devices, referrers, performance, goals). The backend runs all queries in parallel
+  // and caches the result in Redis, reducing requests from 12 to 6 per refresh cycle.
+  const { data: dashboard, isLoading: dashboardLoading, error: dashboardError } = useDashboard(siteId, dateRange.start, dateRange.end, interval, filtersParam || undefined)
   const { data: realtimeData } = useRealtime(siteId)
   const { data: prevStats } = useStats(siteId, prevRange.start, prevRange.end)
   const { data: prevDailyStats } = useDailyStats(siteId, prevRange.start, prevRange.end, interval)
   const { data: campaigns } = useCampaigns(siteId, dateRange.start, dateRange.end)
+  const { data: annotations, mutate: mutateAnnotations } = useAnnotations(siteId, dateRange.start, dateRange.end)
 
-  // Derive typed values from SWR data
-  const site = overview?.site ?? null
-  const stats: Stats = overview?.stats ?? { pageviews: 0, visitors: 0, bounce_rate: 0, avg_duration: 0 }
-  const realtime = realtimeData?.visitors ?? overview?.realtime_visitors ?? 0
-  const dailyStats: DailyStat[] = overview?.daily_stats ?? []
+  // Annotation mutation handlers
+  const handleCreateAnnotation = async (data: { date: string; time?: string; text: string; category: string }) => {
+    await createAnnotation(siteId, { ...data, category: data.category as AnnotationCategory })
+    mutateAnnotations()
+    toast.success('Annotation added')
+  }
+
+  const handleUpdateAnnotation = async (id: string, data: { date: string; time?: string; text: string; category: string }) => {
+    await updateAnnotation(siteId, id, { ...data, category: data.category as AnnotationCategory })
+    mutateAnnotations()
+    toast.success('Annotation updated')
+  }
+
+  const handleDeleteAnnotation = async (id: string) => {
+    await deleteAnnotation(siteId, id)
+    mutateAnnotations()
+    toast.success('Annotation deleted')
+  }
+
+  // Derive typed values from single dashboard response
+  const site = dashboard?.site ?? null
+  const stats: Stats = dashboard?.stats ?? { pageviews: 0, visitors: 0, bounce_rate: 0, avg_duration: 0 }
+  const realtime = realtimeData?.visitors ?? dashboard?.realtime_visitors ?? 0
+  const dailyStats: DailyStat[] = dashboard?.daily_stats ?? []
 
   // Build filter suggestions from current dashboard data
   const filterSuggestions = useMemo<FilterSuggestions>(() => {
     const s: FilterSuggestions = {}
 
     // Pages
-    const topPages = pages?.top_pages ?? []
+    const topPages = dashboard?.top_pages ?? []
     if (topPages.length > 0) {
       s.page = topPages.map(p => ({ value: p.path, label: p.path, count: p.pageviews }))
     }
 
     // Referrers
-    const refs = referrers?.top_referrers ?? []
+    const refs = dashboard?.top_referrers ?? []
     if (refs.length > 0) {
       s.referrer = refs.filter(r => r.referrer && r.referrer !== '').map(r => ({
         value: r.referrer,
@@ -261,7 +292,7 @@ export default function SiteDashboardPage() {
     }
 
     // Countries
-    const ctrs = locations?.countries ?? []
+    const ctrs = dashboard?.countries ?? []
     if (ctrs.length > 0) {
       const regionNames = (() => { try { return new Intl.DisplayNames(['en'], { type: 'region' }) } catch { return null } })()
       s.country = ctrs.filter(c => c.country && c.country !== 'Unknown').map(c => ({
@@ -272,7 +303,7 @@ export default function SiteDashboardPage() {
     }
 
     // Regions
-    const regs = locations?.regions ?? []
+    const regs = dashboard?.regions ?? []
     if (regs.length > 0) {
       s.region = regs.filter(r => r.region && r.region !== 'Unknown').map(r => ({
         value: r.region,
@@ -282,7 +313,7 @@ export default function SiteDashboardPage() {
     }
 
     // Cities
-    const cts = locations?.cities ?? []
+    const cts = dashboard?.cities ?? []
     if (cts.length > 0) {
       s.city = cts.filter(c => c.city && c.city !== 'Unknown').map(c => ({
         value: c.city,
@@ -292,7 +323,7 @@ export default function SiteDashboardPage() {
     }
 
     // Browsers
-    const brs = devicesData?.browsers ?? []
+    const brs = dashboard?.browsers ?? []
     if (brs.length > 0) {
       s.browser = brs.filter(b => b.browser && b.browser !== 'Unknown').map(b => ({
         value: b.browser,
@@ -302,7 +333,7 @@ export default function SiteDashboardPage() {
     }
 
     // OS
-    const oses = devicesData?.os ?? []
+    const oses = dashboard?.os ?? []
     if (oses.length > 0) {
       s.os = oses.filter(o => o.os && o.os !== 'Unknown').map(o => ({
         value: o.os,
@@ -312,7 +343,7 @@ export default function SiteDashboardPage() {
     }
 
     // Devices
-    const devs = devicesData?.devices ?? []
+    const devs = dashboard?.devices ?? []
     if (devs.length > 0) {
       s.device = devs.filter(d => d.device && d.device !== 'Unknown').map(d => ({
         value: d.device,
@@ -338,25 +369,19 @@ export default function SiteDashboardPage() {
     }
 
     return s
-  }, [pages, referrers, locations, devicesData, campaigns])
+  }, [dashboard, campaigns])
 
   // Show error toast on fetch failure
   useEffect(() => {
-    if (overviewError) {
+    if (dashboardError) {
       toast.error('Failed to load dashboard analytics')
     }
-  }, [overviewError])
+  }, [dashboardError])
 
   // Track when data was last updated (for "Live · Xs ago" display)
   useEffect(() => {
-    if (overview) setLastUpdatedAt(Date.now())
-  }, [overview])
-
-  // Tick every 1s so "Live · Xs ago" counts in real time
-  useEffect(() => {
-    const timer = setInterval(() => setTick((t) => t + 1), 1000)
-    return () => clearInterval(timer)
-  }, [])
+    if (dashboard) lastUpdatedAtRef.current = Date.now()
+  }, [dashboard])
 
   // Save settings to localStorage
   const saveSettings = (type: string, newDateRange?: { start: string; end: string }) => {
@@ -377,7 +402,7 @@ export default function SiteDashboardPage() {
   // Save intervals when they change
   useEffect(() => {
     let type = 'custom'
-    const today = new Date().toISOString().split('T')[0]
+    const today = formatDate(new Date())
     if (dateRange.start === today && dateRange.end === today) type = 'today'
     else if (dateRange.start === getDateRange(7).start) type = '7'
     else if (dateRange.start === getDateRange(30).start) type = '30'
@@ -396,7 +421,9 @@ export default function SiteDashboardPage() {
     if (site?.domain) document.title = `${site.domain} | Pulse`
   }, [site?.domain])
 
-  const showSkeleton = useMinimumLoading(overviewLoading)
+  // Skip the minimum-loading skeleton when SWR already has cached data
+  // (prevents the 300ms flash when navigating back to the dashboard)
+  const showSkeleton = useMinimumLoading(dashboardLoading && !dashboard)
 
   if (showSkeleton) {
     return <DashboardSkeleton />
@@ -404,19 +431,14 @@ export default function SiteDashboardPage() {
 
   if (!site) {
     return (
-      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
+      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
         <p className="text-neutral-600 dark:text-neutral-400">Site not found</p>
       </div>
     )
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.2 }}
-      className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8"
-    >
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">
@@ -457,33 +479,35 @@ export default function SiteDashboardPage() {
                 <Select
                   variant="input"
                   className="min-w-[140px]"
-                  value={
-                    dateRange.start === new Date().toISOString().split('T')[0] && dateRange.end === new Date().toISOString().split('T')[0]
-                      ? 'today'
-                      : dateRange.start === getDateRange(7).start
-                        ? '7'
-                        : dateRange.start === getDateRange(30).start
-                          ? '30'
-                          : 'custom'
-                  }
+                  value={period}
                   onChange={(value) => {
-                    if (value === '7') {
-                      const range = getDateRange(7)
-                      setDateRange(range)
-                      saveSettings('7', range)
-                    }
-                    else if (value === '30') {
-                      const range = getDateRange(30)
-                      setDateRange(range)
-                      saveSettings('30', range)
-                    }
-                    else if (value === 'today') {
-                      const today = new Date().toISOString().split('T')[0]
+                    if (value === 'today') {
+                      const today = formatDate(new Date())
                       const range = { start: today, end: today }
                       setDateRange(range)
+                      setPeriod('today')
                       saveSettings('today', range)
-                    }
-                    else if (value === 'custom') {
+                    } else if (value === '7') {
+                      const range = getDateRange(7)
+                      setDateRange(range)
+                      setPeriod('7')
+                      saveSettings('7', range)
+                    } else if (value === 'week') {
+                      const range = getThisWeekRange()
+                      setDateRange(range)
+                      setPeriod('week')
+                      saveSettings('week', range)
+                    } else if (value === '30') {
+                      const range = getDateRange(30)
+                      setDateRange(range)
+                      setPeriod('30')
+                      saveSettings('30', range)
+                    } else if (value === 'month') {
+                      const range = getThisMonthRange()
+                      setDateRange(range)
+                      setPeriod('month')
+                      saveSettings('month', range)
+                    } else if (value === 'custom') {
                       setIsDatePickerOpen(true)
                     }
                   }}
@@ -491,6 +515,10 @@ export default function SiteDashboardPage() {
                     { value: 'today', label: 'Today' },
                     { value: '7', label: 'Last 7 days' },
                     { value: '30', label: 'Last 30 days' },
+                    { value: 'divider-1', label: '', divider: true },
+                    { value: 'week', label: 'This week' },
+                    { value: 'month', label: 'This month' },
+                    { value: 'divider-2', label: '', divider: true },
                     { value: 'custom', label: 'Custom' },
                   ]}
                 />
@@ -498,8 +526,6 @@ export default function SiteDashboardPage() {
             </div>
         </div>
       </div>
-
-      <SiteNav siteId={siteId} />
 
       {/* Dimension Filters */}
       <div className="flex items-center gap-2 flex-wrap mb-2">
@@ -516,11 +542,17 @@ export default function SiteDashboardPage() {
           prevStats={prevStats}
           interval={dateRange.start === dateRange.end ? todayInterval : multiDayInterval}
           dateRange={dateRange}
+          period={period}
           todayInterval={todayInterval}
           setTodayInterval={setTodayInterval}
           multiDayInterval={multiDayInterval}
           setMultiDayInterval={setMultiDayInterval}
-          lastUpdatedAt={lastUpdatedAt}
+          lastUpdatedAt={lastUpdatedAtRef.current}
+          annotations={annotations}
+          canManageAnnotations={true}
+          onCreateAnnotation={handleCreateAnnotation}
+          onUpdateAnnotation={handleUpdateAnnotation}
+          onDeleteAnnotation={handleDeleteAnnotation}
         />
       </div>
 
@@ -528,8 +560,8 @@ export default function SiteDashboardPage() {
       {site.enable_performance_insights && (
         <div className="mb-8">
           <PerformanceStats
-            stats={performanceData?.performance ?? { lcp: 0, cls: 0, inp: 0 }}
-            performanceByPage={performanceData?.performance_by_page ?? null}
+            stats={dashboard?.performance ?? { lcp: 0, cls: 0, inp: 0 }}
+            performanceByPage={dashboard?.performance_by_page ?? null}
             siteId={siteId}
             startDate={dateRange.start}
             endDate={dateRange.end}
@@ -540,9 +572,9 @@ export default function SiteDashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-2 mb-8">
         <ContentStats
-          topPages={pages?.top_pages ?? []}
-          entryPages={pages?.entry_pages ?? []}
-          exitPages={pages?.exit_pages ?? []}
+          topPages={dashboard?.top_pages ?? []}
+          entryPages={dashboard?.entry_pages ?? []}
+          exitPages={dashboard?.exit_pages ?? []}
           domain={site.domain}
           collectPagePaths={site.collect_page_paths ?? true}
           siteId={siteId}
@@ -550,7 +582,7 @@ export default function SiteDashboardPage() {
           onFilter={handleAddFilter}
         />
         <TopReferrers
-          referrers={referrers?.top_referrers ?? []}
+          referrers={dashboard?.top_referrers ?? []}
           collectReferrers={site.collect_referrers ?? true}
           siteId={siteId}
           dateRange={dateRange}
@@ -560,19 +592,19 @@ export default function SiteDashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-2 mb-8">
         <Locations
-          countries={locations?.countries ?? []}
-          cities={locations?.cities ?? []}
-          regions={locations?.regions ?? []}
+          countries={dashboard?.countries ?? []}
+          cities={dashboard?.cities ?? []}
+          regions={dashboard?.regions ?? []}
           geoDataLevel={site.collect_geo_data || 'full'}
           siteId={siteId}
           dateRange={dateRange}
           onFilter={handleAddFilter}
         />
         <TechSpecs
-          browsers={devicesData?.browsers ?? []}
-          os={devicesData?.os ?? []}
-          devices={devicesData?.devices ?? []}
-          screenResolutions={devicesData?.screen_resolutions ?? []}
+          browsers={dashboard?.browsers ?? []}
+          os={dashboard?.os ?? []}
+          devices={dashboard?.devices ?? []}
+          screenResolutions={dashboard?.screen_resolutions ?? []}
           collectDeviceInfo={site.collect_device_info ?? true}
           collectScreenResolution={site.collect_screen_resolution ?? true}
           siteId={siteId}
@@ -583,14 +615,15 @@ export default function SiteDashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-2 mb-8">
         <Campaigns siteId={siteId} dateRange={dateRange} filters={filtersParam || undefined} onFilter={handleAddFilter} />
-        <GoalStats
-          goalCounts={(goalsData?.goal_counts ?? []).filter(g => !/^scroll_\d+$/.test(g.event_name))}
-          onSelectEvent={setSelectedEvent}
-        />
+        <PeakHours siteId={siteId} dateRange={dateRange} />
       </div>
 
-      <div className="mb-8">
-        <ScrollDepth goalCounts={goalsData?.goal_counts ?? []} totalPageviews={stats.pageviews} />
+      <div className="grid gap-6 lg:grid-cols-2 mb-8">
+        <GoalStats
+          goalCounts={(dashboard?.goal_counts ?? []).filter(g => !/^scroll_\d+$/.test(g.event_name))}
+          onSelectEvent={setSelectedEvent}
+        />
+        <ScrollDepth goalCounts={dashboard?.goal_counts ?? []} totalPageviews={stats.pageviews} />
       </div>
 
       {/* Event Properties Breakdown */}
@@ -610,6 +643,7 @@ export default function SiteDashboardPage() {
         onClose={() => setIsDatePickerOpen(false)}
         onApply={(range) => {
           setDateRange(range)
+          setPeriod('custom')
           saveSettings('custom', range)
           setIsDatePickerOpen(false)
         }}
@@ -621,10 +655,10 @@ export default function SiteDashboardPage() {
         onClose={() => setIsExportModalOpen(false)}
         data={dailyStats}
         stats={stats}
-        topPages={pages?.top_pages}
-        topReferrers={referrers?.top_referrers}
+        topPages={dashboard?.top_pages}
+        topReferrers={dashboard?.top_referrers}
         campaigns={campaigns}
       />
-    </motion.div>
+    </div>
   )
 }

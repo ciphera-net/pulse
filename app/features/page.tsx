@@ -83,12 +83,12 @@ const capabilities = [
     description: 'Automatically parse UTM parameters. Built-in link builder for campaigns, sources, and mediums.',
   },
   {
-    icon: Share2Icon,
+    icon: <Share2Icon className="w-5 h-5" />,
     title: 'Shared Dashboards',
     description: 'Generate a public link to share analytics with clients or teammates — no login required.',
   },
   {
-    icon: GlobeIcon,
+    icon: <GlobeIcon className="w-5 h-5" />,
     title: 'Geographic Insights',
     description: 'Country, region, and city-level breakdowns. IPs are never stored — derived at request time only.',
   },
@@ -190,7 +190,7 @@ export default function FeaturesPage() {
                 className="flex gap-4"
               >
                 <div className="w-10 h-10 rounded-lg bg-brand-orange/10 flex items-center justify-center shrink-0 text-brand-orange mt-0.5">
-                  {typeof cap.icon === 'object' ? cap.icon : <cap.icon className="w-5 h-5" />}
+                  {cap.icon}
                 </div>
                 <div>
                   <h3 className="font-bold text-neutral-900 dark:text-white mb-1">

@@ -21,7 +21,6 @@ import { toast } from '@ciphera-net/ui'
 import { useTheme } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { Button, Modal } from '@ciphera-net/ui'
-import SiteNav from '@/components/dashboard/SiteNav'
 import { UptimeSkeleton, ChecksSkeleton, useMinimumLoading } from '@/components/skeletons'
 import {
   AreaChart,
@@ -29,28 +28,15 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip as RechartsTooltip,
-  ResponsiveContainer,
 } from 'recharts'
-import type { TooltipProps } from 'recharts'
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/charts'
 
-// * Chart theme colors (consistent with main Pulse chart)
-const CHART_COLORS_LIGHT = {
-  border: 'var(--color-neutral-200)',
-  text: 'var(--color-neutral-900)',
-  textMuted: 'var(--color-neutral-500)',
-  axis: 'var(--color-neutral-400)',
-  tooltipBg: '#ffffff',
-  tooltipBorder: 'var(--color-neutral-200)',
-}
-const CHART_COLORS_DARK = {
-  border: 'var(--color-neutral-700)',
-  text: 'var(--color-neutral-50)',
-  textMuted: 'var(--color-neutral-400)',
-  axis: 'var(--color-neutral-500)',
-  tooltipBg: 'var(--color-neutral-800)',
-  tooltipBorder: 'var(--color-neutral-700)',
-}
+const responseTimeChartConfig = {
+  ms: {
+    label: 'Response Time',
+    color: 'var(--chart-1)',
+  },
+} satisfies ChartConfig
 
 // * Status color mapping
 function getStatusColor(status: string): string {
@@ -285,9 +271,6 @@ function UptimeStatusBar({
 
 // * Component: Response time chart (Recharts area chart)
 function ResponseTimeChart({ checks }: { checks: UptimeCheck[] }) {
-  const { resolvedTheme } = useTheme()
-  const colors = resolvedTheme === 'dark' ? CHART_COLORS_DARK : CHART_COLORS_LIGHT
-
   // * Prepare data in chronological order (oldest first)
   const data = [...checks]
     .reverse()
@@ -303,71 +286,58 @@ function ResponseTimeChart({ checks }: { checks: UptimeCheck[] }) {
 
   if (data.length < 2) return null
 
-  const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
-    if (!active || !payload?.length) return null
-    return (
-      <div
-        className="rounded-xl px-3 py-2 text-xs shadow-lg border transition-shadow duration-300"
-        style={{
-          background: colors.tooltipBg,
-          borderColor: colors.tooltipBorder,
-          color: colors.text,
-        }}
-      >
-        <div className="font-medium mb-0.5">{label}</div>
-        <div style={{ color: 'var(--color-brand-orange)' }} className="font-semibold">
-          {payload[0].value}ms
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="mt-4">
       <h4 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">
         Response Time
       </h4>
-      <div className="h-40">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-            <defs>
-              <linearGradient id="responseTimeGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--color-brand-orange)" stopOpacity={0.3} />
-                <stop offset="100%" stopColor="var(--color-brand-orange)" stopOpacity={0.02} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke={colors.border}
-              strokeOpacity={0.5}
-              vertical={false}
-            />
-            <XAxis
-              dataKey="time"
-              tick={{ fontSize: 10, fill: colors.axis }}
-              tickLine={false}
-              axisLine={false}
-              interval="preserveStartEnd"
-            />
-            <YAxis
-              tick={{ fontSize: 10, fill: colors.axis }}
-              tickLine={false}
-              axisLine={false}
-              tickFormatter={(v: number) => `${v}ms`}
-            />
-            <RechartsTooltip content={<CustomTooltip />} />
-            <Area
-              type="monotone"
-              dataKey="ms"
-              stroke="var(--color-brand-orange)"
-              strokeWidth={2}
-              fill="url(#responseTimeGradient)"
-              dot={false}
-              activeDot={{ r: 4, fill: 'var(--color-brand-orange)', strokeWidth: 0 }}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
+      <ChartContainer config={responseTimeChartConfig} className="h-40">
+        <AreaChart accessibilityLayer data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+          <defs>
+            <linearGradient id="responseTimeGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--color-ms)" stopOpacity={0.3} />
+              <stop offset="100%" stopColor="var(--color-ms)" stopOpacity={0.02} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid
+            strokeDasharray="3 3"
+            stroke="var(--chart-grid)"
+            strokeOpacity={0.5}
+            vertical={false}
+          />
+          <XAxis
+            dataKey="time"
+            tick={{ fontSize: 10, fill: 'var(--chart-axis)' }}
+            tickLine={false}
+            axisLine={false}
+            interval="preserveStartEnd"
+          />
+          <YAxis
+            tick={{ fontSize: 10, fill: 'var(--chart-axis)' }}
+            tickLine={false}
+            axisLine={false}
+            tickFormatter={(v: number) => `${v}ms`}
+          />
+          <ChartTooltip
+            content={
+              <ChartTooltipContent
+                className="text-xs"
+                labelKey="time"
+                formatter={(value) => <span className="font-semibold">{value}ms</span>}
+              />
+            }
+          />
+          <Area
+            type="monotone"
+            dataKey="ms"
+            stroke="var(--color-ms)"
+            strokeWidth={2}
+            fill="url(#responseTimeGradient)"
+            dot={false}
+            activeDot={{ r: 4, fill: 'var(--color-ms)', strokeWidth: 0 }}
+          />
+        </AreaChart>
+      </ChartContainer>
     </div>
   )
 }
@@ -718,14 +688,7 @@ export default function UptimePage() {
   const overallStatus = uptimeData?.status ?? 'operational'
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.2 }}
-      className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8"
-    >
-      <SiteNav siteId={siteId} />
-
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
       {/* Header */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -845,7 +808,7 @@ export default function UptimePage() {
           siteDomain={site.domain}
         />
       </Modal>
-    </motion.div>
+    </div>
   )
 }
 

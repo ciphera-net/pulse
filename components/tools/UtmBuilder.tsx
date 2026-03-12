@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { logger } from '@/lib/utils/logger'
-import { CopyIcon, CheckIcon } from '@radix-ui/react-icons'
+import { Copy, Check } from '@phosphor-icons/react'
 import { listSites, Site } from '@/lib/api/sites'
 import { Select, Input, Button } from '@ciphera-net/ui'
 
@@ -205,7 +205,7 @@ export default function UtmBuilder({ initialSiteId }: UtmBuilderProps) {
             className="ml-4 shrink-0 h-9 w-9 p-0 rounded-lg"
             title="Copy to clipboard"
           >
-            {copied ? <CheckIcon className="w-4 h-4 text-green-500" /> : <CopyIcon className="w-4 h-4" />}
+            {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
           </Button>
         </div>
       )}

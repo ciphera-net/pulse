@@ -122,7 +122,7 @@ export function ChartSkeleton() {
 
 export function DashboardSkeleton() {
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
@@ -170,7 +170,7 @@ export function DashboardSkeleton() {
 
 export function RealtimeSkeleton() {
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8 h-[calc(100vh-64px)] flex flex-col">
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8 h-[calc(100vh-64px)] flex flex-col">
       <div className="mb-6">
         <SkeletonLine className="h-4 w-32 mb-2" />
         <SkeletonLine className="h-8 w-64" />
@@ -242,7 +242,7 @@ export function SessionEventsSkeleton() {
 
 export function UptimeSkeleton() {
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
       <div className="mb-8">
         <SkeletonLine className="h-4 w-32 mb-2" />
         <SkeletonLine className="h-8 w-24 mb-1" />
@@ -295,7 +295,7 @@ export function ChecksSkeleton() {
 
 export function FunnelsListSkeleton() {
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
       <div className="mb-8">
         <div className="flex items-center gap-4 mb-6">
           <SkeletonLine className="h-10 w-10 rounded-xl" />
@@ -329,7 +329,7 @@ export function FunnelsListSkeleton() {
 
 export function FunnelDetailSkeleton() {
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
       <div className="mb-8">
         <SkeletonLine className="h-4 w-32 mb-2" />
         <SkeletonLine className="h-8 w-48 mb-1" />
