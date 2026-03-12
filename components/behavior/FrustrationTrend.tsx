@@ -31,10 +31,10 @@ function SkeletonCard() {
 }
 
 const COLORS = {
-  rage_clicks: '#FD5E0F',
-  dead_clicks: '#3B82F6',
-  prev_rage_clicks: '#9A3412',
-  prev_dead_clicks: '#1E40AF',
+  rage_clicks: 'rgba(253, 94, 15, 0.7)',
+  dead_clicks: 'rgba(180, 83, 9, 0.7)',
+  prev_rage_clicks: 'rgba(253, 94, 15, 0.35)',
+  prev_dead_clicks: 'rgba(180, 83, 9, 0.35)',
 } as const
 
 const chartConfig = {
