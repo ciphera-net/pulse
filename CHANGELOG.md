@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- **Region names now display correctly.** Some regions were showing as cryptic codes like "14" (Poland), "KKC" (Thailand), or "IDF" (France) instead of their actual names. The Locations panel now shows proper region names like "Masovian", "Khon Kaen", and "Île-de-France."
+
 ## [0.14.0-alpha] - 2026-03-12
 
 ### Improved
