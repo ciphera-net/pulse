@@ -34,7 +34,6 @@ import TechSpecs from '@/components/dashboard/TechSpecs'
 
 const PerformanceStats = dynamic(() => import('@/components/dashboard/PerformanceStats'))
 const GoalStats = dynamic(() => import('@/components/dashboard/GoalStats'))
-const ScrollDepth = dynamic(() => import('@/components/dashboard/ScrollDepth'))
 const Campaigns = dynamic(() => import('@/components/dashboard/Campaigns'))
 const PeakHours = dynamic(() => import('@/components/dashboard/PeakHours'))
 const EventProperties = dynamic(() => import('@/components/dashboard/EventProperties'))
@@ -618,12 +617,11 @@ export default function SiteDashboardPage() {
         <PeakHours siteId={siteId} dateRange={dateRange} />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2 mb-8">
+      <div className="mb-8">
         <GoalStats
           goalCounts={(dashboard?.goal_counts ?? []).filter(g => !/^scroll_\d+$/.test(g.event_name))}
           onSelectEvent={setSelectedEvent}
         />
-        <ScrollDepth goalCounts={dashboard?.goal_counts ?? []} totalPageviews={stats.pageviews} />
       </div>
 
       {/* Event Properties Breakdown */}
