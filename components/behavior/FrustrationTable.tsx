@@ -5,7 +5,6 @@ import { formatNumber, Modal } from '@ciphera-net/ui'
 import { FrameCornersIcon, Copy, Check, CursorClick } from '@phosphor-icons/react'
 import { toast } from '@ciphera-net/ui'
 import type { FrustrationElement } from '@/lib/api/stats'
-import { formatRelativeTime } from '@/lib/utils/formatDate'
 import { ListSkeleton } from '@/components/skeletons'
 
 const DISPLAY_LIMIT = 7
@@ -93,11 +92,6 @@ function Row({
         </div>
       </div>
       <div className="flex items-center gap-2 ml-4 shrink-0">
-        {/* Secondary info: visible on hover */}
-        <span className="text-xs text-neutral-400 dark:text-neutral-500 tabular-nums opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-          {showAvgClicks && item.avg_click_count != null ? `avg ${item.avg_click_count.toFixed(1)} · ` : ''}
-          {item.sessions} {item.sessions === 1 ? 'sess' : 'sess'} · {formatRelativeTime(item.last_seen)}
-        </span>
         {/* Percentage badge: slides in on hover */}
         <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 tabular-nums">
           {pct}
