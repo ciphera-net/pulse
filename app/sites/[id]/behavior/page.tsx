@@ -53,6 +53,7 @@ export default function BehaviorPage() {
   const [deadClicks, setDeadClicks] = useState<{ items: FrustrationElement[]; total: number }>({ items: [], total: 0 })
   const [byPage, setByPage] = useState<FrustrationByPage[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
   const refreshRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Fetch dashboard data for scroll depth (goal_counts + stats)
@@ -70,7 +71,9 @@ export default function BehaviorPage() {
       setRageClicks(rageData)
       setDeadClicks(deadData)
       setByPage(pageData)
+      setError(false)
     } catch {
+      setError(true)
       toast.error('Failed to load behavior data')
     } finally {
       setLoading(false)
@@ -185,14 +188,16 @@ export default function BehaviorPage() {
       {/* By page breakdown */}
       <FrustrationByPageTable pages={byPage} loading={loading} />
 
-      {/* Scroll depth + Frustration trend */}
-      <div className="grid gap-6 lg:grid-cols-2 mb-8">
-        <ScrollDepth
-          goalCounts={dashboard?.goal_counts ?? []}
-          totalPageviews={dashboard?.stats?.pageviews ?? 0}
-        />
-        <FrustrationTrend summary={summary} loading={loading} />
-      </div>
+      {/* Scroll depth + Frustration trend — hide when data failed to load */}
+      {!error && (
+        <div className="grid gap-6 lg:grid-cols-2 mb-8">
+          <ScrollDepth
+            goalCounts={dashboard?.goal_counts ?? []}
+            totalPageviews={dashboard?.stats?.pageviews ?? 0}
+          />
+          <FrustrationTrend summary={summary} loading={loading} />
+        </div>
+      )}
 
       <DatePicker
         isOpen={isDatePickerOpen}
