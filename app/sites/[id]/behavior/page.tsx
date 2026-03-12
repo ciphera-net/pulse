@@ -18,6 +18,7 @@ import {
 import FrustrationSummaryCards from '@/components/behavior/FrustrationSummaryCards'
 import FrustrationTable from '@/components/behavior/FrustrationTable'
 import FrustrationByPageTable from '@/components/behavior/FrustrationByPageTable'
+import FrustrationTrend from '@/components/behavior/FrustrationTrend'
 import { useDashboard } from '@/lib/swr/dashboard'
 
 const ScrollDepth = dynamic(() => import('@/components/dashboard/ScrollDepth'))
@@ -91,8 +92,9 @@ export default function BehaviorPage() {
   }, [fetchData])
 
   useEffect(() => {
-    document.title = 'Behavior | Pulse'
-  }, [])
+    const domain = dashboard?.site?.domain
+    document.title = domain ? `Behavior · ${domain} | Pulse` : 'Behavior | Pulse'
+  }, [dashboard?.site?.domain])
 
   const fetchAllRage = useCallback(
     () => getRageClicks(siteId, dateRange.start, dateRange.end, 100),
@@ -181,12 +183,13 @@ export default function BehaviorPage() {
       {/* By page breakdown */}
       <FrustrationByPageTable pages={byPage} loading={loading} />
 
-      {/* Scroll depth */}
+      {/* Scroll depth + Frustration trend */}
       <div className="grid gap-6 lg:grid-cols-2 mb-8">
         <ScrollDepth
           goalCounts={dashboard?.goal_counts ?? []}
           totalPageviews={dashboard?.stats?.pageviews ?? 0}
         />
+        <FrustrationTrend summary={summary} loading={loading} />
       </div>
 
       <DatePicker
