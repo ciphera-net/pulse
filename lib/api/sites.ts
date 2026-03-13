@@ -25,6 +25,7 @@ export interface Site {
   hide_unknown_locations?: boolean
   // Data retention (months); 0 = keep forever
   data_retention_months?: number
+  is_verified?: boolean
   created_at: string
   updated_at: string
 }
@@ -88,6 +89,12 @@ export async function deleteSite(id: string): Promise<void> {
 
 export async function resetSiteData(id: string): Promise<void> {
   await apiRequest(`/sites/${id}/reset`, {
+    method: 'POST',
+  })
+}
+
+export async function verifySite(id: string): Promise<void> {
+  await apiRequest(`/sites/${id}/verify`, {
     method: 'POST',
   })
 }

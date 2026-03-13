@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Improved
 
+- **Sites now show their verification status.** Each site on your dashboard now displays either a green "Active" badge (if verified) or an amber "Unverified" badge. When you verify your tracking script installation, the status is saved permanently — no more showing "Active" for sites that haven't been set up yet.
 - **Cleaner page paths in your reports.** Pages like `/products?_t=123456` or `/about?session=abc` now correctly show as `/products` and `/about`. Only marketing attribution parameters (like UTM tags) are preserved for traffic source tracking — all other junk parameters are automatically removed, so your Top Pages and Journeys stay clean without us having to chase down every new parameter format.
 - **Easier to hover country dots on the map.** The orange location markers on the world map are now much easier to interact with — you no longer need pixel-perfect aim to see the tooltip.
 - **Smoother chart curves and filled area.** The dashboard chart line now flows with natural curves instead of sharp flat tops at peaks. The area beneath the line is filled with a soft transparent orange gradient that fades toward the bottom, making trends easier to read at a glance.
