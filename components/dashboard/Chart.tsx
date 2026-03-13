@@ -11,7 +11,6 @@ import { Checkbox } from '@ciphera-net/ui'
 import { ArrowUpRight, ArrowDownRight } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import { AnimatedGridPattern } from '@/components/ui/animated-grid-pattern'
 
 const ANNOTATION_COLORS: Record<string, string> = {
   deploy: '#3b82f6',
@@ -386,16 +385,15 @@ export default function Chart({
         </CardHeader>
 
         <CardContent className="px-2.5 py-4 relative overflow-hidden">
-          <AnimatedGridPattern
-            numSquares={30}
-            maxOpacity={0.1}
-            duration={3}
-            repeatDelay={1}
-            width={30}
-            height={30}
-            x={-1}
-            y={-1}
-            className="fill-neutral-400/10 stroke-neutral-400/15 dark:fill-neutral-500/10 dark:stroke-neutral-500/15 [mask-image:linear-gradient(to_bottom,transparent,white_20%,white_80%,transparent)]"
+          {/* Subtle horizontal lines background */}
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{
+              backgroundImage: 'repeating-linear-gradient(to bottom, transparent, transparent 39px, var(--chart-grid) 39px, var(--chart-grid) 40px)',
+              opacity: 0.5,
+              maskImage: 'linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)',
+              WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)',
+            }}
           />
           {/* Toolbar */}
           <div className="flex items-center justify-between gap-3 mb-4 px-2">
