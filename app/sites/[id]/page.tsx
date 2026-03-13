@@ -23,7 +23,7 @@ import { toast } from '@ciphera-net/ui'
 import { Button } from '@ciphera-net/ui'
 import { Select, DatePicker, DownloadIcon } from '@ciphera-net/ui'
 import dynamic from 'next/dynamic'
-import { DashboardSkeleton, useMinimumLoading } from '@/components/skeletons'
+import { DashboardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import FilterBar from '@/components/dashboard/FilterBar'
 import AddFilterDropdown, { type FilterSuggestion, type FilterSuggestions } from '@/components/dashboard/AddFilterDropdown'
 import Chart from '@/components/dashboard/Chart'
@@ -423,6 +423,7 @@ export default function SiteDashboardPage() {
   // Skip the minimum-loading skeleton when SWR already has cached data
   // (prevents the 300ms flash when navigating back to the dashboard)
   const showSkeleton = useMinimumLoading(dashboardLoading && !dashboard)
+  const fadeClass = useSkeletonFade(showSkeleton)
 
   if (showSkeleton) {
     return <DashboardSkeleton />
@@ -437,7 +438,7 @@ export default function SiteDashboardPage() {
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+    <div className={`w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">

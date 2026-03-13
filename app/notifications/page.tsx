@@ -16,7 +16,7 @@ import {
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { formatTimeAgo, getTypeIcon } from '@/lib/utils/notifications'
 import { Button, ArrowLeftIcon } from '@ciphera-net/ui'
-import { NotificationsListSkeleton, useMinimumLoading } from '@/components/skeletons'
+import { NotificationsListSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import { toast } from '@ciphera-net/ui'
 
 const PAGE_SIZE = 50
@@ -31,6 +31,7 @@ export default function NotificationsPage() {
   const [hasMore, setHasMore] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const showSkeleton = useMinimumLoading(loading)
+  const fadeClass = useSkeletonFade(showSkeleton)
 
   const fetchPage = async (pageOffset: number, append: boolean) => {
     if (append) setLoadingMore(true)
@@ -104,7 +105,7 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
+    <div className={`w-full max-w-6xl mx-auto px-4 sm:px-6 py-8 ${fadeClass}`}>
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <Link

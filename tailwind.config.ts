@@ -23,10 +23,15 @@ const config: Config = {
           '50%': { backgroundColor: 'var(--highlight)' },
           '100%': { backgroundColor: 'transparent' },
         },
+        'fade-in': {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
       },
       animation: {
         'cell-highlight': 'cell-highlight 0.5s ease forwards',
         'cell-flash': 'cell-flash 0.6s ease forwards',
+        'fade-in': 'fade-in 150ms ease-out',
       },
       fontFamily: {
         sans: ['var(--font-plus-jakarta-sans)', 'system-ui', 'sans-serif'],

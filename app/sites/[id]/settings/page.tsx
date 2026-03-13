@@ -2,12 +2,12 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { getSite, updateSite, resetSiteData, deleteSite, type Site, type GeoDataLevel } from '@/lib/api/sites'
-import { listGoals, createGoal, updateGoal, deleteGoal, type Goal } from '@/lib/api/goals'
-import { listReportSchedules, createReportSchedule, updateReportSchedule, deleteReportSchedule, testReportSchedule, type ReportSchedule, type CreateReportScheduleRequest, type EmailConfig, type WebhookConfig } from '@/lib/api/report-schedules'
+import { updateSite, resetSiteData, deleteSite, type Site, type GeoDataLevel } from '@/lib/api/sites'
+import { createGoal, updateGoal, deleteGoal, type Goal } from '@/lib/api/goals'
+import { createReportSchedule, updateReportSchedule, deleteReportSchedule, testReportSchedule, type ReportSchedule, type CreateReportScheduleRequest, type EmailConfig, type WebhookConfig } from '@/lib/api/report-schedules'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
-import { SettingsFormSkeleton, GoalsListSkeleton, useMinimumLoading } from '@/components/skeletons'
+import { SettingsFormSkeleton, GoalsListSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import VerificationModal from '@/components/sites/VerificationModal'
 import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
 import { PasswordInput } from '@ciphera-net/ui'
@@ -15,7 +15,7 @@ import { Select, Modal, Button } from '@ciphera-net/ui'
 import { APP_URL } from '@/lib/api/client'
 import { generatePrivacySnippet } from '@/lib/utils/privacySnippet'
 import { useUnsavedChanges } from '@/lib/hooks/useUnsavedChanges'
-import { getSubscription, type SubscriptionDetails } from '@/lib/api/billing'
+import { useSite, useGoals, useReportSchedules, useSubscription } from '@/lib/swr/dashboard'
 import { getRetentionOptionsForPlan, formatRetentionMonths } from '@/lib/plans'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@/lib/auth/context'
@@ -53,8 +53,7 @@ export default function SiteSettingsPage() {
   const router = useRouter()
   const siteId = params.id as string
 
-  const [site, setSite] = useState<Site | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { data: site, isLoading: siteLoading, mutate: mutateSite } = useSite(siteId)
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState<'general' | 'visibility' | 'data' | 'goals' | 'reports'>('general')
 
@@ -79,23 +78,20 @@ export default function SiteSettingsPage() {
     // Data retention (6 = free-tier max; safe default)
     data_retention_months: 6
   })
-  const [subscription, setSubscription] = useState<SubscriptionDetails | null>(null)
-  const [subscriptionLoadFailed, setSubscriptionLoadFailed] = useState(false)
+  const { data: subscription, error: subscriptionError, mutate: mutateSubscription } = useSubscription()
   const [linkCopied, setLinkCopied] = useState(false)
   const [snippetCopied, setSnippetCopied] = useState(false)
   const [showVerificationModal, setShowVerificationModal] = useState(false)
   const [isPasswordEnabled, setIsPasswordEnabled] = useState(false)
-  const [goals, setGoals] = useState<Goal[]>([])
-  const [goalsLoading, setGoalsLoading] = useState(false)
+  const { data: goals = [], isLoading: goalsLoading, mutate: mutateGoals } = useGoals(siteId)
   const [goalModalOpen, setGoalModalOpen] = useState(false)
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null)
   const [goalForm, setGoalForm] = useState({ name: '', event_name: '' })
   const [goalSaving, setGoalSaving] = useState(false)
   const initialFormRef = useRef<string>('')
 
-  // Report schedules state
-  const [reportSchedules, setReportSchedules] = useState<ReportSchedule[]>([])
-  const [reportLoading, setReportLoading] = useState(false)
+  // Report schedules
+  const { data: reportSchedules = [], isLoading: reportLoading, mutate: mutateReportSchedules } = useReportSchedules(siteId)
   const [reportModalOpen, setReportModalOpen] = useState(false)
   const [editingSchedule, setEditingSchedule] = useState<ReportSchedule | null>(null)
   const [reportSaving, setReportSaving] = useState(false)
@@ -112,32 +108,40 @@ export default function SiteSettingsPage() {
   })
 
   useEffect(() => {
-    loadSite()
-    loadSubscription()
-  }, [siteId])
-
-  useEffect(() => {
-    if (activeTab === 'goals' && siteId) {
-      loadGoals()
-    }
-  }, [activeTab, siteId])
-
-  useEffect(() => {
-    if (activeTab === 'reports' && siteId) {
-      loadReportSchedules()
-    }
-  }, [activeTab, siteId])
-
-  const loadSubscription = async () => {
-    try {
-      setSubscriptionLoadFailed(false)
-      const sub = await getSubscription()
-      setSubscription(sub)
-    } catch (e) {
-      setSubscriptionLoadFailed(true)
-      toast.error(getAuthErrorMessage(e as Error) || 'Could not load plan limits. Showing default options.')
-    }
-  }
+    if (!site) return
+    setFormData({
+      name: site.name,
+      timezone: site.timezone || 'UTC',
+      is_public: site.is_public || false,
+      password: '',
+      excluded_paths: (site.excluded_paths || []).join('\n'),
+      collect_page_paths: site.collect_page_paths ?? true,
+      collect_referrers: site.collect_referrers ?? true,
+      collect_device_info: site.collect_device_info ?? true,
+      collect_geo_data: site.collect_geo_data || 'full',
+      collect_screen_resolution: site.collect_screen_resolution ?? true,
+      enable_performance_insights: site.enable_performance_insights ?? false,
+      filter_bots: site.filter_bots ?? true,
+      hide_unknown_locations: site.hide_unknown_locations ?? false,
+      data_retention_months: site.data_retention_months ?? 6
+    })
+    initialFormRef.current = JSON.stringify({
+      name: site.name,
+      timezone: site.timezone || 'UTC',
+      is_public: site.is_public || false,
+      excluded_paths: (site.excluded_paths || []).join('\n'),
+      collect_page_paths: site.collect_page_paths ?? true,
+      collect_referrers: site.collect_referrers ?? true,
+      collect_device_info: site.collect_device_info ?? true,
+      collect_geo_data: site.collect_geo_data || 'full',
+      collect_screen_resolution: site.collect_screen_resolution ?? true,
+      enable_performance_insights: site.enable_performance_insights ?? false,
+      filter_bots: site.filter_bots ?? true,
+      hide_unknown_locations: site.hide_unknown_locations ?? false,
+      data_retention_months: site.data_retention_months ?? 6
+    })
+    setIsPasswordEnabled(!!site.has_password)
+  }, [site])
 
   // * Snap data_retention_months to nearest valid option when subscription loads
   useEffect(() => {
@@ -151,83 +155,6 @@ export default function SiteSettingsPage() {
       return { ...prev, data_retention_months: Math.min(bestFit, maxVal) }
     })
   }, [subscription])
-
-  const loadSite = async () => {
-    try {
-      setLoading(true)
-      const data = await getSite(siteId)
-      setSite(data)
-      setFormData({
-        name: data.name,
-        timezone: data.timezone || 'UTC',
-        is_public: data.is_public || false,
-        password: '', // Don't show existing password
-        excluded_paths: (data.excluded_paths || []).join('\n'),
-        // Data collection settings (default to true/full for backwards compatibility)
-        collect_page_paths: data.collect_page_paths ?? true,
-        collect_referrers: data.collect_referrers ?? true,
-        collect_device_info: data.collect_device_info ?? true,
-        collect_geo_data: data.collect_geo_data || 'full',
-        collect_screen_resolution: data.collect_screen_resolution ?? true,
-        // Performance insights setting (default to false)
-        enable_performance_insights: data.enable_performance_insights ?? false,
-        // Bot and noise filtering (default to true)
-        filter_bots: data.filter_bots ?? true,
-        // Hide unknown locations (default to false)
-        hide_unknown_locations: data.hide_unknown_locations ?? false,
-        // Data retention (default 6 = free-tier max; avoids flash-then-clamp for existing sites)
-        data_retention_months: data.data_retention_months ?? 6
-      })
-      initialFormRef.current = JSON.stringify({
-        name: data.name,
-        timezone: data.timezone || 'UTC',
-        is_public: data.is_public || false,
-        excluded_paths: (data.excluded_paths || []).join('\n'),
-        collect_page_paths: data.collect_page_paths ?? true,
-        collect_referrers: data.collect_referrers ?? true,
-        collect_device_info: data.collect_device_info ?? true,
-        collect_geo_data: data.collect_geo_data || 'full',
-        collect_screen_resolution: data.collect_screen_resolution ?? true,
-        enable_performance_insights: data.enable_performance_insights ?? false,
-        filter_bots: data.filter_bots ?? true,
-        hide_unknown_locations: data.hide_unknown_locations ?? false,
-        data_retention_months: data.data_retention_months ?? 6
-      })
-      if (data.has_password) {
-        setIsPasswordEnabled(true)
-      } else {
-        setIsPasswordEnabled(false)
-      }
-    } catch (error: unknown) {
-      toast.error(getAuthErrorMessage(error) || 'Failed to load site settings')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const loadGoals = async () => {
-    try {
-      setGoalsLoading(true)
-      const data = await listGoals(siteId)
-      setGoals(data ?? [])
-    } catch (e) {
-      toast.error(getAuthErrorMessage(e as Error) || 'Failed to load goals')
-    } finally {
-      setGoalsLoading(false)
-    }
-  }
-
-  const loadReportSchedules = async () => {
-    try {
-      setReportLoading(true)
-      const data = await listReportSchedules(siteId)
-      setReportSchedules(data)
-    } catch (error: unknown) {
-      toast.error(getAuthErrorMessage(error) || 'Failed to load report schedules')
-    } finally {
-      setReportLoading(false)
-    }
-  }
 
   const resetReportForm = () => {
     setReportForm({
@@ -297,7 +224,7 @@ export default function SiteSettingsPage() {
         toast.success('Report schedule created')
       }
       setReportModalOpen(false)
-      loadReportSchedules()
+      mutateReportSchedules()
     } catch (error: unknown) {
       toast.error(getAuthErrorMessage(error) || 'Failed to save report schedule')
     } finally {
@@ -310,7 +237,7 @@ export default function SiteSettingsPage() {
     try {
       await deleteReportSchedule(siteId, schedule.id)
       toast.success('Report schedule deleted')
-      loadReportSchedules()
+      mutateReportSchedules()
     } catch (error: unknown) {
       toast.error(getAuthErrorMessage(error) || 'Failed to delete report schedule')
     }
@@ -320,7 +247,7 @@ export default function SiteSettingsPage() {
     try {
       await updateReportSchedule(siteId, schedule.id, { enabled: !schedule.enabled })
       toast.success(schedule.enabled ? 'Report paused' : 'Report enabled')
-      loadReportSchedules()
+      mutateReportSchedules()
     } catch (error: unknown) {
       toast.error(getAuthErrorMessage(error) || 'Failed to update report schedule')
     }
@@ -439,7 +366,7 @@ export default function SiteSettingsPage() {
         toast.success('Goal created')
       }
       setGoalModalOpen(false)
-      loadGoals()
+      mutateGoals()
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to save goal')
     } finally {
@@ -452,7 +379,7 @@ export default function SiteSettingsPage() {
     try {
       await deleteGoal(siteId, goal.id)
       toast.success('Goal deleted')
-      loadGoals()
+      mutateGoals()
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to delete goal')
     }
@@ -506,7 +433,7 @@ export default function SiteSettingsPage() {
         hide_unknown_locations: formData.hide_unknown_locations,
         data_retention_months: formData.data_retention_months
       })
-      loadSite()
+      mutateSite()
     } catch (error: unknown) {
       toast.error(getAuthErrorMessage(error) || 'Failed to save site settings')
     } finally {
@@ -581,7 +508,8 @@ export default function SiteSettingsPage() {
     if (site?.domain) document.title = `Settings · ${site.domain} | Pulse`
   }, [site?.domain])
 
-  const showSkeleton = useMinimumLoading(loading)
+  const showSkeleton = useMinimumLoading(siteLoading && !site)
+  const fadeClass = useSkeletonFade(showSkeleton)
 
   if (showSkeleton) {
     return (
@@ -615,7 +543,7 @@ export default function SiteSettingsPage() {
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+    <div className={`w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
 
       <div className="space-y-8">
         <div>
@@ -1157,14 +1085,14 @@ export default function SiteSettingsPage() {
                   {/* Data Retention */}
                   <div className="space-y-4 pt-6 border-t border-neutral-100 dark:border-neutral-800">
                     <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Data Retention</h3>
-                    {subscriptionLoadFailed && (
+                    {!!subscriptionError && (
                       <div className="p-3 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 flex items-center justify-between gap-3">
                         <p className="text-sm text-amber-800 dark:text-amber-200">
                           Plan limits could not be loaded. Options shown may be limited.
                         </p>
                         <button
                           type="button"
-                          onClick={loadSubscription}
+                          onClick={() => mutateSubscription()}
                           className="shrink-0 text-sm font-medium text-amber-800 dark:text-amber-200 hover:underline"
                         >
                           Retry

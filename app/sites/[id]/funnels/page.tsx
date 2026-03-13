@@ -1,10 +1,10 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { listFunnels, deleteFunnel, type Funnel } from '@/lib/api/funnels'
+import { deleteFunnel, type Funnel } from '@/lib/api/funnels'
+import { useFunnels } from '@/lib/swr/dashboard'
 import { toast, PlusIcon, ArrowRightIcon, ChevronLeftIcon, TrashIcon, Button } from '@ciphera-net/ui'
-import { FunnelsListSkeleton, useMinimumLoading } from '@/components/skeletons'
+import { FunnelsListSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import Link from 'next/link'
 
 export default function FunnelsPage() {
@@ -12,24 +12,7 @@ export default function FunnelsPage() {
   const router = useRouter()
   const siteId = params.id as string
 
-  const [funnels, setFunnels] = useState<Funnel[]>([])
-  const [loading, setLoading] = useState(true)
-
-  const loadFunnels = useCallback(async () => {
-    try {
-      setLoading(true)
-      const data = await listFunnels(siteId)
-      setFunnels(data)
-    } catch (error) {
-      toast.error('Failed to load your funnels')
-    } finally {
-      setLoading(false)
-    }
-  }, [siteId])
-
-  useEffect(() => {
-    loadFunnels()
-  }, [loadFunnels])
+  const { data: funnels = [], isLoading, mutate } = useFunnels(siteId)
 
   const handleDelete = async (e: React.MouseEvent, funnelId: string) => {
     e.preventDefault() // Prevent navigation
@@ -38,20 +21,21 @@ export default function FunnelsPage() {
     try {
       await deleteFunnel(siteId, funnelId)
       toast.success('Funnel deleted')
-      loadFunnels()
+      mutate()
     } catch (error) {
       toast.error('Failed to delete funnel')
     }
   }
 
-  const showSkeleton = useMinimumLoading(loading)
+  const showSkeleton = useMinimumLoading(isLoading && !funnels.length)
+  const fadeClass = useSkeletonFade(showSkeleton)
 
   if (showSkeleton) {
     return <FunnelsListSkeleton />
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+    <div className={`w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
       <div className="mb-8">
         <div className="flex items-center justify-between mb-6">
           <div>

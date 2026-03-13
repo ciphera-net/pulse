@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useTheme } from '@ciphera-net/ui'
-import { Line, LineChart, XAxis, YAxis, ReferenceLine } from 'recharts'
+import { CartesianGrid, Line, LineChart, XAxis, YAxis, ReferenceLine } from 'recharts'
 import { ChartContainer, ChartTooltip, type ChartConfig } from '@/components/ui/line-charts-6'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { formatNumber, formatDuration, formatUpdatedAgo, DatePicker } from '@ciphera-net/ui'
@@ -104,9 +104,9 @@ const METRIC_CONFIGS: {
 
 const chartConfig = {
   visitors: { label: 'Unique Visitors', color: '#FD5E0F' },
-  pageviews: { label: 'Total Pageviews', color: '#3b82f6' },
-  bounce_rate: { label: 'Bounce Rate', color: '#a855f7' },
-  avg_duration: { label: 'Visit Duration', color: '#10b981' },
+  pageviews: { label: 'Total Pageviews', color: '#FD5E0F' },
+  bounce_rate: { label: 'Bounce Rate', color: '#FD5E0F' },
+  avg_duration: { label: 'Visit Duration', color: '#FD5E0F' },
 } satisfies ChartConfig
 
 // ─── Custom Tooltip ─────────────────────────────────────────────────
@@ -351,7 +351,7 @@ export default function Chart({
                   metric === m.key && 'bg-neutral-50 dark:bg-neutral-800/40',
                 )}
               >
-                <div className={cn('text-[10px] font-semibold uppercase tracking-widest mb-2', metric === m.key ? 'text-white' : 'text-neutral-400 dark:text-neutral-500')}>{m.label}</div>
+                <div className={cn('text-[10px] font-semibold uppercase tracking-widest mb-2', metric === m.key ? 'text-brand-orange' : 'text-neutral-400 dark:text-neutral-500')}>{m.label}</div>
                 <div className="flex items-baseline gap-2">
                   <span className="text-2xl font-bold text-neutral-900 dark:text-white">{m.format(m.value)}</span>
                   {m.change !== null && (
@@ -462,9 +462,6 @@ export default function Chart({
                   style={{ overflow: 'visible' }}
                 >
                   <defs>
-                    <pattern id="dotGrid" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
-                      <circle cx="10" cy="10" r="1" fill="var(--chart-grid)" fillOpacity="1" />
-                    </pattern>
                     <filter id="lineShadow" x="-100%" y="-100%" width="300%" height="300%">
                       <feDropShadow
                         dx="4"
@@ -477,6 +474,13 @@ export default function Chart({
                       <feDropShadow dx="2" dy="2" stdDeviation="3" floodColor="rgba(0,0,0,0.5)" />
                     </filter>
                   </defs>
+
+                  <CartesianGrid
+                    horizontal={true}
+                    vertical={false}
+                    stroke="var(--chart-grid)"
+                    strokeOpacity={0.7}
+                  />
 
                   <XAxis
                     dataKey="date"
@@ -501,15 +505,6 @@ export default function Chart({
 
                   <ChartTooltip content={<CustomTooltip metric={metric} />} cursor={{ strokeDasharray: '3 3', stroke: '#9ca3af' }} />
 
-                  {/* Background dot grid pattern */}
-                  <rect
-                    x="60px"
-                    y="-20px"
-                    width="calc(100% - 75px)"
-                    height="calc(100% - 10px)"
-                    fill="url(#dotGrid)"
-                    style={{ pointerEvents: 'none' }}
-                  />
 
                   {/* Annotation reference lines */}
                   {visibleAnnotationMarkers.map((marker) => {

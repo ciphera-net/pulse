@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Improved
+
+- **Cleaner page paths in your reports.** Pages like `/products?_t=123456` or `/about?session=abc` now correctly show as `/products` and `/about`. Only marketing attribution parameters (like UTM tags) are preserved for traffic source tracking — all other junk parameters are automatically removed, so your Top Pages and Journeys stay clean without us having to chase down every new parameter format.
+- **Refreshed chart background.** The dashboard chart now has subtle horizontal lines instead of the old dotted background, giving the chart area a cleaner look with soft faded edges.
+- **Smoother loading transitions.** When your data finishes loading, the page now fades in smoothly instead of appearing all at once. This applies across Dashboard, Journeys, Funnels, Uptime, Settings, Notifications, and shared dashboards. If your data was already cached from a previous visit, it still loads instantly with no animation — the fade only kicks in when you're actually waiting for fresh data.
+- **Faster tab switching across the board.** Switching between Settings, Funnels, Uptime, and other tabs now shows your data instantly instead of flashing a loading skeleton every time. Previously visited tabs remember their data and show it right away, while quietly refreshing in the background so you always see the latest numbers without the wait.
+- **Smoother loading on the Journeys page.** The Journeys tab now shows a polished skeleton placeholder while data loads, matching the loading experience on other tabs.
+- **Consistent chart colors.** All dashboard charts — Unique Visitors, Total Pageviews, Bounce Rate, and Visit Duration — now use the same brand orange color for a cleaner, more cohesive look.
+
 ### Fixed
 
 - **No more random errors when switching tabs.** Navigating between Dashboard, Funnels, Uptime, and Settings no longer shows "Invalid credentials", "Something went wrong", or "Site not found" errors. This was caused by a timing issue when your login session refreshed in the background while multiple pages were loading at the same time — all those requests now wait for the refresh to finish and retry cleanly.

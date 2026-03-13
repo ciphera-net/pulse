@@ -29,6 +29,11 @@ import { listAnnotations } from '@/lib/api/annotations'
 import type { Annotation } from '@/lib/api/annotations'
 import { getSite } from '@/lib/api/sites'
 import type { Site } from '@/lib/api/sites'
+import { listFunnels, type Funnel } from '@/lib/api/funnels'
+import { getUptimeStatus, type UptimeStatusResponse } from '@/lib/api/uptime'
+import { listGoals, type Goal } from '@/lib/api/goals'
+import { listReportSchedules, type ReportSchedule } from '@/lib/api/report-schedules'
+import { getSubscription, type SubscriptionDetails } from '@/lib/api/billing'
 import type {
   Stats,
   DailyStat,
@@ -69,6 +74,11 @@ const fetchers = {
     getJourneyTopPaths(siteId, start, end, { limit, minSessions, entryPath }),
   journeyEntryPoints: (siteId: string, start: string, end: string) =>
     getJourneyEntryPoints(siteId, start, end),
+  funnels: (siteId: string) => listFunnels(siteId),
+  uptimeStatus: (siteId: string) => getUptimeStatus(siteId),
+  goals: (siteId: string) => listGoals(siteId),
+  reportSchedules: (siteId: string) => listReportSchedules(siteId),
+  subscription: () => getSubscription(),
 }
 
 // * Standard SWR config for dashboard data
@@ -326,6 +336,72 @@ export function useJourneyEntryPoints(siteId: string, start: string, end: string
   return useSWR<EntryPoint[]>(
     siteId && start && end ? ['journeyEntryPoints', siteId, start, end] : null,
     () => fetchers.journeyEntryPoints(siteId, start, end),
+    {
+      ...dashboardSWRConfig,
+      refreshInterval: 5 * 60 * 1000,
+      dedupingInterval: 30 * 1000,
+    }
+  )
+}
+
+// * Hook for funnels list
+export function useFunnels(siteId: string) {
+  return useSWR<Funnel[]>(
+    siteId ? ['funnels', siteId] : null,
+    () => fetchers.funnels(siteId),
+    {
+      ...dashboardSWRConfig,
+      refreshInterval: 60 * 1000,
+      dedupingInterval: 10 * 1000,
+    }
+  )
+}
+
+// * Hook for uptime status (refreshes every 30s to match original polling)
+export function useUptimeStatus(siteId: string) {
+  return useSWR<UptimeStatusResponse>(
+    siteId ? ['uptimeStatus', siteId] : null,
+    () => fetchers.uptimeStatus(siteId),
+    {
+      ...dashboardSWRConfig,
+      refreshInterval: 30 * 1000,
+      dedupingInterval: 10 * 1000,
+      keepPreviousData: true,
+    }
+  )
+}
+
+// * Hook for goals list
+export function useGoals(siteId: string) {
+  return useSWR<Goal[]>(
+    siteId ? ['goals', siteId] : null,
+    () => fetchers.goals(siteId),
+    {
+      ...dashboardSWRConfig,
+      refreshInterval: 60 * 1000,
+      dedupingInterval: 10 * 1000,
+    }
+  )
+}
+
+// * Hook for report schedules
+export function useReportSchedules(siteId: string) {
+  return useSWR<ReportSchedule[]>(
+    siteId ? ['reportSchedules', siteId] : null,
+    () => fetchers.reportSchedules(siteId),
+    {
+      ...dashboardSWRConfig,
+      refreshInterval: 60 * 1000,
+      dedupingInterval: 10 * 1000,
+    }
+  )
+}
+
+// * Hook for subscription details (changes rarely)
+export function useSubscription() {
+  return useSWR<SubscriptionDetails>(
+    'subscription',
+    () => fetchers.subscription(),
     {
       ...dashboardSWRConfig,
       refreshInterval: 5 * 60 * 1000,

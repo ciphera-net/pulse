@@ -1,12 +1,11 @@
 'use client'
 
 import { useAuth } from '@/lib/auth/context'
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { getSite, type Site } from '@/lib/api/sites'
+import { useSite, useUptimeStatus } from '@/lib/swr/dashboard'
 import {
-  getUptimeStatus,
   createUptimeMonitor,
   updateUptimeMonitor,
   deleteUptimeMonitor,
@@ -21,7 +20,7 @@ import { toast } from '@ciphera-net/ui'
 import { useTheme } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { Button, Modal } from '@ciphera-net/ui'
-import { UptimeSkeleton, ChecksSkeleton, useMinimumLoading } from '@/components/skeletons'
+import { UptimeSkeleton, ChecksSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import {
   AreaChart,
   Area,
@@ -561,9 +560,8 @@ export default function UptimePage() {
   const router = useRouter()
   const siteId = params.id as string
 
-  const [site, setSite] = useState<Site | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [uptimeData, setUptimeData] = useState<UptimeStatusResponse | null>(null)
+  const { data: site } = useSite(siteId)
+  const { data: uptimeData, isLoading, mutate: mutateUptime } = useUptimeStatus(siteId)
   const [expandedMonitor, setExpandedMonitor] = useState<string | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -577,38 +575,6 @@ export default function UptimePage() {
   })
   const [saving, setSaving] = useState(false)
 
-  const loadData = useCallback(async () => {
-    try {
-      const [siteData, statusData] = await Promise.all([
-        getSite(siteId),
-        getUptimeStatus(siteId),
-      ])
-      setSite(siteData)
-      setUptimeData(statusData)
-    } catch (error: unknown) {
-      toast.error(getAuthErrorMessage(error) || 'Failed to load uptime monitors')
-    } finally {
-      setLoading(false)
-    }
-  }, [siteId])
-
-  useEffect(() => {
-    loadData()
-  }, [loadData])
-
-  // * Auto-refresh every 30 seconds; show toast on failure (e.g. network loss or auth expiry)
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const statusData = await getUptimeStatus(siteId)
-        setUptimeData(statusData)
-      } catch {
-        toast.error('Could not refresh uptime data. Check your connection or sign in again.')
-      }
-    }, 30000)
-    return () => clearInterval(interval)
-  }, [siteId])
-
   const handleAddMonitor = async () => {
     if (!formData.name || !formData.url) {
       toast.error('Name and URL are required')
@@ -620,7 +586,7 @@ export default function UptimePage() {
       toast.success('Monitor created successfully')
       setShowAddModal(false)
       setFormData({ name: '', url: '', check_interval_seconds: 300, expected_status_code: 200, timeout_seconds: 30 })
-      await loadData()
+      mutateUptime()
     } catch (error: unknown) {
       toast.error(getAuthErrorMessage(error) || 'Failed to create monitor')
     } finally {
@@ -643,7 +609,7 @@ export default function UptimePage() {
       toast.success('Monitor updated successfully')
       setShowEditModal(false)
       setEditingMonitor(null)
-      await loadData()
+      mutateUptime()
     } catch (error: unknown) {
       toast.error(getAuthErrorMessage(error) || 'Failed to update monitor')
     } finally {
@@ -656,7 +622,7 @@ export default function UptimePage() {
     try {
       await deleteUptimeMonitor(siteId, monitorId)
       toast.success('Monitor deleted')
-      await loadData()
+      mutateUptime()
     } catch (error: unknown) {
       toast.error(getAuthErrorMessage(error) || 'Failed to delete monitor')
     }
@@ -678,7 +644,8 @@ export default function UptimePage() {
     if (site?.domain) document.title = `Uptime · ${site.domain} | Pulse`
   }, [site?.domain])
 
-  const showSkeleton = useMinimumLoading(loading)
+  const showSkeleton = useMinimumLoading(isLoading && !uptimeData)
+  const fadeClass = useSkeletonFade(showSkeleton)
 
   if (showSkeleton) return <UptimeSkeleton />
   if (!site) return <div className="p-8 text-neutral-500">Site not found</div>
@@ -688,7 +655,7 @@ export default function UptimePage() {
   const overallStatus = uptimeData?.status ?? 'operational'
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+    <div className={`w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
       {/* Header */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
