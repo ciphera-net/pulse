@@ -19,6 +19,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **UTM attribution now works correctly.** Visitors arriving via campaign links (e.g. from Facebook Ads, Google Ads, or email campaigns) now have their traffic source, medium, and campaign properly recorded. Previously, this data was accidentally lost before it reached the server.
 - **More ad tracking clutter removed from page paths.** Facebook ad parameters and click IDs from various platforms are cleaned from your page URLs so your Top Pages stay tidy.
 - **Better bot detection.** Automated browsers (used by scrapers and testing tools) and bots with no screen dimensions are now filtered out before they can send events, keeping your visitor counts cleaner.
+- **Outbound links and file downloads now show the URL.** Previously you could only see how many outbound clicks or downloads happened. Now you can see exactly which external links visitors clicked and which files they downloaded.
+- **Dead click detection no longer triggers on form fields.** Clicking on a text input, dropdown, or text area to interact with it is normal — it no longer gets flagged as a dead click.
 
 ## [0.15.0-alpha] - 2026-03-13
 

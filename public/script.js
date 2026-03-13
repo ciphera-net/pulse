@@ -699,6 +699,10 @@
       var target = findInteractiveElement(e.target);
       if (!target) return;
 
+      // * Skip form inputs — clicking to focus/interact is expected, not a dead click
+      var tag = target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
       var selector = getElementIdentifier(target);
       if (!selector) return;
 
@@ -796,13 +800,13 @@
 
         // * Check file download first (download attribute or known file extension)
         if (trackDownloads && (el.hasAttribute('download') || FILE_EXT_REGEX.test(url.pathname))) {
-          trackCustomEvent('file_download');
+          trackCustomEvent('file_download', { url: url.href });
           return;
         }
 
         // * Check outbound link (different hostname)
         if (trackOutbound && url.hostname && url.hostname !== location.hostname) {
-          trackCustomEvent('outbound_link');
+          trackCustomEvent('outbound_link', { url: url.href });
         }
       } catch (err) {
         // * Invalid URL - skip silently
