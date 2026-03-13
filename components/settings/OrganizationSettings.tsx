@@ -1344,7 +1344,7 @@ export default function OrganizationSettings() {
               className="w-full max-w-sm bg-white dark:bg-neutral-900 p-6 rounded-2xl border border-red-200 dark:border-red-900 shadow-xl pointer-events-auto"
             >
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-red-600 dark:text-red-500">Delete Organization?</h3>
+                <h3 className="text-lg font-semibold text-red-600 dark:text-red-500">Delete {orgName || 'Organization'}?</h3>
                 <button
                   onClick={() => {
                     setShowDeletePrompt(false)
@@ -1377,7 +1377,7 @@ export default function OrganizationSettings() {
                     </span>
                   </div>
                 )}
-                {subscription?.subscription_status === 'active' && subscription?.plan_id !== 'free' && (
+                {subscription?.plan_id && subscription.plan_id !== 'free' && (
                   <div className="flex items-center gap-3 p-3 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 rounded-lg">
                     <AlertTriangleIcon className="h-4 w-4 text-red-500 shrink-0" />
                     <span className="text-sm font-medium text-red-700 dark:text-red-300">
