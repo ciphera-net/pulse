@@ -226,7 +226,7 @@
   }
 
   // * Normalize path: strip trailing slash and UTM/marketing query parameters
-  var UTM_PARAMS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'utm_id', 'fbclid', 'gclid', 'gad_source', 'msclkid', 'twclid', 'dclid', 'mc_cid', 'mc_eid', 'ref'];
+  var UTM_PARAMS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'utm_id', 'fbclid', 'gclid', 'gad_source', 'msclkid', 'twclid', 'dclid', 'mc_cid', 'mc_eid', 'ref', 'ad_id', 'adset_id', 'campaign_id', 'ad_name', 'adset_name', 'campaign_name', 'placement', 'site_source_name'];
   function cleanPath() {
     var pathname = window.location.pathname;
     // * Strip trailing slash (but keep root /)
@@ -249,6 +249,9 @@
     }
     return pathname;
   }
+
+  // * SPA referrer: only attribute external referrer to the landing page
+  var firstPageviewSent = false;
 
   // * Refresh dedup: skip pageview if the same path was tracked within 5 seconds
   // * Prevents inflated pageview counts from F5/refresh while allowing genuine revisits
@@ -295,16 +298,20 @@
     lcpObserved = false;
     clsObserved = false;
     currentEventId = null;
-    // * Strip self-referrals: don't send referrer if it matches the current site domain
-    var rawReferrer = document.referrer || '';
+    // * Only send external referrer on the first pageview (landing page).
+    // * SPA navigations keep document.referrer stale, so clear it after first hit
+    // * to avoid inflating traffic source attribution.
     var referrer = '';
-    if (rawReferrer) {
-      try {
-        var refHost = new URL(rawReferrer).hostname.replace(/^www\./, '');
-        var siteHost = domain.replace(/^www\./, '');
-        if (refHost !== siteHost) referrer = rawReferrer;
-      } catch (e) {
-        referrer = rawReferrer;
+    if (!firstPageviewSent) {
+      var rawReferrer = document.referrer || '';
+      if (rawReferrer) {
+        try {
+          var refHost = new URL(rawReferrer).hostname.replace(/^www\./, '');
+          var siteHost = domain.replace(/^www\./, '');
+          if (refHost !== siteHost) referrer = rawReferrer;
+        } catch (e) {
+          referrer = rawReferrer;
+        }
       }
     }
     const screenSize = {
@@ -331,6 +338,7 @@
     }).then(res => res.json())
     .then(data => {
       recordPageview(path);
+      firstPageviewSent = true;
       if (data && data.id) {
         currentEventId = data.id;
         // * For SPA navigations the browser never emits a new largest-contentful-paint
@@ -407,14 +415,17 @@
       return;
     }
     var path = cleanPath();
-    var rawRef = document.referrer || '';
+    // * Custom events use same referrer logic: only on first pageview, empty after
     var referrer = '';
-    if (rawRef) {
-      try {
-        var rh = new URL(rawRef).hostname.replace(/^www\./, '');
-        var sh = domain.replace(/^www\./, '');
-        if (rh !== sh) referrer = rawRef;
-      } catch (e) { referrer = rawRef; }
+    if (!firstPageviewSent) {
+      var rawRef = document.referrer || '';
+      if (rawRef) {
+        try {
+          var rh = new URL(rawRef).hostname.replace(/^www\./, '');
+          var sh = domain.replace(/^www\./, '');
+          if (rh !== sh) referrer = rawRef;
+        } catch (e) { referrer = rawRef; }
+      }
     }
     var screenSize = { width: window.innerWidth || 0, height: window.innerHeight || 0 };
     var payload = {
