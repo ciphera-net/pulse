@@ -8,7 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Improved
 
-- **Smoother loading on the Journeys page.** The Journeys tab now shows a polished skeleton placeholder while data loads, matching the loading experience on Dashboard, Funnels, Uptime, and Settings.
+- **Faster tab switching across the board.** Switching between Settings, Funnels, Uptime, and other tabs now shows your data instantly instead of flashing a loading skeleton every time. Previously visited tabs remember their data and show it right away, while quietly refreshing in the background so you always see the latest numbers without the wait.
+- **Smoother loading on the Journeys page.** The Journeys tab now shows a polished skeleton placeholder while data loads, matching the loading experience on other tabs.
 
 ### Fixed
 
