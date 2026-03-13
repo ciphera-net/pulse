@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Fixed
 
 - **More accurate pageview counts.** Refreshing a page no longer inflates your pageview numbers. The tracking script now detects when the same page is loaded again within a few seconds and skips the duplicate, so metrics like total pageviews, pages per session, and visit duration reflect real navigation instead of reload habits.
+- **Self-referrals no longer pollute your traffic sources.** Internal navigation within your own site (e.g. clicking from your homepage to your about page) no longer shows your own domain as a referrer. Only external traffic sources appear in your Referrers panel now.
 
 ## [0.15.0-alpha] - 2026-03-13
 

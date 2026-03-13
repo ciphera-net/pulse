@@ -270,7 +270,18 @@
     lcpObserved = false;
     clsObserved = false;
     currentEventId = null;
-    const referrer = document.referrer || '';
+    // * Strip self-referrals: don't send referrer if it matches the current site domain
+    var rawReferrer = document.referrer || '';
+    var referrer = '';
+    if (rawReferrer) {
+      try {
+        var refHost = new URL(rawReferrer).hostname.replace(/^www\./, '');
+        var siteHost = domain.replace(/^www\./, '');
+        if (refHost !== siteHost) referrer = rawReferrer;
+      } catch (e) {
+        referrer = rawReferrer;
+      }
+    }
     const screen = {
       width: window.innerWidth || screen.width,
       height: window.innerHeight || screen.height,
