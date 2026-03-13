@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Self-referrals no longer pollute your traffic sources.** Internal navigation within your own site (e.g. clicking from your homepage to your about page) no longer shows your own domain as a referrer. Only external traffic sources appear in your Referrers panel now.
 - **Screen size fallback now works correctly.** A variable naming issue prevented the fallback screen dimensions from being read when the primary value wasn't available. Screen size data is now reliably captured on all browsers.
 - **Browser back/forward no longer double-counts pageviews.** Pressing the back or forward button could occasionally register two pageviews instead of one. The tracking script now correctly deduplicates these navigations.
+- **Preloaded pages no longer count as visits.** Modern browsers sometimes preload pages in the background before you actually visit them. These ghost visits no longer inflate your pageview counts — only pages the visitor actually sees are tracked.
 
 ## [0.15.0-alpha] - 2026-03-13
 
