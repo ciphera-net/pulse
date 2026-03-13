@@ -118,30 +118,30 @@ export default function DottedMap({ data, className }: DottedMapProps) {
           const rowIndex = _stagger.yToRowIndex.get(marker.y) ?? 0
           const offsetX = rowIndex % 2 === 1 ? _stagger.xStep / 2 : 0
           const info = markerData[index]
+          const cx = marker.x + offsetX
+          const cy = marker.y
           return (
-            <circle
-              cx={marker.x + offsetX}
-              cy={marker.y}
-              r={marker.size ?? DOT_RADIUS}
-              fill="#FD5E0F"
-              filter="url(#marker-glow)"
-              className="cursor-pointer"
+            <g
               key={`marker-${marker.x}-${marker.y}-${index}`}
+              className="cursor-pointer"
               onMouseEnter={(e) => {
                 if (info) {
-                  const rect = (e.target as SVGCircleElement).closest('svg')!.getBoundingClientRect()
-                  const svgX = marker.x + offsetX
-                  const svgY = marker.y
+                  const rect = (e.target as SVGElement).closest('svg')!.getBoundingClientRect()
                   setTooltip({
-                    x: rect.left + (svgX / MAP_WIDTH) * rect.width,
-                    y: rect.top + (svgY / MAP_HEIGHT) * rect.height,
+                    x: rect.left + (cx / MAP_WIDTH) * rect.width,
+                    y: rect.top + (cy / MAP_HEIGHT) * rect.height,
                     country: info.country,
                     pageviews: info.pageviews,
                   })
                 }
               }}
               onMouseLeave={() => setTooltip(null)}
-            />
+            >
+              {/* Invisible larger hitbox */}
+              <circle cx={cx} cy={cy} r={2.5} fill="transparent" />
+              {/* Visible dot */}
+              <circle cx={cx} cy={cy} r={marker.size ?? DOT_RADIUS} fill="#FD5E0F" filter="url(#marker-glow)" />
+            </g>
           )
         })}
       </svg>
