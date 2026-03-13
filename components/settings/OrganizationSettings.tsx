@@ -1335,22 +1335,17 @@ export default function OrganizationSettings() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm p-4 pointer-events-none"
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl max-w-md w-full p-6 border border-neutral-200 dark:border-neutral-800"
+              className="w-full max-w-sm bg-white dark:bg-neutral-900 p-6 rounded-2xl border border-red-200 dark:border-red-900 shadow-xl pointer-events-auto"
             >
               <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-3 text-red-600">
-                  <div className="h-10 w-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
-                    <AlertTriangleIcon className="h-5 w-5" />
-                  </div>
-                  <h3 className="text-lg font-semibold">Delete Organization?</h3>
-                </div>
-                <button 
+                <h3 className="text-lg font-semibold text-red-600 dark:text-red-500">Delete Organization?</h3>
+                <button
                   onClick={() => {
                     setShowDeletePrompt(false)
                     setDeleteConfirm('')
@@ -1360,57 +1355,67 @@ export default function OrganizationSettings() {
                   <XIcon className="w-5 h-5" />
                 </button>
               </div>
-              
-              <p className="text-neutral-600 dark:text-neutral-300 mb-4">
-                This action cannot be undone. The following will be permanently deleted:
+
+              <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
+                This action is <span className="font-bold">irreversible</span>. The following will be permanently deleted:
               </p>
 
-              <ul className="text-sm text-neutral-600 dark:text-neutral-300 mb-6 space-y-1.5 list-none">
+              <div className="mb-5 space-y-2">
                 {typeof subscription?.sites_count === 'number' && subscription.sites_count > 0 && (
-                  <li className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-red-500 shrink-0" />
-                    {subscription.sites_count} {subscription.sites_count === 1 ? 'site' : 'sites'} and all analytics data
-                  </li>
+                  <div className="flex items-center gap-3 p-3 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 rounded-lg">
+                    <AlertTriangleIcon className="h-4 w-4 text-red-500 shrink-0" />
+                    <span className="text-sm font-medium text-red-700 dark:text-red-300">
+                      {subscription.sites_count} {subscription.sites_count === 1 ? 'site' : 'sites'} and all analytics data
+                    </span>
+                  </div>
                 )}
                 {members.length > 1 && (
-                  <li className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-red-500 shrink-0" />
-                    {members.length - 1} {members.length - 1 === 1 ? 'member' : 'members'} will be removed
-                  </li>
+                  <div className="flex items-center gap-3 p-3 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 rounded-lg">
+                    <AlertTriangleIcon className="h-4 w-4 text-red-500 shrink-0" />
+                    <span className="text-sm font-medium text-red-700 dark:text-red-300">
+                      {members.length - 1} {members.length - 1 === 1 ? 'member' : 'members'} will be removed
+                    </span>
+                  </div>
                 )}
                 {subscription?.subscription_status === 'active' && subscription?.plan_id !== 'free' && (
-                  <li className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-red-500 shrink-0" />
-                    Active subscription will be cancelled
-                  </li>
+                  <div className="flex items-center gap-3 p-3 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 rounded-lg">
+                    <AlertTriangleIcon className="h-4 w-4 text-red-500 shrink-0" />
+                    <span className="text-sm font-medium text-red-700 dark:text-red-300">
+                      Active subscription will be cancelled
+                    </span>
+                  </div>
                 )}
-                <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-red-500 shrink-0" />
-                  All notifications and settings
-                </li>
-              </ul>
+                <div className="flex items-center gap-3 p-3 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 rounded-lg">
+                  <AlertTriangleIcon className="h-4 w-4 text-red-500 shrink-0" />
+                  <span className="text-sm font-medium text-red-700 dark:text-red-300">
+                    All notifications and settings
+                  </span>
+                </div>
+              </div>
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-medium text-neutral-500 uppercase mb-1">
-                    Type <span className="font-bold text-neutral-900 dark:text-white">DELETE</span> to confirm
+                  <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                    Type <span className="font-mono font-bold text-red-600 dark:text-red-400">DELETE</span> to confirm
                   </label>
                   <input
                     type="text"
                     value={deleteConfirm}
                     onChange={(e) => setDeleteConfirm(e.target.value)}
-                    className="w-full px-3 py-2 bg-neutral-100 dark:bg-neutral-800 border-none rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-neutral-900 dark:text-white font-mono"
+                    autoComplete="off"
+                    className="w-full px-3 py-2 text-sm border border-neutral-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-red-500 dark:focus:ring-red-400"
                     placeholder="DELETE"
                   />
                 </div>
 
-                <div className="flex gap-3 pt-2">
+                <div className="flex gap-3">
                   <button
+                    type="button"
                     onClick={() => {
                       setShowDeletePrompt(false)
                       setDeleteConfirm('')
                     }}
-                    className="flex-1 px-4 py-2 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors font-medium"
+                    className="flex-1 px-4 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition-colors"
                     disabled={isDeleting}
                   >
                     Cancel
@@ -1418,9 +1423,9 @@ export default function OrganizationSettings() {
                   <button
                     onClick={handleDelete}
                     disabled={deleteConfirm !== 'DELETE' || isDeleting}
-                    className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isDeleting ? 'Deleting...' : 'Delete Organization'}
+                    {isDeleting ? 'Deleting...' : 'Delete Forever'}
                   </button>
                 </div>
               </div>
