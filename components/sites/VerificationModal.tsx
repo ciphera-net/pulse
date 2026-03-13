@@ -9,7 +9,7 @@ import {
   AlertTriangleIcon,
   ZapIcon 
 } from '@ciphera-net/ui'
-import { Site } from '@/lib/api/sites'
+import { Site, verifySite } from '@/lib/api/sites'
 import { getRealtime } from '@/lib/api/stats'
 import { toast, Button } from '@ciphera-net/ui'
 
@@ -56,6 +56,7 @@ export default function VerificationModal({ isOpen, onClose, site }: Verificatio
           if (data.visitors > 0) {
             setStatus('success')
             toast.success('Connection established!')
+            try { await verifySite(site.id) } catch {}
           }
         } catch (e) {
           // Ignore errors
