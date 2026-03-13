@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useTheme } from '@ciphera-net/ui'
-import { Line, LineChart, XAxis, YAxis, ReferenceLine } from 'recharts'
+import { CartesianGrid, Line, LineChart, XAxis, YAxis, ReferenceLine } from 'recharts'
 import { ChartContainer, ChartTooltip, type ChartConfig } from '@/components/ui/line-charts-6'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { formatNumber, formatDuration, formatUpdatedAgo, DatePicker } from '@ciphera-net/ui'
@@ -384,17 +384,7 @@ export default function Chart({
           </div>
         </CardHeader>
 
-        <CardContent className="px-2.5 py-4 relative overflow-hidden">
-          {/* Subtle horizontal lines background */}
-          <div
-            className="pointer-events-none absolute inset-0"
-            style={{
-              backgroundImage: 'repeating-linear-gradient(to bottom, transparent, transparent 39px, var(--chart-grid) 39px, var(--chart-grid) 40px)',
-              opacity: 0.5,
-              maskImage: 'linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)',
-              WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)',
-            }}
-          />
+        <CardContent className="px-2.5 py-4">
           {/* Toolbar */}
           <div className="flex items-center justify-between gap-3 mb-4 px-2">
             <div className="flex items-center gap-3">
@@ -484,6 +474,13 @@ export default function Chart({
                       <feDropShadow dx="2" dy="2" stdDeviation="3" floodColor="rgba(0,0,0,0.5)" />
                     </filter>
                   </defs>
+
+                  <CartesianGrid
+                    horizontal={true}
+                    vertical={false}
+                    stroke="var(--chart-grid)"
+                    strokeOpacity={0.7}
+                  />
 
                   <XAxis
                     dataKey="date"
