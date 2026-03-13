@@ -679,7 +679,10 @@ export default function OrganizationSettings() {
                       <p className="text-sm text-red-700 dark:text-red-300 mt-1">Permanently delete this organization and all its data.</p>
                     </div>
                     <button
-                      onClick={() => setShowDeletePrompt(true)}
+                      onClick={() => {
+                        if (!subscription) loadSubscription()
+                        setShowDeletePrompt(true)
+                      }}
                       className="px-4 py-2 bg-white dark:bg-neutral-900 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-sm font-medium"
                     >
                       Delete Organization
