@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Improved
 
+- **Refreshed chart background.** The dashboard chart now has a clean grid line pattern instead of the old dotted background, with a soft fade at the top and bottom edges for a more polished look.
 - **Smoother loading transitions.** When your data finishes loading, the page now fades in smoothly instead of appearing all at once. This applies across Dashboard, Journeys, Funnels, Uptime, Settings, Notifications, and shared dashboards. If your data was already cached from a previous visit, it still loads instantly with no animation — the fade only kicks in when you're actually waiting for fresh data.
 - **Faster tab switching across the board.** Switching between Settings, Funnels, Uptime, and other tabs now shows your data instantly instead of flashing a loading skeleton every time. Previously visited tabs remember their data and show it right away, while quietly refreshing in the background so you always see the latest numbers without the wait.
 - **Smoother loading on the Journeys page.** The Journeys tab now shows a polished skeleton placeholder while data loads, matching the loading experience on other tabs.

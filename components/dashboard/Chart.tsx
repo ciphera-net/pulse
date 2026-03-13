@@ -11,6 +11,7 @@ import { Checkbox } from '@ciphera-net/ui'
 import { ArrowUpRight, ArrowDownRight } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { GridPattern } from '@/components/ui/grid-pattern'
 
 const ANNOTATION_COLORS: Record<string, string> = {
   deploy: '#3b82f6',
@@ -338,7 +339,14 @@ export default function Chart({
 
   return (
     <div ref={chartContainerRef} className="relative">
-      <Card className="w-full overflow-hidden rounded-2xl">
+      <Card className="w-full overflow-hidden rounded-2xl relative">
+        <GridPattern
+          width={30}
+          height={30}
+          x={-1}
+          y={-1}
+          className="fill-neutral-400/5 stroke-neutral-400/10 dark:fill-neutral-500/5 dark:stroke-neutral-500/10 [mask-image:linear-gradient(to_bottom,transparent,white_30%,white_70%,transparent)]"
+        />
         <CardHeader className="p-0 mb-0">
           {/* Metrics Grid - 21st.dev style */}
           <div className="grid grid-cols-2 md:grid-cols-4 grow w-full">
@@ -462,9 +470,6 @@ export default function Chart({
                   style={{ overflow: 'visible' }}
                 >
                   <defs>
-                    <pattern id="dotGrid" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
-                      <circle cx="10" cy="10" r="1" fill="var(--chart-grid)" fillOpacity="1" />
-                    </pattern>
                     <filter id="lineShadow" x="-100%" y="-100%" width="300%" height="300%">
                       <feDropShadow
                         dx="4"
@@ -501,15 +506,6 @@ export default function Chart({
 
                   <ChartTooltip content={<CustomTooltip metric={metric} />} cursor={{ strokeDasharray: '3 3', stroke: '#9ca3af' }} />
 
-                  {/* Background dot grid pattern */}
-                  <rect
-                    x="60px"
-                    y="-20px"
-                    width="calc(100% - 75px)"
-                    height="calc(100% - 10px)"
-                    fill="url(#dotGrid)"
-                    style={{ pointerEvents: 'none' }}
-                  />
 
                   {/* Annotation reference lines */}
                   {visibleAnnotationMarkers.map((marker) => {
