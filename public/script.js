@@ -225,8 +225,10 @@
     return cachedSessionId;
   }
 
-  // * Normalize path: strip trailing slash and UTM/marketing query parameters
-  var UTM_PARAMS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'utm_id', 'fbclid', 'gclid', 'gad_source', 'msclkid', 'twclid', 'dclid', 'mc_cid', 'mc_eid', 'ref', 'ad_id', 'adset_id', 'campaign_id', 'ad_name', 'adset_name', 'campaign_name', 'placement', 'site_source_name'];
+  // * Normalize path: strip trailing slash and ad-platform click/tracking IDs.
+  // * UTM params (utm_source, utm_medium, etc.) are intentionally kept in the path
+  // * because the backend extracts them for attribution before cleaning the path.
+  var STRIP_PARAMS = ['fbclid', 'gclid', 'gad_source', 'msclkid', 'twclid', 'dclid', 'mc_cid', 'mc_eid', 'ad_id', 'adset_id', 'campaign_id', 'ad_name', 'adset_name', 'campaign_name', 'placement', 'site_source_name'];
   function cleanPath() {
     var pathname = window.location.pathname;
     // * Strip trailing slash (but keep root /)
@@ -238,8 +240,8 @@
     if (search) {
       try {
         var params = new URLSearchParams(search);
-        for (var i = 0; i < UTM_PARAMS.length; i++) {
-          params.delete(UTM_PARAMS[i]);
+        for (var i = 0; i < STRIP_PARAMS.length; i++) {
+          params.delete(STRIP_PARAMS[i]);
         }
         var remaining = params.toString();
         if (remaining) pathname += '?' + remaining;
