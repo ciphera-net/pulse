@@ -451,7 +451,7 @@ export default function Chart({
               </p>
             </div>
           ) : (
-            <div className="w-full" onContextMenu={handleChartContextMenu}>
+            <div className="w-full overflow-hidden" onContextMenu={handleChartContextMenu}>
               <ChartContainer
                 config={chartConfig}
                 className="h-96 w-full overflow-visible [&_.recharts-curve.recharts-tooltip-cursor]:stroke-[initial]"
