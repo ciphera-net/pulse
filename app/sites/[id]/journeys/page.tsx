@@ -6,7 +6,7 @@ import { getDateRange, formatDate } from '@ciphera-net/ui'
 import { Select, DatePicker } from '@ciphera-net/ui'
 import SankeyDiagram from '@/components/journeys/SankeyDiagram'
 import TopPathsTable from '@/components/journeys/TopPathsTable'
-import { JourneysSkeleton, useMinimumLoading } from '@/components/skeletons'
+import { JourneysSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import {
   useDashboard,
   useJourneyTransitions,
@@ -53,6 +53,7 @@ export default function JourneysPage() {
   }, [dashboard?.site?.domain])
 
   const showSkeleton = useMinimumLoading(transitionsLoading && !transitionsData)
+  const fadeClass = useSkeletonFade(showSkeleton)
 
   const entryPointOptions = [
     { value: '', label: 'All entry points' },
@@ -65,7 +66,7 @@ export default function JourneysPage() {
   if (showSkeleton) return <JourneysSkeleton />
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+    <div className={`w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
       {/* Header */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

@@ -15,7 +15,7 @@ import Locations from '@/components/dashboard/Locations'
 import TechSpecs from '@/components/dashboard/TechSpecs'
 import PerformanceStats from '@/components/dashboard/PerformanceStats'
 import { Select, DatePicker as DatePickerModal, Captcha, DownloadIcon, ZapIcon } from '@ciphera-net/ui'
-import { DashboardSkeleton, useMinimumLoading } from '@/components/skeletons'
+import { DashboardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import ExportModal from '@/components/dashboard/ExportModal'
 import { FAVICON_SERVICE_URL } from '@/lib/utils/icons'
 
@@ -198,6 +198,7 @@ export default function PublicDashboardPage() {
   }
 
   const showSkeleton = useMinimumLoading(loading && !data && !isPasswordProtected)
+  const fadeClass = useSkeletonFade(showSkeleton)
 
   if (showSkeleton) {
     return <DashboardSkeleton />
@@ -274,7 +275,7 @@ export default function PublicDashboardPage() {
   const safeScreenResolutions = screen_resolutions || []
 
   return (
-    <div className="min-h-screen">
+    <div className={`min-h-screen ${fadeClass}`}>
       <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
         {/* Header */}
         <div className="mb-8">
