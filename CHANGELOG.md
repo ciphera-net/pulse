@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Improved
+
+- **Smoother loading on the Journeys page.** The Journeys tab now shows a polished skeleton placeholder while data loads, matching the loading experience on Dashboard, Funnels, Uptime, and Settings.
+
 ### Fixed
 
 - **No more random errors when switching tabs.** Navigating between Dashboard, Funnels, Uptime, and Settings no longer shows "Invalid credentials", "Something went wrong", or "Site not found" errors. This was caused by a timing issue when your login session refreshed in the background while multiple pages were loading at the same time — all those requests now wait for the refresh to finish and retry cleanly.
