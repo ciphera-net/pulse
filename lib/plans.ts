@@ -7,9 +7,9 @@ export const PLAN_ID_SOLO = 'solo'
 export const PLAN_ID_TEAM = 'team'
 export const PLAN_ID_BUSINESS = 'business'
 
-/** Sites limit per plan. Returns null for free (no limit enforced in UI). */
+/** Sites limit per plan. */
 export function getSitesLimitForPlan(planId: string | null | undefined): number | null {
-  if (!planId || planId === 'free') return null
+  if (!planId || planId === 'free') return 1
   switch (planId) {
     case 'solo': return 1
     case 'team': return 5

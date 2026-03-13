@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- **Free plan now visible on the Pricing page.** The free tier is no longer hidden — it's displayed as the first option on the Pricing page so you can see exactly what you get before signing up: 1 site, 5,000 monthly pageviews, and 6 months of data retention, completely free.
+- **Free plan limited to 1 site.** Free accounts are now limited to a single site. If you need more, you can upgrade to Solo or above from the Pricing page.
+
 ### Improved
 
 - **Sites now show their verification status.** Each site on your dashboard now displays either a green "Active" badge (if verified) or an amber "Unverified" badge. When you verify your tracking script installation, the status is saved permanently — no more showing "Active" for sites that haven't been set up yet.
