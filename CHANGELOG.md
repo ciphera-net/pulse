@@ -15,6 +15,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Preloaded pages no longer count as visits.** Modern browsers sometimes preload pages in the background before you actually visit them. These ghost visits no longer inflate your pageview counts — only pages the visitor actually sees are tracked.
 - **Marketing parameters no longer fragment your pages.** Pages like `/about?utm_source=google` and `/about?utm_campaign=spring` now correctly show as just `/about` in your Top Pages. UTM tags, Facebook click IDs, Google click IDs, and other tracking parameters are stripped from the page path so all visits to the same page are grouped together.
 - **Trailing slashes no longer split pages.** `/about/` and `/about` now count as the same page instead of appearing as separate entries in your analytics.
+- **Traffic sources are no longer over-counted.** When a visitor arrived from Facebook (or any external source) and browsed multiple pages, every page was credited to Facebook instead of just the first. Now only the landing page shows the referrer, giving you accurate traffic source numbers.
+- **More ad parameters are cleaned from page paths.** Facebook and Meta ad parameters like `ad_id` and `campaign_id` are now stripped, so pages shared across different ad campaigns all show as one entry in your Top Pages.
 
 ## [0.15.0-alpha] - 2026-03-13
 
