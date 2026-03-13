@@ -17,9 +17,10 @@ interface VerificationModalProps {
   isOpen: boolean
   onClose: () => void
   site: Site
+  onVerified?: () => void
 }
 
-export default function VerificationModal({ isOpen, onClose, site }: VerificationModalProps) {
+export default function VerificationModal({ isOpen, onClose, site, onVerified }: VerificationModalProps) {
   const [mounted, setMounted] = useState(false)
   const [status, setStatus] = useState<'idle' | 'checking' | 'success' | 'error'>('idle')
   const [attempts, setAttempts] = useState(0)
@@ -56,7 +57,7 @@ export default function VerificationModal({ isOpen, onClose, site }: Verificatio
           if (data.visitors > 0) {
             setStatus('success')
             toast.success('Connection established!')
-            try { await verifySite(site.id) } catch {}
+            try { await verifySite(site.id); onVerified?.() } catch {}
           }
         } catch (e) {
           // Ignore errors
