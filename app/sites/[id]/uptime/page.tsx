@@ -20,7 +20,7 @@ import { toast } from '@ciphera-net/ui'
 import { useTheme } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { Button, Modal } from '@ciphera-net/ui'
-import { UptimeSkeleton, ChecksSkeleton, useMinimumLoading } from '@/components/skeletons'
+import { UptimeSkeleton, ChecksSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import {
   AreaChart,
   Area,
@@ -645,6 +645,7 @@ export default function UptimePage() {
   }, [site?.domain])
 
   const showSkeleton = useMinimumLoading(isLoading && !uptimeData)
+  const fadeClass = useSkeletonFade(showSkeleton)
 
   if (showSkeleton) return <UptimeSkeleton />
   if (!site) return <div className="p-8 text-neutral-500">Site not found</div>
@@ -654,7 +655,7 @@ export default function UptimePage() {
   const overallStatus = uptimeData?.status ?? 'operational'
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+    <div className={`w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
       {/* Header */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

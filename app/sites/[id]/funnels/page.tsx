@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { deleteFunnel, type Funnel } from '@/lib/api/funnels'
 import { useFunnels } from '@/lib/swr/dashboard'
 import { toast, PlusIcon, ArrowRightIcon, ChevronLeftIcon, TrashIcon, Button } from '@ciphera-net/ui'
-import { FunnelsListSkeleton, useMinimumLoading } from '@/components/skeletons'
+import { FunnelsListSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import Link from 'next/link'
 
 export default function FunnelsPage() {
@@ -28,13 +28,14 @@ export default function FunnelsPage() {
   }
 
   const showSkeleton = useMinimumLoading(isLoading && !funnels.length)
+  const fadeClass = useSkeletonFade(showSkeleton)
 
   if (showSkeleton) {
     return <FunnelsListSkeleton />
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+    <div className={`w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
       <div className="mb-8">
         <div className="flex items-center justify-between mb-6">
           <div>

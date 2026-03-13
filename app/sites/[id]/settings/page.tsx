@@ -7,7 +7,7 @@ import { createGoal, updateGoal, deleteGoal, type Goal } from '@/lib/api/goals'
 import { createReportSchedule, updateReportSchedule, deleteReportSchedule, testReportSchedule, type ReportSchedule, type CreateReportScheduleRequest, type EmailConfig, type WebhookConfig } from '@/lib/api/report-schedules'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
-import { SettingsFormSkeleton, GoalsListSkeleton, useMinimumLoading } from '@/components/skeletons'
+import { SettingsFormSkeleton, GoalsListSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import VerificationModal from '@/components/sites/VerificationModal'
 import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
 import { PasswordInput } from '@ciphera-net/ui'
@@ -509,6 +509,7 @@ export default function SiteSettingsPage() {
   }, [site?.domain])
 
   const showSkeleton = useMinimumLoading(siteLoading && !site)
+  const fadeClass = useSkeletonFade(showSkeleton)
 
   if (showSkeleton) {
     return (
@@ -542,7 +543,7 @@ export default function SiteSettingsPage() {
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+    <div className={`w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
 
       <div className="space-y-8">
         <div>

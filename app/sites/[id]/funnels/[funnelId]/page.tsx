@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { ApiError } from '@/lib/api/client'
 import { getFunnel, getFunnelStats, deleteFunnel, type Funnel, type FunnelStats } from '@/lib/api/funnels'
 import { toast, Select, DatePicker, ChevronLeftIcon, ArrowRightIcon, TrashIcon, Button } from '@ciphera-net/ui'
-import { FunnelDetailSkeleton, useMinimumLoading } from '@/components/skeletons'
+import { FunnelDetailSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import Link from 'next/link'
 import { FunnelChart } from '@/components/ui/funnel-chart'
 import { getDateRange } from '@ciphera-net/ui'
@@ -62,6 +62,7 @@ export default function FunnelReportPage() {
   }
 
   const showSkeleton = useMinimumLoading(loading && !funnel)
+  const fadeClass = useSkeletonFade(showSkeleton)
 
   if (showSkeleton) {
     return <FunnelDetailSkeleton />
@@ -113,7 +114,7 @@ export default function FunnelReportPage() {
   }))
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+    <div className={`w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
       <div className="mb-8">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
