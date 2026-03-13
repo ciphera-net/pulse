@@ -12,7 +12,18 @@ export async function POST() {
     return NextResponse.json({ error: 'No refresh token' }, { status: 401 })
   }
 
+  // * Read org_id from existing access token (if still present) before refreshing
+  let previousOrgId: string | null = null
+  const existingToken = cookieStore.get('access_token')?.value
+  if (existingToken) {
+    try {
+      const payload = JSON.parse(Buffer.from(existingToken.split('.')[1], 'base64').toString())
+      previousOrgId = payload.org_id || null
+    } catch { /* token may be malformed, proceed without org */ }
+  }
+
   try {
+    // * Step 1: Refresh the base token
     const res = await fetch(`${AUTH_API_URL}/api/v1/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -29,11 +40,53 @@ export async function POST() {
     }
 
     const data = await res.json()
+    let finalAccessToken = data.access_token
+
+    // * Step 2: Restore organization context
+    // * The auth service's refresh endpoint returns a "base" token without org_id.
+    // * We need to call switch-context to get an org-scoped token so that
+    // * Pulse API requests don't fail with 403 after a mid-session refresh.
+    let orgId = previousOrgId
+
+    if (!orgId) {
+      // * No org_id from old token — look up user's organizations
+      try {
+        const orgsRes = await fetch(`${AUTH_API_URL}/api/v1/auth/organizations`, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${finalAccessToken}`,
+          },
+        })
+        if (orgsRes.ok) {
+          const orgsData = await orgsRes.json()
+          if (orgsData.organizations?.length > 0) {
+            orgId = orgsData.organizations[0].organization_id
+          }
+        }
+      } catch { /* proceed with base token */ }
+    }
+
+    if (orgId) {
+      try {
+        const switchRes = await fetch(`${AUTH_API_URL}/api/v1/auth/switch-context`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${finalAccessToken}`,
+          },
+          body: JSON.stringify({ organization_id: orgId }),
+        })
+        if (switchRes.ok) {
+          const switchData = await switchRes.json()
+          finalAccessToken = switchData.access_token
+        }
+      } catch { /* proceed with base token */ }
+    }
 
     // * Get CSRF token from Auth API response header (for cookie rotation)
     const csrfToken = res.headers.get('X-CSRF-Token')
 
-    cookieStore.set('access_token', data.access_token, {
+    cookieStore.set('access_token', finalAccessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -63,7 +116,7 @@ export async function POST() {
       })
     }
 
-    return NextResponse.json({ success: true, access_token: data.access_token })
+    return NextResponse.json({ success: true, access_token: finalAccessToken })
   } catch (error) {
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
