@@ -370,6 +370,55 @@ export function PricingCardsSkeleton() {
   )
 }
 
+// ─── Behavior page skeleton ─────────────────────────────────
+
+export function BehaviorSkeleton() {
+  return (
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+      {/* Header */}
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <SkeletonLine className="h-8 w-32 mb-2" />
+          <SkeletonLine className="h-4 w-64" />
+        </div>
+        <SkeletonLine className="h-9 w-36 rounded-lg" />
+      </div>
+
+      {/* Summary cards (3 cols) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 space-y-3">
+            <SkeletonLine className="h-4 w-24" />
+            <SkeletonLine className="h-8 w-16" />
+            <SkeletonLine className="h-3 w-32" />
+          </div>
+        ))}
+      </div>
+
+      {/* Rage clicks + Dead clicks side by side */}
+      <div className="grid gap-6 lg:grid-cols-2 mb-8">
+        <WidgetSkeleton />
+        <WidgetSkeleton />
+      </div>
+
+      {/* By-page table */}
+      <div className="mb-8">
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6">
+          <SkeletonLine className="h-6 w-40 mb-2" />
+          <SkeletonLine className="h-4 w-64 mb-4" />
+          <TableSkeleton rows={5} cols={4} />
+        </div>
+      </div>
+
+      {/* Scroll depth + Frustration trend */}
+      <div className="grid gap-6 lg:grid-cols-2 mb-8">
+        <WidgetSkeleton />
+        <WidgetSkeleton />
+      </div>
+    </div>
+  )
+}
+
 // ─── Organization settings skeleton (members, billing, etc) ─
 
 export function MembersListSkeleton() {
