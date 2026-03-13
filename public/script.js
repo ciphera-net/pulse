@@ -329,8 +329,14 @@
     });
   }
 
-  // * Track initial pageview
-  trackPageview();
+  // * Track initial pageview (skip if page is being speculatively prerendered)
+  if (document.prerendering) {
+    document.addEventListener('prerenderingchange', function() {
+      trackPageview();
+    }, { once: true });
+  } else {
+    trackPageview();
+  }
 
   // * Track SPA navigation: MutationObserver (DOM updates) and history.pushState/replaceState
   // * (some SPAs change the URL without a DOM mutation we observe)
