@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
+import { useSWRConfig } from 'swr'
 import apiRequest from '@/lib/api/client'
 import { LoadingOverlay, useSessionSync, SessionExpiryWarning } from '@ciphera-net/ui'
 import { logoutAction, getSessionAction, setSessionAction } from '@/app/actions/auth'
@@ -51,6 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
+  const { mutate: swrMutate } = useSWRConfig()
 
   const refreshToken = useCallback(async (): Promise<boolean> => {
     try {
@@ -109,7 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refresh = useCallback(async () => {
     try {
       const userData = await apiRequest<User>('/auth/user/me')
-      
+
       setUser(prev => {
         const merged = {
           ...userData,
@@ -122,8 +124,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       logger.error('Failed to refresh user data', e)
     }
+    // * Clear SWR cache so stale data isn't served after token refresh
+    swrMutate(() => true, undefined, { revalidate: true })
     router.refresh()
-  }, [router])
+  }, [router, swrMutate])
 
   const refreshSession = useCallback(async () => {
       await refresh()

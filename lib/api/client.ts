@@ -244,21 +244,30 @@ async function apiRequest<T>(
             // * If refresh is already in progress, wait for it to complete (or fail)
             return new Promise<T>((resolve, reject) => {
               subscribeToTokenRefresh(
-                async () => {
-                  try {
-                    const retryResponse = await fetch(url, {
-                      ...options,
-                      headers,
-                      credentials: 'include',
-                    })
-                    if (retryResponse.ok) {
-                      resolve(await retryResponse.json())
-                    } else {
-                      reject(new ApiError(authMessageFromStatus(retryResponse.status), retryResponse.status))
-                    }
-                  } catch (e) {
-                    reject(e)
+                () => {
+                  // * Retry with fresh headers after refresh completes
+                  const retryHeaders: Record<string, string> = {
+                    'Content-Type': 'application/json',
+                    [getRequestIdHeader()]: generateRequestId(),
                   }
+                  if (options.headers) {
+                    Object.entries(options.headers as Record<string, string>).forEach(([key, value]) => {
+                      retryHeaders[key] = value
+                    })
+                  }
+                  if (isStateChangingMethod(method)) {
+                    const csrfToken = getCSRFToken()
+                    if (csrfToken) retryHeaders['X-CSRF-Token'] = csrfToken
+                  }
+                  fetch(url, { ...options, headers: retryHeaders, credentials: 'include' })
+                    .then(async (retryResponse) => {
+                      if (retryResponse.ok) {
+                        resolve(await retryResponse.json())
+                      } else {
+                        reject(new ApiError(authMessageFromStatus(retryResponse.status), retryResponse.status))
+                      }
+                    })
+                    .catch((e) => reject(e))
                 },
                 (err) => reject(err)
               )
@@ -279,22 +288,40 @@ async function apiRequest<T>(
               // * Refresh successful, cookies updated
               onRefreshed()
 
-              // * Retry original request
+              // * Retry original request with fresh headers
+              const retryHeaders: Record<string, string> = {
+                'Content-Type': 'application/json',
+                [getRequestIdHeader()]: generateRequestId(),
+              }
+              if (options.headers) {
+                Object.entries(options.headers as Record<string, string>).forEach(([key, value]) => {
+                  retryHeaders[key] = value
+                })
+              }
+              if (isStateChangingMethod(method)) {
+                const csrfToken = getCSRFToken()
+                if (csrfToken) retryHeaders['X-CSRF-Token'] = csrfToken
+              }
               const retryResponse = await fetch(url, {
                 ...options,
-                headers,
+                headers: retryHeaders,
                 credentials: 'include',
               })
-              
+
               if (retryResponse.ok) {
                 return retryResponse.json()
               }
+              // * Retry failed — throw with the retry response status, not the original 401
+              const retryBody = await retryResponse.json().catch(() => ({}))
+              throw new ApiError(authMessageFromStatus(retryResponse.status), retryResponse.status, retryBody)
             } else {
               const sessionExpiredMsg = authMessageFromStatus(401)
               onRefreshFailed(new ApiError(sessionExpiredMsg, 401))
               localStorage.removeItem('user')
+              throw new ApiError(sessionExpiredMsg, 401)
             }
           } catch (e) {
+            if (e instanceof ApiError) throw e
             const err = e instanceof Error && (e.name === 'AbortError' || e.name === 'TypeError')
               ? new ApiError(AUTH_ERROR_MESSAGES.NETWORK, 0)
               : e

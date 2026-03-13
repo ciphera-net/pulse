@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- **No more random errors when switching tabs.** Navigating between Dashboard, Funnels, Uptime, and Settings no longer shows "Invalid credentials", "Something went wrong", or "Site not found" errors. This was caused by a timing issue when your login session refreshed in the background while multiple pages were loading at the same time — all those requests now wait for the refresh to finish and retry cleanly.
 - **More accurate pageview counts.** Refreshing a page no longer inflates your pageview numbers. The tracking script now detects when the same page is loaded again within a few seconds and skips the duplicate, so metrics like total pageviews, pages per session, and visit duration reflect real navigation instead of reload habits.
 - **Self-referrals no longer pollute your traffic sources.** Internal navigation within your own site (e.g. clicking from your homepage to your about page) no longer shows your own domain as a referrer. Only external traffic sources appear in your Referrers panel now.
 - **Screen size fallback now works correctly.** A variable naming issue prevented the fallback screen dimensions from being read when the primary value wasn't available. Screen size data is now reliably captured on all browsers.
