@@ -11,7 +11,7 @@ import { Checkbox } from '@ciphera-net/ui'
 import { ArrowUpRight, ArrowDownRight } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import { GridPattern } from '@/components/ui/grid-pattern'
+import { AnimatedGridPattern } from '@/components/ui/animated-grid-pattern'
 
 const ANNOTATION_COLORS: Record<string, string> = {
   deploy: '#3b82f6',
@@ -339,14 +339,7 @@ export default function Chart({
 
   return (
     <div ref={chartContainerRef} className="relative">
-      <Card className="w-full overflow-hidden rounded-2xl relative">
-        <GridPattern
-          width={30}
-          height={30}
-          x={-1}
-          y={-1}
-          className="fill-neutral-400/5 stroke-neutral-400/10 dark:fill-neutral-500/5 dark:stroke-neutral-500/10 [mask-image:linear-gradient(to_bottom,transparent,white_30%,white_70%,transparent)]"
-        />
+      <Card className="w-full overflow-hidden rounded-2xl">
         <CardHeader className="p-0 mb-0">
           {/* Metrics Grid - 21st.dev style */}
           <div className="grid grid-cols-2 md:grid-cols-4 grow w-full">
@@ -392,7 +385,18 @@ export default function Chart({
           </div>
         </CardHeader>
 
-        <CardContent className="px-2.5 py-4">
+        <CardContent className="px-2.5 py-4 relative overflow-hidden">
+          <AnimatedGridPattern
+            numSquares={30}
+            maxOpacity={0.1}
+            duration={3}
+            repeatDelay={1}
+            width={30}
+            height={30}
+            x={-1}
+            y={-1}
+            className="fill-neutral-400/10 stroke-neutral-400/15 dark:fill-neutral-500/10 dark:stroke-neutral-500/15 [mask-image:linear-gradient(to_bottom,transparent,white_20%,white_80%,transparent)]"
+          />
           {/* Toolbar */}
           <div className="flex items-center justify-between gap-3 mb-4 px-2">
             <div className="flex items-center gap-3">
