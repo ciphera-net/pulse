@@ -73,6 +73,7 @@ export default function OrganizationSettings() {
   const [showDeletePrompt, setShowDeletePrompt] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState('')
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isLoadingDeleteData, setIsLoadingDeleteData] = useState(false)
 
   // Members State
   const [members, setMembers] = useState<OrganizationMember[]>([])
@@ -679,12 +680,24 @@ export default function OrganizationSettings() {
                       <p className="text-sm text-red-700 dark:text-red-300 mt-1">Permanently delete this organization and all its data.</p>
                     </div>
                     <button
-                      onClick={() => {
-                        if (!subscription) loadSubscription()
+                      onClick={async () => {
+                        if (!subscription) {
+                          setIsLoadingDeleteData(true)
+                          try {
+                            const sub = await getSubscription()
+                            setSubscription(sub)
+                          } catch {
+                            // proceed without subscription data
+                          } finally {
+                            setIsLoadingDeleteData(false)
+                          }
+                        }
                         setShowDeletePrompt(true)
                       }}
-                      className="px-4 py-2 bg-white dark:bg-neutral-900 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-sm font-medium"
+                      disabled={isLoadingDeleteData}
+                      className="px-4 py-2 bg-white dark:bg-neutral-900 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-sm font-medium disabled:opacity-50 flex items-center gap-2"
                     >
+                      {isLoadingDeleteData && <Spinner className="h-4 w-4" />}
                       Delete Organization
                     </button>
                   </div>
