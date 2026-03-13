@@ -228,7 +228,7 @@
   // * Normalize path: strip trailing slash and ad-platform click/tracking IDs.
   // * UTM params (utm_source, utm_medium, etc.) are intentionally kept in the path
   // * because the backend extracts them for attribution before cleaning the path.
-  var STRIP_PARAMS = ['fbclid', 'gclid', 'gad_source', 'msclkid', 'twclid', 'dclid', 'mc_cid', 'mc_eid', 'ad_id', 'adset_id', 'campaign_id', 'ad_name', 'adset_name', 'campaign_name', 'placement', 'site_source_name'];
+  var STRIP_PARAMS = ['fbclid', 'gclid', 'gad_source', 'msclkid', 'twclid', 'dclid', 'mc_cid', 'mc_eid', 'ad_id', 'adset_id', 'campaign_id', 'ad_name', 'adset_name', 'campaign_name', 'placement', 'site_source_name', 'utm_id'];
   function cleanPath() {
     var pathname = window.location.pathname;
     // * Strip trailing slash (but keep root /)
