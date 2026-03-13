@@ -104,9 +104,9 @@ const METRIC_CONFIGS: {
 
 const chartConfig = {
   visitors: { label: 'Unique Visitors', color: '#FD5E0F' },
-  pageviews: { label: 'Total Pageviews', color: '#3b82f6' },
-  bounce_rate: { label: 'Bounce Rate', color: '#a855f7' },
-  avg_duration: { label: 'Visit Duration', color: '#10b981' },
+  pageviews: { label: 'Total Pageviews', color: '#FD5E0F' },
+  bounce_rate: { label: 'Bounce Rate', color: '#FD5E0F' },
+  avg_duration: { label: 'Visit Duration', color: '#FD5E0F' },
 } satisfies ChartConfig
 
 // ─── Custom Tooltip ─────────────────────────────────────────────────
