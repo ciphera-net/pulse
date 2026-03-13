@@ -6,7 +6,7 @@ import { getDateRange, formatDate } from '@ciphera-net/ui'
 import { Select, DatePicker } from '@ciphera-net/ui'
 import SankeyDiagram from '@/components/journeys/SankeyDiagram'
 import TopPathsTable from '@/components/journeys/TopPathsTable'
-import { SkeletonCard } from '@/components/skeletons'
+import { JourneysSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import {
   useDashboard,
   useJourneyTransitions,
@@ -52,6 +52,9 @@ export default function JourneysPage() {
     document.title = domain ? `Journeys \u00b7 ${domain} | Pulse` : 'Journeys | Pulse'
   }, [dashboard?.site?.domain])
 
+  const showSkeleton = useMinimumLoading(transitionsLoading && !transitionsData)
+  const fadeClass = useSkeletonFade(showSkeleton)
+
   const entryPointOptions = [
     { value: '', label: 'All entry points' },
     ...(entryPoints ?? []).map((ep) => ({
@@ -60,8 +63,10 @@ export default function JourneysPage() {
     })),
   ]
 
+  if (showSkeleton) return <JourneysSkeleton />
+
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+    <div className={`w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
       {/* Header */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -146,18 +151,12 @@ export default function JourneysPage() {
 
       {/* Sankey Diagram */}
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 mb-6">
-        {transitionsLoading ? (
-          <div className="h-[400px] flex items-center justify-center">
-            <SkeletonCard className="w-full h-full" />
-          </div>
-        ) : (
-          <SankeyDiagram
-            transitions={transitionsData?.transitions ?? []}
-            totalSessions={transitionsData?.total_sessions ?? 0}
-            depth={depth}
-            onNodeClick={(path) => setEntryPath(path)}
-          />
-        )}
+        <SankeyDiagram
+          transitions={transitionsData?.transitions ?? []}
+          totalSessions={transitionsData?.total_sessions ?? 0}
+          depth={depth}
+          onNodeClick={(path) => setEntryPath(path)}
+        />
       </div>
 
       {/* Top Paths */}

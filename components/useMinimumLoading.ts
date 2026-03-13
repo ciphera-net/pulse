@@ -32,3 +32,19 @@ export function useMinimumLoading(loading: boolean, minMs = 300): boolean {
 
   return show
 }
+
+/**
+ * Returns 'animate-fade-in' when transitioning from skeleton to content,
+ * empty string otherwise. Prevents the jarring visual "pop" when skeletons
+ * are replaced by real content, without adding unnecessary animation when
+ * data loads from cache (no skeleton shown).
+ */
+export function useSkeletonFade(showSkeleton: boolean): string {
+  const wasEverLoading = useRef(false)
+
+  if (showSkeleton) {
+    wasEverLoading.current = true
+  }
+
+  return !showSkeleton && wasEverLoading.current ? 'animate-fade-in' : ''
+}

@@ -230,25 +230,29 @@
     return cachedSessionId;
   }
 
-  // * Normalize path: strip trailing slash and ad-platform click/tracking IDs.
-  // * UTM params (utm_source, utm_medium, etc.) are intentionally kept in the path
-  // * because the backend extracts them for attribution before cleaning the path.
-  var STRIP_PARAMS = ['fbclid', 'gclid', 'gad_source', 'msclkid', 'twclid', 'dclid', 'mc_cid', 'mc_eid', 'ad_id', 'adset_id', 'campaign_id', 'ad_name', 'adset_name', 'campaign_name', 'placement', 'site_source_name', 'utm_id'];
+  // * Normalize path: strip trailing slash and all query params except UTM/attribution.
+  // * Allowlist approach — only UTM params pass through because the backend extracts
+  // * them for attribution before cleaning the stored path. Everything else (cache-busters,
+  // * ad click IDs, filter params, etc.) is stripped to prevent path fragmentation.
+  var KEEP_PARAMS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'source', 'ref'];
   function cleanPath() {
     var pathname = window.location.pathname;
     // * Strip trailing slash (but keep root /)
     if (pathname.length > 1 && pathname.charAt(pathname.length - 1) === '/') {
       pathname = pathname.slice(0, -1);
     }
-    // * Strip UTM/marketing params, keep other query params
+    // * Only keep allowlisted params, strip everything else
     var search = window.location.search;
     if (search) {
       try {
         var params = new URLSearchParams(search);
-        for (var i = 0; i < STRIP_PARAMS.length; i++) {
-          params.delete(STRIP_PARAMS[i]);
+        var kept = new URLSearchParams();
+        for (var i = 0; i < KEEP_PARAMS.length; i++) {
+          if (params.has(KEEP_PARAMS[i])) {
+            kept.set(KEEP_PARAMS[i], params.get(KEEP_PARAMS[i]));
+          }
         }
-        var remaining = params.toString();
+        var remaining = kept.toString();
         if (remaining) pathname += '?' + remaining;
       } catch (e) {
         // * URLSearchParams not supported — send path without query

@@ -6,7 +6,7 @@
 
 const SK = 'animate-pulse bg-neutral-100 dark:bg-neutral-800'
 
-export { useMinimumLoading } from './useMinimumLoading'
+export { useMinimumLoading, useSkeletonFade } from './useMinimumLoading'
 
 // ─── Primitives ──────────────────────────────────────────────
 
