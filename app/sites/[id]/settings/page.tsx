@@ -713,13 +713,17 @@ export default function SiteSettingsPage() {
                       <button
                         type="button"
                         onClick={() => setShowVerificationModal(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-all text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2"
+                        className={`flex items-center gap-2 px-4 py-2 border rounded-xl transition-all text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                          site.is_verified
+                            ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/20 focus-visible:ring-green-500'
+                            : 'bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700 focus-visible:ring-brand-orange'
+                        }`}
                       >
-                        <ZapIcon className="w-4 h-4" />
-                        Verify Installation
+                        {site.is_verified ? <CheckIcon className="w-4 h-4" /> : <ZapIcon className="w-4 h-4" />}
+                        {site.is_verified ? 'Verified' : 'Verify Installation'}
                       </button>
                       <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                        Check if your site is sending data correctly.
+                        {site.is_verified ? 'Your site is sending data correctly.' : 'Check if your site is sending data correctly.'}
                       </p>
                     </div>
                   </div>
@@ -1614,6 +1618,7 @@ export default function SiteSettingsPage() {
         isOpen={showVerificationModal}
         onClose={() => setShowVerificationModal(false)}
         site={site}
+        onVerified={() => mutateSite()}
       />
     </div>
   )
