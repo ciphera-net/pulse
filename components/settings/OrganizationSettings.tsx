@@ -1345,9 +1345,34 @@ export default function OrganizationSettings() {
                 </button>
               </div>
               
-              <p className="text-neutral-600 dark:text-neutral-300 mb-6">
-                This action cannot be undone. This will permanently delete the organization, all stored files, and remove all members.
+              <p className="text-neutral-600 dark:text-neutral-300 mb-4">
+                This action cannot be undone. The following will be permanently deleted:
               </p>
+
+              <ul className="text-sm text-neutral-600 dark:text-neutral-300 mb-6 space-y-1.5 list-none">
+                {typeof subscription?.sites_count === 'number' && subscription.sites_count > 0 && (
+                  <li className="flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-red-500 shrink-0" />
+                    {subscription.sites_count} {subscription.sites_count === 1 ? 'site' : 'sites'} and all analytics data
+                  </li>
+                )}
+                {members.length > 1 && (
+                  <li className="flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-red-500 shrink-0" />
+                    {members.length - 1} {members.length - 1 === 1 ? 'member' : 'members'} will be removed
+                  </li>
+                )}
+                {subscription?.subscription_status === 'active' && subscription?.plan_id !== 'free' && (
+                  <li className="flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-red-500 shrink-0" />
+                    Active subscription will be cancelled
+                  </li>
+                )}
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-red-500 shrink-0" />
+                  All notifications and settings
+                </li>
+              </ul>
 
               <div className="space-y-4">
                 <div>
