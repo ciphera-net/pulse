@@ -1,15 +1,9 @@
 import type { MetadataRoute } from 'next'
+import { integrations } from '@/lib/integrations'
 
 const BASE_URL = 'https://pulse.ciphera.net'
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const integrationSlugs = [
-    'nextjs',
-    'react',
-    'vue',
-    'wordpress',
-  ]
-
   const publicRoutes = [
     { url: '', priority: 1.0, changeFrequency: 'weekly' as const },
     { url: '/about', priority: 0.8, changeFrequency: 'monthly' as const },
@@ -21,8 +15,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: '/integrations', priority: 0.8, changeFrequency: 'monthly' as const },
   ]
 
-  const integrationRoutes = integrationSlugs.map((slug) => ({
-    url: `/integrations/${slug}`,
+  const integrationRoutes = integrations.map((i) => ({
+    url: `/integrations/${i.id}`,
     priority: 0.7,
     changeFrequency: 'monthly' as const,
   }))
