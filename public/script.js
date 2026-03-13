@@ -282,16 +282,16 @@
         referrer = rawReferrer;
       }
     }
-    const screen = {
-      width: window.innerWidth || screen.width,
-      height: window.innerHeight || screen.height,
+    const screenSize = {
+      width: window.innerWidth || window.screen.width,
+      height: window.innerHeight || window.screen.height,
     };
 
     const payload = {
       domain: domain,
       path: path,
       referrer: referrer,
-      screen: screen,
+      screen: screenSize,
       session_id: getSessionId(),
     };
 
@@ -354,6 +354,9 @@
 
   // * Track popstate (browser back/forward)
   window.addEventListener('popstate', function() {
+    var url = location.href;
+    if (url === lastUrl) return;
+    lastUrl = url;
     trackPageview();
     setTimeout(check404, 100);
     if (trackScroll) scrollFired = {};
@@ -373,7 +376,15 @@
       return;
     }
     var path = window.location.pathname + window.location.search;
-    var referrer = document.referrer || '';
+    var rawRef = document.referrer || '';
+    var referrer = '';
+    if (rawRef) {
+      try {
+        var rh = new URL(rawRef).hostname.replace(/^www\./, '');
+        var sh = domain.replace(/^www\./, '');
+        if (rh !== sh) referrer = rawRef;
+      } catch (e) { referrer = rawRef; }
+    }
     var screenSize = { width: window.innerWidth || 0, height: window.innerHeight || 0 };
     var payload = {
       domain: domain,
