@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useTheme } from '@ciphera-net/ui'
-import { CartesianGrid, Line, LineChart, XAxis, YAxis, ReferenceLine } from 'recharts'
+import { Area, CartesianGrid, ComposedChart, Line, XAxis, YAxis, ReferenceLine } from 'recharts'
 import { ChartContainer, ChartTooltip, type ChartConfig } from '@/components/ui/line-charts-6'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { formatNumber, formatDuration, formatUpdatedAgo, DatePicker } from '@ciphera-net/ui'
@@ -456,12 +456,16 @@ export default function Chart({
                 config={chartConfig}
                 className="h-96 w-full overflow-visible [&_.recharts-curve.recharts-tooltip-cursor]:stroke-[initial]"
               >
-                <LineChart
+                <ComposedChart
                   data={chartData}
                   margin={{ top: 20, right: 20, left: 5, bottom: 20 }}
                   style={{ overflow: 'visible' }}
                 >
                   <defs>
+                    <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={chartConfig[metric]?.color} stopOpacity={0.15} />
+                      <stop offset="100%" stopColor={chartConfig[metric]?.color} stopOpacity={0.01} />
+                    </linearGradient>
                     <filter id="lineShadow" x="-100%" y="-100%" width="300%" height="300%">
                       <feDropShadow
                         dx="4"
@@ -522,8 +526,14 @@ export default function Chart({
                     )
                   })}
 
+                  <Area
+                    type="natural"
+                    dataKey={metric}
+                    fill="url(#areaFill)"
+                    stroke="none"
+                  />
                   <Line
-                    type="monotone"
+                    type="natural"
                     dataKey={metric}
                     stroke={chartConfig[metric]?.color}
                     strokeWidth={2}
@@ -537,7 +547,7 @@ export default function Chart({
                       filter: 'url(#dotShadow)',
                     }}
                   />
-                </LineChart>
+                </ComposedChart>
               </ChartContainer>
             </div>
           )}
