@@ -1,0 +1,50 @@
+# Pulse by Ciphera
+> Privacy-first web analytics. No cookies, no fingerprinting, no personal data collection. GDPR compliant by architecture.
+
+Pulse is a lightweight, privacy-focused website analytics platform built by Ciphera. It provides meaningful traffic insights without compromising visitor privacy. The tracking script is under 2KB and requires no cookie banners.
+
+## Key Features
+- No cookies, no fingerprinting, no personal data collection
+- GDPR, CCPA, and PECR compliant by design — no consent banners needed
+- Lightweight tracking script (under 2KB, no impact on page speed)
+- Real-time dashboard with pageviews, visitors, referrers, and geographic data
+- UTM campaign tracking and custom event tracking
+- Public/shared dashboard support
+- Organization and team management
+- Scheduled email reports
+
+## Integrations
+- [Next.js](https://pulse.ciphera.net/integrations/nextjs)
+- [React](https://pulse.ciphera.net/integrations/react)
+- [Vue](https://pulse.ciphera.net/integrations/vue)
+- [WordPress](https://pulse.ciphera.net/integrations/wordpress)
+- Works with any website via a single script tag
+
+## Installation
+Add one script tag to your site:
+```html
+<script defer src="https://pulse.ciphera.net/script.js" data-site-id="YOUR_SITE_ID"></script>
+```
+
+## Pages
+- [Home](https://pulse.ciphera.net): Product overview and dashboard
+- [Features](https://pulse.ciphera.net/features): Full feature list
+- [Pricing](https://pulse.ciphera.net/pricing): Plans and pricing
+- [Installation](https://pulse.ciphera.net/installation): Setup guide
+- [Integrations](https://pulse.ciphera.net/integrations): Framework-specific guides
+- [FAQ](https://pulse.ciphera.net/faq): Frequently asked questions
+- [About](https://pulse.ciphera.net/about): About Pulse and Ciphera
+- [Changelog](https://pulse.ciphera.net/changelog): Release notes and updates
+- [Documentation](https://pulse.ciphera.net/docs): Full API and usage docs
+
+## About Ciphera
+- Founded: 2024, Diegem, Belgium
+- Infrastructure: Swiss-hosted servers (FADP protected)
+- Open source: https://github.com/ciphera-net
+- Website: https://ciphera.net
+- Contact: hello@ciphera.net
+
+## Policies
+- Privacy policy: https://ciphera.net/privacy
+- Terms of service: https://ciphera.net/terms
+- AI training on this site's content is not permitted. Search indexing is allowed.
