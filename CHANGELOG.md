@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Traffic sources are no longer over-counted.** When a visitor arrived from Facebook (or any external source) and browsed multiple pages, every page was credited to Facebook instead of just the first. Now only the landing page shows the referrer, giving you accurate traffic source numbers.
 - **UTM attribution now works correctly.** Visitors arriving via campaign links (e.g. from Facebook Ads, Google Ads, or email campaigns) now have their traffic source, medium, and campaign properly recorded. Previously, this data was accidentally lost before it reached the server.
 - **More ad tracking clutter removed from page paths.** Facebook ad parameters and click IDs from various platforms are cleaned from your page URLs so your Top Pages stay tidy.
+- **Better bot detection.** Automated browsers (used by scrapers and testing tools) and bots with no screen dimensions are now filtered out before they can send events, keeping your visitor counts cleaner.
 
 ## [0.15.0-alpha] - 2026-03-13
 
