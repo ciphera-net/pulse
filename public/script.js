@@ -225,6 +225,31 @@
     return cachedSessionId;
   }
 
+  // * Normalize path: strip trailing slash and UTM/marketing query parameters
+  var UTM_PARAMS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'utm_id', 'fbclid', 'gclid', 'gad_source', 'msclkid', 'twclid', 'dclid', 'mc_cid', 'mc_eid', 'ref'];
+  function cleanPath() {
+    var pathname = window.location.pathname;
+    // * Strip trailing slash (but keep root /)
+    if (pathname.length > 1 && pathname.charAt(pathname.length - 1) === '/') {
+      pathname = pathname.slice(0, -1);
+    }
+    // * Strip UTM/marketing params, keep other query params
+    var search = window.location.search;
+    if (search) {
+      try {
+        var params = new URLSearchParams(search);
+        for (var i = 0; i < UTM_PARAMS.length; i++) {
+          params.delete(UTM_PARAMS[i]);
+        }
+        var remaining = params.toString();
+        if (remaining) pathname += '?' + remaining;
+      } catch (e) {
+        // * URLSearchParams not supported — send path without query
+      }
+    }
+    return pathname;
+  }
+
   // * Refresh dedup: skip pageview if the same path was tracked within 5 seconds
   // * Prevents inflated pageview counts from F5/refresh while allowing genuine revisits
   var REFRESH_DEDUP_WINDOW = 5000;
@@ -254,7 +279,7 @@
     var routeChangeTime = performance.now();
     var isSpaNav = !!currentEventId;
 
-    const path = window.location.pathname + window.location.search;
+    const path = cleanPath();
 
     // * Skip if same path was just tracked (refresh dedup)
     if (isDuplicatePageview(path)) {
@@ -381,7 +406,7 @@
       }
       return;
     }
-    var path = window.location.pathname + window.location.search;
+    var path = cleanPath();
     var rawRef = document.referrer || '';
     var referrer = '';
     if (rawRef) {
@@ -569,7 +594,7 @@
       if (!selector) return;
 
       var now = Date.now();
-      var currentPath = window.location.pathname + window.location.search;
+      var currentPath = cleanPath();
 
       if (!rageClickHistory[selector]) {
         rageClickHistory[selector] = { times: [], lastFired: 0 };
@@ -661,7 +686,7 @@
         return;
       }
 
-      var currentPath = window.location.pathname + window.location.search;
+      var currentPath = cleanPath();
       var clickX = String(Math.round(e.clientX));
       var clickY = String(Math.round(e.clientY));
       var effectDetected = false;

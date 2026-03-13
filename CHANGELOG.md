@@ -13,6 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Screen size fallback now works correctly.** A variable naming issue prevented the fallback screen dimensions from being read when the primary value wasn't available. Screen size data is now reliably captured on all browsers.
 - **Browser back/forward no longer double-counts pageviews.** Pressing the back or forward button could occasionally register two pageviews instead of one. The tracking script now correctly deduplicates these navigations.
 - **Preloaded pages no longer count as visits.** Modern browsers sometimes preload pages in the background before you actually visit them. These ghost visits no longer inflate your pageview counts — only pages the visitor actually sees are tracked.
+- **Marketing parameters no longer fragment your pages.** Pages like `/about?utm_source=google` and `/about?utm_campaign=spring` now correctly show as just `/about` in your Top Pages. UTM tags, Facebook click IDs, Google click IDs, and other tracking parameters are stripped from the page path so all visits to the same page are grouped together.
+- **Trailing slashes no longer split pages.** `/about/` and `/about` now count as the same page instead of appearing as separate entries in your analytics.
 
 ## [0.15.0-alpha] - 2026-03-13
 
