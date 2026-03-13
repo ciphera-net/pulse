@@ -451,7 +451,7 @@ export default function Chart({
               </p>
             </div>
           ) : (
-            <div className="w-full overflow-hidden" onContextMenu={handleChartContextMenu}>
+            <div className="w-full" onContextMenu={handleChartContextMenu}>
               <ChartContainer
                 config={chartConfig}
                 className="h-96 w-full overflow-visible [&_.recharts-curve.recharts-tooltip-cursor]:stroke-[initial]"
@@ -527,13 +527,13 @@ export default function Chart({
                   })}
 
                   <Area
-                    type="natural"
+                    type="bump"
                     dataKey={metric}
                     fill="url(#areaFill)"
                     stroke="none"
                   />
                   <Line
-                    type="natural"
+                    type="bump"
                     dataKey={metric}
                     stroke={chartConfig[metric]?.color}
                     strokeWidth={2}
