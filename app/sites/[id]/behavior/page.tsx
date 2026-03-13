@@ -11,6 +11,7 @@ import FrustrationTable from '@/components/behavior/FrustrationTable'
 import FrustrationByPageTable from '@/components/behavior/FrustrationByPageTable'
 import FrustrationTrend from '@/components/behavior/FrustrationTrend'
 import { useDashboard, useBehavior } from '@/lib/swr/dashboard'
+import { BehaviorSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 
 const ScrollDepth = dynamic(() => import('@/components/dashboard/ScrollDepth'))
 
@@ -42,6 +43,9 @@ export default function BehaviorPage() {
   // Fetch dashboard data for scroll depth (goal_counts + stats)
   const { data: dashboard } = useDashboard(siteId, dateRange.start, dateRange.end)
 
+  const showSkeleton = useMinimumLoading(loading && !behavior)
+  const fadeClass = useSkeletonFade(showSkeleton)
+
   useEffect(() => {
     const domain = dashboard?.site?.domain
     document.title = domain ? `Behavior · ${domain} | Pulse` : 'Behavior | Pulse'
@@ -63,8 +67,10 @@ export default function BehaviorPage() {
   const deadClicks = behavior?.dead_clicks ?? { items: [], total: 0 }
   const byPage = behavior?.by_page ?? []
 
+  if (showSkeleton) return <BehaviorSkeleton />
+
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+    <div className={`w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
       {/* Header */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
