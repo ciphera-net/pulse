@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { setSessionAction } from '@/app/actions/auth'
 import { logger } from '@/lib/utils/logger'
@@ -1328,14 +1329,15 @@ export default function OrganizationSettings() {
         </div>
       </div>
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Confirmation Modal — portal to body so backdrop-blur covers the fixed header */}
+      {typeof document !== 'undefined' && createPortal(
       <AnimatePresence>
         {showDeletePrompt && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm p-4 pointer-events-none"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm p-4 pointer-events-none"
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
@@ -1432,7 +1434,9 @@ export default function OrganizationSettings() {
             </motion.div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body
+      )}
 
       {/* Cancel subscription confirmation modal */}
       <AnimatePresence>
