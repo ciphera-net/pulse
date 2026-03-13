@@ -42,6 +42,12 @@ export async function POST() {
     const data = await res.json()
     let finalAccessToken = data.access_token
 
+    // * Get CSRF token from Auth API refresh response (needed for switch-context call)
+    const csrfToken = res.headers.get('X-CSRF-Token')
+    // * Also check for CSRF token in the cookie store (browser may have sent it)
+    const csrfFromCookie = cookieStore.get('csrf_token')?.value
+    const csrfForRequests = csrfToken || csrfFromCookie || ''
+
     // * Step 2: Restore organization context
     // * The auth service's refresh endpoint returns a "base" token without org_id.
     // * We need to call switch-context to get an org-scoped token so that
@@ -73,6 +79,8 @@ export async function POST() {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${finalAccessToken}`,
+            'X-CSRF-Token': csrfForRequests,
+            'Cookie': `csrf_token=${csrfForRequests}`,
           },
           body: JSON.stringify({ organization_id: orgId }),
         })
@@ -82,9 +90,6 @@ export async function POST() {
         }
       } catch { /* proceed with base token */ }
     }
-
-    // * Get CSRF token from Auth API response header (for cookie rotation)
-    const csrfToken = res.headers.get('X-CSRF-Token')
 
     cookieStore.set('access_token', finalAccessToken, {
       httpOnly: true,
