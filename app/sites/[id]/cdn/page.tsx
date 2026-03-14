@@ -1,8 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
+
+const DottedMap = dynamic(() => import('@/components/dashboard/DottedMap'), { ssr: false })
 import { getDateRange, formatDate, Select } from '@ciphera-net/ui'
 import { ArrowSquareOut, CloudArrowUp } from '@phosphor-icons/react'
 import {
@@ -404,6 +407,25 @@ export default function CDNPage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Traffic Distribution Map */}
+      <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 mb-6">
+        <h2 className="text-sm font-semibold text-neutral-900 dark:text-white mb-4">Traffic Distribution</h2>
+        {countries.length > 0 ? (
+          <div className="h-[360px]">
+            <DottedMap
+              data={countries.map((row) => ({
+                country: row.country_code,
+                pageviews: row.bandwidth,
+              }))}
+            />
+          </div>
+        ) : (
+          <div className="h-[360px] flex items-center justify-center text-neutral-400 dark:text-neutral-500 text-sm">
+            No geographic data for this period.
+          </div>
+        )}
       </div>
 
       {/* Bandwidth by Country */}
