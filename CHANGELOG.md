@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- **Dedicated Performance tab.** Core Web Vitals (LCP, CLS, INP) have moved from the main dashboard into their own "Performance" tab. This gives you a full-page view with your overall performance score, individual metric cards, and a "Slowest pages by metric" table you can sort by LCP, CLS, or INP. The tab includes its own date range picker so you can analyze performance trends independently.
+
 - **BunnyCDN integration.** Connect your BunnyCDN account in Settings > Integrations to monitor your CDN performance right alongside your analytics. A new "CDN" tab on your dashboard shows total bandwidth served, request volume, cache hit rate, origin response time, and error counts — each with percentage changes compared to the previous period. Charts show bandwidth trends (total vs cached), daily request volume, and error breakdowns over time. A geographic breakdown shows which countries consume the most bandwidth. Pulse only stores your API key encrypted and only reads statistics — it never modifies anything in your BunnyCDN account. You can disconnect and fully remove all CDN data at any time.
 - **Smart pull zone matching.** When connecting BunnyCDN, Pulse automatically filters your pull zones to only show the ones that match your tracked site's domain — so you can't accidentally connect the wrong pull zone.
 
@@ -19,6 +21,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **New queries indicator.** A green badge on the Search tab tells you how many new search queries appeared this period compared to the last — so you can see your search footprint growing.
 
 ### Fixed
+
+- **Performance metrics no longer show "0 0 0" when no data exists.** Previously, if no visitors had reported Web Vitals data, the Performance section showed "LCP 0 ms, CLS 0, INP 0 ms" and rated everything as "Good" — which was misleading. It now clearly says "No data" when no metrics have been collected, and shows a helpful message explaining when data will appear.
+- **Performance metrics no longer show inflated numbers from slow outliers.** A single very slow page load could skew the entire site's LCP or INP average to unrealistically high values. Pulse now uses the 75th percentile (p75) — the same methodology Google uses — so a handful of extreme outliers don't distort your scores.
 
 - **BunnyCDN logo now displays correctly.** The BunnyCDN integration card in Settings previously showed a generic globe icon. It now shows the proper BunnyCDN bunny logo.
 - **Your BunnyCDN API key is no longer visible in network URLs.** When loading pull zones, the API key was previously sent as a URL parameter. It's now sent securely in the request body, just like when connecting.

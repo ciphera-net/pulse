@@ -5,7 +5,6 @@ import { logger } from '@/lib/utils/logger'
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
-  getPerformanceByPage,
   getTopPages,
   getTopReferrers,
   getCountries,
@@ -32,7 +31,6 @@ import TopReferrers from '@/components/dashboard/TopReferrers'
 import Locations from '@/components/dashboard/Locations'
 import TechSpecs from '@/components/dashboard/TechSpecs'
 
-const PerformanceStats = dynamic(() => import('@/components/dashboard/PerformanceStats'))
 const GoalStats = dynamic(() => import('@/components/dashboard/GoalStats'))
 const Campaigns = dynamic(() => import('@/components/dashboard/Campaigns'))
 const PeakHours = dynamic(() => import('@/components/dashboard/PeakHours'))
@@ -555,20 +553,6 @@ export default function SiteDashboardPage() {
           onDeleteAnnotation={handleDeleteAnnotation}
         />
       </div>
-
-      {/* Performance Stats - Only show if enabled */}
-      {site.enable_performance_insights && (
-        <div className="mb-8">
-          <PerformanceStats
-            stats={dashboard?.performance ?? { lcp: 0, cls: 0, inp: 0 }}
-            performanceByPage={dashboard?.performance_by_page ?? null}
-            siteId={siteId}
-            startDate={dateRange.start}
-            endDate={dateRange.end}
-            getPerformanceByPage={getPerformanceByPage}
-          />
-        </div>
-      )}
 
       <div className="grid gap-6 lg:grid-cols-2 mb-8">
         <ContentStats
