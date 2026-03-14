@@ -36,6 +36,7 @@ const PerformanceStats = dynamic(() => import('@/components/dashboard/Performanc
 const GoalStats = dynamic(() => import('@/components/dashboard/GoalStats'))
 const Campaigns = dynamic(() => import('@/components/dashboard/Campaigns'))
 const PeakHours = dynamic(() => import('@/components/dashboard/PeakHours'))
+const SearchPerformance = dynamic(() => import('@/components/dashboard/SearchPerformance'))
 const EventProperties = dynamic(() => import('@/components/dashboard/EventProperties'))
 const ExportModal = dynamic(() => import('@/components/dashboard/ExportModal'))
 import { type DimensionFilter, serializeFilters, parseFiltersFromURL } from '@/lib/filters'
@@ -614,6 +615,9 @@ export default function SiteDashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-2 mb-8">
         <Campaigns siteId={siteId} dateRange={dateRange} filters={filtersParam || undefined} onFilter={handleAddFilter} />
+        <SearchPerformance siteId={siteId} dateRange={dateRange} />
+      </div>
+      <div className="mb-8">
         <PeakHours siteId={siteId} dateRange={dateRange} />
       </div>
 

@@ -5,10 +5,11 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { getDateRange, formatDate, Select, DatePicker } from '@ciphera-net/ui'
 import { CaretDown, CaretUp, MagnifyingGlass, ArrowSquareOut } from '@phosphor-icons/react'
-import { useDashboard, useGSCStatus, useGSCOverview, useGSCTopQueries, useGSCTopPages } from '@/lib/swr/dashboard'
+import { useDashboard, useGSCStatus, useGSCOverview, useGSCTopQueries, useGSCTopPages, useGSCNewQueries } from '@/lib/swr/dashboard'
 import { getGSCQueryPages, getGSCPageQueries } from '@/lib/api/gsc'
 import type { GSCDataRow } from '@/lib/api/gsc'
 import { SkeletonLine, StatCardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
+import ClicksImpressionsChart from '@/components/search/ClicksImpressionsChart'
 
 // ─── Helpers ────────────────────────────────────────────────────
 
@@ -73,6 +74,7 @@ export default function SearchConsolePage() {
   const { data: overview } = useGSCOverview(siteId, dateRange.start, dateRange.end)
   const { data: topQueries, isLoading: queriesLoading } = useGSCTopQueries(siteId, dateRange.start, dateRange.end, PAGE_SIZE, queryPage * PAGE_SIZE)
   const { data: topPages, isLoading: pagesLoading } = useGSCTopPages(siteId, dateRange.start, dateRange.end, PAGE_SIZE, pagePage * PAGE_SIZE)
+  const { data: newQueries } = useGSCNewQueries(siteId, dateRange.start, dateRange.end)
 
   const showSkeleton = useMinimumLoading(!gscStatus)
   const fadeClass = useSkeletonFade(showSkeleton)
@@ -286,6 +288,32 @@ export default function SearchConsolePage() {
           invertChange
         />
       </div>
+
+      <ClicksImpressionsChart siteId={siteId} startDate={dateRange.start} endDate={dateRange.end} />
+
+      {/* Position tracker */}
+      {topQueries?.queries && topQueries.queries.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-6">
+          {topQueries.queries.slice(0, 5).map((q) => (
+            <div key={q.query} className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-3">
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate mb-1">{q.query}</p>
+              <div className="flex items-baseline gap-1.5">
+                <p className="text-lg font-semibold text-neutral-900 dark:text-white">{q.position.toFixed(1)}</p>
+                <p className="text-xs text-neutral-400">pos</p>
+              </div>
+              <p className="text-xs text-neutral-500 mt-0.5">{q.clicks} {q.clicks === 1 ? 'click' : 'clicks'}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* New queries badge */}
+      {newQueries && newQueries.count > 0 && (
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 text-sm mb-4">
+          <span className="font-medium">{newQueries.count} new {newQueries.count === 1 ? 'query' : 'queries'}</span>
+          <span className="text-green-600 dark:text-green-400">appeared this period</span>
+        </div>
+      )}
 
       {/* View toggle */}
       <div className="mb-6">
