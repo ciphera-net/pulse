@@ -234,9 +234,9 @@ export default function SiteDashboardPage() {
     return { start: prevStart.toISOString().split('T')[0], end: prevEnd.toISOString().split('T')[0] }
   }, [dateRange])
 
-  // Single dashboard request replaces 7 focused hooks (overview, pages, locations,
-  // devices, referrers, performance, goals). The backend runs all queries in parallel
-  // and caches the result in Redis, reducing requests from 12 to 6 per refresh cycle.
+  // Single dashboard request replaces focused hooks (overview, pages, locations,
+  // devices, referrers, goals). The backend runs all queries in parallel
+  // and caches the result in Redis for efficient data loading.
   const { data: dashboard, isLoading: dashboardLoading, error: dashboardError } = useDashboard(siteId, dateRange.start, dateRange.end, interval, filtersParam || undefined)
   const { data: realtimeData } = useRealtime(siteId)
   const { data: prevStats } = useStats(siteId, prevRange.start, prevRange.end)

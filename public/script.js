@@ -32,59 +32,15 @@
   const ttlHours = storageMode === 'local' ? parseFloat(script.getAttribute('data-storage-ttl') || '24') : 0;
   const ttlMs = ttlHours > 0 ? ttlHours * 60 * 60 * 1000 : 0;
 
-  // * Performance Monitoring (Core Web Vitals) State
   let currentEventId = null;
-  let metrics = { lcp: 0, cls: 0, inp: 0 };
-  let lcpObserved = false;
-  let clsObserved = false;
-  let performanceInsightsEnabled = false;
 
   // * Time-on-page tracking: records when the current pageview started
   var pageStartTime = 0;
 
-  // * Minimal Web Vitals Observer
-  function observeMetrics() {
-    try {
-      if (typeof PerformanceObserver === 'undefined') return;
-
-      // * LCP (Largest Contentful Paint) - fires when the browser has determined the LCP element (often 2–4s+ after load)
-      new PerformanceObserver((entryList) => {
-        const entries = entryList.getEntries();
-        const lastEntry = entries[entries.length - 1];
-        if (lastEntry) {
-          metrics.lcp = lastEntry.startTime;
-          lcpObserved = true;
-        }
-      }).observe({ type: 'largest-contentful-paint', buffered: true });
-
-      // * CLS (Cumulative Layout Shift) - accumulates when elements shift after load
-      new PerformanceObserver((entryList) => {
-        for (const entry of entryList.getEntries()) {
-          if (!entry.hadRecentInput) {
-            metrics.cls += entry.value;
-            clsObserved = true;
-          }
-        }
-      }).observe({ type: 'layout-shift', buffered: true });
-
-      // * INP (Interaction to Next Paint) - Simplified (track max duration)
-      new PerformanceObserver((entryList) => {
-        const entries = entryList.getEntries();
-        for (const entry of entries) {
-           // * Track longest interaction
-           if (entry.duration > metrics.inp) metrics.inp = entry.duration;
-        }
-      }).observe({ type: 'event', buffered: true, durationThreshold: 16 });
-
-    } catch (e) {
-      // * Browser doesn't support PerformanceObserver or specific entry types
-    }
-  }
-
   function sendMetrics() {
     if (!currentEventId) return;
 
-    // * Calculate time-on-page in seconds (always sent, even without performance insights)
+    // * Calculate time-on-page in seconds
     var durationSec = pageStartTime > 0 ? Math.round((Date.now() - pageStartTime) / 1000) : 0;
 
     var payload = { event_id: currentEventId };
@@ -92,17 +48,8 @@
     // * Always include duration if we have a valid measurement
     if (durationSec > 0) payload.duration = durationSec;
 
-    // * Only include Web Vitals when performance insights are enabled
-    if (performanceInsightsEnabled) {
-      // * Only include metrics the browser actually reported. Sending 0 would either be
-      // * rejected by the backend (LCP/INP must be > 0) or skew averages.
-      if (lcpObserved && metrics.lcp > 0) payload.lcp = metrics.lcp;
-      if (clsObserved) payload.cls = metrics.cls;
-      if (metrics.inp > 0) payload.inp = metrics.inp;
-    }
-
-    // * Skip if nothing to send (no duration and no vitals)
-    if (!payload.duration && !performanceInsightsEnabled) return;
+    // * Skip if nothing to send (no duration)
+    if (!payload.duration) return;
 
     var data = JSON.stringify(payload);
 
@@ -118,14 +65,10 @@
     }
   }
 
-  // * Start observing metrics immediately (buffered observers will capture early metrics)
-  // * Metrics will only be sent if performance insights are enabled (checked in sendMetrics)
-  observeMetrics();
-
   // * Send metrics when user leaves or hides the page
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
-      // * Delay metrics slightly so in-flight LCP/CLS callbacks can run before we send
+      // * Delay slightly so duration measurement captures final moment
       setTimeout(sendMetrics, 150);
     }
   });
@@ -306,9 +249,6 @@
 
   // * Track pageview
   function trackPageview() {
-    var routeChangeTime = performance.now();
-    var isSpaNav = !!currentEventId;
-
     const path = cleanPath();
 
     // * Skip if same path was just tracked (refresh dedup)
@@ -321,9 +261,6 @@
         sendMetrics();
     }
 
-    metrics = { lcp: 0, cls: 0, inp: 0 };
-    lcpObserved = false;
-    clsObserved = false;
     currentEventId = null;
     pageStartTime = 0;
     // * Only send external referrer on the first pageview (landing page).
@@ -375,21 +312,6 @@
       if (data && data.id) {
         currentEventId = data.id;
         pageStartTime = Date.now();
-        // * For SPA navigations the browser never emits a new largest-contentful-paint
-        // * (LCP is only for full document loads). After the new view has had time to
-        // * paint, we record time-from-route-change as an LCP proxy so /products etc.
-        // * get a value. If the user navigates away before the delay, we leave LCP unset.
-        if (isSpaNav) {
-          var thatId = data.id;
-          // * Run soon so we set lcpObserved before the user leaves; 500ms was too long
-          // * and we often sent metrics (next nav or visibilitychange+150ms) before it ran.
-          setTimeout(function() {
-            if (!lcpObserved && currentEventId === thatId) {
-              metrics.lcp = Math.round(performance.now() - routeChangeTime);
-              lcpObserved = true;
-            }
-          }, 100);
-        }
       }
     }).catch(() => {
       // * Silently fail - don't interrupt user experience

@@ -21,7 +21,6 @@ export function generatePrivacySnippet(site: Site): string {
   const device = site.collect_device_info ?? true
   const geo = site.collect_geo_data || 'full'
   const screen = site.collect_screen_resolution ?? true
-  const perf = site.enable_performance_insights ?? false
   const filterBots = site.filter_bots ?? true
   const retentionMonths = site.data_retention_months ?? 6
 
@@ -32,7 +31,6 @@ export function generatePrivacySnippet(site: Site): string {
   if (geo === 'full') parts.push('country, region, and city')
   else if (geo === 'country') parts.push('country')
   if (screen) parts.push('screen resolution')
-  if (perf) parts.push('Core Web Vitals (e.g. page load performance)')
 
   const list =
     parts.length > 0
