@@ -24,13 +24,61 @@ import { SkeletonLine, StatCardSkeleton, useMinimumLoading, useSkeletonFade } fr
 
 // ─── Helpers ────────────────────────────────────────────────────
 
-function getCountryName(code: string): string {
+// US state codes → map to "US" for the dotted map
+const US_STATES = new Set([
+  'AL','AK','AZ','AR','CO','CT','DC','DE','FL','GA','HI','ID','IL','IN','IA',
+  'KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ',
+  'NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT',
+  'VA','WA','WV','WI','WY',
+])
+// Canadian province codes → map to "CA"
+const CA_PROVINCES = new Set(['AB','BC','MB','NB','NL','NS','NT','NU','ON','PE','QC','SK','YT'])
+
+/**
+ * Extract ISO country code from BunnyCDN datacenter string.
+ * e.g. "EU: Zurich, CH" → "CH", "NA: Chicago, IL" → "US", "NA: Toronto, CA" → "CA"
+ */
+function extractCountryCode(datacenter: string): string {
+  const parts = datacenter.split(', ')
+  const code = parts[parts.length - 1]?.trim().toUpperCase()
+  if (!code || code.length !== 2) return ''
+  if (US_STATES.has(code)) return 'US'
+  if (CA_PROVINCES.has(code)) return 'CA'
+  return code
+}
+
+/**
+ * Extract the city name from a BunnyCDN datacenter string.
+ * e.g. "EU: Zurich, CH" → "Zurich"
+ */
+function extractCity(datacenter: string): string {
+  const afterColon = datacenter.split(': ')[1] || datacenter
+  return afterColon.split(',')[0]?.trim() || datacenter
+}
+
+/** Convert ISO country code to flag emoji */
+function countryFlag(code: string): string {
   try {
-    const regionNames = new Intl.DisplayNames(['en'], { type: 'region' })
-    return regionNames.of(code) || code
-  } catch {
     return code
+      .toUpperCase()
+      .split('')
+      .map(c => String.fromCodePoint(0x1F1E6 + c.charCodeAt(0) - 65))
+      .join('')
+  } catch {
+    return ''
   }
+}
+
+/** Aggregate bandwidth by ISO country code for the map */
+function aggregateByCountry(data: Array<{ country_code: string; bandwidth: number }>): Array<{ country: string; pageviews: number }> {
+  const byCountry = new Map<string, number>()
+  for (const row of data) {
+    const cc = extractCountryCode(row.country_code)
+    if (cc) {
+      byCountry.set(cc, (byCountry.get(cc) || 0) + row.bandwidth)
+    }
+  }
+  return Array.from(byCountry, ([country, pageviews]) => ({ country, pageviews }))
 }
 
 function formatBytes(bytes: number): string {
@@ -424,34 +472,32 @@ export default function CDNPage() {
         {countries.length > 0 ? (
           <>
             <div className="h-[360px] mb-8">
-              <DottedMap
-                data={countries.map((row) => ({
-                  country: row.country_code,
-                  pageviews: row.bandwidth,
-                }))}
-              />
+              <DottedMap data={aggregateByCountry(countries)} />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-5">
               {countries.map((row) => {
                 const pct = totalBandwidth > 0 ? (row.bandwidth / totalBandwidth) * 100 : 0
+                const cc = extractCountryCode(row.country_code)
+                const city = extractCity(row.country_code)
                 return (
-                  <div key={row.country_code} className="group">
-                    <div className="flex items-baseline justify-between mb-1.5">
-                      <span className="text-sm font-medium text-neutral-900 dark:text-white">
-                        {getCountryName(row.country_code)}
-                      </span>
-                      <span className="text-sm tabular-nums text-neutral-500 dark:text-neutral-400">
+                  <div key={row.country_code} className="group relative">
+                    <div className="flex items-center gap-2.5 mb-2">
+                      {cc && <span className="text-base leading-none">{countryFlag(cc)}</span>}
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-medium text-neutral-900 dark:text-white truncate block">{city}</span>
+                      </div>
+                      <span className="text-sm tabular-nums text-neutral-500 dark:text-neutral-400 shrink-0">
                         {formatBytes(row.bandwidth)}
                       </span>
                     </div>
                     <div className="relative h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
                       <div
                         className="absolute inset-y-0 left-0 rounded-full bg-brand-orange transition-all"
-                        style={{ width: `${pct}%` }}
+                        style={{ width: `${Math.max(pct, 1)}%` }}
                       />
                     </div>
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity mt-1">
-                      <span className="text-xs text-neutral-400 dark:text-neutral-500">{pct.toFixed(1)}% of total traffic</span>
+                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-neutral-900 dark:bg-neutral-700 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                      {pct.toFixed(1)}% of total traffic
                     </div>
                   </div>
                 )
