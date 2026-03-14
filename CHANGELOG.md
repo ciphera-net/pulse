@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Improved
+
+- **European date and time formatting.** All dates across Pulse now use day-first ordering (14 Mar 2025) and 24-hour time (14:30) instead of the US-style month-first format. This applies everywhere — dashboard charts, exports, billing dates, invoices, uptime checks, audit logs, and more.
+
 ### Added
 
 - **Free plan now visible on the Pricing page.** The free tier is no longer hidden — it's displayed as the first option on the Pricing page so you can see exactly what you get before signing up: 1 site, 5,000 monthly pageviews, and 6 months of data retention, completely free.

@@ -7,6 +7,7 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import type { DailyStat } from './Chart'
 import { formatNumber, formatDuration } from '@ciphera-net/ui'
+import { formatDateISO, formatDate, formatDateTime } from '@/lib/utils/formatDate'
 import { getReferrerDisplayName, mergeReferrersByDisplayName } from '@/lib/utils/icons'
 import type { TopPage, TopReferrer, CampaignStat } from '@/lib/api/stats'
 
@@ -47,7 +48,7 @@ const loadImage = (src: string): Promise<string> => {
 
 export default function ExportModal({ isOpen, onClose, data, stats, topPages, topReferrers, campaigns }: ExportModalProps) {
   const [format, setFormat] = useState<ExportFormat>('csv')
-  const [filename, setFilename] = useState(`pulse_export_${new Date().toISOString().split('T')[0]}`)
+  const [filename, setFilename] = useState(`pulse_export_${formatDateISO(new Date())}`)
   const [includeHeader, setIncludeHeader] = useState(true)
   const [isExporting, setIsExporting] = useState(false)
   const [selectedFields, setSelectedFields] = useState<Record<keyof DailyStat, boolean>>({
@@ -153,9 +154,9 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
             // Metadata (Top Right)
             doc.setFontSize(9)
             doc.setTextColor(150, 150, 150)
-            const generatedDate = new Date().toLocaleDateString()
+            const generatedDate = formatDate(new Date())
             const dateRange = data.length > 0
-              ? `${new Date(data[0].date).toLocaleDateString()} - ${new Date(data[data.length - 1].date).toLocaleDateString()}`
+              ? `${formatDate(new Date(data[0].date))} - ${formatDate(new Date(data[data.length - 1].date))}`
               : generatedDate
 
             const pageWidth = doc.internal.pageSize.width
@@ -202,9 +203,7 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
                 const val = row[field]
                 if (field === 'date' && typeof val === 'string') {
                   const date = new Date(val)
-                  return isHourly
-                      ? date.toLocaleString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
-                      : date.toLocaleDateString()
+                  return isHourly ? formatDateTime(date) : formatDate(date)
                 }
                 if (typeof val === 'number') {
                    if (field === 'bounce_rate') return `${Math.round(val)}%`
