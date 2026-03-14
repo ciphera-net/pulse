@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Improved
 
+- **Visit duration now works for single-page sessions.** Previously, if a visitor viewed only one page and left, the visit duration showed as "0s" because there was no second pageview to measure against. Pulse now tracks how long you actually spent on the page and reports real durations — even for single-page visits. This makes the Visit Duration metric, Journeys, and Top Paths much more accurate.
+- **Journeys page now shows data on low-traffic sites.** The Journeys page previously required at least 2–3 sessions following the same path before showing any data. It now shows all navigation flows immediately, so you can see how visitors move through your site from day one.
 - **European date and time formatting.** All dates across Pulse now use day-first ordering (14 Mar 2025) and 24-hour time (14:30) instead of the US-style month-first format. This applies everywhere — dashboard charts, exports, billing dates, invoices, uptime checks, audit logs, and more.
 
 ### Added
