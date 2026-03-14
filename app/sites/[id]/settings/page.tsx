@@ -7,6 +7,7 @@ import { createGoal, updateGoal, deleteGoal, type Goal } from '@/lib/api/goals'
 import { createReportSchedule, updateReportSchedule, deleteReportSchedule, testReportSchedule, type ReportSchedule, type CreateReportScheduleRequest, type EmailConfig, type WebhookConfig } from '@/lib/api/report-schedules'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
+import { formatDateTime } from '@/lib/utils/formatDate'
 import { SettingsFormSkeleton, GoalsListSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import VerificationModal from '@/components/sites/VerificationModal'
 import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
@@ -1341,7 +1342,7 @@ export default function SiteSettingsPage() {
                               <div className="flex items-center gap-3 mt-1 text-xs text-neutral-400 dark:text-neutral-500">
                                 <span>
                                   Last sent: {schedule.last_sent_at
-                                    ? new Date(schedule.last_sent_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                                    ? formatDateTime(new Date(schedule.last_sent_at))
                                     : 'Never'}
                                 </span>
                               </div>

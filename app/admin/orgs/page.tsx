@@ -4,10 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { listAdminOrgs, type AdminOrgSummary } from '@/lib/api/admin'
 import { Button, LoadingOverlay, toast } from '@ciphera-net/ui'
-
-function formatDate(d: Date) {
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
+import { formatDate } from '@/lib/utils/formatDate'
 
 function CopyableOrgId({ id }: { id: string }) {
   const [copied, setCopied] = useState(false)

@@ -17,6 +17,7 @@ import { BarChartIcon, LockIcon, ZapIcon, CheckCircleIcon, XIcon, GlobeIcon } fr
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { getSitesLimitForPlan } from '@/lib/plans'
+import { formatDate } from '@/lib/utils/formatDate'
 
 function DashboardPreview() {
   return (
@@ -461,7 +462,7 @@ export default function HomePage() {
                         const ts = subscription.next_invoice_period_end ?? subscription.current_period_end
                         const d = ts ? new Date(typeof ts === 'number' ? ts * 1000 : ts) : null
                         const dateStr = d && !Number.isNaN(d.getTime()) && d.getTime() !== 0
-                          ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+                          ? formatDate(d)
                           : null
                         const amount = (subscription.next_invoice_amount_due / 100).toLocaleString('en-US', {
                           style: 'currency',

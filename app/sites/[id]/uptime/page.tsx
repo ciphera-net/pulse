@@ -21,6 +21,7 @@ import { useTheme } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { Button, Modal } from '@ciphera-net/ui'
 import { UptimeSkeleton, ChecksSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
+import { formatDateFull, formatTime, formatDateTimeShort } from '@/lib/utils/formatDate'
 import {
   AreaChart,
   Area,
@@ -165,11 +166,7 @@ function StatusBarTooltip({
 }) {
   if (!visible) return null
 
-  const formattedDate = new Date(date + 'T00:00:00').toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  })
+  const formattedDate = formatDateFull(new Date(date + 'T00:00:00'))
 
   return (
     <div
@@ -275,10 +272,7 @@ function ResponseTimeChart({ checks }: { checks: UptimeCheck[] }) {
     .reverse()
     .filter((c) => c.response_time_ms !== null)
     .map((c) => ({
-      time: new Date(c.checked_at).toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
+      time: formatTime(new Date(c.checked_at)),
       ms: c.response_time_ms as number,
       status: c.status,
     }))
@@ -500,12 +494,7 @@ function MonitorCard({
                           <div className="flex items-center gap-2">
                             <div className={`w-2 h-2 rounded-full ${getStatusDotColor(check.status)}`} />
                             <span className="text-neutral-600 dark:text-neutral-300 text-xs">
-                              {new Date(check.checked_at).toLocaleString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}
+                              {formatDateTimeShort(new Date(check.checked_at))}
                             </span>
                           </div>
                           <div className="flex items-center gap-3">
