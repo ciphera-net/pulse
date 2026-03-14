@@ -579,6 +579,15 @@
 
       // * Check if rage click threshold is met
       if (entry.times.length >= RAGE_CLICK_THRESHOLD) {
+        // * Skip if user is selecting text (triple-click to select paragraph)
+        try {
+          var sel = window.getSelection();
+          if (sel && sel.toString().trim().length > 0) {
+            entry.times = [];
+            return;
+          }
+        } catch (ex) {}
+
         // * Debounce: max one rage_click per element per 5 seconds
         if (now - entry.lastFired >= RAGE_CLICK_DEBOUNCE) {
           var clickCount = entry.times.length;
@@ -602,7 +611,7 @@
   // * or network request occurs within 1 second
   // * Opt-out: add data-no-dead to the script tag
   if (!script.hasAttribute('data-no-dead')) {
-    var INTERACTIVE_SELECTOR = 'a,button,input,select,textarea,[role="button"],[role="link"],[role="tab"],[role="menuitem"],[onclick],[tabindex]';
+    var INTERACTIVE_SELECTOR = 'a,button,input,select,textarea,[role="button"],[role="link"],[role="tab"],[role="menuitem"],[onclick],[tabindex]:not([tabindex="-1"])';
     var DEAD_CLICK_DEBOUNCE = 10000;
     var DEAD_CLEANUP_INTERVAL = 30000;
     var deadClickDebounce = {}; // * selector -> lastFiredTimestamp
@@ -665,11 +674,15 @@
       var mutationObs = null;
       var perfObs = null;
       var cleanupTimer = null;
+      var popstateHandler = null;
+      var hashchangeHandler = null;
 
       function cleanup() {
         if (mutationObs) { try { mutationObs.disconnect(); } catch (ex) {} mutationObs = null; }
         if (perfObs) { try { perfObs.disconnect(); } catch (ex) {} perfObs = null; }
         if (cleanupTimer) { clearTimeout(cleanupTimer); cleanupTimer = null; }
+        if (popstateHandler) { window.removeEventListener('popstate', popstateHandler); popstateHandler = null; }
+        if (hashchangeHandler) { window.removeEventListener('hashchange', hashchangeHandler); hashchangeHandler = null; }
       }
 
       function onEffect() {
@@ -677,7 +690,7 @@
         cleanup();
       }
 
-      // * Set up MutationObserver to detect DOM changes on the element and its parent
+      // * Set up MutationObserver to detect DOM changes on the element, its parent, and body
       if (typeof MutationObserver !== 'undefined') {
         try {
           mutationObs = new MutationObserver(function() {
@@ -689,6 +702,8 @@
           if (parent && parent.tagName !== 'HTML' && parent.tagName !== 'BODY') {
             mutationObs.observe(parent, { childList: true });
           }
+          // * Also observe body for top-level DOM changes (modals, drawers, overlays, toasts)
+          mutationObs.observe(document.body, { childList: true, attributes: true });
         } catch (ex) {
           mutationObs = null;
         }
@@ -705,6 +720,12 @@
           perfObs = null;
         }
       }
+
+      // * Listen for SPA navigation events (popstate, hashchange)
+      popstateHandler = function() { onEffect(); };
+      hashchangeHandler = function() { onEffect(); };
+      window.addEventListener('popstate', popstateHandler);
+      window.addEventListener('hashchange', hashchangeHandler);
 
       // * After 1 second, check if any effect was detected
       cleanupTimer = setTimeout(function() {
