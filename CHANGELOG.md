@@ -20,6 +20,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- **BunnyCDN logo now displays correctly.** The BunnyCDN integration card in Settings previously showed a generic globe icon. It now shows the proper BunnyCDN bunny logo.
+- **Your BunnyCDN API key is no longer visible in network URLs.** When loading pull zones, the API key was previously sent as a URL parameter. It's now sent securely in the request body, just like when connecting.
+
 - **No more "Site not found" when switching back to Pulse.** If you left Pulse in the background and came back, you could see a wall of errors and a blank page. This happened because the browser fired several requests at once when the tab regained focus, and if any failed, they all retried repeatedly — flooding the connection and making it worse. Failed requests now back off gracefully instead of retrying in a loop.
 
 ### Improved

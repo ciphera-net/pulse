@@ -52,7 +52,8 @@ export interface BunnyGeoRow {
 
 export async function getBunnyPullZones(siteId: string, apiKey: string): Promise<{ pull_zones: BunnyPullZone[], message?: string }> {
   return apiRequest<{ pull_zones: BunnyPullZone[], message?: string }>(
-    `/sites/${siteId}/integrations/bunny/pull-zones?api_key=${encodeURIComponent(apiKey)}`
+    `/sites/${siteId}/integrations/bunny/pull-zones`,
+    { method: 'POST', body: JSON.stringify({ api_key: apiKey }) }
   )
 }
 
