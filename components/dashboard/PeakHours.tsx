@@ -13,8 +13,8 @@ interface PeakHoursProps {
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const BUCKETS = 12 // 2-hour buckets
-// Label at bucket index 0=12am, 3=6am, 6=12pm, 9=6pm
-const BUCKET_LABELS: Record<number, string> = { 0: '12am', 3: '6am', 6: '12pm', 9: '6pm' }
+// Label at bucket index 0=00:00, 3=06:00, 6=12:00, 9=18:00
+const BUCKET_LABELS: Record<number, string> = { 0: '00:00', 3: '06:00', 6: '12:00', 9: '18:00' }
 
 const HIGHLIGHT_COLORS = [
   'rgba(253,94,15,0.18)',
@@ -25,15 +25,12 @@ const HIGHLIGHT_COLORS = [
 
 function formatBucket(bucket: number): string {
   const hour = bucket * 2
-  if (hour === 0) return '12am–2am'
-  if (hour === 12) return '12pm–2pm'
-  return hour < 12 ? `${hour}am–${hour + 2}am` : `${hour - 12}pm–${hour - 10}pm`
+  const end = hour + 2
+  return `${String(hour).padStart(2, '0')}:00–${String(end).padStart(2, '0')}:00`
 }
 
 function formatHour(hour: number): string {
-  if (hour === 0) return '12am'
-  if (hour === 12) return '12pm'
-  return hour < 12 ? `${hour}am` : `${hour - 12}pm`
+  return `${String(hour).padStart(2, '0')}:00`
 }
 
 function getHighlightColor(value: number, max: number): string {
@@ -205,7 +202,7 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
                   className="absolute text-[10px] text-neutral-400 dark:text-neutral-600 -translate-x-full"
                   style={{ left: '100%' }}
                 >
-                  12am
+                  24:00
                 </span>
               </div>
             </div>
