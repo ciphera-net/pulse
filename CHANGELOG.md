@@ -8,6 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Improved
 
+- **European date and time formatting.** All dates across Pulse now use day-first ordering (14 Mar 2025) and 24-hour time (14:30) instead of the US-style month-first format. This applies everywhere — dashboard charts, exports, billing dates, invoices, uptime checks, audit logs, and more.
+
+### Added
+
+- **Free plan now visible on the Pricing page.** The free tier is no longer hidden — it's displayed as the first option on the Pricing page so you can see exactly what you get before signing up: 1 site, 5,000 monthly pageviews, and 6 months of data retention, completely free.
+- **Free plan limited to 1 site.** Free accounts are now limited to a single site. If you need more, you can upgrade to Solo or above from the Pricing page.
+
+### Improved
+
 - **Sites now show their verification status.** Each site on your dashboard now displays either a green "Active" badge (if verified) or an amber "Unverified" badge. When you verify your tracking script installation, the status is saved permanently — no more showing "Active" for sites that haven't been set up yet.
 - **Verification status visible in Settings too.** Once your tracking script is verified, the Settings page shows a green confirmation bar instead of the verify button — so you can tell at a glance that everything is working. A "Re-verify" link is still there if you ever need to check again.
 - **Cleaner page paths in your reports.** Pages like `/products?_t=123456` or `/about?session=abc` now correctly show as `/products` and `/about`. Only marketing attribution parameters (like UTM tags) are preserved for traffic source tracking — all other junk parameters are automatically removed, so your Top Pages and Journeys stay clean without us having to chase down every new parameter format.

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/lib/auth/context'
 import { getUserActivity, type AuditLogEntry } from '@/lib/api/activity'
 import { Spinner } from '@ciphera-net/ui'
-import { formatRelativeTime, formatFullDate } from '@/lib/utils/formatDate'
+import { formatRelativeTime, formatDateTimeFull } from '@/lib/utils/formatDate'
 
 const PAGE_SIZE = 20
 
@@ -189,7 +189,7 @@ export default function SecurityActivityCard() {
                 </div>
 
                 <div className="flex-shrink-0 text-right">
-                  <span className="text-xs text-neutral-500 dark:text-neutral-400" title={formatFullDate(entry.created_at)}>
+                  <span className="text-xs text-neutral-500 dark:text-neutral-400" title={formatDateTimeFull(new Date(entry.created_at))}>
                     {formatRelativeTime(entry.created_at)}
                   </span>
                 </div>
