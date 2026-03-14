@@ -6,6 +6,8 @@ import { updateSite, resetSiteData, deleteSite, type Site, type GeoDataLevel } f
 import { createGoal, updateGoal, deleteGoal, type Goal } from '@/lib/api/goals'
 import { createReportSchedule, updateReportSchedule, deleteReportSchedule, testReportSchedule, type ReportSchedule, type CreateReportScheduleRequest, type EmailConfig, type WebhookConfig } from '@/lib/api/report-schedules'
 import { getGSCAuthURL, disconnectGSC } from '@/lib/api/gsc'
+import { getBunnyPullZones, connectBunny, disconnectBunny } from '@/lib/api/bunny'
+import type { BunnyPullZone } from '@/lib/api/bunny'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { formatDateTime } from '@/lib/utils/formatDate'
@@ -17,7 +19,7 @@ import { Select, Modal, Button } from '@ciphera-net/ui'
 import { APP_URL } from '@/lib/api/client'
 import { generatePrivacySnippet } from '@/lib/utils/privacySnippet'
 import { useUnsavedChanges } from '@/lib/hooks/useUnsavedChanges'
-import { useSite, useGoals, useReportSchedules, useSubscription, useGSCStatus } from '@/lib/swr/dashboard'
+import { useSite, useGoals, useReportSchedules, useSubscription, useGSCStatus, useBunnyStatus } from '@/lib/swr/dashboard'
 import { getRetentionOptionsForPlan, formatRetentionMonths } from '@/lib/plans'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@/lib/auth/context'
@@ -98,6 +100,13 @@ export default function SiteSettingsPage() {
   const { data: gscStatus, mutate: mutateGSCStatus } = useGSCStatus(siteId)
   const [gscConnecting, setGscConnecting] = useState(false)
   const [gscDisconnecting, setGscDisconnecting] = useState(false)
+  const { data: bunnyStatus, mutate: mutateBunnyStatus } = useBunnyStatus(siteId)
+  const [bunnyApiKey, setBunnyApiKey] = useState('')
+  const [bunnyPullZones, setBunnyPullZones] = useState<BunnyPullZone[]>([])
+  const [bunnySelectedZone, setBunnySelectedZone] = useState<BunnyPullZone | null>(null)
+  const [bunnyLoadingZones, setBunnyLoadingZones] = useState(false)
+  const [bunnyConnecting, setBunnyConnecting] = useState(false)
+  const [bunnyDisconnecting, setBunnyDisconnecting] = useState(false)
   const [reportModalOpen, setReportModalOpen] = useState(false)
   const [editingSchedule, setEditingSchedule] = useState<ReportSchedule | null>(null)
   const [reportSaving, setReportSaving] = useState(false)
@@ -1593,6 +1602,219 @@ export default function SiteSettingsPage() {
                             className="inline-flex items-center gap-2 text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors disabled:opacity-50"
                           >
                             {gscDisconnecting && <SpinnerGap className="w-4 h-4 animate-spin" />}
+                            Disconnect
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* BunnyCDN */}
+                <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50 p-6">
+                  {!bunnyStatus?.connected ? (
+                    <div className="space-y-4">
+                      <div className="flex items-start gap-4">
+                        <div className="p-2.5 bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 flex-shrink-0">
+                          <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
+                            <circle cx="12" cy="12" r="10" stroke="#FF6600" strokeWidth="1.5" fill="none" />
+                            <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2Z" stroke="#FF6600" strokeWidth="1.5" fill="none" />
+                            <path d="M2 12h20" stroke="#FF6600" strokeWidth="1.5" />
+                            <path d="M4.5 7h15M4.5 17h15" stroke="#FF6600" strokeWidth="1" opacity="0.5" />
+                          </svg>
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">BunnyCDN</h3>
+                          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
+                            Monitor CDN performance with bandwidth usage, cache hit rates, response times, and geographic distribution.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2 p-3 bg-white dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
+                        <svg className="w-4 h-4 text-neutral-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+                        </svg>
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                          Your API key is encrypted at rest and only used to fetch read-only statistics. You can disconnect at any time.
+                        </p>
+                      </div>
+                      {canEdit && (
+                        <div className="space-y-3">
+                          <div className="flex gap-2">
+                            <input
+                              type="password"
+                              value={bunnyApiKey}
+                              onChange={(e) => {
+                                setBunnyApiKey(e.target.value)
+                                setBunnyPullZones([])
+                                setBunnySelectedZone(null)
+                              }}
+                              placeholder="BunnyCDN API key"
+                              className="flex-1 px-4 py-2.5 border border-neutral-200 dark:border-neutral-800 rounded-xl bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white text-sm placeholder:text-neutral-400"
+                            />
+                            <button
+                              onClick={async () => {
+                                if (!bunnyApiKey.trim()) {
+                                  toast.error('Please enter your BunnyCDN API key')
+                                  return
+                                }
+                                setBunnyLoadingZones(true)
+                                setBunnyPullZones([])
+                                setBunnySelectedZone(null)
+                                try {
+                                  const { pull_zones, message } = await getBunnyPullZones(siteId, bunnyApiKey)
+                                  if (pull_zones.length === 0) {
+                                    toast.error(message || 'No pull zones match this site\'s domain')
+                                  } else {
+                                    setBunnyPullZones(pull_zones)
+                                    setBunnySelectedZone(pull_zones[0])
+                                  }
+                                } catch (error: unknown) {
+                                  toast.error(getAuthErrorMessage(error) || 'Failed to load pull zones')
+                                } finally {
+                                  setBunnyLoadingZones(false)
+                                }
+                              }}
+                              disabled={bunnyLoadingZones || !bunnyApiKey.trim()}
+                              className="inline-flex items-center gap-2 px-4 py-2.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-sm font-medium rounded-xl hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors disabled:opacity-50"
+                            >
+                              {bunnyLoadingZones && <SpinnerGap className="w-4 h-4 animate-spin" />}
+                              Load Zones
+                            </button>
+                          </div>
+
+                          {bunnyPullZones.length > 0 && (
+                            <div className="space-y-3">
+                              <div>
+                                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Pull Zone</label>
+                                <select
+                                  value={bunnySelectedZone?.id ?? ''}
+                                  onChange={(e) => {
+                                    const zone = bunnyPullZones.find(z => z.id === Number(e.target.value))
+                                    setBunnySelectedZone(zone || null)
+                                  }}
+                                  className="w-full px-4 py-2.5 border border-neutral-200 dark:border-neutral-800 rounded-xl bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white text-sm"
+                                >
+                                  {bunnyPullZones.map((zone) => (
+                                    <option key={zone.id} value={zone.id}>{zone.name}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <button
+                                onClick={async () => {
+                                  if (!bunnySelectedZone) return
+                                  setBunnyConnecting(true)
+                                  try {
+                                    await connectBunny(siteId, bunnyApiKey, bunnySelectedZone.id, bunnySelectedZone.name)
+                                    mutateBunnyStatus()
+                                    setBunnyApiKey('')
+                                    setBunnyPullZones([])
+                                    setBunnySelectedZone(null)
+                                    toast.success('BunnyCDN connected successfully')
+                                  } catch (error: unknown) {
+                                    toast.error(getAuthErrorMessage(error) || 'Failed to connect BunnyCDN')
+                                  } finally {
+                                    setBunnyConnecting(false)
+                                  }
+                                }}
+                                disabled={bunnyConnecting || !bunnySelectedZone}
+                                className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand-orange text-white text-sm font-medium rounded-xl hover:bg-brand-orange/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 disabled:opacity-50"
+                              >
+                                {bunnyConnecting && <SpinnerGap className="w-4 h-4 animate-spin" />}
+                                Connect BunnyCDN
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-4">
+                          <div className="p-2.5 bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 flex-shrink-0">
+                            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
+                              <circle cx="12" cy="12" r="10" stroke="#FF6600" strokeWidth="1.5" fill="none" />
+                              <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2Z" stroke="#FF6600" strokeWidth="1.5" fill="none" />
+                              <path d="M2 12h20" stroke="#FF6600" strokeWidth="1.5" />
+                              <path d="M4.5 7h15M4.5 17h15" stroke="#FF6600" strokeWidth="1" opacity="0.5" />
+                            </svg>
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">BunnyCDN</h3>
+                            <div className="flex items-center gap-2 mt-1.5">
+                              <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${
+                                bunnyStatus.status === 'active'
+                                  ? 'text-green-600 dark:text-green-400'
+                                  : bunnyStatus.status === 'syncing'
+                                  ? 'text-amber-600 dark:text-amber-400'
+                                  : 'text-red-600 dark:text-red-400'
+                              }`}>
+                                <span className={`w-2 h-2 rounded-full ${
+                                  bunnyStatus.status === 'active'
+                                    ? 'bg-green-500'
+                                    : bunnyStatus.status === 'syncing'
+                                    ? 'bg-amber-500 animate-pulse'
+                                    : 'bg-red-500'
+                                }`} />
+                                {bunnyStatus.status === 'active' ? 'Connected' : bunnyStatus.status === 'syncing' ? 'Syncing...' : 'Error'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {bunnyStatus.pull_zone_name && (
+                          <div className="p-3 bg-white dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400">Pull Zone</p>
+                            <p className="text-sm font-medium text-neutral-900 dark:text-white mt-0.5 truncate">{bunnyStatus.pull_zone_name}</p>
+                          </div>
+                        )}
+                        {bunnyStatus.last_synced_at && (
+                          <div className="p-3 bg-white dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400">Last Synced</p>
+                            <p className="text-sm font-medium text-neutral-900 dark:text-white mt-0.5">
+                              {new Date(bunnyStatus.last_synced_at).toLocaleString('en-GB')}
+                            </p>
+                          </div>
+                        )}
+                        {bunnyStatus.created_at && (
+                          <div className="p-3 bg-white dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400">Connected Since</p>
+                            <p className="text-sm font-medium text-neutral-900 dark:text-white mt-0.5">
+                              {new Date(bunnyStatus.created_at).toLocaleString('en-GB')}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {bunnyStatus.status === 'error' && bunnyStatus.error_message && (
+                        <div className="p-3 bg-red-50 dark:bg-red-900/10 rounded-lg border border-red-200 dark:border-red-900/30">
+                          <p className="text-sm text-red-700 dark:text-red-300">{bunnyStatus.error_message}</p>
+                        </div>
+                      )}
+
+                      {canEdit && (
+                        <div className="pt-2 border-t border-neutral-200 dark:border-neutral-700">
+                          <button
+                            onClick={async () => {
+                              if (!confirm('Disconnect BunnyCDN? All CDN analytics data will be removed from Pulse.')) return
+                              setBunnyDisconnecting(true)
+                              try {
+                                await disconnectBunny(siteId)
+                                mutateBunnyStatus()
+                                toast.success('BunnyCDN disconnected')
+                              } catch (error: unknown) {
+                                toast.error(getAuthErrorMessage(error) || 'Failed to disconnect')
+                              } finally {
+                                setBunnyDisconnecting(false)
+                              }
+                            }}
+                            disabled={bunnyDisconnecting}
+                            className="inline-flex items-center gap-2 text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors disabled:opacity-50"
+                          >
+                            {bunnyDisconnecting && <SpinnerGap className="w-4 h-4 animate-spin" />}
                             Disconnect
                           </button>
                         </div>

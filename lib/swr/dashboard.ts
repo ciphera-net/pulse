@@ -35,6 +35,8 @@ import { listGoals, type Goal } from '@/lib/api/goals'
 import { listReportSchedules, type ReportSchedule } from '@/lib/api/report-schedules'
 import { getGSCStatus, getGSCOverview, getGSCTopQueries, getGSCTopPages, getGSCDailyTotals, getGSCNewQueries } from '@/lib/api/gsc'
 import type { GSCStatus, GSCOverview, GSCQueryResponse, GSCPageResponse, GSCDailyTotal, GSCNewQueries } from '@/lib/api/gsc'
+import { getBunnyStatus, getBunnyOverview, getBunnyDailyStats, getBunnyTopCountries } from '@/lib/api/bunny'
+import type { BunnyStatus, BunnyOverview, BunnyDailyRow, BunnyGeoRow } from '@/lib/api/bunny'
 import { getSubscription, type SubscriptionDetails } from '@/lib/api/billing'
 import type {
   Stats,
@@ -86,6 +88,10 @@ const fetchers = {
   gscTopPages: (siteId: string, start: string, end: string, limit: number, offset: number) => getGSCTopPages(siteId, start, end, limit, offset),
   gscDailyTotals: (siteId: string, start: string, end: string) => getGSCDailyTotals(siteId, start, end),
   gscNewQueries: (siteId: string, start: string, end: string) => getGSCNewQueries(siteId, start, end),
+  bunnyStatus: (siteId: string) => getBunnyStatus(siteId),
+  bunnyOverview: (siteId: string, start: string, end: string) => getBunnyOverview(siteId, start, end),
+  bunnyDailyStats: (siteId: string, start: string, end: string) => getBunnyDailyStats(siteId, start, end),
+  bunnyTopCountries: (siteId: string, start: string, end: string) => getBunnyTopCountries(siteId, start, end),
   subscription: () => getSubscription(),
 }
 
@@ -465,6 +471,42 @@ export function useGSCNewQueries(siteId: string, start: string, end: string) {
   return useSWR<GSCNewQueries>(
     siteId && start && end ? ['gscNewQueries', siteId, start, end] : null,
     () => fetchers.gscNewQueries(siteId, start, end),
+    dashboardSWRConfig
+  )
+}
+
+// * Hook for BunnyCDN connection status
+export function useBunnyStatus(siteId: string) {
+  return useSWR<BunnyStatus>(
+    siteId ? ['bunnyStatus', siteId] : null,
+    () => fetchers.bunnyStatus(siteId),
+    { ...dashboardSWRConfig, refreshInterval: 60 * 1000, dedupingInterval: 30 * 1000 }
+  )
+}
+
+// * Hook for BunnyCDN overview metrics (bandwidth, requests, cache hit rate)
+export function useBunnyOverview(siteId: string, startDate: string, endDate: string) {
+  return useSWR<BunnyOverview>(
+    siteId && startDate && endDate ? ['bunnyOverview', siteId, startDate, endDate] : null,
+    () => fetchers.bunnyOverview(siteId, startDate, endDate),
+    dashboardSWRConfig
+  )
+}
+
+// * Hook for BunnyCDN daily stats (bandwidth & requests per day)
+export function useBunnyDailyStats(siteId: string, startDate: string, endDate: string) {
+  return useSWR<{ daily_stats: BunnyDailyRow[] }>(
+    siteId && startDate && endDate ? ['bunnyDailyStats', siteId, startDate, endDate] : null,
+    () => fetchers.bunnyDailyStats(siteId, startDate, endDate),
+    dashboardSWRConfig
+  )
+}
+
+// * Hook for BunnyCDN top countries by bandwidth
+export function useBunnyTopCountries(siteId: string, startDate: string, endDate: string) {
+  return useSWR<{ countries: BunnyGeoRow[] }>(
+    siteId && startDate && endDate ? ['bunnyTopCountries', siteId, startDate, endDate] : null,
+    () => fetchers.bunnyTopCountries(siteId, startDate, endDate),
     dashboardSWRConfig
   )
 }
