@@ -77,3 +77,22 @@ export async function getGSCQueryPages(siteId: string, query: string, startDate:
 export async function getGSCPageQueries(siteId: string, page: string, startDate: string, endDate: string): Promise<GSCQueryResponse> {
   return apiRequest<GSCQueryResponse>(`/sites/${siteId}/gsc/page-queries?page=${encodeURIComponent(page)}&start_date=${startDate}&end_date=${endDate}`)
 }
+
+export interface GSCDailyTotal {
+  date: string
+  clicks: number
+  impressions: number
+}
+
+export interface GSCNewQueries {
+  count: number
+  queries: string[]
+}
+
+export async function getGSCDailyTotals(siteId: string, startDate: string, endDate: string): Promise<{ daily_totals: GSCDailyTotal[] }> {
+  return apiRequest<{ daily_totals: GSCDailyTotal[] }>(`/sites/${siteId}/gsc/daily-totals?start_date=${startDate}&end_date=${endDate}`)
+}
+
+export async function getGSCNewQueries(siteId: string, startDate: string, endDate: string): Promise<GSCNewQueries> {
+  return apiRequest<GSCNewQueries>(`/sites/${siteId}/gsc/new-queries?start_date=${startDate}&end_date=${endDate}`)
+}

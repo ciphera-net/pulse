@@ -33,8 +33,8 @@ import { listFunnels, type Funnel } from '@/lib/api/funnels'
 import { getUptimeStatus, type UptimeStatusResponse } from '@/lib/api/uptime'
 import { listGoals, type Goal } from '@/lib/api/goals'
 import { listReportSchedules, type ReportSchedule } from '@/lib/api/report-schedules'
-import { getGSCStatus, getGSCOverview, getGSCTopQueries, getGSCTopPages } from '@/lib/api/gsc'
-import type { GSCStatus, GSCOverview, GSCQueryResponse, GSCPageResponse } from '@/lib/api/gsc'
+import { getGSCStatus, getGSCOverview, getGSCTopQueries, getGSCTopPages, getGSCDailyTotals, getGSCNewQueries } from '@/lib/api/gsc'
+import type { GSCStatus, GSCOverview, GSCQueryResponse, GSCPageResponse, GSCDailyTotal, GSCNewQueries } from '@/lib/api/gsc'
 import { getSubscription, type SubscriptionDetails } from '@/lib/api/billing'
 import type {
   Stats,
@@ -84,6 +84,8 @@ const fetchers = {
   gscOverview: (siteId: string, start: string, end: string) => getGSCOverview(siteId, start, end),
   gscTopQueries: (siteId: string, start: string, end: string, limit: number, offset: number) => getGSCTopQueries(siteId, start, end, limit, offset),
   gscTopPages: (siteId: string, start: string, end: string, limit: number, offset: number) => getGSCTopPages(siteId, start, end, limit, offset),
+  gscDailyTotals: (siteId: string, start: string, end: string) => getGSCDailyTotals(siteId, start, end),
+  gscNewQueries: (siteId: string, start: string, end: string) => getGSCNewQueries(siteId, start, end),
   subscription: () => getSubscription(),
 }
 
@@ -445,6 +447,24 @@ export function useGSCTopPages(siteId: string, start: string, end: string, limit
   return useSWR<GSCPageResponse>(
     siteId && start && end ? ['gscTopPages', siteId, start, end, limit, offset] : null,
     () => fetchers.gscTopPages(siteId, start, end, limit, offset),
+    dashboardSWRConfig
+  )
+}
+
+// * Hook for GSC daily totals (clicks & impressions per day)
+export function useGSCDailyTotals(siteId: string, start: string, end: string) {
+  return useSWR<{ daily_totals: GSCDailyTotal[] }>(
+    siteId && start && end ? ['gscDailyTotals', siteId, start, end] : null,
+    () => fetchers.gscDailyTotals(siteId, start, end),
+    dashboardSWRConfig
+  )
+}
+
+// * Hook for GSC new queries (queries that appeared in the current period)
+export function useGSCNewQueries(siteId: string, start: string, end: string) {
+  return useSWR<GSCNewQueries>(
+    siteId && start && end ? ['gscNewQueries', siteId, start, end] : null,
+    () => fetchers.gscNewQueries(siteId, start, end),
     dashboardSWRConfig
   )
 }

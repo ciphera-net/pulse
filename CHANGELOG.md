@@ -10,6 +10,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - **Google Search Console integration.** Connect your Google Search Console account in Settings > Integrations to see which search queries bring visitors to your site. A new "Search" tab on your dashboard shows total clicks, impressions, average CTR, and average ranking position — with percentage changes compared to the previous period. Browse your top search queries and top pages in sortable, paginated tables. Click any query to see which pages rank for it, or click any page to see which queries drive traffic to it. Pulse only requests read-only access to your Search Console data, encrypts your Google credentials, and lets you disconnect and fully remove all search data at any time.
 - **Integrations tab in Settings.** A new "Integrations" section in your site settings is where you connect and manage external services. Google Search Console is the first integration available — more will follow.
+- **Search performance on your dashboard.** When Google Search Console is connected, a new "Search" panel appears on your main dashboard alongside Campaigns — showing your total clicks, impressions, and average position at a glance, plus your top 5 search queries. Click "View all" to dive deeper.
+- **Clicks & Impressions trend chart.** The Search tab now includes a chart showing how your clicks and impressions change over time, so you can spot trends and correlate them with content changes.
+- **Top query position cards.** Five compact cards at the top of the Search tab show your best-performing queries with their average ranking position and click count.
+- **New queries indicator.** A green badge on the Search tab tells you how many new search queries appeared this period compared to the last — so you can see your search footprint growing.
 
 ### Fixed
 
