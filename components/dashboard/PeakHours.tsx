@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef, type CSSProperties } from 'react'
+import { Clock } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { logger } from '@/lib/utils/logger'
 import { getDailyStats } from '@/lib/api/stats'
@@ -128,7 +129,10 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
   return (
     <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
       <div className="flex items-center justify-between mb-1">
-        <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Peak Hours</h3>
+        <div className="flex items-center gap-2">
+          <Clock className="w-5 h-5 text-neutral-400 dark:text-neutral-500" weight="bold" />
+          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Peak Hours</h3>
+        </div>
       </div>
       <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-5">
         When your visitors are most active
