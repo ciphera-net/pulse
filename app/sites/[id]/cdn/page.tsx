@@ -24,6 +24,15 @@ import { SkeletonLine, StatCardSkeleton, useMinimumLoading, useSkeletonFade } fr
 
 // ─── Helpers ────────────────────────────────────────────────────
 
+function getCountryName(code: string): string {
+  try {
+    const regionNames = new Intl.DisplayNames(['en'], { type: 'region' })
+    return regionNames.of(code) || code
+  } catch {
+    return code
+  }
+}
+
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B'
   const units = ['B', 'KB', 'MB', 'GB', 'TB']
@@ -152,7 +161,7 @@ export default function CDNPage() {
 
   const daily = dailyStats?.daily_stats ?? []
   const countries = topCountries?.countries ?? []
-  const maxCountryBandwidth = countries.length > 0 ? countries[0].bandwidth : 1
+  const totalBandwidth = countries.reduce((sum, row) => sum + row.bandwidth, 0)
 
   return (
     <div className={`w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
@@ -409,54 +418,50 @@ export default function CDNPage() {
         </div>
       </div>
 
-      {/* Traffic Distribution Map */}
-      <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 mb-6">
+      {/* Traffic Distribution */}
+      <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6">
         <h2 className="text-sm font-semibold text-neutral-900 dark:text-white mb-4">Traffic Distribution</h2>
         {countries.length > 0 ? (
-          <div className="h-[360px]">
-            <DottedMap
-              data={countries.map((row) => ({
-                country: row.country_code,
-                pageviews: row.bandwidth,
-              }))}
-            />
-          </div>
+          <>
+            <div className="h-[360px] mb-8">
+              <DottedMap
+                data={countries.map((row) => ({
+                  country: row.country_code,
+                  pageviews: row.bandwidth,
+                }))}
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
+              {countries.map((row) => {
+                const pct = totalBandwidth > 0 ? (row.bandwidth / totalBandwidth) * 100 : 0
+                return (
+                  <div key={row.country_code} className="group">
+                    <div className="flex items-baseline justify-between mb-1.5">
+                      <span className="text-sm font-medium text-neutral-900 dark:text-white">
+                        {getCountryName(row.country_code)}
+                      </span>
+                      <span className="text-sm tabular-nums text-neutral-500 dark:text-neutral-400">
+                        {formatBytes(row.bandwidth)}
+                      </span>
+                    </div>
+                    <div className="relative h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+                      <div
+                        className="absolute inset-y-0 left-0 rounded-full bg-brand-orange transition-all"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity mt-1">
+                      <span className="text-xs text-neutral-400 dark:text-neutral-500">{pct.toFixed(1)}% of total traffic</span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </>
         ) : (
           <div className="h-[360px] flex items-center justify-center text-neutral-400 dark:text-neutral-500 text-sm">
             No geographic data for this period.
           </div>
-        )}
-      </div>
-
-      {/* Bandwidth by Country */}
-      <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6">
-        <h2 className="text-sm font-semibold text-neutral-900 dark:text-white mb-4">Bandwidth by Country</h2>
-        {countries.length > 0 ? (
-          <div className="space-y-3">
-            {countries.map((row) => (
-              <div key={row.country_code} className="flex items-center gap-3">
-                <span className="text-sm text-neutral-700 dark:text-neutral-300 w-10 shrink-0 font-medium">
-                  {row.country_code}
-                </span>
-                <div className="flex-1 h-6 bg-neutral-100 dark:bg-neutral-800 rounded overflow-hidden">
-                  <div
-                    className="h-full rounded bg-brand-orange/80"
-                    style={{ width: `${(row.bandwidth / maxCountryBandwidth) * 100}%` }}
-                  />
-                </div>
-                <span className="text-sm text-neutral-500 dark:text-neutral-400 w-20 text-right tabular-nums shrink-0">
-                  {formatBytes(row.bandwidth)}
-                </span>
-                <span className="text-xs text-neutral-400 dark:text-neutral-500 w-16 text-right tabular-nums shrink-0">
-                  {formatNumber(row.requests)} req
-                </span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-neutral-400 dark:text-neutral-500 py-8 text-center">
-            No geographic data for this period.
-          </p>
         )}
       </div>
     </div>

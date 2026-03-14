@@ -1616,11 +1616,25 @@ export default function SiteSettingsPage() {
                     <div className="space-y-4">
                       <div className="flex items-start gap-4">
                         <div className="p-2.5 bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 flex-shrink-0">
-                          <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
-                            <path d="M8.5 2C7.5 2 6.5 3 6.5 4.5C6.5 5.5 7 6.5 7.5 7C6 7.5 4 9 3.5 11C3 13 3.5 15 4 16C4.5 17 5.5 18.5 7 19.5C8.5 20.5 10 21 12 21C14 21 15.5 20.5 17 19.5C18.5 18.5 19.5 17 20 16C20.5 15 21 13 20.5 11C20 9 18 7.5 16.5 7C17 6.5 17.5 5.5 17.5 4.5C17.5 3 16.5 2 15.5 2C14.5 2 13.5 3 13.5 4C13.5 4.5 13.7 5 14 5.5C13.3 5.2 12.7 5 12 5C11.3 5 10.7 5.2 10 5.5C10.3 5 10.5 4.5 10.5 4C10.5 3 9.5 2 8.5 2Z" fill="#FF6600"/>
-                            <circle cx="9.5" cy="12" r="1.5" fill="white"/>
-                            <circle cx="14.5" cy="12" r="1.5" fill="white"/>
-                            <ellipse cx="12" cy="15.5" rx="1.5" ry="1" fill="white"/>
+                          <svg className="w-6 h-6" viewBox="0 0 23 26" fill="none">
+                            <path fillRule="evenodd" clipRule="evenodd" d="M9.94 7.77l5.106.883c-3.83-.663-4.065-3.85-9.218-6.653-.562 1.859.603 5.21 4.112 5.77z" fill="url(#b1)"/>
+                            <path fillRule="evenodd" clipRule="evenodd" d="M5.828 2c5.153 2.803 5.388 5.99 9.218 6.653 1.922.332.186 3.612-1.864 3.266 3.684 1.252 7.044-2.085 5.122-3.132L5.828 2z" fill="url(#b2)"/>
+                            <path fillRule="evenodd" clipRule="evenodd" d="M13.186 11.92c-.241-.041-.486-.131-.731-.284-1.542-.959-3.093-1.269-4.496-1.118 2.93.359 5.716 4.196 5.37 7.036.06.97-.281 1.958-1.021 2.699l-1.69 1.69c1.303.858 3.284-.037 3.889-1.281l3.41-7.014c.836-.198 6.176-1.583 3.767-3.024l-3.37-1.833c1.907 1.05-1.449 4.378-5.125 3.129z" fill="url(#b3)"/>
+                            <path fillRule="evenodd" clipRule="evenodd" d="M7.953 10.518c-4.585.499-7.589 5.94-3.506 9.873l3.42 3.42c-2.243-2.243-2.458-5.525-1.073-7.806.149-.255.333-.495.551-.713 1.37-1.37 3.59-1.37 4.96 0 .629.628.969 1.436 1.02 2.26.346-2.84-2.439-6.675-5.367-7.035h-.005z" fill="url(#b4)"/>
+                            <path fillRule="evenodd" clipRule="evenodd" d="M7.868 23.812l1.925 1.925c.643-.511 1.028-2.01.031-3.006l-2.48-2.48c-1.151-1.151-1.334-2.903-.55-4.246-1.385 2.281-1.17 5.563 1.074 7.807z" fill="url(#b5)"/>
+                            <path fillRule="evenodd" clipRule="evenodd" d="M12.504 4.54l5.739 3.122L12.925.6c-.728.829-1.08 2.472-.421 3.94z" fill="url(#b6)"/>
+                            <circle cx="9.825" cy="17.772" r="1.306" fill="url(#b7)"/>
+                            <circle cx="1.507" cy="11.458" r="1.306" fill="url(#b8)"/>
+                            <defs>
+                              <linearGradient id="b1" x1="5.69" y1="8.5" x2="15.04" y2="8.5" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset=".69" stopColor="#FF7300"/><stop offset="1" stopColor="#F52900"/></linearGradient>
+                              <linearGradient id="b2" x1="5.83" y1="12.65" x2="18.87" y2="12.65" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset=".69" stopColor="#FF7300"/><stop offset="1" stopColor="#F52900"/></linearGradient>
+                              <linearGradient id="b3" x1="7.95" y1="22.04" x2="22.3" y2="22.04" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset="1" stopColor="#FF6200"/></linearGradient>
+                              <linearGradient id="b4" x1="2.51" y1="22.59" x2="13.35" y2="22.59" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset=".69" stopColor="#FF7300"/><stop offset="1" stopColor="#F52900"/></linearGradient>
+                              <linearGradient id="b5" x1="11.35" y1="20.74" x2="7.98" y2="17.71" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset=".69" stopColor="#FF7300"/><stop offset="1" stopColor="#F52900"/></linearGradient>
+                              <linearGradient id="b6" x1="12.16" y1="7.48" x2="18.24" y2="7.48" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset="1" stopColor="#FF6200"/></linearGradient>
+                              <linearGradient id="b7" x1="8.52" y1="19.08" x2="11.13" y2="19.08" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset="1" stopColor="#FF6200"/></linearGradient>
+                              <linearGradient id="b8" x1=".2" y1="12.76" x2="2.81" y2="12.76" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset="1" stopColor="#FF6200"/></linearGradient>
+                            </defs>
                           </svg>
                         </div>
                         <div>
@@ -1733,11 +1747,25 @@ export default function SiteSettingsPage() {
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex items-start gap-4">
                           <div className="p-2.5 bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 flex-shrink-0">
-                            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
-                              <circle cx="12" cy="12" r="10" stroke="#FF6600" strokeWidth="1.5" fill="none" />
-                              <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2Z" stroke="#FF6600" strokeWidth="1.5" fill="none" />
-                              <path d="M2 12h20" stroke="#FF6600" strokeWidth="1.5" />
-                              <path d="M4.5 7h15M4.5 17h15" stroke="#FF6600" strokeWidth="1" opacity="0.5" />
+                            <svg className="w-6 h-6" viewBox="0 0 23 26" fill="none">
+                              <path fillRule="evenodd" clipRule="evenodd" d="M9.94 7.77l5.106.883c-3.83-.663-4.065-3.85-9.218-6.653-.562 1.859.603 5.21 4.112 5.77z" fill="url(#b1c)"/>
+                              <path fillRule="evenodd" clipRule="evenodd" d="M5.828 2c5.153 2.803 5.388 5.99 9.218 6.653 1.922.332.186 3.612-1.864 3.266 3.684 1.252 7.044-2.085 5.122-3.132L5.828 2z" fill="url(#b2c)"/>
+                              <path fillRule="evenodd" clipRule="evenodd" d="M13.186 11.92c-.241-.041-.486-.131-.731-.284-1.542-.959-3.093-1.269-4.496-1.118 2.93.359 5.716 4.196 5.37 7.036.06.97-.281 1.958-1.021 2.699l-1.69 1.69c1.303.858 3.284-.037 3.889-1.281l3.41-7.014c.836-.198 6.176-1.583 3.767-3.024l-3.37-1.833c1.907 1.05-1.449 4.378-5.125 3.129z" fill="url(#b3c)"/>
+                              <path fillRule="evenodd" clipRule="evenodd" d="M7.953 10.518c-4.585.499-7.589 5.94-3.506 9.873l3.42 3.42c-2.243-2.243-2.458-5.525-1.073-7.806.149-.255.333-.495.551-.713 1.37-1.37 3.59-1.37 4.96 0 .629.628.969 1.436 1.02 2.26.346-2.84-2.439-6.675-5.367-7.035h-.005z" fill="url(#b4c)"/>
+                              <path fillRule="evenodd" clipRule="evenodd" d="M7.868 23.812l1.925 1.925c.643-.511 1.028-2.01.031-3.006l-2.48-2.48c-1.151-1.151-1.334-2.903-.55-4.246-1.385 2.281-1.17 5.563 1.074 7.807z" fill="url(#b5c)"/>
+                              <path fillRule="evenodd" clipRule="evenodd" d="M12.504 4.54l5.739 3.122L12.925.6c-.728.829-1.08 2.472-.421 3.94z" fill="url(#b6c)"/>
+                              <circle cx="9.825" cy="17.772" r="1.306" fill="url(#b7c)"/>
+                              <circle cx="1.507" cy="11.458" r="1.306" fill="url(#b8c)"/>
+                              <defs>
+                                <linearGradient id="b1c" x1="5.69" y1="8.5" x2="15.04" y2="8.5" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset=".69" stopColor="#FF7300"/><stop offset="1" stopColor="#F52900"/></linearGradient>
+                                <linearGradient id="b2c" x1="5.83" y1="12.65" x2="18.87" y2="12.65" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset=".69" stopColor="#FF7300"/><stop offset="1" stopColor="#F52900"/></linearGradient>
+                                <linearGradient id="b3c" x1="7.95" y1="22.04" x2="22.3" y2="22.04" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset="1" stopColor="#FF6200"/></linearGradient>
+                                <linearGradient id="b4c" x1="2.51" y1="22.59" x2="13.35" y2="22.59" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset=".69" stopColor="#FF7300"/><stop offset="1" stopColor="#F52900"/></linearGradient>
+                                <linearGradient id="b5c" x1="11.35" y1="20.74" x2="7.98" y2="17.71" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset=".69" stopColor="#FF7300"/><stop offset="1" stopColor="#F52900"/></linearGradient>
+                                <linearGradient id="b6c" x1="12.16" y1="7.48" x2="18.24" y2="7.48" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset="1" stopColor="#FF6200"/></linearGradient>
+                                <linearGradient id="b7c" x1="8.52" y1="19.08" x2="11.13" y2="19.08" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset="1" stopColor="#FF6200"/></linearGradient>
+                                <linearGradient id="b8c" x1=".2" y1="12.76" x2="2.81" y2="12.76" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset="1" stopColor="#FF6200"/></linearGradient>
+                              </defs>
                             </svg>
                           </div>
                           <div>
