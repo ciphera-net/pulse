@@ -12,6 +12,7 @@ interface PeakHoursProps {
 }
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const DAYS_FULL = ['Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays', 'Sundays']
 const BUCKETS = 12 // 2-hour buckets
 // Label at bucket index 0=00:00, 3=06:00, 6=12:00, 9=18:00
 const BUCKET_LABELS: Record<number, string> = { 0: '00:00', 3: '06:00', 6: '12:00', 9: '18:00' }
@@ -251,7 +252,7 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
             >
               Your busiest time is{' '}
               <span className="text-brand-orange font-medium">
-                {DAYS[bestTime.day]}s at {formatHour(bestTime.bucket * 2)}
+                {DAYS_FULL[bestTime.day]} at {formatHour(bestTime.bucket * 2)}
               </span>
             </motion.p>
           )}
