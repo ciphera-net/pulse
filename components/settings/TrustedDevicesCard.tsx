@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/lib/auth/context'
 import { getUserDevices, removeDevice, type TrustedDevice } from '@/lib/api/devices'
 import { Spinner, toast } from '@ciphera-net/ui'
-import { formatRelativeTime, formatFullDate } from '@/lib/utils/formatDate'
+import { formatRelativeTime, formatDateTimeFull } from '@/lib/utils/formatDate'
 
 function getDeviceIcon(hint: string): string {
   const h = hint.toLowerCase()
@@ -101,11 +101,11 @@ export default function TrustedDevicesCard() {
                   )}
                 </div>
                 <div className="flex items-center gap-2 mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
-                  <span title={formatFullDate(device.first_seen_at)}>
+                  <span title={formatDateTimeFull(new Date(device.first_seen_at))}>
                     First seen {formatRelativeTime(device.first_seen_at)}
                   </span>
                   <span>&middot;</span>
-                  <span title={formatFullDate(device.last_seen_at)}>
+                  <span title={formatDateTimeFull(new Date(device.last_seen_at))}>
                     Last seen {formatRelativeTime(device.last_seen_at)}
                   </span>
                 </div>

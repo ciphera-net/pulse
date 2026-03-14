@@ -1,20 +1,11 @@
 import { AlertTriangleIcon, CheckCircleIcon } from '@ciphera-net/ui'
+import { formatRelativeTime } from './formatDate'
 
 /**
  * Formats a date string as a human-readable relative time (e.g. "5m ago", "2h ago").
  */
 export function formatTimeAgo(dateStr: string): string {
-  const d = new Date(dateStr)
-  const now = new Date()
-  const diffMs = now.getTime() - d.getTime()
-  const diffMins = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMs / 3600000)
-  const diffDays = Math.floor(diffMs / 86400000)
-  if (diffMins < 1) return 'Just now'
-  if (diffMins < 60) return `${diffMins}m ago`
-  if (diffHours < 24) return `${diffHours}h ago`
-  if (diffDays < 7) return `${diffDays}d ago`
-  return d.toLocaleDateString()
+  return formatRelativeTime(dateStr)
 }
 
 /**

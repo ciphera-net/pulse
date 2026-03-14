@@ -25,6 +25,7 @@ import { getAuditLog, AuditLogEntry, GetAuditLogParams } from '@/lib/api/audit'
 import { getNotificationSettings, updateNotificationSettings } from '@/lib/api/notification-settings'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
+import { formatDate, formatDateTime, formatDateLong } from '@/lib/utils/formatDate'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   AlertTriangleIcon,
@@ -776,7 +777,7 @@ export default function OrganizationSettings() {
                                 {member.user_email || 'Unknown User'}
                               </div>
                               <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                                Joined {new Date(member.joined_at).toLocaleDateString()}
+                                Joined {formatDate(new Date(member.joined_at))}
                               </div>
                             </div>
                           </div>
@@ -813,7 +814,7 @@ export default function OrganizationSettings() {
                                 {invite.email}
                               </div>
                               <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                                Invited as <span className="capitalize font-medium">{invite.role}</span> • Expires {new Date(invite.expires_at).toLocaleDateString()}
+                                Invited as <span className="capitalize font-medium">{invite.role}</span> • Expires {formatDate(new Date(invite.expires_at))}
                               </div>
                             </div>
                           </div>
@@ -861,7 +862,7 @@ export default function OrganizationSettings() {
                             <span className="font-semibold">
                               {(() => {
                                 const d = subscription.current_period_end ? new Date(subscription.current_period_end as string) : null
-                                return d && !Number.isNaN(d.getTime()) ? d.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }) : '—'
+                                return d && !Number.isNaN(d.getTime()) ? formatDateLong(d) : '—'
                               })()}
                             </span>
                           </p>
@@ -904,7 +905,7 @@ export default function OrganizationSettings() {
                             <span className="font-semibold">
                               {(() => {
                                 const d = subscription.current_period_end ? new Date(subscription.current_period_end as string) : null
-                                return d && !Number.isNaN(d.getTime()) ? d.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }) : '—'
+                                return d && !Number.isNaN(d.getTime()) ? formatDateLong(d) : '—'
                               })()}
                             </span>
                           </p>
@@ -1016,7 +1017,7 @@ export default function OrganizationSettings() {
                               const ts = subscription.next_invoice_period_end ?? subscription.current_period_end
                               const d = ts ? new Date(typeof ts === 'number' ? ts * 1000 : ts) : null
                               const dateStr = d && !Number.isNaN(d.getTime()) && d.getTime() !== 0
-                                ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+                                ? formatDate(d)
                                 : '—'
                               const amount = subscription.next_invoice_amount_due != null && subscription.next_invoice_currency
                                 ? (subscription.next_invoice_amount_due / 100).toLocaleString('en-US', {
@@ -1079,7 +1080,7 @@ export default function OrganizationSettings() {
                                       {(invoice.amount_paid / 100).toLocaleString('en-US', { style: 'currency', currency: invoice.currency.toUpperCase() })}
                                     </span>
                                     <span className="text-xs text-neutral-500 ml-2">
-                                      {new Date(invoice.created * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                      {formatDate(new Date(invoice.created * 1000))}
                                     </span>
                                   </div>
                                 </div>
@@ -1282,7 +1283,7 @@ export default function OrganizationSettings() {
                                 {entry.id}
                               </td>
                               <td className="px-4 py-3 text-neutral-600 dark:text-neutral-400 whitespace-nowrap">
-                                {new Date(entry.occurred_at).toLocaleString()}
+                                {formatDateTime(new Date(entry.occurred_at))}
                               </td>
                               <td className="px-4 py-3 text-neutral-900 dark:text-white whitespace-nowrap" title={entry.actor_email || entry.actor_id || 'System'}>
                                 {entry.actor_email || entry.actor_id || 'System'}
@@ -1606,7 +1607,7 @@ export default function OrganizationSettings() {
                         style: 'currency',
                         currency: invoicePreview.currency.toUpperCase(),
                       })}{' '}
-                      on {new Date(invoicePreview.period_end * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}{' '}
+                      on {formatDate(new Date(invoicePreview.period_end * 1000))}{' '}
                       <span className="text-neutral-500">(prorated)</span>
                     </p>
                   ) : (

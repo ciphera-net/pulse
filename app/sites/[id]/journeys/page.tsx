@@ -39,10 +39,10 @@ export default function JourneysPage() {
   const [entryPath, setEntryPath] = useState('')
 
   const { data: transitionsData, isLoading: transitionsLoading } = useJourneyTransitions(
-    siteId, dateRange.start, dateRange.end, depth, 2, entryPath || undefined
+    siteId, dateRange.start, dateRange.end, depth, 1, entryPath || undefined
   )
   const { data: topPaths, isLoading: topPathsLoading } = useJourneyTopPaths(
-    siteId, dateRange.start, dateRange.end, 20, 2, entryPath || undefined
+    siteId, dateRange.start, dateRange.end, 20, 1, entryPath || undefined
   )
   const { data: entryPoints } = useJourneyEntryPoints(siteId, dateRange.start, dateRange.end)
   const { data: dashboard } = useDashboard(siteId, dateRange.start, dateRange.end)

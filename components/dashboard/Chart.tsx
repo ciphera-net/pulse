@@ -11,6 +11,7 @@ import { Checkbox } from '@ciphera-net/ui'
 import { ArrowUpRight, ArrowDownRight } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { formatTime, formatDateShort, formatDate } from '@/lib/utils/formatDate'
 
 const ANNOTATION_COLORS: Record<string, string> = {
   deploy: '#3b82f6',
@@ -84,8 +85,7 @@ type MetricType = 'pageviews' | 'visitors' | 'bounce_rate' | 'avg_duration'
 // ─── Helpers ─────────────────────────────────────────────────────────
 
 function formatEU(dateStr: string): string {
-  const [y, m, d] = dateStr.split('-')
-  return `${d}/${m}/${y}`
+  return formatDate(new Date(dateStr + 'T00:00:00'))
 }
 
 // ─── Metric configurations ──────────────────────────────────────────
@@ -216,15 +216,12 @@ export default function Chart({
   const chartData = useMemo(() => data.map((item) => {
     let formattedDate: string
     if (interval === 'minute') {
-      formattedDate = new Date(item.date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+      formattedDate = formatTime(new Date(item.date))
     } else if (interval === 'hour') {
       const d = new Date(item.date)
-      const isMidnight = d.getHours() === 0 && d.getMinutes() === 0
-      formattedDate = isMidnight
-        ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' 12:00 AM'
-        : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ', ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric' })
+      formattedDate = formatDateShort(d) + ', ' + formatTime(d)
     } else {
-      formattedDate = new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      formattedDate = formatDateShort(new Date(item.date))
     }
 
     return {

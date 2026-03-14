@@ -292,7 +292,42 @@ export default function PricingSection() {
         </div>
 
         {/* Pricing Grid */}
-        <div className="grid md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-neutral-200 dark:divide-neutral-800">
+        <div className="grid md:grid-cols-5 divide-y md:divide-y-0 md:divide-x divide-neutral-200 dark:divide-neutral-800">
+          {/* Free Plan */}
+          <div className="p-6 flex flex-col relative transition-colors hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50">
+            <div className="mb-8">
+              <h3 className="text-lg font-bold text-neutral-900 dark:text-white mb-2">Free</h3>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400 min-h-[40px] mb-4">For trying Pulse on a personal project</p>
+              <div className="flex items-baseline gap-1">
+                <span className="text-4xl font-bold text-neutral-900 dark:text-white">€0</span>
+                <span className="text-neutral-500 dark:text-neutral-400 font-medium">/forever</span>
+              </div>
+            </div>
+
+            <Button
+              onClick={() => {
+                if (!user) {
+                  initiateOAuthFlow()
+                  return
+                }
+                window.location.href = '/'
+              }}
+              variant="secondary"
+              className="w-full mb-8"
+            >
+              Get started
+            </Button>
+
+            <ul className="space-y-4 flex-grow">
+              {['1 site', '5k monthly pageviews', '6 months data retention', '100% Data ownership'].map((feature) => (
+                <li key={feature} className="flex items-start gap-3 text-sm text-neutral-600 dark:text-neutral-400">
+                  <CheckCircleIcon className="w-5 h-5 shrink-0 text-neutral-400" />
+                  <span>{feature}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
           {PLANS.map((plan) => {
             const priceDetails = getPriceDetails(plan.id)
             const isTeam = plan.id === 'team'

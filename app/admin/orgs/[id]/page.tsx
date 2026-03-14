@@ -4,13 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { getAdminOrg, grantPlan, type AdminOrgDetail } from '@/lib/api/admin'
 import { Button, LoadingOverlay, Select, toast } from '@ciphera-net/ui'
-
-function formatDate(d: Date) {
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
-function formatDateTime(d: Date) {
-  return d.toLocaleDateString('en-US', { dateStyle: 'long' }) + ' ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric' })
-}
+import { formatDate, formatDateTime } from '@/lib/utils/formatDate'
 function addMonths(d: Date, months: number) {
   const out = new Date(d)
   out.setMonth(out.getMonth() + months)
