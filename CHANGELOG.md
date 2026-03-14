@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Improved
+
+- **More accurate rage click detection.** Rage clicks no longer fire when you triple-click to select text on a page. Previously, selecting a paragraph (a normal 3-click action) was being counted as a rage click, which inflated frustration metrics. Only genuinely frustrated rapid clicking is tracked now.
+- **More accurate dead click detection.** Dead clicks were being reported on elements that actually worked — like close buttons on cart drawers, modal dismiss buttons, and page content areas. Three fixes make dead clicks much more reliable:
+  - Buttons that trigger changes elsewhere on the page (closing a drawer, opening a modal) are no longer flagged as dead.
+  - Page content areas that aren't actually clickable (like `<main>` containers) are no longer treated as interactive elements.
+  - Single-page app navigations are now properly detected, so links that use client-side routing aren't mistakenly reported as broken.
+
 ### Removed
 
 - **Performance insights removed.** The Performance tab, Core Web Vitals tracking (LCP, CLS, INP), and the "Enable performance insights" toggle in Settings have been removed. The tracking script no longer collects Web Vitals data. Visit duration tracking continues to work as before.
