@@ -617,9 +617,8 @@ export default function SiteDashboardPage() {
         <Campaigns siteId={siteId} dateRange={dateRange} filters={filtersParam || undefined} onFilter={handleAddFilter} />
         <PeakHours siteId={siteId} dateRange={dateRange} />
       </div>
-      <SearchPerformance siteId={siteId} dateRange={dateRange} />
-
-      <div className="mb-8">
+      <div className="grid gap-6 lg:grid-cols-2 mb-8">
+        <SearchPerformance siteId={siteId} dateRange={dateRange} />
         <GoalStats
           goalCounts={(dashboard?.goal_counts ?? []).filter(g => !/^scroll_\d+$/.test(g.event_name))}
           onSelectEvent={setSelectedEvent}
