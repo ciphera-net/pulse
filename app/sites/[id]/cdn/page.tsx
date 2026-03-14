@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
+import * as Flags from 'country-flag-icons/react/3x2'
 
 const DottedMap = dynamic(() => import('@/components/dashboard/DottedMap'), { ssr: false })
 import { getDateRange, formatDate, Select } from '@ciphera-net/ui'
@@ -56,29 +57,24 @@ function extractCity(datacenter: string): string {
   return afterColon.split(',')[0]?.trim() || datacenter
 }
 
-/** Convert ISO country code to flag emoji */
-function countryFlag(code: string): string {
-  try {
-    return code
-      .toUpperCase()
-      .split('')
-      .map(c => String.fromCodePoint(0x1F1E6 + c.charCodeAt(0) - 65))
-      .join('')
-  } catch {
-    return ''
-  }
+/** Get flag icon component for a country code */
+function getFlagIcon(code: string) {
+  if (!code) return null
+  const FlagComponent = (Flags as Record<string, React.ComponentType<{ className?: string }>>)[code]
+  return FlagComponent ? <FlagComponent className="w-5 h-3.5 rounded-sm shadow-sm shrink-0" /> : null
 }
 
-/** Aggregate bandwidth by ISO country code for the map */
-function aggregateByCountry(data: Array<{ country_code: string; bandwidth: number }>): Array<{ country: string; pageviews: number }> {
-  const byCountry = new Map<string, number>()
-  for (const row of data) {
-    const cc = extractCountryCode(row.country_code)
-    if (cc) {
-      byCountry.set(cc, (byCountry.get(cc) || 0) + row.bandwidth)
-    }
-  }
-  return Array.from(byCountry, ([country, pageviews]) => ({ country, pageviews }))
+/**
+ * Map each datacenter entry to its country's centroid for the dotted map.
+ * Each datacenter gets its own dot (sized by bandwidth) at the country's position.
+ */
+function mapToCountryCentroids(data: Array<{ country_code: string; bandwidth: number }>): Array<{ country: string; pageviews: number }> {
+  return data
+    .map((row) => ({
+      country: extractCountryCode(row.country_code),
+      pageviews: row.bandwidth,
+    }))
+    .filter((d) => d.country !== '')
 }
 
 function formatBytes(bytes: number): string {
@@ -472,7 +468,7 @@ export default function CDNPage() {
         {countries.length > 0 ? (
           <>
             <div className="h-[360px] mb-8">
-              <DottedMap data={aggregateByCountry(countries)} />
+              <DottedMap data={mapToCountryCentroids(countries)} formatValue={formatBytes} />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-5">
               {countries.map((row) => {
@@ -482,7 +478,7 @@ export default function CDNPage() {
                 return (
                   <div key={row.country_code} className="group relative">
                     <div className="flex items-center gap-2.5 mb-2">
-                      {cc && <span className="text-base leading-none">{countryFlag(cc)}</span>}
+                      {cc && getFlagIcon(cc)}
                       <div className="flex-1 min-w-0">
                         <span className="text-sm font-medium text-neutral-900 dark:text-white truncate block">{city}</span>
                       </div>
