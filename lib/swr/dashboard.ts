@@ -9,7 +9,6 @@ import {
   getDashboardLocations,
   getDashboardDevices,
   getDashboardReferrers,
-  getDashboardPerformance,
   getDashboardGoals,
   getCampaigns,
   getRealtime,
@@ -48,7 +47,6 @@ import type {
   DashboardLocationsData,
   DashboardDevicesData,
   DashboardReferrersData,
-  DashboardPerformanceData,
   DashboardGoalsData,
   BehaviorData,
 } from '@/lib/api/stats'
@@ -62,7 +60,6 @@ const fetchers = {
   dashboardLocations: (siteId: string, start: string, end: string, filters?: string) => getDashboardLocations(siteId, start, end, undefined, undefined, filters),
   dashboardDevices: (siteId: string, start: string, end: string, filters?: string) => getDashboardDevices(siteId, start, end, undefined, filters),
   dashboardReferrers: (siteId: string, start: string, end: string, filters?: string) => getDashboardReferrers(siteId, start, end, undefined, filters),
-  dashboardPerformance: (siteId: string, start: string, end: string, filters?: string) => getDashboardPerformance(siteId, start, end, filters),
   dashboardGoals: (siteId: string, start: string, end: string, filters?: string) => getDashboardGoals(siteId, start, end, undefined, filters),
   stats: (siteId: string, start: string, end: string, filters?: string) => getStats(siteId, start, end, filters),
   dailyStats: (siteId: string, start: string, end: string, interval: 'hour' | 'day' | 'minute') =>
@@ -252,19 +249,6 @@ export function useDashboardReferrers(siteId: string, start: string, end: string
   return useSWR<DashboardReferrersData>(
     siteId && start && end ? ['dashboardReferrers', siteId, start, end, filters] : null,
     () => fetchers.dashboardReferrers(siteId, start, end, filters),
-    {
-      ...dashboardSWRConfig,
-      refreshInterval: 60 * 1000,
-      dedupingInterval: 10 * 1000,
-    }
-  )
-}
-
-// * Hook for focused dashboard performance data
-export function useDashboardPerformance(siteId: string, start: string, end: string, filters?: string) {
-  return useSWR<DashboardPerformanceData>(
-    siteId && start && end ? ['dashboardPerformance', siteId, start, end, filters] : null,
-    () => fetchers.dashboardPerformance(siteId, start, end, filters),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,

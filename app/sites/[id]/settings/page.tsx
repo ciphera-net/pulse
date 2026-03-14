@@ -74,8 +74,6 @@ export default function SiteSettingsPage() {
     collect_device_info: true,
     collect_geo_data: 'full' as GeoDataLevel,
     collect_screen_resolution: true,
-    // Performance insights setting
-    enable_performance_insights: false,
     // Bot and noise filtering
     filter_bots: true,
     // Hide unknown locations
@@ -135,7 +133,6 @@ export default function SiteSettingsPage() {
       collect_device_info: site.collect_device_info ?? true,
       collect_geo_data: site.collect_geo_data || 'full',
       collect_screen_resolution: site.collect_screen_resolution ?? true,
-      enable_performance_insights: site.enable_performance_insights ?? false,
       filter_bots: site.filter_bots ?? true,
       hide_unknown_locations: site.hide_unknown_locations ?? false,
       data_retention_months: site.data_retention_months ?? 6
@@ -150,7 +147,6 @@ export default function SiteSettingsPage() {
       collect_device_info: site.collect_device_info ?? true,
       collect_geo_data: site.collect_geo_data || 'full',
       collect_screen_resolution: site.collect_screen_resolution ?? true,
-      enable_performance_insights: site.enable_performance_insights ?? false,
       filter_bots: site.filter_bots ?? true,
       hide_unknown_locations: site.hide_unknown_locations ?? false,
       data_retention_months: site.data_retention_months ?? 6
@@ -423,8 +419,6 @@ export default function SiteSettingsPage() {
         collect_device_info: formData.collect_device_info,
         collect_geo_data: formData.collect_geo_data,
         collect_screen_resolution: formData.collect_screen_resolution,
-        // Performance insights setting
-        enable_performance_insights: formData.enable_performance_insights,
         // Bot and noise filtering
         filter_bots: formData.filter_bots,
         // Hide unknown locations
@@ -443,7 +437,6 @@ export default function SiteSettingsPage() {
         collect_device_info: formData.collect_device_info,
         collect_geo_data: formData.collect_geo_data,
         collect_screen_resolution: formData.collect_screen_resolution,
-        enable_performance_insights: formData.enable_performance_insights,
         filter_bots: formData.filter_bots,
         hide_unknown_locations: formData.hide_unknown_locations,
         data_retention_months: formData.data_retention_months
@@ -511,7 +504,6 @@ export default function SiteSettingsPage() {
     collect_device_info: formData.collect_device_info,
     collect_geo_data: formData.collect_geo_data,
     collect_screen_resolution: formData.collect_screen_resolution,
-    enable_performance_insights: formData.enable_performance_insights,
     filter_bots: formData.filter_bots,
     hide_unknown_locations: formData.hide_unknown_locations,
     data_retention_months: formData.data_retention_months
@@ -1105,30 +1097,6 @@ export default function SiteSettingsPage() {
                             type="checkbox"
                             checked={formData.hide_unknown_locations}
                             onChange={(e) => setFormData({ ...formData, hide_unknown_locations: e.target.checked })}
-                            className="sr-only peer"
-                          />
-                          <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-orange/20 dark:peer-focus:ring-brand-orange/20 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-neutral-600 peer-checked:bg-brand-orange"></div>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Performance Insights Toggle */}
-                  <div className="space-y-4 pt-6 border-t border-neutral-100 dark:border-neutral-800">
-                    <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Performance Insights</h3>
-                    <div className="p-6 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="font-medium text-neutral-900 dark:text-white">Performance Insights (Add-on)</h4>
-                          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
-                            Track Core Web Vitals (LCP, CLS, INP) to monitor site performance
-                          </p>
-                        </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={formData.enable_performance_insights}
-                            onChange={(e) => setFormData({ ...formData, enable_performance_insights: e.target.checked })}
                             className="sr-only peer"
                           />
                           <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-orange/20 dark:peer-focus:ring-brand-orange/20 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-neutral-600 peer-checked:bg-brand-orange"></div>
