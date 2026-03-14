@@ -93,11 +93,17 @@ const dashboardSWRConfig = {
   revalidateOnFocus: false,
   // * Revalidate when reconnecting (fresh data after offline)
   revalidateOnReconnect: true,
-  // * Retry failed requests
+  // * Retry failed requests (but not rate limits or auth errors)
   shouldRetryOnError: true,
   errorRetryCount: 3,
   // * Error retry interval with exponential backoff
   errorRetryInterval: 5000,
+  // * Don't retry on 429 (rate limit) or 401/403 (auth) — retrying makes it worse
+  onErrorRetry: (error: any, _key: string, _config: any, revalidate: any, { retryCount }: { retryCount: number }) => {
+    if (error?.status === 429 || error?.status === 401 || error?.status === 403) return
+    if (retryCount >= 3) return
+    setTimeout(() => revalidate({ retryCount }), 5000 * Math.pow(2, retryCount))
+  },
 }
 
 // * Hook for site data (loads once, refreshes rarely)
