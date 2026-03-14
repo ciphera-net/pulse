@@ -18,6 +18,7 @@ export default function SiteNav({ siteId }: SiteNavProps) {
 
   const tabs = [
     { label: 'Dashboard', href: `/sites/${siteId}` },
+    { label: 'Performance', href: `/sites/${siteId}/performance` },
     { label: 'Journeys', href: `/sites/${siteId}/journeys` },
     { label: 'Funnels', href: `/sites/${siteId}/funnels` },
     { label: 'Behavior', href: `/sites/${siteId}/behavior` },

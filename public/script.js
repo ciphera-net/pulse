@@ -94,12 +94,11 @@
 
     // * Only include Web Vitals when performance insights are enabled
     if (performanceInsightsEnabled) {
-      payload.inp = metrics.inp;
-      // * Only include LCP/CLS when the browser actually reported them. Sending 0 overwrites
-      // * the DB before LCP/CLS have fired (they fire late). The backend does partial updates
-      // * and leaves unset fields unchanged.
-      if (lcpObserved) payload.lcp = metrics.lcp;
+      // * Only include metrics the browser actually reported. Sending 0 would either be
+      // * rejected by the backend (LCP/INP must be > 0) or skew averages.
+      if (lcpObserved && metrics.lcp > 0) payload.lcp = metrics.lcp;
       if (clsObserved) payload.cls = metrics.cls;
+      if (metrics.inp > 0) payload.inp = metrics.inp;
     }
 
     // * Skip if nothing to send (no duration and no vitals)

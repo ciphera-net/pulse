@@ -22,9 +22,10 @@ export interface ScreenResolutionStat {
 }
 
 export interface PerformanceStats {
-  lcp: number
-  cls: number
-  inp: number
+  lcp: number | null
+  cls: number | null
+  inp: number | null
+  samples: number
 }
 
 export interface PerformanceByPageStat {
