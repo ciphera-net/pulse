@@ -33,6 +33,8 @@ import { listFunnels, type Funnel } from '@/lib/api/funnels'
 import { getUptimeStatus, type UptimeStatusResponse } from '@/lib/api/uptime'
 import { listGoals, type Goal } from '@/lib/api/goals'
 import { listReportSchedules, type ReportSchedule } from '@/lib/api/report-schedules'
+import { getGSCStatus, getGSCOverview, getGSCTopQueries, getGSCTopPages } from '@/lib/api/gsc'
+import type { GSCStatus, GSCOverview, GSCQueryResponse, GSCPageResponse } from '@/lib/api/gsc'
 import { getSubscription, type SubscriptionDetails } from '@/lib/api/billing'
 import type {
   Stats,
@@ -78,6 +80,10 @@ const fetchers = {
   uptimeStatus: (siteId: string) => getUptimeStatus(siteId),
   goals: (siteId: string) => listGoals(siteId),
   reportSchedules: (siteId: string) => listReportSchedules(siteId),
+  gscStatus: (siteId: string) => getGSCStatus(siteId),
+  gscOverview: (siteId: string, start: string, end: string) => getGSCOverview(siteId, start, end),
+  gscTopQueries: (siteId: string, start: string, end: string, limit: number, offset: number) => getGSCTopQueries(siteId, start, end, limit, offset),
+  gscTopPages: (siteId: string, start: string, end: string, limit: number, offset: number) => getGSCTopPages(siteId, start, end, limit, offset),
   subscription: () => getSubscription(),
 }
 
@@ -394,6 +400,46 @@ export function useReportSchedules(siteId: string) {
       refreshInterval: 60 * 1000,
       dedupingInterval: 10 * 1000,
     }
+  )
+}
+
+// * Hook for GSC connection status
+export function useGSCStatus(siteId: string) {
+  return useSWR<GSCStatus>(
+    siteId ? ['gscStatus', siteId] : null,
+    () => fetchers.gscStatus(siteId),
+    {
+      ...dashboardSWRConfig,
+      refreshInterval: 60 * 1000,
+      dedupingInterval: 30 * 1000,
+    }
+  )
+}
+
+// * Hook for GSC overview metrics (clicks, impressions, CTR, position)
+export function useGSCOverview(siteId: string, start: string, end: string) {
+  return useSWR<GSCOverview>(
+    siteId && start && end ? ['gscOverview', siteId, start, end] : null,
+    () => fetchers.gscOverview(siteId, start, end),
+    dashboardSWRConfig
+  )
+}
+
+// * Hook for GSC top queries
+export function useGSCTopQueries(siteId: string, start: string, end: string, limit = 50, offset = 0) {
+  return useSWR<GSCQueryResponse>(
+    siteId && start && end ? ['gscTopQueries', siteId, start, end, limit, offset] : null,
+    () => fetchers.gscTopQueries(siteId, start, end, limit, offset),
+    dashboardSWRConfig
+  )
+}
+
+// * Hook for GSC top pages
+export function useGSCTopPages(siteId: string, start: string, end: string, limit = 50, offset = 0) {
+  return useSWR<GSCPageResponse>(
+    siteId && start && end ? ['gscTopPages', siteId, start, end, limit, offset] : null,
+    () => fetchers.gscTopPages(siteId, start, end, limit, offset),
+    dashboardSWRConfig
   )
 }
 
