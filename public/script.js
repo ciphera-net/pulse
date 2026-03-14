@@ -39,6 +39,9 @@
   let clsObserved = false;
   let performanceInsightsEnabled = false;
 
+  // * Time-on-page tracking: records when the current pageview started
+  var pageStartTime = 0;
+
   // * Minimal Web Vitals Observer
   function observeMetrics() {
     try {
@@ -79,16 +82,30 @@
   }
 
   function sendMetrics() {
-    if (!performanceInsightsEnabled || !currentEventId) return;
+    if (!currentEventId) return;
 
-    // * Only include LCP/CLS when the browser actually reported them. Sending 0 overwrites
-    // * the DB before LCP/CLS have fired (they fire late). The backend does partial updates
-    // * and leaves unset fields unchanged.
-    const payload = { event_id: currentEventId, inp: metrics.inp };
-    if (lcpObserved) payload.lcp = metrics.lcp;
-    if (clsObserved) payload.cls = metrics.cls;
+    // * Calculate time-on-page in seconds (always sent, even without performance insights)
+    var durationSec = pageStartTime > 0 ? Math.round((Date.now() - pageStartTime) / 1000) : 0;
 
-    const data = JSON.stringify(payload);
+    var payload = { event_id: currentEventId };
+
+    // * Always include duration if we have a valid measurement
+    if (durationSec > 0) payload.duration = durationSec;
+
+    // * Only include Web Vitals when performance insights are enabled
+    if (performanceInsightsEnabled) {
+      payload.inp = metrics.inp;
+      // * Only include LCP/CLS when the browser actually reported them. Sending 0 overwrites
+      // * the DB before LCP/CLS have fired (they fire late). The backend does partial updates
+      // * and leaves unset fields unchanged.
+      if (lcpObserved) payload.lcp = metrics.lcp;
+      if (clsObserved) payload.cls = metrics.cls;
+    }
+
+    // * Skip if nothing to send (no duration and no vitals)
+    if (!payload.duration && !performanceInsightsEnabled) return;
+
+    var data = JSON.stringify(payload);
 
     if (navigator.sendBeacon) {
       navigator.sendBeacon(apiUrl + '/api/v1/metrics', new Blob([data], {type: 'application/json'}));
@@ -301,7 +318,7 @@
     }
 
     if (currentEventId) {
-        // * SPA nav: visibilitychange may not fire, so send previous page's metrics now
+        // * SPA nav: visibilitychange may not fire, so send previous page's metrics + duration now
         sendMetrics();
     }
 
@@ -309,6 +326,7 @@
     lcpObserved = false;
     clsObserved = false;
     currentEventId = null;
+    pageStartTime = 0;
     // * Only send external referrer on the first pageview (landing page).
     // * SPA navigations keep document.referrer stale, so clear it after first hit
     // * to avoid inflating traffic source attribution.
@@ -357,6 +375,7 @@
       firstPageviewSent = true;
       if (data && data.id) {
         currentEventId = data.id;
+        pageStartTime = Date.now();
         // * For SPA navigations the browser never emits a new largest-contentful-paint
         // * (LCP is only for full document loads). After the new view has had time to
         // * paint, we record time-from-route-change as an LCP proxy so /products etc.
