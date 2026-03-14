@@ -26,11 +26,15 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
   const { data: overview, isLoading: overviewLoading } = useGSCOverview(siteId, dateRange.start, dateRange.end)
   const { data: queriesData, isLoading: queriesLoading } = useGSCTopQueries(siteId, dateRange.start, dateRange.end, 5, 0)
 
-  // Don't render if GSC is not connected
+  // Don't render if GSC is not connected or no data
   if (!gscStatus?.connected) return null
 
   const isLoading = overviewLoading || queriesLoading
   const queries = queriesData?.queries ?? []
+  const hasData = overview && (overview.total_clicks > 0 || overview.total_impressions > 0)
+
+  // Hide panel entirely if loaded but no data
+  if (!isLoading && !hasData) return null
 
   return (
     <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">

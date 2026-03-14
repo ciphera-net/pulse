@@ -615,11 +615,9 @@ export default function SiteDashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-2 mb-8">
         <Campaigns siteId={siteId} dateRange={dateRange} filters={filtersParam || undefined} onFilter={handleAddFilter} />
-        <SearchPerformance siteId={siteId} dateRange={dateRange} />
-      </div>
-      <div className="mb-8">
         <PeakHours siteId={siteId} dateRange={dateRange} />
       </div>
+      <SearchPerformance siteId={siteId} dateRange={dateRange} />
 
       <div className="mb-8">
         <GoalStats
