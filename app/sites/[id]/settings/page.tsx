@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { updateSite, resetSiteData, deleteSite, type Site, type GeoDataLevel } from '@/lib/api/sites'
 import { createGoal, updateGoal, deleteGoal, type Goal } from '@/lib/api/goals'
 import { createReportSchedule, updateReportSchedule, deleteReportSchedule, testReportSchedule, type ReportSchedule, type CreateReportScheduleRequest, type EmailConfig, type WebhookConfig } from '@/lib/api/report-schedules'
+import { getGSCAuthURL, disconnectGSC } from '@/lib/api/gsc'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { formatDateTime } from '@/lib/utils/formatDate'
@@ -16,7 +17,7 @@ import { Select, Modal, Button } from '@ciphera-net/ui'
 import { APP_URL } from '@/lib/api/client'
 import { generatePrivacySnippet } from '@/lib/utils/privacySnippet'
 import { useUnsavedChanges } from '@/lib/hooks/useUnsavedChanges'
-import { useSite, useGoals, useReportSchedules, useSubscription } from '@/lib/swr/dashboard'
+import { useSite, useGoals, useReportSchedules, useSubscription, useGSCStatus } from '@/lib/swr/dashboard'
 import { getRetentionOptionsForPlan, formatRetentionMonths } from '@/lib/plans'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@/lib/auth/context'
@@ -27,7 +28,7 @@ import {
   AlertTriangleIcon,
   ZapIcon,
 } from '@ciphera-net/ui'
-import { PaperPlaneTilt, Envelope, WebhooksLogo, SpinnerGap, Trash, PencilSimple, Play } from '@phosphor-icons/react'
+import { PaperPlaneTilt, Envelope, WebhooksLogo, SpinnerGap, Trash, PencilSimple, Play, Plugs } from '@phosphor-icons/react'
 
 const TIMEZONES = [
   'UTC',
@@ -56,7 +57,8 @@ export default function SiteSettingsPage() {
 
   const { data: site, isLoading: siteLoading, mutate: mutateSite } = useSite(siteId)
   const [saving, setSaving] = useState(false)
-  const [activeTab, setActiveTab] = useState<'general' | 'visibility' | 'data' | 'goals' | 'reports'>('general')
+  const [activeTab, setActiveTab] = useState<'general' | 'visibility' | 'data' | 'goals' | 'reports' | 'integrations'>('general')
+  const searchParams = useSearchParams()
 
   const [formData, setFormData] = useState({
     name: '',
@@ -93,6 +95,9 @@ export default function SiteSettingsPage() {
 
   // Report schedules
   const { data: reportSchedules = [], isLoading: reportLoading, mutate: mutateReportSchedules } = useReportSchedules(siteId)
+  const { data: gscStatus, mutate: mutateGSCStatus } = useGSCStatus(siteId)
+  const [gscConnecting, setGscConnecting] = useState(false)
+  const [gscDisconnecting, setGscDisconnecting] = useState(false)
   const [reportModalOpen, setReportModalOpen] = useState(false)
   const [editingSchedule, setEditingSchedule] = useState<ReportSchedule | null>(null)
   const [reportSaving, setReportSaving] = useState(false)
@@ -509,6 +514,29 @@ export default function SiteSettingsPage() {
     if (site?.domain) document.title = `Settings · ${site.domain} | Pulse`
   }, [site?.domain])
 
+  // Handle GSC OAuth callback query params
+  useEffect(() => {
+    const gsc = searchParams.get('gsc')
+    if (!gsc) return
+    switch (gsc) {
+      case 'connected':
+        toast.success('Google Search Console connected successfully')
+        mutateGSCStatus()
+        break
+      case 'denied':
+        toast.error('Google authorization was denied')
+        break
+      case 'no_property':
+        toast.error('No matching Search Console property found for this site')
+        break
+      case 'error':
+        toast.error('Failed to connect Google Search Console')
+        break
+    }
+    setActiveTab('integrations')
+    window.history.replaceState({}, '', window.location.pathname)
+  }, [searchParams, mutateGSCStatus])
+
   const showSkeleton = useMinimumLoading(siteLoading && !site)
   const fadeClass = useSkeletonFade(showSkeleton)
 
@@ -522,7 +550,7 @@ export default function SiteSettingsPage() {
           </div>
           <div className="flex flex-col md:flex-row gap-8">
             <nav className="w-full md:w-64 flex-shrink-0 space-y-1">
-              {Array.from({ length: 5 }).map((_, i) => (
+              {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="h-12 animate-pulse rounded-xl bg-neutral-100 dark:bg-neutral-800" />
               ))}
             </nav>
@@ -621,6 +649,19 @@ export default function SiteSettingsPage() {
           >
             <PaperPlaneTilt className="w-5 h-5" />
             Reports
+          </button>
+          <button
+            onClick={() => setActiveTab('integrations')}
+            role="tab"
+            aria-selected={activeTab === 'integrations'}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 ${
+              activeTab === 'integrations'
+                ? 'bg-brand-orange/10 text-brand-orange'
+                : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+            }`}
+          >
+            <Plugs className="w-5 h-5" />
+            Integrations
           </button>
         </nav>
 
@@ -1401,6 +1442,164 @@ export default function SiteSettingsPage() {
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {activeTab === 'integrations' && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">Integrations</h2>
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400">Connect external services to enrich your analytics data.</p>
+                </div>
+
+                {/* Google Search Console */}
+                <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50 p-6">
+                  {!gscStatus?.connected ? (
+                    <div className="space-y-4">
+                      <div className="flex items-start gap-4">
+                        <div className="p-2.5 bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 flex-shrink-0">
+                          <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
+                            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1Z" fill="#4285F4"/>
+                            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23Z" fill="#34A853"/>
+                            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62Z" fill="#FBBC05"/>
+                            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53Z" fill="#EA4335"/>
+                          </svg>
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Google Search Console</h3>
+                          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
+                            See which search queries bring visitors to your site, with impressions, clicks, CTR, and ranking position.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2 p-3 bg-white dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
+                        <svg className="w-4 h-4 text-neutral-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+                        </svg>
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                          Pulse only requests read-only access. Your tokens are encrypted at rest and all data can be fully removed at any time.
+                        </p>
+                      </div>
+                      {canEdit && (
+                        <button
+                          onClick={async () => {
+                            setGscConnecting(true)
+                            try {
+                              const { auth_url } = await getGSCAuthURL(siteId)
+                              window.location.href = auth_url
+                            } catch (error: unknown) {
+                              toast.error(getAuthErrorMessage(error) || 'Failed to start Google authorization')
+                              setGscConnecting(false)
+                            }
+                          }}
+                          disabled={gscConnecting}
+                          className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand-orange text-white text-sm font-medium rounded-xl hover:bg-brand-orange/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 disabled:opacity-50"
+                        >
+                          {gscConnecting && <SpinnerGap className="w-4 h-4 animate-spin" />}
+                          Connect Google Search Console
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-4">
+                          <div className="p-2.5 bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 flex-shrink-0">
+                            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
+                              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1Z" fill="#4285F4"/>
+                              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23Z" fill="#34A853"/>
+                              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62Z" fill="#FBBC05"/>
+                              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53Z" fill="#EA4335"/>
+                            </svg>
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Google Search Console</h3>
+                            <div className="flex items-center gap-2 mt-1.5">
+                              <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${
+                                gscStatus.status === 'active'
+                                  ? 'text-green-600 dark:text-green-400'
+                                  : gscStatus.status === 'syncing'
+                                  ? 'text-amber-600 dark:text-amber-400'
+                                  : 'text-red-600 dark:text-red-400'
+                              }`}>
+                                <span className={`w-2 h-2 rounded-full ${
+                                  gscStatus.status === 'active'
+                                    ? 'bg-green-500'
+                                    : gscStatus.status === 'syncing'
+                                    ? 'bg-amber-500 animate-pulse'
+                                    : 'bg-red-500'
+                                }`} />
+                                {gscStatus.status === 'active' ? 'Connected' : gscStatus.status === 'syncing' ? 'Syncing...' : 'Error'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {gscStatus.google_email && (
+                          <div className="p-3 bg-white dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400">Google Account</p>
+                            <p className="text-sm font-medium text-neutral-900 dark:text-white mt-0.5 truncate">{gscStatus.google_email}</p>
+                          </div>
+                        )}
+                        {gscStatus.gsc_property && (
+                          <div className="p-3 bg-white dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400">Property</p>
+                            <p className="text-sm font-medium text-neutral-900 dark:text-white mt-0.5 truncate">{gscStatus.gsc_property}</p>
+                          </div>
+                        )}
+                        {gscStatus.last_synced_at && (
+                          <div className="p-3 bg-white dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400">Last Synced</p>
+                            <p className="text-sm font-medium text-neutral-900 dark:text-white mt-0.5">
+                              {new Date(gscStatus.last_synced_at).toLocaleString('en-GB')}
+                            </p>
+                          </div>
+                        )}
+                        {gscStatus.created_at && (
+                          <div className="p-3 bg-white dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400">Connected Since</p>
+                            <p className="text-sm font-medium text-neutral-900 dark:text-white mt-0.5">
+                              {new Date(gscStatus.created_at).toLocaleString('en-GB')}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {gscStatus.status === 'error' && gscStatus.error_message && (
+                        <div className="p-3 bg-red-50 dark:bg-red-900/10 rounded-lg border border-red-200 dark:border-red-900/30">
+                          <p className="text-sm text-red-700 dark:text-red-300">{gscStatus.error_message}</p>
+                        </div>
+                      )}
+
+                      {canEdit && (
+                        <div className="pt-2 border-t border-neutral-200 dark:border-neutral-700">
+                          <button
+                            onClick={async () => {
+                              if (!confirm('Disconnect Google Search Console? All search data will be removed from Pulse.')) return
+                              setGscDisconnecting(true)
+                              try {
+                                await disconnectGSC(siteId)
+                                mutateGSCStatus()
+                                toast.success('Google Search Console disconnected')
+                              } catch (error: unknown) {
+                                toast.error(getAuthErrorMessage(error) || 'Failed to disconnect')
+                              } finally {
+                                setGscDisconnecting(false)
+                              }
+                            }}
+                            disabled={gscDisconnecting}
+                            className="inline-flex items-center gap-2 text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors disabled:opacity-50"
+                          >
+                            {gscDisconnecting && <SpinnerGap className="w-4 h-4 animate-spin" />}
+                            Disconnect
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </motion.div>

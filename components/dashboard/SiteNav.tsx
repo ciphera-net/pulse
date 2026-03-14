@@ -21,6 +21,7 @@ export default function SiteNav({ siteId }: SiteNavProps) {
     { label: 'Journeys', href: `/sites/${siteId}/journeys` },
     { label: 'Funnels', href: `/sites/${siteId}/funnels` },
     { label: 'Behavior', href: `/sites/${siteId}/behavior` },
+    { label: 'Search', href: `/sites/${siteId}/search` },
     { label: 'Uptime', href: `/sites/${siteId}/uptime` },
     ...(canEdit ? [{ label: 'Settings', href: `/sites/${siteId}/settings` }] : []),
   ]
