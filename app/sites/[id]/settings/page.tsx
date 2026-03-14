@@ -28,7 +28,7 @@ import {
   AlertTriangleIcon,
   ZapIcon,
 } from '@ciphera-net/ui'
-import { PaperPlaneTilt, Envelope, WebhooksLogo, SpinnerGap, Trash, PencilSimple, Play, Plugs } from '@phosphor-icons/react'
+import { PaperPlaneTilt, Envelope, WebhooksLogo, SpinnerGap, Trash, PencilSimple, Play, Plugs, ShieldCheck } from '@phosphor-icons/react'
 
 const TIMEZONES = [
   'UTC',
@@ -621,7 +621,7 @@ export default function SiteSettingsPage() {
                 : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
             }`}
           >
-            <SettingsIcon className="w-5 h-5" />
+            <ShieldCheck className="w-5 h-5" />
             Data & Privacy
           </button>
           <button
