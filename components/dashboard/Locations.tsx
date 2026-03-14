@@ -14,7 +14,7 @@ const Globe = dynamic(() => import('./Globe'), { ssr: false })
 import { Modal, GlobeIcon } from '@ciphera-net/ui'
 import { ListSkeleton } from '@/components/skeletons'
 import VirtualList from './VirtualList'
-import { ShieldCheck, Detective, Broadcast, FrameCornersIcon } from '@phosphor-icons/react'
+import { ShieldCheck, Detective, Broadcast, MapPin, FrameCornersIcon } from '@phosphor-icons/react'
 import { getCountries, getCities, getRegions } from '@/lib/api/stats'
 import { type DimensionFilter } from '@/lib/filters'
 
@@ -219,6 +219,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
       <div ref={containerRef} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
+            <MapPin className="w-5 h-5 text-neutral-400 dark:text-neutral-500" weight="bold" />
             <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
               Locations
             </h3>

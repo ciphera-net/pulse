@@ -5,7 +5,7 @@ import { logger } from '@/lib/utils/logger'
 import Image from 'next/image'
 import { formatNumber } from '@ciphera-net/ui'
 import { getReferrerDisplayName, getReferrerFavicon, getReferrerIcon, mergeReferrersByDisplayName } from '@/lib/utils/icons'
-import { FrameCornersIcon } from '@phosphor-icons/react'
+import { ArrowSquareOut, FrameCornersIcon } from '@phosphor-icons/react'
 import { Modal, GlobeIcon } from '@ciphera-net/ui'
 import { ListSkeleton } from '@/components/skeletons'
 import VirtualList from './VirtualList'
@@ -89,6 +89,7 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
+            <ArrowSquareOut className="w-5 h-5 text-neutral-400 dark:text-neutral-500" weight="bold" />
             <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
               Referrers
             </h3>
