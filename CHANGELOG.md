@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Improved
 
+- **Actionable empty states.** When a dashboard section has no data yet, you now get a direct action — like "Install tracking script" or "Build a UTM URL" — instead of just passive text. Gets you set up faster.
 - **Animated numbers across the dashboard.** Stats like visitors, pageviews, bounce rate, and visit duration now smoothly count up or down when you switch date ranges, apply filters, or when real-time visitor counts change — instead of just jumping to the new value.
 - **Inline bar charts on dashboard lists.** Pages, referrers, locations, technology, and campaigns now show subtle proportional bars behind each row, making it easier to compare values at a glance without reading numbers.
 - **Redesigned Top Paths.** The Top Paths section on the Journeys page has been completely rebuilt — from bulky cards to a clean, compact list with inline bars that matches the rest of Pulse. Long path sequences are truncated so they stay readable.

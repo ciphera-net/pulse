@@ -6,8 +6,9 @@ import { logger } from '@/lib/utils/logger'
 import { formatNumber } from '@ciphera-net/ui'
 import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
 import { getBrowserIcon, getOSIcon, getDeviceIcon } from '@/lib/utils/icons'
+import Link from 'next/link'
 import { Monitor, DeviceMobile, FrameCornersIcon } from '@phosphor-icons/react'
-import { Modal, GridIcon } from '@ciphera-net/ui'
+import { Modal, GridIcon, ArrowRightIcon } from '@ciphera-net/ui'
 import { ListSkeleton } from '@/components/skeletons'
 import VirtualList from './VirtualList'
 import { getBrowsers, getOS, getDevices, getScreenResolutions } from '@/lib/api/stats'
@@ -223,6 +224,13 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
               <p className="text-sm text-neutral-500 dark:text-neutral-400 max-w-xs">
                 Browser, OS, and device information will appear as visitors arrive.
               </p>
+              <Link
+                href="/installation"
+                className="inline-flex items-center gap-2 text-sm font-medium text-brand-orange hover:text-brand-orange/90 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/20 rounded"
+              >
+                Install tracking script
+                <ArrowRightIcon className="w-4 h-4" />
+              </Link>
             </div>
           )}
         </div>

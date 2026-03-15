@@ -5,8 +5,9 @@ import { logger } from '@/lib/utils/logger'
 import Image from 'next/image'
 import { formatNumber } from '@ciphera-net/ui'
 import { getReferrerDisplayName, getReferrerFavicon, getReferrerIcon, mergeReferrersByDisplayName } from '@/lib/utils/icons'
+import Link from 'next/link'
 import { ArrowSquareOut, FrameCornersIcon } from '@phosphor-icons/react'
-import { Modal, GlobeIcon } from '@ciphera-net/ui'
+import { Modal, GlobeIcon, ArrowRightIcon } from '@ciphera-net/ui'
 import { ListSkeleton } from '@/components/skeletons'
 import VirtualList from './VirtualList'
 import { getTopReferrers, TopReferrer } from '@/lib/api/stats'
@@ -155,6 +156,13 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
               <p className="text-sm text-neutral-500 dark:text-neutral-400 max-w-xs">
                 Traffic sources will appear here when visitors come from external sites.
               </p>
+              <Link
+                href="/installation"
+                className="inline-flex items-center gap-2 text-sm font-medium text-brand-orange hover:text-brand-orange/90 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/20 rounded"
+              >
+                Install tracking script
+                <ArrowRightIcon className="w-4 h-4" />
+              </Link>
             </div>
           )}
         </div>
