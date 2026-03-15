@@ -274,12 +274,19 @@ function JourneyColumn({
           <div
             data-col={column.index}
             data-path="(exit)"
-            className="flex items-center justify-between h-9 px-3 rounded-lg bg-red-500/8 dark:bg-red-500/8"
+            className="flex items-center justify-between w-full relative h-9 px-3 rounded-lg bg-red-500/15 dark:bg-red-500/15"
           >
-            <span className="text-sm text-red-500 dark:text-red-400">
+            <div
+              className="absolute top-0.5 bottom-0.5 left-0.5 rounded-md"
+              style={{
+                width: `calc(100% - 4px)`,
+                backgroundColor: 'rgba(239, 68, 68, 0.15)',
+              }}
+            />
+            <span className="relative text-sm text-red-500 dark:text-red-400 font-medium">
               (exit)
             </span>
-            <span className="text-sm tabular-nums font-semibold text-red-500 dark:text-red-400">
+            <span className="relative text-sm tabular-nums font-semibold text-red-500 dark:text-red-400">
               {exitCount.toLocaleString()}
             </span>
           </div>
