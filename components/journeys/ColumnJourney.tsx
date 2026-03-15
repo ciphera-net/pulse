@@ -185,9 +185,9 @@ function PageRow({
       {/* Background bar */}
       {!isOther && barWidth > 0 && (
         <div
-          className="absolute inset-y-0 left-0 right-0 rounded-lg transition-all origin-left"
+          className="absolute top-0.5 bottom-0.5 left-0.5 rounded-md transition-all"
           style={{
-            transform: `scaleX(${barWidth / 100})`,
+            width: `calc(${barWidth}% - 4px)`,
             backgroundColor: isSelected ? 'rgba(253, 94, 15, 0.15)' : 'rgba(253, 94, 15, 0.08)',
           }}
         />
