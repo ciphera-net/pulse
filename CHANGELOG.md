@@ -8,7 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Improved
 
-- **Redesigned Journeys page.** The depth slider now matches the rest of the UI and goes up to 10 steps. Controls are integrated into the chart card for a cleaner layout, and Top Paths are shown as visual breadcrumb cards instead of a cramped table.
+- **Animated numbers across the dashboard.** Stats like visitors, pageviews, bounce rate, and visit duration now smoothly count up or down when you switch date ranges, apply filters, or when real-time visitor counts change — instead of just jumping to the new value.
+- **Inline bar charts on dashboard lists.** Pages, referrers, locations, technology, and campaigns now show subtle proportional bars behind each row, making it easier to compare values at a glance without reading numbers.
+- **Redesigned Top Paths.** The Top Paths section on the Journeys page has been completely rebuilt — from bulky cards to a clean, compact list with inline bars that matches the rest of Pulse. Long path sequences are truncated so they stay readable.
+- **Redesigned Journeys page.** The depth slider now matches the rest of the UI and goes up to 10 steps. Controls are integrated into the chart card for a cleaner layout.
 - **More reliable visit duration tracking.** Visit duration was silently dropping to 0s for visitors who only viewed one page — especially on mobile or when closing a tab quickly. The tracking script now captures time-on-page more reliably across all browsers, and sessions where duration couldn't be measured are excluded from the average instead of counting as 0s.
 - **More accurate rage click detection.** Rage clicks no longer fire when you triple-click to select text on a page. Previously, selecting a paragraph (a normal 3-click action) was being counted as a rage click, which inflated frustration metrics. Only genuinely frustrated rapid clicking is tracked now.
 - **Fresher CDN data.** BunnyCDN statistics now refresh every 3 hours instead of once a day, so your CDN tab shows much more current bandwidth, request, and cache data.

@@ -1,3 +1,7 @@
+'use client'
+
+import { AnimatedNumber } from '@/components/ui/animated-number'
+
 interface RealtimeVisitorsProps {
   count: number
 }
@@ -14,7 +18,7 @@ export default function RealtimeVisitors({ count }: RealtimeVisitorsProps) {
         <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
       </div>
       <div className="text-3xl font-bold text-neutral-900 dark:text-white">
-        {count}
+        <AnimatedNumber value={count} format={(v) => v.toLocaleString()} />
       </div>
     </div>
   )
