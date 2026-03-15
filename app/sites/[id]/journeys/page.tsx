@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { getDateRange, formatDate } from '@ciphera-net/ui'
 import { Select, DatePicker } from '@ciphera-net/ui'
-import SankeyDiagram from '@/components/journeys/SankeyDiagram'
+import ColumnJourney from '@/components/journeys/ColumnJourney'
 import TopPathsTable from '@/components/journeys/TopPathsTable'
 import { JourneysSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import {
@@ -172,9 +172,9 @@ export default function JourneysPage() {
           </div>
         </div>
 
-        {/* Sankey Diagram */}
+        {/* Journey Columns */}
         <div className="p-6">
-          <SankeyDiagram
+          <ColumnJourney
             transitions={transitionsData?.transitions ?? []}
             totalSessions={totalSessions}
             depth={depth}
