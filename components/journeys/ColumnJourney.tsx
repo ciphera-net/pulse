@@ -64,9 +64,6 @@ function buildColumns(
   const numCols = depth + 1
   const columns: Column[] = []
 
-  // Build a filtered transitions set based on selections
-  // For each column N with a selection, only keep transitions at step_index=N
-  // where from_path matches the selection
   let filteredTransitions = transitions
 
   for (let col = 0; col < numCols - 1; col++) {
@@ -82,14 +79,12 @@ function buildColumns(
     const pageMap = new Map<string, number>()
 
     if (col === 0) {
-      // Column 0: aggregate from_path across step_index=0
       for (const t of filteredTransitions) {
         if (t.step_index === 0) {
           pageMap.set(t.from_path, (pageMap.get(t.from_path) ?? 0) + t.session_count)
         }
       }
     } else {
-      // Column N: aggregate to_path across step_index=N-1
       for (const t of filteredTransitions) {
         if (t.step_index === col - 1) {
           pageMap.set(t.to_path, (pageMap.get(t.to_path) ?? 0) + t.session_count)
@@ -97,12 +92,10 @@ function buildColumns(
       }
     }
 
-    // Sort descending by count
     let pages = Array.from(pageMap.entries())
       .map(([path, sessionCount]) => ({ path, sessionCount }))
       .sort((a, b) => b.sessionCount - a.sessionCount)
 
-    // Cap and merge into (other)
     if (pages.length > MAX_NODES_PER_COLUMN) {
       const kept = pages.slice(0, MAX_NODES_PER_COLUMN)
       const otherCount = pages
@@ -135,23 +128,20 @@ function ColumnHeader({
   color: string
 }) {
   return (
-    <div className="flex items-center gap-2.5 mb-3 px-1">
+    <div className="flex flex-col items-center gap-2 mb-4">
       <span
-        className="flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold text-white shrink-0"
+        className="flex items-center justify-center w-9 h-9 rounded-full text-sm font-bold text-white"
         style={{ backgroundColor: color }}
       >
         {column.index + 1}
       </span>
-      <div className="flex items-baseline gap-1.5 min-w-0">
-        <span className="text-sm font-semibold text-neutral-900 dark:text-white whitespace-nowrap">
-          {column.totalSessions.toLocaleString()}
-        </span>
-        <span className="text-xs text-neutral-500 dark:text-neutral-400 whitespace-nowrap">
-          visitors
+      <div className="flex items-baseline gap-2">
+        <span className="text-sm font-semibold text-neutral-900 dark:text-white">
+          {column.totalSessions.toLocaleString()} visitors
         </span>
         {column.dropOffPercent !== 0 && (
           <span
-            className={`text-xs font-medium whitespace-nowrap ${
+            className={`text-sm font-semibold ${
               column.dropOffPercent < 0 ? 'text-red-500' : 'text-emerald-500'
             }`}
           >
@@ -191,42 +181,39 @@ function PageRow({
       data-path={page.path}
       className={`
         group flex items-center justify-between w-full
-        h-9 px-2 rounded-lg text-left transition-colors
+        px-3 py-2.5 rounded-lg text-left transition-all
         ${isOther ? 'cursor-default' : 'cursor-pointer'}
         ${
           isSelected
-            ? 'bg-brand-orange/10 dark:bg-brand-orange/15 ring-1 ring-brand-orange/30'
+            ? 'bg-neutral-900 dark:bg-white border border-neutral-900 dark:border-white'
             : isOther
-              ? ''
-              : 'hover:bg-neutral-50 dark:hover:bg-neutral-800/50'
+              ? 'border border-neutral-100 dark:border-neutral-800'
+              : 'border border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600 hover:shadow-sm'
         }
       `}
     >
       <span
         className={`flex-1 truncate text-sm ${
-          isOther
-            ? 'italic text-neutral-400 dark:text-neutral-500'
-            : 'text-neutral-900 dark:text-white'
+          isSelected
+            ? 'text-white dark:text-neutral-900 font-medium'
+            : isOther
+              ? 'italic text-neutral-400 dark:text-neutral-500'
+              : 'text-neutral-700 dark:text-neutral-200'
         }`}
       >
         {isOther ? page.path : smartLabel(page.path)}
       </span>
-      <div className="flex items-center gap-2 ml-2 shrink-0">
-        {!isOther && (
-          <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-150">
-            {pct}%
-          </span>
-        )}
-        <span
-          className={`text-xs tabular-nums font-medium ${
-            isOther
+      <span
+        className={`ml-3 shrink-0 text-sm tabular-nums font-semibold ${
+          isSelected
+            ? 'text-white dark:text-neutral-900'
+            : isOther
               ? 'text-neutral-400 dark:text-neutral-500'
-              : 'text-neutral-500 dark:text-neutral-400'
-          }`}
-        >
-          {page.sessionCount.toLocaleString()}
-        </span>
-      </div>
+              : 'text-neutral-900 dark:text-white'
+        }`}
+      >
+        {page.sessionCount.toLocaleString()}
+      </span>
     </button>
   )
 }
@@ -244,7 +231,7 @@ function JourneyColumn({
 }) {
   if (column.pages.length === 0) {
     return (
-      <div className="w-52 shrink-0">
+      <div className="w-60 shrink-0">
         <ColumnHeader column={column} color={color} />
         <div className="flex items-center justify-center h-20 rounded-xl border border-dashed border-neutral-200 dark:border-neutral-700">
           <span className="text-xs text-neutral-400 dark:text-neutral-500">
@@ -256,9 +243,9 @@ function JourneyColumn({
   }
 
   return (
-    <div className="w-52 shrink-0">
+    <div className="w-60 shrink-0">
       <ColumnHeader column={column} color={color} />
-      <div className="space-y-0.5 max-h-[500px] overflow-y-auto">
+      <div className="space-y-1.5 max-h-[500px] overflow-y-auto">
         {column.pages.map((page) => {
           const isOther = page.path === '(other)'
           return (
@@ -315,7 +302,6 @@ function ConnectionLines({
       const nextCol = columns[colIdx + 1]
       if (!nextCol) continue
 
-      // Find the source row element
       const sourceEl = container.querySelector(
         `[data-col="${colIdx}"][data-path="${CSS.escape(selectedPath)}"]`
       ) as HTMLElement | null
@@ -326,7 +312,6 @@ function ConnectionLines({
         sourceRect.top + sourceRect.height / 2 - containerRect.top + container.scrollTop
       const sourceX = sourceRect.right - containerRect.left + container.scrollLeft
 
-      // Find matching transitions
       const relevantTransitions = transitions.filter(
         (t) => t.step_index === colIdx && t.from_path === selectedPath
       )
@@ -371,7 +356,7 @@ function ConnectionLines({
             d={`M ${line.sourceX},${line.sourceY} C ${midX},${line.sourceY} ${midX},${line.destY} ${line.destX},${line.destY}`}
             stroke={line.color}
             strokeWidth={line.weight}
-            strokeOpacity={0.3}
+            strokeOpacity={0.35}
             fill="none"
           />
         )
@@ -409,7 +394,6 @@ export default function ColumnJourney({
 
   const handleSelect = useCallback(
     (colIndex: number, path: string) => {
-      // Column 0 click → set entry path filter (API-level)
       if (colIndex === 0 && onNodeClick) {
         onNodeClick(path)
         return
@@ -417,13 +401,11 @@ export default function ColumnJourney({
 
       setSelections((prev) => {
         const next = new Map(prev)
-        // Toggle: click same page deselects
         if (next.get(colIndex) === path) {
           next.delete(colIndex)
         } else {
           next.set(colIndex, path)
         }
-        // Clear all selections after this column
         for (const key of Array.from(next.keys())) {
           if (key > colIndex) next.delete(key)
         }
@@ -456,7 +438,7 @@ export default function ColumnJourney({
         ref={containerRef}
         className="overflow-x-auto -mx-6 px-6 pb-2 relative"
       >
-        <div className="flex gap-6 min-w-fit py-2">
+        <div className="flex gap-8 min-w-fit py-2">
           {columns.map((col) => (
             <JourneyColumn
               key={col.index}
