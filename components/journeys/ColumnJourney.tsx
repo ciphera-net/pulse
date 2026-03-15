@@ -115,41 +115,29 @@ function buildColumns(
 
 function ColumnHeader({
   column,
-  color,
 }: {
   column: Column
-  color: string
 }) {
   return (
-    <div className="flex flex-col items-center gap-1.5 mb-3">
-      <span
-        className="flex items-center justify-center w-9 h-9 rounded-full text-sm font-bold text-white"
-        style={{ backgroundColor: color }}
-      >
-        {column.index + 1}
+    <div className="flex flex-col items-center gap-0.5 mb-4">
+      <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
+        Step {column.index + 1}
       </span>
-      <div className="flex flex-col items-center">
-        <span className="text-lg font-bold text-neutral-900 dark:text-white tabular-nums">
-          {column.totalSessions.toLocaleString()}
+      <div className="flex items-baseline gap-1.5">
+        <span className="text-sm font-semibold text-neutral-900 dark:text-white tabular-nums">
+          {column.totalSessions.toLocaleString()} visitors
         </span>
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-neutral-500 dark:text-neutral-400">
-            visitors
+        {column.dropOffPercent !== 0 && (
+          <span
+            className={`text-xs font-medium ${
+              column.dropOffPercent < 0 ? 'text-red-500' : 'text-emerald-500'
+            }`}
+          >
+            {column.dropOffPercent > 0 ? '+' : ''}
+            {column.dropOffPercent}%
           </span>
-          {column.dropOffPercent !== 0 && (
-            <span
-              className={`text-xs font-semibold ${
-                column.dropOffPercent < 0 ? 'text-red-500' : 'text-emerald-500'
-              }`}
-            >
-              {column.dropOffPercent > 0 ? '+' : ''}
-              {column.dropOffPercent}%
-            </span>
-          )}
-        </div>
+        )}
       </div>
-      {/* Colored connector line from header to cards */}
-      <div className="w-px h-3" style={{ backgroundColor: color, opacity: 0.3 }} />
     </div>
   )
 }
@@ -157,7 +145,6 @@ function ColumnHeader({
 function PageRow({
   page,
   colIndex,
-  colColor,
   columnTotal,
   maxCount,
   isSelected,
@@ -166,13 +153,13 @@ function PageRow({
 }: {
   page: ColumnPage
   colIndex: number
-  colColor: string
   columnTotal: number
   maxCount: number
   isSelected: boolean
   isOther: boolean
   onClick: () => void
 }) {
+  const pct = columnTotal > 0 ? Math.round((page.sessionCount / columnTotal) * 100) : 0
   const barWidth = maxCount > 0 ? (page.sessionCount / maxCount) * 100 : 0
 
   return (
@@ -185,29 +172,24 @@ function PageRow({
       data-path={page.path}
       className={`
         group flex items-center justify-between w-full relative overflow-hidden
-        px-3 py-2.5 rounded-lg text-left transition-all
+        h-9 px-2 -mx-2 rounded-lg text-left transition-colors
         ${isOther ? 'cursor-default' : 'cursor-pointer'}
-        ${
-          isSelected
-            ? 'border-l-[3px] border border-neutral-200 dark:border-neutral-700'
-            : isOther
-              ? 'border border-neutral-100 dark:border-neutral-800'
-              : 'border border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600 hover:shadow-sm'
+        ${isSelected
+          ? 'bg-brand-orange/10 dark:bg-brand-orange/10'
+          : isOther
+            ? ''
+            : 'hover:bg-neutral-50 dark:hover:bg-neutral-800/50'
         }
       `}
-      style={isSelected ? { borderLeftColor: colColor, backgroundColor: `${colColor}08` } : undefined}
     >
       {/* Background bar */}
-      {!isOther && !isSelected && (
+      {!isOther && (
         <div
-          className="absolute inset-y-0 left-0 bg-neutral-100 dark:bg-neutral-800/50 transition-all"
-          style={{ width: `${barWidth}%` }}
-        />
-      )}
-      {isSelected && (
-        <div
-          className="absolute inset-y-0 left-0 transition-all"
-          style={{ width: `${barWidth}%`, backgroundColor: `${colColor}15` }}
+          className="absolute inset-y-0 left-0 rounded-lg transition-all"
+          style={{
+            width: `${barWidth}%`,
+            backgroundColor: isSelected ? 'rgba(253, 94, 15, 0.15)' : 'rgba(253, 94, 15, 0.08)',
+          }}
         />
       )}
       <span
@@ -216,44 +198,47 @@ function PageRow({
             ? 'text-neutral-900 dark:text-white font-medium'
             : isOther
               ? 'italic text-neutral-400 dark:text-neutral-500'
-              : 'text-neutral-700 dark:text-neutral-200'
+              : 'text-neutral-900 dark:text-white'
         }`}
       >
         {isOther ? page.path : smartLabel(page.path)}
       </span>
-      <span
-        className={`relative ml-3 shrink-0 text-xs tabular-nums font-semibold px-1.5 py-0.5 rounded ${
-          isSelected
-            ? 'text-neutral-900 dark:text-white bg-white/60 dark:bg-neutral-800/60'
-            : isOther
+      <div className="relative flex items-center gap-2 ml-2 shrink-0">
+        {!isOther && (
+          <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+            {pct}%
+          </span>
+        )}
+        <span
+          className={`text-sm tabular-nums font-semibold ${
+            isOther
               ? 'text-neutral-400 dark:text-neutral-500'
-              : 'text-neutral-600 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-800 group-hover:bg-neutral-200 dark:group-hover:bg-neutral-700'
-        }`}
-      >
-        {page.sessionCount.toLocaleString()}
-      </span>
+              : 'text-neutral-600 dark:text-neutral-400'
+          }`}
+        >
+          {page.sessionCount.toLocaleString()}
+        </span>
+      </div>
     </button>
   )
 }
 
 function JourneyColumn({
   column,
-  color,
   selectedPath,
   exitCount,
   onSelect,
 }: {
   column: Column
-  color: string
   selectedPath: string | undefined
   exitCount: number
   onSelect: (path: string) => void
 }) {
   if (column.pages.length === 0 && exitCount === 0) {
     return (
-      <div className="w-60 shrink-0">
-        <ColumnHeader column={column} color={color} />
-        <div className="flex items-center justify-center h-20 rounded-xl border border-dashed border-neutral-200 dark:border-neutral-700">
+      <div className="w-56 shrink-0">
+        <ColumnHeader column={column} />
+        <div className="flex items-center justify-center h-16 px-2">
           <span className="text-xs text-neutral-400 dark:text-neutral-500">
             No onward traffic
           </span>
@@ -265,9 +250,9 @@ function JourneyColumn({
   const maxCount = Math.max(...column.pages.map((p) => p.sessionCount), 0)
 
   return (
-    <div className="w-60 shrink-0">
-      <ColumnHeader column={column} color={color} />
-      <div className="space-y-1.5 max-h-[500px] overflow-y-auto">
+    <div className="w-56 shrink-0 px-2">
+      <ColumnHeader column={column} />
+      <div className="space-y-0.5 max-h-[500px] overflow-y-auto">
         {column.pages.map((page) => {
           const isOther = page.path === '(other)'
           return (
@@ -275,7 +260,6 @@ function JourneyColumn({
               key={page.path}
               page={page}
               colIndex={column.index}
-              colColor={color}
               columnTotal={column.totalSessions}
               maxCount={maxCount}
               isSelected={selectedPath === page.path}
@@ -290,12 +274,12 @@ function JourneyColumn({
           <div
             data-col={column.index}
             data-path="(exit)"
-            className="flex items-center justify-between w-full px-3 py-2.5 rounded-lg border border-red-300 dark:border-red-500/40 bg-red-50 dark:bg-red-500/10"
+            className="flex items-center justify-between h-9 px-2 -mx-2 rounded-lg bg-red-50 dark:bg-red-500/10"
           >
-            <span className="text-sm text-red-600 dark:text-red-400">
+            <span className="text-sm text-red-500 dark:text-red-400">
               (exit)
             </span>
-            <span className="ml-3 shrink-0 text-sm tabular-nums font-semibold text-red-600 dark:text-red-400">
+            <span className="text-sm tabular-nums font-semibold text-red-500 dark:text-red-400">
               {exitCount.toLocaleString()}
             </span>
           </div>
@@ -518,11 +502,10 @@ export default function ColumnJourney({
             return (
               <Fragment key={col.index}>
                 {i > 0 && (
-                  <div className="w-px shrink-0 mx-4 bg-neutral-200 dark:bg-neutral-700" />
+                  <div className="w-px shrink-0 bg-neutral-100 dark:bg-neutral-800" />
                 )}
                 <JourneyColumn
                   column={col}
-                  color={colorForColumn(col.index)}
                   selectedPath={selections.get(col.index)}
                   exitCount={exitCount}
                   onSelect={(path) => handleSelect(col.index, path)}
