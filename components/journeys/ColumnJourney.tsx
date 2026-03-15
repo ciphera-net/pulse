@@ -171,7 +171,7 @@ function PageRow({
       data-col={colIndex}
       data-path={page.path}
       className={`
-        group flex items-center justify-between w-full relative overflow-hidden
+        group flex items-center justify-between w-full relative
         h-9 px-2 -mx-2 rounded-lg text-left transition-colors
         ${isOther ? 'cursor-default' : 'cursor-pointer'}
         ${isSelected
