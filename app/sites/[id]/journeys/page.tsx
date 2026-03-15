@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { getDateRange, formatDate } from '@ciphera-net/ui'
 import { Select, DatePicker } from '@ciphera-net/ui'
@@ -38,13 +38,20 @@ export default function JourneysPage() {
   const [dateRange, setDateRange] = useState(() => getDateRange(30))
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
   const [depth, setDepth] = useState(10)
-  const [displayDepth, setDisplayDepth] = useState(10)
+  const [debouncedDepth, setDebouncedDepth] = useState(10)
   const [entryPath, setEntryPath] = useState('')
+  const depthTimer = useRef<ReturnType<typeof setTimeout>>(null)
 
-  const sliderIndex = DEPTH_STEPS.indexOf(displayDepth)
+  const sliderIndex = DEPTH_STEPS.indexOf(depth)
+
+  function handleDepthChange(newDepth: number) {
+    setDepth(newDepth)
+    if (depthTimer.current) clearTimeout(depthTimer.current)
+    depthTimer.current = setTimeout(() => setDebouncedDepth(newDepth), 300)
+  }
 
   const { data: transitionsData, isLoading: transitionsLoading } = useJourneyTransitions(
-    siteId, dateRange.start, dateRange.end, depth, 1, entryPath || undefined
+    siteId, dateRange.start, dateRange.end, debouncedDepth, 1, entryPath || undefined
   )
   const { data: topPaths, isLoading: topPathsLoading } = useJourneyTopPaths(
     siteId, dateRange.start, dateRange.end, 20, 1, entryPath || undefined
@@ -132,7 +139,7 @@ export default function JourneysPage() {
               <div className="flex justify-between text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-3">
                 <span>2 steps</span>
                 <span className="text-brand-orange font-bold">
-                  {displayDepth} steps deep
+                  {depth} steps deep
                 </span>
                 <span>10 steps</span>
               </div>
@@ -142,11 +149,9 @@ export default function JourneysPage() {
                 max={DEPTH_STEPS.length - 1}
                 step="1"
                 value={sliderIndex}
-                onChange={(e) => setDisplayDepth(DEPTH_STEPS[parseInt(e.target.value)])}
-                onMouseUp={(e) => setDepth(DEPTH_STEPS[parseInt((e.target as HTMLInputElement).value)])}
-                onTouchEnd={(e) => setDepth(DEPTH_STEPS[parseInt((e.target as HTMLInputElement).value)])}
+                onChange={(e) => handleDepthChange(DEPTH_STEPS[parseInt(e.target.value)])}
                 aria-label="Journey depth"
-                aria-valuetext={`${displayDepth} steps deep`}
+                aria-valuetext={`${depth} steps deep`}
                 className="w-full h-2 bg-neutral-200 rounded-lg appearance-none cursor-pointer dark:bg-neutral-700 accent-brand-orange focus:outline-none"
               />
             </div>
@@ -160,9 +165,9 @@ export default function JourneysPage() {
                 onChange={(value) => setEntryPath(value)}
                 options={entryPointOptions}
               />
-              {(displayDepth !== 10 || entryPath) && (
+              {(depth !== 10 || entryPath) && (
                 <button
-                  onClick={() => { setDepth(10); setDisplayDepth(10); setEntryPath('') }}
+                  onClick={() => { handleDepthChange(10); setEntryPath('') }}
                   className="text-sm text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors whitespace-nowrap"
                 >
                   Reset
@@ -177,7 +182,7 @@ export default function JourneysPage() {
           <ColumnJourney
             transitions={transitionsData?.transitions ?? []}
             totalSessions={totalSessions}
-            depth={depth}
+            depth={debouncedDepth}
             onNodeClick={(path) => setEntryPath(path)}
           />
         </div>
