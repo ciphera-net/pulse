@@ -35,8 +35,8 @@ export default function SiteNav({ siteId }: SiteNavProps) {
   }
 
   return (
-    <div className="border-b border-neutral-200 dark:border-neutral-800 mb-6 overflow-x-auto overflow-y-visible scrollbar-hide">
-      <nav className="flex gap-1 min-w-max" role="tablist" aria-label="Site navigation" onKeyDown={handleTabKeyDown}>
+    <div className="mb-6 overflow-x-auto scrollbar-hide">
+      <nav className="flex gap-1 min-w-max border-b border-neutral-200 dark:border-neutral-800" role="tablist" aria-label="Site navigation" onKeyDown={handleTabKeyDown}>
         {tabs.map((tab) => (
           <Link
             key={tab.href}
