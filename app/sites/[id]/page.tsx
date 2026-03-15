@@ -554,7 +554,7 @@ export default function SiteDashboardPage() {
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2 mb-8">
+      <div className="grid gap-6 lg:grid-cols-2 mb-8 [&>*]:min-w-0">
         <ContentStats
           topPages={dashboard?.top_pages ?? []}
           entryPages={dashboard?.entry_pages ?? []}
@@ -574,7 +574,7 @@ export default function SiteDashboardPage() {
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2 mb-8">
+      <div className="grid gap-6 lg:grid-cols-2 mb-8 [&>*]:min-w-0">
         <Locations
           countries={dashboard?.countries ?? []}
           cities={dashboard?.cities ?? []}
@@ -597,11 +597,11 @@ export default function SiteDashboardPage() {
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2 mb-8">
+      <div className="grid gap-6 lg:grid-cols-2 mb-8 [&>*]:min-w-0">
         <Campaigns siteId={siteId} dateRange={dateRange} filters={filtersParam || undefined} onFilter={handleAddFilter} />
         <PeakHours siteId={siteId} dateRange={dateRange} />
       </div>
-      <div className="grid gap-6 lg:grid-cols-2 mb-8">
+      <div className="grid gap-6 lg:grid-cols-2 mb-8 [&>*]:min-w-0">
         <SearchPerformance siteId={siteId} dateRange={dateRange} />
         <GoalStats
           goalCounts={(dashboard?.goal_counts ?? []).filter(g => !/^scroll_\d+$/.test(g.event_name))}
