@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { TreeStructure } from '@phosphor-icons/react'
 import type { PathTransition } from '@/lib/api/journeys'
 
@@ -443,7 +443,6 @@ export default function ColumnJourney({
   onNodeClick,
 }: ColumnJourneyProps) {
   const [selections, setSelections] = useState<Map<number, string>>(new Map())
-  const [canScrollRight, setCanScrollRight] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
   // Clear selections when data changes
@@ -462,25 +461,6 @@ export default function ColumnJourney({
     [transitions, depth]
   )
 
-  // Check if there's scrollable content to the right
-  useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-
-    function check() {
-      if (!el) return
-      setCanScrollRight(el.scrollWidth - el.scrollLeft - el.clientWidth > 1)
-    }
-
-    check()
-    el.addEventListener('scroll', check, { passive: true })
-    const ro = new ResizeObserver(check)
-    ro.observe(el)
-    return () => {
-      el.removeEventListener('scroll', check)
-      ro.disconnect()
-    }
-  }, [columns])
 
   const handleSelect = useCallback(
     (colIndex: number, path: string) => {
@@ -560,10 +540,6 @@ export default function ColumnJourney({
           transitions={transitions}
         />
       </div>
-      {/* Scroll fade indicator */}
-      {canScrollRight && (
-        <div className="absolute top-0 right-0 bottom-0 w-10 pointer-events-none bg-gradient-to-l from-white/90 dark:from-neutral-900/90 to-transparent" />
-      )}
     </div>
   )
 }
