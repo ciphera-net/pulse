@@ -37,21 +37,20 @@
   // * Time-on-page tracking: records when the current pageview started
   var pageStartTime = 0;
 
+  var metricsSent = false;
+
   function sendMetrics() {
-    if (!currentEventId) return;
+    if (!currentEventId || metricsSent) return;
 
     // * Calculate time-on-page in seconds
     var durationSec = pageStartTime > 0 ? Math.round((Date.now() - pageStartTime) / 1000) : 0;
 
-    var payload = { event_id: currentEventId };
-
-    // * Always include duration if we have a valid measurement
-    if (durationSec > 0) payload.duration = durationSec;
-
     // * Skip if nothing to send (no duration)
-    if (!payload.duration) return;
+    if (durationSec <= 0) return;
 
-    var data = JSON.stringify(payload);
+    metricsSent = true;
+
+    var data = JSON.stringify({ event_id: currentEventId, duration: durationSec });
 
     if (navigator.sendBeacon) {
       navigator.sendBeacon(apiUrl + '/api/v1/metrics', new Blob([data], {type: 'application/json'}));
@@ -66,12 +65,12 @@
   }
 
   // * Send metrics when user leaves or hides the page
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') {
-      // * Delay slightly so duration measurement captures final moment
-      setTimeout(sendMetrics, 150);
-    }
+  // * visibilitychange is the primary signal, pagehide is the fallback
+  // * for browsers/scenarios where visibilitychange doesn't fire (tab close, mobile app kill)
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'hidden') sendMetrics();
   });
+  window.addEventListener('pagehide', sendMetrics);
 
   // * Memory cache for session ID (fallback if storage is unavailable)
   let cachedSessionId = null;
@@ -312,6 +311,7 @@
       if (data && data.id) {
         currentEventId = data.id;
         pageStartTime = Date.now();
+        metricsSent = false;
       }
     }).catch(() => {
       // * Silently fail - don't interrupt user experience
