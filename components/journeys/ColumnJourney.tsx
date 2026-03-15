@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { TreeStructure } from '@phosphor-icons/react'
 import type { PathTransition } from '@/lib/api/journeys'
 
@@ -121,28 +121,35 @@ function ColumnHeader({
   color: string
 }) {
   return (
-    <div className="flex flex-col items-center gap-2 mb-4">
+    <div className="flex flex-col items-center gap-1.5 mb-3">
       <span
         className="flex items-center justify-center w-9 h-9 rounded-full text-sm font-bold text-white"
         style={{ backgroundColor: color }}
       >
         {column.index + 1}
       </span>
-      <div className="flex items-baseline gap-2">
-        <span className="text-sm font-semibold text-neutral-900 dark:text-white">
-          {column.totalSessions.toLocaleString()} visitors
+      <div className="flex flex-col items-center">
+        <span className="text-lg font-bold text-neutral-900 dark:text-white tabular-nums">
+          {column.totalSessions.toLocaleString()}
         </span>
-        {column.dropOffPercent !== 0 && (
-          <span
-            className={`text-sm font-semibold ${
-              column.dropOffPercent < 0 ? 'text-red-500' : 'text-emerald-500'
-            }`}
-          >
-            {column.dropOffPercent > 0 ? '+' : ''}
-            {column.dropOffPercent}%
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-neutral-500 dark:text-neutral-400">
+            visitors
           </span>
-        )}
+          {column.dropOffPercent !== 0 && (
+            <span
+              className={`text-xs font-semibold ${
+                column.dropOffPercent < 0 ? 'text-red-500' : 'text-emerald-500'
+              }`}
+            >
+              {column.dropOffPercent > 0 ? '+' : ''}
+              {column.dropOffPercent}%
+            </span>
+          )}
+        </div>
       </div>
+      {/* Colored connector line from header to cards */}
+      <div className="w-px h-3" style={{ backgroundColor: color, opacity: 0.3 }} />
     </div>
   )
 }
@@ -150,19 +157,23 @@ function ColumnHeader({
 function PageRow({
   page,
   colIndex,
+  colColor,
   columnTotal,
+  maxCount,
   isSelected,
   isOther,
   onClick,
 }: {
   page: ColumnPage
   colIndex: number
+  colColor: string
   columnTotal: number
+  maxCount: number
   isSelected: boolean
   isOther: boolean
   onClick: () => void
 }) {
-  const pct = columnTotal > 0 ? Math.round((page.sessionCount / columnTotal) * 100) : 0
+  const barWidth = maxCount > 0 ? (page.sessionCount / maxCount) * 100 : 0
 
   return (
     <button
@@ -173,22 +184,36 @@ function PageRow({
       data-col={colIndex}
       data-path={page.path}
       className={`
-        group flex items-center justify-between w-full
+        group flex items-center justify-between w-full relative overflow-hidden
         px-3 py-2.5 rounded-lg text-left transition-all
         ${isOther ? 'cursor-default' : 'cursor-pointer'}
         ${
           isSelected
-            ? 'bg-neutral-900 dark:bg-white border border-neutral-900 dark:border-white'
+            ? 'border-l-[3px] border border-neutral-200 dark:border-neutral-700'
             : isOther
               ? 'border border-neutral-100 dark:border-neutral-800'
               : 'border border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600 hover:shadow-sm'
         }
       `}
+      style={isSelected ? { borderLeftColor: colColor, backgroundColor: `${colColor}08` } : undefined}
     >
+      {/* Background bar */}
+      {!isOther && !isSelected && (
+        <div
+          className="absolute inset-y-0 left-0 bg-neutral-100 dark:bg-neutral-800/50 transition-all"
+          style={{ width: `${barWidth}%` }}
+        />
+      )}
+      {isSelected && (
+        <div
+          className="absolute inset-y-0 left-0 transition-all"
+          style={{ width: `${barWidth}%`, backgroundColor: `${colColor}15` }}
+        />
+      )}
       <span
-        className={`flex-1 truncate text-sm ${
+        className={`relative flex-1 truncate text-sm ${
           isSelected
-            ? 'text-white dark:text-neutral-900 font-medium'
+            ? 'text-neutral-900 dark:text-white font-medium'
             : isOther
               ? 'italic text-neutral-400 dark:text-neutral-500'
               : 'text-neutral-700 dark:text-neutral-200'
@@ -197,12 +222,12 @@ function PageRow({
         {isOther ? page.path : smartLabel(page.path)}
       </span>
       <span
-        className={`ml-3 shrink-0 text-sm tabular-nums font-semibold ${
+        className={`relative ml-3 shrink-0 text-xs tabular-nums font-semibold px-1.5 py-0.5 rounded ${
           isSelected
-            ? 'text-white dark:text-neutral-900'
+            ? 'text-neutral-900 dark:text-white bg-white/60 dark:bg-neutral-800/60'
             : isOther
               ? 'text-neutral-400 dark:text-neutral-500'
-              : 'text-neutral-900 dark:text-white'
+              : 'text-neutral-600 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-800 group-hover:bg-neutral-200 dark:group-hover:bg-neutral-700'
         }`}
       >
         {page.sessionCount.toLocaleString()}
@@ -237,6 +262,8 @@ function JourneyColumn({
     )
   }
 
+  const maxCount = Math.max(...column.pages.map((p) => p.sessionCount), 0)
+
   return (
     <div className="w-60 shrink-0">
       <ColumnHeader column={column} color={color} />
@@ -248,7 +275,9 @@ function JourneyColumn({
               key={page.path}
               page={page}
               colIndex={column.index}
+              colColor={color}
               columnTotal={column.totalSessions}
+              maxCount={maxCount}
               isSelected={selectedPath === page.path}
               isOther={isOther}
               onClick={() => {
@@ -499,23 +528,28 @@ export default function ColumnJourney({
         ref={containerRef}
         className="overflow-x-auto -mx-6 px-6 pb-2 relative"
       >
-        <div className="flex gap-8 min-w-fit py-2">
-          {columns.map((col) => {
-            // Show exit card in this column if the previous column has a selection
+        <div className="flex min-w-fit py-2">
+          {columns.map((col, i) => {
             const prevSelection = selections.get(col.index - 1)
             const exitCount = prevSelection
               ? getExitCount(col.index - 1, prevSelection, columns, transitions)
               : 0
 
             return (
-              <JourneyColumn
-                key={col.index}
-                column={col}
-                color={colorForColumn(col.index)}
-                selectedPath={selections.get(col.index)}
-                exitCount={exitCount}
-                onSelect={(path) => handleSelect(col.index, path)}
-              />
+              <Fragment key={col.index}>
+                {i > 0 && (
+                  <div className="flex items-center justify-center w-8 shrink-0 pt-16">
+                    <div className="w-full border-t border-dashed border-neutral-200 dark:border-neutral-700" />
+                  </div>
+                )}
+                <JourneyColumn
+                  column={col}
+                  color={colorForColumn(col.index)}
+                  selectedPath={selections.get(col.index)}
+                  exitCount={exitCount}
+                  onSelect={(path) => handleSelect(col.index, path)}
+                />
+              </Fragment>
             )
           })}
         </div>
