@@ -145,7 +145,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
               </button>
             )}
           </div>
-          <div className="flex gap-1" role="tablist" aria-label="Technology view tabs" onKeyDown={handleTabKeyDown}>
+          <div className="flex gap-1 overflow-x-auto scrollbar-hide" role="tablist" aria-label="Technology view tabs" onKeyDown={handleTabKeyDown}>
             {(['browsers', 'os', 'devices', 'screens'] as Tab[]).map((tab) => (
               <button
                 key={tab}

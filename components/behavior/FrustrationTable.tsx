@@ -81,7 +81,7 @@ function Row({
   return (
     <div className="flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0 overflow-hidden">
           <SelectorCell selector={item.selector} />
           <span
             className="text-xs text-neutral-400 dark:text-neutral-500 truncate shrink-0"

@@ -152,7 +152,7 @@ export default function NotificationCenter() {
           id="notification-dropdown"
           role="dialog"
           aria-label="Notifications"
-          className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl overflow-hidden z-[100]"
+          className="fixed left-4 right-4 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl overflow-hidden z-[100]"
         >
           <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200 dark:border-neutral-700">
             <h3 className="font-semibold text-neutral-900 dark:text-white">Notifications</h3>

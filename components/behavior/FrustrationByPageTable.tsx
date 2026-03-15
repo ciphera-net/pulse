@@ -45,7 +45,7 @@ export default function FrustrationByPageTable({ pages, loading }: FrustrationBy
       {loading ? (
         <SkeletonRows />
       ) : hasData ? (
-        <div>
+        <div className="overflow-x-auto -mx-6 px-6">
           {/* Header */}
           <div className="flex items-center justify-between px-2 -mx-2 mb-2 text-xs font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
             <span>Page</span>
@@ -72,7 +72,7 @@ export default function FrustrationByPageTable({ pages, loading }: FrustrationBy
                     style={{ width: `${barWidth}%` }}
                   />
                   <span
-                    className="relative text-sm text-neutral-900 dark:text-white truncate max-w-[300px]"
+                    className="relative text-sm text-neutral-900 dark:text-white truncate max-w-[200px] sm:max-w-[300px]"
                     title={page.page_path}
                   >
                     {page.page_path}
