@@ -155,13 +155,19 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
           ) : hasData ? (
             <>
               {displayedData.map((item) => {
+                const maxVis = displayedData[0]?.visitors ?? 0
+                const barWidth = maxVis > 0 ? (item.visitors / maxVis) * 100 : 0
                 return (
                   <div
                     key={`${item.source}|${item.medium}|${item.campaign}`}
                     onClick={() => onFilter?.({ dimension: 'utm_source', operator: 'is', values: [item.source] })}
-                    className={`flex items-center justify-between py-1.5 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors${onFilter ? ' cursor-pointer' : ''}`}
+                    className={`relative flex items-center justify-between py-1.5 group hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 rounded-lg px-2 -mx-2 transition-colors${onFilter ? ' cursor-pointer' : ''}`}
                   >
-                    <div className="flex-1 text-neutral-900 dark:text-white flex items-center gap-3 min-w-0">
+                    <div
+                      className="absolute inset-y-0.5 left-0.5 bg-brand-orange/5 dark:bg-brand-orange/10 rounded-md transition-all"
+                      style={{ width: `${barWidth}%` }}
+                    />
+                    <div className="relative flex-1 text-neutral-900 dark:text-white flex items-center gap-3 min-w-0">
                       {renderSourceIcon(item.source)}
                       <div className="min-w-0">
                         <div className="truncate font-medium text-sm" title={item.source}>
@@ -174,7 +180,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 ml-4">
+                    <div className="relative flex items-center gap-2 ml-4">
                       <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
                         {totalVisitors > 0 ? `${Math.round((item.visitors / totalVisitors) * 100)}%` : ''}
                       </span>

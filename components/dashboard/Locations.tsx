@@ -289,13 +289,19 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
                   const dim = TAB_TO_DIMENSION[activeTab]
                   const filterValue = activeTab === 'countries' ? item.country : activeTab === 'regions' ? item.region : item.city
                   const canFilter = onFilter && dim && filterValue
+                  const maxPv = displayedData[0]?.pageviews ?? 0
+                  const barWidth = maxPv > 0 ? (item.pageviews / maxPv) * 100 : 0
                   return (
                     <div
                       key={`${item.country ?? ''}-${item.region ?? ''}-${item.city ?? ''}`}
                       onClick={() => canFilter && onFilter({ dimension: dim, operator: 'is', values: [filterValue!] })}
-                      className={`flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors${canFilter ? ' cursor-pointer' : ''}`}
+                      className={`relative flex items-center justify-between h-9 group hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 rounded-lg px-2 -mx-2 transition-colors${canFilter ? ' cursor-pointer' : ''}`}
                     >
-                      <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
+                      <div
+                        className="absolute inset-y-0.5 left-0.5 bg-brand-orange/5 dark:bg-brand-orange/10 rounded-md transition-all"
+                        style={{ width: `${barWidth}%` }}
+                      />
+                      <div className="relative flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
                         <span className="shrink-0">{getFlagComponent(item.country ?? '')}</span>
                         <span className="truncate">
                           {activeTab === 'countries' ? getCountryName(item.country ?? '') :
@@ -303,7 +309,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
                            getCityName(item.city ?? '')}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 ml-4">
+                      <div className="relative flex items-center gap-2 ml-4">
                         <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
                           {totalPageviews > 0 ? `${Math.round((item.pageviews / totalPageviews) * 100)}%` : ''}
                         </span>

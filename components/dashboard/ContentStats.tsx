@@ -148,34 +148,42 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
             </div>
           ) : hasData ? (
             <>
-              {displayedData.map((page) => (
-                <div
-                  key={page.path}
-                  onClick={() => onFilter?.({ dimension: 'page', operator: 'is', values: [page.path] })}
-                  className={`flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors${onFilter ? ' cursor-pointer' : ''}`}
-                >
-                  <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center">
-                    <span className="truncate">{page.path}</span>
-                    <a
-                      href={`https://${domain.replace(/^https?:\/\//, '')}${page.path}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={e => e.stopPropagation()}
-                      className="ml-2 flex-shrink-0"
-                    >
-                      <ArrowUpRightIcon className="w-3 h-3 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-brand-orange" />
-                    </a>
+              {displayedData.map((page, idx) => {
+                const maxPv = displayedData[0]?.pageviews ?? 0
+                const barWidth = maxPv > 0 ? (page.pageviews / maxPv) * 100 : 0
+                return (
+                  <div
+                    key={page.path}
+                    onClick={() => onFilter?.({ dimension: 'page', operator: 'is', values: [page.path] })}
+                    className={`relative flex items-center justify-between h-9 group hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 rounded-lg px-2 -mx-2 transition-colors${onFilter ? ' cursor-pointer' : ''}`}
+                  >
+                    <div
+                      className="absolute inset-y-0.5 left-0.5 bg-brand-orange/5 dark:bg-brand-orange/10 rounded-md transition-all"
+                      style={{ width: `${barWidth}%` }}
+                    />
+                    <div className="relative flex-1 truncate text-neutral-900 dark:text-white flex items-center">
+                      <span className="truncate">{page.path}</span>
+                      <a
+                        href={`https://${domain.replace(/^https?:\/\//, '')}${page.path}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={e => e.stopPropagation()}
+                        className="ml-2 flex-shrink-0"
+                      >
+                        <ArrowUpRightIcon className="w-3 h-3 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-brand-orange" />
+                      </a>
+                    </div>
+                    <div className="relative flex items-center gap-2 ml-4">
+                      <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+                        {totalPageviews > 0 ? `${Math.round((page.pageviews / totalPageviews) * 100)}%` : ''}
+                      </span>
+                      <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
+                        {formatNumber(page.pageviews)}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 ml-4">
-                    <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
-                      {totalPageviews > 0 ? `${Math.round((page.pageviews / totalPageviews) * 100)}%` : ''}
-                    </span>
-                    <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
-                      {formatNumber(page.pageviews)}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
               {Array.from({ length: emptySlots }).map((_, i) => (
                 <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
               ))}
