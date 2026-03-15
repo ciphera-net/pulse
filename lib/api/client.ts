@@ -339,6 +339,10 @@ async function apiRequest<T>(
     throw new ApiError(message, response.status, errorBody)
   }
 
+  if (response.status === 204) {
+    return undefined as T
+  }
+
   return response.json()
   })()
 
