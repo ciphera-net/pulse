@@ -172,7 +172,7 @@ function PageRow({
       data-path={page.path}
       className={`
         group flex items-center justify-between w-full relative
-        h-9 px-2 -mx-2 rounded-lg text-left transition-colors
+        h-9 px-3 rounded-lg text-left transition-colors
         ${isOther ? 'cursor-default' : 'cursor-pointer'}
         ${isSelected
           ? 'bg-brand-orange/10 dark:bg-brand-orange/10'
@@ -250,7 +250,7 @@ function JourneyColumn({
   const maxCount = Math.max(...column.pages.map((p) => p.sessionCount), 0)
 
   return (
-    <div className="w-56 shrink-0 px-2">
+    <div className="w-56 shrink-0 px-3">
       <ColumnHeader column={column} />
       <div className="space-y-0.5 max-h-[500px] overflow-y-auto">
         {column.pages.map((page) => {
@@ -274,7 +274,7 @@ function JourneyColumn({
           <div
             data-col={column.index}
             data-path="(exit)"
-            className="flex items-center justify-between h-9 px-2 -mx-2 rounded-lg bg-red-500/8 dark:bg-red-500/8"
+            className="flex items-center justify-between h-9 px-3 rounded-lg bg-red-500/8 dark:bg-red-500/8"
           >
             <span className="text-sm text-red-500 dark:text-red-400">
               (exit)
