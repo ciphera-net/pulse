@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import { useSWRConfig } from 'swr'
 import { createFunnel, type CreateFunnelRequest, type FunnelStep } from '@/lib/api/funnels'
 import { toast, Input, Button, ChevronLeftIcon, PlusIcon, TrashIcon } from '@ciphera-net/ui'
 import Link from 'next/link'
@@ -18,6 +19,7 @@ function isValidRegex(pattern: string): boolean {
 export default function CreateFunnelPage() {
   const params = useParams()
   const router = useRouter()
+  const { mutate } = useSWRConfig()
   const siteId = params.id as string
 
   const [name, setName] = useState('')
@@ -81,6 +83,7 @@ export default function CreateFunnelPage() {
         steps: funnelSteps
       })
 
+      await mutate(['funnels', siteId])
       toast.success('Funnel created')
       router.push(`/sites/${siteId}/funnels`)
     } catch (error) {
