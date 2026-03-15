@@ -160,7 +160,7 @@ export default function JourneysPage() {
                 onChange={(value) => setEntryPath(value)}
                 options={entryPointOptions}
               />
-              {(depth !== 10 || entryPath) && (
+              {(displayDepth !== 10 || entryPath) && (
                 <button
                   onClick={() => { setDepth(10); setDisplayDepth(10); setEntryPath('') }}
                   className="text-sm text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors whitespace-nowrap"
