@@ -518,9 +518,7 @@ export default function ColumnJourney({
             return (
               <Fragment key={col.index}>
                 {i > 0 && (
-                  <div className="flex items-center justify-center w-8 shrink-0 pt-16">
-                    <div className="w-full border-t border-dashed border-neutral-200 dark:border-neutral-700" />
-                  </div>
+                  <div className="w-px shrink-0 mx-4 bg-neutral-200 dark:bg-neutral-700" />
                 )}
                 <JourneyColumn
                   column={col}
