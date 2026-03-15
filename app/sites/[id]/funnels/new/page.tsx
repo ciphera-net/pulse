@@ -72,7 +72,7 @@ export default function CreateFunnelPage() {
       setSaving(true)
       const funnelSteps = steps.map((s, i) => ({
         ...s,
-        order: i + 1
+        order: i
       }))
 
       await createFunnel(siteId, {
