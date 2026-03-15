@@ -215,14 +215,16 @@ function JourneyColumn({
   column,
   color,
   selectedPath,
+  exitCount,
   onSelect,
 }: {
   column: Column
   color: string
   selectedPath: string | undefined
+  exitCount: number
   onSelect: (path: string) => void
 }) {
-  if (column.pages.length === 0) {
+  if (column.pages.length === 0 && exitCount === 0) {
     return (
       <div className="w-60 shrink-0">
         <ColumnHeader column={column} color={color} />
@@ -255,19 +257,26 @@ function JourneyColumn({
             />
           )
         })}
+        {exitCount > 0 && (
+          <div
+            data-col={column.index}
+            data-path="(exit)"
+            className="flex items-center justify-between w-full px-3 py-2.5 rounded-lg border border-red-300 dark:border-red-500/40 bg-red-50 dark:bg-red-500/10"
+          >
+            <span className="text-sm text-red-600 dark:text-red-400">
+              (exit)
+            </span>
+            <span className="ml-3 shrink-0 text-sm tabular-nums font-semibold text-red-600 dark:text-red-400">
+              {exitCount.toLocaleString()}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   )
 }
 
 // ─── Connection Lines ───────────────────────────────────────────────
-
-interface ExitLabel {
-  x: number
-  y: number
-  count: number
-  color: string
-}
 
 function ConnectionLines({
   containerRef,
@@ -281,14 +290,12 @@ function ConnectionLines({
   transitions: PathTransition[]
 }) {
   const [lines, setLines] = useState<(LineDef & { color: string })[]>([])
-  const [exits, setExits] = useState<ExitLabel[]>([])
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
 
   useLayoutEffect(() => {
     const container = containerRef.current
     if (!container || selections.size === 0) {
       setLines([])
-      setExits([])
       return
     }
 
@@ -299,10 +306,10 @@ function ConnectionLines({
     })
 
     const newLines: (LineDef & { color: string })[] = []
-    const newExits: ExitLabel[] = []
 
     for (const [colIdx, selectedPath] of selections) {
       const nextCol = columns[colIdx + 1]
+      if (!nextCol) continue
 
       const sourceEl = container.querySelector(
         `[data-col="${colIdx}"][data-path="${CSS.escape(selectedPath)}"]`
@@ -319,77 +326,43 @@ function ConnectionLines({
       )
 
       const color = colorForColumn(colIdx)
+      const maxCount = relevantTransitions.length > 0
+        ? Math.max(...relevantTransitions.map((rt) => rt.session_count))
+        : 1
 
-      // Find total sessions for this page
-      const col = columns[colIdx]
-      const page = col?.pages.find((p) => p.path === selectedPath)
-      const pageCount = page?.sessionCount ?? 0
-      const outboundCount = relevantTransitions.reduce((sum, t) => sum + t.session_count, 0)
-      const exitCount = pageCount - outboundCount
+      for (const t of relevantTransitions) {
+        const destEl = container.querySelector(
+          `[data-col="${colIdx + 1}"][data-path="${CSS.escape(t.to_path)}"]`
+        ) as HTMLElement | null
+        if (!destEl) continue
 
-      if (nextCol) {
-        const maxCount = Math.max(
-          ...relevantTransitions.map((rt) => rt.session_count),
-          exitCount > 0 ? exitCount : 0
-        )
+        const destRect = destEl.getBoundingClientRect()
+        const destY =
+          destRect.top + destRect.height / 2 - containerRect.top + container.scrollTop
+        const destX = destRect.left - containerRect.left + container.scrollLeft
 
-        for (const t of relevantTransitions) {
-          const destEl = container.querySelector(
-            `[data-col="${colIdx + 1}"][data-path="${CSS.escape(t.to_path)}"]`
-          ) as HTMLElement | null
-          if (!destEl) continue
+        const weight = Math.max(1, Math.min(4, (t.session_count / maxCount) * 4))
 
-          const destRect = destEl.getBoundingClientRect()
-          const destY =
-            destRect.top + destRect.height / 2 - containerRect.top + container.scrollTop
-          const destX = destRect.left - containerRect.left + container.scrollLeft
-
-          const weight = maxCount > 0
-            ? Math.max(1, Math.min(4, (t.session_count / maxCount) * 4))
-            : 1
-
-          newLines.push({ sourceY, destY, sourceX, destX, weight, color })
-        }
+        newLines.push({ sourceY, destY, sourceX, destX, weight, color })
       }
 
-      // Show exit if any visitors dropped off
-      if (exitCount > 0) {
-        // Position the exit label below the last destination or below the source
-        const lastDestY = newLines.length > 0
-          ? Math.max(...newLines.filter((l) => l.sourceX === sourceX).map((l) => l.destY))
-          : sourceY
-
-        const exitY = lastDestY + 30
-        const exitX = nextCol
-          ? ((): number => {
-              // Find the left edge of the next column
-              const nextColEl = container.querySelector(`[data-col="${colIdx + 1}"]`) as HTMLElement | null
-              if (nextColEl) {
-                const nextRect = nextColEl.getBoundingClientRect()
-                return nextRect.left - containerRect.left + container.scrollLeft
-              }
-              return sourceX + 100
-            })()
-          : sourceX + 100
-
-        newLines.push({
-          sourceY,
-          destY: exitY,
-          sourceX,
-          destX: exitX,
-          weight: 1,
-          color: '#52525b', // EXIT_GREY
-        })
-
-        newExits.push({ x: exitX, y: exitY, count: exitCount, color: '#52525b' })
+      // Draw line to exit card if it exists
+      const exitEl = container.querySelector(
+        `[data-col="${colIdx + 1}"][data-path="(exit)"]`
+      ) as HTMLElement | null
+      if (exitEl) {
+        const exitRect = exitEl.getBoundingClientRect()
+        const exitY =
+          exitRect.top + exitRect.height / 2 - containerRect.top + container.scrollTop
+        const exitX = exitRect.left - containerRect.left + container.scrollLeft
+        newLines.push({ sourceY, destY: exitY, sourceX, destX: exitX, weight: 1, color: '#ef4444' })
       }
     }
 
     setLines(newLines)
-    setExits(newExits)
   }, [selections, columns, transitions, containerRef])
 
-  if (lines.length === 0 && exits.length === 0) return null
+  if (lines.length === 0) return null
 
   return (
     <svg
@@ -411,21 +384,25 @@ function ConnectionLines({
           />
         )
       })}
-      {exits.map((exit, i) => (
-        <g key={`exit-${i}`}>
-          <text
-            x={exit.x + 4}
-            y={exit.y + 4}
-            fontSize={11}
-            fontFamily="system-ui, -apple-system, sans-serif"
-            fill={exit.color}
-          >
-            (exit) {exit.count}
-          </text>
-        </g>
-      ))}
     </svg>
   )
+}
+
+// ─── Exit count helper ──────────────────────────────────────────────
+
+function getExitCount(
+  colIdx: number,
+  selectedPath: string,
+  columns: Column[],
+  transitions: PathTransition[],
+): number {
+  const col = columns[colIdx]
+  const page = col?.pages.find((p) => p.path === selectedPath)
+  if (!page) return 0
+  const outbound = transitions
+    .filter((t) => t.step_index === colIdx && t.from_path === selectedPath)
+    .reduce((sum, t) => sum + t.session_count, 0)
+  return Math.max(0, page.sessionCount - outbound)
 }
 
 // ─── Main Component ─────────────────────────────────────────────────
@@ -523,15 +500,24 @@ export default function ColumnJourney({
         className="overflow-x-auto -mx-6 px-6 pb-2 relative"
       >
         <div className="flex gap-8 min-w-fit py-2">
-          {columns.map((col) => (
-            <JourneyColumn
-              key={col.index}
-              column={col}
-              color={colorForColumn(col.index)}
-              selectedPath={selections.get(col.index)}
-              onSelect={(path) => handleSelect(col.index, path)}
-            />
-          ))}
+          {columns.map((col) => {
+            // Show exit card in this column if the previous column has a selection
+            const prevSelection = selections.get(col.index - 1)
+            const exitCount = prevSelection
+              ? getExitCount(col.index - 1, prevSelection, columns, transitions)
+              : 0
+
+            return (
+              <JourneyColumn
+                key={col.index}
+                column={col}
+                color={colorForColumn(col.index)}
+                selectedPath={selections.get(col.index)}
+                exitCount={exitCount}
+                onSelect={(path) => handleSelect(col.index, path)}
+              />
+            )
+          })}
         </div>
         <ConnectionLines
           containerRef={containerRef}
