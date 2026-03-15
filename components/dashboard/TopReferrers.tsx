@@ -112,26 +112,34 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
             </div>
           ) : hasData ? (
             <>
-              {displayedReferrers.map((ref) => (
-                <div
-                  key={ref.referrer}
-                  onClick={() => onFilter?.({ dimension: 'referrer', operator: 'is', values: [ref.referrer] })}
-                  className={`flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors${onFilter ? ' cursor-pointer' : ''}`}
-                >
-                  <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
-                    {renderReferrerIcon(ref.referrer)}
-                    <span className="truncate" title={ref.referrer}>{getReferrerDisplayName(ref.referrer)}</span>
+              {displayedReferrers.map((ref) => {
+                const maxPv = displayedReferrers[0]?.pageviews ?? 0
+                const barWidth = maxPv > 0 ? (ref.pageviews / maxPv) * 100 : 0
+                return (
+                  <div
+                    key={ref.referrer}
+                    onClick={() => onFilter?.({ dimension: 'referrer', operator: 'is', values: [ref.referrer] })}
+                    className={`relative flex items-center justify-between h-9 group hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 rounded-lg px-2 -mx-2 transition-colors${onFilter ? ' cursor-pointer' : ''}`}
+                  >
+                    <div
+                      className="absolute inset-y-0.5 left-0.5 bg-brand-orange/5 dark:bg-brand-orange/10 rounded-md transition-all"
+                      style={{ width: `${barWidth}%` }}
+                    />
+                    <div className="relative flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
+                      {renderReferrerIcon(ref.referrer)}
+                      <span className="truncate" title={ref.referrer}>{getReferrerDisplayName(ref.referrer)}</span>
+                    </div>
+                    <div className="relative flex items-center gap-2 ml-4">
+                      <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+                        {totalPageviews > 0 ? `${Math.round((ref.pageviews / totalPageviews) * 100)}%` : ''}
+                      </span>
+                      <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
+                        {formatNumber(ref.pageviews)}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 ml-4">
-                    <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
-                      {totalPageviews > 0 ? `${Math.round((ref.pageviews / totalPageviews) * 100)}%` : ''}
-                    </span>
-                    <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
-                      {formatNumber(ref.pageviews)}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
               {Array.from({ length: emptySlots }).map((_, i) => (
                 <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
               ))}
