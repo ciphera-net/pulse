@@ -11,7 +11,8 @@ import iso3166 from 'iso-3166-2'
 
 const DottedMap = dynamic(() => import('./DottedMap'), { ssr: false })
 const Globe = dynamic(() => import('./Globe'), { ssr: false })
-import { Modal, GlobeIcon } from '@ciphera-net/ui'
+import Link from 'next/link'
+import { Modal, GlobeIcon, ArrowRightIcon } from '@ciphera-net/ui'
 import { ListSkeleton } from '@/components/skeletons'
 import VirtualList from './VirtualList'
 import { ShieldCheck, Detective, Broadcast, MapPin, FrameCornersIcon } from '@phosphor-icons/react'
@@ -280,6 +281,13 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
                 <p className="text-sm text-neutral-500 dark:text-neutral-400 max-w-xs">
                   Visitor locations will appear here based on anonymous geographic data.
                 </p>
+                <Link
+                  href="/installation"
+                  className="inline-flex items-center gap-2 text-sm font-medium text-brand-orange hover:text-brand-orange/90 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/20 rounded"
+                >
+                  Install tracking script
+                  <ArrowRightIcon className="w-4 h-4" />
+                </Link>
               </div>
             )
           ) : (

@@ -6,8 +6,9 @@ import { logger } from '@/lib/utils/logger'
 import { formatNumber } from '@ciphera-net/ui'
 import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
 import { TopPage, getTopPages, getEntryPages, getExitPages } from '@/lib/api/stats'
+import Link from 'next/link'
 import { Files, FrameCornersIcon } from '@phosphor-icons/react'
-import { Modal, ArrowUpRightIcon, LayoutDashboardIcon } from '@ciphera-net/ui'
+import { Modal, ArrowUpRightIcon, ArrowRightIcon, LayoutDashboardIcon } from '@ciphera-net/ui'
 import { ListSkeleton } from '@/components/skeletons'
 import VirtualList from './VirtualList'
 import { type DimensionFilter } from '@/lib/filters'
@@ -199,6 +200,13 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
               <p className="text-sm text-neutral-500 dark:text-neutral-400 max-w-xs">
                 Your most visited pages will appear here as traffic arrives.
               </p>
+              <Link
+                href="/installation"
+                className="inline-flex items-center gap-2 text-sm font-medium text-brand-orange hover:text-brand-orange/90 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/20 rounded"
+              >
+                Install tracking script
+                <ArrowRightIcon className="w-4 h-4" />
+              </Link>
             </div>
           )}
         </div>
