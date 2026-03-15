@@ -59,16 +59,9 @@ function smartLabel(path: string): string {
 function buildColumns(
   transitions: PathTransition[],
   depth: number,
-  selections: Map<number, string>,
 ): Column[] {
   const numCols = depth + 1
   const columns: Column[] = []
-
-  // Build columns one at a time, cascading selections forward.
-  // When a selection exists at column N, we filter transitions at step N
-  // to only the selected from_path. The resulting to_paths become
-  // the only allowed from_paths at step N+1, and so on downstream.
-  let allowedPaths: Set<string> | null = null // null = no filter active
 
   for (let col = 0; col < numCols; col++) {
     const pageMap = new Map<string, number>()
@@ -82,8 +75,6 @@ function buildColumns(
     } else {
       for (const t of transitions) {
         if (t.step_index === col - 1) {
-          // If there's an active filter, only include transitions from allowed paths
-          if (allowedPaths && !allowedPaths.has(t.from_path)) continue
           pageMap.set(t.to_path, (pageMap.get(t.to_path) ?? 0) + t.session_count)
         }
       }
@@ -110,23 +101,6 @@ function buildColumns(
         : Math.round(((totalSessions - prevTotal) / prevTotal) * 100)
 
     columns.push({ index: col, totalSessions, dropOffPercent, pages })
-
-    // If this column has a selection, cascade the filter forward
-    const selected = selections.get(col)
-    if (selected) {
-      // The next column's allowed paths are the to_paths from this selection
-      const nextAllowed = new Set<string>()
-      for (const t of transitions) {
-        if (t.step_index === col && t.from_path === selected) {
-          nextAllowed.add(t.to_path)
-        }
-      }
-      allowedPaths = nextAllowed
-    } else if (allowedPaths) {
-      // No selection at this column but filter is active from upstream —
-      // carry forward all paths in this column as allowed
-      allowedPaths = new Set(pages.map((p) => p.path).filter((p) => p !== '(other)'))
-    }
   }
 
   // Trim empty trailing columns
@@ -408,8 +382,8 @@ export default function ColumnJourney({
   }
 
   const columns = useMemo(
-    () => buildColumns(transitions, depth, selections),
-    [transitions, depth, selections]
+    () => buildColumns(transitions, depth),
+    [transitions, depth]
   )
 
   // Check if there's scrollable content to the right
