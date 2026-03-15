@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { getDateRange, formatDate } from '@ciphera-net/ui'
 import { Select, DatePicker } from '@ciphera-net/ui'
@@ -14,7 +14,7 @@ import {
   useJourneyEntryPoints,
 } from '@/lib/swr/dashboard'
 
-const DEPTH_STEPS = [2, 3, 4, 5, 6, 7, 8, 9, 10]
+const DEFAULT_DEPTH = 10
 
 function getThisWeekRange(): { start: string; end: string } {
   const today = new Date()
@@ -37,21 +37,25 @@ export default function JourneysPage() {
   const [period, setPeriod] = useState('30')
   const [dateRange, setDateRange] = useState(() => getDateRange(30))
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
-  const [depth, setDepth] = useState(10)
-  const [debouncedDepth, setDebouncedDepth] = useState(10)
+  const [depth, setDepth] = useState(DEFAULT_DEPTH)
+  const [committedDepth, setCommittedDepth] = useState(DEFAULT_DEPTH)
   const [entryPath, setEntryPath] = useState('')
-  const depthTimer = useRef<ReturnType<typeof setTimeout>>(null)
 
-  const sliderIndex = DEPTH_STEPS.indexOf(depth)
+  useEffect(() => {
+    const t = setTimeout(() => setCommittedDepth(depth), 300)
+    return () => clearTimeout(t)
+  }, [depth])
 
-  function handleDepthChange(newDepth: number) {
-    setDepth(newDepth)
-    if (depthTimer.current) clearTimeout(depthTimer.current)
-    depthTimer.current = setTimeout(() => setDebouncedDepth(newDepth), 300)
+  const isDefault = depth === DEFAULT_DEPTH && !entryPath
+
+  function resetFilters() {
+    setDepth(DEFAULT_DEPTH)
+    setCommittedDepth(DEFAULT_DEPTH)
+    setEntryPath('')
   }
 
   const { data: transitionsData, isLoading: transitionsLoading } = useJourneyTransitions(
-    siteId, dateRange.start, dateRange.end, debouncedDepth, 1, entryPath || undefined
+    siteId, dateRange.start, dateRange.end, committedDepth, 1, entryPath || undefined
   )
   const { data: topPaths, isLoading: topPathsLoading } = useJourneyTopPaths(
     siteId, dateRange.start, dateRange.end, 20, 1, entryPath || undefined
@@ -145,11 +149,11 @@ export default function JourneysPage() {
               </div>
               <input
                 type="range"
-                min="0"
-                max={DEPTH_STEPS.length - 1}
-                step="1"
-                value={sliderIndex}
-                onChange={(e) => handleDepthChange(DEPTH_STEPS[parseInt(e.target.value)])}
+                min={2}
+                max={10}
+                step={1}
+                value={depth}
+                onChange={(e) => setDepth(parseInt(e.target.value))}
                 aria-label="Journey depth"
                 aria-valuetext={`${depth} steps deep`}
                 className="w-full h-2 bg-neutral-200 rounded-lg appearance-none cursor-pointer dark:bg-neutral-700 accent-brand-orange focus:outline-none"
@@ -165,14 +169,17 @@ export default function JourneysPage() {
                 onChange={(value) => setEntryPath(value)}
                 options={entryPointOptions}
               />
-              {(depth !== 10 || entryPath) && (
-                <button
-                  onClick={() => { handleDepthChange(10); setEntryPath('') }}
-                  className="text-sm text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors whitespace-nowrap"
-                >
-                  Reset
-                </button>
-              )}
+              <button
+                onClick={resetFilters}
+                disabled={isDefault}
+                className={`text-sm whitespace-nowrap transition-all duration-150 ${
+                  isDefault
+                    ? 'opacity-0 pointer-events-none'
+                    : 'opacity-100 text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
+                }`}
+              >
+                Reset
+              </button>
             </div>
           </div>
         </div>
@@ -182,7 +189,7 @@ export default function JourneysPage() {
           <ColumnJourney
             transitions={transitionsData?.transitions ?? []}
             totalSessions={totalSessions}
-            depth={debouncedDepth}
+            depth={committedDepth}
             onNodeClick={(path) => setEntryPath(path)}
           />
         </div>
