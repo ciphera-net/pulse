@@ -143,7 +143,7 @@ export default function CDNPage() {
           </div>
           <SkeletonLine className="h-9 w-36 rounded-lg" />
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
           <StatCardSkeleton />
           <StatCardSkeleton />
           <StatCardSkeleton />
@@ -249,7 +249,7 @@ export default function CDNPage() {
       </div>
 
       {/* Overview cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
         <OverviewCard
           label="Bandwidth"
           value={overview ? formatBytes(overview.total_bandwidth) : '-'}

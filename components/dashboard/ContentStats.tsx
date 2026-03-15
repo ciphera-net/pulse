@@ -115,7 +115,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
               </button>
             )}
           </div>
-          <div className="flex gap-1" role="tablist" aria-label="Pages view tabs" onKeyDown={handleTabKeyDown}>
+          <div className="flex gap-1 overflow-x-auto scrollbar-hide" role="tablist" aria-label="Pages view tabs" onKeyDown={handleTabKeyDown}>
             {(['top_pages', 'entry_pages', 'exit_pages'] as Tab[]).map((tab) => (
               <button
                 key={tab}

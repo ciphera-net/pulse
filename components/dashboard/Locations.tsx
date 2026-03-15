@@ -233,7 +233,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
               </button>
             )}
           </div>
-          <div className="flex gap-1" role="tablist" aria-label="Location view tabs" onKeyDown={handleTabKeyDown}>
+          <div className="flex gap-1 overflow-x-auto scrollbar-hide" role="tablist" aria-label="Location view tabs" onKeyDown={handleTabKeyDown}>
             {(['map', 'globe', 'countries', 'regions', 'cities'] as Tab[]).map((tab) => (
               <button
                 key={tab}
