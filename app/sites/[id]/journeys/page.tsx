@@ -122,13 +122,13 @@ export default function JourneysPage() {
           <input
             type="range"
             min={2}
-            max={5}
+            max={10}
             step={1}
             value={depth}
             onChange={(e) => setDepth(Number(e.target.value))}
             className="w-32 accent-brand-orange"
           />
-          <span className="text-sm font-medium text-neutral-900 dark:text-white w-4">{depth}</span>
+          <span className="text-sm font-medium text-neutral-900 dark:text-white w-5">{depth}</span>
         </div>
 
         <Select

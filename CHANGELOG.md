@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Improved
 
+- **Deeper journey exploration.** The depth slider on the Journeys page now goes up to 10 steps (previously capped at 5), so you can follow longer visitor paths through your site and see exactly where people go after many clicks.
 - **More accurate rage click detection.** Rage clicks no longer fire when you triple-click to select text on a page. Previously, selecting a paragraph (a normal 3-click action) was being counted as a rage click, which inflated frustration metrics. Only genuinely frustrated rapid clicking is tracked now.
 - **Fresher CDN data.** BunnyCDN statistics now refresh every 3 hours instead of once a day, so your CDN tab shows much more current bandwidth, request, and cache data.
 - **More accurate dead click detection.** Dead clicks were being reported on elements that actually worked — like close buttons on cart drawers, modal dismiss buttons, and page content areas. Three fixes make dead clicks much more reliable:
