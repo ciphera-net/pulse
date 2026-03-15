@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { TreeStructure } from '@phosphor-icons/react'
 import type { PathTransition } from '@/lib/api/journeys'
 
@@ -64,29 +64,26 @@ function buildColumns(
   const numCols = depth + 1
   const columns: Column[] = []
 
-  let filteredTransitions = transitions
-
-  for (let col = 0; col < numCols - 1; col++) {
-    const selected = selections.get(col)
-    if (selected) {
-      filteredTransitions = filteredTransitions.filter(
-        (t) => t.step_index !== col || t.from_path === selected
-      )
-    }
-  }
+  // Build columns one at a time, cascading selections forward.
+  // When a selection exists at column N, we filter transitions at step N
+  // to only the selected from_path. The resulting to_paths become
+  // the only allowed from_paths at step N+1, and so on downstream.
+  let allowedPaths: Set<string> | null = null // null = no filter active
 
   for (let col = 0; col < numCols; col++) {
     const pageMap = new Map<string, number>()
 
     if (col === 0) {
-      for (const t of filteredTransitions) {
+      for (const t of transitions) {
         if (t.step_index === 0) {
           pageMap.set(t.from_path, (pageMap.get(t.from_path) ?? 0) + t.session_count)
         }
       }
     } else {
-      for (const t of filteredTransitions) {
+      for (const t of transitions) {
         if (t.step_index === col - 1) {
+          // If there's an active filter, only include transitions from allowed paths
+          if (allowedPaths && !allowedPaths.has(t.from_path)) continue
           pageMap.set(t.to_path, (pageMap.get(t.to_path) ?? 0) + t.session_count)
         }
       }
@@ -113,6 +110,28 @@ function buildColumns(
         : Math.round(((totalSessions - prevTotal) / prevTotal) * 100)
 
     columns.push({ index: col, totalSessions, dropOffPercent, pages })
+
+    // If this column has a selection, cascade the filter forward
+    const selected = selections.get(col)
+    if (selected) {
+      // The next column's allowed paths are the to_paths from this selection
+      const nextAllowed = new Set<string>()
+      for (const t of transitions) {
+        if (t.step_index === col && t.from_path === selected) {
+          nextAllowed.add(t.to_path)
+        }
+      }
+      allowedPaths = nextAllowed
+    } else if (allowedPaths) {
+      // No selection at this column but filter is active from upstream —
+      // carry forward all paths in this column as allowed
+      allowedPaths = new Set(pages.map((p) => p.path).filter((p) => p !== '(other)'))
+    }
+  }
+
+  // Trim empty trailing columns
+  while (columns.length > 1 && columns[columns.length - 1].pages.length === 0) {
+    columns.pop()
   }
 
   return columns
@@ -374,6 +393,7 @@ export default function ColumnJourney({
   onNodeClick,
 }: ColumnJourneyProps) {
   const [selections, setSelections] = useState<Map<number, string>>(new Map())
+  const [canScrollRight, setCanScrollRight] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
   // Clear selections when data changes
@@ -391,6 +411,26 @@ export default function ColumnJourney({
     () => buildColumns(transitions, depth, selections),
     [transitions, depth, selections]
   )
+
+  // Check if there's scrollable content to the right
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+
+    function check() {
+      if (!el) return
+      setCanScrollRight(el.scrollWidth - el.scrollLeft - el.clientWidth > 1)
+    }
+
+    check()
+    el.addEventListener('scroll', check, { passive: true })
+    const ro = new ResizeObserver(check)
+    ro.observe(el)
+    return () => {
+      el.removeEventListener('scroll', check)
+      ro.disconnect()
+    }
+  }, [columns])
 
   const handleSelect = useCallback(
     (colIndex: number, path: string) => {
@@ -456,6 +496,10 @@ export default function ColumnJourney({
           transitions={transitions}
         />
       </div>
+      {/* Scroll fade indicator */}
+      {canScrollRight && (
+        <div className="absolute top-0 right-0 bottom-0 w-16 pointer-events-none bg-gradient-to-l from-white dark:from-neutral-900 to-transparent" />
+      )}
     </div>
   )
 }
