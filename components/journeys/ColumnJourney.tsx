@@ -185,7 +185,7 @@ function PageRow({
       {/* Background bar */}
       {!isOther && barWidth > 0 && (
         <div
-          className="absolute inset-y-1 left-1 right-1 rounded transition-all origin-left"
+          className="absolute inset-y-0 left-0 right-0 rounded-lg transition-all origin-left"
           style={{
             transform: `scaleX(${barWidth / 100})`,
             backgroundColor: isSelected ? 'rgba(253, 94, 15, 0.15)' : 'rgba(253, 94, 15, 0.08)',
@@ -274,7 +274,7 @@ function JourneyColumn({
           <div
             data-col={column.index}
             data-path="(exit)"
-            className="flex items-center justify-between h-9 px-2 -mx-2 rounded-lg bg-red-50 dark:bg-red-500/10"
+            className="flex items-center justify-between h-9 px-2 -mx-2 rounded-lg bg-red-500/8 dark:bg-red-500/8"
           >
             <span className="text-sm text-red-500 dark:text-red-400">
               (exit)
@@ -332,7 +332,7 @@ function ConnectionLines({
       const sourceRect = sourceEl.getBoundingClientRect()
       const sourceY =
         sourceRect.top + sourceRect.height / 2 - containerRect.top + container.scrollTop
-      const sourceX = sourceRect.right - containerRect.left + container.scrollLeft
+      const sourceX = sourceRect.right - containerRect.left + container.scrollLeft + 4
 
       const relevantTransitions = transitions.filter(
         (t) => t.step_index === colIdx && t.from_path === selectedPath
@@ -352,7 +352,7 @@ function ConnectionLines({
         const destRect = destEl.getBoundingClientRect()
         const destY =
           destRect.top + destRect.height / 2 - containerRect.top + container.scrollTop
-        const destX = destRect.left - containerRect.left + container.scrollLeft
+        const destX = destRect.left - containerRect.left + container.scrollLeft - 4
 
         const weight = Math.max(1, Math.min(4, (t.session_count / maxCount) * 4))
 

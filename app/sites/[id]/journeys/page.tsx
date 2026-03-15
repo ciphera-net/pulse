@@ -37,8 +37,8 @@ export default function JourneysPage() {
   const [period, setPeriod] = useState('30')
   const [dateRange, setDateRange] = useState(() => getDateRange(30))
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
-  const [depth, setDepth] = useState(3)
-  const [displayDepth, setDisplayDepth] = useState(3)
+  const [depth, setDepth] = useState(10)
+  const [displayDepth, setDisplayDepth] = useState(10)
   const [entryPath, setEntryPath] = useState('')
 
   const sliderIndex = DEPTH_STEPS.indexOf(displayDepth)
@@ -160,9 +160,9 @@ export default function JourneysPage() {
                 onChange={(value) => setEntryPath(value)}
                 options={entryPointOptions}
               />
-              {(depth !== 3 || entryPath) && (
+              {(depth !== 10 || entryPath) && (
                 <button
-                  onClick={() => { setDepth(3); setDisplayDepth(3); setEntryPath('') }}
+                  onClick={() => { setDepth(10); setDisplayDepth(10); setEntryPath('') }}
                   className="text-sm text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors whitespace-nowrap"
                 >
                   Reset
