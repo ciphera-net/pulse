@@ -36,9 +36,10 @@ export default function JourneysPage() {
   const [dateRange, setDateRange] = useState(() => getDateRange(30))
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
   const [depth, setDepth] = useState(3)
+  const [displayDepth, setDisplayDepth] = useState(3)
   const [entryPath, setEntryPath] = useState('')
 
-  const sliderIndex = DEPTH_STEPS.indexOf(depth)
+  const sliderIndex = DEPTH_STEPS.indexOf(displayDepth)
 
   const { data: transitionsData, isLoading: transitionsLoading } = useJourneyTransitions(
     siteId, dateRange.start, dateRange.end, depth, 1, entryPath || undefined
@@ -126,7 +127,7 @@ export default function JourneysPage() {
               <div className="flex justify-between text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-3">
                 <span>2 steps</span>
                 <span className="text-brand-orange font-bold">
-                  {depth} steps deep
+                  {displayDepth} steps deep
                 </span>
                 <span>10 steps</span>
               </div>
@@ -136,10 +137,12 @@ export default function JourneysPage() {
                 max={DEPTH_STEPS.length - 1}
                 step="1"
                 value={sliderIndex}
-                onChange={(e) => setDepth(DEPTH_STEPS[parseInt(e.target.value)])}
+                onChange={(e) => setDisplayDepth(DEPTH_STEPS[parseInt(e.target.value)])}
+                onMouseUp={(e) => setDepth(DEPTH_STEPS[parseInt((e.target as HTMLInputElement).value)])}
+                onTouchEnd={(e) => setDepth(DEPTH_STEPS[parseInt((e.target as HTMLInputElement).value)])}
                 aria-label="Journey depth"
-                aria-valuetext={`${depth} steps deep`}
-                className="w-full h-2 bg-neutral-200 rounded-lg appearance-none cursor-pointer dark:bg-neutral-700 accent-brand-orange focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2"
+                aria-valuetext={`${displayDepth} steps deep`}
+                className="w-full h-2 bg-neutral-200 rounded-lg appearance-none cursor-pointer dark:bg-neutral-700 accent-brand-orange focus:outline-none"
               />
             </div>
 
@@ -154,7 +157,7 @@ export default function JourneysPage() {
               />
               {(depth !== 3 || entryPath) && (
                 <button
-                  onClick={() => { setDepth(3); setEntryPath('') }}
+                  onClick={() => { setDepth(3); setDisplayDepth(3); setEntryPath('') }}
                   className="text-sm text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors whitespace-nowrap"
                 >
                   Reset
