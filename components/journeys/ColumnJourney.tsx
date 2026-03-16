@@ -163,7 +163,7 @@ function ColumnHeader({
   return (
     <div className="flex flex-col items-center gap-0.5 mb-4">
       <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
-        {column.index === 0 ? 'Entry' : `Step ${column.index + 1}`}
+        {column.index === 0 ? 'Entry' : `Step ${column.index}`}
       </span>
       <div className="flex items-baseline gap-1.5">
         <span className="text-sm font-semibold text-neutral-900 dark:text-white tabular-nums">
