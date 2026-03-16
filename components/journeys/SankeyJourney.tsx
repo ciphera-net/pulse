@@ -280,17 +280,17 @@ export default function SankeyJourney({
         </div>
       )}
 
-      <div style={{ height: 500 }}>
+      <div style={{ height: Math.max(400, Math.min(700, data.nodes.length * 28)) }}>
         <ResponsiveSankey<SankeyNode, SankeyLink>
           data={data}
-          margin={{ top: 16, right: 140, bottom: 16, left: 140 }}
+          margin={{ top: 8, right: 8, bottom: 8, left: 8 }}
           align="justify"
           sort="descending"
           colors={(node) =>
             COLUMN_COLORS[node.stepIndex % COLUMN_COLORS.length]
           }
-          nodeThickness={14}
-          nodeSpacing={16}
+          nodeThickness={12}
+          nodeSpacing={20}
           nodeInnerPadding={0}
           nodeBorderWidth={0}
           nodeBorderRadius={3}
@@ -300,13 +300,9 @@ export default function SankeyJourney({
           linkOpacity={0.2}
           linkHoverOpacity={0.5}
           linkHoverOthersOpacity={0.05}
-          linkContract={1}
+          linkContract={2}
           enableLinkGradient
-          enableLabels
-          label={(node) => smartLabel(pathFromId(node.id))}
-          labelPosition="outside"
-          labelPadding={12}
-          labelTextColor={labelColor}
+          enableLabels={false}
           isInteractive
           onClick={handleClick}
           nodeTooltip={({ node }) => (
