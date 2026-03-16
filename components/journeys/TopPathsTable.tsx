@@ -51,7 +51,7 @@ export default function TopPathsTable({ paths, loading }: TopPathsTableProps) {
       ) : hasData ? (
         <div className="space-y-0.5">
           {paths.map((path, i) => {
-            const barWidth = maxCount > 0 ? (path.session_count / maxCount) * 100 : 0
+            const barWidth = maxCount > 0 ? (path.session_count / maxCount) * 75 : 0
             const displaySeq = truncateSequence(path.page_sequence, 7)
 
             return (

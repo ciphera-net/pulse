@@ -115,7 +115,7 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
             <>
               {displayedReferrers.map((ref) => {
                 const maxPv = displayedReferrers[0]?.pageviews ?? 0
-                const barWidth = maxPv > 0 ? (ref.pageviews / maxPv) * 100 : 0
+                const barWidth = maxPv > 0 ? (ref.pageviews / maxPv) * 75 : 0
                 return (
                   <div
                     key={ref.referrer}

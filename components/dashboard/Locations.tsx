@@ -298,7 +298,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
                   const filterValue = activeTab === 'countries' ? item.country : activeTab === 'regions' ? item.region : item.city
                   const canFilter = onFilter && dim && filterValue
                   const maxPv = displayedData[0]?.pageviews ?? 0
-                  const barWidth = maxPv > 0 ? (item.pageviews / maxPv) * 100 : 0
+                  const barWidth = maxPv > 0 ? (item.pageviews / maxPv) * 75 : 0
                   return (
                     <div
                       key={`${item.country ?? ''}-${item.region ?? ''}-${item.city ?? ''}`}

@@ -151,7 +151,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
             <>
               {displayedData.map((page, idx) => {
                 const maxPv = displayedData[0]?.pageviews ?? 0
-                const barWidth = maxPv > 0 ? (page.pageviews / maxPv) * 100 : 0
+                const barWidth = maxPv > 0 ? (page.pageviews / maxPv) * 75 : 0
                 return (
                   <div
                     key={page.path}
