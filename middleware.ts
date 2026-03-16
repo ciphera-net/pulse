@@ -13,6 +13,7 @@ const PUBLIC_ROUTES = new Set([
   '/changelog',
   '/installation',
   '/script.js', // * Tracking script – must load without auth for embedded sites (Shopify, etc.)
+  '/script.frustration.js', // * Frustration tracking add-on (rage clicks, dead clicks)
 ])
 
 const PUBLIC_PREFIXES = [
