@@ -148,12 +148,12 @@ export default function JourneysPage() {
                 <span className="text-brand-orange font-bold">
                   {depth} steps deep
                 </span>
-                <span>5 steps</span>
+                <span>6 steps</span>
               </div>
               <input
                 type="range"
                 min={2}
-                max={5}
+                max={6}
                 step={1}
                 value={depth}
                 onChange={(e) => setDepth(parseInt(e.target.value))}
