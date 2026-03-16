@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
+import { motion } from 'framer-motion'
 import { getDateRange, formatDate } from '@ciphera-net/ui'
 import { Select, DatePicker } from '@ciphera-net/ui'
 import ColumnJourney from '@/components/journeys/ColumnJourney'
+import SankeyJourney from '@/components/journeys/SankeyJourney'
 import TopPathsTable from '@/components/journeys/TopPathsTable'
 import { JourneysSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import {
@@ -40,6 +42,7 @@ export default function JourneysPage() {
   const [depth, setDepth] = useState(DEFAULT_DEPTH)
   const [committedDepth, setCommittedDepth] = useState(DEFAULT_DEPTH)
   const [entryPath, setEntryPath] = useState('')
+  const [viewMode, setViewMode] = useState<'columns' | 'flow'>('columns')
 
   useEffect(() => {
     const t = setTimeout(() => setCommittedDepth(depth), 300)
@@ -182,15 +185,49 @@ export default function JourneysPage() {
               </button>
             </div>
           </div>
+
+          {/* View toggle */}
+          <div className="flex gap-1 mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-800" role="tablist" aria-label="Journey view tabs">
+            {(['columns', 'flow'] as const).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => setViewMode(mode)}
+                role="tab"
+                aria-selected={viewMode === mode}
+                className={`relative px-3 py-1 text-xs font-medium transition-colors capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded cursor-pointer ${
+                  viewMode === mode
+                    ? 'text-neutral-900 dark:text-white'
+                    : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
+                }`}
+              >
+                {mode === 'columns' ? 'Columns' : 'Flow'}
+                {viewMode === mode && (
+                  <motion.div
+                    layoutId="journeyViewTab"
+                    className="absolute inset-x-0 -bottom-px h-0.5 bg-brand-orange"
+                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                  />
+                )}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Journey Columns */}
+        {/* Journey Chart */}
         <div className="p-6">
-          <ColumnJourney
-            transitions={transitionsData?.transitions ?? []}
-            totalSessions={totalSessions}
-            depth={committedDepth}
-          />
+          {viewMode === 'columns' ? (
+            <ColumnJourney
+              transitions={transitionsData?.transitions ?? []}
+              totalSessions={totalSessions}
+              depth={committedDepth}
+            />
+          ) : (
+            <SankeyJourney
+              transitions={transitionsData?.transitions ?? []}
+              totalSessions={totalSessions}
+              depth={committedDepth}
+            />
+          )}
         </div>
 
         {/* Footer */}
