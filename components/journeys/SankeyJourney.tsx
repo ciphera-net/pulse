@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Sankey } from '@nivo/sankey'
 import { TreeStructure, X } from '@phosphor-icons/react'
 import type { PathTransition } from '@/lib/api/journeys'
@@ -258,10 +258,20 @@ export default function SankeyJourney({
 
   const labelColor = isDark ? '#a3a3a3' : '#525252'
 
-  // Calculate dimensions: give each step ~250px of horizontal space
-  const numSteps = new Set(data.nodes.map((n) => n.stepIndex)).size
-  const chartWidth = Math.max(800, numSteps * 250)
   const chartHeight = 500
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [chartWidth, setChartWidth] = useState(800)
+
+  // * Measure container width and resize chart to fit without horizontal scroll
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const measure = () => setChartWidth(el.clientWidth)
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   return (
     <div>
@@ -285,7 +295,7 @@ export default function SankeyJourney({
         </div>
       )}
 
-      <div className="overflow-x-auto -mx-6 px-6" style={{ maxHeight: chartHeight + 16 }}>
+      <div ref={containerRef} style={{ height: chartHeight }}>
         <div style={{ width: chartWidth, height: chartHeight }}>
           <Sankey<SankeyNode, SankeyLink>
             data={data}
