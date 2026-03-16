@@ -335,6 +335,15 @@ async function apiRequest<T>(
     }
 
     const errorBody = await response.json().catch(() => ({}))
+
+    // * Capture Retry-After header on 429 so callers can show precise timing
+    if (response.status === 429) {
+      const retryAfter = response.headers.get('Retry-After')
+      if (retryAfter) {
+        errorBody.retryAfter = parseInt(retryAfter, 10)
+      }
+    }
+
     const message = authMessageFromStatus(response.status)
     throw new ApiError(message, response.status, errorBody)
   }

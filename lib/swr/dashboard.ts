@@ -2,6 +2,7 @@
 // * Implements stale-while-revalidate pattern for efficient data updates
 
 import useSWR from 'swr'
+import { toast } from '@ciphera-net/ui'
 import {
   getDashboard,
   getDashboardOverview,
@@ -105,7 +106,15 @@ const dashboardSWRConfig = {
   errorRetryInterval: 5000,
   // * Don't retry on 429 (rate limit) or 401/403 (auth) — retrying makes it worse
   onErrorRetry: (error: any, _key: string, _config: any, revalidate: any, { retryCount }: { retryCount: number }) => {
-    if (error?.status === 429 || error?.status === 401 || error?.status === 403) return
+    if (error?.status === 429) {
+      const retryAfter = error?.data?.retryAfter
+      const message = retryAfter
+        ? `Too many requests. Please try again in ${retryAfter} seconds.`
+        : 'Too many requests. Please wait a moment and try again.'
+      toast.error(message, { id: 'rate-limit' })
+      return
+    }
+    if (error?.status === 401 || error?.status === 403) return
     if (retryCount >= 3) return
     setTimeout(() => revalidate({ retryCount }), 5000 * Math.pow(2, retryCount))
   },
