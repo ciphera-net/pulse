@@ -301,7 +301,7 @@ export default function SankeyJourney({
             data={data}
             width={chartWidth}
             height={chartHeight}
-            margin={{ top: 8, right: 160, bottom: 8, left: 160 }}
+            margin={{ top: 8, right: 90, bottom: 8, left: 90 }}
             align="justify"
             sort="descending"
             colors={(node) =>
