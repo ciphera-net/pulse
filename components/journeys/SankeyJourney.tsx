@@ -258,7 +258,13 @@ export default function SankeyJourney({
 
   const labelColor = isDark ? '#a3a3a3' : '#525252'
 
-  const chartHeight = 500
+  // * Scale height based on max nodes in any step so blocks aren't too compressed
+  const stepCounts = new Map<number, number>()
+  for (const n of data.nodes) {
+    stepCounts.set(n.stepIndex, (stepCounts.get(n.stepIndex) ?? 0) + 1)
+  }
+  const maxNodesInStep = Math.max(1, ...Array.from(stepCounts.values()))
+  const chartHeight = Math.max(400, Math.min(700, maxNodesInStep * 45))
   const containerRef = useRef<HTMLDivElement>(null)
   const [chartWidth, setChartWidth] = useState(800)
 
@@ -301,30 +307,30 @@ export default function SankeyJourney({
             data={data}
             width={chartWidth}
             height={chartHeight}
-            margin={{ top: 8, right: 90, bottom: 8, left: 90 }}
+            margin={{ top: 8, right: 16, bottom: 8, left: 16 }}
             align="justify"
             sort="descending"
             colors={(node) =>
               COLUMN_COLORS[node.stepIndex % COLUMN_COLORS.length]
             }
-            nodeThickness={8}
-            nodeSpacing={8}
-            nodeInnerPadding={0}
+            nodeThickness={100}
+            nodeSpacing={4}
+            nodeInnerPadding={2}
             nodeBorderWidth={0}
-            nodeBorderRadius={2}
-            nodeOpacity={1}
+            nodeBorderRadius={4}
+            nodeOpacity={0.9}
             nodeHoverOpacity={1}
             nodeHoverOthersOpacity={0.3}
-            linkOpacity={0.15}
-            linkHoverOpacity={0.5}
-            linkHoverOthersOpacity={0.03}
-            linkContract={1}
+            linkOpacity={0.12}
+            linkHoverOpacity={0.4}
+            linkHoverOthersOpacity={0.02}
+            linkContract={2}
             enableLinkGradient
             enableLabels
             label={(node) => smartLabel(pathFromId(node.id))}
-            labelPosition="outside"
-            labelPadding={6}
-            labelTextColor={labelColor}
+            labelPosition="inside"
+            labelPadding={8}
+            labelTextColor="#ffffff"
             isInteractive
             onClick={handleClick}
             nodeTooltip={({ node }) => (
