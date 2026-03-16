@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ResponsiveSankey } from '@nivo/sankey'
+import { Sankey } from '@nivo/sankey'
 import { TreeStructure, X } from '@phosphor-icons/react'
 import type { PathTransition } from '@/lib/api/journeys'
 
@@ -36,7 +36,7 @@ const COLUMN_COLORS = [
   '#EC4899', '#06B6D4', '#EF4444', '#84CC16', '#F97316', '#6366F1',
 ]
 
-const MAX_NODES_PER_STEP = 15
+const MAX_NODES_PER_STEP = 25
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
@@ -257,9 +257,11 @@ export default function SankeyJourney({
   }
 
   const labelColor = isDark ? '#a3a3a3' : '#525252'
-  const steps = data.nodes.map((n) => n.stepIndex)
-  const minStep = Math.min(...steps)
-  const maxStep = Math.max(...steps)
+
+  // Calculate dimensions: give each step ~250px of horizontal space
+  const numSteps = new Set(data.nodes.map((n) => n.stepIndex)).size
+  const chartWidth = Math.max(800, numSteps * 250)
+  const chartHeight = 500
 
   return (
     <div>
@@ -283,73 +285,71 @@ export default function SankeyJourney({
         </div>
       )}
 
-      <div style={{ height: 500 }}>
-        <ResponsiveSankey<SankeyNode, SankeyLink>
-          data={data}
-          margin={{ top: 8, right: 140, bottom: 8, left: 140 }}
-          align="justify"
-          sort="descending"
-          colors={(node) =>
-            COLUMN_COLORS[node.stepIndex % COLUMN_COLORS.length]
-          }
-          nodeThickness={12}
-          nodeSpacing={20}
-          nodeInnerPadding={0}
-          nodeBorderWidth={0}
-          nodeBorderRadius={3}
-          nodeOpacity={1}
-          nodeHoverOpacity={1}
-          nodeHoverOthersOpacity={0.3}
-          linkOpacity={0.2}
-          linkHoverOpacity={0.5}
-          linkHoverOthersOpacity={0.05}
-          linkContract={2}
-          enableLinkGradient
-          enableLabels
-          label={(node) => {
-            // Only show labels for first and last step columns
-            if (node.stepIndex === minStep || node.stepIndex === maxStep) {
-              return smartLabel(pathFromId(node.id))
+      <div className="overflow-x-auto -mx-6 px-6" style={{ maxHeight: chartHeight + 16 }}>
+        <div style={{ width: chartWidth, height: chartHeight }}>
+          <Sankey<SankeyNode, SankeyLink>
+            data={data}
+            width={chartWidth}
+            height={chartHeight}
+            margin={{ top: 8, right: 160, bottom: 8, left: 160 }}
+            align="justify"
+            sort="descending"
+            colors={(node) =>
+              COLUMN_COLORS[node.stepIndex % COLUMN_COLORS.length]
             }
-            return ''
-          }}
-          labelPosition="outside"
-          labelPadding={8}
-          labelTextColor={labelColor}
-          isInteractive
-          onClick={handleClick}
-          nodeTooltip={({ node }) => (
-            <div className="rounded-lg px-3 py-2 text-sm shadow-lg bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700">
-              <div className="font-medium text-neutral-900 dark:text-white">
-                {pathFromId(node.id)}
+            nodeThickness={8}
+            nodeSpacing={8}
+            nodeInnerPadding={0}
+            nodeBorderWidth={0}
+            nodeBorderRadius={2}
+            nodeOpacity={1}
+            nodeHoverOpacity={1}
+            nodeHoverOthersOpacity={0.3}
+            linkOpacity={0.15}
+            linkHoverOpacity={0.5}
+            linkHoverOthersOpacity={0.03}
+            linkContract={1}
+            enableLinkGradient
+            enableLabels
+            label={(node) => smartLabel(pathFromId(node.id))}
+            labelPosition="outside"
+            labelPadding={6}
+            labelTextColor={labelColor}
+            isInteractive
+            onClick={handleClick}
+            nodeTooltip={({ node }) => (
+              <div className="rounded-lg px-3 py-2 text-sm shadow-lg bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700">
+                <div className="font-medium text-neutral-900 dark:text-white">
+                  {pathFromId(node.id)}
+                </div>
+                <div className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">
+                  Step {node.stepIndex + 1} &middot;{' '}
+                  {node.value.toLocaleString()} sessions
+                </div>
               </div>
-              <div className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">
-                Step {node.stepIndex + 1} &middot;{' '}
-                {node.value.toLocaleString()} sessions
+            )}
+            linkTooltip={({ link }) => (
+              <div className="rounded-lg px-3 py-2 text-sm shadow-lg bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700">
+                <div className="font-medium text-neutral-900 dark:text-white">
+                  {pathFromId(link.source.id)} &rarr;{' '}
+                  {pathFromId(link.target.id)}
+                </div>
+                <div className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">
+                  {link.value.toLocaleString()} sessions
+                </div>
               </div>
-            </div>
-          )}
-          linkTooltip={({ link }) => (
-            <div className="rounded-lg px-3 py-2 text-sm shadow-lg bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700">
-              <div className="font-medium text-neutral-900 dark:text-white">
-                {pathFromId(link.source.id)} &rarr;{' '}
-                {pathFromId(link.target.id)}
-              </div>
-              <div className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">
-                {link.value.toLocaleString()} sessions
-              </div>
-            </div>
-          )}
-          theme={{
-            tooltip: {
-              container: {
-                background: 'transparent',
-                boxShadow: 'none',
-                padding: 0,
+            )}
+            theme={{
+              tooltip: {
+                container: {
+                  background: 'transparent',
+                  boxShadow: 'none',
+                  padding: 0,
+                },
               },
-            },
-          }}
-        />
+            }}
+          />
+        </div>
       </div>
     </div>
   )
