@@ -190,7 +190,6 @@ export default function JourneysPage() {
             transitions={transitionsData?.transitions ?? []}
             totalSessions={totalSessions}
             depth={committedDepth}
-            onNodeClick={(path) => setEntryPath(path)}
           />
         </div>
 

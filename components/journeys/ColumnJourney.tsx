@@ -10,7 +10,6 @@ interface ColumnJourneyProps {
   transitions: PathTransition[]
   totalSessions: number
   depth: number
-  onNodeClick?: (path: string) => void
 }
 
 interface ColumnPage {
@@ -431,7 +430,6 @@ export default function ColumnJourney({
   transitions,
   totalSessions,
   depth,
-  onNodeClick,
 }: ColumnJourneyProps) {
   const [selections, setSelections] = useState<Map<number, string>>(new Map())
   const containerRef = useRef<HTMLDivElement>(null)
@@ -455,11 +453,6 @@ export default function ColumnJourney({
 
   const handleSelect = useCallback(
     (colIndex: number, path: string) => {
-      if (colIndex === 0 && onNodeClick) {
-        onNodeClick(path)
-        return
-      }
-
       setSelections((prev) => {
         const next = new Map(prev)
         if (next.get(colIndex) === path) {
@@ -473,7 +466,7 @@ export default function ColumnJourney({
         return next
       })
     },
-    [onNodeClick]
+    []
   )
 
   // ─── Empty state ────────────────────────────────────────────────
