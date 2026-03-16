@@ -27,11 +27,16 @@ const config: Config = {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' },
         },
+        shimmer: {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(400%)' },
+        },
       },
       animation: {
         'cell-highlight': 'cell-highlight 0.5s ease forwards',
         'cell-flash': 'cell-flash 0.6s ease forwards',
         'fade-in': 'fade-in 150ms ease-out',
+        shimmer: 'shimmer 1.2s ease-in-out infinite',
       },
       fontFamily: {
         sans: ['var(--font-plus-jakarta-sans)', 'system-ui', 'sans-serif'],

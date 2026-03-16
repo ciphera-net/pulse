@@ -237,7 +237,7 @@ export default function SiteDashboardPage() {
   // Single dashboard request replaces focused hooks (overview, pages, locations,
   // devices, referrers, goals). The backend runs all queries in parallel
   // and caches the result in Redis for efficient data loading.
-  const { data: dashboard, isLoading: dashboardLoading, error: dashboardError } = useDashboard(siteId, dateRange.start, dateRange.end, interval, filtersParam || undefined)
+  const { data: dashboard, isLoading: dashboardLoading, isValidating: dashboardValidating, error: dashboardError } = useDashboard(siteId, dateRange.start, dateRange.end, interval, filtersParam || undefined)
   const { data: realtimeData } = useRealtime(siteId)
   const { data: prevStats } = useStats(siteId, prevRange.start, prevRange.end)
   const { data: prevDailyStats } = useDailyStats(siteId, prevRange.start, prevRange.end, interval)
@@ -530,6 +530,13 @@ export default function SiteDashboardPage() {
         <AddFilterDropdown onAdd={handleAddFilter} suggestions={filterSuggestions} onFetchSuggestions={handleFetchSuggestions} />
         <FilterBar filters={filters} onRemove={handleRemoveFilter} onClear={handleClearFilters} />
       </div>
+
+      {/* Refetch indicator — visible when SWR is revalidating with stale data on screen */}
+      {dashboardValidating && !dashboardLoading && (
+        <div className="h-0.5 w-full rounded-full bg-neutral-100 dark:bg-neutral-800 overflow-hidden mb-2">
+          <div className="h-full w-1/3 rounded-full bg-brand-orange animate-[shimmer_1.2s_ease-in-out_infinite]" />
+        </div>
+      )}
 
       {/* Advanced Chart with Integrated Stats */}
       <div className="mb-8">
