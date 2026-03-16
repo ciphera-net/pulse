@@ -60,7 +60,7 @@ export default function FrustrationByPageTable({ pages, loading }: FrustrationBy
           {/* Rows */}
           <div className="space-y-0.5">
             {pages.map((page) => {
-              const barWidth = (page.total / maxTotal) * 100
+              const barWidth = (page.total / maxTotal) * 75
               return (
                 <div
                   key={page.page_path}

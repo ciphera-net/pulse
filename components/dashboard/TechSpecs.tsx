@@ -183,7 +183,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
                 const dim = TAB_TO_DIMENSION[activeTab]
                 const canFilter = onFilter && dim
                 const maxPv = displayedData[0]?.pageviews ?? 0
-                const barWidth = maxPv > 0 ? (item.pageviews / maxPv) * 100 : 0
+                const barWidth = maxPv > 0 ? (item.pageviews / maxPv) * 75 : 0
                 return (
                   <div
                     key={item.name}

@@ -156,7 +156,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
             <>
               {displayedData.map((item) => {
                 const maxVis = displayedData[0]?.visitors ?? 0
-                const barWidth = maxVis > 0 ? (item.visitors / maxVis) * 100 : 0
+                const barWidth = maxVis > 0 ? (item.visitors / maxVis) * 75 : 0
                 return (
                   <div
                     key={`${item.source}|${item.medium}|${item.campaign}`}
