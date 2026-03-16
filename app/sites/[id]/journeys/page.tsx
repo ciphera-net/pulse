@@ -16,7 +16,7 @@ import {
   useJourneyEntryPoints,
 } from '@/lib/swr/dashboard'
 
-const DEFAULT_DEPTH = 10
+const DEFAULT_DEPTH = 4
 
 function getThisWeekRange(): { start: string; end: string } {
   const today = new Date()
@@ -148,12 +148,12 @@ export default function JourneysPage() {
                 <span className="text-brand-orange font-bold">
                   {depth} steps deep
                 </span>
-                <span>10 steps</span>
+                <span>5 steps</span>
               </div>
               <input
                 type="range"
                 min={2}
-                max={10}
+                max={5}
                 step={1}
                 value={depth}
                 onChange={(e) => setDepth(parseInt(e.target.value))}
