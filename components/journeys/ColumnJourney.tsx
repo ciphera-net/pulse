@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { TreeStructure } from '@phosphor-icons/react'
 import type { PathTransition } from '@/lib/api/journeys'
 
@@ -51,6 +51,34 @@ function smartLabel(path: string): string {
   const segments = path.replace(/\/$/, '').split('/')
   if (segments.length <= 2) return path
   return `…/${segments[segments.length - 1]}`
+}
+
+// ─── Animated count hook ────────────────────────────────────────────
+
+function useAnimatedCount(target: number, duration = 400): number {
+  const [display, setDisplay] = useState(0)
+  const prevTarget = useRef(target)
+
+  useEffect(() => {
+    const from = prevTarget.current
+    prevTarget.current = target
+    if (from === target) {
+      setDisplay(target)
+      return
+    }
+    const start = performance.now()
+    let raf: number
+    const tick = (now: number) => {
+      const t = Math.min((now - start) / duration, 1)
+      const eased = 1 - Math.pow(1 - t, 3) // ease-out cubic
+      setDisplay(Math.round(from + (target - from) * eased))
+      if (t < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [target, duration])
+
+  return display
 }
 
 // ─── Data transformation ────────────────────────────────────────────
@@ -112,6 +140,21 @@ function buildColumns(
 
 // ─── Sub-components ─────────────────────────────────────────────────
 
+function AnimatedDropOff({ percent }: { percent: number }) {
+  const displayed = useAnimatedCount(percent)
+  if (displayed === 0 && percent === 0) return null
+  return (
+    <span
+      className={`text-xs font-medium ${
+        percent < 0 ? 'text-red-500' : 'text-emerald-500'
+      }`}
+    >
+      {percent > 0 ? '+' : displayed < 0 ? '' : ''}
+      {displayed}%
+    </span>
+  )
+}
+
 function ColumnHeader({
   column,
 }: {
@@ -127,14 +170,7 @@ function ColumnHeader({
           {column.totalSessions.toLocaleString()} visitors
         </span>
         {column.dropOffPercent !== 0 && (
-          <span
-            className={`text-xs font-medium ${
-              column.dropOffPercent < 0 ? 'text-red-500' : 'text-emerald-500'
-            }`}
-          >
-            {column.dropOffPercent > 0 ? '+' : ''}
-            {column.dropOffPercent}%
-          </span>
+          <AnimatedDropOff percent={column.dropOffPercent} />
         )}
       </div>
     </div>
@@ -144,18 +180,22 @@ function ColumnHeader({
 function PageRow({
   page,
   colIndex,
+  rowIndex,
   columnTotal,
   maxCount,
   isSelected,
   isOther,
+  isMounted,
   onClick,
 }: {
   page: ColumnPage
   colIndex: number
+  rowIndex: number
   columnTotal: number
   maxCount: number
   isSelected: boolean
   isOther: boolean
+  isMounted: boolean
   onClick: () => void
 }) {
   const pct = columnTotal > 0 ? Math.round((page.sessionCount / columnTotal) * 100) : 0
@@ -171,22 +211,23 @@ function PageRow({
       data-path={page.path}
       className={`
         group flex items-center justify-between w-full relative
-        h-9 px-3 rounded-lg text-left transition-colors
+        h-9 px-3 rounded-lg text-left transition-all duration-200
         ${isOther ? 'cursor-default' : 'cursor-pointer'}
         ${isSelected
           ? 'bg-brand-orange/10 dark:bg-brand-orange/10'
           : isOther
             ? ''
-            : 'hover:bg-neutral-50 dark:hover:bg-neutral-800/50'
+            : 'hover:bg-neutral-50 dark:hover:bg-neutral-800/50 hover:-translate-y-px hover:shadow-sm'
         }
       `}
     >
-      {/* Background bar */}
+      {/* Background bar — animates width on mount */}
       {!isOther && barWidth > 0 && (
         <div
-          className="absolute top-0.5 bottom-0.5 left-0.5 rounded-md transition-all"
+          className="absolute top-0.5 bottom-0.5 left-0.5 rounded-md transition-all duration-500 ease-out"
           style={{
-            width: `calc(${barWidth}% - 4px)`,
+            width: isMounted ? `calc(${barWidth}% - 4px)` : '0%',
+            transitionDelay: `${rowIndex * 30}ms`,
             backgroundColor: isSelected ? 'rgba(253, 94, 15, 0.15)' : 'rgba(253, 94, 15, 0.08)',
           }}
         />
@@ -233,9 +274,24 @@ function JourneyColumn({
   exitCount: number
   onSelect: (path: string) => void
 }) {
+  // Animation #2 & #3: trigger bar grow after mount
+  const [isMounted, setIsMounted] = useState(false)
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setIsMounted(true))
+    return () => {
+      cancelAnimationFrame(raf)
+      setIsMounted(false)
+    }
+  }, [column.pages])
+
   if (column.pages.length === 0 && exitCount === 0) {
     return (
-      <div className="w-56 shrink-0">
+      <div
+        className="w-56 shrink-0"
+        style={{
+          animation: `col-enter 300ms ease-out ${column.index * 50}ms backwards`,
+        }}
+      >
         <ColumnHeader column={column} />
         <div className="flex items-center justify-center h-16 px-2">
           <span className="text-xs text-neutral-400 dark:text-neutral-500">
@@ -249,31 +305,40 @@ function JourneyColumn({
   const maxCount = Math.max(...column.pages.map((p) => p.sessionCount), 0)
 
   return (
-    <div className="w-56 shrink-0 px-3">
+    <div
+      className="w-56 shrink-0 px-3"
+      style={{
+        animation: `col-enter 300ms ease-out ${column.index * 50}ms backwards`,
+      }}
+    >
       <ColumnHeader column={column} />
       <div className="space-y-0.5 max-h-[500px] overflow-y-auto">
-        {column.pages.map((page) => {
+        {column.pages.map((page, rowIndex) => {
           const isOther = page.path === '(other)'
           return (
             <PageRow
               key={page.path}
               page={page}
               colIndex={column.index}
+              rowIndex={rowIndex}
               columnTotal={column.totalSessions}
               maxCount={maxCount}
               isSelected={selectedPath === page.path}
               isOther={isOther}
+              isMounted={isMounted}
               onClick={() => {
                 if (!isOther) onSelect(page.path)
               }}
             />
           )
         })}
+        {/* Animation #5: exit card slides in */}
         {exitCount > 0 && (
           <div
             data-col={column.index}
             data-path="(exit)"
             className="flex items-center justify-between w-full relative h-9 px-3 rounded-lg bg-red-500/15 dark:bg-red-500/15"
+            style={{ animation: 'exit-reveal 300ms ease-out backwards' }}
           >
             <div
               className="absolute top-0.5 bottom-0.5 left-0.5 rounded-md"
@@ -308,7 +373,7 @@ function ConnectionLines({
   columns: Column[]
   transitions: PathTransition[]
 }) {
-  const [lines, setLines] = useState<(LineDef & { color: string })[]>([])
+  const [lines, setLines] = useState<(LineDef & { color: string; length: number })[]>([])
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
 
   useLayoutEffect(() => {
@@ -324,7 +389,7 @@ function ConnectionLines({
       height: container.scrollHeight,
     })
 
-    const newLines: (LineDef & { color: string })[] = []
+    const newLines: (LineDef & { color: string; length: number })[] = []
 
     for (const [colIdx, selectedPath] of selections) {
       const nextCol = columns[colIdx + 1]
@@ -362,7 +427,12 @@ function ConnectionLines({
 
         const weight = Math.max(1, Math.min(4, (t.session_count / maxCount) * 4))
 
-        newLines.push({ sourceY, destY, sourceX, destX, weight, color })
+        // Approximate bezier curve length for animation
+        const dx = destX - sourceX
+        const dy = destY - sourceY
+        const length = Math.sqrt(dx * dx + dy * dy) * 1.2
+
+        newLines.push({ sourceY, destY, sourceX, destX, weight, color, length })
       }
 
       // Draw line to exit card if it exists
@@ -374,7 +444,10 @@ function ConnectionLines({
         const exitY =
           exitRect.top + exitRect.height / 2 - containerRect.top + container.scrollTop
         const exitX = exitRect.left - containerRect.left + container.scrollLeft
-        newLines.push({ sourceY, destY: exitY, sourceX, destX: exitX, weight: 1, color: '#ef4444' })
+        const dx = exitX - sourceX
+        const dy = exitY - sourceY
+        const length = Math.sqrt(dx * dx + dy * dy) * 1.2
+        newLines.push({ sourceY, destY: exitY, sourceX, destX: exitX, weight: 1, color: '#ef4444', length })
       }
     }
 
@@ -400,9 +473,19 @@ function ConnectionLines({
             strokeWidth={line.weight}
             strokeOpacity={0.35}
             fill="none"
+            strokeDasharray={line.length}
+            strokeDashoffset={line.length}
+            style={{
+              animation: `draw-line 400ms ease-out ${i * 50}ms forwards`,
+            }}
           />
         )
       })}
+      <style>
+        {`@keyframes draw-line {
+          to { stroke-dashoffset: 0; }
+        }`}
+      </style>
     </svg>
   )
 }
@@ -488,6 +571,16 @@ export default function ColumnJourney({
 
   return (
     <div className="relative">
+      <style>
+        {`@keyframes col-enter {
+          from { opacity: 0; transform: translateX(-8px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes exit-reveal {
+          from { opacity: 0; transform: translateY(-4px); }
+          to { opacity: 1; transform: translateY(0); }
+        }`}
+      </style>
       <div
         ref={containerRef}
         className="overflow-x-auto -mx-6 px-6 pb-2 relative"
@@ -502,7 +595,7 @@ export default function ColumnJourney({
             return (
               <Fragment key={col.index}>
                 {i > 0 && (
-                  <div className="w-px shrink-0 bg-neutral-100 dark:bg-neutral-800" />
+                  <div className="w-px shrink-0 mx-3 bg-neutral-100 dark:bg-neutral-800" />
                 )}
                 <JourneyColumn
                   column={col}
