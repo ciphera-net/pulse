@@ -68,7 +68,7 @@ export default function FrustrationByPageTable({ pages, loading }: FrustrationBy
                 >
                   {/* Background bar */}
                   <div
-                    className="absolute inset-y-0 left-0 bg-brand-orange/5 dark:bg-brand-orange/10 rounded-lg transition-all"
+                    className="absolute inset-y-0 left-0 bg-brand-orange/15 dark:bg-brand-orange/25 rounded-lg transition-all"
                     style={{ width: `${barWidth}%` }}
                   />
                   <span

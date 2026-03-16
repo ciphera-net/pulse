@@ -61,7 +61,7 @@ export default function TopPathsTable({ paths, loading }: TopPathsTableProps) {
               >
                 {/* Background bar */}
                 <div
-                  className="absolute inset-y-0.5 left-0.5 bg-brand-orange/5 dark:bg-brand-orange/10 rounded-md transition-all"
+                  className="absolute inset-y-0.5 left-0.5 bg-brand-orange/15 dark:bg-brand-orange/25 rounded-md transition-all"
                   style={{ width: `${barWidth}%` }}
                 />
 
