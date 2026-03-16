@@ -184,8 +184,11 @@ export default function FrustrationTable({
                 No {title.toLowerCase()} detected
               </h4>
               <p className="text-sm text-neutral-500 dark:text-neutral-400 max-w-md">
-                {description}. Data will appear here once frustration signals are detected on your site.
+                Frustration tracking requires the add-on script. Add it after your core Pulse script:
               </p>
+              <code className="text-xs bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 px-3 py-2 rounded-lg font-mono break-all">
+                {'<script defer src="https://pulse.ciphera.net/script.frustration.js"></script>'}
+              </code>
             </div>
           )}
         </div>

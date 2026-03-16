@@ -67,6 +67,18 @@ export function IntegrationGuide({ integration, children }: IntegrationGuideProp
 
         <div className="prose prose-neutral dark:prose-invert max-w-none">
           {children}
+
+          <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
+          <h3>Optional: Frustration Tracking</h3>
+          <p>
+            Detect rage clicks and dead clicks by adding the frustration tracking
+            add-on after the core script:
+          </p>
+          <pre><code>{`<script defer src="https://pulse.ciphera.net/script.frustration.js"></script>`}</code></pre>
+          <p>
+            No extra configuration needed. Add <code>data-no-rage</code> or{' '}
+            <code>data-no-dead</code> to disable individual signals.
+          </p>
         </div>
 
         {/* * --- Related Integrations --- */}
