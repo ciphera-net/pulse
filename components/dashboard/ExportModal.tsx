@@ -51,6 +51,7 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
   const [filename, setFilename] = useState(`pulse_export_${formatDateISO(new Date())}`)
   const [includeHeader, setIncludeHeader] = useState(true)
   const [isExporting, setIsExporting] = useState(false)
+  const [exportProgress, setExportProgress] = useState({ step: 0, total: 1, label: '' })
   const [selectedFields, setSelectedFields] = useState<Record<keyof DailyStat, boolean>>({
     date: true,
     pageviews: true,
@@ -63,8 +64,15 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
     setSelectedFields((prev) => ({ ...prev, [field]: checked }))
   }
 
+  // Yield to the UI thread so the browser can paint progress updates
+  const updateProgress = useCallback(async (step: number, total: number, label: string) => {
+    setExportProgress({ step, total, label })
+    await new Promise(resolve => setTimeout(resolve, 0))
+  }, [])
+
   const handleExport = () => {
     setIsExporting(true)
+    setExportProgress({ step: 0, total: 1, label: 'Preparing...' })
     // Let the browser paint the loading state before starting heavy work
     requestAnimationFrame(() => {
       setTimeout(async () => {
@@ -100,6 +108,7 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
             mimeType = 'text/csv;charset=utf-8;'
             extension = 'csv'
           } else if (format === 'xlsx') {
+            await updateProgress(1, 2, 'Building spreadsheet...')
             const ws = XLSX.utils.json_to_sheet(exportData)
             const wb = XLSX.utils.book_new()
             XLSX.utils.book_append_sheet(wb, ws, 'Data')
@@ -128,9 +137,12 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
             onClose()
             return
           } else if (format === 'pdf') {
+            const totalSteps = 3 + (topPages?.length ? 1 : 0) + (topReferrers?.length ? 1 : 0) + (campaigns?.length ? 1 : 0)
+            let currentStep = 0
             const doc = new jsPDF()
 
             // Header Section
+            await updateProgress(++currentStep, totalSteps, 'Building header...')
             try {
               // Logo
               const logoData = await loadImage('/pulse_icon_no_margins.png')
@@ -195,6 +207,7 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
               startY = 65 // Move table down
             }
 
+            await updateProgress(++currentStep, totalSteps, 'Generating data table...')
             // Check if data is hourly (same date for multiple rows)
             const isHourly = data.length > 1 && data[0].date.split('T')[0] === data[1].date.split('T')[0]
 
@@ -258,6 +271,7 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
 
             // Top Pages Table
             if (topPages && topPages.length > 0) {
+              await updateProgress(++currentStep, totalSteps, 'Adding top pages...')
               // Check if we need a new page
               if (finalY + 40 > doc.internal.pageSize.height) {
                   doc.addPage()
@@ -286,6 +300,7 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
 
             // Top Referrers Table
             if (topReferrers && topReferrers.length > 0) {
+              await updateProgress(++currentStep, totalSteps, 'Adding top referrers...')
                // Check if we need a new page
                if (finalY + 40 > doc.internal.pageSize.height) {
                   doc.addPage()
@@ -315,6 +330,7 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
 
             // Campaigns Table
             if (campaigns && campaigns.length > 0) {
+              await updateProgress(++currentStep, totalSteps, 'Adding campaigns...')
               if (finalY + 40 > doc.internal.pageSize.height) {
                 doc.addPage()
                 finalY = 20
@@ -341,6 +357,7 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
               })
             }
 
+            await updateProgress(totalSteps, totalSteps, 'Saving PDF...')
             doc.save(`${filename || 'export'}.pdf`)
             onClose()
             return
@@ -447,6 +464,22 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
               onCheckedChange={setIncludeHeader}
               label="Include Header Row"
             />
+          </div>
+        )}
+
+        {/* Progress Bar */}
+        {isExporting && (
+          <div className="space-y-2 pt-2">
+            <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400">
+              <span>{exportProgress.label}</span>
+              <span>{Math.round((exportProgress.step / exportProgress.total) * 100)}%</span>
+            </div>
+            <div className="h-1.5 w-full rounded-full bg-neutral-100 dark:bg-neutral-800 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-brand-orange transition-all duration-300 ease-out"
+                style={{ width: `${(exportProgress.step / exportProgress.total) * 100}%` }}
+              />
+            </div>
           </div>
         )}
 
