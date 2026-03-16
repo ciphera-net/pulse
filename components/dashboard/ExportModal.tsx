@@ -51,6 +51,7 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
   const [filename, setFilename] = useState(`pulse_export_${formatDateISO(new Date())}`)
   const [includeHeader, setIncludeHeader] = useState(true)
   const [isExporting, setIsExporting] = useState(false)
+  const [exportDone, setExportDone] = useState(false)
   const [exportProgress, setExportProgress] = useState({ step: 0, total: 1, label: '' })
   const [selectedFields, setSelectedFields] = useState<Record<keyof DailyStat, boolean>>({
     date: true,
@@ -63,6 +64,15 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
   const handleFieldChange = (field: keyof DailyStat, checked: boolean) => {
     setSelectedFields((prev) => ({ ...prev, [field]: checked }))
   }
+
+  const finishExport = useCallback(() => {
+    setExportDone(true)
+    setIsExporting(false)
+    setTimeout(() => {
+      setExportDone(false)
+      onClose()
+    }, 600)
+  }, [onClose])
 
   // Yield to the UI thread so the browser can paint progress updates
   const updateProgress = useCallback(async (step: number, total: number, label: string) => {
@@ -134,7 +144,7 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
             document.body.appendChild(link)
             link.click()
             document.body.removeChild(link)
-            onClose()
+            finishExport()
             return
           } else if (format === 'pdf') {
             const totalSteps = 3 + (topPages?.length ? 1 : 0) + (topReferrers?.length ? 1 : 0) + (campaigns?.length ? 1 : 0)
@@ -359,7 +369,7 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
 
             await updateProgress(totalSteps, totalSteps, 'Saving PDF...')
             doc.save(`${filename || 'export'}.pdf`)
-            onClose()
+            finishExport()
             return
           } else {
             content = JSON.stringify(exportData, null, 2)
@@ -376,7 +386,7 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
           link.click()
           document.body.removeChild(link)
 
-          onClose()
+          finishExport()
         } catch (e) {
           console.error('Export failed:', e)
         } finally {
@@ -468,16 +478,16 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
         )}
 
         {/* Progress Bar */}
-        {isExporting && (
+        {(isExporting || exportDone) && (
           <div className="space-y-2 pt-2">
             <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400">
-              <span>{exportProgress.label}</span>
-              <span>{Math.round((exportProgress.step / exportProgress.total) * 100)}%</span>
+              <span>{exportDone ? 'Export complete' : exportProgress.label}</span>
+              <span>{exportDone ? '100%' : `${Math.round((exportProgress.step / exportProgress.total) * 100)}%`}</span>
             </div>
             <div className="h-1.5 w-full rounded-full bg-neutral-100 dark:bg-neutral-800 overflow-hidden">
               <div
-                className="h-full rounded-full bg-brand-orange transition-all duration-300 ease-out"
-                style={{ width: `${(exportProgress.step / exportProgress.total) * 100}%` }}
+                className={`h-full rounded-full transition-all duration-300 ease-out ${exportDone ? 'bg-green-500' : 'bg-brand-orange'}`}
+                style={{ width: exportDone ? '100%' : `${(exportProgress.step / exportProgress.total) * 100}%` }}
               />
             </div>
           </div>
@@ -488,8 +498,8 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
           <Button variant="secondary" onClick={onClose} disabled={isExporting}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={handleExport} disabled={isExporting}>
-            {isExporting ? 'Exporting...' : 'Export Data'}
+          <Button variant="primary" onClick={handleExport} disabled={isExporting || exportDone}>
+            {exportDone ? '✓ Done' : isExporting ? 'Exporting...' : 'Export Data'}
           </Button>
         </div>
       </div>
