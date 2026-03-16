@@ -257,6 +257,9 @@ export default function SankeyJourney({
   }
 
   const labelColor = isDark ? '#a3a3a3' : '#525252'
+  const steps = data.nodes.map((n) => n.stepIndex)
+  const minStep = Math.min(...steps)
+  const maxStep = Math.max(...steps)
 
   return (
     <div>
@@ -280,10 +283,10 @@ export default function SankeyJourney({
         </div>
       )}
 
-      <div style={{ height: Math.max(400, Math.min(700, data.nodes.length * 28)) }}>
+      <div style={{ height: 500 }}>
         <ResponsiveSankey<SankeyNode, SankeyLink>
           data={data}
-          margin={{ top: 8, right: 8, bottom: 8, left: 8 }}
+          margin={{ top: 8, right: 140, bottom: 8, left: 140 }}
           align="justify"
           sort="descending"
           colors={(node) =>
@@ -302,7 +305,17 @@ export default function SankeyJourney({
           linkHoverOthersOpacity={0.05}
           linkContract={2}
           enableLinkGradient
-          enableLabels={false}
+          enableLabels
+          label={(node) => {
+            // Only show labels for first and last step columns
+            if (node.stepIndex === minStep || node.stepIndex === maxStep) {
+              return smartLabel(pathFromId(node.id))
+            }
+            return ''
+          }}
+          labelPosition="outside"
+          labelPadding={8}
+          labelTextColor={labelColor}
           isInteractive
           onClick={handleClick}
           nodeTooltip={({ node }) => (
