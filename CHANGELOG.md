@@ -6,75 +6,44 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- **BunnyCDN integration.** Connect your BunnyCDN account in Settings > Integrations to monitor your CDN performance right alongside your analytics. A new "CDN" tab on your dashboard shows total bandwidth served, request volume, cache hit rate, origin response time, and error counts — each with percentage changes compared to the previous period. Charts show bandwidth trends (total vs cached), daily request volume, and error breakdowns over time. A geographic breakdown shows which countries consume the most bandwidth. When connecting, Pulse automatically filters your pull zones to only show ones matching your site's domain. Pulse only stores your API key encrypted and only reads statistics — it never modifies anything in your BunnyCDN account. You can disconnect and fully remove all CDN data at any time.
+- **Google Search Console integration.** Connect your Google Search Console account in Settings > Integrations to see which search queries bring visitors to your site. A new "Search" tab on your dashboard shows total clicks, impressions, average CTR, and average ranking position — with percentage changes compared to the previous period. Browse your top search queries and top pages in sortable, paginated tables. Click any query to see which pages rank for it, or click any page to see which queries drive traffic to it. A trend chart shows how clicks and impressions change over time, and a green badge highlights new queries that appeared this period. Pulse only requests read-only access to your Search Console data, encrypts your Google credentials, and lets you disconnect and fully remove all search data at any time.
+- **Free plan now visible on the Pricing page.** The free tier is no longer hidden — it's displayed as the first option on the Pricing page so you can see exactly what you get before signing up: 1 site, 5,000 monthly pageviews, and 6 months of data retention, completely free.
+- **Free plan limited to 1 site.** Free accounts are now limited to a single site. If you need more, you can upgrade to Solo or above from the Pricing page.
+
 ### Improved
 
-- **Smarter bot filtering.** Pulse now catches more types of automated traffic that were slipping through — like headless browsers with default screen sizes, bot farms that rotate through different locations, and bots that fire duplicate events within milliseconds. Your analytics data will be cleaner with fewer fake visitors inflating your numbers.
-- **Leaner tracking script.** Bot detection checks that belonged on the server have been moved there, making the tracking script smaller and faster for your real visitors.
-
-### Improved
-
+- **Smarter bot filtering.** Pulse now catches more types of automated traffic that were slipping through — like headless browsers with default screen sizes, bot farms that rotate through different locations, and bots that fire duplicate events within milliseconds. Bot detection checks have also been moved from the tracking script to the server, making the script smaller and faster for real visitors.
 - **Actionable empty states.** When a dashboard section has no data yet, you now get a direct action — like "Install tracking script" or "Build a UTM URL" — instead of just passive text. Gets you set up faster.
 - **Animated numbers across the dashboard.** Stats like visitors, pageviews, bounce rate, and visit duration now smoothly count up or down when you switch date ranges, apply filters, or when real-time visitor counts change — instead of just jumping to the new value.
 - **Inline bar charts on dashboard lists.** Pages, referrers, locations, technology, and campaigns now show subtle proportional bars behind each row, making it easier to compare values at a glance without reading numbers.
-- **Redesigned Top Paths.** The Top Paths section on the Journeys page has been completely rebuilt — from bulky cards to a clean, compact list with inline bars that matches the rest of Pulse. Long path sequences are truncated so they stay readable.
-- **Redesigned Journeys page.** The depth slider now matches the rest of the UI and goes up to 10 steps. Controls are integrated into the chart card for a cleaner layout.
-- **More reliable visit duration tracking.** Visit duration was silently dropping to 0s for visitors who only viewed one page — especially on mobile or when closing a tab quickly. The tracking script now captures time-on-page more reliably across all browsers, and sessions where duration couldn't be measured are excluded from the average instead of counting as 0s.
+- **Redesigned Journeys page.** The Journeys page has been rebuilt — the depth slider now matches the rest of the UI and goes up to 10 steps, controls are integrated into the chart card, and Top Paths uses a clean compact list with inline bars instead of bulky cards.
+- **More reliable visit duration tracking.** Visit duration was silently dropping to 0s for visitors who only viewed one page — especially on mobile or when closing a tab quickly. The tracking script now captures time-on-page more reliably across all browsers, and sessions where duration couldn't be measured are excluded from the average instead of counting as 0s. This makes the Visit Duration metric, Journeys, and Top Paths much more accurate.
 - **More accurate rage click detection.** Rage clicks no longer fire when you triple-click to select text on a page. Previously, selecting a paragraph (a normal 3-click action) was being counted as a rage click, which inflated frustration metrics. Only genuinely frustrated rapid clicking is tracked now.
 - **Fresher CDN data.** BunnyCDN statistics now refresh every 3 hours instead of once a day, so your CDN tab shows much more current bandwidth, request, and cache data.
 - **More accurate dead click detection.** Dead clicks were being reported on elements that actually worked — like close buttons on cart drawers, modal dismiss buttons, and page content areas. Three fixes make dead clicks much more reliable:
   - Buttons that trigger changes elsewhere on the page (closing a drawer, opening a modal) are no longer flagged as dead.
   - Page content areas that aren't actually clickable (like `<main>` containers) are no longer treated as interactive elements.
   - Single-page app navigations are now properly detected, so links that use client-side routing aren't mistakenly reported as broken.
+- **Journeys page now shows data on low-traffic sites.** The Journeys page previously required at least 2–3 sessions following the same path before showing any data. It now shows all navigation flows immediately, so you can see how visitors move through your site from day one.
+- **European date and time formatting.** All dates across Pulse now use day-first ordering (14 Mar 2025) and 24-hour time (14:30) instead of the US-style month-first format. This applies everywhere — dashboard charts, exports, billing dates, invoices, uptime checks, audit logs, and more.
+- **Sites now show their verification status.** Each site on your dashboard now displays either a green "Active" badge (if verified) or an amber "Unverified" badge. The Settings page also shows a green confirmation bar once verified. When you verify your tracking script installation, the status is saved permanently — no more showing "Active" for sites that haven't been set up yet.
+- **Cleaner page paths in your reports.** Pages like `/products?_t=123456` or `/about?session=abc` now correctly show as `/products` and `/about`. Trailing slashes are also normalized — `/about/` and `/about` count as the same page. Only marketing attribution parameters (like UTM tags) are preserved for traffic source tracking — all other junk parameters are automatically removed, so your Top Pages and Journeys stay clean.
+- **Easier to hover country dots on the map.** The orange location markers on the world map are now much easier to interact with — you no longer need pixel-perfect aim to see the tooltip.
+- **Smoother chart curves and filled area.** The dashboard chart line now flows with natural curves instead of sharp flat tops at peaks. The area beneath the line is filled with a soft transparent orange gradient that fades toward the bottom, making trends easier to read at a glance.
+- **Smoother loading transitions.** When your data finishes loading, the page now fades in smoothly instead of appearing all at once. This applies across Dashboard, Journeys, Funnels, Behavior, Uptime, Settings, Notifications, and shared dashboards. If your data was already cached from a previous visit, it still loads instantly with no animation — the fade only kicks in when you're actually waiting for fresh data.
+- **Faster tab switching across the board.** Switching between Settings, Funnels, Uptime, and other tabs now shows your data instantly instead of flashing a loading skeleton every time. Previously visited tabs remember their data and show it right away, while quietly refreshing in the background so you always see the latest numbers without the wait.
 
 ### Removed
 
 - **Performance insights removed.** The Performance tab, Core Web Vitals tracking (LCP, CLS, INP), and the "Enable performance insights" toggle in Settings have been removed. The tracking script no longer collects Web Vitals data. Visit duration tracking continues to work as before.
 
-### Added
-
-- **BunnyCDN integration.** Connect your BunnyCDN account in Settings > Integrations to monitor your CDN performance right alongside your analytics. A new "CDN" tab on your dashboard shows total bandwidth served, request volume, cache hit rate, origin response time, and error counts — each with percentage changes compared to the previous period. Charts show bandwidth trends (total vs cached), daily request volume, and error breakdowns over time. A geographic breakdown shows which countries consume the most bandwidth. Pulse only stores your API key encrypted and only reads statistics — it never modifies anything in your BunnyCDN account. You can disconnect and fully remove all CDN data at any time.
-- **Smart pull zone matching.** When connecting BunnyCDN, Pulse automatically filters your pull zones to only show the ones that match your tracked site's domain — so you can't accidentally connect the wrong pull zone.
-
-- **Google Search Console integration.** Connect your Google Search Console account in Settings > Integrations to see which search queries bring visitors to your site. A new "Search" tab on your dashboard shows total clicks, impressions, average CTR, and average ranking position — with percentage changes compared to the previous period. Browse your top search queries and top pages in sortable, paginated tables. Click any query to see which pages rank for it, or click any page to see which queries drive traffic to it. Pulse only requests read-only access to your Search Console data, encrypts your Google credentials, and lets you disconnect and fully remove all search data at any time.
-- **Integrations tab in Settings.** A new "Integrations" section in your site settings is where you connect and manage external services. Google Search Console is the first integration available — more will follow.
-- **Search performance on your dashboard.** When Google Search Console is connected, a new "Search" panel appears on your main dashboard alongside Campaigns — showing your total clicks, impressions, and average position at a glance, plus your top 5 search queries. Click "View all" to dive deeper.
-- **Clicks & Impressions trend chart.** The Search tab now includes a chart showing how your clicks and impressions change over time, so you can spot trends and correlate them with content changes.
-- **Top query position cards.** Five compact cards at the top of the Search tab show your best-performing queries with their average ranking position and click count.
-- **New queries indicator.** A green badge on the Search tab tells you how many new search queries appeared this period compared to the last — so you can see your search footprint growing.
-
 ### Fixed
 
-- **BunnyCDN logo now displays correctly.** The BunnyCDN integration card in Settings previously showed a generic globe icon. It now shows the proper BunnyCDN bunny logo.
 - **Your BunnyCDN API key is no longer visible in network URLs.** When loading pull zones, the API key was previously sent as a URL parameter. It's now sent securely in the request body, just like when connecting.
-
 - **No more "Site not found" when switching back to Pulse.** If you left Pulse in the background and came back, you could see a wall of errors and a blank page. This happened because the browser fired several requests at once when the tab regained focus, and if any failed, they all retried repeatedly — flooding the connection and making it worse. Failed requests now back off gracefully instead of retrying in a loop.
-
-### Improved
-
-- **Visit duration now works for single-page sessions.** Previously, if a visitor viewed only one page and left, the visit duration showed as "0s" because there was no second pageview to measure against. Pulse now tracks how long you actually spent on the page and reports real durations — even for single-page visits. This makes the Visit Duration metric, Journeys, and Top Paths much more accurate.
-- **Journeys page now shows data on low-traffic sites.** The Journeys page previously required at least 2–3 sessions following the same path before showing any data. It now shows all navigation flows immediately, so you can see how visitors move through your site from day one.
-- **European date and time formatting.** All dates across Pulse now use day-first ordering (14 Mar 2025) and 24-hour time (14:30) instead of the US-style month-first format. This applies everywhere — dashboard charts, exports, billing dates, invoices, uptime checks, audit logs, and more.
-
-### Added
-
-- **Free plan now visible on the Pricing page.** The free tier is no longer hidden — it's displayed as the first option on the Pricing page so you can see exactly what you get before signing up: 1 site, 5,000 monthly pageviews, and 6 months of data retention, completely free.
-- **Free plan limited to 1 site.** Free accounts are now limited to a single site. If you need more, you can upgrade to Solo or above from the Pricing page.
-
-### Improved
-
-- **Sites now show their verification status.** Each site on your dashboard now displays either a green "Active" badge (if verified) or an amber "Unverified" badge. When you verify your tracking script installation, the status is saved permanently — no more showing "Active" for sites that haven't been set up yet.
-- **Verification status visible in Settings too.** Once your tracking script is verified, the Settings page shows a green confirmation bar instead of the verify button — so you can tell at a glance that everything is working. A "Re-verify" link is still there if you ever need to check again.
-- **Cleaner page paths in your reports.** Pages like `/products?_t=123456` or `/about?session=abc` now correctly show as `/products` and `/about`. Only marketing attribution parameters (like UTM tags) are preserved for traffic source tracking — all other junk parameters are automatically removed, so your Top Pages and Journeys stay clean without us having to chase down every new parameter format.
-- **Easier to hover country dots on the map.** The orange location markers on the world map are now much easier to interact with — you no longer need pixel-perfect aim to see the tooltip.
-- **Smoother chart curves and filled area.** The dashboard chart line now flows with natural curves instead of sharp flat tops at peaks. The area beneath the line is filled with a soft transparent orange gradient that fades toward the bottom, making trends easier to read at a glance.
-- **Refreshed chart background.** The dashboard chart now has subtle horizontal lines instead of the old dotted background, giving the chart area a cleaner look.
-- **Smoother loading transitions.** When your data finishes loading, the page now fades in smoothly instead of appearing all at once. This applies across Dashboard, Journeys, Funnels, Behavior, Uptime, Settings, Notifications, and shared dashboards. If your data was already cached from a previous visit, it still loads instantly with no animation — the fade only kicks in when you're actually waiting for fresh data.
-- **Faster tab switching across the board.** Switching between Settings, Funnels, Uptime, and other tabs now shows your data instantly instead of flashing a loading skeleton every time. Previously visited tabs remember their data and show it right away, while quietly refreshing in the background so you always see the latest numbers without the wait.
-- **Smoother loading on the Journeys page.** The Journeys tab now shows a polished skeleton placeholder while data loads, matching the loading experience on other tabs.
-- **Consistent chart colors.** All dashboard charts — Unique Visitors, Total Pageviews, Bounce Rate, and Visit Duration — now use the same brand orange color for a cleaner, more cohesive look.
-
-### Fixed
-
 - **No more random errors when switching tabs.** Navigating between Dashboard, Funnels, Uptime, and Settings no longer shows "Invalid credentials", "Something went wrong", or "Site not found" errors. This was caused by a timing issue when your login session refreshed in the background while multiple pages were loading at the same time — all those requests now wait for the refresh to finish and retry cleanly.
 - **More accurate pageview counts.** Refreshing a page no longer inflates your pageview numbers. The tracking script now detects when the same page is loaded again within a few seconds and skips the duplicate, so metrics like total pageviews, pages per session, and visit duration reflect real navigation instead of reload habits.
 - **Self-referrals no longer pollute your traffic sources.** Internal navigation within your own site (e.g. clicking from your homepage to your about page) no longer shows your own domain as a referrer. Only external traffic sources appear in your Referrers panel now.
@@ -82,11 +51,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Browser back/forward no longer double-counts pageviews.** Pressing the back or forward button could occasionally register two pageviews instead of one. The tracking script now correctly deduplicates these navigations.
 - **Preloaded pages no longer count as visits.** Modern browsers sometimes preload pages in the background before you actually visit them. These ghost visits no longer inflate your pageview counts — only pages the visitor actually sees are tracked.
 - **Marketing parameters no longer fragment your pages.** Pages like `/about?utm_source=google` and `/about?utm_campaign=spring` now correctly show as just `/about` in your Top Pages. UTM tags, Facebook click IDs, Google click IDs, and other tracking parameters are stripped from the page path so all visits to the same page are grouped together.
-- **Trailing slashes no longer split pages.** `/about/` and `/about` now count as the same page instead of appearing as separate entries in your analytics.
 - **Traffic sources are no longer over-counted.** When a visitor arrived from Facebook (or any external source) and browsed multiple pages, every page was credited to Facebook instead of just the first. Now only the landing page shows the referrer, giving you accurate traffic source numbers.
 - **UTM attribution now works correctly.** Visitors arriving via campaign links (e.g. from Facebook Ads, Google Ads, or email campaigns) now have their traffic source, medium, and campaign properly recorded. Previously, this data was accidentally lost before it reached the server.
-- **More ad tracking clutter removed from page paths.** Facebook ad parameters and click IDs from various platforms are cleaned from your page URLs so your Top Pages stay tidy.
-- **Better bot detection.** Automated browsers (used by scrapers and testing tools) and bots with no screen dimensions are now filtered out before they can send events, keeping your visitor counts cleaner.
 - **Outbound links and file downloads now show the URL.** Previously you could only see how many outbound clicks or downloads happened. Now you can see exactly which external links visitors clicked and which files they downloaded.
 - **Dead click detection no longer triggers on form fields.** Clicking on a text input, dropdown, or text area to interact with it is normal — it no longer gets flagged as a dead click.
 
