@@ -123,7 +123,7 @@ export default function BehaviorPage() {
       <FrustrationSummaryCards data={summary} loading={loading} />
 
       {/* Rage clicks + Dead clicks side by side */}
-      <div className="grid gap-6 lg:grid-cols-2 mb-8">
+      <div className="grid gap-6 lg:grid-cols-2 mb-8 [&>*]:min-w-0">
         <FrustrationTable
           title="Rage Clicks"
           description="Elements users clicked repeatedly in frustration"
@@ -150,7 +150,7 @@ export default function BehaviorPage() {
 
       {/* Scroll depth + Frustration trend — hide when data failed to load */}
       {!behaviorError && (
-        <div className="grid gap-6 lg:grid-cols-2 mb-8">
+        <div className="grid gap-6 lg:grid-cols-2 mb-8 [&>*]:min-w-0">
           <ScrollDepth
             goalCounts={dashboard?.goal_counts ?? []}
             totalPageviews={dashboard?.stats?.pageviews ?? 0}

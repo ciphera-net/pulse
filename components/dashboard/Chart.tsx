@@ -10,6 +10,7 @@ import { Select, DownloadIcon, PlusIcon, XIcon } from '@ciphera-net/ui'
 import { Checkbox } from '@ciphera-net/ui'
 import { ArrowUpRight, ArrowDownRight } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
+import { AnimatedNumber } from '@/components/ui/animated-number'
 import { cn } from '@/lib/utils'
 import { formatTime, formatDateShort, formatDate } from '@/lib/utils/formatDate'
 
@@ -350,7 +351,7 @@ export default function Chart({
               >
                 <div className={cn('text-[10px] font-semibold uppercase tracking-widest mb-2', metric === m.key ? 'text-brand-orange' : 'text-neutral-400 dark:text-neutral-500')}>{m.label}</div>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-bold text-neutral-900 dark:text-white">{m.format(m.value)}</span>
+                  <AnimatedNumber value={m.value} format={m.format} className="text-2xl font-bold text-neutral-900 dark:text-white" />
                   {m.change !== null && (
                     <span className={cn('flex items-center gap-0.5 text-sm font-semibold', m.isPositive ? 'text-[#10B981]' : 'text-[#EF4444]')}>
                       {m.isPositive ? <ArrowUpRight weight="bold" className="size-3.5" /> : <ArrowDownRight weight="bold" className="size-3.5" />}

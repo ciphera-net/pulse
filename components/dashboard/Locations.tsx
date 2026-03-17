@@ -11,10 +11,11 @@ import iso3166 from 'iso-3166-2'
 
 const DottedMap = dynamic(() => import('./DottedMap'), { ssr: false })
 const Globe = dynamic(() => import('./Globe'), { ssr: false })
-import { Modal, GlobeIcon } from '@ciphera-net/ui'
+import Link from 'next/link'
+import { Modal, GlobeIcon, ArrowRightIcon } from '@ciphera-net/ui'
 import { ListSkeleton } from '@/components/skeletons'
 import VirtualList from './VirtualList'
-import { ShieldCheck, Detective, Broadcast, FrameCornersIcon } from '@phosphor-icons/react'
+import { ShieldCheck, Detective, Broadcast, MapPin, FrameCornersIcon } from '@phosphor-icons/react'
 import { getCountries, getCities, getRegions } from '@/lib/api/stats'
 import { type DimensionFilter } from '@/lib/filters'
 
@@ -219,6 +220,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
       <div ref={containerRef} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
+            <MapPin className="w-5 h-5 text-neutral-400 dark:text-neutral-500" weight="bold" />
             <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
               Locations
             </h3>
@@ -232,7 +234,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
               </button>
             )}
           </div>
-          <div className="flex gap-1" role="tablist" aria-label="Location view tabs" onKeyDown={handleTabKeyDown}>
+          <div className="flex gap-1 overflow-x-auto scrollbar-hide" role="tablist" aria-label="Location view tabs" onKeyDown={handleTabKeyDown}>
             {(['map', 'globe', 'countries', 'regions', 'cities'] as Tab[]).map((tab) => (
               <button
                 key={tab}
@@ -279,6 +281,13 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
                 <p className="text-sm text-neutral-500 dark:text-neutral-400 max-w-xs">
                   Visitor locations will appear here based on anonymous geographic data.
                 </p>
+                <Link
+                  href="/installation"
+                  className="inline-flex items-center gap-2 text-sm font-medium text-brand-orange hover:text-brand-orange/90 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/20 rounded"
+                >
+                  Install tracking script
+                  <ArrowRightIcon className="w-4 h-4" />
+                </Link>
               </div>
             )
           ) : (
@@ -288,13 +297,19 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
                   const dim = TAB_TO_DIMENSION[activeTab]
                   const filterValue = activeTab === 'countries' ? item.country : activeTab === 'regions' ? item.region : item.city
                   const canFilter = onFilter && dim && filterValue
+                  const maxPv = displayedData[0]?.pageviews ?? 0
+                  const barWidth = maxPv > 0 ? (item.pageviews / maxPv) * 75 : 0
                   return (
                     <div
                       key={`${item.country ?? ''}-${item.region ?? ''}-${item.city ?? ''}`}
                       onClick={() => canFilter && onFilter({ dimension: dim, operator: 'is', values: [filterValue!] })}
-                      className={`flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors${canFilter ? ' cursor-pointer' : ''}`}
+                      className={`relative flex items-center justify-between h-9 group hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 rounded-lg px-2 -mx-2 transition-colors${canFilter ? ' cursor-pointer' : ''}`}
                     >
-                      <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
+                      <div
+                        className="absolute inset-y-0.5 left-0.5 bg-brand-orange/15 dark:bg-brand-orange/40 rounded-md transition-all"
+                        style={{ width: `${barWidth}%` }}
+                      />
+                      <div className="relative flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
                         <span className="shrink-0">{getFlagComponent(item.country ?? '')}</span>
                         <span className="truncate">
                           {activeTab === 'countries' ? getCountryName(item.country ?? '') :
@@ -302,7 +317,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
                            getCityName(item.city ?? '')}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 ml-4">
+                      <div className="relative flex items-center gap-2 ml-4">
                         <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
                           {totalPageviews > 0 ? `${Math.round((item.pageviews / totalPageviews) * 100)}%` : ''}
                         </span>

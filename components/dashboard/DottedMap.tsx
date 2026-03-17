@@ -57,6 +57,8 @@ const BASE_DOTS_PATH = (() => {
 interface DottedMapProps {
   data: Array<{ country: string; pageviews: number }>
   className?: string
+  /** Custom formatter for tooltip values. Defaults to formatNumber. */
+  formatValue?: (value: number) => string
 }
 
 function getCountryName(code: string): string {
@@ -68,7 +70,7 @@ function getCountryName(code: string): string {
   }
 }
 
-export default function DottedMap({ data, className }: DottedMapProps) {
+export default function DottedMap({ data, className, formatValue = formatNumber }: DottedMapProps) {
   const [tooltip, setTooltip] = useState<{ x: number; y: number; country: string; pageviews: number } | null>(null)
 
   const markerData = useMemo(() => {
@@ -152,7 +154,7 @@ export default function DottedMap({ data, className }: DottedMapProps) {
           style={{ left: tooltip.x, top: tooltip.y }}
         >
           <span>{getCountryName(tooltip.country)}</span>
-          <span className="ml-1.5 text-brand-orange font-bold">{formatNumber(tooltip.pageviews)}</span>
+          <span className="ml-1.5 text-brand-orange font-bold">{formatValue(tooltip.pageviews)}</span>
         </div>
       )}
     </div>

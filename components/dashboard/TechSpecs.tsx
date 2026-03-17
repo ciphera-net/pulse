@@ -6,8 +6,9 @@ import { logger } from '@/lib/utils/logger'
 import { formatNumber } from '@ciphera-net/ui'
 import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
 import { getBrowserIcon, getOSIcon, getDeviceIcon } from '@/lib/utils/icons'
-import { Monitor, FrameCornersIcon } from '@phosphor-icons/react'
-import { Modal, GridIcon } from '@ciphera-net/ui'
+import Link from 'next/link'
+import { Monitor, DeviceMobile, FrameCornersIcon } from '@phosphor-icons/react'
+import { Modal, GridIcon, ArrowRightIcon } from '@ciphera-net/ui'
 import { ListSkeleton } from '@/components/skeletons'
 import VirtualList from './VirtualList'
 import { getBrowsers, getOS, getDevices, getScreenResolutions } from '@/lib/api/stats'
@@ -131,6 +132,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
+            <DeviceMobile className="w-5 h-5 text-neutral-400 dark:text-neutral-500" weight="bold" />
             <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
               Technology
             </h3>
@@ -144,7 +146,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
               </button>
             )}
           </div>
-          <div className="flex gap-1" role="tablist" aria-label="Technology view tabs" onKeyDown={handleTabKeyDown}>
+          <div className="flex gap-1 overflow-x-auto scrollbar-hide" role="tablist" aria-label="Technology view tabs" onKeyDown={handleTabKeyDown}>
             {(['browsers', 'os', 'devices', 'screens'] as Tab[]).map((tab) => (
               <button
                 key={tab}
@@ -180,17 +182,23 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
               {displayedData.map((item) => {
                 const dim = TAB_TO_DIMENSION[activeTab]
                 const canFilter = onFilter && dim
+                const maxPv = displayedData[0]?.pageviews ?? 0
+                const barWidth = maxPv > 0 ? (item.pageviews / maxPv) * 75 : 0
                 return (
                   <div
                     key={item.name}
                     onClick={() => canFilter && onFilter({ dimension: dim, operator: 'is', values: [item.name] })}
-                    className={`flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors${canFilter ? ' cursor-pointer' : ''}`}
+                    className={`relative flex items-center justify-between h-9 group hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 rounded-lg px-2 -mx-2 transition-colors${canFilter ? ' cursor-pointer' : ''}`}
                   >
-                    <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
+                    <div
+                      className="absolute inset-y-0.5 left-0.5 bg-brand-orange/15 dark:bg-brand-orange/40 rounded-md transition-all"
+                      style={{ width: `${barWidth}%` }}
+                    />
+                    <div className="relative flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
                       {item.icon && <span className="text-lg">{item.icon}</span>}
                       <span className="truncate">{capitalize(item.name)}</span>
                     </div>
-                    <div className="flex items-center gap-2 ml-4">
+                    <div className="relative flex items-center gap-2 ml-4">
                       <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
                         {totalPageviews > 0 ? `${Math.round((item.pageviews / totalPageviews) * 100)}%` : ''}
                       </span>
@@ -216,6 +224,13 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
               <p className="text-sm text-neutral-500 dark:text-neutral-400 max-w-xs">
                 Browser, OS, and device information will appear as visitors arrive.
               </p>
+              <Link
+                href="/installation"
+                className="inline-flex items-center gap-2 text-sm font-medium text-brand-orange hover:text-brand-orange/90 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/20 rounded"
+              >
+                Install tracking script
+                <ArrowRightIcon className="w-4 h-4" />
+              </Link>
             </div>
           )}
         </div>

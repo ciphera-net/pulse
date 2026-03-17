@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Image from 'next/image'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
-import { getPublicDashboard, getPublicStats, getPublicDailyStats, getPublicRealtime, getPublicPerformanceByPage, type DashboardData, type Stats, type DailyStat, type PerformanceByPageStat } from '@/lib/api/stats'
+import { getPublicDashboard, getPublicStats, getPublicDailyStats, getPublicRealtime, type DashboardData, type Stats, type DailyStat } from '@/lib/api/stats'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { ApiError } from '@/lib/api/client'
@@ -13,7 +13,6 @@ import TopPages from '@/components/dashboard/ContentStats'
 import TopReferrers from '@/components/dashboard/TopReferrers'
 import Locations from '@/components/dashboard/Locations'
 import TechSpecs from '@/components/dashboard/TechSpecs'
-import PerformanceStats from '@/components/dashboard/PerformanceStats'
 import { Select, DatePicker as DatePickerModal, Captcha, DownloadIcon, ZapIcon } from '@ciphera-net/ui'
 import { DashboardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import ExportModal from '@/components/dashboard/ExportModal'
@@ -257,7 +256,7 @@ export default function PublicDashboardPage() {
 
   if (!data) return null
 
-  const { site, stats, daily_stats, top_pages, entry_pages, exit_pages, top_referrers, countries, cities, regions, browsers, os, devices, screen_resolutions, performance, performance_by_page, realtime_visitors } = data
+  const { site, stats, daily_stats, top_pages, entry_pages, exit_pages, top_referrers, countries, cities, regions, browsers, os, devices, screen_resolutions, realtime_visitors } = data
 
   // Provide defaults for potentially undefined data
   const safeDailyStats = daily_stats || []
@@ -394,29 +393,6 @@ export default function PublicDashboardPage() {
             lastUpdatedAt={lastUpdatedAt}
           />
         </div>
-
-         {/* Performance Stats - Only show if enabled */}
-        {performance && data.site?.enable_performance_insights && (
-           <div className="mb-8">
-            <PerformanceStats 
-                stats={performance} 
-                performanceByPage={performance_by_page} 
-                siteId={siteId}
-                startDate={dateRange.start}
-                endDate={dateRange.end}
-                getPerformanceByPage={(siteId, startDate, endDate, opts) => {
-                    return getPublicPerformanceByPage(siteId, startDate, endDate, opts, {
-                        password,
-                        captcha: {
-                            captcha_id: captchaId,
-                            captcha_solution: captchaSolution,
-                            captcha_token: captchaToken
-                        }
-                    })
-                }}
-            />
-          </div>
-        )}
 
         {/* Details Grid */}
         <div className="grid gap-6 lg:grid-cols-2 mb-8">

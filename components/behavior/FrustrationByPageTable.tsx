@@ -45,7 +45,7 @@ export default function FrustrationByPageTable({ pages, loading }: FrustrationBy
       {loading ? (
         <SkeletonRows />
       ) : hasData ? (
-        <div>
+        <div className="overflow-x-auto -mx-6 px-6">
           {/* Header */}
           <div className="flex items-center justify-between px-2 -mx-2 mb-2 text-xs font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
             <span>Page</span>
@@ -60,7 +60,7 @@ export default function FrustrationByPageTable({ pages, loading }: FrustrationBy
           {/* Rows */}
           <div className="space-y-0.5">
             {pages.map((page) => {
-              const barWidth = (page.total / maxTotal) * 100
+              const barWidth = (page.total / maxTotal) * 75
               return (
                 <div
                   key={page.page_path}
@@ -68,11 +68,11 @@ export default function FrustrationByPageTable({ pages, loading }: FrustrationBy
                 >
                   {/* Background bar */}
                   <div
-                    className="absolute inset-y-0 left-0 bg-brand-orange/5 dark:bg-brand-orange/10 rounded-lg transition-all"
+                    className="absolute inset-y-0 left-0 bg-brand-orange/15 dark:bg-brand-orange/25 rounded-lg transition-all"
                     style={{ width: `${barWidth}%` }}
                   />
                   <span
-                    className="relative text-sm text-neutral-900 dark:text-white truncate max-w-[300px]"
+                    className="relative text-sm text-neutral-900 dark:text-white truncate max-w-[200px] sm:max-w-[300px]"
                     title={page.page_path}
                   >
                     {page.page_path}

@@ -2,6 +2,7 @@
 // * Implements stale-while-revalidate pattern for efficient data updates
 
 import useSWR from 'swr'
+import { toast } from '@ciphera-net/ui'
 import {
   getDashboard,
   getDashboardOverview,
@@ -9,7 +10,6 @@ import {
   getDashboardLocations,
   getDashboardDevices,
   getDashboardReferrers,
-  getDashboardPerformance,
   getDashboardGoals,
   getCampaigns,
   getRealtime,
@@ -33,6 +33,10 @@ import { listFunnels, type Funnel } from '@/lib/api/funnels'
 import { getUptimeStatus, type UptimeStatusResponse } from '@/lib/api/uptime'
 import { listGoals, type Goal } from '@/lib/api/goals'
 import { listReportSchedules, type ReportSchedule } from '@/lib/api/report-schedules'
+import { getGSCStatus, getGSCOverview, getGSCTopQueries, getGSCTopPages, getGSCDailyTotals, getGSCNewQueries } from '@/lib/api/gsc'
+import type { GSCStatus, GSCOverview, GSCQueryResponse, GSCPageResponse, GSCDailyTotal, GSCNewQueries } from '@/lib/api/gsc'
+import { getBunnyStatus, getBunnyOverview, getBunnyDailyStats, getBunnyTopCountries } from '@/lib/api/bunny'
+import type { BunnyStatus, BunnyOverview, BunnyDailyRow, BunnyGeoRow } from '@/lib/api/bunny'
 import { getSubscription, type SubscriptionDetails } from '@/lib/api/billing'
 import type {
   Stats,
@@ -44,7 +48,6 @@ import type {
   DashboardLocationsData,
   DashboardDevicesData,
   DashboardReferrersData,
-  DashboardPerformanceData,
   DashboardGoalsData,
   BehaviorData,
 } from '@/lib/api/stats'
@@ -58,7 +61,6 @@ const fetchers = {
   dashboardLocations: (siteId: string, start: string, end: string, filters?: string) => getDashboardLocations(siteId, start, end, undefined, undefined, filters),
   dashboardDevices: (siteId: string, start: string, end: string, filters?: string) => getDashboardDevices(siteId, start, end, undefined, filters),
   dashboardReferrers: (siteId: string, start: string, end: string, filters?: string) => getDashboardReferrers(siteId, start, end, undefined, filters),
-  dashboardPerformance: (siteId: string, start: string, end: string, filters?: string) => getDashboardPerformance(siteId, start, end, filters),
   dashboardGoals: (siteId: string, start: string, end: string, filters?: string) => getDashboardGoals(siteId, start, end, undefined, filters),
   stats: (siteId: string, start: string, end: string, filters?: string) => getStats(siteId, start, end, filters),
   dailyStats: (siteId: string, start: string, end: string, interval: 'hour' | 'day' | 'minute') =>
@@ -78,6 +80,16 @@ const fetchers = {
   uptimeStatus: (siteId: string) => getUptimeStatus(siteId),
   goals: (siteId: string) => listGoals(siteId),
   reportSchedules: (siteId: string) => listReportSchedules(siteId),
+  gscStatus: (siteId: string) => getGSCStatus(siteId),
+  gscOverview: (siteId: string, start: string, end: string) => getGSCOverview(siteId, start, end),
+  gscTopQueries: (siteId: string, start: string, end: string, limit: number, offset: number) => getGSCTopQueries(siteId, start, end, limit, offset),
+  gscTopPages: (siteId: string, start: string, end: string, limit: number, offset: number) => getGSCTopPages(siteId, start, end, limit, offset),
+  gscDailyTotals: (siteId: string, start: string, end: string) => getGSCDailyTotals(siteId, start, end),
+  gscNewQueries: (siteId: string, start: string, end: string) => getGSCNewQueries(siteId, start, end),
+  bunnyStatus: (siteId: string) => getBunnyStatus(siteId),
+  bunnyOverview: (siteId: string, start: string, end: string) => getBunnyOverview(siteId, start, end),
+  bunnyDailyStats: (siteId: string, start: string, end: string) => getBunnyDailyStats(siteId, start, end),
+  bunnyTopCountries: (siteId: string, start: string, end: string) => getBunnyTopCountries(siteId, start, end),
   subscription: () => getSubscription(),
 }
 
@@ -87,11 +99,25 @@ const dashboardSWRConfig = {
   revalidateOnFocus: false,
   // * Revalidate when reconnecting (fresh data after offline)
   revalidateOnReconnect: true,
-  // * Retry failed requests
+  // * Retry failed requests (but not rate limits or auth errors)
   shouldRetryOnError: true,
   errorRetryCount: 3,
   // * Error retry interval with exponential backoff
   errorRetryInterval: 5000,
+  // * Don't retry on 429 (rate limit) or 401/403 (auth) — retrying makes it worse
+  onErrorRetry: (error: any, _key: string, _config: any, revalidate: any, { retryCount }: { retryCount: number }) => {
+    if (error?.status === 429) {
+      const retryAfter = error?.data?.retryAfter
+      const message = retryAfter
+        ? `Too many requests. Please try again in ${retryAfter} seconds.`
+        : 'Too many requests. Please wait a moment and try again.'
+      toast.error(message, { id: 'rate-limit' })
+      return
+    }
+    if (error?.status === 401 || error?.status === 403) return
+    if (retryCount >= 3) return
+    setTimeout(() => revalidate({ retryCount }), 5000 * Math.pow(2, retryCount))
+  },
 }
 
 // * Hook for site data (loads once, refreshes rarely)
@@ -232,19 +258,6 @@ export function useDashboardReferrers(siteId: string, start: string, end: string
   return useSWR<DashboardReferrersData>(
     siteId && start && end ? ['dashboardReferrers', siteId, start, end, filters] : null,
     () => fetchers.dashboardReferrers(siteId, start, end, filters),
-    {
-      ...dashboardSWRConfig,
-      refreshInterval: 60 * 1000,
-      dedupingInterval: 10 * 1000,
-    }
-  )
-}
-
-// * Hook for focused dashboard performance data
-export function useDashboardPerformance(siteId: string, start: string, end: string, filters?: string) {
-  return useSWR<DashboardPerformanceData>(
-    siteId && start && end ? ['dashboardPerformance', siteId, start, end, filters] : null,
-    () => fetchers.dashboardPerformance(siteId, start, end, filters),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,
@@ -394,6 +407,100 @@ export function useReportSchedules(siteId: string) {
       refreshInterval: 60 * 1000,
       dedupingInterval: 10 * 1000,
     }
+  )
+}
+
+// * Hook for GSC connection status
+export function useGSCStatus(siteId: string) {
+  return useSWR<GSCStatus>(
+    siteId ? ['gscStatus', siteId] : null,
+    () => fetchers.gscStatus(siteId),
+    {
+      ...dashboardSWRConfig,
+      refreshInterval: 60 * 1000,
+      dedupingInterval: 30 * 1000,
+    }
+  )
+}
+
+// * Hook for GSC overview metrics (clicks, impressions, CTR, position)
+export function useGSCOverview(siteId: string, start: string, end: string) {
+  return useSWR<GSCOverview>(
+    siteId && start && end ? ['gscOverview', siteId, start, end] : null,
+    () => fetchers.gscOverview(siteId, start, end),
+    dashboardSWRConfig
+  )
+}
+
+// * Hook for GSC top queries
+export function useGSCTopQueries(siteId: string, start: string, end: string, limit = 50, offset = 0) {
+  return useSWR<GSCQueryResponse>(
+    siteId && start && end ? ['gscTopQueries', siteId, start, end, limit, offset] : null,
+    () => fetchers.gscTopQueries(siteId, start, end, limit, offset),
+    dashboardSWRConfig
+  )
+}
+
+// * Hook for GSC top pages
+export function useGSCTopPages(siteId: string, start: string, end: string, limit = 50, offset = 0) {
+  return useSWR<GSCPageResponse>(
+    siteId && start && end ? ['gscTopPages', siteId, start, end, limit, offset] : null,
+    () => fetchers.gscTopPages(siteId, start, end, limit, offset),
+    dashboardSWRConfig
+  )
+}
+
+// * Hook for GSC daily totals (clicks & impressions per day)
+export function useGSCDailyTotals(siteId: string, start: string, end: string) {
+  return useSWR<{ daily_totals: GSCDailyTotal[] }>(
+    siteId && start && end ? ['gscDailyTotals', siteId, start, end] : null,
+    () => fetchers.gscDailyTotals(siteId, start, end),
+    dashboardSWRConfig
+  )
+}
+
+// * Hook for GSC new queries (queries that appeared in the current period)
+export function useGSCNewQueries(siteId: string, start: string, end: string) {
+  return useSWR<GSCNewQueries>(
+    siteId && start && end ? ['gscNewQueries', siteId, start, end] : null,
+    () => fetchers.gscNewQueries(siteId, start, end),
+    dashboardSWRConfig
+  )
+}
+
+// * Hook for BunnyCDN connection status
+export function useBunnyStatus(siteId: string) {
+  return useSWR<BunnyStatus>(
+    siteId ? ['bunnyStatus', siteId] : null,
+    () => fetchers.bunnyStatus(siteId),
+    { ...dashboardSWRConfig, refreshInterval: 60 * 1000, dedupingInterval: 30 * 1000 }
+  )
+}
+
+// * Hook for BunnyCDN overview metrics (bandwidth, requests, cache hit rate)
+export function useBunnyOverview(siteId: string, startDate: string, endDate: string) {
+  return useSWR<BunnyOverview>(
+    siteId && startDate && endDate ? ['bunnyOverview', siteId, startDate, endDate] : null,
+    () => fetchers.bunnyOverview(siteId, startDate, endDate),
+    dashboardSWRConfig
+  )
+}
+
+// * Hook for BunnyCDN daily stats (bandwidth & requests per day)
+export function useBunnyDailyStats(siteId: string, startDate: string, endDate: string) {
+  return useSWR<{ daily_stats: BunnyDailyRow[] }>(
+    siteId && startDate && endDate ? ['bunnyDailyStats', siteId, startDate, endDate] : null,
+    () => fetchers.bunnyDailyStats(siteId, startDate, endDate),
+    dashboardSWRConfig
+  )
+}
+
+// * Hook for BunnyCDN top countries by bandwidth
+export function useBunnyTopCountries(siteId: string, startDate: string, endDate: string) {
+  return useSWR<{ countries: BunnyGeoRow[] }>(
+    siteId && startDate && endDate ? ['bunnyTopCountries', siteId, startDate, endDate] : null,
+    () => fetchers.bunnyTopCountries(siteId, startDate, endDate),
+    dashboardSWRConfig
   )
 }
 

@@ -18,6 +18,7 @@
     return;
   }
 
+
   // * Get domain from script tag
   const script = document.currentScript || document.querySelector('script[data-domain]');
   if (!script || !script.getAttribute('data-domain')) {
@@ -32,80 +33,25 @@
   const ttlHours = storageMode === 'local' ? parseFloat(script.getAttribute('data-storage-ttl') || '24') : 0;
   const ttlMs = ttlHours > 0 ? ttlHours * 60 * 60 * 1000 : 0;
 
-  // * Performance Monitoring (Core Web Vitals) State
   let currentEventId = null;
-  let metrics = { lcp: 0, cls: 0, inp: 0 };
-  let lcpObserved = false;
-  let clsObserved = false;
-  let performanceInsightsEnabled = false;
 
   // * Time-on-page tracking: records when the current pageview started
   var pageStartTime = 0;
 
-  // * Minimal Web Vitals Observer
-  function observeMetrics() {
-    try {
-      if (typeof PerformanceObserver === 'undefined') return;
-
-      // * LCP (Largest Contentful Paint) - fires when the browser has determined the LCP element (often 2–4s+ after load)
-      new PerformanceObserver((entryList) => {
-        const entries = entryList.getEntries();
-        const lastEntry = entries[entries.length - 1];
-        if (lastEntry) {
-          metrics.lcp = lastEntry.startTime;
-          lcpObserved = true;
-        }
-      }).observe({ type: 'largest-contentful-paint', buffered: true });
-
-      // * CLS (Cumulative Layout Shift) - accumulates when elements shift after load
-      new PerformanceObserver((entryList) => {
-        for (const entry of entryList.getEntries()) {
-          if (!entry.hadRecentInput) {
-            metrics.cls += entry.value;
-            clsObserved = true;
-          }
-        }
-      }).observe({ type: 'layout-shift', buffered: true });
-
-      // * INP (Interaction to Next Paint) - Simplified (track max duration)
-      new PerformanceObserver((entryList) => {
-        const entries = entryList.getEntries();
-        for (const entry of entries) {
-           // * Track longest interaction
-           if (entry.duration > metrics.inp) metrics.inp = entry.duration;
-        }
-      }).observe({ type: 'event', buffered: true, durationThreshold: 16 });
-
-    } catch (e) {
-      // * Browser doesn't support PerformanceObserver or specific entry types
-    }
-  }
+  var metricsSent = false;
 
   function sendMetrics() {
-    if (!currentEventId) return;
+    if (!currentEventId || metricsSent) return;
 
-    // * Calculate time-on-page in seconds (always sent, even without performance insights)
+    // * Calculate time-on-page in seconds
     var durationSec = pageStartTime > 0 ? Math.round((Date.now() - pageStartTime) / 1000) : 0;
 
-    var payload = { event_id: currentEventId };
+    // * Skip if nothing to send (no duration)
+    if (durationSec <= 0) return;
 
-    // * Always include duration if we have a valid measurement
-    if (durationSec > 0) payload.duration = durationSec;
+    metricsSent = true;
 
-    // * Only include Web Vitals when performance insights are enabled
-    if (performanceInsightsEnabled) {
-      payload.inp = metrics.inp;
-      // * Only include LCP/CLS when the browser actually reported them. Sending 0 overwrites
-      // * the DB before LCP/CLS have fired (they fire late). The backend does partial updates
-      // * and leaves unset fields unchanged.
-      if (lcpObserved) payload.lcp = metrics.lcp;
-      if (clsObserved) payload.cls = metrics.cls;
-    }
-
-    // * Skip if nothing to send (no duration and no vitals)
-    if (!payload.duration && !performanceInsightsEnabled) return;
-
-    var data = JSON.stringify(payload);
+    var data = JSON.stringify({ event_id: currentEventId, duration: durationSec });
 
     if (navigator.sendBeacon) {
       navigator.sendBeacon(apiUrl + '/api/v1/metrics', new Blob([data], {type: 'application/json'}));
@@ -119,17 +65,13 @@
     }
   }
 
-  // * Start observing metrics immediately (buffered observers will capture early metrics)
-  // * Metrics will only be sent if performance insights are enabled (checked in sendMetrics)
-  observeMetrics();
-
   // * Send metrics when user leaves or hides the page
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') {
-      // * Delay metrics slightly so in-flight LCP/CLS callbacks can run before we send
-      setTimeout(sendMetrics, 150);
-    }
+  // * visibilitychange is the primary signal, pagehide is the fallback
+  // * for browsers/scenarios where visibilitychange doesn't fire (tab close, mobile app kill)
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'hidden') sendMetrics();
   });
+  window.addEventListener('pagehide', sendMetrics);
 
   // * Memory cache for session ID (fallback if storage is unavailable)
   let cachedSessionId = null;
@@ -307,9 +249,6 @@
 
   // * Track pageview
   function trackPageview() {
-    var routeChangeTime = performance.now();
-    var isSpaNav = !!currentEventId;
-
     const path = cleanPath();
 
     // * Skip if same path was just tracked (refresh dedup)
@@ -322,9 +261,6 @@
         sendMetrics();
     }
 
-    metrics = { lcp: 0, cls: 0, inp: 0 };
-    lcpObserved = false;
-    clsObserved = false;
     currentEventId = null;
     pageStartTime = 0;
     // * Only send external referrer on the first pageview (landing page).
@@ -347,11 +283,6 @@
       width: window.innerWidth || window.screen.width,
       height: window.innerHeight || window.screen.height,
     };
-
-    // * Skip bots with no screen dimensions (0x0)
-    if (screenSize.width === 0 && screenSize.height === 0) {
-      return;
-    }
 
     const payload = {
       domain: domain,
@@ -376,21 +307,7 @@
       if (data && data.id) {
         currentEventId = data.id;
         pageStartTime = Date.now();
-        // * For SPA navigations the browser never emits a new largest-contentful-paint
-        // * (LCP is only for full document loads). After the new view has had time to
-        // * paint, we record time-from-route-change as an LCP proxy so /products etc.
-        // * get a value. If the user navigates away before the delay, we leave LCP unset.
-        if (isSpaNav) {
-          var thatId = data.id;
-          // * Run soon so we set lcpObserved before the user leaves; 500ms was too long
-          // * and we often sent metrics (next nav or visibilitychange+150ms) before it ran.
-          setTimeout(function() {
-            if (!lcpObserved && currentEventId === thatId) {
-              metrics.lcp = Math.round(performance.now() - routeChangeTime);
-              lcpObserved = true;
-            }
-          }, 100);
-        }
+        metricsSent = false;
       }
     }).catch(() => {
       // * Silently fail - don't interrupt user experience
@@ -496,6 +413,7 @@
   // * Expose pulse.track() for custom events (e.g. pulse.track('signup_click'))
   window.pulse = window.pulse || {};
   window.pulse.track = trackCustomEvent;
+  window.pulse.cleanPath = cleanPath;
 
   // * Auto-track 404 error pages (on by default)
   // * Detects pages where document.title contains "404" or "not found"
@@ -551,255 +469,6 @@
         requestAnimationFrame(checkScroll);
       }
     }, { passive: true });
-  }
-
-  // * Strip HTML tags from a string (used for sanitizing attribute values)
-  function stripHtml(str) {
-    if (typeof str !== 'string') return '';
-    return str.replace(/<[^>]*>/g, '').trim();
-  }
-
-  // * Build a compact element identifier string for frustration tracking
-  // * Format: tag#id.class1.class2[href="/path"]
-  function getElementIdentifier(el) {
-    if (!el || !el.tagName) return '';
-    var result = el.tagName.toLowerCase();
-
-    // * Add #id if present
-    if (el.id) {
-      result += '#' + stripHtml(el.id);
-    }
-
-    // * Add classes (handle SVG elements where className is SVGAnimatedString)
-    var rawClassName = el.className;
-    if (rawClassName && typeof rawClassName !== 'string' && rawClassName.baseVal !== undefined) {
-      rawClassName = rawClassName.baseVal;
-    }
-    if (typeof rawClassName === 'string' && rawClassName.trim()) {
-      var classes = rawClassName.trim().split(/\s+/);
-      var filtered = [];
-      for (var ci = 0; ci < classes.length && filtered.length < 5; ci++) {
-        var cls = classes[ci];
-        if (cls.length > 50) continue;
-        if (/^(ng-|js-|is-|has-|animate)/.test(cls)) continue;
-        filtered.push(cls);
-      }
-      if (filtered.length > 0) {
-        result += '.' + filtered.join('.');
-      }
-    }
-
-    // * Add key attributes
-    var attrs = ['href', 'role', 'type', 'name', 'data-action'];
-    for (var ai = 0; ai < attrs.length; ai++) {
-      var attrName = attrs[ai];
-      var attrVal = el.getAttribute(attrName);
-      if (attrVal !== null && attrVal !== '') {
-        var sanitized = stripHtml(attrVal);
-        if (sanitized.length > 50) sanitized = sanitized.substring(0, 50);
-        result += '[' + attrName + '="' + sanitized + '"]';
-      }
-    }
-
-    // * Truncate to max 200 chars
-    if (result.length > 200) {
-      result = result.substring(0, 200);
-    }
-
-    return result;
-  }
-
-  // * Auto-track rage clicks (rapid repeated clicks on the same element)
-  // * Fires rage_click when same element is clicked 3+ times within 800ms
-  // * Opt-out: add data-no-rage to the script tag
-  if (!script.hasAttribute('data-no-rage')) {
-    var rageClickHistory = {};  // * selector -> { times: [timestamps], lastFired: 0 }
-    var RAGE_CLICK_THRESHOLD = 3;
-    var RAGE_CLICK_WINDOW = 800;
-    var RAGE_CLICK_DEBOUNCE = 5000;
-    var RAGE_CLEANUP_INTERVAL = 10000;
-
-    // * Cleanup stale rage click entries every 10 seconds
-    setInterval(function() {
-      var now = Date.now();
-      for (var key in rageClickHistory) {
-        if (!rageClickHistory.hasOwnProperty(key)) continue;
-        var entry = rageClickHistory[key];
-        // * Remove if last click was more than 10 seconds ago
-        if (entry.times.length === 0 || now - entry.times[entry.times.length - 1] > RAGE_CLEANUP_INTERVAL) {
-          delete rageClickHistory[key];
-        }
-      }
-    }, RAGE_CLEANUP_INTERVAL);
-
-    document.addEventListener('click', function(e) {
-      var el = e.target;
-      if (!el || !el.tagName) return;
-
-      var selector = getElementIdentifier(el);
-      if (!selector) return;
-
-      var now = Date.now();
-      var currentPath = cleanPath();
-
-      if (!rageClickHistory[selector]) {
-        rageClickHistory[selector] = { times: [], lastFired: 0 };
-      }
-
-      var entry = rageClickHistory[selector];
-
-      // * Add current click timestamp
-      entry.times.push(now);
-
-      // * Remove clicks outside the time window
-      while (entry.times.length > 0 && now - entry.times[0] > RAGE_CLICK_WINDOW) {
-        entry.times.shift();
-      }
-
-      // * Check if rage click threshold is met
-      if (entry.times.length >= RAGE_CLICK_THRESHOLD) {
-        // * Debounce: max one rage_click per element per 5 seconds
-        if (now - entry.lastFired >= RAGE_CLICK_DEBOUNCE) {
-          var clickCount = entry.times.length;
-          trackCustomEvent('rage_click', {
-            selector: selector,
-            click_count: String(clickCount),
-            page_path: currentPath,
-            x: String(Math.round(e.clientX)),
-            y: String(Math.round(e.clientY))
-          });
-          entry.lastFired = now;
-        }
-        // * Reset tracker after firing or debounce skip
-        entry.times = [];
-      }
-    }, true); // * Capture phase
-  }
-
-  // * Auto-track dead clicks (clicks on interactive elements that produce no effect)
-  // * Fires dead_click when an interactive element is clicked but no DOM change, navigation,
-  // * or network request occurs within 1 second
-  // * Opt-out: add data-no-dead to the script tag
-  if (!script.hasAttribute('data-no-dead')) {
-    var INTERACTIVE_SELECTOR = 'a,button,input,select,textarea,[role="button"],[role="link"],[role="tab"],[role="menuitem"],[onclick],[tabindex]';
-    var DEAD_CLICK_DEBOUNCE = 10000;
-    var DEAD_CLEANUP_INTERVAL = 30000;
-    var deadClickDebounce = {}; // * selector -> lastFiredTimestamp
-
-    // * Cleanup stale dead click debounce entries every 30 seconds
-    setInterval(function() {
-      var now = Date.now();
-      for (var key in deadClickDebounce) {
-        if (!deadClickDebounce.hasOwnProperty(key)) continue;
-        if (now - deadClickDebounce[key] > DEAD_CLEANUP_INTERVAL) {
-          delete deadClickDebounce[key];
-        }
-      }
-    }, DEAD_CLEANUP_INTERVAL);
-
-    // * Polyfill check for Element.matches
-    var matchesFn = (function() {
-      var ep = Element.prototype;
-      return ep.matches || ep.msMatchesSelector || ep.webkitMatchesSelector || null;
-    })();
-
-    // * Find the nearest interactive element by walking up max 3 levels
-    function findInteractiveElement(el) {
-      if (!matchesFn) return null;
-      var depth = 0;
-      var current = el;
-      while (current && depth <= 3) {
-        if (current.nodeType === 1 && matchesFn.call(current, INTERACTIVE_SELECTOR)) {
-          return current;
-        }
-        current = current.parentElement;
-        depth++;
-      }
-      return null;
-    }
-
-    document.addEventListener('click', function(e) {
-      var target = findInteractiveElement(e.target);
-      if (!target) return;
-
-      // * Skip form inputs — clicking to focus/interact is expected, not a dead click
-      var tag = target.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-
-      var selector = getElementIdentifier(target);
-      if (!selector) return;
-
-      var now = Date.now();
-
-      // * Debounce: max one dead_click per element per 10 seconds
-      if (deadClickDebounce[selector] && now - deadClickDebounce[selector] < DEAD_CLICK_DEBOUNCE) {
-        return;
-      }
-
-      var currentPath = cleanPath();
-      var clickX = String(Math.round(e.clientX));
-      var clickY = String(Math.round(e.clientY));
-      var effectDetected = false;
-      var hrefBefore = location.href;
-      var mutationObs = null;
-      var perfObs = null;
-      var cleanupTimer = null;
-
-      function cleanup() {
-        if (mutationObs) { try { mutationObs.disconnect(); } catch (ex) {} mutationObs = null; }
-        if (perfObs) { try { perfObs.disconnect(); } catch (ex) {} perfObs = null; }
-        if (cleanupTimer) { clearTimeout(cleanupTimer); cleanupTimer = null; }
-      }
-
-      function onEffect() {
-        effectDetected = true;
-        cleanup();
-      }
-
-      // * Set up MutationObserver to detect DOM changes on the element and its parent
-      if (typeof MutationObserver !== 'undefined') {
-        try {
-          mutationObs = new MutationObserver(function() {
-            onEffect();
-          });
-          var mutOpts = { childList: true, attributes: true, characterData: true, subtree: true };
-          mutationObs.observe(target, mutOpts);
-          var parent = target.parentElement;
-          if (parent && parent.tagName !== 'HTML' && parent.tagName !== 'BODY') {
-            mutationObs.observe(parent, { childList: true });
-          }
-        } catch (ex) {
-          mutationObs = null;
-        }
-      }
-
-      // * Set up PerformanceObserver to detect network requests
-      if (typeof PerformanceObserver !== 'undefined') {
-        try {
-          perfObs = new PerformanceObserver(function() {
-            onEffect();
-          });
-          perfObs.observe({ type: 'resource' });
-        } catch (ex) {
-          perfObs = null;
-        }
-      }
-
-      // * After 1 second, check if any effect was detected
-      cleanupTimer = setTimeout(function() {
-        cleanup();
-        // * Also check if navigation occurred
-        if (effectDetected || location.href !== hrefBefore) return;
-
-        deadClickDebounce[selector] = Date.now();
-        trackCustomEvent('dead_click', {
-          selector: selector,
-          page_path: currentPath,
-          x: clickX,
-          y: clickY
-        });
-      }, 1000);
-    }, true); // * Capture phase
   }
 
   // * Auto-track outbound link clicks and file downloads (on by default)

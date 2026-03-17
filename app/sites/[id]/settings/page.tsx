@@ -1,10 +1,13 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { updateSite, resetSiteData, deleteSite, type Site, type GeoDataLevel } from '@/lib/api/sites'
 import { createGoal, updateGoal, deleteGoal, type Goal } from '@/lib/api/goals'
 import { createReportSchedule, updateReportSchedule, deleteReportSchedule, testReportSchedule, type ReportSchedule, type CreateReportScheduleRequest, type EmailConfig, type WebhookConfig } from '@/lib/api/report-schedules'
+import { getGSCAuthURL, disconnectGSC } from '@/lib/api/gsc'
+import { getBunnyPullZones, connectBunny, disconnectBunny } from '@/lib/api/bunny'
+import type { BunnyPullZone } from '@/lib/api/bunny'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { formatDateTime } from '@/lib/utils/formatDate'
@@ -16,7 +19,7 @@ import { Select, Modal, Button } from '@ciphera-net/ui'
 import { APP_URL } from '@/lib/api/client'
 import { generatePrivacySnippet } from '@/lib/utils/privacySnippet'
 import { useUnsavedChanges } from '@/lib/hooks/useUnsavedChanges'
-import { useSite, useGoals, useReportSchedules, useSubscription } from '@/lib/swr/dashboard'
+import { useSite, useGoals, useReportSchedules, useSubscription, useGSCStatus, useBunnyStatus } from '@/lib/swr/dashboard'
 import { getRetentionOptionsForPlan, formatRetentionMonths } from '@/lib/plans'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@/lib/auth/context'
@@ -27,7 +30,7 @@ import {
   AlertTriangleIcon,
   ZapIcon,
 } from '@ciphera-net/ui'
-import { PaperPlaneTilt, Envelope, WebhooksLogo, SpinnerGap, Trash, PencilSimple, Play } from '@phosphor-icons/react'
+import { PaperPlaneTilt, Envelope, WebhooksLogo, SpinnerGap, Trash, PencilSimple, Play, Plugs, ShieldCheck } from '@phosphor-icons/react'
 
 const TIMEZONES = [
   'UTC',
@@ -56,7 +59,8 @@ export default function SiteSettingsPage() {
 
   const { data: site, isLoading: siteLoading, mutate: mutateSite } = useSite(siteId)
   const [saving, setSaving] = useState(false)
-  const [activeTab, setActiveTab] = useState<'general' | 'visibility' | 'data' | 'goals' | 'reports'>('general')
+  const [activeTab, setActiveTab] = useState<'general' | 'visibility' | 'data' | 'goals' | 'reports' | 'integrations'>('general')
+  const searchParams = useSearchParams()
 
   const [formData, setFormData] = useState({
     name: '',
@@ -70,8 +74,6 @@ export default function SiteSettingsPage() {
     collect_device_info: true,
     collect_geo_data: 'full' as GeoDataLevel,
     collect_screen_resolution: true,
-    // Performance insights setting
-    enable_performance_insights: false,
     // Bot and noise filtering
     filter_bots: true,
     // Hide unknown locations
@@ -93,6 +95,16 @@ export default function SiteSettingsPage() {
 
   // Report schedules
   const { data: reportSchedules = [], isLoading: reportLoading, mutate: mutateReportSchedules } = useReportSchedules(siteId)
+  const { data: gscStatus, mutate: mutateGSCStatus } = useGSCStatus(siteId)
+  const [gscConnecting, setGscConnecting] = useState(false)
+  const [gscDisconnecting, setGscDisconnecting] = useState(false)
+  const { data: bunnyStatus, mutate: mutateBunnyStatus } = useBunnyStatus(siteId)
+  const [bunnyApiKey, setBunnyApiKey] = useState('')
+  const [bunnyPullZones, setBunnyPullZones] = useState<BunnyPullZone[]>([])
+  const [bunnySelectedZone, setBunnySelectedZone] = useState<BunnyPullZone | null>(null)
+  const [bunnyLoadingZones, setBunnyLoadingZones] = useState(false)
+  const [bunnyConnecting, setBunnyConnecting] = useState(false)
+  const [bunnyDisconnecting, setBunnyDisconnecting] = useState(false)
   const [reportModalOpen, setReportModalOpen] = useState(false)
   const [editingSchedule, setEditingSchedule] = useState<ReportSchedule | null>(null)
   const [reportSaving, setReportSaving] = useState(false)
@@ -121,7 +133,6 @@ export default function SiteSettingsPage() {
       collect_device_info: site.collect_device_info ?? true,
       collect_geo_data: site.collect_geo_data || 'full',
       collect_screen_resolution: site.collect_screen_resolution ?? true,
-      enable_performance_insights: site.enable_performance_insights ?? false,
       filter_bots: site.filter_bots ?? true,
       hide_unknown_locations: site.hide_unknown_locations ?? false,
       data_retention_months: site.data_retention_months ?? 6
@@ -136,7 +147,6 @@ export default function SiteSettingsPage() {
       collect_device_info: site.collect_device_info ?? true,
       collect_geo_data: site.collect_geo_data || 'full',
       collect_screen_resolution: site.collect_screen_resolution ?? true,
-      enable_performance_insights: site.enable_performance_insights ?? false,
       filter_bots: site.filter_bots ?? true,
       hide_unknown_locations: site.hide_unknown_locations ?? false,
       data_retention_months: site.data_retention_months ?? 6
@@ -409,8 +419,6 @@ export default function SiteSettingsPage() {
         collect_device_info: formData.collect_device_info,
         collect_geo_data: formData.collect_geo_data,
         collect_screen_resolution: formData.collect_screen_resolution,
-        // Performance insights setting
-        enable_performance_insights: formData.enable_performance_insights,
         // Bot and noise filtering
         filter_bots: formData.filter_bots,
         // Hide unknown locations
@@ -429,7 +437,6 @@ export default function SiteSettingsPage() {
         collect_device_info: formData.collect_device_info,
         collect_geo_data: formData.collect_geo_data,
         collect_screen_resolution: formData.collect_screen_resolution,
-        enable_performance_insights: formData.enable_performance_insights,
         filter_bots: formData.filter_bots,
         hide_unknown_locations: formData.hide_unknown_locations,
         data_retention_months: formData.data_retention_months
@@ -497,7 +504,6 @@ export default function SiteSettingsPage() {
     collect_device_info: formData.collect_device_info,
     collect_geo_data: formData.collect_geo_data,
     collect_screen_resolution: formData.collect_screen_resolution,
-    enable_performance_insights: formData.enable_performance_insights,
     filter_bots: formData.filter_bots,
     hide_unknown_locations: formData.hide_unknown_locations,
     data_retention_months: formData.data_retention_months
@@ -508,6 +514,29 @@ export default function SiteSettingsPage() {
   useEffect(() => {
     if (site?.domain) document.title = `Settings · ${site.domain} | Pulse`
   }, [site?.domain])
+
+  // Handle GSC OAuth callback query params
+  useEffect(() => {
+    const gsc = searchParams.get('gsc')
+    if (!gsc) return
+    switch (gsc) {
+      case 'connected':
+        toast.success('Google Search Console connected successfully')
+        mutateGSCStatus()
+        break
+      case 'denied':
+        toast.error('Google authorization was denied')
+        break
+      case 'no_property':
+        toast.error('No matching Search Console property found for this site')
+        break
+      case 'error':
+        toast.error('Failed to connect Google Search Console')
+        break
+    }
+    setActiveTab('integrations')
+    window.history.replaceState({}, '', window.location.pathname)
+  }, [searchParams, mutateGSCStatus])
 
   const showSkeleton = useMinimumLoading(siteLoading && !site)
   const fadeClass = useSkeletonFade(showSkeleton)
@@ -522,7 +551,7 @@ export default function SiteSettingsPage() {
           </div>
           <div className="flex flex-col md:flex-row gap-8">
             <nav className="w-full md:w-64 flex-shrink-0 space-y-1">
-              {Array.from({ length: 5 }).map((_, i) => (
+              {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="h-12 animate-pulse rounded-xl bg-neutral-100 dark:bg-neutral-800" />
               ))}
             </nav>
@@ -593,7 +622,7 @@ export default function SiteSettingsPage() {
                 : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
             }`}
           >
-            <SettingsIcon className="w-5 h-5" />
+            <ShieldCheck className="w-5 h-5" />
             Data & Privacy
           </button>
           <button
@@ -621,6 +650,19 @@ export default function SiteSettingsPage() {
           >
             <PaperPlaneTilt className="w-5 h-5" />
             Reports
+          </button>
+          <button
+            onClick={() => setActiveTab('integrations')}
+            role="tab"
+            aria-selected={activeTab === 'integrations'}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 ${
+              activeTab === 'integrations'
+                ? 'bg-brand-orange/10 text-brand-orange'
+                : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+            }`}
+          >
+            <Plugs className="w-5 h-5" />
+            Integrations
           </button>
         </nav>
 
@@ -1063,30 +1105,6 @@ export default function SiteSettingsPage() {
                     </div>
                   </div>
 
-                  {/* Performance Insights Toggle */}
-                  <div className="space-y-4 pt-6 border-t border-neutral-100 dark:border-neutral-800">
-                    <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Performance Insights</h3>
-                    <div className="p-6 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="font-medium text-neutral-900 dark:text-white">Performance Insights (Add-on)</h4>
-                          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
-                            Track Core Web Vitals (LCP, CLS, INP) to monitor site performance
-                          </p>
-                        </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={formData.enable_performance_insights}
-                            onChange={(e) => setFormData({ ...formData, enable_performance_insights: e.target.checked })}
-                            className="sr-only peer"
-                          />
-                          <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-orange/20 dark:peer-focus:ring-brand-orange/20 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-neutral-600 peer-checked:bg-brand-orange"></div>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-
                   {/* Data Retention */}
                   <div className="space-y-4 pt-6 border-t border-neutral-100 dark:border-neutral-800">
                     <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Data Retention</h3>
@@ -1401,6 +1419,405 @@ export default function SiteSettingsPage() {
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {activeTab === 'integrations' && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">Integrations</h2>
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400">Connect external services to enrich your analytics data.</p>
+                </div>
+
+                {/* Google Search Console */}
+                <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50 p-6">
+                  {!gscStatus?.connected ? (
+                    <div className="space-y-4">
+                      <div className="flex items-start gap-4">
+                        <div className="p-2.5 bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 flex-shrink-0">
+                          <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
+                            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1Z" fill="#4285F4"/>
+                            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23Z" fill="#34A853"/>
+                            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62Z" fill="#FBBC05"/>
+                            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53Z" fill="#EA4335"/>
+                          </svg>
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Google Search Console</h3>
+                          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
+                            See which search queries bring visitors to your site, with impressions, clicks, CTR, and ranking position.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2 p-3 bg-white dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
+                        <svg className="w-4 h-4 text-neutral-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+                        </svg>
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                          Pulse only requests read-only access. Your tokens are encrypted at rest and all data can be fully removed at any time.
+                        </p>
+                      </div>
+                      {canEdit && (
+                        <button
+                          onClick={async () => {
+                            setGscConnecting(true)
+                            try {
+                              const { auth_url } = await getGSCAuthURL(siteId)
+                              window.location.href = auth_url
+                            } catch (error: unknown) {
+                              toast.error(getAuthErrorMessage(error) || 'Failed to start Google authorization')
+                              setGscConnecting(false)
+                            }
+                          }}
+                          disabled={gscConnecting}
+                          className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand-orange text-white text-sm font-medium rounded-xl hover:bg-brand-orange/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 disabled:opacity-50"
+                        >
+                          {gscConnecting && <SpinnerGap className="w-4 h-4 animate-spin" />}
+                          Connect Google Search Console
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-4">
+                          <div className="p-2.5 bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 flex-shrink-0">
+                            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
+                              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1Z" fill="#4285F4"/>
+                              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23Z" fill="#34A853"/>
+                              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62Z" fill="#FBBC05"/>
+                              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53Z" fill="#EA4335"/>
+                            </svg>
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Google Search Console</h3>
+                            <div className="flex items-center gap-2 mt-1.5">
+                              <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${
+                                gscStatus.status === 'active'
+                                  ? 'text-green-600 dark:text-green-400'
+                                  : gscStatus.status === 'syncing'
+                                  ? 'text-amber-600 dark:text-amber-400'
+                                  : 'text-red-600 dark:text-red-400'
+                              }`}>
+                                <span className={`w-2 h-2 rounded-full ${
+                                  gscStatus.status === 'active'
+                                    ? 'bg-green-500'
+                                    : gscStatus.status === 'syncing'
+                                    ? 'bg-amber-500 animate-pulse'
+                                    : 'bg-red-500'
+                                }`} />
+                                {gscStatus.status === 'active' ? 'Connected' : gscStatus.status === 'syncing' ? 'Syncing...' : 'Error'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {gscStatus.google_email && (
+                          <div className="p-3 bg-white dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400">Google Account</p>
+                            <p className="text-sm font-medium text-neutral-900 dark:text-white mt-0.5 truncate">{gscStatus.google_email}</p>
+                          </div>
+                        )}
+                        {gscStatus.gsc_property && (
+                          <div className="p-3 bg-white dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400">Property</p>
+                            <p className="text-sm font-medium text-neutral-900 dark:text-white mt-0.5 truncate">{gscStatus.gsc_property}</p>
+                          </div>
+                        )}
+                        {gscStatus.last_synced_at && (
+                          <div className="p-3 bg-white dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400">Last Synced</p>
+                            <p className="text-sm font-medium text-neutral-900 dark:text-white mt-0.5">
+                              {new Date(gscStatus.last_synced_at).toLocaleString('en-GB')}
+                            </p>
+                          </div>
+                        )}
+                        {gscStatus.created_at && (
+                          <div className="p-3 bg-white dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400">Connected Since</p>
+                            <p className="text-sm font-medium text-neutral-900 dark:text-white mt-0.5">
+                              {new Date(gscStatus.created_at).toLocaleString('en-GB')}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {gscStatus.status === 'error' && gscStatus.error_message && (
+                        <div className="p-3 bg-red-50 dark:bg-red-900/10 rounded-lg border border-red-200 dark:border-red-900/30">
+                          <p className="text-sm text-red-700 dark:text-red-300">{gscStatus.error_message}</p>
+                        </div>
+                      )}
+
+                      {canEdit && (
+                        <div className="pt-2 border-t border-neutral-200 dark:border-neutral-700">
+                          <button
+                            onClick={async () => {
+                              if (!confirm('Disconnect Google Search Console? All search data will be removed from Pulse.')) return
+                              setGscDisconnecting(true)
+                              try {
+                                await disconnectGSC(siteId)
+                                mutateGSCStatus()
+                                toast.success('Google Search Console disconnected')
+                              } catch (error: unknown) {
+                                toast.error(getAuthErrorMessage(error) || 'Failed to disconnect')
+                              } finally {
+                                setGscDisconnecting(false)
+                              }
+                            }}
+                            disabled={gscDisconnecting}
+                            className="inline-flex items-center gap-2 text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors disabled:opacity-50"
+                          >
+                            {gscDisconnecting && <SpinnerGap className="w-4 h-4 animate-spin" />}
+                            Disconnect
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* BunnyCDN */}
+                <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50 p-6">
+                  {!bunnyStatus?.connected ? (
+                    <div className="space-y-4">
+                      <div className="flex items-start gap-4">
+                        <div className="p-2.5 bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 flex-shrink-0">
+                          <svg className="w-6 h-6" viewBox="0 0 23 26" fill="none">
+                            <path fillRule="evenodd" clipRule="evenodd" d="M9.94 7.77l5.106.883c-3.83-.663-4.065-3.85-9.218-6.653-.562 1.859.603 5.21 4.112 5.77z" fill="url(#b1)"/>
+                            <path fillRule="evenodd" clipRule="evenodd" d="M5.828 2c5.153 2.803 5.388 5.99 9.218 6.653 1.922.332.186 3.612-1.864 3.266 3.684 1.252 7.044-2.085 5.122-3.132L5.828 2z" fill="url(#b2)"/>
+                            <path fillRule="evenodd" clipRule="evenodd" d="M13.186 11.92c-.241-.041-.486-.131-.731-.284-1.542-.959-3.093-1.269-4.496-1.118 2.93.359 5.716 4.196 5.37 7.036.06.97-.281 1.958-1.021 2.699l-1.69 1.69c1.303.858 3.284-.037 3.889-1.281l3.41-7.014c.836-.198 6.176-1.583 3.767-3.024l-3.37-1.833c1.907 1.05-1.449 4.378-5.125 3.129z" fill="url(#b3)"/>
+                            <path fillRule="evenodd" clipRule="evenodd" d="M7.953 10.518c-4.585.499-7.589 5.94-3.506 9.873l3.42 3.42c-2.243-2.243-2.458-5.525-1.073-7.806.149-.255.333-.495.551-.713 1.37-1.37 3.59-1.37 4.96 0 .629.628.969 1.436 1.02 2.26.346-2.84-2.439-6.675-5.367-7.035h-.005z" fill="url(#b4)"/>
+                            <path fillRule="evenodd" clipRule="evenodd" d="M7.868 23.812l1.925 1.925c.643-.511 1.028-2.01.031-3.006l-2.48-2.48c-1.151-1.151-1.334-2.903-.55-4.246-1.385 2.281-1.17 5.563 1.074 7.807z" fill="url(#b5)"/>
+                            <path fillRule="evenodd" clipRule="evenodd" d="M12.504 4.54l5.739 3.122L12.925.6c-.728.829-1.08 2.472-.421 3.94z" fill="url(#b6)"/>
+                            <circle cx="9.825" cy="17.772" r="1.306" fill="url(#b7)"/>
+                            <circle cx="1.507" cy="11.458" r="1.306" fill="url(#b8)"/>
+                            <defs>
+                              <linearGradient id="b1" x1="5.69" y1="8.5" x2="15.04" y2="8.5" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset=".69" stopColor="#FF7300"/><stop offset="1" stopColor="#F52900"/></linearGradient>
+                              <linearGradient id="b2" x1="5.83" y1="12.65" x2="18.87" y2="12.65" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset=".69" stopColor="#FF7300"/><stop offset="1" stopColor="#F52900"/></linearGradient>
+                              <linearGradient id="b3" x1="7.95" y1="22.04" x2="22.3" y2="22.04" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset="1" stopColor="#FF6200"/></linearGradient>
+                              <linearGradient id="b4" x1="2.51" y1="22.59" x2="13.35" y2="22.59" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset=".69" stopColor="#FF7300"/><stop offset="1" stopColor="#F52900"/></linearGradient>
+                              <linearGradient id="b5" x1="11.35" y1="20.74" x2="7.98" y2="17.71" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset=".69" stopColor="#FF7300"/><stop offset="1" stopColor="#F52900"/></linearGradient>
+                              <linearGradient id="b6" x1="12.16" y1="7.48" x2="18.24" y2="7.48" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset="1" stopColor="#FF6200"/></linearGradient>
+                              <linearGradient id="b7" x1="8.52" y1="19.08" x2="11.13" y2="19.08" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset="1" stopColor="#FF6200"/></linearGradient>
+                              <linearGradient id="b8" x1=".2" y1="12.76" x2="2.81" y2="12.76" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset="1" stopColor="#FF6200"/></linearGradient>
+                            </defs>
+                          </svg>
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">BunnyCDN</h3>
+                          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
+                            Monitor CDN performance with bandwidth usage, cache hit rates, response times, and geographic distribution.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2 p-3 bg-white dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
+                        <svg className="w-4 h-4 text-neutral-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+                        </svg>
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                          Your API key is encrypted at rest and only used to fetch read-only statistics. You can disconnect at any time.
+                        </p>
+                      </div>
+                      {canEdit && (
+                        <div className="space-y-3">
+                          <div className="flex gap-2">
+                            <input
+                              type="password"
+                              value={bunnyApiKey}
+                              onChange={(e) => {
+                                setBunnyApiKey(e.target.value)
+                                setBunnyPullZones([])
+                                setBunnySelectedZone(null)
+                              }}
+                              placeholder="BunnyCDN API key"
+                              className="flex-1 px-4 py-2.5 border border-neutral-200 dark:border-neutral-800 rounded-xl bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white text-sm placeholder:text-neutral-400"
+                            />
+                            <button
+                              onClick={async () => {
+                                if (!bunnyApiKey.trim()) {
+                                  toast.error('Please enter your BunnyCDN API key')
+                                  return
+                                }
+                                setBunnyLoadingZones(true)
+                                setBunnyPullZones([])
+                                setBunnySelectedZone(null)
+                                try {
+                                  const { pull_zones, message } = await getBunnyPullZones(siteId, bunnyApiKey)
+                                  if (pull_zones.length === 0) {
+                                    toast.error(message || 'No pull zones match this site\'s domain')
+                                  } else {
+                                    setBunnyPullZones(pull_zones)
+                                    setBunnySelectedZone(pull_zones[0])
+                                  }
+                                } catch (error: unknown) {
+                                  toast.error(getAuthErrorMessage(error) || 'Failed to load pull zones')
+                                } finally {
+                                  setBunnyLoadingZones(false)
+                                }
+                              }}
+                              disabled={bunnyLoadingZones || !bunnyApiKey.trim()}
+                              className="inline-flex items-center gap-2 px-4 py-2.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-sm font-medium rounded-xl hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors disabled:opacity-50"
+                            >
+                              {bunnyLoadingZones && <SpinnerGap className="w-4 h-4 animate-spin" />}
+                              Load Zones
+                            </button>
+                          </div>
+
+                          {bunnyPullZones.length > 0 && (
+                            <div className="space-y-3">
+                              <div>
+                                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Pull Zone</label>
+                                <select
+                                  value={bunnySelectedZone?.id ?? ''}
+                                  onChange={(e) => {
+                                    const zone = bunnyPullZones.find(z => z.id === Number(e.target.value))
+                                    setBunnySelectedZone(zone || null)
+                                  }}
+                                  className="w-full px-4 py-2.5 border border-neutral-200 dark:border-neutral-800 rounded-xl bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white text-sm"
+                                >
+                                  {bunnyPullZones.map((zone) => (
+                                    <option key={zone.id} value={zone.id}>{zone.name}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <button
+                                onClick={async () => {
+                                  if (!bunnySelectedZone) return
+                                  setBunnyConnecting(true)
+                                  try {
+                                    await connectBunny(siteId, bunnyApiKey, bunnySelectedZone.id, bunnySelectedZone.name)
+                                    mutateBunnyStatus()
+                                    setBunnyApiKey('')
+                                    setBunnyPullZones([])
+                                    setBunnySelectedZone(null)
+                                    toast.success('BunnyCDN connected successfully')
+                                  } catch (error: unknown) {
+                                    toast.error(getAuthErrorMessage(error) || 'Failed to connect BunnyCDN')
+                                  } finally {
+                                    setBunnyConnecting(false)
+                                  }
+                                }}
+                                disabled={bunnyConnecting || !bunnySelectedZone}
+                                className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand-orange text-white text-sm font-medium rounded-xl hover:bg-brand-orange/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 disabled:opacity-50"
+                              >
+                                {bunnyConnecting && <SpinnerGap className="w-4 h-4 animate-spin" />}
+                                Connect BunnyCDN
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-4">
+                          <div className="p-2.5 bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 flex-shrink-0">
+                            <svg className="w-6 h-6" viewBox="0 0 23 26" fill="none">
+                              <path fillRule="evenodd" clipRule="evenodd" d="M9.94 7.77l5.106.883c-3.83-.663-4.065-3.85-9.218-6.653-.562 1.859.603 5.21 4.112 5.77z" fill="url(#b1c)"/>
+                              <path fillRule="evenodd" clipRule="evenodd" d="M5.828 2c5.153 2.803 5.388 5.99 9.218 6.653 1.922.332.186 3.612-1.864 3.266 3.684 1.252 7.044-2.085 5.122-3.132L5.828 2z" fill="url(#b2c)"/>
+                              <path fillRule="evenodd" clipRule="evenodd" d="M13.186 11.92c-.241-.041-.486-.131-.731-.284-1.542-.959-3.093-1.269-4.496-1.118 2.93.359 5.716 4.196 5.37 7.036.06.97-.281 1.958-1.021 2.699l-1.69 1.69c1.303.858 3.284-.037 3.889-1.281l3.41-7.014c.836-.198 6.176-1.583 3.767-3.024l-3.37-1.833c1.907 1.05-1.449 4.378-5.125 3.129z" fill="url(#b3c)"/>
+                              <path fillRule="evenodd" clipRule="evenodd" d="M7.953 10.518c-4.585.499-7.589 5.94-3.506 9.873l3.42 3.42c-2.243-2.243-2.458-5.525-1.073-7.806.149-.255.333-.495.551-.713 1.37-1.37 3.59-1.37 4.96 0 .629.628.969 1.436 1.02 2.26.346-2.84-2.439-6.675-5.367-7.035h-.005z" fill="url(#b4c)"/>
+                              <path fillRule="evenodd" clipRule="evenodd" d="M7.868 23.812l1.925 1.925c.643-.511 1.028-2.01.031-3.006l-2.48-2.48c-1.151-1.151-1.334-2.903-.55-4.246-1.385 2.281-1.17 5.563 1.074 7.807z" fill="url(#b5c)"/>
+                              <path fillRule="evenodd" clipRule="evenodd" d="M12.504 4.54l5.739 3.122L12.925.6c-.728.829-1.08 2.472-.421 3.94z" fill="url(#b6c)"/>
+                              <circle cx="9.825" cy="17.772" r="1.306" fill="url(#b7c)"/>
+                              <circle cx="1.507" cy="11.458" r="1.306" fill="url(#b8c)"/>
+                              <defs>
+                                <linearGradient id="b1c" x1="5.69" y1="8.5" x2="15.04" y2="8.5" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset=".69" stopColor="#FF7300"/><stop offset="1" stopColor="#F52900"/></linearGradient>
+                                <linearGradient id="b2c" x1="5.83" y1="12.65" x2="18.87" y2="12.65" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset=".69" stopColor="#FF7300"/><stop offset="1" stopColor="#F52900"/></linearGradient>
+                                <linearGradient id="b3c" x1="7.95" y1="22.04" x2="22.3" y2="22.04" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset="1" stopColor="#FF6200"/></linearGradient>
+                                <linearGradient id="b4c" x1="2.51" y1="22.59" x2="13.35" y2="22.59" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset=".69" stopColor="#FF7300"/><stop offset="1" stopColor="#F52900"/></linearGradient>
+                                <linearGradient id="b5c" x1="11.35" y1="20.74" x2="7.98" y2="17.71" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset=".69" stopColor="#FF7300"/><stop offset="1" stopColor="#F52900"/></linearGradient>
+                                <linearGradient id="b6c" x1="12.16" y1="7.48" x2="18.24" y2="7.48" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset="1" stopColor="#FF6200"/></linearGradient>
+                                <linearGradient id="b7c" x1="8.52" y1="19.08" x2="11.13" y2="19.08" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset="1" stopColor="#FF6200"/></linearGradient>
+                                <linearGradient id="b8c" x1=".2" y1="12.76" x2="2.81" y2="12.76" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset="1" stopColor="#FF6200"/></linearGradient>
+                              </defs>
+                            </svg>
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">BunnyCDN</h3>
+                            <div className="flex items-center gap-2 mt-1.5">
+                              <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${
+                                bunnyStatus.status === 'active'
+                                  ? 'text-green-600 dark:text-green-400'
+                                  : bunnyStatus.status === 'syncing'
+                                  ? 'text-amber-600 dark:text-amber-400'
+                                  : 'text-red-600 dark:text-red-400'
+                              }`}>
+                                <span className={`w-2 h-2 rounded-full ${
+                                  bunnyStatus.status === 'active'
+                                    ? 'bg-green-500'
+                                    : bunnyStatus.status === 'syncing'
+                                    ? 'bg-amber-500 animate-pulse'
+                                    : 'bg-red-500'
+                                }`} />
+                                {bunnyStatus.status === 'active' ? 'Connected' : bunnyStatus.status === 'syncing' ? 'Syncing...' : 'Error'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {bunnyStatus.pull_zone_name && (
+                          <div className="p-3 bg-white dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400">Pull Zone</p>
+                            <p className="text-sm font-medium text-neutral-900 dark:text-white mt-0.5 truncate">{bunnyStatus.pull_zone_name}</p>
+                          </div>
+                        )}
+                        {bunnyStatus.last_synced_at && (
+                          <div className="p-3 bg-white dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400">Last Synced</p>
+                            <p className="text-sm font-medium text-neutral-900 dark:text-white mt-0.5">
+                              {new Date(bunnyStatus.last_synced_at).toLocaleString('en-GB')}
+                            </p>
+                          </div>
+                        )}
+                        {bunnyStatus.created_at && (
+                          <div className="p-3 bg-white dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400">Connected Since</p>
+                            <p className="text-sm font-medium text-neutral-900 dark:text-white mt-0.5">
+                              {new Date(bunnyStatus.created_at).toLocaleString('en-GB')}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {bunnyStatus.status === 'error' && bunnyStatus.error_message && (
+                        <div className="p-3 bg-red-50 dark:bg-red-900/10 rounded-lg border border-red-200 dark:border-red-900/30">
+                          <p className="text-sm text-red-700 dark:text-red-300">{bunnyStatus.error_message}</p>
+                        </div>
+                      )}
+
+                      {canEdit && (
+                        <div className="pt-2 border-t border-neutral-200 dark:border-neutral-700">
+                          <button
+                            onClick={async () => {
+                              if (!confirm('Disconnect BunnyCDN? All CDN analytics data will be removed from Pulse.')) return
+                              setBunnyDisconnecting(true)
+                              try {
+                                await disconnectBunny(siteId)
+                                mutateBunnyStatus()
+                                toast.success('BunnyCDN disconnected')
+                              } catch (error: unknown) {
+                                toast.error(getAuthErrorMessage(error) || 'Failed to disconnect')
+                              } finally {
+                                setBunnyDisconnecting(false)
+                              }
+                            }}
+                            disabled={bunnyDisconnecting}
+                            className="inline-flex items-center gap-2 text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors disabled:opacity-50"
+                          >
+                            {bunnyDisconnecting && <SpinnerGap className="w-4 h-4 animate-spin" />}
+                            Disconnect
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </motion.div>

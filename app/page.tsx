@@ -400,7 +400,7 @@ export default function HomePage() {
         ) : null
         })() ?? (
           <Link href="/sites/new">
-            <Button variant="primary" className="text-sm">
+            <Button variant="primary" className="text-sm whitespace-nowrap">
               Add New Site
             </Button>
           </Link>
@@ -409,11 +409,11 @@ export default function HomePage() {
 
       {/* * Global Overview - min-h ensures no layout shift when Plan & usage loads */}
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="flex min-h-[160px] flex-col rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+        <div className="flex min-h-[100px] sm:min-h-[160px] flex-col rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
           <p className="text-sm text-neutral-500 dark:text-neutral-400">Total Sites</p>
           <p className="text-2xl font-bold text-neutral-900 dark:text-white">{sites.length}</p>
         </div>
-        <div className="flex min-h-[160px] flex-col rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+        <div className="flex min-h-[100px] sm:min-h-[160px] flex-col rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
           <p className="text-sm text-neutral-500 dark:text-neutral-400">Total Visitors (24h)</p>
           <p className="text-2xl font-bold text-neutral-900 dark:text-white">
             {sites.length === 0 || Object.keys(siteStats).length < sites.length

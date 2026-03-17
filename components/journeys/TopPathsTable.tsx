@@ -2,7 +2,7 @@
 
 import type { TopPath } from '@/lib/api/journeys'
 import { TableSkeleton } from '@/components/skeletons'
-import { Path } from '@phosphor-icons/react'
+import { Path, ArrowRight, Clock } from '@phosphor-icons/react'
 
 interface TopPathsTableProps {
   paths: TopPath[]
@@ -17,57 +17,98 @@ function formatDuration(seconds: number): string {
   return `${m}m ${s}s`
 }
 
+function smartLabel(path: string): string {
+  if (path === '/') return '/'
+  const segments = path.replace(/\/$/, '').split('/')
+  if (segments.length <= 2) return path
+  return `…/${segments[segments.length - 1]}`
+}
+
+function truncateSequence(seq: string[], max: number): (string | null)[] {
+  if (seq.length <= max) return seq
+  const head = seq.slice(0, 3)
+  const tail = seq.slice(-2)
+  return [...head, null, ...tail]
+}
+
 export default function TopPathsTable({ paths, loading }: TopPathsTableProps) {
   const hasData = paths.length > 0
+  const maxCount = hasData ? paths[0].session_count : 0
 
   return (
     <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6">
-      <div className="flex items-center justify-between mb-1">
+      <div className="mb-1">
         <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
           Top Paths
         </h3>
       </div>
-      <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
+      <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-5">
         Most common navigation paths across sessions
       </p>
 
       {loading ? (
         <TableSkeleton rows={7} cols={4} />
       ) : hasData ? (
-        <div>
-          {/* Header */}
-          <div className="flex items-center px-2 -mx-2 mb-2 text-xs font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
-            <span className="w-8 text-right shrink-0">#</span>
-            <span className="flex-1 ml-3">Path</span>
-            <span className="w-20 text-right shrink-0">Sessions</span>
-            <span className="w-16 text-right shrink-0">Dur.</span>
-          </div>
+        <div className="space-y-0.5">
+          {paths.map((path, i) => {
+            const barWidth = maxCount > 0 ? (path.session_count / maxCount) * 75 : 0
+            const displaySeq = truncateSequence(path.page_sequence, 7)
 
-          {/* Rows */}
-          <div className="space-y-0.5">
-            {paths.map((path, i) => (
+            return (
               <div
                 key={i}
-                className="flex items-center h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800/50 rounded-lg px-2 -mx-2 transition-colors"
+                className="relative flex items-center h-10 group hover:bg-neutral-50 dark:hover:bg-neutral-800/50 rounded-lg px-3 -mx-3 transition-colors"
               >
-                <span className="w-8 text-right shrink-0 text-sm tabular-nums text-neutral-400">
-                  {i + 1}
-                </span>
-                <span
-                  className="flex-1 ml-3 text-sm text-neutral-900 dark:text-white truncate"
-                  title={path.page_sequence.join(' → ')}
-                >
-                  {path.page_sequence.join(' → ')}
-                </span>
-                <span className="w-20 text-right shrink-0 text-sm tabular-nums text-neutral-600 dark:text-neutral-400">
-                  {path.session_count.toLocaleString()}
-                </span>
-                <span className="w-16 text-right shrink-0 text-sm tabular-nums text-neutral-600 dark:text-neutral-400">
-                  {formatDuration(path.avg_duration)}
-                </span>
+                {/* Background bar */}
+                <div
+                  className="absolute inset-y-0.5 left-0.5 bg-brand-orange/15 dark:bg-brand-orange/25 rounded-md transition-all"
+                  style={{ width: `${barWidth}%` }}
+                />
+
+                {/* Content */}
+                <div className="relative flex items-center justify-between w-full min-w-0">
+                  {/* Path sequence */}
+                  <div className="flex items-center min-w-0 gap-1.5 flex-1 overflow-hidden">
+                    {displaySeq.map((page, j) => (
+                      <div key={j} className="flex items-center gap-1.5 shrink-0">
+                        {j > 0 && (
+                          <ArrowRight
+                            weight="bold"
+                            className="w-2.5 h-2.5 text-neutral-300 dark:text-neutral-600 shrink-0"
+                          />
+                        )}
+                        {page === null ? (
+                          <span className="text-xs text-neutral-400 dark:text-neutral-500">
+                            …
+                          </span>
+                        ) : (
+                          <span
+                            className="text-sm text-neutral-900 dark:text-white truncate"
+                            title={page}
+                          >
+                            {smartLabel(page)}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Stats */}
+                  <div className="relative flex items-center gap-4 ml-4 shrink-0">
+                    {path.avg_duration > 0 && (
+                      <span className="hidden sm:flex items-center gap-1 text-xs text-neutral-400 dark:text-neutral-500 opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+                        <Clock weight="bold" className="w-3 h-3" />
+                        {formatDuration(path.avg_duration)}
+                      </span>
+                    )}
+                    <span className="text-sm tabular-nums font-semibold text-neutral-600 dark:text-neutral-400">
+                      {path.session_count.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
               </div>
-            ))}
-          </div>
+            )
+          })}
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
