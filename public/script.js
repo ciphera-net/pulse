@@ -320,7 +320,7 @@
       url: location.href,
       title: document.title,
       referrer: document.referrer || '',
-      screen: { width: window.innerWidth || 0, height: window.innerHeight || 0 },
+      screen: { width: window.innerWidth || window.screen.width, height: window.innerHeight || window.screen.height },
       session_id: getSessionId(),
       name: eventName.trim().toLowerCase(),
     };
