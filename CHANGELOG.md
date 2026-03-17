@@ -8,6 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Improved
 
+- **Smarter bot filtering.** Pulse now catches more types of automated traffic that were slipping through — like headless browsers with default screen sizes, bot farms that rotate through different locations, and bots that fire duplicate events within milliseconds. Your analytics data will be cleaner with fewer fake visitors inflating your numbers.
+- **Leaner tracking script.** Bot detection checks that belonged on the server have been moved there, making the tracking script smaller and faster for your real visitors.
+
+### Improved
+
 - **Actionable empty states.** When a dashboard section has no data yet, you now get a direct action — like "Install tracking script" or "Build a UTM URL" — instead of just passive text. Gets you set up faster.
 - **Animated numbers across the dashboard.** Stats like visitors, pageviews, bounce rate, and visit duration now smoothly count up or down when you switch date ranges, apply filters, or when real-time visitor counts change — instead of just jumping to the new value.
 - **Inline bar charts on dashboard lists.** Pages, referrers, locations, technology, and campaigns now show subtle proportional bars behind each row, making it easier to compare values at a glance without reading numbers.
