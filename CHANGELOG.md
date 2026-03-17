@@ -15,6 +15,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Improved
 
+- **Smaller, faster tracking script.** The tracking script is now about 20% smaller. Logic like page path cleaning, referrer filtering, error page detection, and input validation has been moved from your browser to the Pulse server. This means the script loads faster on every page, and Pulse can improve these features without needing you to update anything.
+- **Automatic 404 page detection.** Pulse now detects error pages (404 / "Page Not Found") automatically on the server by reading your page title — no extra setup needed. Previously this ran in the browser and couldn't be improved without updating the script. Now Pulse can recognize more error page patterns over time, including pages in other languages, without any changes on your end.
 - **Smarter bot filtering.** Pulse now catches more types of automated traffic that were slipping through — like headless browsers with default screen sizes, bot farms that rotate through different locations, and bots that fire duplicate events within milliseconds. Bot detection checks have also been moved from the tracking script to the server, making the script smaller and faster for real visitors.
 - **Actionable empty states.** When a dashboard section has no data yet, you now get a direct action — like "Install tracking script" or "Build a UTM URL" — instead of just passive text. Gets you set up faster.
 - **Animated numbers across the dashboard.** Stats like visitors, pageviews, bounce rate, and visit duration now smoothly count up or down when you switch date ranges, apply filters, or when real-time visitor counts change — instead of just jumping to the new value.
