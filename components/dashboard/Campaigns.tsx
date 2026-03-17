@@ -127,6 +127,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
+            <Megaphone className="w-5 h-5 text-neutral-400 dark:text-neutral-500" weight="bold" />
             <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
               Campaigns
             </h3>
@@ -154,13 +155,19 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
           ) : hasData ? (
             <>
               {displayedData.map((item) => {
+                const maxVis = displayedData[0]?.visitors ?? 0
+                const barWidth = maxVis > 0 ? (item.visitors / maxVis) * 75 : 0
                 return (
                   <div
                     key={`${item.source}|${item.medium}|${item.campaign}`}
                     onClick={() => onFilter?.({ dimension: 'utm_source', operator: 'is', values: [item.source] })}
-                    className={`flex items-center justify-between py-1.5 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors${onFilter ? ' cursor-pointer' : ''}`}
+                    className={`relative flex items-center justify-between py-1.5 group hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 rounded-lg px-2 -mx-2 transition-colors${onFilter ? ' cursor-pointer' : ''}`}
                   >
-                    <div className="flex-1 text-neutral-900 dark:text-white flex items-center gap-3 min-w-0">
+                    <div
+                      className="absolute inset-y-0.5 left-0.5 bg-brand-orange/15 dark:bg-brand-orange/40 rounded-md transition-all"
+                      style={{ width: `${barWidth}%` }}
+                    />
+                    <div className="relative flex-1 text-neutral-900 dark:text-white flex items-center gap-3 min-w-0">
                       {renderSourceIcon(item.source)}
                       <div className="min-w-0">
                         <div className="truncate font-medium text-sm" title={item.source}>
@@ -173,7 +180,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 ml-4">
+                    <div className="relative flex items-center gap-2 ml-4">
                       <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
                         {totalVisitors > 0 ? `${Math.round((item.visitors / totalVisitors) * 100)}%` : ''}
                       </span>
@@ -199,13 +206,13 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
               <p className="text-sm text-neutral-500 dark:text-neutral-400 max-w-xs">
                 Add UTM parameters to your links to see campaign performance here.
               </p>
-              <Link
-                href="/installation"
-                className="inline-flex items-center gap-2 text-sm font-medium text-brand-orange hover:text-brand-orange/90 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/20 rounded"
+              <button
+                onClick={() => setIsBuilderOpen(true)}
+                className="inline-flex items-center gap-2 text-sm font-medium text-brand-orange hover:text-brand-orange/90 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/20 rounded cursor-pointer"
               >
-                Learn more
+                Build a UTM URL
                 <ArrowRightIcon className="w-4 h-4" />
-              </Link>
+              </button>
             </div>
           )}
         </div>

@@ -5,7 +5,6 @@ import { logger } from '@/lib/utils/logger'
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
-  getPerformanceByPage,
   getTopPages,
   getTopReferrers,
   getCountries,
@@ -32,10 +31,10 @@ import TopReferrers from '@/components/dashboard/TopReferrers'
 import Locations from '@/components/dashboard/Locations'
 import TechSpecs from '@/components/dashboard/TechSpecs'
 
-const PerformanceStats = dynamic(() => import('@/components/dashboard/PerformanceStats'))
 const GoalStats = dynamic(() => import('@/components/dashboard/GoalStats'))
 const Campaigns = dynamic(() => import('@/components/dashboard/Campaigns'))
 const PeakHours = dynamic(() => import('@/components/dashboard/PeakHours'))
+const SearchPerformance = dynamic(() => import('@/components/dashboard/SearchPerformance'))
 const EventProperties = dynamic(() => import('@/components/dashboard/EventProperties'))
 const ExportModal = dynamic(() => import('@/components/dashboard/ExportModal'))
 import { type DimensionFilter, serializeFilters, parseFiltersFromURL } from '@/lib/filters'
@@ -235,10 +234,10 @@ export default function SiteDashboardPage() {
     return { start: prevStart.toISOString().split('T')[0], end: prevEnd.toISOString().split('T')[0] }
   }, [dateRange])
 
-  // Single dashboard request replaces 7 focused hooks (overview, pages, locations,
-  // devices, referrers, performance, goals). The backend runs all queries in parallel
-  // and caches the result in Redis, reducing requests from 12 to 6 per refresh cycle.
-  const { data: dashboard, isLoading: dashboardLoading, error: dashboardError } = useDashboard(siteId, dateRange.start, dateRange.end, interval, filtersParam || undefined)
+  // Single dashboard request replaces focused hooks (overview, pages, locations,
+  // devices, referrers, goals). The backend runs all queries in parallel
+  // and caches the result in Redis for efficient data loading.
+  const { data: dashboard, isLoading: dashboardLoading, isValidating: dashboardValidating, error: dashboardError } = useDashboard(siteId, dateRange.start, dateRange.end, interval, filtersParam || undefined)
   const { data: realtimeData } = useRealtime(siteId)
   const { data: prevStats } = useStats(siteId, prevRange.start, prevRange.end)
   const { data: prevDailyStats } = useDailyStats(siteId, prevRange.start, prevRange.end, interval)
@@ -532,6 +531,13 @@ export default function SiteDashboardPage() {
         <FilterBar filters={filters} onRemove={handleRemoveFilter} onClear={handleClearFilters} />
       </div>
 
+      {/* Refetch indicator — visible when SWR is revalidating with stale data on screen */}
+      {dashboardValidating && !dashboardLoading && (
+        <div className="h-0.5 w-full rounded-full bg-neutral-100 dark:bg-neutral-800 overflow-hidden mb-2">
+          <div className="h-full w-1/3 rounded-full bg-brand-orange animate-[shimmer_1.2s_ease-in-out_infinite]" />
+        </div>
+      )}
+
       {/* Advanced Chart with Integrated Stats */}
       <div className="mb-8">
         <Chart
@@ -555,21 +561,7 @@ export default function SiteDashboardPage() {
         />
       </div>
 
-      {/* Performance Stats - Only show if enabled */}
-      {site.enable_performance_insights && (
-        <div className="mb-8">
-          <PerformanceStats
-            stats={dashboard?.performance ?? { lcp: 0, cls: 0, inp: 0 }}
-            performanceByPage={dashboard?.performance_by_page ?? null}
-            siteId={siteId}
-            startDate={dateRange.start}
-            endDate={dateRange.end}
-            getPerformanceByPage={getPerformanceByPage}
-          />
-        </div>
-      )}
-
-      <div className="grid gap-6 lg:grid-cols-2 mb-8">
+      <div className="grid gap-6 lg:grid-cols-2 mb-8 [&>*]:min-w-0">
         <ContentStats
           topPages={dashboard?.top_pages ?? []}
           entryPages={dashboard?.entry_pages ?? []}
@@ -589,7 +581,7 @@ export default function SiteDashboardPage() {
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2 mb-8">
+      <div className="grid gap-6 lg:grid-cols-2 mb-8 [&>*]:min-w-0">
         <Locations
           countries={dashboard?.countries ?? []}
           cities={dashboard?.cities ?? []}
@@ -612,12 +604,12 @@ export default function SiteDashboardPage() {
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2 mb-8">
+      <div className="grid gap-6 lg:grid-cols-2 mb-8 [&>*]:min-w-0">
         <Campaigns siteId={siteId} dateRange={dateRange} filters={filtersParam || undefined} onFilter={handleAddFilter} />
         <PeakHours siteId={siteId} dateRange={dateRange} />
       </div>
-
-      <div className="mb-8">
+      <div className="grid gap-6 lg:grid-cols-2 mb-8 [&>*]:min-w-0">
+        <SearchPerformance siteId={siteId} dateRange={dateRange} />
         <GoalStats
           goalCounts={(dashboard?.goal_counts ?? []).filter(g => !/^scroll_\d+$/.test(g.event_name))}
           onSelectEvent={setSelectedEvent}

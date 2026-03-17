@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
+import { motion } from 'framer-motion'
 import { getDateRange, formatDate } from '@ciphera-net/ui'
 import { Select, DatePicker } from '@ciphera-net/ui'
-import SankeyDiagram from '@/components/journeys/SankeyDiagram'
+import ColumnJourney from '@/components/journeys/ColumnJourney'
+import SankeyJourney from '@/components/journeys/SankeyJourney'
 import TopPathsTable from '@/components/journeys/TopPathsTable'
 import { JourneysSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import {
@@ -13,6 +15,8 @@ import {
   useJourneyTopPaths,
   useJourneyEntryPoints,
 } from '@/lib/swr/dashboard'
+
+const DEFAULT_DEPTH = 4
 
 function getThisWeekRange(): { start: string; end: string } {
   const today = new Date()
@@ -35,11 +39,26 @@ export default function JourneysPage() {
   const [period, setPeriod] = useState('30')
   const [dateRange, setDateRange] = useState(() => getDateRange(30))
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
-  const [depth, setDepth] = useState(3)
+  const [depth, setDepth] = useState(DEFAULT_DEPTH)
+  const [committedDepth, setCommittedDepth] = useState(DEFAULT_DEPTH)
   const [entryPath, setEntryPath] = useState('')
+  const [viewMode, setViewMode] = useState<'columns' | 'flow'>('columns')
+
+  useEffect(() => {
+    const t = setTimeout(() => setCommittedDepth(depth), 300)
+    return () => clearTimeout(t)
+  }, [depth])
+
+  const isDefault = depth === DEFAULT_DEPTH && !entryPath
+
+  function resetFilters() {
+    setDepth(DEFAULT_DEPTH)
+    setCommittedDepth(DEFAULT_DEPTH)
+    setEntryPath('')
+  }
 
   const { data: transitionsData, isLoading: transitionsLoading } = useJourneyTransitions(
-    siteId, dateRange.start, dateRange.end, depth, 1, entryPath || undefined
+    siteId, dateRange.start, dateRange.end, committedDepth, 1, entryPath || undefined
   )
   const { data: topPaths, isLoading: topPathsLoading } = useJourneyTopPaths(
     siteId, dateRange.start, dateRange.end, 20, 1, entryPath || undefined
@@ -64,6 +83,8 @@ export default function JourneysPage() {
   ]
 
   if (showSkeleton) return <JourneysSkeleton />
+
+  const totalSessions = transitionsData?.total_sessions ?? 0
 
   return (
     <div className={`w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
@@ -115,52 +136,112 @@ export default function JourneysPage() {
         />
       </div>
 
-      {/* Controls */}
-      <div className="flex flex-wrap items-center gap-4 mb-6">
-        <div className="flex items-center gap-3">
-          <label className="text-sm text-neutral-500 dark:text-neutral-400">Depth</label>
-          <input
-            type="range"
-            min={2}
-            max={5}
-            step={1}
-            value={depth}
-            onChange={(e) => setDepth(Number(e.target.value))}
-            className="w-32 accent-brand-orange"
-          />
-          <span className="text-sm font-medium text-neutral-900 dark:text-white w-4">{depth}</span>
+      {/* Single card: toolbar + chart */}
+      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden">
+        {/* Toolbar */}
+        <div className="p-6 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-6">
+            {/* Depth slider */}
+            <div className="flex-1">
+              <div className="flex justify-between text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-3">
+                <span>2 steps</span>
+                <span className="text-brand-orange font-bold">
+                  {depth} steps deep
+                </span>
+                <span>6 steps</span>
+              </div>
+              <input
+                type="range"
+                min={2}
+                max={6}
+                step={1}
+                value={depth}
+                onChange={(e) => setDepth(parseInt(e.target.value))}
+                aria-label="Journey depth"
+                aria-valuetext={`${depth} steps deep`}
+                className="w-full h-2 bg-neutral-200 rounded-lg appearance-none cursor-pointer dark:bg-neutral-700 accent-brand-orange focus:outline-none"
+              />
+            </div>
+
+            {/* Entry point + Reset */}
+            <div className="flex items-center gap-3 shrink-0">
+              <Select
+                variant="input"
+                className="min-w-[180px]"
+                value={entryPath}
+                onChange={(value) => setEntryPath(value)}
+                options={entryPointOptions}
+              />
+              <button
+                onClick={resetFilters}
+                disabled={isDefault}
+                className={`text-sm whitespace-nowrap transition-all duration-150 ${
+                  isDefault
+                    ? 'opacity-0 pointer-events-none'
+                    : 'opacity-100 text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
+                }`}
+              >
+                Reset
+              </button>
+            </div>
+          </div>
+
+          {/* View toggle */}
+          <div className="flex gap-1 mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-800" role="tablist" aria-label="Journey view tabs">
+            {(['columns', 'flow'] as const).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => setViewMode(mode)}
+                role="tab"
+                aria-selected={viewMode === mode}
+                className={`relative px-3 py-1 text-xs font-medium transition-colors capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded cursor-pointer ${
+                  viewMode === mode
+                    ? 'text-neutral-900 dark:text-white'
+                    : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
+                }`}
+              >
+                {mode === 'columns' ? 'Columns' : 'Flow'}
+                {viewMode === mode && (
+                  <motion.div
+                    layoutId="journeyViewTab"
+                    className="absolute inset-x-0 -bottom-px h-0.5 bg-brand-orange"
+                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                  />
+                )}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <Select
-          variant="input"
-          className="min-w-[180px]"
-          value={entryPath}
-          onChange={(value) => setEntryPath(value)}
-          options={entryPointOptions}
-        />
+        {/* Journey Chart */}
+        <div className="p-6">
+          {viewMode === 'columns' ? (
+            <ColumnJourney
+              transitions={transitionsData?.transitions ?? []}
+              totalSessions={totalSessions}
+              depth={committedDepth}
+            />
+          ) : (
+            <SankeyJourney
+              transitions={transitionsData?.transitions ?? []}
+              totalSessions={totalSessions}
+              depth={committedDepth}
+            />
+          )}
+        </div>
 
-        {(depth !== 3 || entryPath) && (
-          <button
-            onClick={() => { setDepth(3); setEntryPath('') }}
-            className="text-sm text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors"
-          >
-            Reset
-          </button>
+        {/* Footer */}
+        {totalSessions > 0 && (
+          <div className="px-6 pb-5 text-sm text-neutral-500 dark:text-neutral-400">
+            {totalSessions.toLocaleString()} sessions tracked
+          </div>
         )}
       </div>
 
-      {/* Sankey Diagram */}
-      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 mb-6">
-        <SankeyDiagram
-          transitions={transitionsData?.transitions ?? []}
-          totalSessions={transitionsData?.total_sessions ?? 0}
-          depth={depth}
-          onNodeClick={(path) => setEntryPath(path)}
-        />
-      </div>
-
       {/* Top Paths */}
-      <TopPathsTable paths={topPaths ?? []} loading={topPathsLoading} />
+      <div className="mt-6">
+        <TopPathsTable paths={topPaths ?? []} loading={topPathsLoading} />
+      </div>
 
       {/* Date Picker Modal */}
       <DatePicker

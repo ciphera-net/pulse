@@ -1098,7 +1098,7 @@ export default function OrganizationSettings() {
                                     <a href={invoice.invoice_pdf} target="_blank" rel="noopener noreferrer"
                                        className="inline-flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange" title="Download PDF">
                                       <DownloadIcon className="w-3.5 h-3.5" />
-                                      Download PDF
+                                      <span className="hidden sm:inline">Download</span> PDF
                                     </a>
                                   )}
                                   {invoice.hosted_invoice_url && (
@@ -1110,7 +1110,7 @@ export default function OrganizationSettings() {
                                        }`}
                                        title={invoice.status === 'open' ? 'Pay now' : 'View invoice'}>
                                       <ExternalLinkIcon className="w-3.5 h-3.5" />
-                                      {invoice.status === 'open' ? 'Pay now' : 'View invoice'}
+                                      {invoice.status === 'open' ? 'Pay now' : <><span className="hidden sm:inline">View </span>Invoice</>}
                                     </a>
                                   )}
                                 </div>

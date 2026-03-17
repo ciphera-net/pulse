@@ -21,20 +21,6 @@ export interface ScreenResolutionStat {
   pageviews: number
 }
 
-export interface PerformanceStats {
-  lcp: number
-  cls: number
-  inp: number
-}
-
-export interface PerformanceByPageStat {
-  path: string
-  samples: number
-  lcp: number | null
-  cls: number | null
-  inp: number | null
-}
-
 export interface GoalCountStat {
   event_name: string
   count: number
@@ -225,31 +211,6 @@ export function getPublicCampaigns(siteId: string, startDate?: string, endDate?:
     .then(r => r?.campaigns || [])
 }
 
-// ─── Performance By Page ────────────────────────────────────────────
-
-export function getPerformanceByPage(
-  siteId: string,
-  startDate?: string,
-  endDate?: string,
-  opts?: { limit?: number; sort?: 'lcp' | 'cls' | 'inp' }
-): Promise<PerformanceByPageStat[]> {
-  return apiRequest<{ performance_by_page: PerformanceByPageStat[] }>(
-    `/sites/${siteId}/performance-by-page${buildQuery({ startDate, endDate, limit: opts?.limit, sort: opts?.sort })}`
-  ).then(r => r?.performance_by_page ?? [])
-}
-
-export function getPublicPerformanceByPage(
-  siteId: string,
-  startDate?: string,
-  endDate?: string,
-  opts?: { limit?: number; sort?: 'lcp' | 'cls' | 'inp' },
-  auth?: AuthParams
-): Promise<PerformanceByPageStat[]> {
-  return apiRequest<{ performance_by_page: PerformanceByPageStat[] }>(
-    `/public/sites/${siteId}/performance-by-page${buildQuery({ startDate, endDate, limit: opts?.limit, sort: opts?.sort }, auth)}`
-  ).then(r => r?.performance_by_page ?? [])
-}
-
 // ─── Full Dashboard ─────────────────────────────────────────────────
 
 export interface DashboardData {
@@ -268,8 +229,6 @@ export interface DashboardData {
   os: OSStat[]
   devices: DeviceStat[]
   screen_resolutions: ScreenResolutionStat[]
-  performance?: PerformanceStats
-  performance_by_page?: PerformanceByPageStat[]
   goal_counts?: GoalCountStat[]
 }
 
@@ -321,11 +280,6 @@ export interface DashboardDevicesData {
 
 export interface DashboardReferrersData {
   top_referrers: TopReferrer[]
-}
-
-export interface DashboardPerformanceData {
-  performance?: PerformanceStats
-  performance_by_page?: PerformanceByPageStat[]
 }
 
 export interface DashboardGoalsData {
@@ -385,17 +339,6 @@ export function getPublicDashboardReferrers(
   password?: string, captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
 ): Promise<DashboardReferrersData> {
   return apiRequest<DashboardReferrersData>(`/public/sites/${siteId}/dashboard/referrers${buildQuery({ startDate, endDate, limit }, { password, captcha })}`)
-}
-
-export function getDashboardPerformance(siteId: string, startDate?: string, endDate?: string, filters?: string): Promise<DashboardPerformanceData> {
-  return apiRequest<DashboardPerformanceData>(`/sites/${siteId}/dashboard/performance${buildQuery({ startDate, endDate, filters })}`)
-}
-
-export function getPublicDashboardPerformance(
-  siteId: string, startDate?: string, endDate?: string,
-  password?: string, captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
-): Promise<DashboardPerformanceData> {
-  return apiRequest<DashboardPerformanceData>(`/public/sites/${siteId}/dashboard/performance${buildQuery({ startDate, endDate }, { password, captcha })}`)
 }
 
 export function getDashboardGoals(siteId: string, startDate?: string, endDate?: string, limit = 10, filters?: string): Promise<DashboardGoalsData> {
