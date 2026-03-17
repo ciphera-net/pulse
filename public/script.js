@@ -284,11 +284,6 @@
       height: window.innerHeight || window.screen.height,
     };
 
-    // * Skip bots with no screen dimensions (0x0)
-    if (screenSize.width === 0 && screenSize.height === 0) {
-      return;
-    }
-
     const payload = {
       domain: domain,
       path: path,
