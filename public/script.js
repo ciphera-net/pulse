@@ -18,20 +18,6 @@
     return;
   }
 
-  // * Skip likely bots: headless Chrome fingerprints and known bot viewports
-  var isChrome = /Chrome/.test(navigator.userAgent) && !/Edg/.test(navigator.userAgent);
-  if (
-    // * Headless Chrome has zero plugins (real Chrome always has at least 1; Firefox excluded — it legitimately reports 0)
-    (isChrome && navigator.plugins && navigator.plugins.length === 0) ||
-    // * Headless Chrome lacks the chrome runtime object
-    (isChrome && !window.chrome) ||
-    // * No outer window dimensions — headless or hidden browser
-    (window.outerWidth === 0 || window.outerHeight === 0) ||
-    // * Default headless viewport: exactly 1024x1024 (no real monitor uses this)
-    (window.innerWidth === 1024 && window.innerHeight === 1024)
-  ) {
-    return;
-  }
 
   // * Get domain from script tag
   const script = document.currentScript || document.querySelector('script[data-domain]');
