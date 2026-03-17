@@ -189,39 +189,16 @@
     return cachedSessionId;
   }
 
-  // * Normalize path: strip trailing slash and all query params except UTM/attribution.
-  // * Allowlist approach — only UTM params pass through because the backend extracts
-  // * them for attribution before cleaning the stored path. Everything else (cache-busters,
-  // * ad click IDs, filter params, etc.) is stripped to prevent path fragmentation.
-  var KEEP_PARAMS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'source', 'ref'];
+  // * Normalize path: strip trailing slash, return pathname only.
+  // * UTM extraction and query handling moved server-side.
   function cleanPath() {
     var pathname = window.location.pathname;
     // * Strip trailing slash (but keep root /)
     if (pathname.length > 1 && pathname.charAt(pathname.length - 1) === '/') {
       pathname = pathname.slice(0, -1);
     }
-    // * Only keep allowlisted params, strip everything else
-    var search = window.location.search;
-    if (search) {
-      try {
-        var params = new URLSearchParams(search);
-        var kept = new URLSearchParams();
-        for (var i = 0; i < KEEP_PARAMS.length; i++) {
-          if (params.has(KEEP_PARAMS[i])) {
-            kept.set(KEEP_PARAMS[i], params.get(KEEP_PARAMS[i]));
-          }
-        }
-        var remaining = kept.toString();
-        if (remaining) pathname += '?' + remaining;
-      } catch (e) {
-        // * URLSearchParams not supported — send path without query
-      }
-    }
     return pathname;
   }
-
-  // * SPA referrer: only attribute external referrer to the landing page
-  var firstPageviewSent = false;
 
   // * Refresh dedup: skip pageview if the same path was tracked within 5 seconds
   // * Prevents inflated pageview counts from F5/refresh while allowing genuine revisits
@@ -263,22 +240,7 @@
 
     currentEventId = null;
     pageStartTime = 0;
-    // * Only send external referrer on the first pageview (landing page).
-    // * SPA navigations keep document.referrer stale, so clear it after first hit
-    // * to avoid inflating traffic source attribution.
-    var referrer = '';
-    if (!firstPageviewSent) {
-      var rawReferrer = document.referrer || '';
-      if (rawReferrer) {
-        try {
-          var refHost = new URL(rawReferrer).hostname.replace(/^www\./, '');
-          var siteHost = domain.replace(/^www\./, '');
-          if (refHost !== siteHost) referrer = rawReferrer;
-        } catch (e) {
-          referrer = rawReferrer;
-        }
-      }
-    }
+
     const screenSize = {
       width: window.innerWidth || window.screen.width,
       height: window.innerHeight || window.screen.height,
@@ -286,8 +248,9 @@
 
     const payload = {
       domain: domain,
-      path: path,
-      referrer: referrer,
+      url: location.href,
+      title: document.title,
+      referrer: document.referrer || '',
       screen: screenSize,
       session_id: getSessionId(),
     };
@@ -303,7 +266,6 @@
     }).then(res => res.json())
     .then(data => {
       recordPageview(path);
-      firstPageviewSent = true;
       if (data && data.id) {
         currentEventId = data.id;
         pageStartTime = Date.now();
@@ -331,8 +293,6 @@
     if (url !== lastUrl) {
       lastUrl = url;
       trackPageview();
-      // * Check for 404 after SPA navigation (deferred so title updates first)
-      setTimeout(check404, 100);
       // * Reset scroll depth tracking for the new page
       if (trackScroll) scrollFired = {};
     }
@@ -349,58 +309,23 @@
     if (url === lastUrl) return;
     lastUrl = url;
     trackPageview();
-    setTimeout(check404, 100);
     if (trackScroll) scrollFired = {};
   });
 
-  // * Custom events / goals: validate event name (letters, numbers, underscores only; max 64 chars)
-  var EVENT_NAME_MAX = 64;
-  var EVENT_NAME_REGEX = /^[a-zA-Z0-9_]+$/;
-
+  // * Custom events / goals
   function trackCustomEvent(eventName, props) {
     if (typeof eventName !== 'string' || !eventName.trim()) return;
-    var name = eventName.trim().toLowerCase();
-    if (name.length > EVENT_NAME_MAX || !EVENT_NAME_REGEX.test(name)) {
-      if (typeof console !== 'undefined' && console.warn) {
-        console.warn('Pulse: event name must contain only letters, numbers, and underscores (max ' + EVENT_NAME_MAX + ' chars).');
-      }
-      return;
-    }
-    var path = cleanPath();
-    // * Custom events use same referrer logic: only on first pageview, empty after
-    var referrer = '';
-    if (!firstPageviewSent) {
-      var rawRef = document.referrer || '';
-      if (rawRef) {
-        try {
-          var rh = new URL(rawRef).hostname.replace(/^www\./, '');
-          var sh = domain.replace(/^www\./, '');
-          if (rh !== sh) referrer = rawRef;
-        } catch (e) { referrer = rawRef; }
-      }
-    }
-    var screenSize = { width: window.innerWidth || 0, height: window.innerHeight || 0 };
     var payload = {
       domain: domain,
-      path: path,
-      referrer: referrer,
-      screen: screenSize,
+      url: location.href,
+      title: document.title,
+      referrer: document.referrer || '',
+      screen: { width: window.innerWidth || 0, height: window.innerHeight || 0 },
       session_id: getSessionId(),
-      name: name,
+      name: eventName.trim().toLowerCase(),
     };
-    // * Attach custom properties if provided (max 30 props, key max 200 chars, value max 2000 chars)
     if (props && typeof props === 'object' && !Array.isArray(props)) {
-      var sanitized = {};
-      var count = 0;
-      for (var key in props) {
-        if (!props.hasOwnProperty(key)) continue;
-        if (count >= 30) break;
-        var k = String(key).substring(0, 200);
-        var v = String(props[key]).substring(0, 2000);
-        sanitized[k] = v;
-        count++;
-      }
-      if (count > 0) payload.props = sanitized;
+      payload.props = props;
     }
     fetch(apiUrl + '/api/v1/events', {
       method: 'POST',
@@ -414,26 +339,6 @@
   window.pulse = window.pulse || {};
   window.pulse.track = trackCustomEvent;
   window.pulse.cleanPath = cleanPath;
-
-  // * Auto-track 404 error pages (on by default)
-  // * Detects pages where document.title contains "404" or "not found"
-  // * Opt-out: add data-no-404 to the script tag
-  var track404 = !script.hasAttribute('data-no-404');
-  var sent404ForUrl = '';
-
-  function check404() {
-    if (!track404) return;
-    // * Only fire once per URL
-    var currentUrl = location.href;
-    if (sent404ForUrl === currentUrl) return;
-    if (/404|not found/i.test(document.title)) {
-      sent404ForUrl = currentUrl;
-      trackCustomEvent('404');
-    }
-  }
-
-  // * Check on initial load (deferred so SPAs can set title)
-  setTimeout(check404, 0);
 
   // * Auto-track scroll depth at 25%, 50%, 75%, and 100% (on by default)
   // * Each threshold fires once per pageview; resets on SPA navigation
