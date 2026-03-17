@@ -14,15 +14,15 @@ import { toast, Toggle, Select, CheckIcon } from '@ciphera-net/ui'
 const FRAMEWORKS = integrations.filter((i) => i.category === 'framework').slice(0, 10)
 
 const STORAGE_OPTIONS = [
-  { value: 'local', label: 'Cross-tab (localStorage)' },
-  { value: 'session', label: 'Per-tab (sessionStorage)' },
+  { value: 'local', label: 'Across all tabs' },
+  { value: 'session', label: 'Single tab only' },
 ]
 
 const TTL_OPTIONS = [
-  { value: '24', label: '24h' },
-  { value: '48', label: '48h' },
-  { value: '168', label: '7d' },
-  { value: '720', label: '30d' },
+  { value: '24', label: '24 hours' },
+  { value: '48', label: '2 days' },
+  { value: '168', label: '7 days' },
+  { value: '720', label: '30 days' },
 ]
 
 const FEATURES = [
@@ -187,13 +187,16 @@ export default function ScriptSetupBlock({
 
       {/* ── Storage + TTL ───────────────────────────────────────────────── */}
       <div className="mt-6">
-        <h4 className="text-sm font-semibold text-neutral-900 dark:text-white mb-3">
+        <h4 className="text-sm font-semibold text-neutral-900 dark:text-white mb-1">
           Visitor identity
         </h4>
+        <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-3">
+          How returning visitors are recognized. Stricter settings increase privacy but may raise unique visitor counts.
+        </p>
         <div className="flex items-end gap-3">
           <div className="min-w-0">
             <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1 block">
-              Storage
+              Recognition
             </label>
             <Select
               variant="input"
@@ -205,7 +208,7 @@ export default function ScriptSetupBlock({
           {storage === 'local' && (
             <div>
               <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1 block">
-                TTL
+                Reset after
               </label>
               <Select
                 variant="input"
