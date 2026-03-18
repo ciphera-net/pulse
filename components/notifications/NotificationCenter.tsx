@@ -104,6 +104,13 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
     }
   }, [open, updatePosition])
 
+  // Recalculate position after content changes (notifications load, loading state)
+  useEffect(() => {
+    if (open && anchor === 'right') {
+      requestAnimationFrame(() => updatePosition())
+    }
+  }, [notifications, loading, open, anchor, updatePosition])
+
   // * Poll unread count in background (when authenticated)
   useEffect(() => {
     fetchUnreadCount()
