@@ -204,7 +204,7 @@ function NavItemLink({
       } ${
         isActive
           ? 'bg-brand-orange/10 text-brand-orange'
-          : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors'
+          : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800'
       }`}
     >
       <item.icon className="w-[18px] h-[18px] shrink-0" weight={isActive ? 'fill' : 'regular'} />
@@ -253,21 +253,6 @@ export default function Sidebar({
 
     return (
       <div className="flex flex-col h-full overflow-hidden">
-        {/* Logo */}
-        <Link
-          href="/"
-          className={`flex items-center gap-2.5 px-4 py-4 shrink-0 ${isCollapsed ? 'justify-center' : ''}`}
-        >
-          <img
-            src="/pulse_icon_no_margins.png"
-            alt="Pulse"
-            className="w-8 h-8 shrink-0 object-contain"
-          />
-          {!isCollapsed && (
-            <span className="text-lg font-bold text-neutral-900 dark:text-white tracking-tight">Pulse</span>
-          )}
-        </Link>
-
         {/* Site Picker */}
         <div className="pt-3 pb-2">
           <SitePicker sites={sites} currentSiteId={siteId} collapsed={isCollapsed} />

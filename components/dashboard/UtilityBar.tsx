@@ -68,15 +68,31 @@ export default function UtilityBar() {
 
   return (
     <div className="shrink-0 flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-4 sm:px-8 py-3.5">
-      {/* Left: mobile sidebar toggle */}
-      <button
-        onClick={openMobile}
-        className="lg:hidden p-2 -ml-2 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
-        aria-label="Open navigation"
-      >
-        <MenuIcon className="w-5 h-5" />
-      </button>
-      <div className="hidden lg:block" />
+      {/* Left: Pulse logo + mobile toggle */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={openMobile}
+          className="lg:hidden p-2 -ml-2 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
+          aria-label="Open navigation"
+        >
+          <MenuIcon className="w-5 h-5" />
+        </button>
+        <Link
+          href="/"
+          className="flex items-center gap-3 group relative"
+        >
+          <div className="relative w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center shrink-0">
+            <img
+              src="/pulse_icon_no_margins.png"
+              alt="Pulse Logo"
+              className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300 transform-gpu will-change-transform [backface-visibility:hidden]"
+            />
+          </div>
+          <span className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-white tracking-tight group-hover:text-brand-orange transition-colors duration-300">
+            Pulse
+          </span>
+        </Link>
+      </div>
 
       {/* Right: actions */}
       <div className="flex items-center gap-3">
