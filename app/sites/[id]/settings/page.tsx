@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import { updateSite, resetSiteData, deleteSite, type Site, type GeoDataLevel } from '@/lib/api/sites'
+import { updateSite, resetSiteData, type Site, type GeoDataLevel } from '@/lib/api/sites'
 import { createGoal, updateGoal, deleteGoal, type Goal } from '@/lib/api/goals'
 import { createReportSchedule, updateReportSchedule, deleteReportSchedule, testReportSchedule, type ReportSchedule, type CreateReportScheduleRequest, type EmailConfig, type WebhookConfig } from '@/lib/api/report-schedules'
 import { getGSCAuthURL, disconnectGSC } from '@/lib/api/gsc'
@@ -13,6 +13,7 @@ import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { formatDateTime } from '@/lib/utils/formatDate'
 import { SettingsFormSkeleton, GoalsListSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import VerificationModal from '@/components/sites/VerificationModal'
+import DeleteSiteModal from '@/components/sites/DeleteSiteModal'
 import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
 import { PasswordInput } from '@ciphera-net/ui'
 import { Select, Modal, Button } from '@ciphera-net/ui'
@@ -59,6 +60,7 @@ export default function SiteSettingsPage() {
 
   const { data: site, isLoading: siteLoading, mutate: mutateSite } = useSite(siteId)
   const [saving, setSaving] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [activeTab, setActiveTab] = useState<'general' | 'visibility' | 'data' | 'goals' | 'reports' | 'integrations'>('general')
   const searchParams = useSearchParams()
 
@@ -462,20 +464,8 @@ export default function SiteSettingsPage() {
     }
   }
 
-  const handleDeleteSite = async () => {
-    const confirmation = prompt('To confirm deletion, please type the site domain:')
-    if (confirmation !== site?.domain) {
-      if (confirmation) toast.error('Domain does not match')
-      return
-    }
-
-    try {
-      await deleteSite(siteId)
-      toast.success('Site deleted successfully')
-      router.push('/')
-    } catch (error: unknown) {
-      toast.error(getAuthErrorMessage(error) || 'Failed to delete site')
-    }
+  const handleDeleteSite = () => {
+    setShowDeleteModal(true)
   }
 
   const copyLink = () => {
@@ -804,13 +794,13 @@ export default function SiteSettingsPage() {
                     <div className="p-4 border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/10 rounded-2xl flex items-center justify-between">
                       <div>
                         <h3 className="font-medium text-red-900 dark:text-red-200">Delete Site</h3>
-                        <p className="text-sm text-red-700 dark:text-red-300 mt-1">Permanently delete this site and all data.</p>
+                        <p className="text-sm text-red-700 dark:text-red-300 mt-1">Schedule this site for deletion with a 7-day grace period.</p>
                       </div>
                       <button
                         onClick={handleDeleteSite}
                         className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
                       >
-                        Delete Site
+                        Delete Site...
                       </button>
                     </div>
                   </div>
@@ -2037,6 +2027,15 @@ export default function SiteSettingsPage() {
         onClose={() => setShowVerificationModal(false)}
         site={site}
         onVerified={() => mutateSite()}
+      />
+
+      <DeleteSiteModal
+        open={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onDeleted={() => router.push('/')}
+        siteName={site?.name || ''}
+        siteDomain={site?.domain || ''}
+        siteId={siteId}
       />
     </div>
   )
