@@ -67,7 +67,7 @@ export default function UtilityBar() {
   }
 
   return (
-    <div className="shrink-0 flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-4 sm:px-6 py-2">
+    <div className="shrink-0 flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-4 sm:px-8 py-3.5">
       {/* Left: mobile sidebar toggle */}
       <button
         onClick={openMobile}
