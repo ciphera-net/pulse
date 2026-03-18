@@ -117,13 +117,15 @@ function SitePicker({ sites, siteId, collapsed }: { sites: Site[]; siteId: strin
               className="w-5 h-5 object-contain"
               onError={() => setFaviconFailed(true)}
             />
-          ) : (
+          ) : currentSite ? (
             initial
+          ) : (
+            <span className="w-4 h-4 rounded bg-brand-orange/20 animate-pulse" />
           )}
         </span>
         <Label collapsed={collapsed}>
           <span className="flex items-center gap-1">
-            <span className="truncate">{currentSite?.name || 'Select site'}</span>
+            <span className="truncate">{currentSite?.name || <span className="w-16 h-4 rounded bg-neutral-700/20 animate-pulse inline-block" />}</span>
             <ChevronUpDownIcon className="w-4 h-4 text-neutral-400 shrink-0" />
           </span>
         </Label>
