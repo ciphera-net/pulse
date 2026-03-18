@@ -25,7 +25,7 @@ export default function DashboardShell({
       />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <ContentHeader onMobileMenuOpen={openMobile} />
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto pt-6">
           {children}
         </main>
       </div>
