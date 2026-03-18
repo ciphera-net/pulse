@@ -240,11 +240,11 @@ export default function Sidebar({
     return (
       <div className="flex flex-col h-full overflow-hidden">
         {/* Logo — fixed layout, text fades */}
-        <Link href="/" className="flex items-center gap-2.5 px-[18px] py-5 shrink-0 group overflow-hidden">
-          <span className="w-7 h-7 flex items-center justify-center shrink-0">
-            <img src="/pulse_icon_no_margins.png" alt="Pulse" className="w-7 h-7 shrink-0 object-contain group-hover:scale-105 transition-transform duration-200" />
+        <Link href="/" className="flex items-center gap-3 px-[14px] py-4 shrink-0 group overflow-hidden">
+          <span className="w-9 h-9 flex items-center justify-center shrink-0">
+            <img src="/pulse_icon_no_margins.png" alt="Pulse" className="w-9 h-9 shrink-0 object-contain group-hover:scale-105 transition-transform duration-200" />
           </span>
-          <span className={`text-lg font-bold text-neutral-900 dark:text-white tracking-tight group-hover:text-brand-orange whitespace-nowrap transition-opacity duration-150 ${c ? 'opacity-0' : 'opacity-100'}`}>
+          <span className={`text-xl font-bold text-neutral-900 dark:text-white tracking-tight group-hover:text-brand-orange whitespace-nowrap transition-opacity duration-150 ${c ? 'opacity-0' : 'opacity-100'}`}>
             Pulse
           </span>
         </Link>
