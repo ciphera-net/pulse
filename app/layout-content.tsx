@@ -2,7 +2,7 @@
 
 import { OfflineBanner } from '@/components/OfflineBanner'
 import { Footer } from '@/components/Footer'
-import { Header, type CipheraApp } from '@ciphera-net/ui'
+import { Header, type CipheraApp, MenuIcon } from '@ciphera-net/ui'
 import NotificationCenter from '@/components/notifications/NotificationCenter'
 import { useAuth } from '@/lib/auth/context'
 import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus'
@@ -15,6 +15,7 @@ import { LoadingOverlay } from '@ciphera-net/ui'
 import { useRouter } from 'next/navigation'
 import { SettingsModalProvider, useSettingsModal } from '@/lib/settings-modal-context'
 import SettingsModalWrapper from '@/components/settings/SettingsModalWrapper'
+import { SidebarProvider, useSidebar } from '@/lib/sidebar-context'
 
 const ORG_SWITCH_KEY = 'pulse_switching_org'
 
@@ -45,6 +46,19 @@ const CIPHERA_APPS: CipheraApp[] = [
     isAvailable: true,
   },
 ]
+
+function MobileSidebarToggle() {
+  const { openMobile } = useSidebar()
+  return (
+    <button
+      onClick={openMobile}
+      className="lg:hidden p-2 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
+      aria-label="Open navigation"
+    >
+      <MenuIcon className="w-5 h-5" />
+    </button>
+  )
+}
 
 function LayoutInner({ children }: { children: React.ReactNode }) {
   const auth = useAuth()
@@ -91,23 +105,22 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
     router.push('/onboarding')
   }
 
-  const showOfflineBar = Boolean(auth.user && !isOnline);
-  const barHeightRem = 2.5;
-  const headerHeightRem = 6;
-  const mainTopPaddingRem = barHeightRem + headerHeightRem;
+  const isAuthenticated = !!auth.user
+  const showOfflineBar = Boolean(auth.user && !isOnline)
 
   if (isSwitchingOrg) {
     return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" portal={false} />
   }
 
   return (
-    <>
+    <div className="flex flex-col min-h-screen">
       {auth.user && <OfflineBanner isOnline={isOnline} />}
       <Header
         auth={auth}
         LinkComponent={Link}
         logoSrc="/pulse_icon_no_margins.png"
         appName="Pulse"
+        variant={isAuthenticated ? 'static' : 'floating'}
         orgs={orgs}
         activeOrgId={auth.user?.org_id}
         onSwitchOrganization={handleSwitchOrganization}
@@ -116,11 +129,12 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
         showFaq={false}
         showSecurity={false}
         showPricing={true}
-        topOffset={showOfflineBar ? `${barHeightRem}rem` : undefined}
+        topOffset={!isAuthenticated && showOfflineBar ? '2.5rem' : undefined}
         rightSideActions={auth.user ? <NotificationCenter /> : null}
         apps={CIPHERA_APPS}
         currentAppId="pulse"
         onOpenSettings={openSettings}
+        leftActions={isAuthenticated ? <MobileSidebarToggle /> : undefined}
         customNavItems={
           <>
             {!auth.user && (
@@ -134,26 +148,40 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
           </>
         }
       />
-      <main
-        className={`flex-1 pb-8 ${showOfflineBar ? '' : 'pt-24'}`}
-        style={showOfflineBar ? { paddingTop: `${mainTopPaddingRem}rem` } : undefined}
-      >
-        {children}
-      </main>
-      <Footer
-        LinkComponent={Link}
-        appName="Pulse"
-        isAuthenticated={!!auth.user}
-      />
+      {isAuthenticated ? (
+        // Authenticated: sidebar layout — children include DashboardShell
+        <>{children}</>
+      ) : (
+        // Public: standard content with footer
+        <>
+          <main className="flex-1 pb-8 pt-24">
+            {children}
+          </main>
+          <Footer
+            LinkComponent={Link}
+            appName="Pulse"
+            isAuthenticated={false}
+          />
+        </>
+      )}
+      {isAuthenticated && (
+        <Footer
+          LinkComponent={Link}
+          appName="Pulse"
+          isAuthenticated={true}
+        />
+      )}
       <SettingsModalWrapper />
-    </>
+    </div>
   )
 }
 
 export default function LayoutContent({ children }: { children: React.ReactNode }) {
   return (
     <SettingsModalProvider>
-      <LayoutInner>{children}</LayoutInner>
+      <SidebarProvider>
+        <LayoutInner>{children}</LayoutInner>
+      </SidebarProvider>
     </SettingsModalProvider>
   )
 }

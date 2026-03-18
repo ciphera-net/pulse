@@ -1,6 +1,6 @@
 'use client'
 
-import SiteNav from '@/components/dashboard/SiteNav'
+import DashboardShell from '@/components/dashboard/DashboardShell'
 
 export default function SiteLayoutShell({
   siteId,
@@ -10,11 +10,8 @@ export default function SiteLayoutShell({
   children: React.ReactNode
 }) {
   return (
-    <>
-      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-8">
-        <SiteNav siteId={siteId} />
-      </div>
+    <DashboardShell siteId={siteId}>
       {children}
-    </>
+    </DashboardShell>
   )
 }
