@@ -268,7 +268,7 @@ export default function Sidebar({
         </nav>
 
         {/* Bottom */}
-        <div className="border-t border-neutral-200 dark:border-neutral-800 px-3 py-3 space-y-0.5 shrink-0">
+        <div className="border-t border-neutral-200/60 dark:border-neutral-800/60 px-3 py-3 space-y-0.5 shrink-0">
           {canEdit && (
             <NavLink item={SETTINGS_ITEM} siteId={siteId} collapsed={c} onClick={isMobile ? onMobileClose : undefined} pendingHref={pendingHref} onNavigate={handleNavigate} />
           )}
@@ -291,7 +291,7 @@ export default function Sidebar({
     <>
       {/* Desktop — width transitions, internal layout never changes */}
       <aside
-        className="hidden md:flex flex-col shrink-0 border-r border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 overflow-hidden"
+        className="hidden md:flex flex-col shrink-0 border-r border-neutral-200/60 dark:border-neutral-800/60 bg-white/70 dark:bg-neutral-900/70 backdrop-blur-2xl supports-[backdrop-filter]:bg-white/50 dark:supports-[backdrop-filter]:bg-neutral-900/50 overflow-hidden"
         style={{ width: collapsed ? COLLAPSED : EXPANDED, transition: 'width 200ms cubic-bezier(0.4, 0, 0.2, 1)' }}
       >
         {sidebarContent(false)}
