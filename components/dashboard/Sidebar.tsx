@@ -340,13 +340,17 @@ export default function Sidebar({
 
   return (
     <>
-      {/* Desktop — width transitions, internal layout never changes */}
-      <aside
-        className={`hidden md:flex flex-col shrink-0 border-r border-neutral-200/60 dark:border-neutral-800/60 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl overflow-hidden ${ready ? 'opacity-100' : 'opacity-0'}`}
-        style={{ width: collapsed ? COLLAPSED : EXPANDED, transition: ready ? 'width 200ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none' }}
-      >
-        {sidebarContent(false)}
-      </aside>
+      {/* Desktop — empty shell until ready, then real content */}
+      {!ready ? (
+        <div className="hidden md:block shrink-0 border-r border-neutral-200/60 dark:border-neutral-800/60 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl" style={{ width: COLLAPSED }} />
+      ) : (
+        <aside
+          className="hidden md:flex flex-col shrink-0 border-r border-neutral-200/60 dark:border-neutral-800/60 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl overflow-hidden"
+          style={{ width: collapsed ? COLLAPSED : EXPANDED, transition: 'width 200ms cubic-bezier(0.4, 0, 0.2, 1)' }}
+        >
+          {sidebarContent(false)}
+        </aside>
+      )}
 
       {/* Mobile overlay */}
       {mobileOpen && (
