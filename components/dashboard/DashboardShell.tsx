@@ -1,8 +1,11 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import Sidebar from './Sidebar'
+import dynamic from 'next/dynamic'
 import ContentHeader from './ContentHeader'
+
+// Load sidebar only on the client — prevents any SSR flash of text/labels
+const Sidebar = dynamic(() => import('./Sidebar'), { ssr: false })
 
 export default function DashboardShell({
   siteId,
