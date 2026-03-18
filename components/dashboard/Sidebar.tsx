@@ -132,7 +132,7 @@ function SitePicker({ sites, siteId, collapsed, onExpand, onCollapse, wasCollaps
           {faviconUrl && !faviconFailed && (
             <img
               src={faviconUrl}
-              alt={currentSite?.name || ''}
+              alt=""
               className="w-5 h-5 object-contain"
               onError={() => setFaviconFailed(true)}
             />
