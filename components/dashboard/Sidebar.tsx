@@ -382,21 +382,27 @@ export default function Sidebar({
         {/* Bottom — utility items */}
         <div className="border-t border-neutral-200/60 dark:border-neutral-800/60 px-2 py-3 shrink-0">
           {/* Theme, Notifications, Profile */}
-          <div className="flex items-center justify-center gap-1 mb-1">
-            <ThemeToggle />
-            <NotificationCenter anchor="right" />
-            <UserMenu
-              auth={auth}
-              LinkComponent={Link}
-              orgs={orgs}
-              activeOrgId={auth.user?.org_id}
-              onSwitchOrganization={handleSwitchOrganization}
-              onCreateOrganization={() => router.push('/onboarding')}
-              allowPersonalOrganization={false}
-              onOpenSettings={openSettings}
-              compact
-              anchor="right"
-            />
+          <div className="flex flex-col items-center gap-0.5 mb-1">
+            <div className="flex items-center justify-center w-full rounded-lg px-2.5 py-2">
+              <ThemeToggle />
+            </div>
+            <div className="flex items-center justify-center w-full rounded-lg px-2.5 py-2">
+              <NotificationCenter anchor="right" />
+            </div>
+            <div className="flex items-center justify-center w-full rounded-lg px-2.5 py-2">
+              <UserMenu
+                auth={auth}
+                LinkComponent={Link}
+                orgs={orgs}
+                activeOrgId={auth.user?.org_id}
+                onSwitchOrganization={handleSwitchOrganization}
+                onCreateOrganization={() => router.push('/onboarding')}
+                allowPersonalOrganization={false}
+                onOpenSettings={openSettings}
+                compact
+                anchor="right"
+              />
+            </div>
           </div>
 
           {/* Settings + Collapse */}
