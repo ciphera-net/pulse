@@ -61,7 +61,12 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
   const updatePosition = useCallback(() => {
     if (anchor === 'right' && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect()
-      setFixedPos({ left: rect.right + 8, top: rect.top })
+      let top = rect.top
+      if (panelRef.current) {
+        const maxTop = window.innerHeight - panelRef.current.offsetHeight - 8
+        top = Math.min(top, Math.max(8, maxTop))
+      }
+      setFixedPos({ left: rect.right + 8, top })
     }
   }, [anchor])
 
@@ -95,6 +100,7 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
     if (open) {
       fetchNotifications()
       updatePosition()
+      requestAnimationFrame(() => updatePosition())
     }
   }, [open, updatePosition])
 
