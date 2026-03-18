@@ -13,6 +13,7 @@ import { FunnelDetailSkeleton, useMinimumLoading, useSkeletonFade } from '@/comp
 import Link from 'next/link'
 import { FunnelChart } from '@/components/ui/funnel-chart'
 import { getDateRange } from '@ciphera-net/ui'
+import BreakdownDrawer from '@/components/funnels/BreakdownDrawer'
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 
 export default function FunnelReportPage() {
@@ -32,6 +33,7 @@ export default function FunnelReportPage() {
   const [expandedExitStep, setExpandedExitStep] = useState<number | null>(null)
   const [trends, setTrends] = useState<FunnelTrends | null>(null)
   const [visibleSteps, setVisibleSteps] = useState<Set<string>>(new Set())
+  const [breakdownStep, setBreakdownStep] = useState<number | null>(null)
 
   const loadData = useCallback(async () => {
     setLoadError(null)
@@ -326,7 +328,7 @@ export default function FunnelReportPage() {
               <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
                 {stats.steps.map((step, i) => (
                   <React.Fragment key={step.step.name}>
-                    <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-800/30 transition-colors">
+                    <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-800/30 transition-colors cursor-pointer" onClick={() => setBreakdownStep(i)}>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <span className="w-6 h-6 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-xs font-medium text-neutral-600 dark:text-neutral-400">
@@ -397,6 +399,19 @@ export default function FunnelReportPage() {
           </div>
         </div>
       </div>
+
+      {breakdownStep !== null && stats && (
+        <BreakdownDrawer
+          siteId={siteId}
+          funnelId={funnelId}
+          stepIndex={breakdownStep}
+          stepName={stats.steps[breakdownStep].step.name}
+          startDate={dateRange.start}
+          endDate={dateRange.end}
+          filters={serializeFilters(filters) || undefined}
+          onClose={() => setBreakdownStep(null)}
+        />
+      )}
 
       <DatePicker
         isOpen={isDatePickerOpen}
