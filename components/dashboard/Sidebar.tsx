@@ -82,6 +82,7 @@ function SitePicker({ sites, siteId, collapsed, onExpand, onCollapse, wasCollaps
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [faviconFailed, setFaviconFailed] = useState(false)
+  const [faviconLoaded, setFaviconLoaded] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const pathname = usePathname()
   const router = useRouter()
@@ -129,14 +130,18 @@ function SitePicker({ sites, siteId, collapsed, onExpand, onCollapse, wasCollaps
         className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 overflow-hidden"
       >
         <span className="w-7 h-7 rounded-md bg-brand-orange/10 flex items-center justify-center shrink-0 overflow-hidden">
-          {faviconUrl && !faviconFailed && (
-            <img
-              src={faviconUrl}
-              alt=""
-              className="w-5 h-5 object-contain"
-              onError={() => setFaviconFailed(true)}
-            />
-          )}
+          {faviconUrl && !faviconFailed ? (
+            <>
+              {!faviconLoaded && <span className="w-5 h-5 rounded bg-neutral-200 dark:bg-neutral-700 animate-pulse" />}
+              <img
+                src={faviconUrl}
+                alt=""
+                className={`w-5 h-5 object-contain ${faviconLoaded ? '' : 'hidden'}`}
+                onLoad={() => setFaviconLoaded(true)}
+                onError={() => setFaviconFailed(true)}
+              />
+            </>
+          ) : null}
         </span>
         <Label collapsed={collapsed}>
           <span className="flex items-center gap-1">
