@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow, initiateSignupFlow } from '@/lib/api/oauth'
-import { listSites, listDeletedSites, restoreSite, permanentDeleteSite, type Site } from '@/lib/api/sites'
+import { listSites, listDeletedSites, restoreSite, type Site } from '@/lib/api/sites'
 import { getStats } from '@/lib/api/stats'
 import type { Stats } from '@/lib/api/stats'
 import { getSubscription, type SubscriptionDetails } from '@/lib/api/billing'
@@ -121,6 +121,7 @@ export default function HomePage() {
   const [showFinishSetupBanner, setShowFinishSetupBanner] = useState(true)
   const [deleteModalSite, setDeleteModalSite] = useState<Site | null>(null)
   const [deletedSites, setDeletedSites] = useState<Site[]>([])
+  const [permanentDeleteSiteModal, setPermanentDeleteSiteModal] = useState<Site | null>(null)
 
   useEffect(() => {
     if (user?.org_id) {
@@ -222,15 +223,9 @@ export default function HomePage() {
     }
   }
 
-  const handlePermanentDelete = async (id: string) => {
-    if (!confirm('Permanently delete this site and all data? This cannot be undone.')) return
-    try {
-      await permanentDeleteSite(id)
-      toast.success('Site permanently deleted')
-      loadSites()
-    } catch (error: unknown) {
-      toast.error(getAuthErrorMessage(error) || 'Failed to delete site')
-    }
+  const handlePermanentDelete = (id: string) => {
+    const site = deletedSites.find((s) => s.id === id)
+    if (site) setPermanentDeleteSiteModal(site)
   }
 
   if (authLoading) {
@@ -548,6 +543,16 @@ export default function HomePage() {
         siteName={deleteModalSite?.name || ''}
         siteDomain={deleteModalSite?.domain || ''}
         siteId={deleteModalSite?.id || ''}
+      />
+
+      <DeleteSiteModal
+        open={!!permanentDeleteSiteModal}
+        onClose={() => setPermanentDeleteSiteModal(null)}
+        onDeleted={loadSites}
+        siteName={permanentDeleteSiteModal?.name || ''}
+        siteDomain={permanentDeleteSiteModal?.domain || ''}
+        siteId={permanentDeleteSiteModal?.id || ''}
+        permanentOnly
       />
 
       {deletedSites.length > 0 && (

@@ -1,11 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from '@ciphera-net/ui'
-import { getAuthErrorMessage } from '@ciphera-net/ui'
-import { AlertTriangleIcon, XIcon } from '@ciphera-net/ui'
+import { toast, getAuthErrorMessage, AlertTriangleIcon, XIcon } from '@ciphera-net/ui'
 import { deleteSite, permanentDeleteSite } from '@/lib/api/sites'
 
 interface DeleteSiteModalProps {
@@ -15,14 +13,21 @@ interface DeleteSiteModalProps {
   siteName: string
   siteDomain: string
   siteId: string
+  permanentOnly?: boolean
 }
 
-export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, siteDomain, siteId }: DeleteSiteModalProps) {
+export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, siteDomain, siteId, permanentOnly }: DeleteSiteModalProps) {
   const [deleteConfirm, setDeleteConfirm] = useState('')
   const [isDeleting, setIsDeleting] = useState(false)
-  const [showPermanent, setShowPermanent] = useState(false)
+  const [showPermanent, setShowPermanent] = useState(!!permanentOnly)
   const [permanentConfirm, setPermanentConfirm] = useState('')
   const [isPermanentDeleting, setIsPermanentDeleting] = useState(false)
+
+  useEffect(() => {
+    if (open && permanentOnly) {
+      setShowPermanent(true)
+    }
+  }, [open, permanentOnly])
 
   const handleClose = () => {
     setDeleteConfirm('')
@@ -43,7 +48,6 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
       onDeleted()
     } catch (error: unknown) {
       toast.error(getAuthErrorMessage(error) || 'Failed to delete site')
-    } finally {
       setIsDeleting(false)
     }
   }
@@ -58,7 +62,6 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
       onDeleted()
     } catch (error: unknown) {
       toast.error(getAuthErrorMessage(error) || 'Failed to permanently delete site')
-    } finally {
       setIsPermanentDeleting(false)
     }
   }
@@ -193,13 +196,17 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
                     <button
                       type="button"
                       onClick={() => {
-                        setShowPermanent(false)
-                        setPermanentConfirm('')
+                        if (permanentOnly) {
+                          handleClose()
+                        } else {
+                          setShowPermanent(false)
+                          setPermanentConfirm('')
+                        }
                       }}
                       className="flex-1 px-4 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition-colors"
                       disabled={isPermanentDeleting}
                     >
-                      Back
+                      {permanentOnly ? 'Cancel' : 'Back'}
                     </button>
                     <button
                       onClick={handlePermanentDelete}
