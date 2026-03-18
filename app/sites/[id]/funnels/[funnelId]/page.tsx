@@ -1,9 +1,12 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ApiError } from '@/lib/api/client'
 import { getFunnel, getFunnelStats, deleteFunnel, type Funnel, type FunnelStats } from '@/lib/api/funnels'
+import FilterBar from '@/components/dashboard/FilterBar'
+import AddFilterDropdown from '@/components/dashboard/AddFilterDropdown'
+import { type DimensionFilter, serializeFilters } from '@/lib/filters'
 import { toast, Select, DatePicker, ChevronLeftIcon, ArrowRightIcon, TrashIcon, Button } from '@ciphera-net/ui'
 import { FunnelDetailSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import Link from 'next/link'
@@ -23,6 +26,8 @@ export default function FunnelReportPage() {
   const [datePreset, setDatePreset] = useState<'7' | '30' | 'custom'>('30')
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
   const [loadError, setLoadError] = useState<'not_found' | 'forbidden' | 'error' | null>(null)
+  const [filters, setFilters] = useState<DimensionFilter[]>([])
+  const [expandedExitStep, setExpandedExitStep] = useState<number | null>(null)
 
   const loadData = useCallback(async () => {
     setLoadError(null)
@@ -30,7 +35,7 @@ export default function FunnelReportPage() {
       setLoading(true)
       const [funnelData, statsData] = await Promise.all([
         getFunnel(siteId, funnelId),
-        getFunnelStats(siteId, funnelId, dateRange.start, dateRange.end)
+        getFunnelStats(siteId, funnelId, dateRange.start, dateRange.end, serializeFilters(filters) || undefined)
       ])
       setFunnel(funnelData)
       setStats(statsData)
@@ -43,7 +48,7 @@ export default function FunnelReportPage() {
     } finally {
       setLoading(false)
     }
-  }, [siteId, funnelId, dateRange])
+  }, [siteId, funnelId, dateRange, filters])
 
   useEffect(() => {
     loadData()
@@ -167,6 +172,18 @@ export default function FunnelReportPage() {
           </div>
         </div>
 
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-2 mb-6">
+          <AddFilterDropdown
+            onAdd={(f) => setFilters(prev => [...prev, f])}
+          />
+          <FilterBar
+            filters={filters}
+            onRemove={(i) => setFilters(prev => prev.filter((_, idx) => idx !== i))}
+            onClear={() => setFilters([])}
+          />
+        </div>
+
         {/* Chart */}
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm p-6 mb-8">
           <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-6">
@@ -195,42 +212,72 @@ export default function FunnelReportPage() {
               </thead>
               <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
                 {stats.steps.map((step, i) => (
-                  <tr key={step.step.name} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/30 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <span className="w-6 h-6 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-xs font-medium text-neutral-600 dark:text-neutral-400">
-                          {i + 1}
-                        </span>
-                        <div>
-                          <p className="font-medium text-neutral-900 dark:text-white">{step.step.name}</p>
-                          <p className="text-neutral-500 dark:text-neutral-400 text-xs font-mono mt-0.5">{step.step.value}</p>
+                  <React.Fragment key={step.step.name}>
+                    <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-800/30 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <span className="w-6 h-6 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-xs font-medium text-neutral-600 dark:text-neutral-400">
+                            {i + 1}
+                          </span>
+                          <div>
+                            <p className="font-medium text-neutral-900 dark:text-white">{step.step.name}</p>
+                            <p className="text-neutral-500 dark:text-neutral-400 text-xs font-mono mt-0.5">{step.step.value}</p>
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <span className="font-medium text-neutral-900 dark:text-white">
-                        {step.visitors.toLocaleString()}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      {i > 0 ? (
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          step.dropoff > 50 
-                            ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-                            : 'bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-300'
-                        }`}>
-                          {Math.round(step.dropoff)}%
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <span className="font-medium text-neutral-900 dark:text-white">
+                          {step.visitors.toLocaleString()}
                         </span>
-                      ) : (
-                        <span className="text-neutral-400">-</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <span className="text-green-600 dark:text-green-400 font-medium">
-                        {Math.round(step.conversion)}%
-                      </span>
-                    </td>
-                  </tr>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        {i > 0 ? (
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            step.dropoff > 50
+                              ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                              : 'bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-300'
+                          }`}>
+                            {Math.round(step.dropoff)}%
+                          </span>
+                        ) : (
+                          <span className="text-neutral-400">-</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <span className="text-green-600 dark:text-green-400 font-medium">
+                          {Math.round(step.conversion)}%
+                        </span>
+                      </td>
+                    </tr>
+                    {step.exit_pages && step.exit_pages.length > 0 && (
+                      <tr className="bg-neutral-50/50 dark:bg-neutral-800/20">
+                        <td colSpan={4} className="px-6 py-3">
+                          <div className="ml-9">
+                            <p className="text-xs font-medium text-neutral-500 mb-2">
+                              Where visitors went after dropping off:
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {(expandedExitStep === i ? step.exit_pages : step.exit_pages.slice(0, 3)).map(ep => (
+                                <span key={ep.path} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-xs">
+                                  <span className="font-mono text-neutral-600 dark:text-neutral-300">{ep.path}</span>
+                                  <span className="text-neutral-400">{ep.visitors}</span>
+                                </span>
+                              ))}
+                            </div>
+                            {step.exit_pages.length > 3 && (
+                              <button
+                                type="button"
+                                onClick={() => setExpandedExitStep(expandedExitStep === i ? null : i)}
+                                className="mt-2 text-xs text-brand-orange hover:underline"
+                              >
+                                {expandedExitStep === i ? 'Show less' : `See all ${step.exit_pages.length} exit pages`}
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
