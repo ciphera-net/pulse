@@ -106,7 +106,7 @@ function SitePicker({ sites, siteId, collapsed }: { sites: Site[]; siteId: strin
   return (
     <div className="relative mb-4 px-2" ref={ref}>
       <button
-        onClick={() => setOpen(!open)}
+        onClick={() => { if (!collapsed) setOpen(!open) }}
         className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 overflow-hidden"
       >
         <span className="w-7 h-7 rounded-md bg-brand-orange/10 text-brand-orange flex items-center justify-center text-xs font-bold shrink-0 overflow-hidden">
