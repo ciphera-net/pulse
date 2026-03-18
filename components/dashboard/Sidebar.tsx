@@ -86,7 +86,6 @@ function SitePicker({ sites, siteId, collapsed, onExpand, onCollapse, wasCollaps
   const pathname = usePathname()
   const router = useRouter()
   const currentSite = sites.find((s) => s.id === siteId)
-  const initial = currentSite?.name?.charAt(0)?.toUpperCase() || '?'
   const faviconUrl = currentSite?.domain ? `${FAVICON_SERVICE_URL}?domain=${currentSite.domain}&sz=64` : null
 
   useEffect(() => {
@@ -129,23 +128,19 @@ function SitePicker({ sites, siteId, collapsed, onExpand, onCollapse, wasCollaps
         }}
         className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 overflow-hidden"
       >
-        <span className="w-7 h-7 rounded-md bg-brand-orange/10 text-brand-orange flex items-center justify-center text-xs font-bold shrink-0 overflow-hidden">
-          {faviconUrl && !faviconFailed ? (
+        <span className="w-7 h-7 rounded-md bg-brand-orange/10 flex items-center justify-center shrink-0 overflow-hidden">
+          {faviconUrl && !faviconFailed && (
             <img
               src={faviconUrl}
               alt={currentSite?.name || ''}
               className="w-5 h-5 object-contain"
               onError={() => setFaviconFailed(true)}
             />
-          ) : currentSite ? (
-            initial
-          ) : (
-            <span className="w-4 h-4 rounded bg-brand-orange/20 animate-pulse" />
           )}
         </span>
         <Label collapsed={collapsed}>
           <span className="flex items-center gap-1">
-            <span className="truncate">{currentSite?.name || <span className="w-16 h-4 rounded bg-neutral-700/20 animate-pulse inline-block" />}</span>
+            <span className="truncate">{currentSite?.name || ''}</span>
             <ChevronUpDownIcon className="w-4 h-4 text-neutral-400 shrink-0" />
           </span>
         </Label>
@@ -245,10 +240,13 @@ export default function Sidebar({
   const [sites, setSites] = useState<Site[]>([])
   const [pendingHref, setPendingHref] = useState<string | null>(null)
   const wasCollapsedRef = useRef(false)
-  const [collapsed, setCollapsed] = useState(() => {
-    if (typeof window === 'undefined') return true // SSR: default collapsed to avoid hydration flash
-    return localStorage.getItem(SIDEBAR_KEY) !== 'false' // default collapsed unless explicitly set to false
-  })
+  const [collapsed, setCollapsed] = useState(true) // Always start collapsed — no hydration mismatch
+
+  // Read saved state after mount — expands smoothly if user had it open
+  useEffect(() => {
+    const saved = localStorage.getItem(SIDEBAR_KEY)
+    if (saved === 'false') setCollapsed(false)
+  }, [])
 
   useEffect(() => { listSites().then(setSites).catch(() => {}) }, [])
   useEffect(() => { setPendingHref(null); onMobileClose() }, [pathname, onMobileClose])
