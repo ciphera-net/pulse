@@ -24,7 +24,6 @@ import {
   ChevronUpDownIcon,
   PlusIcon,
   XIcon,
-  ThemeToggle,
   AppLauncher,
   UserMenu,
   type CipheraApp,
@@ -94,7 +93,7 @@ const NAV_GROUPS: NavGroup[] = [
 ]
 
 const SETTINGS_ITEM: NavItem = {
-  label: 'Settings', href: (id) => `/sites/${id}/settings`, icon: SettingsIcon, matchPrefix: true,
+  label: 'Site Settings', href: (id) => `/sites/${id}/settings`, icon: SettingsIcon, matchPrefix: true,
 }
 
 // Label that fades with the sidebar — always in the DOM, never removed
@@ -379,6 +378,9 @@ export default function Sidebar({
                 {group.items.map((item) => (
                   <NavLink key={item.label} item={item} siteId={siteId} collapsed={c} onClick={isMobile ? onMobileClose : undefined} pendingHref={pendingHref} onNavigate={handleNavigate} />
                 ))}
+                {group.label === 'Infrastructure' && canEdit && (
+                  <NavLink item={SETTINGS_ITEM} siteId={siteId} collapsed={c} onClick={isMobile ? onMobileClose : undefined} pendingHref={pendingHref} onNavigate={handleNavigate} />
+                )}
               </div>
             </div>
           ))}
@@ -386,11 +388,8 @@ export default function Sidebar({
 
         {/* Bottom — utility items */}
         <div className="border-t border-neutral-200/60 dark:border-neutral-800/60 px-2 py-3 shrink-0">
-          {/* Theme, Notifications, Profile — same layout as nav items */}
+          {/* Notifications, Profile — same layout as nav items */}
           <div className="space-y-0.5 mb-1">
-            <ThemeToggle variant="sidebar">
-              <Label collapsed={c}>Theme</Label>
-            </ThemeToggle>
             <NotificationCenter anchor="right" variant="sidebar">
               <Label collapsed={c}>Notifications</Label>
             </NotificationCenter>
@@ -412,9 +411,6 @@ export default function Sidebar({
 
           {/* Settings + Collapse */}
           <div className="space-y-0.5">
-            {canEdit && (
-              <NavLink item={SETTINGS_ITEM} siteId={siteId} collapsed={c} onClick={isMobile ? onMobileClose : undefined} pendingHref={pendingHref} onNavigate={handleNavigate} />
-            )}
             {!isMobile && (
               <button
                 onClick={toggle}
@@ -437,7 +433,7 @@ export default function Sidebar({
     <>
       {/* Desktop — ssr:false means this only renders on client, no hydration flash */}
       <aside
-        className="hidden md:flex flex-col shrink-0 border-r border-neutral-200/60 dark:border-neutral-800/60 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl overflow-hidden"
+        className="hidden md:flex flex-col shrink-0 border-r border-neutral-200/60 dark:border-neutral-800/60 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl overflow-hidden relative z-10"
         style={{ width: collapsed ? COLLAPSED : EXPANDED, transition: 'width 200ms cubic-bezier(0.4, 0, 0.2, 1)' }}
       >
         {sidebarContent(false)}
