@@ -8,6 +8,7 @@ import FilterBar from '@/components/dashboard/FilterBar'
 import AddFilterDropdown from '@/components/dashboard/AddFilterDropdown'
 import { type DimensionFilter, serializeFilters } from '@/lib/filters'
 import { toast, Select, DatePicker, ChevronLeftIcon, ArrowRightIcon, TrashIcon, Button } from '@ciphera-net/ui'
+import { PencilSimple } from '@phosphor-icons/react'
 import { FunnelDetailSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import Link from 'next/link'
 import { FunnelChart } from '@/components/ui/funnel-chart'
@@ -162,6 +163,13 @@ export default function FunnelReportPage() {
               ]}
             />
             
+            <Link
+              href={`/sites/${siteId}/funnels/${funnelId}/edit`}
+              className="p-2 text-neutral-400 hover:text-brand-orange hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-xl transition-colors"
+              aria-label="Edit funnel"
+            >
+              <PencilSimple className="w-5 h-5" />
+            </Link>
             <button
               onClick={handleDelete}
               className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"
