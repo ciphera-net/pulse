@@ -19,7 +19,6 @@ import {
   ChevronUpDownIcon,
   PlusIcon,
   XIcon,
-  MenuIcon,
 } from '@ciphera-net/ui'
 
 const SIDEBAR_KEY = 'pulse_sidebar_collapsed'
@@ -108,29 +107,27 @@ function SitePicker({
   )
 
   return (
-    <div className="relative px-3 mb-4" ref={ref}>
+    <div className={`relative mb-4 ${collapsed ? 'px-2' : 'px-3'}`} ref={ref}>
       <button
         onClick={() => setOpen(!open)}
-        className={`w-full flex items-center gap-2.5 rounded-lg px-2 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
-          collapsed ? 'justify-center' : ''
+        className={`w-full flex items-center rounded-lg py-2 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
+          collapsed ? 'justify-center px-0' : 'gap-2.5 px-2'
         }`}
         title={collapsed ? currentSite?.name || 'Select site' : undefined}
       >
         <span className="w-7 h-7 rounded-md bg-brand-orange/10 text-brand-orange flex items-center justify-center text-xs font-bold shrink-0">
           {initial}
         </span>
-        <span
-          className={`flex items-center gap-1 min-w-0 flex-1 overflow-hidden transition-opacity duration-150 ${
-            collapsed ? 'opacity-0 w-0' : 'opacity-100'
-          }`}
-        >
-          <span className="truncate flex-1 text-left">{currentSite?.name || 'Select site'}</span>
-          <ChevronUpDownIcon className="w-4 h-4 text-neutral-400 shrink-0" />
-        </span>
+        {!collapsed && (
+          <>
+            <span className="truncate flex-1 text-left">{currentSite?.name || 'Select site'}</span>
+            <ChevronUpDownIcon className="w-4 h-4 text-neutral-400 shrink-0" />
+          </>
+        )}
       </button>
 
       {open && (
-        <div className="absolute left-3 right-3 top-full mt-1 z-50 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl overflow-hidden min-w-[220px]">
+        <div className={`absolute top-full mt-1 z-50 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl overflow-hidden min-w-[220px] ${collapsed ? 'left-1 right-auto' : 'left-3 right-3'}`}>
           <div className="p-2">
             <input
               type="text"
@@ -188,23 +185,36 @@ function NavLink({
   siteId,
   collapsed,
   onClick,
+  pendingHref,
+  onNavigate,
 }: {
   item: NavItem
   siteId: string
   collapsed: boolean
   onClick?: () => void
+  pendingHref: string | null
+  onNavigate: (href: string) => void
 }) {
   const pathname = usePathname()
   const href = item.href(siteId)
-  const active = item.matchPrefix ? pathname.startsWith(href) : pathname === href
+
+  // Active if pathname matches OR if this link was just clicked (optimistic)
+  const matchesPathname = item.matchPrefix ? pathname.startsWith(href) : pathname === href
+  const matchesPending = pendingHref !== null && (item.matchPrefix ? pendingHref.startsWith(href) : pendingHref === href)
+  const active = matchesPathname || matchesPending
+
+  const handleClick = () => {
+    onNavigate(href)
+    onClick?.()
+  }
 
   return (
     <Link
       href={href}
-      onClick={onClick}
+      onClick={handleClick}
       title={collapsed ? item.label : undefined}
-      className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium ${
-        collapsed ? 'justify-center' : ''
+      className={`flex items-center rounded-lg py-2 text-sm font-medium ${
+        collapsed ? 'justify-center px-0' : 'gap-2.5 px-2.5'
       } ${
         active
           ? 'bg-brand-orange/10 text-brand-orange'
@@ -212,13 +222,11 @@ function NavLink({
       }`}
     >
       <item.icon className="w-[18px] h-[18px] shrink-0" weight={active ? 'fill' : 'regular'} />
-      <span
-        className={`whitespace-nowrap overflow-hidden transition-opacity duration-150 ${
-          collapsed ? 'opacity-0 w-0' : 'opacity-100'
-        }`}
-      >
-        {item.label}
-      </span>
+      {!collapsed && (
+        <span className="whitespace-nowrap overflow-hidden">
+          {item.label}
+        </span>
+      )}
     </Link>
   )
 }
@@ -240,6 +248,7 @@ export default function Sidebar({
   const canEdit = user?.role === 'owner' || user?.role === 'admin'
   const pathname = usePathname()
   const [sites, setSites] = useState<Site[]>([])
+  const [pendingHref, setPendingHref] = useState<string | null>(null)
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof window === 'undefined') return false
     return localStorage.getItem(SIDEBAR_KEY) === 'true'
@@ -249,8 +258,9 @@ export default function Sidebar({
     listSites().then(setSites).catch(() => {})
   }, [])
 
-  // Close mobile on navigation
+  // Clear pending href once navigation completes
   useEffect(() => {
+    setPendingHref(null)
     onMobileClose()
   }, [pathname, onMobileClose])
 
@@ -276,6 +286,10 @@ export default function Sidebar({
     })
   }, [])
 
+  const handleNavigate = useCallback((href: string) => {
+    setPendingHref(href)
+  }, [])
+
   const sidebarContent = (isMobile: boolean) => {
     const isCollapsed = isMobile ? false : collapsed
 
@@ -284,40 +298,36 @@ export default function Sidebar({
         {/* Logo */}
         <Link
           href="/"
-          className={`flex items-center gap-3 px-5 py-5 shrink-0 group ${isCollapsed ? 'justify-center px-0' : ''}`}
+          className={`flex items-center shrink-0 group py-5 ${
+            isCollapsed ? 'justify-center px-0' : 'gap-3 px-5'
+          }`}
         >
           <img
             src="/pulse_icon_no_margins.png"
             alt="Pulse"
             className="w-8 h-8 shrink-0 object-contain group-hover:scale-105 transition-transform duration-200"
           />
-          <span
-            className={`text-lg font-bold text-neutral-900 dark:text-white tracking-tight group-hover:text-brand-orange transition-all duration-150 whitespace-nowrap overflow-hidden ${
-              isCollapsed ? 'opacity-0 w-0' : 'opacity-100'
-            }`}
-          >
-            Pulse
-          </span>
+          {!isCollapsed && (
+            <span className="text-lg font-bold text-neutral-900 dark:text-white tracking-tight group-hover:text-brand-orange transition-colors duration-150 whitespace-nowrap">
+              Pulse
+            </span>
+          )}
         </Link>
 
         {/* Site Picker */}
         <SitePicker sites={sites} siteId={siteId} collapsed={isCollapsed} />
 
         {/* Nav Groups */}
-        <nav className="flex-1 overflow-y-auto overflow-x-hidden px-3 space-y-4">
+        <nav className={`flex-1 overflow-y-auto overflow-x-hidden space-y-4 ${isCollapsed ? 'px-2' : 'px-3'}`}>
           {NAV_GROUPS.map((group) => (
             <div key={group.label}>
-              <div
-                className={`overflow-hidden transition-all duration-150 ${
-                  isCollapsed ? 'h-2' : 'h-auto'
-                }`}
-              >
-                {!isCollapsed && (
-                  <p className="px-2.5 mb-1 text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
-                    {group.label}
-                  </p>
-                )}
-              </div>
+              {isCollapsed ? (
+                <div className="h-2" />
+              ) : (
+                <p className="px-2.5 mb-1 text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
+                  {group.label}
+                </p>
+              )}
               <div className="space-y-0.5">
                 {group.items.map((item) => (
                   <NavLink
@@ -326,6 +336,8 @@ export default function Sidebar({
                     siteId={siteId}
                     collapsed={isCollapsed}
                     onClick={isMobile ? onMobileClose : undefined}
+                    pendingHref={pendingHref}
+                    onNavigate={handleNavigate}
                   />
                 ))}
               </div>
@@ -334,20 +346,22 @@ export default function Sidebar({
         </nav>
 
         {/* Bottom */}
-        <div className="border-t border-neutral-200 dark:border-neutral-800 px-3 py-3 space-y-0.5 shrink-0">
+        <div className={`border-t border-neutral-200 dark:border-neutral-800 py-3 space-y-0.5 shrink-0 ${isCollapsed ? 'px-2' : 'px-3'}`}>
           {canEdit && (
             <NavLink
               item={SETTINGS_ITEM}
               siteId={siteId}
               collapsed={isCollapsed}
               onClick={isMobile ? onMobileClose : undefined}
+              pendingHref={pendingHref}
+              onNavigate={handleNavigate}
             />
           )}
           {!isMobile && (
             <button
               onClick={toggle}
-              className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 w-full ${
-                isCollapsed ? 'justify-center' : ''
+              className={`flex items-center rounded-lg py-2 text-sm font-medium text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 w-full ${
+                isCollapsed ? 'justify-center px-0' : 'gap-2.5 px-2.5'
               }`}
               title={collapsed ? 'Expand sidebar (press [)' : 'Collapse sidebar (press [)'}
             >
