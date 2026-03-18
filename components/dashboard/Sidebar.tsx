@@ -344,8 +344,13 @@ export default function Sidebar({
     return (
       <div className="flex flex-col h-full overflow-hidden">
         {/* App Switcher — top of sidebar (scope-level switch) */}
-        <div className="flex items-center justify-center px-2 pt-3 pb-1 shrink-0">
-          <AppLauncher apps={CIPHERA_APPS} currentAppId="pulse" anchor="right" />
+        <div className="flex items-center gap-2.5 px-[14px] pt-3 pb-1 shrink-0 overflow-hidden">
+          <span className="w-9 h-9 flex items-center justify-center shrink-0">
+            <AppLauncher apps={CIPHERA_APPS} currentAppId="pulse" anchor="right" />
+          </span>
+          <Label collapsed={c}>
+            <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">Ciphera</span>
+          </Label>
         </div>
 
         {/* Logo — fixed layout, text fades */}
@@ -382,14 +387,16 @@ export default function Sidebar({
         {/* Bottom — utility items */}
         <div className="border-t border-neutral-200/60 dark:border-neutral-800/60 px-2 py-3 shrink-0">
           {/* Theme, Notifications, Profile */}
-          <div className="flex flex-col items-center gap-0.5 mb-1">
-            <div className="flex items-center justify-center w-full rounded-lg px-2.5 py-2">
+          <div className="space-y-0.5 mb-1">
+            <div className="flex items-center gap-2.5 rounded-lg px-2.5 py-1 overflow-hidden">
               <ThemeToggle />
+              <Label collapsed={c}>Theme</Label>
             </div>
-            <div className="flex items-center justify-center w-full rounded-lg px-2.5 py-2">
+            <div className="flex items-center gap-2.5 rounded-lg px-2.5 py-1 overflow-hidden">
               <NotificationCenter anchor="right" />
+              <Label collapsed={c}>Notifications</Label>
             </div>
-            <div className="flex items-center justify-center w-full rounded-lg px-2.5 py-2">
+            <div className="flex items-center gap-2.5 rounded-lg px-2.5 py-1 overflow-hidden">
               <UserMenu
                 auth={auth}
                 LinkComponent={Link}
@@ -402,6 +409,7 @@ export default function Sidebar({
                 compact
                 anchor="right"
               />
+              <Label collapsed={c}>{user?.display_name?.trim() || 'Profile'}</Label>
             </div>
           </div>
 
