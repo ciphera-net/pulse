@@ -4,7 +4,7 @@
  * @file Notification center: bell icon with dropdown of recent notifications.
  */
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { listNotifications, markNotificationRead, markAllNotificationsRead, type Notification } from '@/lib/api/notifications'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
@@ -37,13 +37,31 @@ function BellIcon({ className }: { className?: string }) {
 const LOADING_DELAY_MS = 250
 const POLL_INTERVAL_MS = 90_000
 
-export default function NotificationCenter({ anchor = 'bottom' }: { anchor?: 'bottom' | 'right' }) {
+interface NotificationCenterProps {
+  /** Where the dropdown opens. 'right' uses fixed positioning to escape overflow:hidden containers. */
+  anchor?: 'bottom' | 'right'
+  /** Render variant. 'sidebar' matches NavLink styling. */
+  variant?: 'default' | 'sidebar'
+  /** Optional label content rendered after the icon (useful for sidebar variant with fading labels). */
+  children?: React.ReactNode
+}
+
+export default function NotificationCenter({ anchor = 'bottom', variant = 'default', children }: NotificationCenterProps) {
   const [open, setOpen] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const [fixedPos, setFixedPos] = useState<{ left: number; top: number } | null>(null)
+
+  const updatePosition = useCallback(() => {
+    if (anchor === 'right' && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect()
+      setFixedPos({ left: rect.right + 8, top: rect.top })
+    }
+  }, [anchor])
 
   const fetchUnreadCount = async () => {
     try {
@@ -74,8 +92,9 @@ export default function NotificationCenter({ anchor = 'bottom' }: { anchor?: 'bo
   useEffect(() => {
     if (open) {
       fetchNotifications()
+      updatePosition()
     }
-  }, [open])
+  }, [open, updatePosition])
 
   // * Poll unread count in background (when authenticated)
   useEffect(() => {
@@ -130,20 +149,40 @@ export default function NotificationCenter({ anchor = 'bottom' }: { anchor?: 'bo
     setOpen(false)
   }
 
+  const isSidebar = variant === 'sidebar'
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
         aria-haspopup="true"
         aria-controls={open ? 'notification-dropdown' : undefined}
-        className="relative p-2 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-lg hover:bg-neutral-100/50 dark:hover:bg-neutral-800/50 transition-colors"
+        className={isSidebar
+          ? 'relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 w-full overflow-hidden transition-colors'
+          : 'relative p-2 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-lg hover:bg-neutral-100/50 dark:hover:bg-neutral-800/50 transition-colors'
+        }
         aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
       >
-        <BellIcon />
-        {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 w-2 h-2 bg-brand-orange rounded-full" aria-hidden="true" />
+        {isSidebar ? (
+          <>
+            <span className="w-7 h-7 flex items-center justify-center shrink-0 relative">
+              <BellIcon className="h-[18px] w-[18px]" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-brand-orange rounded-full" aria-hidden="true" />
+              )}
+            </span>
+            {children}
+          </>
+        ) : (
+          <>
+            <BellIcon />
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-1 w-2 h-2 bg-brand-orange rounded-full" aria-hidden="true" />
+            )}
+          </>
         )}
       </button>
 
@@ -152,11 +191,12 @@ export default function NotificationCenter({ anchor = 'bottom' }: { anchor?: 'bo
           id="notification-dropdown"
           role="dialog"
           aria-label="Notifications"
-          className={`fixed left-4 right-4 top-16 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl overflow-hidden z-[100] ${
+          className={`bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl overflow-hidden z-[100] ${
             anchor === 'right'
-              ? 'sm:absolute sm:left-full sm:top-0 sm:ml-2 sm:right-auto sm:w-96'
-              : 'sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96'
+              ? 'fixed w-96 origin-top-left'
+              : 'fixed left-4 right-4 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96'
           }`}
+          style={anchor === 'right' && fixedPos ? { left: fixedPos.left, top: fixedPos.top } : undefined}
         >
           <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200 dark:border-neutral-700">
             <h3 className="font-semibold text-neutral-900 dark:text-white">Notifications</h3>

@@ -386,31 +386,28 @@ export default function Sidebar({
 
         {/* Bottom — utility items */}
         <div className="border-t border-neutral-200/60 dark:border-neutral-800/60 px-2 py-3 shrink-0">
-          {/* Theme, Notifications, Profile */}
+          {/* Theme, Notifications, Profile — same layout as nav items */}
           <div className="space-y-0.5 mb-1">
-            <div className="flex items-center gap-2.5 rounded-lg px-2.5 py-1 overflow-hidden">
-              <ThemeToggle />
+            <ThemeToggle variant="sidebar">
               <Label collapsed={c}>Theme</Label>
-            </div>
-            <div className="flex items-center gap-2.5 rounded-lg px-2.5 py-1 overflow-hidden">
-              <NotificationCenter anchor="right" />
+            </ThemeToggle>
+            <NotificationCenter anchor="right" variant="sidebar">
               <Label collapsed={c}>Notifications</Label>
-            </div>
-            <div className="flex items-center gap-2.5 rounded-lg px-2.5 py-1 overflow-hidden">
-              <UserMenu
-                auth={auth}
-                LinkComponent={Link}
-                orgs={orgs}
-                activeOrgId={auth.user?.org_id}
-                onSwitchOrganization={handleSwitchOrganization}
-                onCreateOrganization={() => router.push('/onboarding')}
-                allowPersonalOrganization={false}
-                onOpenSettings={openSettings}
-                compact
-                anchor="right"
-              />
+            </NotificationCenter>
+            <UserMenu
+              auth={auth}
+              LinkComponent={Link}
+              orgs={orgs}
+              activeOrgId={auth.user?.org_id}
+              onSwitchOrganization={handleSwitchOrganization}
+              onCreateOrganization={() => router.push('/onboarding')}
+              allowPersonalOrganization={false}
+              onOpenSettings={openSettings}
+              compact
+              anchor="right"
+            >
               <Label collapsed={c}>{user?.display_name?.trim() || 'Profile'}</Label>
-            </div>
+            </UserMenu>
           </div>
 
           {/* Settings + Collapse */}
