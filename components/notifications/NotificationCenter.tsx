@@ -37,7 +37,7 @@ function BellIcon({ className }: { className?: string }) {
 const LOADING_DELAY_MS = 250
 const POLL_INTERVAL_MS = 90_000
 
-export default function NotificationCenter() {
+export default function NotificationCenter({ anchor = 'bottom' }: { anchor?: 'bottom' | 'right' }) {
   const [open, setOpen] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
@@ -152,7 +152,11 @@ export default function NotificationCenter() {
           id="notification-dropdown"
           role="dialog"
           aria-label="Notifications"
-          className="fixed left-4 right-4 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl overflow-hidden z-[100]"
+          className={`fixed left-4 right-4 top-16 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl overflow-hidden z-[100] ${
+            anchor === 'right'
+              ? 'sm:absolute sm:left-full sm:top-0 sm:ml-2 sm:right-auto sm:w-96'
+              : 'sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96'
+          }`}
         >
           <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200 dark:border-neutral-700">
             <h3 className="font-semibold text-neutral-900 dark:text-white">Notifications</h3>

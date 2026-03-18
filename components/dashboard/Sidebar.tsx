@@ -5,6 +5,10 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { listSites, type Site } from '@/lib/api/sites'
 import { useAuth } from '@/lib/auth/context'
+import { useSettingsModal } from '@/lib/settings-modal-context'
+import { getUserOrganizations, switchContext, type OrganizationMember } from '@/lib/api/organization'
+import { setSessionAction } from '@/app/actions/auth'
+import { logger } from '@/lib/utils/logger'
 import { FAVICON_SERVICE_URL } from '@/lib/utils/icons'
 import {
   LayoutDashboardIcon,
@@ -20,7 +24,39 @@ import {
   ChevronUpDownIcon,
   PlusIcon,
   XIcon,
+  ThemeToggle,
+  AppLauncher,
+  UserMenu,
+  type CipheraApp,
 } from '@ciphera-net/ui'
+import NotificationCenter from '@/components/notifications/NotificationCenter'
+
+const CIPHERA_APPS: CipheraApp[] = [
+  {
+    id: 'pulse',
+    name: 'Pulse',
+    description: 'Your current app — Privacy-first analytics',
+    icon: 'https://ciphera.net/pulse_icon_no_margins.png',
+    href: 'https://pulse.ciphera.net',
+    isAvailable: false,
+  },
+  {
+    id: 'drop',
+    name: 'Drop',
+    description: 'Secure file sharing',
+    icon: 'https://ciphera.net/drop_icon_no_margins.png',
+    href: 'https://drop.ciphera.net',
+    isAvailable: true,
+  },
+  {
+    id: 'auth',
+    name: 'Auth',
+    description: 'Your Ciphera account settings',
+    icon: 'https://ciphera.net/auth_icon_no_margins.png',
+    href: 'https://auth.ciphera.net',
+    isAvailable: true,
+  },
+]
 
 const SIDEBAR_KEY = 'pulse_sidebar_collapsed'
 const EXPANDED = 256
@@ -239,10 +275,14 @@ export default function Sidebar({
 }: {
   siteId: string; mobileOpen: boolean; onMobileClose: () => void; onMobileOpen: () => void
 }) {
-  const { user } = useAuth()
+  const auth = useAuth()
+  const { user } = auth
   const canEdit = user?.role === 'owner' || user?.role === 'admin'
   const pathname = usePathname()
+  const router = useRouter()
+  const { openSettings } = useSettingsModal()
   const [sites, setSites] = useState<Site[]>([])
+  const [orgs, setOrgs] = useState<OrganizationMember[]>([])
   const [pendingHref, setPendingHref] = useState<string | null>(null)
   const wasCollapsedRef = useRef(false)
   // Safe to read localStorage directly — this component is loaded with ssr:false
@@ -251,6 +291,25 @@ export default function Sidebar({
   })
 
   useEffect(() => { listSites().then(setSites).catch(() => {}) }, [])
+  useEffect(() => {
+    if (user) {
+      getUserOrganizations()
+        .then((organizations) => setOrgs(Array.isArray(organizations) ? organizations : []))
+        .catch(err => logger.error('Failed to fetch orgs', err))
+    }
+  }, [user])
+
+  const handleSwitchOrganization = async (orgId: string | null) => {
+    if (!orgId) return
+    try {
+      const { access_token } = await switchContext(orgId)
+      await setSessionAction(access_token)
+      sessionStorage.setItem('pulse_switching_org', 'true')
+      window.location.reload()
+    } catch (err) {
+      logger.error('Failed to switch organization', err)
+    }
+  }
   useEffect(() => { setPendingHref(null); onMobileClose() }, [pathname, onMobileClose])
 
   useEffect(() => {
@@ -284,6 +343,11 @@ export default function Sidebar({
 
     return (
       <div className="flex flex-col h-full overflow-hidden">
+        {/* App Switcher — top of sidebar (scope-level switch) */}
+        <div className="flex items-center justify-center px-2 pt-3 pb-1 shrink-0">
+          <AppLauncher apps={CIPHERA_APPS} currentAppId="pulse" anchor="right" />
+        </div>
+
         {/* Logo — fixed layout, text fades */}
         <Link href="/" className="flex items-center gap-3 px-[14px] py-4 shrink-0 group overflow-hidden">
           <span className="w-9 h-9 flex items-center justify-center shrink-0">
@@ -315,23 +379,44 @@ export default function Sidebar({
           ))}
         </nav>
 
-        {/* Bottom */}
-        <div className="border-t border-neutral-200/60 dark:border-neutral-800/60 px-2 py-3 space-y-0.5 shrink-0">
-          {canEdit && (
-            <NavLink item={SETTINGS_ITEM} siteId={siteId} collapsed={c} onClick={isMobile ? onMobileClose : undefined} pendingHref={pendingHref} onNavigate={handleNavigate} />
-          )}
-          {!isMobile && (
-            <button
-              onClick={toggle}
-              className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 w-full overflow-hidden"
-              title={collapsed ? 'Expand sidebar (press [)' : 'Collapse sidebar (press [)'}
-            >
-              <span className="w-7 h-7 flex items-center justify-center shrink-0">
-                <CollapseLeftIcon className={`w-[18px] h-[18px] transition-transform duration-200 ${c ? 'rotate-180' : ''}`} />
-              </span>
-              <Label collapsed={c}>Collapse</Label>
-            </button>
-          )}
+        {/* Bottom — utility items */}
+        <div className="border-t border-neutral-200/60 dark:border-neutral-800/60 px-2 py-3 shrink-0">
+          {/* Theme, Notifications, Profile */}
+          <div className="flex items-center justify-center gap-1 mb-1">
+            <ThemeToggle />
+            <NotificationCenter anchor="right" />
+            <UserMenu
+              auth={auth}
+              LinkComponent={Link}
+              orgs={orgs}
+              activeOrgId={auth.user?.org_id}
+              onSwitchOrganization={handleSwitchOrganization}
+              onCreateOrganization={() => router.push('/onboarding')}
+              allowPersonalOrganization={false}
+              onOpenSettings={openSettings}
+              compact
+              anchor="right"
+            />
+          </div>
+
+          {/* Settings + Collapse */}
+          <div className="space-y-0.5">
+            {canEdit && (
+              <NavLink item={SETTINGS_ITEM} siteId={siteId} collapsed={c} onClick={isMobile ? onMobileClose : undefined} pendingHref={pendingHref} onNavigate={handleNavigate} />
+            )}
+            {!isMobile && (
+              <button
+                onClick={toggle}
+                className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 w-full overflow-hidden"
+                title={collapsed ? 'Expand sidebar (press [)' : 'Collapse sidebar (press [)'}
+              >
+                <span className="w-7 h-7 flex items-center justify-center shrink-0">
+                  <CollapseLeftIcon className={`w-[18px] h-[18px] transition-transform duration-200 ${c ? 'rotate-180' : ''}`} />
+                </span>
+                <Label collapsed={c}>Collapse</Label>
+              </button>
+            )}
+          </div>
         </div>
       </div>
     )
