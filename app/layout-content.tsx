@@ -112,65 +112,66 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
     return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" portal={false} />
   }
 
+  const headerElement = (
+    <Header
+      auth={auth}
+      LinkComponent={Link}
+      logoSrc="/pulse_icon_no_margins.png"
+      appName="Pulse"
+      variant={isAuthenticated ? 'static' : 'floating'}
+      orgs={orgs}
+      activeOrgId={auth.user?.org_id}
+      onSwitchOrganization={handleSwitchOrganization}
+      onCreateOrganization={handleCreateOrganization}
+      allowPersonalOrganization={false}
+      showFaq={false}
+      showSecurity={false}
+      showPricing={true}
+      topOffset={!isAuthenticated && showOfflineBar ? '2.5rem' : undefined}
+      rightSideActions={auth.user ? <NotificationCenter /> : null}
+      apps={CIPHERA_APPS}
+      currentAppId="pulse"
+      onOpenSettings={openSettings}
+      leftActions={isAuthenticated ? <MobileSidebarToggle /> : undefined}
+      customNavItems={
+        <>
+          {!auth.user && (
+            <Link
+              href="/features"
+              className="px-4 py-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-lg hover:bg-neutral-100/50 dark:hover:bg-neutral-800/50 transition-all duration-200"
+            >
+              Features
+            </Link>
+          )}
+        </>
+      }
+    />
+  )
+
+  if (isAuthenticated) {
+    // Dashboard layout: header pinned, sidebar + content fill remaining viewport
+    return (
+      <div className="flex flex-col h-screen overflow-hidden">
+        {auth.user && <OfflineBanner isOnline={isOnline} />}
+        <div className="shrink-0">{headerElement}</div>
+        {children}
+        <SettingsModalWrapper />
+      </div>
+    )
+  }
+
+  // Public/marketing layout: floating header, scrollable page, footer
   return (
     <div className="flex flex-col min-h-screen">
-      {auth.user && <OfflineBanner isOnline={isOnline} />}
-      <Header
-        auth={auth}
+      {headerElement}
+      <main className="flex-1 pb-8 pt-24">
+        {children}
+      </main>
+      <Footer
         LinkComponent={Link}
-        logoSrc="/pulse_icon_no_margins.png"
         appName="Pulse"
-        variant={isAuthenticated ? 'static' : 'floating'}
-        orgs={orgs}
-        activeOrgId={auth.user?.org_id}
-        onSwitchOrganization={handleSwitchOrganization}
-        onCreateOrganization={handleCreateOrganization}
-        allowPersonalOrganization={false}
-        showFaq={false}
-        showSecurity={false}
-        showPricing={true}
-        topOffset={!isAuthenticated && showOfflineBar ? '2.5rem' : undefined}
-        rightSideActions={auth.user ? <NotificationCenter /> : null}
-        apps={CIPHERA_APPS}
-        currentAppId="pulse"
-        onOpenSettings={openSettings}
-        leftActions={isAuthenticated ? <MobileSidebarToggle /> : undefined}
-        customNavItems={
-          <>
-            {!auth.user && (
-              <Link
-                href="/features"
-                className="px-4 py-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-lg hover:bg-neutral-100/50 dark:hover:bg-neutral-800/50 transition-all duration-200"
-              >
-                Features
-              </Link>
-            )}
-          </>
-        }
+        isAuthenticated={false}
       />
-      {isAuthenticated ? (
-        // Authenticated: sidebar layout — children include DashboardShell
-        <>{children}</>
-      ) : (
-        // Public: standard content with footer
-        <>
-          <main className="flex-1 pb-8 pt-24">
-            {children}
-          </main>
-          <Footer
-            LinkComponent={Link}
-            appName="Pulse"
-            isAuthenticated={false}
-          />
-        </>
-      )}
-      {isAuthenticated && (
-        <Footer
-          LinkComponent={Link}
-          appName="Pulse"
-          isAuthenticated={true}
-        />
-      )}
       <SettingsModalWrapper />
     </div>
   )
