@@ -69,7 +69,7 @@ export default function ContentHeader({
   }
 
   return (
-    <div className="shrink-0 flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-4 sm:px-6 py-3.5">
+    <div className="shrink-0 flex items-center justify-between border-b border-neutral-200/60 dark:border-neutral-800/60 bg-white/70 dark:bg-neutral-900/70 backdrop-blur-2xl supports-[backdrop-filter]:bg-white/50 dark:supports-[backdrop-filter]:bg-neutral-900/50 px-4 sm:px-6 py-3.5">
       {/* Left: mobile hamburger */}
       <div className="flex items-center gap-3">
         <button
