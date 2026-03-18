@@ -75,7 +75,10 @@ function Label({ children, collapsed }: { children: React.ReactNode; collapsed: 
 
 // ─── Site Picker ────────────────────────────────────────────
 
-function SitePicker({ sites, siteId, collapsed }: { sites: Site[]; siteId: string; collapsed: boolean }) {
+function SitePicker({ sites, siteId, collapsed, onExpand, onCollapse, wasCollapsed }: {
+  sites: Site[]; siteId: string; collapsed: boolean
+  onExpand: () => void; onCollapse: () => void; wasCollapsed: React.MutableRefObject<boolean>
+}) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [faviconFailed, setFaviconFailed] = useState(false)
@@ -88,15 +91,23 @@ function SitePicker({ sites, siteId, collapsed }: { sites: Site[]; siteId: strin
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) { setOpen(false); setSearch('') }
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        if (open) {
+          setOpen(false); setSearch('')
+          // Re-collapse if we auto-expanded
+          if (wasCollapsed.current) { onCollapse(); wasCollapsed.current = false }
+        }
+      }
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
-  }, [])
+  }, [open, onCollapse, wasCollapsed])
 
   const switchSite = (id: string) => {
     router.push(`/sites/${id}${pathname.replace(/^\/sites\/[^/]+/, '')}`)
     setOpen(false); setSearch('')
+    // Re-collapse if we auto-expanded
+    if (wasCollapsed.current) { onCollapse(); wasCollapsed.current = false }
   }
 
   const filtered = sites.filter(
@@ -106,7 +117,16 @@ function SitePicker({ sites, siteId, collapsed }: { sites: Site[]; siteId: strin
   return (
     <div className="relative mb-4 px-2" ref={ref}>
       <button
-        onClick={() => { if (!collapsed) setOpen(!open) }}
+        onClick={() => {
+          if (collapsed) {
+            wasCollapsed.current = true
+            onExpand()
+            // Open picker after sidebar expands
+            setTimeout(() => setOpen(true), 220)
+          } else {
+            setOpen(!open)
+          }
+        }}
         className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 overflow-hidden"
       >
         <span className="w-7 h-7 rounded-md bg-brand-orange/10 text-brand-orange flex items-center justify-center text-xs font-bold shrink-0 overflow-hidden">
@@ -224,9 +244,10 @@ export default function Sidebar({
   const pathname = usePathname()
   const [sites, setSites] = useState<Site[]>([])
   const [pendingHref, setPendingHref] = useState<string | null>(null)
+  const wasCollapsedRef = useRef(false)
   const [collapsed, setCollapsed] = useState(() => {
-    if (typeof window === 'undefined') return false
-    return localStorage.getItem(SIDEBAR_KEY) === 'true'
+    if (typeof window === 'undefined') return true // SSR: default collapsed to avoid hydration flash
+    return localStorage.getItem(SIDEBAR_KEY) !== 'false' // default collapsed unless explicitly set to false
   })
 
   useEffect(() => { listSites().then(setSites).catch(() => {}) }, [])
@@ -248,6 +269,14 @@ export default function Sidebar({
     setCollapsed((prev) => { const next = !prev; localStorage.setItem(SIDEBAR_KEY, String(next)); return next })
   }, [])
 
+  const expand = useCallback(() => {
+    setCollapsed(false); localStorage.setItem(SIDEBAR_KEY, 'false')
+  }, [])
+
+  const collapse = useCallback(() => {
+    setCollapsed(true); localStorage.setItem(SIDEBAR_KEY, 'true')
+  }, [])
+
   const handleNavigate = useCallback((href: string) => { setPendingHref(href) }, [])
 
   const sidebarContent = (isMobile: boolean) => {
@@ -266,7 +295,7 @@ export default function Sidebar({
         </Link>
 
         {/* Site Picker */}
-        <SitePicker sites={sites} siteId={siteId} collapsed={c} />
+        <SitePicker sites={sites} siteId={siteId} collapsed={c} onExpand={expand} onCollapse={collapse} wasCollapsed={wasCollapsedRef} />
 
         {/* Nav Groups */}
         <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 space-y-4">
