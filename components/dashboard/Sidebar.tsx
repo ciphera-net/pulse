@@ -319,8 +319,8 @@ export default function Sidebar({
 
       {/* Desktop sidebar */}
       <aside
-        className={`hidden lg:flex flex-col shrink-0 border-r border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 transition-[width] duration-200 ${
-          collapsed ? 'w-16' : 'w-60'
+        className={`hidden lg:flex flex-col shrink-0 sticky top-0 h-screen border-r border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 transition-[width] duration-200 overflow-hidden ${
+          collapsed ? 'w-[68px]' : 'w-60'
         }`}
       >
         {sidebarContent(false)}
