@@ -3,13 +3,12 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ThemeToggle, AppLauncher, UserMenu, type CipheraApp, MenuIcon } from '@ciphera-net/ui'
+import { ThemeToggle, AppLauncher, UserMenu, type CipheraApp } from '@ciphera-net/ui'
 import { useAuth } from '@/lib/auth/context'
 import { useSettingsModal } from '@/lib/settings-modal-context'
 import { getUserOrganizations, switchContext, type OrganizationMember } from '@/lib/api/organization'
 import { setSessionAction } from '@/app/actions/auth'
 import { logger } from '@/lib/utils/logger'
-import { useSidebar } from '@/lib/sidebar-context'
 import NotificationCenter from '@/components/notifications/NotificationCenter'
 
 const CIPHERA_APPS: CipheraApp[] = [
@@ -43,7 +42,6 @@ export default function UtilityBar() {
   const auth = useAuth()
   const router = useRouter()
   const { openSettings } = useSettingsModal()
-  const { openMobile } = useSidebar()
   const [orgs, setOrgs] = useState<OrganizationMember[]>([])
 
   useEffect(() => {
@@ -68,15 +66,8 @@ export default function UtilityBar() {
 
   return (
     <div className="shrink-0 flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-4 sm:px-8 py-3.5">
-      {/* Left: Pulse logo + mobile toggle */}
+      {/* Left: Pulse logo */}
       <div className="flex items-center gap-3">
-        <button
-          onClick={openMobile}
-          className="lg:hidden p-2 -ml-2 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
-          aria-label="Open navigation"
-        >
-          <MenuIcon className="w-5 h-5" />
-        </button>
         <Link
           href="/"
           className="flex items-center gap-3 group relative"
