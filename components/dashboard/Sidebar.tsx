@@ -240,12 +240,15 @@ export default function Sidebar({
   const [sites, setSites] = useState<Site[]>([])
   const [pendingHref, setPendingHref] = useState<string | null>(null)
   const wasCollapsedRef = useRef(false)
-  const [collapsed, setCollapsed] = useState(true) // Always start collapsed — no hydration mismatch
+  const [ready, setReady] = useState(false)
+  const [collapsed, setCollapsed] = useState(true)
 
-  // Read saved state after mount — expands smoothly if user had it open
+  // Read saved state and reveal sidebar in one frame — no flash
   useEffect(() => {
     const saved = localStorage.getItem(SIDEBAR_KEY)
     if (saved === 'false') setCollapsed(false)
+    // Reveal after state is set — React batches these, so sidebar appears at correct width
+    requestAnimationFrame(() => setReady(true))
   }, [])
 
   useEffect(() => { listSites().then(setSites).catch(() => {}) }, [])
@@ -339,8 +342,8 @@ export default function Sidebar({
     <>
       {/* Desktop — width transitions, internal layout never changes */}
       <aside
-        className="hidden md:flex flex-col shrink-0 border-r border-neutral-200/60 dark:border-neutral-800/60 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl overflow-hidden"
-        style={{ width: collapsed ? COLLAPSED : EXPANDED, transition: 'width 200ms cubic-bezier(0.4, 0, 0.2, 1)' }}
+        className={`hidden md:flex flex-col shrink-0 border-r border-neutral-200/60 dark:border-neutral-800/60 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl overflow-hidden ${ready ? 'opacity-100' : 'opacity-0'}`}
+        style={{ width: collapsed ? COLLAPSED : EXPANDED, transition: ready ? 'width 200ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none' }}
       >
         {sidebarContent(false)}
       </aside>
