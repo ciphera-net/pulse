@@ -132,7 +132,7 @@ function SitePicker({ sites, siteId, collapsed, onExpand, onCollapse, wasCollaps
         <span className="w-7 h-7 rounded-md bg-brand-orange/10 flex items-center justify-center shrink-0 overflow-hidden">
           {faviconUrl && !faviconFailed ? (
             <>
-              {!faviconLoaded && <span className="w-5 h-5 rounded bg-neutral-200 dark:bg-neutral-700 animate-pulse" />}
+              {!faviconLoaded && <span className="w-5 h-5 rounded animate-pulse bg-neutral-100 dark:bg-neutral-800" />}
               <img
                 src={faviconUrl}
                 alt=""
