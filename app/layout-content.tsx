@@ -95,7 +95,12 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
     return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" portal={false} />
   }
 
-  // Authenticated site pages: full Dokploy-style layout (sidebar + utility bar)
+  // While auth is loading on a site page, render nothing to prevent flash of public header
+  if (auth.loading && isSitePage) {
+    return null
+  }
+
+  // Authenticated site pages: full sidebar layout
   // DashboardShell inside children handles everything
   if (isAuthenticated && isSitePage) {
     return (
