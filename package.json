@@ -21,6 +21,7 @@
     "@tanstack/react-virtual": "^3.13.21",
     "@types/d3": "^7.4.3",
     "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "cobe": "^0.6.5",
     "country-flag-icons": "^1.6.4",
     "d3": "^7.9.0",
@@ -40,6 +41,7 @@
     "sonner": "^2.0.7",
     "svg-dotted-map": "^2.0.1",
     "swr": "^2.3.3",
+    "tailwind-merge": "^3.5.0",
     "xlsx": "^0.18.5"
   },
   "overrides": {

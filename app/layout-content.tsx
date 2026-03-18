@@ -2,7 +2,7 @@
 
 import { OfflineBanner } from '@/components/OfflineBanner'
 import { Footer } from '@/components/Footer'
-import { Header, type CipheraApp, MenuIcon } from '@ciphera-net/ui'
+import { Header, type CipheraApp } from '@ciphera-net/ui'
 import NotificationCenter from '@/components/notifications/NotificationCenter'
 import { useAuth } from '@/lib/auth/context'
 import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus'
@@ -16,7 +16,6 @@ import { LoadingOverlay } from '@ciphera-net/ui'
 import { useRouter } from 'next/navigation'
 import { SettingsModalProvider, useSettingsModal } from '@/lib/settings-modal-context'
 import SettingsModalWrapper from '@/components/settings/SettingsModalWrapper'
-import { SidebarProvider } from '@/lib/sidebar-context'
 
 const ORG_SWITCH_KEY = 'pulse_switching_org'
 
@@ -180,9 +179,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
 export default function LayoutContent({ children }: { children: React.ReactNode }) {
   return (
     <SettingsModalProvider>
-      <SidebarProvider>
-        <LayoutInner>{children}</LayoutInner>
-      </SidebarProvider>
+      <LayoutInner>{children}</LayoutInner>
     </SettingsModalProvider>
   )
 }
