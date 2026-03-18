@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ApiError } from '@/lib/api/client'
-import { getFunnel, getFunnelStats, deleteFunnel, type Funnel, type FunnelStats } from '@/lib/api/funnels'
+import { getFunnel, getFunnelStats, getFunnelTrends, deleteFunnel, type Funnel, type FunnelStats, type FunnelTrends } from '@/lib/api/funnels'
 import FilterBar from '@/components/dashboard/FilterBar'
 import AddFilterDropdown from '@/components/dashboard/AddFilterDropdown'
 import { type DimensionFilter, serializeFilters } from '@/lib/filters'
@@ -13,6 +13,7 @@ import { FunnelDetailSkeleton, useMinimumLoading, useSkeletonFade } from '@/comp
 import Link from 'next/link'
 import { FunnelChart } from '@/components/ui/funnel-chart'
 import { getDateRange } from '@ciphera-net/ui'
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 
 export default function FunnelReportPage() {
   const params = useParams()
@@ -29,17 +30,22 @@ export default function FunnelReportPage() {
   const [loadError, setLoadError] = useState<'not_found' | 'forbidden' | 'error' | null>(null)
   const [filters, setFilters] = useState<DimensionFilter[]>([])
   const [expandedExitStep, setExpandedExitStep] = useState<number | null>(null)
+  const [trends, setTrends] = useState<FunnelTrends | null>(null)
+  const [visibleSteps, setVisibleSteps] = useState<Set<string>>(new Set())
 
   const loadData = useCallback(async () => {
     setLoadError(null)
     try {
       setLoading(true)
-      const [funnelData, statsData] = await Promise.all([
+      const filterStr = serializeFilters(filters) || undefined
+      const [funnelData, statsData, trendsData] = await Promise.all([
         getFunnel(siteId, funnelId),
-        getFunnelStats(siteId, funnelId, dateRange.start, dateRange.end, serializeFilters(filters) || undefined)
+        getFunnelStats(siteId, funnelId, dateRange.start, dateRange.end, filterStr),
+        getFunnelTrends(siteId, funnelId, dateRange.start, dateRange.end, 'day', filterStr)
       ])
       setFunnel(funnelData)
       setStats(statsData)
+      setTrends(trendsData)
     } catch (error) {
       const status = error instanceof ApiError ? error.status : 0
       if (status === 404) setLoadError('not_found')
@@ -118,6 +124,21 @@ export default function FunnelReportPage() {
     label: s.step.name,
     value: s.visitors,
   }))
+
+  const STEP_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16']
+
+  const trendsChartData = trends ? trends.dates.map((date, idx) => {
+    const point: Record<string, any> = {
+      date: new Date(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
+      overall: Math.round(trends.overall[idx] * 10) / 10,
+    }
+    for (const [stepKey, values] of Object.entries(trends.steps)) {
+      if (visibleSteps.has(stepKey)) {
+        point[`step_${stepKey}`] = Math.round(values[idx] * 10) / 10
+      }
+    }
+    return point
+  }) : []
 
   return (
     <div className={`w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
@@ -205,6 +226,90 @@ export default function FunnelReportPage() {
             className="mx-auto max-w-md"
           />
         </div>
+
+        {/* Conversion Trends */}
+        {trends && trends.dates.length > 1 && (
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm p-6 mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
+                Conversion Trends
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {stats?.steps.map((s, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => {
+                      setVisibleSteps(prev => {
+                        const next = new Set(prev)
+                        if (next.has(String(i))) next.delete(String(i))
+                        else next.add(String(i))
+                        return next
+                      })
+                    }}
+                    className={`px-2 py-1 text-xs rounded-md transition-colors ${
+                      visibleSteps.has(String(i))
+                        ? 'bg-brand-orange/10 text-brand-orange border border-brand-orange/30'
+                        : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 border border-transparent'
+                    }`}
+                  >
+                    {s.step.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={trendsChartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-neutral-200 dark:text-neutral-700" />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 12 }}
+                    className="text-neutral-500"
+                  />
+                  <YAxis
+                    domain={[0, 100]}
+                    tickFormatter={(v) => `${v}%`}
+                    tick={{ fontSize: 12 }}
+                    className="text-neutral-500"
+                  />
+                  <Tooltip
+                    formatter={(value: number) => [`${value}%`]}
+                    contentStyle={{
+                      backgroundColor: 'var(--color-neutral-900, #171717)',
+                      border: '1px solid var(--color-neutral-700, #404040)',
+                      borderRadius: '8px',
+                      color: '#fff',
+                      fontSize: '12px',
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="overall"
+                    name="Overall"
+                    stroke="#F97316"
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={{ r: 4 }}
+                  />
+                  {Array.from(visibleSteps).map((stepKey) => (
+                    <Line
+                      key={stepKey}
+                      type="monotone"
+                      dataKey={`step_${stepKey}`}
+                      name={stats?.steps[Number(stepKey)]?.step.name || `Step ${stepKey}`}
+                      stroke={STEP_COLORS[Number(stepKey) % STEP_COLORS.length]}
+                      strokeWidth={2}
+                      dot={false}
+                      activeDot={{ r: 4 }}
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
 
         {/* Detailed Stats Table */}
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden">
