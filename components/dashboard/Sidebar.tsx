@@ -199,12 +199,12 @@ function NavItemLink({
       href={href}
       onClick={onClick}
       title={collapsed ? item.label : undefined}
-      className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors ${
+      className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium ${
         collapsed ? 'justify-center' : ''
       } ${
         isActive
           ? 'bg-brand-orange/10 text-brand-orange'
-          : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800'
+          : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors'
       }`}
     >
       <item.icon className="w-[18px] h-[18px] shrink-0" weight={isActive ? 'fill' : 'regular'} />
@@ -252,16 +252,16 @@ export default function Sidebar({
     const isCollapsed = isMobile ? false : collapsed
 
     return (
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col h-full overflow-hidden">
         {/* Logo */}
         <Link
           href="/"
-          className={`flex items-center gap-2.5 px-4 py-4 border-b border-neutral-200 dark:border-neutral-800 shrink-0 ${isCollapsed ? 'justify-center' : ''}`}
+          className={`flex items-center gap-2.5 px-4 py-4 shrink-0 ${isCollapsed ? 'justify-center' : ''}`}
         >
           <img
             src="/pulse_icon_no_margins.png"
             alt="Pulse"
-            className="w-8 h-8 shrink-0"
+            className="w-8 h-8 shrink-0 object-contain"
           />
           {!isCollapsed && (
             <span className="text-lg font-bold text-neutral-900 dark:text-white tracking-tight">Pulse</span>
