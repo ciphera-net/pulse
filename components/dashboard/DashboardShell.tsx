@@ -4,8 +4,18 @@ import { useState, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import ContentHeader from './ContentHeader'
 
-// Load sidebar only on the client — prevents any SSR flash of text/labels
-const Sidebar = dynamic(() => import('./Sidebar'), { ssr: false })
+// Load sidebar only on the client — prevents SSR flash
+const Sidebar = dynamic(() => import('./Sidebar'), {
+  ssr: false,
+  // Placeholder reserves the sidebar's space in the server HTML
+  // so page content never occupies the sidebar zone
+  loading: () => (
+    <div
+      className="hidden md:block shrink-0 border-r border-neutral-200/60 dark:border-neutral-800/60 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl"
+      style={{ width: 64 }}
+    />
+  ),
+})
 
 export default function DashboardShell({
   siteId,
