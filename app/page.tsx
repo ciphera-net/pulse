@@ -5,12 +5,13 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow, initiateSignupFlow } from '@/lib/api/oauth'
-import { listSites, deleteSite, type Site } from '@/lib/api/sites'
+import { listSites, listDeletedSites, restoreSite, type Site } from '@/lib/api/sites'
 import { getStats } from '@/lib/api/stats'
 import type { Stats } from '@/lib/api/stats'
 import { getSubscription, type SubscriptionDetails } from '@/lib/api/billing'
 import { LoadingOverlay } from '@ciphera-net/ui'
 import SiteList from '@/components/sites/SiteList'
+import DeleteSiteModal from '@/components/sites/DeleteSiteModal'
 import { Button } from '@ciphera-net/ui'
 import Image from 'next/image'
 import { BarChartIcon, LockIcon, ZapIcon, CheckCircleIcon, XIcon, GlobeIcon } from '@ciphera-net/ui'
@@ -118,6 +119,9 @@ export default function HomePage() {
   const [subscription, setSubscription] = useState<SubscriptionDetails | null>(null)
   const [subscriptionLoading, setSubscriptionLoading] = useState(false)
   const [showFinishSetupBanner, setShowFinishSetupBanner] = useState(true)
+  const [deleteModalSite, setDeleteModalSite] = useState<Site | null>(null)
+  const [deletedSites, setDeletedSites] = useState<Site[]>([])
+  const [permanentDeleteSiteModal, setPermanentDeleteSiteModal] = useState<Site | null>(null)
 
   useEffect(() => {
     if (user?.org_id) {
@@ -178,6 +182,12 @@ export default function HomePage() {
       setSitesLoading(true)
       const data = await listSites()
       setSites(Array.isArray(data) ? data : [])
+      try {
+        const deleted = await listDeletedSites()
+        setDeletedSites(deleted)
+      } catch {
+        setDeletedSites([])
+      }
     } catch (error: unknown) {
       toast.error(getAuthErrorMessage(error) || 'Failed to load your sites')
       setSites([])
@@ -198,18 +208,24 @@ export default function HomePage() {
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this site? This action cannot be undone.')) {
-      return
-    }
+  const handleDelete = (id: string) => {
+    const site = sites.find((s) => s.id === id)
+    if (site) setDeleteModalSite(site)
+  }
 
+  const handleRestore = async (id: string) => {
     try {
-      await deleteSite(id)
-      toast.success('Site deleted successfully')
+      await restoreSite(id)
+      toast.success('Site restored successfully')
       loadSites()
     } catch (error: unknown) {
-      toast.error(getAuthErrorMessage(error) || 'Failed to delete site')
+      toast.error(getAuthErrorMessage(error) || 'Failed to restore site')
     }
+  }
+
+  const handlePermanentDelete = (id: string) => {
+    const site = deletedSites.find((s) => s.id === id)
+    if (site) setPermanentDeleteSiteModal(site)
   }
 
   if (authLoading) {
@@ -387,15 +403,22 @@ export default function HomePage() {
           const siteLimit = getSitesLimitForPlan(subscription?.plan_id)
           const atLimit = siteLimit != null && sites.length >= siteLimit
           return atLimit ? (
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700">
-              Limit reached ({sites.length}/{siteLimit})
-            </span>
-            <Link href="/pricing">
-              <Button variant="primary" className="text-sm">
-                Upgrade
-              </Button>
-            </Link>
+          <div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700">
+                Limit reached ({sites.length}/{siteLimit})
+              </span>
+              <Link href="/pricing">
+                <Button variant="primary" className="text-sm">
+                  Upgrade
+                </Button>
+              </Link>
+            </div>
+            {deletedSites.length > 0 && (
+              <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2">
+                You have a site pending deletion. Restore it or permanently delete it to free the slot.
+              </p>
+            )}
           </div>
         ) : null
         })() ?? (
@@ -511,6 +534,63 @@ export default function HomePage() {
 
       {(sitesLoading || sites.length > 0) && (
         <SiteList sites={sites} siteStats={siteStats} loading={sitesLoading} onDelete={handleDelete} />
+      )}
+
+      <DeleteSiteModal
+        open={!!deleteModalSite}
+        onClose={() => setDeleteModalSite(null)}
+        onDeleted={loadSites}
+        siteName={deleteModalSite?.name || ''}
+        siteDomain={deleteModalSite?.domain || ''}
+        siteId={deleteModalSite?.id || ''}
+      />
+
+      <DeleteSiteModal
+        open={!!permanentDeleteSiteModal}
+        onClose={() => setPermanentDeleteSiteModal(null)}
+        onDeleted={loadSites}
+        siteName={permanentDeleteSiteModal?.name || ''}
+        siteDomain={permanentDeleteSiteModal?.domain || ''}
+        siteId={permanentDeleteSiteModal?.id || ''}
+        permanentOnly
+      />
+
+      {deletedSites.length > 0 && (
+        <div className="mt-8">
+          <h3 className="text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-4">Scheduled for Deletion</h3>
+          <div className="space-y-3">
+            {deletedSites.map((site) => {
+              const purgeAt = site.deleted_at ? new Date(new Date(site.deleted_at).getTime() + 7 * 24 * 60 * 60 * 1000) : null
+              const daysLeft = purgeAt ? Math.max(0, Math.ceil((purgeAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : 0
+
+              return (
+                <div key={site.id} className="flex items-center justify-between p-4 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50 opacity-60">
+                  <div>
+                    <span className="font-medium text-neutral-700 dark:text-neutral-300">{site.name}</span>
+                    <span className="ml-2 text-sm text-neutral-400">{site.domain}</span>
+                    <span className="ml-3 inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600 dark:bg-red-900/20 dark:text-red-400">
+                      Deleting in {daysLeft} day{daysLeft !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleRestore(site.id)}
+                      className="px-3 py-1.5 text-xs font-medium text-neutral-700 dark:text-neutral-300 border border-neutral-300 dark:border-neutral-700 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                    >
+                      Restore
+                    </button>
+                    <button
+                      onClick={() => handlePermanentDelete(site.id)}
+                      className="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                    >
+                      Delete Now
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
       )}
     </div>
   )
