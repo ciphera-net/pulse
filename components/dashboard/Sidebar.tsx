@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { listSites, type Site } from '@/lib/api/sites'
 import { useAuth } from '@/lib/auth/context'
+import { FAVICON_SERVICE_URL } from '@/lib/utils/icons'
 import {
   LayoutDashboardIcon,
   PathIcon,
@@ -77,11 +78,13 @@ function Label({ children, collapsed }: { children: React.ReactNode; collapsed: 
 function SitePicker({ sites, siteId, collapsed }: { sites: Site[]; siteId: string; collapsed: boolean }) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
+  const [faviconFailed, setFaviconFailed] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const pathname = usePathname()
   const router = useRouter()
   const currentSite = sites.find((s) => s.id === siteId)
   const initial = currentSite?.name?.charAt(0)?.toUpperCase() || '?'
+  const faviconUrl = currentSite?.domain ? `${FAVICON_SERVICE_URL}?domain=${currentSite.domain}&sz=64` : null
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -106,8 +109,17 @@ function SitePicker({ sites, siteId, collapsed }: { sites: Site[]; siteId: strin
         onClick={() => setOpen(!open)}
         className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 overflow-hidden"
       >
-        <span className="w-7 h-7 rounded-md bg-brand-orange/10 text-brand-orange flex items-center justify-center text-xs font-bold shrink-0">
-          {initial}
+        <span className="w-7 h-7 rounded-md bg-brand-orange/10 text-brand-orange flex items-center justify-center text-xs font-bold shrink-0 overflow-hidden">
+          {faviconUrl && !faviconFailed ? (
+            <img
+              src={faviconUrl}
+              alt={currentSite?.name || ''}
+              className="w-5 h-5 object-contain"
+              onError={() => setFaviconFailed(true)}
+            />
+          ) : (
+            initial
+          )}
         </span>
         <Label collapsed={collapsed}>
           <span className="flex items-center gap-1">
@@ -140,9 +152,11 @@ function SitePicker({ sites, siteId, collapsed }: { sites: Site[]; siteId: strin
                     : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800'
                 }`}
               >
-                <span className="w-5 h-5 rounded bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-[10px] font-bold shrink-0">
-                  {site.name.charAt(0).toUpperCase()}
-                </span>
+                <img
+                  src={`${FAVICON_SERVICE_URL}?domain=${site.domain}&sz=64`}
+                  alt=""
+                  className="w-5 h-5 rounded object-contain shrink-0"
+                />
                 <span className="flex flex-col min-w-0">
                   <span className="truncate">{site.name}</span>
                   <span className="text-xs text-neutral-400 truncate">{site.domain}</span>
