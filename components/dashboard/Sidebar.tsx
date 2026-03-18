@@ -23,7 +23,7 @@ import {
 
 const SIDEBAR_KEY = 'pulse_sidebar_collapsed'
 const EXPANDED = 256
-const COLLAPSED = 56
+const COLLAPSED = 64
 
 type IconWeight = 'thin' | 'light' | 'regular' | 'bold' | 'fill' | 'duotone'
 
