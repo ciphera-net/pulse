@@ -408,15 +408,22 @@ export default function HomePage() {
           const siteLimit = getSitesLimitForPlan(subscription?.plan_id)
           const atLimit = siteLimit != null && sites.length >= siteLimit
           return atLimit ? (
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700">
-              Limit reached ({sites.length}/{siteLimit})
-            </span>
-            <Link href="/pricing">
-              <Button variant="primary" className="text-sm">
-                Upgrade
-              </Button>
-            </Link>
+          <div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700">
+                Limit reached ({sites.length}/{siteLimit})
+              </span>
+              <Link href="/pricing">
+                <Button variant="primary" className="text-sm">
+                  Upgrade
+                </Button>
+              </Link>
+            </div>
+            {deletedSites.length > 0 && (
+              <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2">
+                You have a site pending deletion. Restore it or permanently delete it to free the slot.
+              </p>
+            )}
           </div>
         ) : null
         })() ?? (
@@ -556,7 +563,9 @@ export default function HomePage() {
                   <div>
                     <span className="font-medium text-neutral-700 dark:text-neutral-300">{site.name}</span>
                     <span className="ml-2 text-sm text-neutral-400">{site.domain}</span>
-                    <span className="ml-3 text-xs text-red-500 font-medium">Deleting in {daysLeft} day{daysLeft !== 1 ? 's' : ''}</span>
+                    <span className="ml-3 inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600 dark:bg-red-900/20 dark:text-red-400">
+                      Deleting in {daysLeft} day{daysLeft !== 1 ? 's' : ''}
+                    </span>
                   </div>
                   <div className="flex gap-2">
                     <button
