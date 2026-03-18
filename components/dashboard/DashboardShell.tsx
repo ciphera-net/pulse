@@ -1,7 +1,8 @@
 'use client'
 
-import PulseSidebar from './Sidebar'
-import UtilityBar from './UtilityBar'
+import { useState, useCallback } from 'react'
+import Sidebar from './Sidebar'
+import ContentHeader from './ContentHeader'
 
 export default function DashboardShell({
   siteId,
@@ -10,12 +11,21 @@ export default function DashboardShell({
   siteId: string
   children: React.ReactNode
 }) {
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const closeMobile = useCallback(() => setMobileOpen(false), [])
+  const openMobile = useCallback(() => setMobileOpen(true), [])
+
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
-      <UtilityBar />
-      <div className="flex flex-1 overflow-hidden">
-        <PulseSidebar siteId={siteId} />
-        <main className="flex-1 min-w-0 overflow-y-auto">
+    <div className="flex h-screen overflow-hidden">
+      <Sidebar
+        siteId={siteId}
+        mobileOpen={mobileOpen}
+        onMobileClose={closeMobile}
+        onMobileOpen={openMobile}
+      />
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <ContentHeader onMobileMenuOpen={openMobile} />
+        <main className="flex-1 overflow-y-auto">
           {children}
         </main>
       </div>

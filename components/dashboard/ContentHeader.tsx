@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ThemeToggle, AppLauncher, UserMenu, type CipheraApp } from '@ciphera-net/ui'
+import { ThemeToggle, AppLauncher, UserMenu, type CipheraApp, MenuIcon } from '@ciphera-net/ui'
 import { useAuth } from '@/lib/auth/context'
 import { useSettingsModal } from '@/lib/settings-modal-context'
 import { getUserOrganizations, switchContext, type OrganizationMember } from '@/lib/api/organization'
@@ -38,7 +38,11 @@ const CIPHERA_APPS: CipheraApp[] = [
   },
 ]
 
-export default function UtilityBar() {
+export default function ContentHeader({
+  onMobileMenuOpen,
+}: {
+  onMobileMenuOpen: () => void
+}) {
   const auth = useAuth()
   const router = useRouter()
   const { openSettings } = useSettingsModal()
@@ -48,7 +52,7 @@ export default function UtilityBar() {
     if (auth.user) {
       getUserOrganizations()
         .then((organizations) => setOrgs(Array.isArray(organizations) ? organizations : []))
-        .catch(err => logger.error('Failed to fetch orgs for utility bar', err))
+        .catch(err => logger.error('Failed to fetch orgs', err))
     }
   }, [auth.user])
 
@@ -65,33 +69,22 @@ export default function UtilityBar() {
   }
 
   return (
-    <div className="shrink-0 flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-4 sm:px-8 py-3.5">
-      {/* Left: Pulse logo */}
+    <div className="shrink-0 flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-4 sm:px-6 py-3.5">
+      {/* Left: mobile hamburger */}
       <div className="flex items-center gap-3">
-        <Link
-          href="/"
-          className="flex items-center gap-3 group relative"
+        <button
+          onClick={onMobileMenuOpen}
+          className="md:hidden p-2 -ml-2 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
+          aria-label="Open navigation"
         >
-          <div className="relative w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center shrink-0">
-            <img
-              src="/pulse_icon_no_margins.png"
-              alt="Pulse Logo"
-              className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300 transform-gpu will-change-transform [backface-visibility:hidden]"
-            />
-          </div>
-          <span className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-white tracking-tight group-hover:text-brand-orange transition-colors duration-300">
-            Pulse
-          </span>
-        </Link>
+          <MenuIcon className="w-5 h-5" />
+        </button>
       </div>
 
       {/* Right: actions */}
       <div className="flex items-center gap-3">
         <ThemeToggle />
-        <AppLauncher
-          apps={CIPHERA_APPS}
-          currentAppId="pulse"
-        />
+        <AppLauncher apps={CIPHERA_APPS} currentAppId="pulse" />
         <NotificationCenter />
         <UserMenu
           auth={auth}
