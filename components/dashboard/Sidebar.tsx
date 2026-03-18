@@ -101,7 +101,7 @@ function SitePicker({ sites, siteId, collapsed }: { sites: Site[]; siteId: strin
   )
 
   return (
-    <div className="relative mb-4 px-3" ref={ref}>
+    <div className="relative mb-4 px-2" ref={ref}>
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 overflow-hidden"
@@ -249,7 +249,7 @@ export default function Sidebar({
         <SitePicker sites={sites} siteId={siteId} collapsed={c} />
 
         {/* Nav Groups */}
-        <nav className="flex-1 overflow-y-auto overflow-x-hidden px-3 space-y-4">
+        <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 space-y-4">
           {NAV_GROUPS.map((group) => (
             <div key={group.label}>
               <div className="h-5 flex items-center overflow-hidden">
@@ -267,7 +267,7 @@ export default function Sidebar({
         </nav>
 
         {/* Bottom */}
-        <div className="border-t border-neutral-200/60 dark:border-neutral-800/60 px-3 py-3 space-y-0.5 shrink-0">
+        <div className="border-t border-neutral-200/60 dark:border-neutral-800/60 px-2 py-3 space-y-0.5 shrink-0">
           {canEdit && (
             <NavLink item={SETTINGS_ITEM} siteId={siteId} collapsed={c} onClick={isMobile ? onMobileClose : undefined} pendingHref={pendingHref} onNavigate={handleNavigate} />
           )}
