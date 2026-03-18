@@ -13,9 +13,9 @@ export default function DashboardShell({
   const { mobileOpen, closeMobile } = useSidebar()
 
   return (
-    <div className="flex flex-1">
+    <div className="flex flex-1 overflow-hidden">
       <Sidebar siteId={siteId} mobileOpen={mobileOpen} onMobileClose={closeMobile} />
-      <main className="flex-1 min-w-0 pb-8">
+      <main className="flex-1 min-w-0 overflow-y-auto">
         {children}
       </main>
     </div>
