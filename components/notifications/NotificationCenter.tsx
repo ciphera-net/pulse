@@ -56,17 +56,17 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
   const dropdownRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
-  const [fixedPos, setFixedPos] = useState<{ left: number; top: number } | null>(null)
+  const [fixedPos, setFixedPos] = useState<{ left: number; top?: number; bottom?: number } | null>(null)
 
   const updatePosition = useCallback(() => {
     if (anchor === 'right' && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect()
-      let top = rect.top
-      if (panelRef.current) {
-        const maxTop = window.innerHeight - panelRef.current.offsetHeight - 8
-        top = Math.min(top, Math.max(8, maxTop))
+      const left = rect.right + 8
+      if (rect.top > window.innerHeight / 2) {
+        setFixedPos({ left, bottom: window.innerHeight - rect.bottom })
+      } else {
+        setFixedPos({ left, top: rect.top })
       }
-      setFixedPos({ left: rect.right + 8, top })
     }
   }, [anchor])
 
@@ -100,16 +100,8 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
     if (open) {
       fetchNotifications()
       updatePosition()
-      requestAnimationFrame(() => updatePosition())
     }
   }, [open, updatePosition])
-
-  // Recalculate position after content changes (notifications load, loading state)
-  useEffect(() => {
-    if (open && anchor === 'right') {
-      requestAnimationFrame(() => updatePosition())
-    }
-  }, [notifications, loading, open, anchor, updatePosition])
 
   // * Poll unread count in background (when authenticated)
   useEffect(() => {
@@ -214,10 +206,10 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
             aria-label="Notifications"
             className={`bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl overflow-hidden z-[100] ${
               anchor === 'right'
-                ? 'fixed w-96 origin-top-left'
+                ? `fixed w-96 ${fixedPos?.bottom !== undefined ? 'origin-bottom-left' : 'origin-top-left'}`
                 : 'fixed left-4 right-4 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96'
             }`}
-            style={anchor === 'right' && fixedPos ? { left: fixedPos.left, top: fixedPos.top } : undefined}
+            style={anchor === 'right' && fixedPos ? { left: fixedPos.left, top: fixedPos.top, bottom: fixedPos.bottom } : undefined}
           >
             <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200 dark:border-neutral-700">
               <h3 className="font-semibold text-neutral-900 dark:text-white">Notifications</h3>
