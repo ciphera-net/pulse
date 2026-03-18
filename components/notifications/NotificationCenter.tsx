@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useState, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { listNotifications, markNotificationRead, markAllNotificationsRead, type Notification } from '@/lib/api/notifications'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
@@ -53,6 +54,7 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const [fixedPos, setFixedPos] = useState<{ left: number; top: number } | null>(null)
 
@@ -107,7 +109,11 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
   useEffect(() => {
     if (!open) return
     function handleClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      const target = e.target as Node
+      if (
+        dropdownRef.current && !dropdownRef.current.contains(target) &&
+        (!panelRef.current || !panelRef.current.contains(target))
+      ) {
         setOpen(false)
       }
     }
@@ -186,130 +192,137 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
         )}
       </button>
 
-      {open && (
-        <div
-          id="notification-dropdown"
-          role="dialog"
-          aria-label="Notifications"
-          className={`bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl overflow-hidden z-[100] ${
-            anchor === 'right'
-              ? 'fixed w-96 origin-top-left'
-              : 'fixed left-4 right-4 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96'
-          }`}
-          style={anchor === 'right' && fixedPos ? { left: fixedPos.left, top: fixedPos.top } : undefined}
-        >
-          <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200 dark:border-neutral-700">
-            <h3 className="font-semibold text-neutral-900 dark:text-white">Notifications</h3>
-            {unreadCount > 0 && (
-              <button
-                type="button"
-                onClick={handleMarkAllRead}
-                aria-label="Mark all notifications as read"
+      {(() => {
+        const panel = open ? (
+          <div
+            ref={panelRef}
+            id="notification-dropdown"
+            role="dialog"
+            aria-label="Notifications"
+            className={`bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl overflow-hidden z-[100] ${
+              anchor === 'right'
+                ? 'fixed w-96 origin-top-left'
+                : 'fixed left-4 right-4 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96'
+            }`}
+            style={anchor === 'right' && fixedPos ? { left: fixedPos.left, top: fixedPos.top } : undefined}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200 dark:border-neutral-700">
+              <h3 className="font-semibold text-neutral-900 dark:text-white">Notifications</h3>
+              {unreadCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleMarkAllRead}
+                  aria-label="Mark all notifications as read"
+                  className="text-sm text-brand-orange hover:underline"
+                >
+                  Mark all read
+                </button>
+              )}
+            </div>
+
+            <div className="max-h-80 overflow-y-auto">
+              {loading && (
+                <div className="p-3 space-y-1">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="flex gap-3 px-4 py-3">
+                      <SkeletonCircle className="h-8 w-8 shrink-0" />
+                      <div className="flex-1 space-y-1.5">
+                        <SkeletonLine className="h-3.5 w-3/4" />
+                        <SkeletonLine className="h-3 w-1/2" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {error && (
+                <div className="p-6 text-center text-red-500 text-sm">{error}</div>
+              )}
+              {!loading && !error && (notifications?.length ?? 0) === 0 && (
+                <div className="p-6 text-center text-neutral-500 dark:text-neutral-400 text-sm">
+                  No notifications yet
+                </div>
+              )}
+              {!loading && !error && (notifications?.length ?? 0) > 0 && (
+                <ul className="divide-y divide-neutral-200 dark:divide-neutral-700">
+                  {(notifications ?? []).map((n) => (
+                    <li key={n.id}>
+                      {n.link_url ? (
+                        <Link
+                          href={n.link_url}
+                          onClick={() => handleNotificationClick(n)}
+                          className={`block px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors ${!n.read ? 'bg-brand-orange/5 dark:bg-brand-orange/10' : ''}`}
+                        >
+                          <div className="flex gap-3">
+                            {getTypeIcon(n.type)}
+                            <div className="min-w-0 flex-1">
+                              <p className={`text-sm ${!n.read ? 'font-medium' : ''} text-neutral-900 dark:text-white`}>
+                                {n.title}
+                              </p>
+                              {n.body && (
+                                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 line-clamp-2">
+                                  {n.body}
+                                </p>
+                              )}
+                              <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
+                                {formatTimeAgo(n.created_at)}
+                              </p>
+                            </div>
+                          </div>
+                        </Link>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleNotificationClick(n)}
+                          className={`w-full text-left block px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 cursor-pointer ${!n.read ? 'bg-brand-orange/5 dark:bg-brand-orange/10' : ''}`}
+                        >
+                          <div className="flex gap-3">
+                            {getTypeIcon(n.type)}
+                            <div className="min-w-0 flex-1">
+                              <p className={`text-sm ${!n.read ? 'font-medium' : ''} text-neutral-900 dark:text-white`}>
+                                {n.title}
+                              </p>
+                              {n.body && (
+                                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 line-clamp-2">
+                                  {n.body}
+                                </p>
+                              )}
+                              <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
+                                {formatTimeAgo(n.created_at)}
+                              </p>
+                            </div>
+                          </div>
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div className="border-t border-neutral-200 dark:border-neutral-700 px-4 py-3 flex items-center justify-between gap-2">
+              <Link
+                href="/notifications"
+                onClick={() => setOpen(false)}
                 className="text-sm text-brand-orange hover:underline"
               >
-                Mark all read
-              </button>
-            )}
+                View all
+              </Link>
+              <Link
+                href="/org-settings?tab=notifications"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors"
+              >
+                <SettingsIcon className="w-4 h-4" aria-hidden="true" />
+                Manage settings
+              </Link>
+            </div>
           </div>
+        ) : null
 
-          <div className="max-h-80 overflow-y-auto">
-            {loading && (
-              <div className="p-3 space-y-1">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="flex gap-3 px-4 py-3">
-                    <SkeletonCircle className="h-8 w-8 shrink-0" />
-                    <div className="flex-1 space-y-1.5">
-                      <SkeletonLine className="h-3.5 w-3/4" />
-                      <SkeletonLine className="h-3 w-1/2" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            {error && (
-              <div className="p-6 text-center text-red-500 text-sm">{error}</div>
-            )}
-            {!loading && !error && (notifications?.length ?? 0) === 0 && (
-              <div className="p-6 text-center text-neutral-500 dark:text-neutral-400 text-sm">
-                No notifications yet
-              </div>
-            )}
-            {!loading && !error && (notifications?.length ?? 0) > 0 && (
-              <ul className="divide-y divide-neutral-200 dark:divide-neutral-700">
-                {(notifications ?? []).map((n) => (
-                  <li key={n.id}>
-                    {n.link_url ? (
-                      <Link
-                        href={n.link_url}
-                        onClick={() => handleNotificationClick(n)}
-                        className={`block px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors ${!n.read ? 'bg-brand-orange/5 dark:bg-brand-orange/10' : ''}`}
-                      >
-                        <div className="flex gap-3">
-                          {getTypeIcon(n.type)}
-                          <div className="min-w-0 flex-1">
-                            <p className={`text-sm ${!n.read ? 'font-medium' : ''} text-neutral-900 dark:text-white`}>
-                              {n.title}
-                            </p>
-                            {n.body && (
-                              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 line-clamp-2">
-                                {n.body}
-                              </p>
-                            )}
-                            <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
-                              {formatTimeAgo(n.created_at)}
-                            </p>
-                          </div>
-                        </div>
-                      </Link>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleNotificationClick(n)}
-                        className={`w-full text-left block px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 cursor-pointer ${!n.read ? 'bg-brand-orange/5 dark:bg-brand-orange/10' : ''}`}
-                      >
-                        <div className="flex gap-3">
-                          {getTypeIcon(n.type)}
-                          <div className="min-w-0 flex-1">
-                            <p className={`text-sm ${!n.read ? 'font-medium' : ''} text-neutral-900 dark:text-white`}>
-                              {n.title}
-                            </p>
-                            {n.body && (
-                              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 line-clamp-2">
-                                {n.body}
-                              </p>
-                            )}
-                            <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
-                              {formatTimeAgo(n.created_at)}
-                            </p>
-                          </div>
-                        </div>
-                      </button>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          <div className="border-t border-neutral-200 dark:border-neutral-700 px-4 py-3 flex items-center justify-between gap-2">
-            <Link
-              href="/notifications"
-              onClick={() => setOpen(false)}
-              className="text-sm text-brand-orange hover:underline"
-            >
-              View all
-            </Link>
-            <Link
-              href="/org-settings?tab=notifications"
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors"
-            >
-              <SettingsIcon className="w-4 h-4" aria-hidden="true" />
-              Manage settings
-            </Link>
-          </div>
-        </div>
-      )}
+        return anchor === 'right' && panel && typeof document !== 'undefined'
+          ? createPortal(panel, document.body)
+          : panel
+      })()}
     </div>
   )
 }
