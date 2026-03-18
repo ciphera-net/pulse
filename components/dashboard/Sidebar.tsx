@@ -240,16 +240,10 @@ export default function Sidebar({
   const [sites, setSites] = useState<Site[]>([])
   const [pendingHref, setPendingHref] = useState<string | null>(null)
   const wasCollapsedRef = useRef(false)
-  const [ready, setReady] = useState(false)
-  const [collapsed, setCollapsed] = useState(true)
-
-  // Read saved state and reveal sidebar in one frame — no flash
-  useEffect(() => {
-    const saved = localStorage.getItem(SIDEBAR_KEY)
-    if (saved === 'false') setCollapsed(false)
-    // Reveal after state is set — React batches these, so sidebar appears at correct width
-    requestAnimationFrame(() => setReady(true))
-  }, [])
+  // Safe to read localStorage directly — this component is loaded with ssr:false
+  const [collapsed, setCollapsed] = useState(() => {
+    return localStorage.getItem(SIDEBAR_KEY) !== 'false'
+  })
 
   useEffect(() => { listSites().then(setSites).catch(() => {}) }, [])
   useEffect(() => { setPendingHref(null); onMobileClose() }, [pathname, onMobileClose])
@@ -340,17 +334,13 @@ export default function Sidebar({
 
   return (
     <>
-      {/* Desktop — empty shell until ready, then real content */}
-      {!ready ? (
-        <div className="hidden md:block shrink-0 border-r border-neutral-200/60 dark:border-neutral-800/60 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl" style={{ width: COLLAPSED }} />
-      ) : (
-        <aside
-          className="hidden md:flex flex-col shrink-0 border-r border-neutral-200/60 dark:border-neutral-800/60 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl overflow-hidden"
-          style={{ width: collapsed ? COLLAPSED : EXPANDED, transition: 'width 200ms cubic-bezier(0.4, 0, 0.2, 1)' }}
-        >
-          {sidebarContent(false)}
-        </aside>
-      )}
+      {/* Desktop — ssr:false means this only renders on client, no hydration flash */}
+      <aside
+        className="hidden md:flex flex-col shrink-0 border-r border-neutral-200/60 dark:border-neutral-800/60 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl overflow-hidden"
+        style={{ width: collapsed ? COLLAPSED : EXPANDED, transition: 'width 200ms cubic-bezier(0.4, 0, 0.2, 1)' }}
+      >
+        {sidebarContent(false)}
+      </aside>
 
       {/* Mobile overlay */}
       {mobileOpen && (
