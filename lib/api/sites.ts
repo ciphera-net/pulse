@@ -26,6 +26,7 @@ export interface Site {
   is_verified?: boolean
   created_at: string
   updated_at: string
+  deleted_at?: string | null
 }
 
 export interface CreateSiteRequest {
@@ -77,8 +78,8 @@ export async function updateSite(id: string, data: UpdateSiteRequest): Promise<S
   })
 }
 
-export async function deleteSite(id: string): Promise<void> {
-  await apiRequest(`/sites/${id}`, {
+export async function deleteSite(id: string): Promise<{ message: string; purge_at: string }> {
+  return apiRequest<{ message: string; purge_at: string }>(`/sites/${id}`, {
     method: 'DELETE',
   })
 }
@@ -93,4 +94,21 @@ export async function verifySite(id: string): Promise<void> {
   await apiRequest(`/sites/${id}/verify`, {
     method: 'POST',
   })
+}
+
+export async function restoreSite(id: string): Promise<void> {
+  await apiRequest(`/sites/${id}/restore`, {
+    method: 'POST',
+  })
+}
+
+export async function permanentDeleteSite(id: string): Promise<void> {
+  await apiRequest(`/sites/${id}/permanent`, {
+    method: 'DELETE',
+  })
+}
+
+export async function listDeletedSites(): Promise<Site[]> {
+  const response = await apiRequest<{ sites: Site[] }>('/sites/deleted')
+  return response?.sites || []
 }
