@@ -58,6 +58,8 @@ export function getBrowserIcon(browserName: string) {
   return <img src={src} alt={browserName} width={18} height={18} className="inline-block" style={{ verticalAlign: '-0.125em' }} />
 }
 
+const OS_DARK_INVERT = new Set(['macos', 'playstation'])
+
 const OS_ICON_MAP: Record<string, string> = {
   'windows':     'windows',
   'macos':       'macos',
@@ -81,7 +83,8 @@ export function getOSIcon(osName: string) {
   if (!osName) return <Question className="text-neutral-400" />
   const file = OS_ICON_MAP[osName.toLowerCase()]
   if (!file) return <Question className="text-neutral-400" />
-  return <img src={`/icons/os/${file}.png`} alt={osName} width={18} height={18} className="inline-block" style={{ verticalAlign: '-0.125em' }} />
+  const cls = OS_DARK_INVERT.has(file) ? 'inline-block dark:invert' : 'inline-block'
+  return <img src={`/icons/os/${file}.png`} alt={osName} width={18} height={18} className={cls} style={{ verticalAlign: '-0.125em' }} />
 }
 
 export function getDeviceIcon(deviceName: string) {
