@@ -40,7 +40,10 @@
     return (script && script.hasAttribute('data-' + name)) || globalConfig[name] === true || globalConfig[camel] === true;
   }
 
-  const domain = attr('domain');
+  // * Resolve domain: explicit config > data-domain > auto-detect from hostname
+  // * Auto-detect enables zero-config GTM installs; the backend validates Origin anyway
+  var explicitDomain = attr('domain');
+  const domain = explicitDomain || location.hostname.replace(/^www\./, '');
   if (!domain) {
     return;
   }
