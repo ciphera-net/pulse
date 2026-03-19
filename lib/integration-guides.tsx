@@ -2298,31 +2298,30 @@ export default defineConfig({
       <p>Follow these steps to add Pulse through GTM:</p>
       <ol>
         <li>Go to <strong>Tags &rarr; New &rarr; Custom HTML</strong></li>
-        <li>Paste the snippet below (replace <code>your-site.com</code> with your domain)</li>
+        <li>Paste the snippet below</li>
         <li>Set the trigger to <strong>All Pages</strong></li>
         <li>Publish your container</li>
       </ol>
-      <CodeBlock filename="GTM → Custom HTML Tag (recommended)">{`<script>
-  window.pulseConfig = { domain: "your-site.com" };
-</script>
-<script defer src="https://pulse.ciphera.net/script.js"></script>`}</CodeBlock>
+      <CodeBlock filename="GTM → Custom HTML Tag">{`<script defer src="https://pulse.ciphera.net/script.js"></script>`}</CodeBlock>
 
       <p>
-        This uses a global config object so that GTM does not need to preserve{' '}
-        <code>data-*</code> attributes on the injected script element. You can
-        also pass <code>api</code>, <code>storage</code>, and other options via{' '}
-        <code>pulseConfig</code>.
+        That&apos;s it. Pulse auto-detects the domain from the page, so no extra
+        configuration is needed.
       </p>
 
       <details>
         <summary className="cursor-pointer text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300">
-          Alternative: inline data attributes (may not work in all GTM setups)
+          Advanced: override domain or configure options
         </summary>
-        <CodeBlock filename="GTM → Custom HTML Tag (alternative)">{`<script
-  defer
-  data-domain="your-site.com"
-  src="https://pulse.ciphera.net/script.js"
-></script>`}</CodeBlock>
+        <p className="mt-3 text-sm text-neutral-600 dark:text-neutral-400">
+          If your site is registered under a different domain than the page
+          hostname, or you need custom options (API endpoint, storage mode, etc.),
+          use <code>pulseConfig</code>:
+        </p>
+        <CodeBlock filename="GTM → Custom HTML Tag (with config)">{`<script>
+  window.pulseConfig = { domain: "your-site.com" };
+</script>
+<script defer src="https://pulse.ciphera.net/script.js"></script>`}</CodeBlock>
       </details>
 
       <p>
