@@ -1,10 +1,6 @@
 import React from 'react'
 import {
   Globe,
-  WindowsLogo,
-  AppleLogo,
-  LinuxLogo,
-  AndroidLogo,
   Question,
   DeviceMobile,
   DeviceTablet,
@@ -62,15 +58,30 @@ export function getBrowserIcon(browserName: string) {
   return <img src={src} alt={browserName} width={18} height={18} className="inline-block" style={{ verticalAlign: '-0.125em' }} />
 }
 
+const OS_ICON_MAP: Record<string, string> = {
+  'windows':     'windows',
+  'macos':       'macos',
+  'linux':       'linux',
+  'android':     'android',
+  'ios':         'ios',
+  'chromeos':    'chromeos',
+  'harmonyos':   'harmonyos',
+  'kaios':       'kaios',
+  'tizen':       'tizen',
+  'webos':       'webos',
+  'freebsd':     'freebsd',
+  'openbsd':     'openbsd',
+  'netbsd':      'netbsd',
+  'playstation': 'playstation',
+  'xbox':        'xbox',
+  'nintendo':    'nintendo',
+}
+
 export function getOSIcon(osName: string) {
   if (!osName) return <Question className="text-neutral-400" />
-  const lower = osName.toLowerCase()
-  if (lower.includes('win')) return <WindowsLogo className="text-blue-500" />
-  if (lower.includes('mac') || lower.includes('ios')) return <AppleLogo className="text-neutral-800 dark:text-neutral-200" />
-  if (lower.includes('linux') || lower.includes('ubuntu') || lower.includes('debian')) return <LinuxLogo className="text-neutral-800 dark:text-neutral-200" />
-  if (lower.includes('android')) return <AndroidLogo className="text-green-500" />
-
-  return <Question className="text-neutral-400" />
+  const file = OS_ICON_MAP[osName.toLowerCase()]
+  if (!file) return <Question className="text-neutral-400" />
+  return <img src={`/icons/os/${file}.png`} alt={osName} width={18} height={18} className="inline-block" style={{ verticalAlign: '-0.125em' }} />
 }
 
 export function getDeviceIcon(deviceName: string) {
