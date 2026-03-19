@@ -32,9 +32,34 @@ import {
  */
 export const FAVICON_SERVICE_URL = 'https://www.google.com/s2/favicons'
 
+const BROWSER_ICON_MAP: Record<string, { file: string; ext: 'svg' | 'png' }> = {
+  'chrome':           { file: 'chrome',           ext: 'svg' },
+  'firefox':          { file: 'firefox',          ext: 'svg' },
+  'safari':           { file: 'safari',           ext: 'svg' },
+  'edge':             { file: 'edge',             ext: 'svg' },
+  'opera':            { file: 'opera',            ext: 'svg' },
+  'brave':            { file: 'brave',            ext: 'svg' },
+  'vivaldi':          { file: 'vivaldi',          ext: 'svg' },
+  'samsung internet': { file: 'samsung-internet', ext: 'svg' },
+  'uc browser':       { file: 'uc-browser',       ext: 'svg' },
+  'yandex browser':   { file: 'yandex',           ext: 'png' },
+  'waterfox':         { file: 'waterfox',         ext: 'png' },
+  'pale moon':        { file: 'pale-moon',        ext: 'png' },
+  'duckduckgo':       { file: 'duckduckgo',       ext: 'png' },
+  'maxthon':          { file: 'maxthon',          ext: 'png' },
+  'silk':             { file: 'silk',             ext: 'png' },
+  'puffin':           { file: 'puffin',           ext: 'png' },
+  'arc':              { file: 'arc',              ext: 'png' },
+  'tor':              { file: 'tor',              ext: 'png' },
+  'opera mini':       { file: 'opera-mini',       ext: 'png' },
+}
+
 export function getBrowserIcon(browserName: string) {
   if (!browserName) return <Globe className="text-neutral-400" />
-  return <Globe className="text-neutral-500" />
+  const entry = BROWSER_ICON_MAP[browserName.toLowerCase()]
+  if (!entry) return <Globe className="text-neutral-500" />
+  const src = `/icons/browsers/${entry.file}.${entry.ext}`
+  return <img src={src} alt={browserName} width={18} height={18} className="inline-block" style={{ verticalAlign: '-0.125em' }} />
 }
 
 export function getOSIcon(osName: string) {
