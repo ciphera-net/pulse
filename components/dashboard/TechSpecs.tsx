@@ -30,6 +30,8 @@ type Tab = 'browsers' | 'os' | 'devices' | 'screens'
 
 function capitalize(s: string): string {
   if (!s) return s
+  // Preserve intentional casing (e.g. macOS, iOS, webOS, ChromeOS, FreeBSD)
+  if (s !== s.toLowerCase() && s !== s.toUpperCase()) return s
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
