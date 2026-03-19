@@ -19,9 +19,11 @@ const BUCKETS = 12 // 2-hour buckets
 const BUCKET_LABELS: Record<number, string> = { 0: '00:00', 3: '06:00', 6: '12:00', 9: '18:00' }
 
 const HIGHLIGHT_COLORS = [
-  'rgba(253,94,15,0.18)',
-  'rgba(253,94,15,0.38)',
-  'rgba(253,94,15,0.62)',
+  'transparent',
+  'rgba(253,94,15,0.15)',
+  'rgba(253,94,15,0.35)',
+  'rgba(253,94,15,0.60)',
+  'rgba(253,94,15,0.82)',
   '#FD5E0F',
 ]
 
@@ -37,10 +39,12 @@ function formatHour(hour: number): string {
 
 function getHighlightColor(value: number, max: number): string {
   if (value === 0) return HIGHLIGHT_COLORS[0]
+  if (value === max) return HIGHLIGHT_COLORS[5]
   const ratio = value / max
-  if (ratio < 0.25) return HIGHLIGHT_COLORS[1]
-  if (ratio < 0.6) return HIGHLIGHT_COLORS[2]
-  return HIGHLIGHT_COLORS[3]
+  if (ratio <= 0.25) return HIGHLIGHT_COLORS[1]
+  if (ratio <= 0.50) return HIGHLIGHT_COLORS[2]
+  if (ratio <= 0.75) return HIGHLIGHT_COLORS[3]
+  return HIGHLIGHT_COLORS[4]
 }
 
 export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
@@ -210,6 +214,19 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
                   24:00
                 </span>
               </div>
+            </div>
+
+            {/* Intensity legend */}
+            <div className="flex items-center justify-end gap-1.5 mt-2">
+              <span className="text-[10px] text-neutral-400 dark:text-neutral-500">Less</span>
+              {HIGHLIGHT_COLORS.map((color, i) => (
+                <div
+                  key={i}
+                  className="w-[10px] h-[10px] rounded-[2px] border border-neutral-200 dark:border-neutral-800"
+                  style={{ backgroundColor: color }}
+                />
+              ))}
+              <span className="text-[10px] text-neutral-400 dark:text-neutral-500">More</span>
             </div>
 
             {/* Cell-anchored tooltip */}
