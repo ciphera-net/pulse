@@ -10,7 +10,6 @@ import * as Flags from 'country-flag-icons/react/3x2'
 import iso3166 from 'iso-3166-2'
 
 const DottedMap = dynamic(() => import('./DottedMap'), { ssr: false })
-const Globe = dynamic(() => import('./Globe'), { ssr: false })
 import Link from 'next/link'
 import { Modal, GlobeIcon, ArrowRightIcon } from '@ciphera-net/ui'
 import { ListSkeleton } from '@/components/skeletons'
@@ -29,14 +28,14 @@ interface LocationProps {
   onFilter?: (filter: DimensionFilter) => void
 }
 
-type Tab = 'map' | 'globe' | 'countries' | 'regions' | 'cities'
+type Tab = 'map' | 'countries' | 'regions' | 'cities'
 
 const LIMIT = 7
 
 const TAB_TO_DIMENSION: Record<string, string> = { countries: 'country', regions: 'region', cities: 'city' }
 
 export default function Locations({ countries, cities, regions, geoDataLevel = 'full', siteId, dateRange, onFilter }: LocationProps) {
-  const [activeTab, setActiveTab] = useState<Tab>('map')
+  const [activeTab, setActiveTab] = useState<Tab>('countries')
   const handleTabKeyDown = useTabListKeyboard()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalSearch, setModalSearch] = useState('')
@@ -194,7 +193,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
     })
   }
 
-  const isVisualTab = activeTab === 'map' || activeTab === 'globe'
+  const isVisualTab = activeTab === 'map'
   const rawData = isVisualTab ? [] : getData()
   const data = filterUnknown(rawData)
   const totalPageviews = data.reduce((sum, item) => sum + item.pageviews, 0)
@@ -235,7 +234,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
             )}
           </div>
           <div className="flex gap-1 overflow-x-auto scrollbar-hide" role="tablist" aria-label="Location view tabs" onKeyDown={handleTabKeyDown}>
-            {(['map', 'globe', 'countries', 'regions', 'cities'] as Tab[]).map((tab) => (
+            {(['map', 'countries', 'regions', 'cities'] as Tab[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -267,9 +266,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
             </div>
           ) : isVisualTab ? (
             hasData ? (
-              activeTab === 'globe'
-                ? (inView ? <Globe data={filterUnknown(countries) as { country: string; pageviews: number }[]} /> : null)
-                : (inView ? <DottedMap data={filterUnknown(countries) as { country: string; pageviews: number }[]} /> : null)
+              inView ? <DottedMap data={filterUnknown(countries) as { country: string; pageviews: number }[]} /> : null
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
                 <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
