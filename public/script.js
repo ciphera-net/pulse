@@ -19,18 +19,37 @@
   }
 
 
-  // * Get domain from script tag
-  const script = document.currentScript || document.querySelector('script[data-domain]');
-  if (!script || !script.getAttribute('data-domain')) {
+  // * Get config from script tag, or fall back to window.pulseConfig for GTM / tag managers
+  // * GTM Custom HTML tags may not preserve data-* attributes on the injected <script> element,
+  // * so we also search by src URL and support a global config object.
+  const script = document.currentScript
+    || document.querySelector('script[data-domain]')
+    || document.querySelector('script[src*="pulse.ciphera.net/script"]');
+
+  const globalConfig = window.pulseConfig || {};
+
+  // * Helper: read a config value from script data-* attribute or globalConfig
+  function attr(name) {
+    // * Support both "storage-ttl" (data-attr style) and "storageTtl" (camelCase config style)
+    var camel = name.replace(/-([a-z])/g, function(_, c) { return c.toUpperCase(); });
+    return (script && script.getAttribute('data-' + name)) || globalConfig[name] || globalConfig[camel] || null;
+  }
+  function hasAttr(name) {
+    // * Support both "no-scroll" (data-attr style) and "noScroll" (camelCase config style)
+    var camel = name.replace(/-([a-z])/g, function(_, c) { return c.toUpperCase(); });
+    return (script && script.hasAttribute('data-' + name)) || globalConfig[name] === true || globalConfig[camel] === true;
+  }
+
+  const domain = attr('domain');
+  if (!domain) {
     return;
   }
 
-  const domain = script.getAttribute('data-domain');
-  const apiUrl = script.getAttribute('data-api') || 'https://pulse-api.ciphera.net';
+  const apiUrl = attr('api') || 'https://pulse-api.ciphera.net';
   // * Visitor ID storage: "local" (default, cross-tab) or "session" (ephemeral per-tab)
-  const storageMode = (script.getAttribute('data-storage') || 'local').toLowerCase() === 'session' ? 'session' : 'local';
+  const storageMode = (attr('storage') || 'local').toLowerCase() === 'session' ? 'session' : 'local';
   // * When storage is "local", optional TTL in hours; after TTL the ID is regenerated (e.g. 24 = one day)
-  const ttlHours = storageMode === 'local' ? parseFloat(script.getAttribute('data-storage-ttl') || '24') : 0;
+  const ttlHours = storageMode === 'local' ? parseFloat(attr('storage-ttl') || '24') : 0;
   const ttlMs = ttlHours > 0 ? ttlHours * 60 * 60 * 1000 : 0;
 
   let currentEventId = null;
@@ -343,7 +362,7 @@
   // * Auto-track scroll depth at 25%, 50%, 75%, and 100% (on by default)
   // * Each threshold fires once per pageview; resets on SPA navigation
   // * Opt-out: add data-no-scroll to the script tag
-  var trackScroll = !script.hasAttribute('data-no-scroll');
+  var trackScroll = !hasAttr('no-scroll');
 
   if (trackScroll) {
     var scrollThresholds = [25, 50, 75, 100];
@@ -378,8 +397,8 @@
 
   // * Auto-track outbound link clicks and file downloads (on by default)
   // * Opt-out: add data-no-outbound or data-no-downloads to the script tag
-  var trackOutbound = !script.hasAttribute('data-no-outbound');
-  var trackDownloads = !script.hasAttribute('data-no-downloads');
+  var trackOutbound = !hasAttr('no-outbound');
+  var trackDownloads = !hasAttr('no-downloads');
 
   if (trackOutbound || trackDownloads) {
     var FILE_EXT_REGEX = /\.(pdf|zip|gz|tar|xlsx|xls|csv|docx|doc|pptx|ppt|mp4|mp3|wav|avi|mov|exe|dmg|pkg|deb|rpm|iso|7z|rar)($|\?|#)/i;
