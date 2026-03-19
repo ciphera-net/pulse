@@ -60,3 +60,18 @@ export async function grantPlan(orgId: string, params: GrantPlanParams): Promise
     body: JSON.stringify(params),
   })
 }
+
+export interface FilteredReferrer {
+  domain: string
+  reason: string
+  count: number
+}
+
+export async function getFilteredReferrers(startDate?: string, endDate?: string): Promise<FilteredReferrer[]> {
+  const params = new URLSearchParams()
+  if (startDate) params.set('start_date', startDate)
+  if (endDate) params.set('end_date', endDate)
+  const query = params.toString() ? `?${params.toString()}` : ''
+  const data = await authFetch<{ filtered_referrers: FilteredReferrer[] }>(`/api/admin/filtered-referrers${query}`)
+  return data.filtered_referrers || []
+}
