@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/auth/context'
 import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { logger } from '@/lib/utils/logger'
 import { getUserOrganizations, switchContext, type OrganizationMember } from '@/lib/api/organization'
 import { setSessionAction } from '@/app/actions/auth'
@@ -18,7 +19,6 @@ import SettingsModalWrapper from '@/components/settings/SettingsModalWrapper'
 
 const ORG_SWITCH_KEY = 'pulse_switching_org'
 
-// * Available Ciphera apps for the app switcher
 const CIPHERA_APPS: CipheraApp[] = [
   {
     id: 'pulse',
@@ -26,7 +26,7 @@ const CIPHERA_APPS: CipheraApp[] = [
     description: 'Your current app — Privacy-first analytics',
     icon: 'https://ciphera.net/pulse_icon_no_margins.png',
     href: 'https://pulse.ciphera.net',
-    isAvailable: false, // * Current app
+    isAvailable: false,
   },
   {
     id: 'drop',
@@ -49,6 +49,7 @@ const CIPHERA_APPS: CipheraApp[] = [
 function LayoutInner({ children }: { children: React.ReactNode }) {
   const auth = useAuth()
   const router = useRouter()
+  const pathname = usePathname()
   const isOnline = useOnlineStatus()
   const { openSettings } = useSettingsModal()
   const [orgs, setOrgs] = useState<OrganizationMember[]>([])
@@ -57,7 +58,6 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
     return sessionStorage.getItem(ORG_SWITCH_KEY) === 'true'
   })
 
-  // * Clear the switching flag once the page has settled after reload
   useEffect(() => {
     if (isSwitchingOrg) {
       sessionStorage.removeItem(ORG_SWITCH_KEY)
@@ -66,7 +66,6 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
     }
   }, [isSwitchingOrg])
 
-  // * Fetch organizations for the header organization switcher
   useEffect(() => {
     if (auth.user) {
       getUserOrganizations()
@@ -76,7 +75,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   }, [auth.user])
 
   const handleSwitchOrganization = async (orgId: string | null) => {
-    if (!orgId) return // Pulse doesn't support personal organization context
+    if (!orgId) return
     try {
       const { access_token } = await switchContext(orgId)
       await setSessionAction(access_token)
@@ -87,66 +86,98 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const handleCreateOrganization = () => {
-    router.push('/onboarding')
-  }
-
-  const showOfflineBar = Boolean(auth.user && !isOnline);
-  const barHeightRem = 2.5;
-  const headerHeightRem = 6;
-  const mainTopPaddingRem = barHeightRem + headerHeightRem;
+  const isAuthenticated = !!auth.user
+  const showOfflineBar = Boolean(auth.user && !isOnline)
+  // Site pages use DashboardShell with full sidebar — no Header needed
+  const isSitePage = pathname.startsWith('/sites/') && pathname !== '/sites/new'
 
   if (isSwitchingOrg) {
     return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" portal={false} />
   }
 
+  // While auth is loading on a site page, render nothing to prevent flash of public header
+  if (auth.loading && isSitePage) {
+    return null
+  }
+
+  // Authenticated site pages: full sidebar layout
+  // DashboardShell inside children handles everything
+  if (isAuthenticated && isSitePage) {
+    return (
+      <>
+        {showOfflineBar && <OfflineBanner isOnline={isOnline} />}
+        {children}
+        <SettingsModalWrapper />
+      </>
+    )
+  }
+
+  // Authenticated non-site pages (sites list, onboarding, etc.): static header
+  if (isAuthenticated) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        {showOfflineBar && <OfflineBanner isOnline={isOnline} />}
+        <Header
+          auth={auth}
+          LinkComponent={Link}
+          logoSrc="/pulse_icon_no_margins.png"
+          appName="Pulse"
+          variant="static"
+          orgs={orgs}
+          activeOrgId={auth.user?.org_id}
+          onSwitchOrganization={handleSwitchOrganization}
+          onCreateOrganization={() => router.push('/onboarding')}
+          allowPersonalOrganization={false}
+          showFaq={false}
+          showSecurity={false}
+          showPricing={false}
+          rightSideActions={<NotificationCenter />}
+          apps={CIPHERA_APPS}
+          currentAppId="pulse"
+          onOpenSettings={openSettings}
+        />
+        <main className="flex-1 pb-8">
+          {children}
+        </main>
+        <SettingsModalWrapper />
+      </div>
+    )
+  }
+
+  // Public/marketing: floating header + footer
   return (
-    <>
-      {auth.user && <OfflineBanner isOnline={isOnline} />}
+    <div className="flex flex-col min-h-screen">
       <Header
         auth={auth}
         LinkComponent={Link}
         logoSrc="/pulse_icon_no_margins.png"
         appName="Pulse"
-        orgs={orgs}
-        activeOrgId={auth.user?.org_id}
-        onSwitchOrganization={handleSwitchOrganization}
-        onCreateOrganization={handleCreateOrganization}
-        allowPersonalOrganization={false}
+        variant="floating"
         showFaq={false}
         showSecurity={false}
         showPricing={true}
-        topOffset={showOfflineBar ? `${barHeightRem}rem` : undefined}
-        rightSideActions={auth.user ? <NotificationCenter /> : null}
+        topOffset={showOfflineBar ? '2.5rem' : undefined}
         apps={CIPHERA_APPS}
         currentAppId="pulse"
-        onOpenSettings={openSettings}
         customNavItems={
-          <>
-            {!auth.user && (
-              <Link
-                href="/features"
-                className="px-4 py-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-lg hover:bg-neutral-100/50 dark:hover:bg-neutral-800/50 transition-all duration-200"
-              >
-                Features
-              </Link>
-            )}
-          </>
+          <Link
+            href="/features"
+            className="px-4 py-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-lg hover:bg-neutral-100/50 dark:hover:bg-neutral-800/50 transition-all duration-200"
+          >
+            Features
+          </Link>
         }
       />
-      <main
-        className={`flex-1 pb-8 ${showOfflineBar ? '' : 'pt-24'}`}
-        style={showOfflineBar ? { paddingTop: `${mainTopPaddingRem}rem` } : undefined}
-      >
+      <main className="flex-1 pb-8 pt-24">
         {children}
       </main>
       <Footer
         LinkComponent={Link}
         appName="Pulse"
-        isAuthenticated={!!auth.user}
+        isAuthenticated={false}
       />
       <SettingsModalWrapper />
-    </>
+    </div>
   )
 }
 
