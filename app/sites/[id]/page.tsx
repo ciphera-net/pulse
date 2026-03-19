@@ -438,11 +438,11 @@ export default function SiteDashboardPage() {
 
   return (
     <div className={`w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
+              <h1 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">
                 {site.name}
               </h1>
               <p className="text-neutral-600 dark:text-neutral-400">
@@ -539,7 +539,7 @@ export default function SiteDashboardPage() {
       )}
 
       {/* Advanced Chart with Integrated Stats */}
-      <div className="mb-8">
+      <div className="mb-6">
         <Chart
           data={dailyStats}
           prevData={prevDailyStats}
@@ -561,7 +561,7 @@ export default function SiteDashboardPage() {
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2 mb-8 [&>*]:min-w-0">
+      <div className="grid gap-6 lg:grid-cols-2 mb-6 [&>*]:min-w-0">
         <ContentStats
           topPages={dashboard?.top_pages ?? []}
           entryPages={dashboard?.entry_pages ?? []}
@@ -581,7 +581,7 @@ export default function SiteDashboardPage() {
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2 mb-8 [&>*]:min-w-0">
+      <div className="grid gap-6 lg:grid-cols-2 mb-6 [&>*]:min-w-0">
         <Locations
           countries={dashboard?.countries ?? []}
           cities={dashboard?.cities ?? []}
@@ -604,11 +604,11 @@ export default function SiteDashboardPage() {
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2 mb-8 [&>*]:min-w-0">
+      <div className="grid gap-6 lg:grid-cols-2 mb-6 [&>*]:min-w-0">
         <Campaigns siteId={siteId} dateRange={dateRange} filters={filtersParam || undefined} onFilter={handleAddFilter} />
         <PeakHours siteId={siteId} dateRange={dateRange} />
       </div>
-      <div className="grid gap-6 lg:grid-cols-2 mb-8 [&>*]:min-w-0">
+      <div className="grid gap-6 lg:grid-cols-2 mb-6 [&>*]:min-w-0">
         <SearchPerformance siteId={siteId} dateRange={dateRange} />
         <GoalStats
           goalCounts={(dashboard?.goal_counts ?? []).filter(g => !/^scroll_\d+$/.test(g.event_name))}
