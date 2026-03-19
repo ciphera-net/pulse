@@ -390,23 +390,27 @@ export default function Sidebar({
         <div className="border-t border-neutral-200/60 dark:border-neutral-800/60 px-2 py-3 shrink-0">
           {/* Notifications, Profile — same layout as nav items */}
           <div className="space-y-0.5 mb-1">
-            <NotificationCenter anchor="right" variant="sidebar">
-              <Label collapsed={c}>Notifications</Label>
-            </NotificationCenter>
-            <UserMenu
-              auth={auth}
-              LinkComponent={Link}
-              orgs={orgs}
-              activeOrgId={auth.user?.org_id}
-              onSwitchOrganization={handleSwitchOrganization}
-              onCreateOrganization={() => router.push('/onboarding')}
-              allowPersonalOrganization={false}
-              onOpenSettings={openSettings}
-              compact
-              anchor="right"
-            >
-              <Label collapsed={c}>{user?.display_name?.trim() || 'Profile'}</Label>
-            </UserMenu>
+            <span title={c ? 'Notifications' : undefined}>
+              <NotificationCenter anchor="right" variant="sidebar">
+                <Label collapsed={c}>Notifications</Label>
+              </NotificationCenter>
+            </span>
+            <span title={c ? (user?.display_name?.trim() || 'Profile') : undefined}>
+              <UserMenu
+                auth={auth}
+                LinkComponent={Link}
+                orgs={orgs}
+                activeOrgId={auth.user?.org_id}
+                onSwitchOrganization={handleSwitchOrganization}
+                onCreateOrganization={() => router.push('/onboarding')}
+                allowPersonalOrganization={false}
+                onOpenSettings={openSettings}
+                compact
+                anchor="right"
+              >
+                <Label collapsed={c}>{user?.display_name?.trim() || 'Profile'}</Label>
+              </UserMenu>
+            </span>
           </div>
 
           {/* Settings + Collapse */}
