@@ -219,10 +219,10 @@ export default function PricingSection() {
         transition={{ duration: 0.5 }}
         className="text-center mb-12"
       >
-        <h2 className="text-3xl font-bold text-neutral-900 dark:text-white mb-4">
+        <h2 className="text-3xl font-bold text-white mb-4">
           Transparent Pricing
         </h2>
-        <p className="text-lg text-neutral-600 dark:text-neutral-400">
+        <p className="text-lg text-neutral-400">
           Scale with your traffic. No hidden fees.
         </p>
       </motion.div>
@@ -232,13 +232,13 @@ export default function PricingSection() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
-        className="max-w-6xl mx-auto border border-neutral-200 dark:border-neutral-800 rounded-2xl bg-white/50 dark:bg-neutral-900/50 backdrop-blur-xl shadow-sm overflow-hidden mb-20"
+        className="max-w-6xl mx-auto border border-neutral-800 rounded-2xl bg-neutral-900/50 backdrop-blur-xl shadow-sm overflow-hidden mb-20"
       >
         
         {/* Top Toolbar */}
-        <div className="p-6 border-b border-neutral-200 dark:border-neutral-800 flex flex-col md:flex-row items-center justify-between gap-8 bg-neutral-50/50 dark:bg-neutral-900/50">
+        <div className="p-6 border-b border-neutral-800 flex flex-col md:flex-row items-center justify-between gap-8 bg-neutral-900/50">
           <div className="w-full md:w-2/3">
-            <div className="flex justify-between text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-4">
+            <div className="flex justify-between text-sm font-medium text-neutral-400 mb-4">
               <span>10k</span>
               <span className="text-brand-orange font-bold text-lg">
                 Up to {currentTraffic.label} monthly pageviews
@@ -254,23 +254,23 @@ export default function PricingSection() {
               onChange={(e) => setSliderIndex(parseInt(e.target.value))}
               aria-label="Monthly pageview limit"
               aria-valuetext={`${currentTraffic.label} pageviews per month`}
-              className="w-full h-2 bg-neutral-200 rounded-lg appearance-none cursor-pointer dark:bg-neutral-700 accent-brand-orange focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2"
+              className="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-brand-orange focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2"
             />
           </div>
 
           <div className="flex flex-col items-end gap-2 shrink-0">
-            <span className="text-xs text-neutral-500 dark:text-neutral-400 font-medium uppercase tracking-wide">
+            <span className="text-xs text-neutral-400 font-medium uppercase tracking-wide">
               Get 1 month free with yearly
             </span>
-            <div className="bg-neutral-200 dark:bg-neutral-800 p-1 rounded-lg flex" role="radiogroup" aria-label="Billing interval">
+            <div className="bg-neutral-800 p-1 rounded-lg flex" role="radiogroup" aria-label="Billing interval">
               <button
                 onClick={() => setIsYearly(false)}
                 role="radio"
                 aria-checked={!isYearly}
                 className={`min-w-[88px] px-4 py-2 rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ${
                   !isYearly
-                    ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
-                    : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
+                    ? 'bg-neutral-700 text-white shadow-sm'
+                    : 'text-neutral-500 hover:text-white'
                 }`}
               >
                 Monthly
@@ -281,8 +281,8 @@ export default function PricingSection() {
                 aria-checked={isYearly}
                 className={`min-w-[88px] px-4 py-2 rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ${
                   isYearly
-                    ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
-                    : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
+                    ? 'bg-neutral-700 text-white shadow-sm'
+                    : 'text-neutral-500 hover:text-white'
                 }`}
               >
                 Yearly
@@ -292,15 +292,15 @@ export default function PricingSection() {
         </div>
 
         {/* Pricing Grid */}
-        <div className="grid md:grid-cols-5 divide-y md:divide-y-0 md:divide-x divide-neutral-200 dark:divide-neutral-800">
+        <div className="grid md:grid-cols-5 divide-y md:divide-y-0 md:divide-x divide-neutral-800">
           {/* Free Plan */}
-          <div className="p-6 flex flex-col relative transition-colors hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50">
+          <div className="p-6 flex flex-col relative transition-colors hover:bg-neutral-800/50">
             <div className="mb-8">
-              <h3 className="text-lg font-bold text-neutral-900 dark:text-white mb-2">Free</h3>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400 min-h-[40px] mb-4">For trying Pulse on a personal project</p>
+              <h3 className="text-lg font-bold text-white mb-2">Free</h3>
+              <p className="text-sm text-neutral-400 min-h-[40px] mb-4">For trying Pulse on a personal project</p>
               <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-bold text-neutral-900 dark:text-white">€0</span>
-                <span className="text-neutral-500 dark:text-neutral-400 font-medium">/forever</span>
+                <span className="text-4xl font-bold text-white">€0</span>
+                <span className="text-neutral-400 font-medium">/forever</span>
               </div>
             </div>
 
@@ -320,7 +320,7 @@ export default function PricingSection() {
 
             <ul className="space-y-4 flex-grow">
               {['1 site', '5k monthly pageviews', '6 months data retention', '100% Data ownership'].map((feature) => (
-                <li key={feature} className="flex items-start gap-3 text-sm text-neutral-600 dark:text-neutral-400">
+                <li key={feature} className="flex items-start gap-3 text-sm text-neutral-400">
                   <CheckCircleIcon className="w-5 h-5 shrink-0 text-neutral-400" />
                   <span>{feature}</span>
                 </li>
@@ -333,7 +333,7 @@ export default function PricingSection() {
             const isTeam = plan.id === 'team'
 
             return (
-              <div key={plan.id} className={`p-6 flex flex-col relative transition-colors ${isTeam ? 'bg-brand-orange/[0.02]' : 'hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50'}`}>
+              <div key={plan.id} className={`p-6 flex flex-col relative transition-colors ${isTeam ? 'bg-brand-orange/[0.02]' : 'hover:bg-neutral-800/50'}`}>
                 {isTeam && (
                   <>
                     <div className="absolute top-0 left-0 w-full h-1 bg-brand-orange" />
@@ -344,17 +344,17 @@ export default function PricingSection() {
                 )}
                 
                 <div className="mb-8">
-                  <h3 className="text-lg font-bold text-neutral-900 dark:text-white mb-2">{plan.name}</h3>
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400 min-h-[40px] mb-4">{plan.description}</p>
+                  <h3 className="text-lg font-bold text-white mb-2">{plan.name}</h3>
+                  <p className="text-sm text-neutral-400 min-h-[40px] mb-4">{plan.description}</p>
                   
                   {priceDetails ? (
                     isYearly ? (
                       <div>
                         <div className="flex items-baseline gap-1">
-                          <span className="text-4xl font-bold text-neutral-900 dark:text-white">
+                          <span className="text-4xl font-bold text-white">
                             €{priceDetails.yearlyTotal}
                           </span>
-                          <span className="text-neutral-500 dark:text-neutral-400 font-medium">/year</span>
+                          <span className="text-neutral-400 font-medium">/year</span>
                         </div>
                         <div className="flex items-center gap-2 mt-2 text-sm font-medium">
                           <span className="text-neutral-400 line-through decoration-neutral-400">
@@ -367,14 +367,14 @@ export default function PricingSection() {
                       </div>
                     ) : (
                       <div className="flex items-baseline gap-1">
-                        <span className="text-4xl font-bold text-neutral-900 dark:text-white">
+                        <span className="text-4xl font-bold text-white">
                           €{priceDetails.baseMonthly}
                         </span>
-                        <span className="text-neutral-500 dark:text-neutral-400 font-medium">/mo</span>
+                        <span className="text-neutral-400 font-medium">/mo</span>
                       </div>
                     )
                   ) : (
-                    <div className="text-4xl font-bold text-neutral-900 dark:text-white">
+                    <div className="text-4xl font-bold text-white">
                       Custom
                     </div>
                   )}
@@ -391,7 +391,7 @@ export default function PricingSection() {
 
                 <ul className="space-y-4 flex-grow">
                   {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-start gap-3 text-sm text-neutral-600 dark:text-neutral-400">
+                    <li key={feature} className="flex items-start gap-3 text-sm text-neutral-400">
                       <CheckCircleIcon className={`w-5 h-5 shrink-0 ${isTeam ? 'text-brand-orange' : 'text-neutral-400'}`} />
                       <span>{feature}</span>
                     </li>
@@ -402,11 +402,11 @@ export default function PricingSection() {
           })}
 
           {/* Enterprise Section */}
-          <div className="p-6 bg-neutral-50/50 dark:bg-neutral-900/50 flex flex-col">
+          <div className="p-6 bg-neutral-900/50 flex flex-col">
             <div className="mb-8">
-              <h3 className="text-lg font-bold text-neutral-900 dark:text-white mb-2">Enterprise</h3>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400 min-h-[40px] mb-4">For high volume sites and custom needs</p>
-              <div className="text-4xl font-bold text-neutral-900 dark:text-white">
+              <h3 className="text-lg font-bold text-white mb-2">Enterprise</h3>
+              <p className="text-sm text-neutral-400 min-h-[40px] mb-4">For high volume sites and custom needs</p>
+              <div className="text-4xl font-bold text-white">
                 Custom
               </div>
             </div>
@@ -428,7 +428,7 @@ export default function PricingSection() {
                 'Managed Proxy',
                 'Raw data export'
               ].map((feature) => (
-                <li key={feature} className="flex items-start gap-3 text-sm text-neutral-600 dark:text-neutral-400">
+                <li key={feature} className="flex items-start gap-3 text-sm text-neutral-400">
                   <CheckCircleIcon className="w-5 h-5 text-neutral-400 shrink-0" />
                   <span>{feature}</span>
                 </li>

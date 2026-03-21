@@ -39,9 +39,9 @@ export function IntegrationGuide({ integration, children }: IntegrationGuideProp
     <div className="relative min-h-screen flex flex-col overflow-hidden">
       {/* * --- ATMOSPHERE (Background) --- */}
       <div className="absolute inset-0 -z-10 pointer-events-none">
-        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-neutral-500/10 dark:bg-neutral-400/10 rounded-full blur-[128px] opacity-40" />
+        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-neutral-400/10 rounded-full blur-[128px] opacity-40" />
         <div
-          className="absolute inset-0 bg-grid-pattern opacity-[0.02] dark:opacity-[0.05]"
+          className="absolute inset-0 bg-grid-pattern opacity-[0.05]"
           style={{ maskImage: 'radial-gradient(ellipse at center, black 0%, transparent 70%)' }}
         />
       </div>
@@ -56,18 +56,18 @@ export function IntegrationGuide({ integration, children }: IntegrationGuideProp
         </Link>
 
         <div className="flex items-center gap-4 mb-8">
-          <div className="p-3 bg-neutral-100 dark:bg-neutral-800 rounded-xl">
+          <div className="p-3 bg-neutral-800 rounded-xl">
             {headerIcon}
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-neutral-900 dark:text-white">
+          <h1 className="text-4xl md:text-5xl font-bold text-white">
             {integration.name} Integration
           </h1>
         </div>
 
-        <div className="prose prose-neutral dark:prose-invert max-w-none">
+        <div className="prose prose-invert max-w-none">
           {children}
 
-          <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
+          <hr className="my-8 border-neutral-800" />
           <h3>Optional: Frustration Tracking</h3>
           <p>
             Detect rage clicks and dead clicks by adding the frustration tracking
@@ -82,8 +82,8 @@ export function IntegrationGuide({ integration, children }: IntegrationGuideProp
 
         {/* * --- Related Integrations --- */}
         {relatedIntegrations.length > 0 && (
-          <div className="mt-16 pt-10 border-t border-neutral-200 dark:border-neutral-800">
-            <h2 className="text-xl font-bold text-neutral-900 dark:text-white mb-6">
+          <div className="mt-16 pt-10 border-t border-neutral-800">
+            <h2 className="text-xl font-bold text-white mb-6">
               Related Integrations
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -91,16 +91,16 @@ export function IntegrationGuide({ integration, children }: IntegrationGuideProp
                 <Link
                   key={related.id}
                   href={`/integrations/${related.id}`}
-                  className="group flex items-center gap-4 p-4 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-sm border border-neutral-200 dark:border-neutral-800 rounded-xl hover:border-brand-orange/50 dark:hover:border-brand-orange/50 transition-all duration-300"
+                  className="group flex items-center gap-4 p-4 bg-neutral-900/50 backdrop-blur-sm border border-neutral-800 rounded-xl hover:border-brand-orange/50 transition-all duration-300"
                 >
-                  <div className="p-2 bg-neutral-100 dark:bg-neutral-800 rounded-lg shrink-0 [&_svg]:w-6 [&_svg]:h-6">
+                  <div className="p-2 bg-neutral-800 rounded-lg shrink-0 [&_svg]:w-6 [&_svg]:h-6">
                     {related.icon}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <span className="font-semibold text-neutral-900 dark:text-white block">
+                    <span className="font-semibold text-white block">
                       {related.name}
                     </span>
-                    <span className="text-sm text-neutral-500 dark:text-neutral-400 truncate block">
+                    <span className="text-sm text-neutral-400 truncate block">
                       {related.description}
                     </span>
                   </div>

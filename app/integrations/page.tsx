@@ -93,9 +93,9 @@ export default function IntegrationsPage() {
     <div className="relative min-h-screen flex flex-col overflow-hidden">
       {/* * --- ATMOSPHERE (Background) --- */}
       <div className="absolute inset-0 -z-10 pointer-events-none">
-        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-neutral-500/10 dark:bg-neutral-400/10 rounded-full blur-[128px] opacity-40" />
+        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-neutral-400/10 rounded-full blur-[128px] opacity-40" />
         <div
-          className="absolute inset-0 bg-grid-pattern opacity-[0.02] dark:opacity-[0.05]"
+          className="absolute inset-0 bg-grid-pattern opacity-[0.05]"
           style={{ maskImage: 'radial-gradient(ellipse at center, black 0%, transparent 70%)' }}
         />
       </div>
@@ -109,14 +109,14 @@ export default function IntegrationsPage() {
         >
           {/* * --- Title with count badge --- */}
           <div className="flex items-center justify-center gap-3 mb-6">
-            <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-neutral-900 dark:text-white">
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white">
               Integrations
             </h1>
             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-brand-orange/10 text-brand-orange border border-brand-orange/20">
               {integrations.length}+
             </span>
           </div>
-          <p className="text-xl text-neutral-600 dark:text-neutral-400 max-w-2xl mx-auto leading-relaxed mb-8">
+          <p className="text-xl text-neutral-400 max-w-2xl mx-auto leading-relaxed mb-8">
             Connect Pulse with {integrations.length}+ frameworks and platforms in minutes.
           </p>
 
@@ -143,12 +143,12 @@ export default function IntegrationsPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search integrations..."
-              className="w-full pl-12 pr-16 py-3 bg-white/70 dark:bg-neutral-900/70 backdrop-blur-sm border border-neutral-200 dark:border-neutral-800 rounded-xl text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-orange/50 focus:border-brand-orange/50 transition-all"
+              className="w-full pl-12 pr-16 py-3 bg-neutral-900/70 backdrop-blur-sm border border-neutral-800 rounded-xl text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-orange/50 focus:border-brand-orange/50 transition-all"
             />
             {query ? (
               <button
                 onClick={() => setQuery('')}
-                className="absolute inset-y-0 right-0 flex items-center pr-4 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+                className="absolute inset-y-0 right-0 flex items-center pr-4 text-neutral-400 hover:text-neutral-600 hover:text-neutral-300 transition-colors"
                 aria-label="Clear search"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -157,7 +157,7 @@ export default function IntegrationsPage() {
               </button>
             ) : (
               <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
-                <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono font-medium bg-neutral-200/80 dark:bg-neutral-700/80 text-neutral-500 dark:text-neutral-400 border border-neutral-300 dark:border-neutral-600">
+                <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono font-medium bg-neutral-700/80 text-neutral-400 border border-neutral-600">
                   /
                 </kbd>
               </div>
@@ -169,7 +169,7 @@ export default function IntegrationsPage() {
             <motion.p
               initial={{ opacity: 0, y: -5 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-sm text-neutral-500 dark:text-neutral-400 mt-3"
+              className="text-sm text-neutral-400 mt-3"
             >
               {totalResults} {totalResults === 1 ? 'integration' : 'integrations'} found
               {query && <> for &ldquo;{query}&rdquo;</>}
@@ -189,7 +189,7 @@ export default function IntegrationsPage() {
             className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
               activeCategory === 'all'
                 ? 'bg-brand-orange text-white shadow-sm'
-                : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'
+                : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
             }`}
           >
             All
@@ -201,7 +201,7 @@ export default function IntegrationsPage() {
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
                 activeCategory === cat
                   ? 'bg-brand-orange text-white shadow-sm'
-                  : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'
+                  : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
               }`}
             >
               {categoryLabels[cat]}
@@ -226,7 +226,7 @@ export default function IntegrationsPage() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.4 }}
-                    className="text-lg font-semibold text-neutral-500 dark:text-neutral-400 mb-6 tracking-wide uppercase flex items-center gap-2"
+                    className="text-lg font-semibold text-neutral-400 mb-6 tracking-wide uppercase flex items-center gap-2"
                   >
                     <svg className="w-5 h-5 text-brand-orange" fill="currentColor" viewBox="0 0 20 20">
                       <path d="M10 1l2.39 4.84 5.34.78-3.87 3.77.91 5.33L10 13.27l-4.77 2.5.91-5.33L2.27 6.67l5.34-.78L10 1z" />
@@ -245,12 +245,12 @@ export default function IntegrationsPage() {
                       >
                         <Link
                           href={`/integrations/${integration!.id}`}
-                          className="group flex items-center gap-3 p-4 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-sm border border-neutral-200 dark:border-neutral-800 rounded-xl hover:border-brand-orange/50 dark:hover:border-brand-orange/50 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg h-full"
+                          className="group flex items-center gap-3 p-4 bg-neutral-900/50 backdrop-blur-sm border border-neutral-800 rounded-xl hover:border-brand-orange/50 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg h-full"
                         >
-                          <div className="p-2 bg-neutral-100 dark:bg-neutral-800 rounded-lg shrink-0 group-hover:scale-110 transition-transform duration-300 [&_svg]:w-6 [&_svg]:h-6">
+                          <div className="p-2 bg-neutral-800 rounded-lg shrink-0 group-hover:scale-110 transition-transform duration-300 [&_svg]:w-6 [&_svg]:h-6">
                             {integration!.icon}
                           </div>
-                          <span className="font-semibold text-neutral-900 dark:text-white text-sm">
+                          <span className="font-semibold text-white text-sm">
                             {integration!.name}
                           </span>
                         </Link>
@@ -268,7 +268,7 @@ export default function IntegrationsPage() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.4 }}
-                    className="text-lg font-semibold text-neutral-500 dark:text-neutral-400 mb-6 tracking-wide uppercase"
+                    className="text-lg font-semibold text-neutral-400 mb-6 tracking-wide uppercase"
                   >
                     {group.label}
                   </motion.h2>
@@ -284,19 +284,19 @@ export default function IntegrationsPage() {
                       >
                         <Link
                           href={`/integrations/${integration.id}`}
-                          className="group relative p-6 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-sm border border-neutral-200 dark:border-neutral-800 rounded-2xl hover:border-brand-orange/50 dark:hover:border-brand-orange/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl block h-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2"
+                          className="group relative p-6 bg-neutral-900/50 backdrop-blur-sm border border-neutral-800 rounded-2xl hover:border-brand-orange/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl block h-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2"
                         >
                           <div className="flex items-start justify-between mb-6">
-                            <div className="p-3 bg-neutral-100 dark:bg-neutral-800 rounded-xl group-hover:scale-110 transition-transform duration-300">
+                            <div className="p-3 bg-neutral-800 rounded-xl group-hover:scale-110 transition-transform duration-300">
                               {integration.icon}
                             </div>
                             <ArrowRightIcon className="w-5 h-5 text-neutral-400 group-hover:text-brand-orange transition-colors" />
                           </div>
 
-                          <h3 className="text-xl font-bold text-neutral-900 dark:text-white mb-3">
+                          <h3 className="text-xl font-bold text-white mb-3">
                             {integration.name}
                           </h3>
-                          <p className="text-neutral-600 dark:text-neutral-400 leading-relaxed mb-4">
+                          <p className="text-neutral-400 leading-relaxed mb-4">
                             {integration.description}
                           </p>
                           <span className="text-sm font-medium text-brand-orange opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
@@ -317,20 +317,20 @@ export default function IntegrationsPage() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.3 }}
-              className="max-w-md mx-auto mt-8 p-10 border border-dashed border-neutral-300 dark:border-neutral-700 rounded-2xl flex flex-col items-center justify-center text-center"
+              className="max-w-md mx-auto mt-8 p-10 border border-dashed border-neutral-700 rounded-2xl flex flex-col items-center justify-center text-center"
             >
-              <div className="p-4 bg-neutral-100 dark:bg-neutral-800 rounded-full mb-4">
+              <div className="p-4 bg-neutral-800 rounded-full mb-4">
                 <svg className="w-8 h-8 text-neutral-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-bold text-neutral-900 dark:text-white mb-2">
+              <h3 className="text-xl font-bold text-white mb-2">
                 Missing something?
               </h3>
-              <p className="text-neutral-600 dark:text-neutral-400 text-sm mb-1">
+              <p className="text-neutral-400 text-sm mb-1">
                 No integrations found for &ldquo;{query}&rdquo;.
               </p>
-              <p className="text-neutral-600 dark:text-neutral-400 text-sm mb-5">
+              <p className="text-neutral-400 text-sm mb-5">
                 Let us know which integration you&apos;d like to see next.
               </p>
               <a
@@ -350,12 +350,12 @@ export default function IntegrationsPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
-            className="max-w-md mx-auto mt-12 p-6 border border-dashed border-neutral-300 dark:border-neutral-700 rounded-2xl flex flex-col items-center justify-center text-center"
+            className="max-w-md mx-auto mt-12 p-6 border border-dashed border-neutral-700 rounded-2xl flex flex-col items-center justify-center text-center"
           >
-            <h3 className="text-xl font-bold text-neutral-900 dark:text-white mb-2">
+            <h3 className="text-xl font-bold text-white mb-2">
               Missing something?
             </h3>
-            <p className="text-neutral-600 dark:text-neutral-400 text-sm mb-4">
+            <p className="text-neutral-400 text-sm mb-4">
               Let us know which integration you&apos;d like to see next.
             </p>
             <a
