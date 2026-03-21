@@ -6,8 +6,6 @@ export default function NotFound() {
     <div className="relative min-h-[80vh] flex flex-col items-center justify-center overflow-hidden">
       {/* * --- ATMOSPHERE (Background) --- */}
       <div className="absolute inset-0 -z-10 pointer-events-none">
-        {/* * Center Orange Glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-brand-orange/10 rounded-full blur-[128px] opacity-60" />
         {/* * Grid Pattern with Radial Mask */}
         <div 
           className="absolute inset-0 bg-grid-pattern opacity-[0.02] dark:opacity-[0.05]"

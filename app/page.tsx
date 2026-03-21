@@ -23,8 +23,6 @@ import { formatDate } from '@/lib/utils/formatDate'
 function DashboardPreview() {
   return (
     <div className="relative w-full max-w-7xl mx-auto mt-20 mb-32">
-      <div className="absolute inset-0 bg-brand-orange/20 blur-[100px] -z-10 rounded-full opacity-50" />
-
       <motion.div
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
@@ -238,8 +236,6 @@ export default function HomePage() {
         
         {/* * --- 1. ATMOSPHERE (Background) --- */}
         <div className="absolute inset-0 -z-10 pointer-events-none">
-          {/* * Top-left Orange Glow */}
-          <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-brand-orange/10 rounded-full blur-[128px] opacity-60" />
           {/* * Bottom-right Neutral Glow */}
           <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-neutral-500/10 dark:bg-neutral-400/10 rounded-full blur-[128px] opacity-40" />
           {/* * Grid Pattern with Radial Mask */}
