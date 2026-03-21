@@ -228,6 +228,7 @@ export default function FunnelReportPage() {
             labelLayout="grouped"
             labelAlign="center"
             labelOrientation="vertical"
+            style={{ aspectRatio: '4 / 1' }}
           />
         </div>
 
