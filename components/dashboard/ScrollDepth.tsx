@@ -28,13 +28,13 @@ export default function ScrollDepth({ goalCounts, totalPageviews }: ScrollDepthP
   }))
 
   return (
-    <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
+    <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 h-full flex flex-col">
       <div className="flex items-center justify-between mb-1">
-        <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
+        <h3 className="text-lg font-semibold text-white">
           Scroll Depth
         </h3>
       </div>
-      <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
+      <p className="text-sm text-neutral-400 mb-4">
         % of visitors who scrolled this far
       </p>
 
@@ -73,13 +73,13 @@ export default function ScrollDepth({ goalCounts, totalPageviews }: ScrollDepthP
         </div>
       ) : (
         <div className="flex-1 min-h-[270px] flex flex-col items-center justify-center text-center px-6 py-8 gap-4">
-          <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
-            <BarChartIcon className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
+          <div className="rounded-full bg-neutral-800 p-4">
+            <BarChartIcon className="w-8 h-8 text-neutral-400" />
           </div>
-          <h4 className="font-semibold text-neutral-900 dark:text-white">
+          <h4 className="font-semibold text-white">
             No scroll data yet
           </h4>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 max-w-md">
+          <p className="text-sm text-neutral-400 max-w-md">
             Scroll depth tracking is automatic — data will appear here once visitors start scrolling on your pages.
           </p>
         </div>

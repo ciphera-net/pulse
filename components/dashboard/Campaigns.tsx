@@ -124,17 +124,17 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
 
   return (
     <>
-      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
+      <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Megaphone className="w-5 h-5 text-neutral-400 dark:text-neutral-500" weight="bold" />
-            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
+            <h3 className="text-lg font-semibold text-white">
               Campaigns
             </h3>
             {showViewAll && (
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all cursor-pointer rounded-lg"
+                className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-lg"
                 aria-label="View all campaigns"
               >
                 <FrameCornersIcon className="w-4 h-4" weight="bold" />
@@ -161,13 +161,13 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
                   <div
                     key={`${item.source}|${item.medium}|${item.campaign}`}
                     onClick={() => onFilter?.({ dimension: 'utm_source', operator: 'is', values: [item.source] })}
-                    className={`relative flex items-center justify-between py-1.5 group hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 rounded-lg px-2 -mx-2 transition-colors${onFilter ? ' cursor-pointer' : ''}`}
+                    className={`relative flex items-center justify-between py-1.5 group hover:bg-neutral-800/50 rounded-lg px-2 -mx-2 transition-colors${onFilter ? ' cursor-pointer' : ''}`}
                   >
                     <div
                       className="absolute inset-y-0.5 left-0.5 bg-brand-orange/15 dark:bg-brand-orange/40 rounded-md transition-all"
                       style={{ width: `${barWidth}%` }}
                     />
-                    <div className="relative flex-1 text-neutral-900 dark:text-white flex items-center gap-3 min-w-0">
+                    <div className="relative flex-1 text-white flex items-center gap-3 min-w-0">
                       {renderSourceIcon(item.source)}
                       <div className="min-w-0">
                         <div className="truncate font-medium text-sm" title={item.source}>
@@ -184,7 +184,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
                       <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
                         {totalVisitors > 0 ? `${Math.round((item.visitors / totalVisitors) * 100)}%` : ''}
                       </span>
-                      <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
+                      <span className="text-sm font-semibold text-neutral-400">
                         {formatNumber(item.visitors)}
                       </span>
                     </div>
@@ -197,13 +197,13 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
             </>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
-              <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
-                <Megaphone className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
+              <div className="rounded-full bg-neutral-800 p-4">
+                <Megaphone className="w-8 h-8 text-neutral-400" />
               </div>
-              <h4 className="font-semibold text-neutral-900 dark:text-white">
+              <h4 className="font-semibold text-white">
                 Track your marketing campaigns
               </h4>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400 max-w-xs">
+              <p className="text-sm text-neutral-400 max-w-xs">
                 Add UTM parameters to your links to see campaign performance here.
               </p>
               <button
@@ -230,7 +230,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
             value={modalSearch}
             onChange={(e) => setModalSearch(e.target.value)}
             placeholder="Search campaigns..."
-            className="w-full px-3 py-2 mb-3 text-sm bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
+            className="w-full px-3 py-2 mb-3 text-sm bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
           />
         </div>
         <div className="max-h-[80vh]">
@@ -262,12 +262,12 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
                     <div
                       key={`${item.source}|${item.medium}|${item.campaign}`}
                       onClick={() => { if (onFilter) { onFilter({ dimension: 'utm_source', operator: 'is', values: [item.source] }); setIsModalOpen(false) } }}
-                      className={`flex items-center justify-between py-2 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 transition-colors${onFilter ? ' cursor-pointer' : ''}`}
+                      className={`flex items-center justify-between py-2 group hover:bg-neutral-800 rounded-lg px-2 transition-colors${onFilter ? ' cursor-pointer' : ''}`}
                     >
                       <div className="flex-1 flex items-center gap-3 min-w-0">
                         {renderSourceIcon(item.source)}
                         <div className="min-w-0">
-                          <div className="text-neutral-900 dark:text-white font-medium truncate text-sm" title={item.source}>
+                          <div className="text-white font-medium truncate text-sm" title={item.source}>
                             {getReferrerDisplayName(item.source)}
                           </div>
                           <div className="flex items-center gap-1.5 text-[11px] text-neutral-400 dark:text-neutral-500">
@@ -281,7 +281,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
                         <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
                           {modalTotal > 0 ? `${Math.round((item.visitors / modalTotal) * 100)}%` : ''}
                         </span>
-                        <span className="font-semibold text-neutral-900 dark:text-white">
+                        <span className="font-semibold text-white">
                           {formatNumber(item.visitors)}
                         </span>
                         <span className="text-neutral-400 dark:text-neutral-500 w-16 text-right">
