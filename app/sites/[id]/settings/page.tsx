@@ -40,7 +40,7 @@ function SlackIcon({ size = 16, color = '#4A154B' }: { size?: number; color?: st
 
 const CHANNEL_ICONS: Record<string, React.ReactNode> = {
   email: <Envelope className="w-4 h-4" />,
-  slack: <SlackIcon size={16} color="#E01E5A" />,
+  slack: <SlackIcon size={16} color="#fff" />,
   discord: <SiDiscord size={16} color="#5865F2" />,
   webhook: <WebhooksLogo className="w-4 h-4" />,
 }
