@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { useAuth } from '@/lib/auth/context'
-import { initiateOAuthFlow, initiateSignupFlow } from '@/lib/api/oauth'
+import { initiateOAuthFlow } from '@/lib/api/oauth'
 import { listSites, listDeletedSites, restoreSite, type Site } from '@/lib/api/sites'
 import { getStats } from '@/lib/api/stats'
 import type { Stats } from '@/lib/api/stats'
@@ -15,6 +15,7 @@ import DeleteSiteModal from '@/components/sites/DeleteSiteModal'
 import { Button } from '@ciphera-net/ui'
 import Image from 'next/image'
 import { BarChartIcon, LockIcon, ZapIcon, CheckCircleIcon, XIcon, GlobeIcon } from '@ciphera-net/ui'
+import { Cookie, ShieldCheck, Code, Lightning, ArrowRight, GithubLogo } from '@phosphor-icons/react'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { getSitesLimitForPlan } from '@/lib/plans'
@@ -232,83 +233,82 @@ export default function HomePage() {
 
   if (!user) {
     return (
-      <div className="relative min-h-screen flex flex-col overflow-hidden">
-        
-        {/* * --- 1. ATMOSPHERE (Background) --- */}
-        <div className="absolute inset-0 -z-10 pointer-events-none">
-          {/* * Bottom-right Neutral Glow */}
-          <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-neutral-400/10 rounded-full blur-[128px] opacity-40" />
-          {/* * Grid Pattern with Radial Mask */}
-          <div 
-            className="absolute inset-0 bg-grid-pattern opacity-[0.05]"
-            style={{ maskImage: 'radial-gradient(ellipse at center, black 0%, transparent 70%)' }}
-          />
-        </div>
+      <>
+        {/* HERO — full viewport */}
+        <div className="relative -mt-[88px] min-h-screen flex items-center pt-[88px] pb-20 lg:pb-32 overflow-hidden">
+          {/* Background atmosphere */}
+          <div className="absolute inset-0 -z-10 pointer-events-none">
+            <div className="absolute top-0 left-1/4 w-[800px] h-[800px] bg-brand-orange/5 rounded-full blur-[200px]" />
+            <div className="absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-neutral-500/5 rounded-full blur-[150px]" />
+          </div>
+          <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-neutral-950 to-transparent" />
 
-        <div className="flex-grow w-full max-w-6xl mx-auto px-4 pt-20 pb-10 z-10">
-          
-          {/* * --- 2. BADGE --- */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="inline-flex justify-center mb-8 w-full"
-          >
-            <span className="badge-primary">
-              <span className="w-1.5 h-1.5 rounded-full bg-brand-orange animate-pulse" />
-              Privacy-First Analytics
-            </span>
-          </motion.div>
-
-          {/* * --- 3. HEADLINE --- */}
-          <div className="text-center mb-20">
+          <div className="relative z-10 w-full max-w-6xl mx-auto px-6">
+            {/* H1 */}
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-6"
+              transition={{ duration: 0.5 }}
+              className="text-5xl sm:text-6xl md:text-7xl font-bold text-white leading-[1.1] mb-6"
             >
-              Simple analytics for <br />
+              Analytics without the{' '}
               <span className="relative inline-block">
-                <span className="gradient-text">privacy-conscious</span>
-                {/* * SVG Underline from Main Site */}
+                <span className="gradient-text">surveillance.</span>
                 <svg className="absolute -bottom-2 left-0 w-full h-3 text-brand-orange/30" viewBox="0 0 200 12" preserveAspectRatio="none">
                   <path d="M0 9C50 3 150 3 200 9" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
                 </svg>
               </span>
-              {' '}apps.
             </motion.h1>
 
+            {/* Subtitle */}
             <motion.p
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="text-xl text-neutral-400 max-w-2xl mx-auto mb-10 leading-relaxed"
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="text-xl text-neutral-300 mb-10 leading-relaxed max-w-xl"
             >
-              Respect your users' privacy while getting the insights you need. 
+              Respect your users' privacy while getting the insights you need.
               No cookies, no IP tracking, fully GDPR compliant.
             </motion.p>
 
-            {/* * --- 4. CTAs --- */}
+            {/* CTAs */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="flex flex-row gap-3 flex-wrap mb-10"
+            >
+              <Button onClick={() => initiateOAuthFlow()} variant="primary" className="px-6 py-3 shadow-lg shadow-brand-orange/20 gap-2">
+                Try Pulse Free <ArrowRight weight="bold" className="w-4 h-4" />
+              </Button>
+              <Button onClick={() => window.open('https://github.com/ciphera-net/pulse', '_blank')} variant="secondary" className="px-6 py-3 border border-white/10 gap-2">
+                <GithubLogo weight="bold" className="w-4 h-4" /> View on GitHub
+              </Button>
+            </motion.div>
+
+            {/* Trust badges */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.3 }}
-              className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-20"
+              className="flex flex-wrap gap-x-6 gap-y-3 text-sm text-neutral-400"
             >
-              <Button onClick={() => initiateOAuthFlow()} variant="primary" className="px-8 py-4 text-lg shadow-lg shadow-brand-orange/20">
-                Get Started
-              </Button>
-              <Button onClick={() => initiateSignupFlow()} variant="secondary" className="px-8 py-4 text-lg">
-                Create Account
-              </Button>
+              <span className="flex items-center gap-2"><Cookie weight="bold" className="w-4 h-4" /> Cookie-free</span>
+              <span className="text-neutral-700">|</span>
+              <span className="flex items-center gap-2"><Code weight="bold" className="w-4 h-4" /> Open source client</span>
+              <span className="text-neutral-700">|</span>
+              <span className="flex items-center gap-2"><ShieldCheck weight="bold" className="w-4 h-4" /> GDPR compliant</span>
+              <span className="text-neutral-700">|</span>
+              <span className="flex items-center gap-2"><Lightning weight="bold" className="w-4 h-4" /> Under 2KB</span>
             </motion.div>
           </div>
+        </div>
 
-          {/* * NEW: DASHBOARD PREVIEW */}
+        {/* Existing content below hero */}
+        <div className="w-full max-w-6xl mx-auto px-4 pb-10">
           <DashboardPreview />
 
-          {/* * --- 5. GLASS CARDS --- */}
+          {/* Glass cards */}
           <div className="grid md:grid-cols-3 gap-6 text-left mb-32">
             {[
               { icon: LockIcon, title: "Privacy First", desc: "We don't track personal data. No IP addresses, no fingerprints, no cookies." },
@@ -334,10 +334,9 @@ export default function HomePage() {
             ))}
           </div>
 
-          {/* * NEW: COMPARISON SECTION */}
           <ComparisonSection />
 
-          {/* * NEW: CTA BOTTOM */}
+          {/* Bottom CTA */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -351,9 +350,8 @@ export default function HomePage() {
             </Button>
             <p className="mt-4 text-sm text-neutral-500">No credit card required • Cancel anytime</p>
           </motion.div>
-
         </div>
-      </div>
+      </>
     )
   }
 
