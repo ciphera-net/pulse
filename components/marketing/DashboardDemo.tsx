@@ -179,12 +179,13 @@ export default function DashboardDemo() {
       {/* Orange glow behind */}
       <div className="absolute -inset-8 bg-brand-orange/8 rounded-[2.5rem] blur-3xl" />
 
-      {/* Outer container with showcase bg */}
-      <div className="relative rounded-3xl border border-white/[0.08] overflow-hidden">
+      {/* Outer frame with showcase bg */}
+      <div className="relative rounded-3xl border border-white/[0.08] overflow-hidden p-3 sm:p-4 lg:p-5">
         <img src="/pulse-showcase-bg.png" alt="" className="absolute inset-0 w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-black/50" />
+        <div className="absolute inset-0 bg-black/40" />
 
-        <div className="relative p-4 sm:p-6 lg:p-8">
+        {/* Inner dashboard — solid background */}
+        <div className="relative rounded-2xl bg-neutral-950 p-4 sm:p-6">
           {/* Dashboard header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
@@ -265,6 +266,7 @@ export default function DashboardDemo() {
               onFilter={noop}
             />
           </div>
+        </div>
         </div>
       </div>
     </div>
