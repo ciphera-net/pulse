@@ -180,7 +180,7 @@ export default function DashboardDemo() {
       <div className="absolute -inset-8 bg-brand-orange/8 rounded-[2.5rem] blur-3xl" />
 
       {/* Outer frame with showcase bg */}
-      <div className="relative rounded-3xl border border-white/[0.08] overflow-hidden p-4 sm:p-6 lg:p-8">
+      <div className="relative rounded-3xl border border-white/[0.08] overflow-hidden p-5 sm:p-8 lg:p-10">
         <img src="/pulse-showcase-bg.png" alt="" className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-black/40" />
 
