@@ -11,7 +11,7 @@ const Sidebar = dynamic(() => import('./Sidebar'), {
   // so page content never occupies the sidebar zone
   loading: () => (
     <div
-      className="hidden md:block shrink-0 border-r border-neutral-200/60 dark:border-neutral-800/60 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl"
+      className="hidden md:block shrink-0 border-r border-neutral-800/60 bg-neutral-900/90 backdrop-blur-xl"
       style={{ width: 64 }}
     />
   ),

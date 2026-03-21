@@ -36,14 +36,14 @@ export default function EventProperties({ siteId, eventName, dateRange, onClose 
   const maxCount = values.length > 0 ? values[0].count : 1
 
   return (
-    <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6">
+    <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
+        <h3 className="text-lg font-semibold text-white">
           Properties: <span className="text-brand-orange">{eventName.replace(/_/g, ' ')}</span>
         </h3>
         <button
           onClick={onClose}
-          className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors cursor-pointer"
+          className="text-neutral-400 hover:text-neutral-300 transition-colors cursor-pointer"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -54,11 +54,11 @@ export default function EventProperties({ siteId, eventName, dateRange, onClose 
       {loading ? (
         <div className="animate-pulse space-y-3">
           {[1, 2, 3].map(i => (
-            <div key={i} className="h-8 bg-neutral-100 dark:bg-neutral-800 rounded-lg" />
+            <div key={i} className="h-8 bg-neutral-800 rounded-lg" />
           ))}
         </div>
       ) : keys.length === 0 ? (
-        <p className="text-sm text-neutral-500 dark:text-neutral-400 py-4 text-center">
+        <p className="text-sm text-neutral-400 py-4 text-center">
           No properties recorded for this event yet.
         </p>
       ) : (
@@ -71,7 +71,7 @@ export default function EventProperties({ siteId, eventName, dateRange, onClose 
                 className={`px-3 py-1 text-xs font-medium rounded-full transition-colors cursor-pointer ${
                   selectedKey === k.key
                     ? 'bg-brand-orange text-white'
-                    : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'
+                    : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
                 }`}
               >
                 {k.key}
@@ -84,14 +84,14 @@ export default function EventProperties({ siteId, eventName, dateRange, onClose 
               <div key={v.value} className="flex items-center gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium text-neutral-900 dark:text-white truncate">
+                    <span className="text-sm font-medium text-white truncate">
                       {v.value}
                     </span>
                     <span className="text-xs font-semibold text-brand-orange tabular-nums ml-2">
                       {formatNumber(v.count)}
                     </span>
                   </div>
-                  <div className="w-full h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+                  <div className="w-full h-1.5 bg-neutral-800 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-brand-orange/60 rounded-full transition-all"
                       style={{ width: `${(v.count / maxCount) * 100}%` }}

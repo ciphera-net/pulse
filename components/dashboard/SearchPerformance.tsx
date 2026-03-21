@@ -36,7 +36,7 @@ function ChangeArrow({ current, previous, invert = false }: { current: number; p
 function getPositionBadgeClasses(position: number): string {
   if (position <= 10) return 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 dark:bg-emerald-500/20'
   if (position <= 20) return 'text-brand-orange dark:text-brand-orange bg-brand-orange/10 dark:bg-brand-orange/20'
-  if (position <= 50) return 'text-neutral-400 dark:text-neutral-500 bg-neutral-100 dark:bg-neutral-800'
+  if (position <= 50) return 'text-neutral-400 dark:text-neutral-500 bg-neutral-800'
   return 'text-red-500 dark:text-red-400 bg-red-500/10 dark:bg-red-500/20'
 }
 
@@ -100,16 +100,16 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
 
   return (
     <>
-      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
+      <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 h-full flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <MagnifyingGlass className="w-5 h-5 text-neutral-400 dark:text-neutral-500" weight="bold" />
-            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Search</h3>
+            <h3 className="text-lg font-semibold text-white">Search</h3>
             {showViewAll && (
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all cursor-pointer rounded-lg"
+                className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-lg"
                 aria-label="View all search data"
               >
                 <FrameCornersIcon className="w-4 h-4" weight="bold" />
@@ -125,8 +125,8 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
                 aria-selected={activeTab === tab}
                 className={`relative px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded cursor-pointer ${
                   activeTab === tab
-                    ? 'text-neutral-900 dark:text-white'
-                    : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
+                    ? 'text-white'
+                    : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-300'
                 }`}
               >
                 {getTabLabel(tab)}
@@ -145,9 +145,9 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
         {isLoading ? (
           <div className="flex-1 space-y-4">
             <div className="flex items-center gap-6">
-              <div className="h-4 w-20 bg-neutral-100 dark:bg-neutral-800 rounded animate-pulse" />
-              <div className="h-4 w-24 bg-neutral-100 dark:bg-neutral-800 rounded animate-pulse" />
-              <div className="h-4 w-20 bg-neutral-100 dark:bg-neutral-800 rounded animate-pulse" />
+              <div className="h-4 w-20 bg-neutral-800 rounded animate-pulse" />
+              <div className="h-4 w-24 bg-neutral-800 rounded animate-pulse" />
+              <div className="h-4 w-20 bg-neutral-800 rounded animate-pulse" />
             </div>
             <div className="space-y-2 mt-4">
               <ListSkeleton rows={LIMIT} />
@@ -158,22 +158,22 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
             {/* Inline stats row */}
             <div className="flex items-center gap-5 mb-4">
               <div className="flex items-center gap-1.5">
-                <span className="text-xs text-neutral-500 dark:text-neutral-400">Clicks</span>
-                <span className="text-sm font-semibold text-neutral-900 dark:text-white">
+                <span className="text-xs text-neutral-400">Clicks</span>
+                <span className="text-sm font-semibold text-white">
                   {formatNumber(overview?.total_clicks ?? 0)}
                 </span>
                 <ChangeArrow current={overview?.total_clicks ?? 0} previous={overview?.prev_clicks ?? 0} />
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-xs text-neutral-500 dark:text-neutral-400">Impressions</span>
-                <span className="text-sm font-semibold text-neutral-900 dark:text-white">
+                <span className="text-xs text-neutral-400">Impressions</span>
+                <span className="text-sm font-semibold text-white">
                   {formatNumber(overview?.total_impressions ?? 0)}
                 </span>
                 <ChangeArrow current={overview?.total_impressions ?? 0} previous={overview?.prev_impressions ?? 0} />
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-xs text-neutral-500 dark:text-neutral-400">Avg Position</span>
-                <span className="text-sm font-semibold text-neutral-900 dark:text-white">
+                <span className="text-xs text-neutral-400">Avg Position</span>
+                <span className="text-sm font-semibold text-white">
                   {(overview?.avg_position ?? 0).toFixed(1)}
                 </span>
                 <ChangeArrow current={overview?.avg_position ?? 0} previous={overview?.prev_avg_position ?? 0} invert />
@@ -191,20 +191,20 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
                     return (
                       <div
                         key={label}
-                        className="relative flex items-center justify-between h-9 group hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 rounded-lg px-2 -mx-2 transition-colors"
+                        className="relative flex items-center justify-between h-9 group hover:bg-neutral-800/50 rounded-lg px-2 -mx-2 transition-colors"
                       >
                         <div
                           className="absolute inset-y-0.5 left-0.5 bg-brand-orange/15 dark:bg-brand-orange/40 rounded-md transition-all"
                           style={{ width: `${barWidth}%` }}
                         />
-                        <span className="relative text-sm text-neutral-900 dark:text-white truncate flex-1 min-w-0" title={label}>
+                        <span className="relative text-sm text-white truncate flex-1 min-w-0" title={label}>
                           {label}
                         </span>
                         <div className="relative flex items-center gap-3 ml-4 shrink-0">
                           <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
                             {totalImpressions > 0 ? `${Math.round((row.impressions / totalImpressions) * 100)}%` : ''}
                           </span>
-                          <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
+                          <span className="text-sm font-semibold text-neutral-400">
                             {formatNumber(row.clicks)}
                           </span>
                           <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${getPositionBadgeClasses(row.position)}`}>
@@ -241,7 +241,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
             value={modalSearch}
             onChange={(e) => setModalSearch(e.target.value)}
             placeholder={`Search ${activeTab}...`}
-            className="w-full px-3 py-2 mb-3 text-sm bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
+            className="w-full px-3 py-2 mb-3 text-sm bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
           />
         </div>
         <div className="max-h-[80vh]">
@@ -266,16 +266,16 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
                   return (
                     <div
                       key={label}
-                      className="flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 transition-colors"
+                      className="flex items-center justify-between h-9 group hover:bg-neutral-800 rounded-lg px-2 transition-colors"
                     >
-                      <span className="flex-1 truncate text-sm text-neutral-900 dark:text-white" title={label}>
+                      <span className="flex-1 truncate text-sm text-white" title={label}>
                         {label}
                       </span>
                       <div className="flex items-center gap-3 ml-4">
                         <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
                           {modalTotal > 0 ? `${Math.round((row.impressions / modalTotal) * 100)}%` : ''}
                         </span>
-                        <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
+                        <span className="text-sm font-semibold text-neutral-400">
                           {formatNumber(row.clicks)}
                         </span>
                         <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${getPositionBadgeClasses(row.position)}`}>
