@@ -15,6 +15,7 @@ import DeleteSiteModal from '@/components/sites/DeleteSiteModal'
 import { Button } from '@ciphera-net/ui'
 import { XIcon, GlobeIcon } from '@ciphera-net/ui'
 import { Cookie, ShieldCheck, Code, Lightning, ArrowRight, GithubLogo } from '@phosphor-icons/react'
+import LiveDemo from '@/components/marketing/LiveDemo'
 import FeatureSections from '@/components/marketing/FeatureSections'
 import ComparisonCards from '@/components/marketing/ComparisonCards'
 import CTASection from '@/components/marketing/CTASection'
@@ -150,19 +151,14 @@ export default function HomePage() {
   if (!user) {
     return (
       <>
-        {/* HERO — full viewport */}
-        <div className="relative -mt-[88px] min-h-screen flex items-center pt-[88px] pb-20 lg:pb-32 bg-neutral-950 overflow-hidden">
-          <img src="/pulse-showcase-bg.png" alt="" className="absolute inset-0 w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-black/60" />
-          <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-neutral-950 to-transparent" />
-
-          <div className="relative z-10 w-full max-w-6xl mx-auto px-6">
-            {/* H1 */}
+        {/* HERO — compact headline + live demo */}
+        <div className="pt-20 pb-10 lg:pt-28 lg:pb-16">
+          <div className="w-full max-w-6xl mx-auto px-6 text-center mb-16">
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
-              className="text-5xl sm:text-6xl md:text-7xl font-bold text-white leading-[1.1] mb-6"
+              className="text-4xl sm:text-5xl md:text-6xl font-bold text-white leading-[1.1] mb-6"
             >
               Analytics without the{' '}
               <span className="relative inline-block">
@@ -173,23 +169,21 @@ export default function HomePage() {
               </span>
             </motion.h1>
 
-            {/* Subtitle */}
             <motion.p
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
-              className="text-xl text-neutral-300 mb-10 leading-relaxed max-w-xl"
+              className="text-xl text-neutral-300 mb-8 leading-relaxed max-w-2xl mx-auto"
             >
-              Respect your users' privacy while getting the insights you need.
+              Respect your users&apos; privacy while getting the insights you need.
               No cookies, no IP tracking, fully GDPR compliant.
             </motion.p>
 
-            {/* CTAs */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
-              className="flex flex-row gap-3 flex-wrap mb-10"
+              className="flex flex-row gap-3 flex-wrap justify-center mb-8"
             >
               <Button onClick={() => initiateOAuthFlow()} variant="primary" className="px-6 py-3 shadow-lg shadow-brand-orange/20 gap-2">
                 Try Pulse Free <ArrowRight weight="bold" className="w-4 h-4" />
@@ -199,12 +193,11 @@ export default function HomePage() {
               </Button>
             </motion.div>
 
-            {/* Trust badges */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.3 }}
-              className="flex flex-wrap gap-x-6 gap-y-3 text-sm text-neutral-400"
+              className="flex flex-wrap gap-x-6 gap-y-3 text-sm text-neutral-400 justify-center"
             >
               <span className="flex items-center gap-2"><Cookie weight="bold" className="w-4 h-4" /> Cookie-free</span>
               <span className="text-neutral-700">|</span>
@@ -215,6 +208,16 @@ export default function HomePage() {
               <span className="flex items-center gap-2"><Lightning weight="bold" className="w-4 h-4" /> Under 2KB</span>
             </motion.div>
           </div>
+
+          {/* Live Dashboard Demo */}
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.4 }}
+            className="w-full max-w-7xl mx-auto px-6"
+          >
+            <LiveDemo />
+          </motion.div>
         </div>
 
         <FeatureSections />
