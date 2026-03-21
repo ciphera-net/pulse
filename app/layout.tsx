@@ -1,4 +1,4 @@
-import { ThemeProviders, Toaster } from '@ciphera-net/ui'
+import { Toaster } from '@ciphera-net/ui'
 import { AuthProvider } from '@/lib/auth/context'
 import SWRProvider from '@/components/SWRProvider'
 import type { Metadata, Viewport } from 'next'
@@ -45,15 +45,13 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={plusJakartaSans.variable} suppressHydrationWarning>
-      <body className="antialiased min-h-screen flex flex-col bg-white dark:bg-neutral-950 text-neutral-900 dark:text-neutral-50">
+    <html lang="en" className={`${plusJakartaSans.variable} dark`} suppressHydrationWarning>
+      <body className="antialiased min-h-screen flex flex-col bg-neutral-950 text-neutral-100">
         <SWRProvider>
-          <ThemeProviders>
-            <AuthProvider>
-              <LayoutContent>{children}</LayoutContent>
-              <Toaster />
-            </AuthProvider>
-          </ThemeProviders>
+          <AuthProvider>
+            <LayoutContent>{children}</LayoutContent>
+            <Toaster />
+          </AuthProvider>
         </SWRProvider>
       </body>
     </html>
