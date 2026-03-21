@@ -1,8 +1,11 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import Image from 'next/image'
 import { Check } from '@phosphor-icons/react'
+import { PulseMockup } from './mockups/pulse-mockup'
+import { PulseFeaturesCarousel } from './mockups/pulse-features-carousel'
+import { FunnelMockup } from './mockups/funnel-mockup'
+import { EmailReportMockup } from './mockups/email-report-mockup'
 
 // Section wrapper component for reuse
 function FeatureSection({
@@ -80,15 +83,8 @@ export default function FeatureSections() {
           'Country-level geographic breakdown',
         ]}
         mockup={
-          <div className="p-6 sm:p-10 flex items-center justify-center min-h-[400px]">
-            <Image
-              src="/dashboard-preview-v2.png"
-              alt="Pulse analytics dashboard"
-              width={560}
-              height={400}
-              className="w-full h-auto rounded-xl"
-              unoptimized
-            />
+          <div className="p-6 sm:p-10">
+            <PulseMockup />
           </div>
         }
       />
@@ -106,26 +102,8 @@ export default function FeatureSections() {
         ]}
         reverse
         mockup={
-          <div className="p-6 sm:p-10 flex items-center justify-center min-h-[400px]">
-            <div className="w-full space-y-4">
-              {/* Mini mockup: top pages bars */}
-              {[
-                { page: '/blog/privacy-guide', pct: 85 },
-                { page: '/docs/getting-started', pct: 65 },
-                { page: '/pricing', pct: 45 },
-                { page: '/about', pct: 30 },
-              ].map((item) => (
-                <div key={item.page} className="space-y-1.5">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-neutral-300 font-medium">{item.page}</span>
-                    <span className="text-neutral-500">{item.pct}%</span>
-                  </div>
-                  <div className="h-2 bg-neutral-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-brand-orange rounded-full" style={{ width: `${item.pct}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
+          <div className="p-6 sm:p-10">
+            <PulseFeaturesCarousel />
           </div>
         }
       />
@@ -143,30 +121,8 @@ export default function FeatureSections() {
           'Configurable conversion window (up to 90 days)',
         ]}
         mockup={
-          <div className="p-6 sm:p-10 flex items-center justify-center min-h-[400px]">
-            {/* Simple funnel visualization */}
-            <div className="w-full max-w-[300px] mx-auto space-y-2">
-              {[
-                { label: 'Landing Page', value: '2,847', pct: 100, color: 'bg-brand-orange' },
-                { label: 'Sign Up Page', value: '1,423', pct: 50, color: 'bg-brand-orange/80' },
-                { label: 'Onboarding', value: '856', pct: 30, color: 'bg-brand-orange/60' },
-                { label: 'Activated', value: '412', pct: 14.5, color: 'bg-brand-orange/40' },
-              ].map((step, i) => (
-                <div key={step.label} className="text-center">
-                  <div
-                    className={`${step.color} rounded-lg py-3 mx-auto transition-all`}
-                    style={{ width: `${step.pct}%` }}
-                  >
-                    <span className="text-white text-sm font-semibold">{step.value}</span>
-                  </div>
-                  <p className="text-xs text-neutral-400 mt-1">{step.label}</p>
-                  {i < 3 && (
-                    <p className="text-xs text-neutral-600 my-1">↓ {Math.round((1 - [1, 0.5, 0.3, 0.145][i + 1] / [1, 0.5, 0.3, 0.145][i]) * 100)}% drop-off</p>
-                  )}
-                </div>
-              ))}
-              <p className="text-center text-sm text-neutral-300 mt-4 font-medium">Overall conversion: <span className="text-brand-orange">14.5%</span></p>
-            </div>
+          <div className="p-6 sm:p-10">
+            <FunnelMockup />
           </div>
         }
       />
@@ -185,34 +141,8 @@ export default function FeatureSections() {
         ]}
         reverse
         mockup={
-          <div className="p-6 sm:p-10 flex items-center justify-center min-h-[400px]">
-            {/* Email mockup */}
-            <div className="w-full max-w-[360px] mx-auto bg-neutral-800/50 rounded-xl border border-neutral-700/40 p-5 space-y-4">
-              <div className="flex items-center gap-3 pb-3 border-b border-neutral-700/40">
-                <div className="w-8 h-8 rounded-lg bg-brand-orange/20 flex items-center justify-center">
-                  <span className="text-brand-orange text-xs font-bold">P</span>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-white">Pulse Daily Report</p>
-                  <p className="text-xs text-neutral-500">yoursite.com</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { label: 'Visitors', value: '1,247', change: '+12%' },
-                  { label: 'Pageviews', value: '3,891', change: '+8%' },
-                  { label: 'Bounce Rate', value: '42%', change: '-3%' },
-                  { label: 'Avg Duration', value: '2m 34s', change: '+15%' },
-                ].map((stat) => (
-                  <div key={stat.label} className="bg-neutral-900/50 rounded-lg p-3">
-                    <p className="text-xs text-neutral-500">{stat.label}</p>
-                    <p className="text-lg font-bold text-white">{stat.value}</p>
-                    <p className={`text-xs ${stat.change.startsWith('+') ? 'text-green-400' : 'text-brand-orange'}`}>{stat.change}</p>
-                  </div>
-                ))}
-              </div>
-              <p className="text-xs text-neutral-600 text-center">Delivered every day at 09:00</p>
-            </div>
+          <div className="p-6 sm:p-10">
+            <EmailReportMockup />
           </div>
         }
       />
