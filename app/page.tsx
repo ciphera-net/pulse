@@ -18,6 +18,7 @@ import { Cookie, ShieldCheck, Code, Lightning, ArrowRight, GithubLogo } from '@p
 import FeatureSections from '@/components/marketing/FeatureSections'
 import ComparisonCards from '@/components/marketing/ComparisonCards'
 import CTASection from '@/components/marketing/CTASection'
+import PulseFAQ from '@/components/marketing/PulseFAQ'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { getSitesLimitForPlan } from '@/lib/plans'
@@ -221,6 +222,7 @@ export default function HomePage() {
 
         <FeatureSections />
         <ComparisonCards />
+        <PulseFAQ />
         <CTASection />
       </>
     )
