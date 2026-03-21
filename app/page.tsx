@@ -15,7 +15,7 @@ import DeleteSiteModal from '@/components/sites/DeleteSiteModal'
 import { Button } from '@ciphera-net/ui'
 import { XIcon, GlobeIcon } from '@ciphera-net/ui'
 import { Cookie, ShieldCheck, Code, Lightning, ArrowRight, GithubLogo } from '@phosphor-icons/react'
-import LiveDemo from '@/components/marketing/LiveDemo'
+import DashboardDemo from '@/components/marketing/DashboardDemo'
 import FeatureSections from '@/components/marketing/FeatureSections'
 import ComparisonCards from '@/components/marketing/ComparisonCards'
 import CTASection from '@/components/marketing/CTASection'
@@ -216,7 +216,7 @@ export default function HomePage() {
             transition={{ duration: 0.7, delay: 0.4 }}
             className="w-full max-w-7xl mx-auto px-6"
           >
-            <LiveDemo />
+            <DashboardDemo />
           </motion.div>
         </div>
 
