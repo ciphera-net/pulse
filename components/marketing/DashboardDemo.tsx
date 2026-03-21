@@ -176,23 +176,15 @@ export default function DashboardDemo() {
 
   return (
     <div className="relative">
-      {/* Browser chrome */}
-      <div className="rounded-t-xl border border-white/[0.08] border-b-0">
-        <div className="flex items-center px-4 py-3 bg-neutral-800/80 rounded-t-xl">
-          <div className="flex gap-2">
-            <div className="w-3 h-3 rounded-full bg-red-500/20" />
-            <div className="w-3 h-3 rounded-full bg-yellow-500/20" />
-            <div className="w-3 h-3 rounded-full bg-green-500/20" />
-          </div>
-          <div className="ml-4 flex-1 max-w-sm h-7 rounded-md bg-neutral-700/50 flex items-center px-3">
-            <span className="text-xs text-neutral-400 font-mono">pulse.ciphera.net/sites/demo</span>
-          </div>
-        </div>
-      </div>
+      {/* Orange glow behind */}
+      <div className="absolute -inset-8 bg-brand-orange/8 rounded-[2.5rem] blur-3xl" />
 
       {/* Dashboard content */}
-      <div className="relative border border-white/[0.08] border-t-0 rounded-b-xl overflow-hidden max-h-[1000px]">
-        <div className="bg-neutral-950 p-4 sm:p-6">
+      <div className="relative rounded-3xl border border-white/[0.08] overflow-hidden">
+        <img src="/pulse-showcase-bg.png" alt="" className="absolute inset-0 w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-black/30" />
+
+        <div className="relative p-4 sm:p-6">
           {/* Dashboard header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
@@ -251,7 +243,7 @@ export default function DashboardDemo() {
           </div>
 
           {/* 2-col grid: Locations + Tech */}
-          <div className="grid gap-6 lg:grid-cols-2 mb-6 [&>*]:min-w-0">
+          <div className="grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
             <Locations
               countries={FAKE_COUNTRIES}
               cities={FAKE_CITIES}
@@ -274,9 +266,6 @@ export default function DashboardDemo() {
             />
           </div>
         </div>
-
-        {/* Bottom gradient fade */}
-        <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-neutral-950 to-transparent pointer-events-none" />
       </div>
     </div>
   )
