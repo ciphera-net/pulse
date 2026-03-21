@@ -2,8 +2,7 @@
 
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useTheme } from '@ciphera-net/ui'
-import { Area, CartesianGrid, ComposedChart, Line, XAxis, YAxis, ReferenceLine } from 'recharts'
-import { ChartContainer, ChartTooltip, type ChartConfig } from '@/components/ui/line-charts-6'
+import { AreaChart as VisxAreaChart, Area as VisxArea, Grid as VisxGrid, XAxis as VisxXAxis, YAxis as VisxYAxis, ChartTooltip as VisxChartTooltip, type TooltipRow } from '@/components/ui/area-chart'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { formatNumber, formatDuration, formatUpdatedAgo, DatePicker } from '@ciphera-net/ui'
 import { Select, DownloadIcon, PlusIcon, XIcon } from '@ciphera-net/ui'
@@ -103,40 +102,11 @@ const METRIC_CONFIGS: {
   { key: 'avg_duration', label: 'Visit Duration', format: (v) => formatDuration(v) },
 ]
 
-const chartConfig = {
-  visitors: { label: 'Unique Visitors', color: '#FD5E0F' },
-  pageviews: { label: 'Total Pageviews', color: '#FD5E0F' },
-  bounce_rate: { label: 'Bounce Rate', color: '#FD5E0F' },
-  avg_duration: { label: 'Visit Duration', color: '#FD5E0F' },
-} satisfies ChartConfig
-
-// ─── Custom Tooltip ─────────────────────────────────────────────────
-
-interface TooltipProps {
-  active?: boolean
-  payload?: Array<{ dataKey: string; value: number; color: string }>
-  label?: string
-  metric: MetricType
-}
-
-function CustomTooltip({ active, payload, metric }: TooltipProps) {
-  if (active && payload && payload.length) {
-    const entry = payload[0]
-    const config = METRIC_CONFIGS.find((m) => m.key === metric)
-
-    if (config) {
-      return (
-        <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-3 shadow-sm shadow-black/5 min-w-[120px]">
-          <div className="flex items-center gap-2 text-sm">
-            <div className="size-1.5 rounded-full" style={{ backgroundColor: entry.color }}></div>
-            <span className="text-neutral-500 dark:text-neutral-400">{config.label}:</span>
-            <span className="font-semibold text-neutral-900 dark:text-white">{config.format(entry.value)}</span>
-          </div>
-        </div>
-      )
-    }
-  }
-  return null
+const CHART_COLORS: Record<MetricType, string> = {
+  visitors: '#FD5E0F',
+  pageviews: '#FD5E0F',
+  bounce_rate: '#FD5E0F',
+  avg_duration: '#FD5E0F',
 }
 
 // ─── Chart Component ─────────────────────────────────────────────────
@@ -227,6 +197,7 @@ export default function Chart({
 
     return {
       date: formattedDate,
+      dateObj: new Date(item.date),
       originalDate: item.date,
       pageviews: item.pageviews,
       visitors: item.visitors,
@@ -450,103 +421,41 @@ export default function Chart({
             </div>
           ) : (
             <div className="w-full" onContextMenu={handleChartContextMenu}>
-              <ChartContainer
-                config={chartConfig}
-                className="h-96 w-full overflow-visible [&_.recharts-curve.recharts-tooltip-cursor]:stroke-[initial]"
+              <VisxAreaChart
+                data={chartData as Record<string, unknown>[]}
+                xDataKey="dateObj"
+                aspectRatio="2.5 / 1"
+                margin={{ top: 20, right: 20, bottom: 40, left: 50 }}
               >
-                <ComposedChart
-                  data={chartData}
-                  margin={{ top: 20, right: 20, left: 5, bottom: 20 }}
-                  style={{ overflow: 'visible' }}
-                >
-                  <defs>
-                    <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={chartConfig[metric]?.color} stopOpacity={0.15} />
-                      <stop offset="100%" stopColor={chartConfig[metric]?.color} stopOpacity={0.01} />
-                    </linearGradient>
-                    <filter id="lineShadow" x="-100%" y="-100%" width="300%" height="300%">
-                      <feDropShadow
-                        dx="4"
-                        dy="6"
-                        stdDeviation="25"
-                        floodColor={`${chartConfig[metric]?.color}60`}
-                      />
-                    </filter>
-                    <filter id="dotShadow" x="-50%" y="-50%" width="200%" height="200%">
-                      <feDropShadow dx="2" dy="2" stdDeviation="3" floodColor="rgba(0,0,0,0.5)" />
-                    </filter>
-                  </defs>
-
-                  <CartesianGrid
-                    horizontal={true}
-                    vertical={false}
-                    stroke="var(--chart-grid)"
-                    strokeOpacity={0.7}
-                  />
-
-                  <XAxis
-                    dataKey="date"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 11, fill: 'var(--chart-axis)' }}
-                    tickMargin={10}
-                    minTickGap={32}
-                  />
-
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 11, fill: 'var(--chart-axis)' }}
-                    tickMargin={10}
-                    tickCount={6}
-                    tickFormatter={(value) => {
-                      const config = METRIC_CONFIGS.find((m) => m.key === metric)
-                      return config ? config.format(value) : value.toString()
-                    }}
-                  />
-
-                  <ChartTooltip content={<CustomTooltip metric={metric} />} cursor={{ strokeDasharray: '3 3', stroke: '#9ca3af' }} />
-
-
-                  {/* Annotation reference lines */}
-                  {visibleAnnotationMarkers.map((marker) => {
-                    const primaryCategory = marker.annotations[0].category
-                    const color = ANNOTATION_COLORS[primaryCategory] || ANNOTATION_COLORS.other
-                    return (
-                      <ReferenceLine
-                        key={`ann-${marker.x}`}
-                        x={marker.x}
-                        stroke={color}
-                        strokeDasharray="4 4"
-                        strokeWidth={1.5}
-                        strokeOpacity={0.6}
-                      />
-                    )
-                  })}
-
-                  <Area
-                    type="monotone"
-                    dataKey={metric}
-                    fill="url(#areaFill)"
-                    stroke="none"
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey={metric}
-                    stroke={chartConfig[metric]?.color}
-                    strokeWidth={2}
-                    filter="url(#lineShadow)"
-                    dot={false}
-                    activeDot={{
-                      r: 6,
-                      fill: chartConfig[metric]?.color,
-                      stroke: 'white',
-                      strokeWidth: 2,
-                      filter: 'url(#dotShadow)',
-                    }}
-                  />
-                </ComposedChart>
-              </ChartContainer>
+                <VisxGrid horizontal vertical={false} stroke="var(--chart-grid)" strokeDasharray="4,4" />
+                <VisxArea
+                  dataKey={metric}
+                  fill={CHART_COLORS[metric]}
+                  fillOpacity={0.15}
+                  stroke={CHART_COLORS[metric]}
+                  strokeWidth={2}
+                  gradientToOpacity={0}
+                />
+                <VisxXAxis numTicks={6} />
+                <VisxYAxis
+                  numTicks={6}
+                  formatValue={(v) => {
+                    const config = METRIC_CONFIGS.find((m) => m.key === metric)
+                    return config ? config.format(v) : v.toString()
+                  }}
+                />
+                <VisxChartTooltip
+                  rows={(point) => {
+                    const config = METRIC_CONFIGS.find((m) => m.key === metric)
+                    const value = point[metric] as number
+                    return [{
+                      color: CHART_COLORS[metric],
+                      label: config?.label || metric,
+                      value: config ? config.format(value) : value,
+                    }]
+                  }}
+                />
+              </VisxAreaChart>
             </div>
           )}
         </CardContent>
