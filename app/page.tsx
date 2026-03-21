@@ -13,100 +13,15 @@ import { LoadingOverlay } from '@ciphera-net/ui'
 import SiteList from '@/components/sites/SiteList'
 import DeleteSiteModal from '@/components/sites/DeleteSiteModal'
 import { Button } from '@ciphera-net/ui'
-import Image from 'next/image'
-import { BarChartIcon, LockIcon, ZapIcon, CheckCircleIcon, XIcon, GlobeIcon } from '@ciphera-net/ui'
+import { XIcon, GlobeIcon } from '@ciphera-net/ui'
 import { Cookie, ShieldCheck, Code, Lightning, ArrowRight, GithubLogo } from '@phosphor-icons/react'
+import FeatureSections from '@/components/marketing/FeatureSections'
+import ComparisonCards from '@/components/marketing/ComparisonCards'
+import CTASection from '@/components/marketing/CTASection'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { getSitesLimitForPlan } from '@/lib/plans'
 import { formatDate } from '@/lib/utils/formatDate'
-
-function DashboardPreview() {
-  return (
-    <div className="relative w-full max-w-7xl mx-auto mt-20 mb-32">
-      <motion.div
-        initial={{ opacity: 0, y: 40 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.7, delay: 0.4 }}
-        className="relative rounded-xl border border-neutral-800/50 shadow-2xl overflow-hidden"
-      >
-        {/* * Browser chrome */}
-        <div className="h-8 bg-neutral-800/80 border-b border-white/5 flex items-center px-4 gap-2">
-          <div className="w-3 h-3 rounded-full bg-red-400/60" />
-          <div className="w-3 h-3 rounded-full bg-yellow-400/60" />
-          <div className="w-3 h-3 rounded-full bg-green-400/60" />
-          <div className="ml-4 flex-1 max-w-xs h-5 rounded bg-neutral-700/50" />
-        </div>
-
-        {/* * Screenshot with bottom fade */}
-        <div className="relative max-h-[900px] overflow-hidden">
-          <Image
-            src="/dashboard-preview-v2.png"
-            alt="Pulse analytics dashboard showing visitor stats, charts, top pages, referrers, locations, and technology breakdown"
-            width={1920}
-            height={3000}
-            className="w-full h-auto object-cover object-top"
-            priority
-          />
-          <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-transparent from-60% to-neutral-950" />
-        </div>
-      </motion.div>
-    </div>
-  )
-}
-
-
-function ComparisonSection() {
-  return (
-    <div className="w-full max-w-4xl mx-auto mb-32">
-      <div className="text-center mb-12">
-        <h2 className="text-2xl font-bold text-white mb-4">Why choose Pulse?</h2>
-        <p className="text-neutral-500">The lightweight, privacy-friendly alternative.</p>
-      </div>
-
-      <div className="overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-900/50 backdrop-blur-sm">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="border-b border-neutral-800">
-              <th className="p-6 text-sm font-medium text-neutral-500">Feature</th>
-              <th className="p-6 text-sm font-bold text-brand-orange">Pulse</th>
-              <th className="p-6 text-sm font-medium text-neutral-500">Google Analytics</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-neutral-800">
-            {[
-              { feature: "Cookie Banner Required", pulse: false, ga: true },
-              { feature: "GDPR Compliant", pulse: true, ga: "Complex" },
-              { feature: "Script Size", pulse: "< 1 KB", ga: "45 KB+" },
-              { feature: "Data Ownership", pulse: "Yours", ga: "Google's" },
-            ].map((row) => (
-              <tr key={row.feature} className="hover:bg-neutral-800/50 transition-colors">
-                <td className="p-6 text-white font-medium">{row.feature}</td>
-                <td className="p-6">
-                  {row.pulse === true ? (
-                    <CheckCircleIcon className="w-5 h-5 text-green-500" />
-                  ) : row.pulse === false ? (
-                    <span className="text-green-500 font-medium">No</span>
-                  ) : (
-                    <span className="text-green-500 font-medium">{row.pulse}</span>
-                  )}
-                </td>
-                <td className="p-6 text-neutral-500">
-                   {row.ga === true ? (
-                    <span className="text-red-500 font-medium">Yes</span>
-                  ) : (
-                    <span>{row.ga}</span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
-
 
 type SiteStatsMap = Record<string, { stats: Stats }>
 
@@ -304,53 +219,9 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Existing content below hero */}
-        <div className="w-full max-w-6xl mx-auto px-4 pb-10">
-          <DashboardPreview />
-
-          {/* Glass cards */}
-          <div className="grid md:grid-cols-3 gap-6 text-left mb-32">
-            {[
-              { icon: LockIcon, title: "Privacy First", desc: "We don't track personal data. No IP addresses, no fingerprints, no cookies." },
-              { icon: BarChartIcon, title: "Simple Insights", desc: "Get the metrics that matter without the clutter. Page views, visitors, and sources." },
-              { icon: ZapIcon, title: "Lightweight", desc: "Our script is less than 1kb. It won't slow down your site or affect your SEO." }
-            ].map((feature, i) => (
-              <motion.div
-                key={feature.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.1 }}
-                className="card-glass p-6 hover:-translate-y-1 hover:shadow-xl transition-all duration-300 group"
-              >
-                <div className="w-12 h-12 rounded-xl bg-brand-orange/10 flex items-center justify-center mb-6 text-brand-orange group-hover:scale-110 transition-transform duration-300">
-                  <feature.icon className="w-6 h-6" />
-                </div>
-                <h3 className="text-xl font-bold text-white mb-3">{feature.title}</h3>
-                <p className="text-neutral-400 leading-relaxed">
-                  {feature.desc}
-                </p>
-              </motion.div>
-            ))}
-          </div>
-
-          <ComparisonSection />
-
-          {/* Bottom CTA */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-            className="text-center mb-20"
-          >
-            <h2 className="text-2xl font-bold text-white mb-6">Ready to switch?</h2>
-            <Button onClick={() => initiateOAuthFlow()} variant="primary" className="px-8 py-4 text-lg shadow-lg shadow-brand-orange/20">
-              Start your free trial
-            </Button>
-            <p className="mt-4 text-sm text-neutral-500">No credit card required • Cancel anytime</p>
-          </motion.div>
-        </div>
+        <FeatureSections />
+        <ComparisonCards />
+        <CTASection />
       </>
     )
   }
