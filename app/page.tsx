@@ -27,14 +27,14 @@ function DashboardPreview() {
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7, delay: 0.4 }}
-        className="relative rounded-xl border border-neutral-200/50 dark:border-neutral-800/50 shadow-2xl overflow-hidden"
+        className="relative rounded-xl border border-neutral-800/50 shadow-2xl overflow-hidden"
       >
         {/* * Browser chrome */}
-        <div className="h-8 bg-neutral-100 dark:bg-neutral-800/80 border-b border-neutral-200 dark:border-white/5 flex items-center px-4 gap-2">
+        <div className="h-8 bg-neutral-800/80 border-b border-white/5 flex items-center px-4 gap-2">
           <div className="w-3 h-3 rounded-full bg-red-400/60" />
           <div className="w-3 h-3 rounded-full bg-yellow-400/60" />
           <div className="w-3 h-3 rounded-full bg-green-400/60" />
-          <div className="ml-4 flex-1 max-w-xs h-5 rounded bg-neutral-200 dark:bg-neutral-700/50" />
+          <div className="ml-4 flex-1 max-w-xs h-5 rounded bg-neutral-700/50" />
         </div>
 
         {/* * Screenshot with bottom fade */}
@@ -47,7 +47,7 @@ function DashboardPreview() {
             className="w-full h-auto object-cover object-top"
             priority
           />
-          <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-transparent from-60% to-white dark:to-neutral-950" />
+          <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-transparent from-60% to-neutral-950" />
         </div>
       </motion.div>
     </div>
@@ -59,28 +59,28 @@ function ComparisonSection() {
   return (
     <div className="w-full max-w-4xl mx-auto mb-32">
       <div className="text-center mb-12">
-        <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-4">Why choose Pulse?</h2>
+        <h2 className="text-2xl font-bold text-white mb-4">Why choose Pulse?</h2>
         <p className="text-neutral-500">The lightweight, privacy-friendly alternative.</p>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-sm">
+      <div className="overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-900/50 backdrop-blur-sm">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="border-b border-neutral-200 dark:border-neutral-800">
+            <tr className="border-b border-neutral-800">
               <th className="p-6 text-sm font-medium text-neutral-500">Feature</th>
               <th className="p-6 text-sm font-bold text-brand-orange">Pulse</th>
               <th className="p-6 text-sm font-medium text-neutral-500">Google Analytics</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
+          <tbody className="divide-y divide-neutral-800">
             {[
               { feature: "Cookie Banner Required", pulse: false, ga: true },
               { feature: "GDPR Compliant", pulse: true, ga: "Complex" },
               { feature: "Script Size", pulse: "< 1 KB", ga: "45 KB+" },
               { feature: "Data Ownership", pulse: "Yours", ga: "Google's" },
             ].map((row) => (
-              <tr key={row.feature} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
-                <td className="p-6 text-neutral-900 dark:text-white font-medium">{row.feature}</td>
+              <tr key={row.feature} className="hover:bg-neutral-800/50 transition-colors">
+                <td className="p-6 text-white font-medium">{row.feature}</td>
                 <td className="p-6">
                   {row.pulse === true ? (
                     <CheckCircleIcon className="w-5 h-5 text-green-500" />
@@ -237,10 +237,10 @@ export default function HomePage() {
         {/* * --- 1. ATMOSPHERE (Background) --- */}
         <div className="absolute inset-0 -z-10 pointer-events-none">
           {/* * Bottom-right Neutral Glow */}
-          <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-neutral-500/10 dark:bg-neutral-400/10 rounded-full blur-[128px] opacity-40" />
+          <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-neutral-400/10 rounded-full blur-[128px] opacity-40" />
           {/* * Grid Pattern with Radial Mask */}
           <div 
-            className="absolute inset-0 bg-grid-pattern opacity-[0.02] dark:opacity-[0.05]"
+            className="absolute inset-0 bg-grid-pattern opacity-[0.05]"
             style={{ maskImage: 'radial-gradient(ellipse at center, black 0%, transparent 70%)' }}
           />
         </div>
@@ -266,7 +266,7 @@ export default function HomePage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
-              className="text-5xl md:text-7xl font-bold tracking-tight text-neutral-900 dark:text-white mb-6"
+              className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-6"
             >
               Simple analytics for <br />
               <span className="relative inline-block">
@@ -283,7 +283,7 @@ export default function HomePage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
-              className="text-xl text-neutral-600 dark:text-neutral-400 max-w-2xl mx-auto mb-10 leading-relaxed"
+              className="text-xl text-neutral-400 max-w-2xl mx-auto mb-10 leading-relaxed"
             >
               Respect your users' privacy while getting the insights you need. 
               No cookies, no IP tracking, fully GDPR compliant.
@@ -326,8 +326,8 @@ export default function HomePage() {
                 <div className="w-12 h-12 rounded-xl bg-brand-orange/10 flex items-center justify-center mb-6 text-brand-orange group-hover:scale-110 transition-transform duration-300">
                   <feature.icon className="w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-bold text-neutral-900 dark:text-white mb-3">{feature.title}</h3>
-                <p className="text-neutral-600 dark:text-neutral-400 leading-relaxed">
+                <h3 className="text-xl font-bold text-white mb-3">{feature.title}</h3>
+                <p className="text-neutral-400 leading-relaxed">
                   {feature.desc}
                 </p>
               </motion.div>
@@ -345,7 +345,7 @@ export default function HomePage() {
             transition={{ duration: 0.5 }}
             className="text-center mb-20"
           >
-            <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-6">Ready to switch?</h2>
+            <h2 className="text-2xl font-bold text-white mb-6">Ready to switch?</h2>
             <Button onClick={() => initiateOAuthFlow()} variant="primary" className="px-8 py-4 text-lg shadow-lg shadow-brand-orange/20">
               Start your free trial
             </Button>
@@ -365,8 +365,8 @@ export default function HomePage() {
   return (
     <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
       {showFinishSetupBanner && (
-        <div className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-brand-orange/30 bg-brand-orange/5 px-4 py-3 dark:bg-brand-orange/10">
-          <p className="text-sm text-neutral-700 dark:text-neutral-300">
+        <div className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-brand-orange/30 bg-brand-orange/10 px-4 py-3">
+          <p className="text-sm text-neutral-300">
             Finish setting up your workspace and add your first site.
           </p>
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -381,7 +381,7 @@ export default function HomePage() {
                 if (typeof window !== 'undefined') localStorage.setItem('pulse_welcome_completed', 'true')
                 setShowFinishSetupBanner(false)
               }}
-              className="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-400 p-1 rounded"
+              className="text-neutral-500 hover:text-neutral-400 p-1 rounded"
               aria-label="Dismiss"
             >
               <XIcon className="h-4 w-4" />
@@ -392,8 +392,8 @@ export default function HomePage() {
 
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Your Sites</h1>
-          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">Manage your analytics sites and view insights.</p>
+          <h1 className="text-2xl font-bold text-white">Your Sites</h1>
+          <p className="mt-1 text-sm text-neutral-400">Manage your analytics sites and view insights.</p>
         </div>
         {(() => {
           const siteLimit = getSitesLimitForPlan(subscription?.plan_id)
@@ -401,7 +401,7 @@ export default function HomePage() {
           return atLimit ? (
           <div>
             <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700">
+              <span className="text-sm font-medium text-neutral-400 bg-neutral-800 px-3 py-1.5 rounded-lg border border-neutral-700">
                 Limit reached ({sites.length}/{siteLimit})
               </span>
               <Link href="/pricing">
@@ -411,7 +411,7 @@ export default function HomePage() {
               </Link>
             </div>
             {deletedSites.length > 0 && (
-              <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2">
+              <p className="text-sm text-neutral-400 mt-2">
                 You have a site pending deletion. Restore it or permanently delete it to free the slot.
               </p>
             )}
@@ -428,26 +428,26 @@ export default function HomePage() {
 
       {/* * Global Overview - min-h ensures no layout shift when Plan & usage loads */}
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="flex min-h-[100px] sm:min-h-[160px] flex-col rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">Total Sites</p>
-          <p className="text-2xl font-bold text-neutral-900 dark:text-white">{sites.length}</p>
+        <div className="flex min-h-[100px] sm:min-h-[160px] flex-col rounded-2xl border border-neutral-800 bg-neutral-900 p-4">
+          <p className="text-sm text-neutral-400">Total Sites</p>
+          <p className="text-2xl font-bold text-white">{sites.length}</p>
         </div>
-        <div className="flex min-h-[100px] sm:min-h-[160px] flex-col rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">Total Visitors (24h)</p>
-          <p className="text-2xl font-bold text-neutral-900 dark:text-white">
+        <div className="flex min-h-[100px] sm:min-h-[160px] flex-col rounded-2xl border border-neutral-800 bg-neutral-900 p-4">
+          <p className="text-sm text-neutral-400">Total Visitors (24h)</p>
+          <p className="text-2xl font-bold text-white">
             {sites.length === 0 || Object.keys(siteStats).length < sites.length
               ? '--'
               : Object.values(siteStats).reduce((sum, { stats }) => sum + (stats?.visitors ?? 0), 0).toLocaleString()}
           </p>
         </div>
-        <div className="flex min-h-[160px] flex-col rounded-2xl border border-neutral-200 bg-brand-orange/10 p-4 dark:border-neutral-800">
+        <div className="flex min-h-[160px] flex-col rounded-2xl border border-neutral-800 bg-brand-orange/10 p-4">
           <p className="text-sm text-brand-orange">Plan & usage</p>
           {subscriptionLoading ? (
             <div className="animate-pulse space-y-2">
-              <div className="h-6 w-24 rounded bg-brand-orange/25 dark:bg-brand-orange/20" />
-              <div className="h-4 w-full rounded bg-brand-orange/25 dark:bg-brand-orange/20" />
-              <div className="h-4 w-3/4 rounded bg-brand-orange/25 dark:bg-brand-orange/20" />
-              <div className="h-4 w-20 rounded bg-brand-orange/25 dark:bg-brand-orange/20 pt-2" />
+              <div className="h-6 w-24 rounded bg-brand-orange/20" />
+              <div className="h-4 w-full rounded bg-brand-orange/20" />
+              <div className="h-4 w-3/4 rounded bg-brand-orange/20" />
+              <div className="h-4 w-20 rounded bg-brand-orange/20 pt-2" />
             </div>
           ) : subscription ? (
             <>
@@ -464,7 +464,7 @@ export default function HomePage() {
                 })()}
               </p>
               {(typeof subscription.sites_count === 'number' || (subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number') || (subscription.next_invoice_amount_due != null && subscription.next_invoice_currency && !subscription.cancel_at_period_end && (subscription.subscription_status === 'active' || subscription.subscription_status === 'trialing'))) && (
-                <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
+                <p className="text-sm text-neutral-400 mt-1">
                   {typeof subscription.sites_count === 'number' && (
                     <span>Sites: {(() => {
                       const limit = getSitesLimitForPlan(subscription.plan_id)
@@ -512,12 +512,12 @@ export default function HomePage() {
       </div>
 
       {!sitesLoading && sites.length === 0 && (
-        <div className="mb-8 rounded-2xl border-2 border-dashed border-brand-orange/30 bg-brand-orange/5 p-6 text-center dark:bg-brand-orange/10">
+        <div className="mb-8 rounded-2xl border-2 border-dashed border-brand-orange/30 bg-brand-orange/10 p-6 text-center">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-orange/20 text-brand-orange mb-4">
             <GlobeIcon className="h-7 w-7" />
           </div>
-          <h2 className="text-xl font-bold text-neutral-900 dark:text-white mb-2">Add your first site</h2>
-          <p className="text-neutral-600 dark:text-neutral-400 mb-6 max-w-md mx-auto">
+          <h2 className="text-xl font-bold text-white mb-2">Add your first site</h2>
+          <p className="text-neutral-400 mb-6 max-w-md mx-auto">
             Connect a domain to start collecting privacy-friendly analytics. You can add more sites later from the dashboard.
           </p>
           <Link href="/sites/new">
@@ -553,31 +553,31 @@ export default function HomePage() {
 
       {deletedSites.length > 0 && (
         <div className="mt-8">
-          <h3 className="text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-4">Scheduled for Deletion</h3>
+          <h3 className="text-sm font-medium text-neutral-400 mb-4">Scheduled for Deletion</h3>
           <div className="space-y-3">
             {deletedSites.map((site) => {
               const purgeAt = site.deleted_at ? new Date(new Date(site.deleted_at).getTime() + 7 * 24 * 60 * 60 * 1000) : null
               const daysLeft = purgeAt ? Math.max(0, Math.ceil((purgeAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : 0
 
               return (
-                <div key={site.id} className="flex items-center justify-between p-4 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50 opacity-60">
+                <div key={site.id} className="flex items-center justify-between p-4 rounded-xl border border-neutral-800 bg-neutral-900/50 opacity-60">
                   <div>
-                    <span className="font-medium text-neutral-700 dark:text-neutral-300">{site.name}</span>
+                    <span className="font-medium text-neutral-300">{site.name}</span>
                     <span className="ml-2 text-sm text-neutral-400">{site.domain}</span>
-                    <span className="ml-3 inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600 dark:bg-red-900/20 dark:text-red-400">
+                    <span className="ml-3 inline-flex items-center rounded-full bg-red-900/20 px-2 py-0.5 text-xs font-medium text-red-400">
                       Deleting in {daysLeft} day{daysLeft !== 1 ? 's' : ''}
                     </span>
                   </div>
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleRestore(site.id)}
-                      className="px-3 py-1.5 text-xs font-medium text-neutral-700 dark:text-neutral-300 border border-neutral-300 dark:border-neutral-700 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                      className="px-3 py-1.5 text-xs font-medium text-neutral-300 border border-neutral-700 rounded-lg hover:bg-neutral-800 transition-colors"
                     >
                       Restore
                     </button>
                     <button
                       onClick={() => handlePermanentDelete(site.id)}
-                      className="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                      className="px-3 py-1.5 text-xs font-medium text-red-400 border border-red-900 rounded-lg hover:bg-red-900/20 transition-colors"
                     >
                       Delete Now
                     </button>

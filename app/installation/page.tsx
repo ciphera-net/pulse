@@ -9,26 +9,26 @@ export default function InstallationPage() {
       {/* * --- 1. ATMOSPHERE (Background) --- */}
       <div className="absolute inset-0 -z-10 pointer-events-none">
         {/* * Bottom-right Neutral Glow */}
-        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-neutral-500/10 dark:bg-neutral-400/10 rounded-full blur-[128px] opacity-40" />
+        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-neutral-400/10 rounded-full blur-[128px] opacity-40" />
         {/* * Grid Pattern with Radial Mask */}
         <div 
-          className="absolute inset-0 bg-grid-pattern opacity-[0.02] dark:opacity-[0.05]"
+          className="absolute inset-0 bg-grid-pattern opacity-[0.05]"
           style={{ maskImage: 'radial-gradient(ellipse at center, black 0%, transparent 70%)' }}
         />
       </div>
 
       <div className="flex-grow w-full max-w-4xl mx-auto px-4 pt-20 pb-10 z-10">
         <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-neutral-900 dark:text-white mb-6">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-6">
             Installation
           </h1>
-          <p className="text-xl text-neutral-600 dark:text-neutral-400 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-xl text-neutral-400 max-w-2xl mx-auto leading-relaxed">
             Get up and running with Pulse in seconds.
           </p>
         </div>
 
         <div className="w-full text-center">
-          <h2 className="text-2xl font-bold mb-8 text-neutral-900 dark:text-white">Add the snippet</h2>
+          <h2 className="text-2xl font-bold mb-8 text-white">Add the snippet</h2>
           <p className="text-neutral-500 mb-8">Just add this snippet to your &lt;head&gt; tag in your layout or index file.</p>
           
           <div className="max-w-2xl mx-auto bg-neutral-900 rounded-xl overflow-hidden shadow-2xl text-left border border-neutral-800">
@@ -57,9 +57,9 @@ export default function InstallationPage() {
         </div>
 
         <div className="w-full mt-16 text-center">
-          <h2 className="text-2xl font-bold mb-4 text-neutral-900 dark:text-white">Custom events (goals)</h2>
+          <h2 className="text-2xl font-bold mb-4 text-white">Custom events (goals)</h2>
           <p className="text-neutral-500 mb-6 max-w-xl mx-auto">
-            Track custom events (e.g. signup, purchase) with <code className="px-1.5 py-0.5 rounded bg-neutral-200 dark:bg-neutral-700 text-sm font-mono">pulse.track(&apos;event_name&apos;)</code>. Use letters, numbers, and underscores only. Define goals in your site Settings → Goals & Events to see counts in the dashboard.
+            Track custom events (e.g. signup, purchase) with <code className="px-1.5 py-0.5 rounded bg-neutral-700 text-sm font-mono">pulse.track(&apos;event_name&apos;)</code>. Use letters, numbers, and underscores only. Define goals in your site Settings → Goals & Events to see counts in the dashboard.
           </p>
           <div className="max-w-2xl mx-auto bg-neutral-900 rounded-xl overflow-hidden shadow-2xl text-left border border-neutral-800">
             <div className="flex items-center px-4 py-3 bg-neutral-800 border-b border-neutral-800">

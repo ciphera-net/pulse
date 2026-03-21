@@ -109,9 +109,9 @@ export default function FeaturesPage() {
     <div className="relative min-h-screen flex flex-col overflow-hidden">
       {/* * --- ATMOSPHERE (Background) --- */}
       <div className="absolute inset-0 -z-10 pointer-events-none">
-        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-neutral-500/10 dark:bg-neutral-400/10 rounded-full blur-[128px] opacity-40" />
+        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-neutral-400/10 rounded-full blur-[128px] opacity-40" />
         <div
-          className="absolute inset-0 bg-grid-pattern opacity-[0.02] dark:opacity-[0.05]"
+          className="absolute inset-0 bg-grid-pattern opacity-[0.05]"
           style={{ maskImage: 'radial-gradient(ellipse at center, black 0%, transparent 70%)' }}
         />
       </div>
@@ -128,11 +128,11 @@ export default function FeaturesPage() {
             <span className="w-1.5 h-1.5 rounded-full bg-brand-orange animate-pulse" />
             Product Tour
           </span>
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-neutral-900 dark:text-white mb-6">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-6">
             Everything you need. <br />
             <span className="gradient-text">Nothing you don&apos;t.</span>
           </h1>
-          <p className="text-xl text-neutral-600 dark:text-neutral-400 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-xl text-neutral-400 max-w-2xl mx-auto leading-relaxed">
             Pulse gives you meaningful analytics without the complexity, the cookies, or the privacy trade-offs.
           </p>
         </motion.div>
@@ -151,10 +151,10 @@ export default function FeaturesPage() {
               <div className="w-12 h-12 rounded-xl bg-brand-orange/10 flex items-center justify-center mb-6 text-brand-orange group-hover:scale-110 transition-transform duration-300">
                 <feature.icon className="w-6 h-6" />
               </div>
-              <h3 className="text-xl font-bold text-neutral-900 dark:text-white mb-3">
+              <h3 className="text-xl font-bold text-white mb-3">
                 {feature.title}
               </h3>
-              <p className="text-neutral-600 dark:text-neutral-400 leading-relaxed">
+              <p className="text-neutral-400 leading-relaxed">
                 {feature.description}
               </p>
             </motion.div>
@@ -170,10 +170,10 @@ export default function FeaturesPage() {
           className="mb-28"
         >
           <div className="text-center mb-14">
-            <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-bold text-white mb-4">
               Powerful analytics, <span className="gradient-text">simplified</span>
             </h2>
-            <p className="text-lg text-neutral-600 dark:text-neutral-400 max-w-2xl mx-auto">
+            <p className="text-lg text-neutral-400 max-w-2xl mx-auto">
               Everything from real-time dashboards to conversion funnels — without the bloat.
             </p>
           </div>
@@ -192,10 +192,10 @@ export default function FeaturesPage() {
                   {cap.icon}
                 </div>
                 <div>
-                  <h3 className="font-bold text-neutral-900 dark:text-white mb-1">
+                  <h3 className="font-bold text-white mb-1">
                     {cap.title}
                   </h3>
-                  <p className="text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">
+                  <p className="text-sm text-neutral-400 leading-relaxed">
                     {cap.description}
                   </p>
                 </div>
@@ -210,14 +210,14 @@ export default function FeaturesPage() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
-          className="mb-28 p-10 md:p-14 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-sm border border-neutral-200 dark:border-neutral-800 rounded-2xl"
+          className="mb-28 p-10 md:p-14 bg-neutral-900/50 backdrop-blur-sm border border-neutral-800 rounded-2xl"
         >
           <div className="grid md:grid-cols-2 gap-10 items-center">
             <div>
-              <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-4">
+              <h2 className="text-2xl font-bold text-white mb-4">
                 Content that <span className="gradient-text">performs</span>
               </h2>
-              <p className="text-neutral-600 dark:text-neutral-400 leading-relaxed mb-6">
+              <p className="text-neutral-400 leading-relaxed mb-6">
                 See which pages drive the most traffic, where visitors enter your site, and where they leave. Use data to double down on what works.
               </p>
               <ul className="space-y-3">
@@ -228,7 +228,7 @@ export default function FeaturesPage() {
                   'Referral sources — where traffic comes from',
                   'Browser, OS & device breakdowns',
                 ].map((item) => (
-                  <li key={item} className="flex items-start gap-3 text-sm text-neutral-600 dark:text-neutral-400">
+                  <li key={item} className="flex items-start gap-3 text-sm text-neutral-400">
                     <svg className="w-5 h-5 text-brand-orange shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                     </svg>
@@ -250,17 +250,17 @@ export default function FeaturesPage() {
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.4, delay: i * 0.1 }}
-                  className="p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl"
+                  className="p-4 bg-neutral-800/50 rounded-xl"
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-neutral-900 dark:text-white truncate mr-4">
+                    <span className="text-sm font-medium text-white truncate mr-4">
                       {page.label}
                     </span>
-                    <span className="text-sm text-neutral-500 dark:text-neutral-400 shrink-0">
+                    <span className="text-sm text-neutral-400 shrink-0">
                       {page.views} views
                     </span>
                   </div>
-                  <div className="h-1.5 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-neutral-700 rounded-full overflow-hidden">
                     <motion.div
                       initial={{ width: 0 }}
                       whileInView={{ width: `${page.pct}%` }}
@@ -284,10 +284,10 @@ export default function FeaturesPage() {
           className="mb-28"
         >
           <div className="text-center mb-12">
-            <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-bold text-white mb-4">
               Built for trust
             </h2>
-            <p className="text-lg text-neutral-600 dark:text-neutral-400 max-w-2xl mx-auto">
+            <p className="text-lg text-neutral-400 max-w-2xl mx-auto">
               Open source, Swiss hosted, and designed to keep your visitors&apos; data where it belongs.
             </p>
           </div>
@@ -306,8 +306,8 @@ export default function FeaturesPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                 </svg>
                 <div>
-                  <span className="font-semibold text-neutral-900 dark:text-white text-sm">{signal.label}</span>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{signal.detail}</p>
+                  <span className="font-semibold text-white text-sm">{signal.label}</span>
+                  <p className="text-xs text-neutral-400 mt-0.5">{signal.detail}</p>
                 </div>
               </motion.div>
             ))}
@@ -340,10 +340,10 @@ export default function FeaturesPage() {
           className="mb-28"
         >
           <div className="text-center mb-14">
-            <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-bold text-white mb-4">
               Up and running in <span className="gradient-text">3 minutes</span>
             </h2>
-            <p className="text-lg text-neutral-600 dark:text-neutral-400 max-w-2xl mx-auto">
+            <p className="text-lg text-neutral-400 max-w-2xl mx-auto">
               No SDKs to install, no build steps, no configuration files.
             </p>
           </div>
@@ -366,15 +366,15 @@ export default function FeaturesPage() {
                   {s.step}
                 </div>
                 <div>
-                  <h3 className="font-bold text-neutral-900 dark:text-white text-sm">
+                  <h3 className="font-bold text-white text-sm">
                     {s.title}
                   </h3>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                  <p className="text-xs text-neutral-400">
                     {s.desc}
                   </p>
                 </div>
                 {i < 2 && (
-                  <ArrowRightIcon className="w-5 h-5 text-neutral-300 dark:text-neutral-600 shrink-0 hidden md:block" />
+                  <ArrowRightIcon className="w-5 h-5 text-neutral-600 shrink-0 hidden md:block" />
                 )}
               </motion.div>
             ))}
@@ -389,10 +389,10 @@ export default function FeaturesPage() {
           transition={{ duration: 0.5 }}
           className="text-center mb-20"
         >
-          <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-4">
+          <h2 className="text-2xl font-bold text-white mb-4">
             Ready to see it in action?
           </h2>
-          <p className="text-neutral-600 dark:text-neutral-400 mb-8 max-w-lg mx-auto">
+          <p className="text-neutral-400 mb-8 max-w-lg mx-auto">
             Start for free. No credit card required. Cancel anytime.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
