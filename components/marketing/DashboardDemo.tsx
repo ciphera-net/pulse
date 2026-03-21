@@ -267,7 +267,6 @@ export default function DashboardDemo() {
             />
           </div>
         </div>
-        </div>
       </div>
     </div>
   )
