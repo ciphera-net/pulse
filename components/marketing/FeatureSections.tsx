@@ -15,6 +15,7 @@ function FeatureSection({
   features,
   mockup,
   reverse = false,
+  showBg = true,
 }: {
   id: string
   heading: string
@@ -22,6 +23,7 @@ function FeatureSection({
   features: string[]
   mockup: React.ReactNode
   reverse?: boolean
+  showBg?: boolean
 }) {
   return (
     <section id={id} className="container mx-auto px-6 scroll-mt-28">
@@ -58,10 +60,14 @@ function FeatureSection({
           transition={{ duration: 0.6, delay: 0.1 }}
           className={`relative ${reverse ? 'lg:order-first' : ''}`}
         >
-          <div className="absolute -inset-8 bg-brand-orange/8 rounded-[2.5rem] blur-3xl" />
-          <div className="relative rounded-3xl overflow-hidden border border-white/[0.08]">
-            <img src="/pulse-showcase-bg.png" alt="" className="absolute inset-0 w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-black/30" />
+          {showBg && <div className="absolute -inset-8 bg-brand-orange/8 rounded-[2.5rem] blur-3xl" />}
+          <div className={`relative rounded-3xl overflow-hidden border border-white/[0.08] ${showBg ? '' : 'bg-neutral-900/80'}`}>
+            {showBg && (
+              <>
+                <img src="/pulse-showcase-bg.png" alt="" className="absolute inset-0 w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-black/30" />
+              </>
+            )}
             <div className="relative">
               {mockup}
             </div>
@@ -106,8 +112,10 @@ export default function FeatureSections() {
         ]}
         reverse
         mockup={
-          <div className="p-6 sm:p-10">
-            <PulseFeaturesCarousel />
+          <div className="p-6 sm:p-10 min-h-[500px] flex items-center">
+            <div className="w-full">
+              <PulseFeaturesCarousel />
+            </div>
           </div>
         }
       />
@@ -151,9 +159,10 @@ export default function FeatureSections() {
         }
       />
 
-      {/* Section 5: Script — text left, code block right */}
+      {/* Section 5: Script — text left, code block right (no showcase bg) */}
       <FeatureSection
         id="script"
+        showBg={false}
         heading="One script tag. That's it."
         description="No npm packages, no build steps, no configuration files. Add a single line to your HTML and start collecting privacy-respecting analytics instantly."
         features={[
