@@ -3,8 +3,6 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useTheme } from '@ciphera-net/ui'
 import { AreaChart as VisxAreaChart, Area as VisxArea, Grid as VisxGrid, XAxis as VisxXAxis, YAxis as VisxYAxis, ChartTooltip as VisxChartTooltip, type TooltipRow } from '@/components/ui/area-chart'
-import { BarChart as VisxBarChart, Bar as VisxBar, Grid as VisxBarGrid, BarXAxis as VisxBarXAxis, BarValueAxis as VisxBarYAxis, ChartTooltip as VisxBarChartTooltip } from '@/components/ui/bar-chart'
-import { ChartLine, ChartBar } from '@phosphor-icons/react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { formatNumber, formatDuration, formatUpdatedAgo, DatePicker } from '@ciphera-net/ui'
 import { Select, DownloadIcon, PlusIcon, XIcon } from '@ciphera-net/ui'
@@ -134,7 +132,6 @@ export default function Chart({
   onDeleteAnnotation,
 }: ChartProps) {
   const [metric, setMetric] = useState<MetricType>('visitors')
-  const [chartType, setChartType] = useState<'area' | 'bar'>('area')
   const chartContainerRef = useRef<HTMLDivElement>(null)
   const { resolvedTheme } = useTheme()
   const [showComparison, setShowComparison] = useState(false)
@@ -395,23 +392,6 @@ export default function Chart({
                 />
               ) : null}
 
-              <div className="flex items-center rounded-lg border border-neutral-800 overflow-hidden">
-                <button
-                  onClick={() => setChartType('area')}
-                  className={`p-1.5 transition-colors cursor-pointer ${chartType === 'area' ? 'bg-neutral-800 text-white' : 'text-neutral-500 hover:text-neutral-300'}`}
-                  title="Area chart"
-                >
-                  <ChartLine className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setChartType('bar')}
-                  className={`p-1.5 transition-colors cursor-pointer ${chartType === 'bar' ? 'bg-neutral-800 text-white' : 'text-neutral-500 hover:text-neutral-300'}`}
-                  title="Bar chart"
-                >
-                  <ChartBar className="w-4 h-4" />
-                </button>
-              </div>
-
               <button
                 onClick={handleExportChart}
                 disabled={!hasData}
@@ -441,77 +421,41 @@ export default function Chart({
             </div>
           ) : (
             <div className="w-full" onContextMenu={handleChartContextMenu}>
-              {chartType === 'area' ? (
-                <VisxAreaChart
-                  data={chartData as Record<string, unknown>[]}
-                  xDataKey="dateObj"
-                  aspectRatio="2.5 / 1"
-                  margin={{ top: 20, right: 20, bottom: 40, left: 50 }}
-                >
-                  <VisxGrid horizontal vertical={false} stroke="var(--chart-grid)" strokeDasharray="4,4" />
-                  <VisxArea
-                    dataKey={metric}
-                    fill={CHART_COLORS[metric]}
-                    fillOpacity={0.15}
-                    stroke={CHART_COLORS[metric]}
-                    strokeWidth={2}
-                    gradientToOpacity={0}
-                  />
-                  <VisxXAxis numTicks={6} />
-                  <VisxYAxis
-                    numTicks={6}
-                    formatValue={(v) => {
-                      const config = METRIC_CONFIGS.find((m) => m.key === metric)
-                      return config ? config.format(v) : v.toString()
-                    }}
-                  />
-                  <VisxChartTooltip
-                    rows={(point) => {
-                      const config = METRIC_CONFIGS.find((m) => m.key === metric)
-                      const value = point[metric] as number
-                      return [{
-                        color: CHART_COLORS[metric],
-                        label: config?.label || metric,
-                        value: config ? config.format(value) : value,
-                      }]
-                    }}
-                  />
-                </VisxAreaChart>
-              ) : (
-                <VisxBarChart
-                  data={chartData as Record<string, unknown>[]}
-                  xDataKey="date"
-                  aspectRatio="2.5 / 1"
-                  margin={{ top: 20, right: 20, bottom: 40, left: 50 }}
-                  barGap={0.3}
-                >
-                  <VisxBarGrid horizontal vertical={false} stroke="var(--chart-grid)" strokeDasharray="4,4" />
-                  <VisxBar
-                    dataKey={metric}
-                    fill={CHART_COLORS[metric]}
-                    lineCap="round"
-                  />
-                  <VisxBarXAxis maxLabels={8} />
-                  <VisxBarYAxis
-                    numTicks={6}
-                    formatValue={(v) => {
-                      const config = METRIC_CONFIGS.find((m) => m.key === metric)
-                      return config ? config.format(v) : v.toString()
-                    }}
-                  />
-                  <VisxBarChartTooltip
-                    rows={(point) => {
-                      const config = METRIC_CONFIGS.find((m) => m.key === metric)
-                      const value = point[metric] as number
-                      return [{
-                        color: CHART_COLORS[metric],
-                        label: config?.label || metric,
-                        value: config ? config.format(value) : value,
-                      }]
-                    }}
-                  />
-                </VisxBarChart>
-              )}
+              <VisxAreaChart
+                data={chartData as Record<string, unknown>[]}
+                xDataKey="dateObj"
+                aspectRatio="2.5 / 1"
+                margin={{ top: 20, right: 20, bottom: 40, left: 50 }}
+              >
+                <VisxGrid horizontal vertical={false} stroke="var(--chart-grid)" strokeDasharray="4,4" />
+                <VisxArea
+                  dataKey={metric}
+                  fill={CHART_COLORS[metric]}
+                  fillOpacity={0.15}
+                  stroke={CHART_COLORS[metric]}
+                  strokeWidth={2}
+                  gradientToOpacity={0}
+                />
+                <VisxXAxis numTicks={6} />
+                <VisxYAxis
+                  numTicks={6}
+                  formatValue={(v) => {
+                    const config = METRIC_CONFIGS.find((m) => m.key === metric)
+                    return config ? config.format(v) : v.toString()
+                  }}
+                />
+                <VisxChartTooltip
+                  rows={(point) => {
+                    const config = METRIC_CONFIGS.find((m) => m.key === metric)
+                    const value = point[metric] as number
+                    return [{
+                      color: CHART_COLORS[metric],
+                      label: config?.label || metric,
+                      value: config ? config.format(value) : value,
+                    }]
+                  }}
+                />
+              </VisxAreaChart>
             </div>
           )}
         </CardContent>
