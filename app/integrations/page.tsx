@@ -143,7 +143,7 @@ export default function IntegrationsPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search integrations..."
-              className="w-full pl-12 pr-16 py-3 bg-neutral-900/70 backdrop-blur-sm border border-neutral-800 rounded-xl text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-orange/50 focus:border-brand-orange/50 transition-all"
+              className="w-full pl-12 pr-16 py-3 bg-neutral-900/70 backdrop-blur-sm border border-white/[0.08] rounded-xl text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-orange/50 focus:border-brand-orange/50 transition-all"
             />
             {query ? (
               <button
