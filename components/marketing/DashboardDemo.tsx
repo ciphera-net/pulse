@@ -13,30 +13,30 @@ const FAKE_STATS = { pageviews: 8432, visitors: 2847, bounce_rate: 42, avg_durat
 const FAKE_PREV_STATS = { pageviews: 7821, visitors: 2543, bounce_rate: 45, avg_duration: 134 }
 
 const FAKE_DAILY_STATS = [
-  { date: '2026-03-21 00:00:00', pageviews: 45, visitors: 28, bounce_rate: 45, avg_duration: 120 },
+  { date: '2026-03-21 00:00:00', pageviews: 42, visitors: 26, bounce_rate: 46, avg_duration: 118 },
   { date: '2026-03-21 01:00:00', pageviews: 38, visitors: 24, bounce_rate: 47, avg_duration: 115 },
-  { date: '2026-03-21 02:00:00', pageviews: 32, visitors: 20, bounce_rate: 48, avg_duration: 108 },
-  { date: '2026-03-21 03:00:00', pageviews: 28, visitors: 18, bounce_rate: 50, avg_duration: 102 },
-  { date: '2026-03-21 04:00:00', pageviews: 35, visitors: 22, bounce_rate: 48, avg_duration: 110 },
-  { date: '2026-03-21 05:00:00', pageviews: 52, visitors: 34, bounce_rate: 46, avg_duration: 118 },
-  { date: '2026-03-21 06:00:00', pageviews: 85, visitors: 56, bounce_rate: 44, avg_duration: 125 },
-  { date: '2026-03-21 07:00:00', pageviews: 142, visitors: 95, bounce_rate: 42, avg_duration: 138 },
-  { date: '2026-03-21 08:00:00', pageviews: 215, visitors: 148, bounce_rate: 40, avg_duration: 152 },
-  { date: '2026-03-21 09:00:00', pageviews: 310, visitors: 212, bounce_rate: 38, avg_duration: 165 },
-  { date: '2026-03-21 10:00:00', pageviews: 398, visitors: 268, bounce_rate: 36, avg_duration: 172 },
-  { date: '2026-03-21 11:00:00', pageviews: 452, visitors: 305, bounce_rate: 37, avg_duration: 175 },
-  { date: '2026-03-21 12:00:00', pageviews: 425, visitors: 285, bounce_rate: 39, avg_duration: 168 },
-  { date: '2026-03-21 13:00:00', pageviews: 478, visitors: 322, bounce_rate: 36, avg_duration: 178 },
-  { date: '2026-03-21 14:00:00', pageviews: 512, visitors: 348, bounce_rate: 34, avg_duration: 185 },
-  { date: '2026-03-21 15:00:00', pageviews: 535, visitors: 362, bounce_rate: 33, avg_duration: 190 },
-  { date: '2026-03-21 16:00:00', pageviews: 498, visitors: 338, bounce_rate: 35, avg_duration: 182 },
-  { date: '2026-03-21 17:00:00', pageviews: 445, visitors: 298, bounce_rate: 37, avg_duration: 170 },
-  { date: '2026-03-21 18:00:00', pageviews: 385, visitors: 258, bounce_rate: 39, avg_duration: 160 },
-  { date: '2026-03-21 19:00:00', pageviews: 328, visitors: 218, bounce_rate: 41, avg_duration: 152 },
-  { date: '2026-03-21 20:00:00', pageviews: 275, visitors: 185, bounce_rate: 42, avg_duration: 142 },
-  { date: '2026-03-21 21:00:00', pageviews: 218, visitors: 148, bounce_rate: 43, avg_duration: 135 },
-  { date: '2026-03-21 22:00:00', pageviews: 155, visitors: 105, bounce_rate: 45, avg_duration: 125 },
-  { date: '2026-03-21 23:00:00', pageviews: 95, visitors: 62, bounce_rate: 46, avg_duration: 118 },
+  { date: '2026-03-21 02:00:00', pageviews: 35, visitors: 22, bounce_rate: 47, avg_duration: 112 },
+  { date: '2026-03-21 03:00:00', pageviews: 34, visitors: 21, bounce_rate: 48, avg_duration: 110 },
+  { date: '2026-03-21 04:00:00', pageviews: 36, visitors: 23, bounce_rate: 47, avg_duration: 112 },
+  { date: '2026-03-21 05:00:00', pageviews: 45, visitors: 29, bounce_rate: 46, avg_duration: 116 },
+  { date: '2026-03-21 06:00:00', pageviews: 62, visitors: 40, bounce_rate: 45, avg_duration: 122 },
+  { date: '2026-03-21 07:00:00', pageviews: 95, visitors: 62, bounce_rate: 43, avg_duration: 132 },
+  { date: '2026-03-21 08:00:00', pageviews: 148, visitors: 98, bounce_rate: 41, avg_duration: 145 },
+  { date: '2026-03-21 09:00:00', pageviews: 215, visitors: 145, bounce_rate: 39, avg_duration: 155 },
+  { date: '2026-03-21 10:00:00', pageviews: 285, visitors: 192, bounce_rate: 38, avg_duration: 162 },
+  { date: '2026-03-21 11:00:00', pageviews: 338, visitors: 228, bounce_rate: 37, avg_duration: 168 },
+  { date: '2026-03-21 12:00:00', pageviews: 355, visitors: 240, bounce_rate: 38, avg_duration: 165 },
+  { date: '2026-03-21 13:00:00', pageviews: 372, visitors: 252, bounce_rate: 37, avg_duration: 170 },
+  { date: '2026-03-21 14:00:00', pageviews: 390, visitors: 265, bounce_rate: 36, avg_duration: 175 },
+  { date: '2026-03-21 15:00:00', pageviews: 385, visitors: 260, bounce_rate: 36, avg_duration: 173 },
+  { date: '2026-03-21 16:00:00', pageviews: 362, visitors: 245, bounce_rate: 37, avg_duration: 168 },
+  { date: '2026-03-21 17:00:00', pageviews: 325, visitors: 218, bounce_rate: 38, avg_duration: 162 },
+  { date: '2026-03-21 18:00:00', pageviews: 282, visitors: 190, bounce_rate: 40, avg_duration: 155 },
+  { date: '2026-03-21 19:00:00', pageviews: 238, visitors: 160, bounce_rate: 41, avg_duration: 148 },
+  { date: '2026-03-21 20:00:00', pageviews: 195, visitors: 132, bounce_rate: 42, avg_duration: 140 },
+  { date: '2026-03-21 21:00:00', pageviews: 155, visitors: 105, bounce_rate: 43, avg_duration: 132 },
+  { date: '2026-03-21 22:00:00', pageviews: 112, visitors: 75, bounce_rate: 44, avg_duration: 125 },
+  { date: '2026-03-21 23:00:00', pageviews: 72, visitors: 46, bounce_rate: 45, avg_duration: 120 },
 ]
 
 const FAKE_TOP_PAGES = [
@@ -185,7 +185,7 @@ export default function DashboardDemo() {
         <div className="absolute inset-0 bg-black/40" />
 
         {/* Inner dashboard — solid background */}
-        <div className="relative rounded-2xl bg-neutral-950 p-4 sm:p-6">
+        <div className="relative rounded-2xl bg-neutral-950/80 backdrop-blur-sm p-4 sm:p-6">
           {/* Dashboard header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
