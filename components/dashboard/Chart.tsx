@@ -525,13 +525,13 @@ export default function Chart({
                   })}
 
                   <Area
-                    type="bump"
+                    type="monotone"
                     dataKey={metric}
                     fill="url(#areaFill)"
                     stroke="none"
                   />
                   <Line
-                    type="bump"
+                    type="monotone"
                     dataKey={metric}
                     stroke={chartConfig[metric]?.color}
                     strokeWidth={2}
