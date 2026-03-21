@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useTheme } from '@ciphera-net/ui'
-import { AreaChart as VisxAreaChart, Area as VisxArea, Grid as VisxGrid, XAxis as VisxXAxis, YAxis as VisxYAxis, ChartTooltip as VisxChartTooltip, PatternLines as VisxPatternLines, PatternArea as VisxPatternArea, type TooltipRow } from '@/components/ui/area-chart'
+import { AreaChart as VisxAreaChart, Area as VisxArea, Grid as VisxGrid, XAxis as VisxXAxis, YAxis as VisxYAxis, ChartTooltip as VisxChartTooltip, type TooltipRow } from '@/components/ui/area-chart'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { formatNumber, formatDuration, formatUpdatedAgo, DatePicker } from '@ciphera-net/ui'
 import { Select, DownloadIcon, PlusIcon, XIcon } from '@ciphera-net/ui'
@@ -427,22 +427,14 @@ export default function Chart({
                 aspectRatio="2.5 / 1"
                 margin={{ top: 20, right: 20, bottom: 40, left: 50 }}
               >
-                <VisxPatternLines
-                  id="area-pattern"
-                  width={6}
-                  height={6}
-                  orientation={['diagonal']}
-                  stroke={CHART_COLORS[metric]}
-                  strokeWidth={1}
-                />
-                <VisxPatternArea dataKey={metric} fill="url(#area-pattern)" />
                 <VisxGrid horizontal vertical={false} stroke="var(--chart-grid)" strokeDasharray="4,4" />
                 <VisxArea
                   dataKey={metric}
                   fill={CHART_COLORS[metric]}
-                  fillOpacity={0}
+                  fillOpacity={0.15}
                   stroke={CHART_COLORS[metric]}
                   strokeWidth={2}
+                  gradientToOpacity={0}
                 />
                 <VisxXAxis numTicks={6} />
                 <VisxYAxis
