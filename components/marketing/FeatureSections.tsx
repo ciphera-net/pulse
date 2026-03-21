@@ -59,8 +59,12 @@ function FeatureSection({
           className={`relative ${reverse ? 'lg:order-first' : ''}`}
         >
           <div className="absolute -inset-8 bg-brand-orange/8 rounded-[2.5rem] blur-3xl" />
-          <div className="relative rounded-3xl overflow-hidden border border-white/[0.08] bg-neutral-900/80">
-            {mockup}
+          <div className="relative rounded-3xl overflow-hidden border border-white/[0.08]">
+            <img src="/pulse-showcase-bg.png" alt="" className="absolute inset-0 w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-black/30" />
+            <div className="relative">
+              {mockup}
+            </div>
           </div>
         </motion.div>
       </div>
