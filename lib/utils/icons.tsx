@@ -20,6 +20,7 @@ import {
   SnapchatLogo,
   PinterestLogo,
   ThreadsLogo,
+  MagnifyingGlass,
 } from '@phosphor-icons/react'
 
 /**
@@ -113,6 +114,10 @@ export function getReferrerIcon(referrerName: string) {
   if (lower.includes('snapchat')) return <SnapchatLogo className="text-yellow-400" />
   if (lower.includes('pinterest')) return <PinterestLogo className="text-red-600" />
   if (lower.includes('threads')) return <ThreadsLogo className="text-neutral-800 dark:text-neutral-200" />
+  // Search engines
+  if (lower.includes('bing')) return <MagnifyingGlass className="text-blue-500" />
+  if (lower.includes('duckduckgo')) return <MagnifyingGlass className="text-orange-500" />
+  if (lower.includes('brave')) return <MagnifyingGlass className="text-orange-400" />
   // AI assistants and search tools
   if (lower.includes('chatgpt') || lower.includes('openai')) return <Robot className="text-neutral-800 dark:text-neutral-200" />
   if (lower.includes('perplexity')) return <Robot className="text-teal-600" />
@@ -147,6 +152,8 @@ const REFERRER_DISPLAY_OVERRIDES: Record<string, string> = {
   youtube: 'YouTube',
   reddit: 'Reddit',
   github: 'GitHub',
+  bing: 'Bing',
+  brave: 'Brave',
   duckduckgo: 'DuckDuckGo',
   whatsapp: 'WhatsApp',
   telegram: 'Telegram',
@@ -246,12 +253,44 @@ export function mergeReferrersByDisplayName(
     .sort((a, b) => b.pageviews - a.pageviews)
 }
 
-/** Domains that always use the custom X icon instead of favicon (avoids legacy bird). */
-const REFERRER_USE_X_ICON = new Set(['t.co', 'x.com', 'twitter.com', 'www.twitter.com'])
+/**
+ * Domains/labels where the Phosphor icon is better than Google's favicon service.
+ * For these, getReferrerFavicon returns null so the caller falls back to getReferrerIcon.
+ */
+const REFERRER_PREFER_ICON = new Set([
+  // Social / platforms
+  't.co', 'x.com', 'twitter.com', 'www.twitter.com',
+  'google.com', 'www.google.com',
+  'facebook.com', 'www.facebook.com', 'm.facebook.com', 'l.facebook.com',
+  'instagram.com', 'www.instagram.com', 'l.instagram.com',
+  'linkedin.com', 'www.linkedin.com',
+  'github.com', 'www.github.com',
+  'youtube.com', 'www.youtube.com', 'm.youtube.com',
+  'reddit.com', 'www.reddit.com', 'old.reddit.com',
+  'whatsapp.com', 'www.whatsapp.com', 'web.whatsapp.com',
+  'telegram.org', 'web.telegram.org', 't.me',
+  'snapchat.com', 'www.snapchat.com',
+  'pinterest.com', 'www.pinterest.com',
+  'threads.net', 'www.threads.net',
+  // Search engines
+  'bing.com', 'www.bing.com',
+  'duckduckgo.com', 'www.duckduckgo.com',
+  'search.brave.com', 'brave.com',
+  // AI assistants
+  'chatgpt.com', 'chat.openai.com', 'openai.com',
+  'perplexity.ai', 'www.perplexity.ai',
+  'claude.ai', 'www.claude.ai', 'anthropic.com',
+  'gemini.google.com',
+  'copilot.microsoft.com',
+  'deepseek.com', 'chat.deepseek.com',
+  'grok.x.ai', 'x.ai',
+  'phind.com', 'www.phind.com',
+  'you.com', 'www.you.com',
+])
 
 /**
  * Returns a favicon URL for the referrer's domain, or null for non-URL referrers
- * (e.g. "Direct", "Unknown") so callers can show an icon fallback instead.
+ * (e.g. "Direct", "Unknown") or known services where the Phosphor icon is better.
  */
 export function getReferrerFavicon(referrer: string): string | null {
   if (!referrer || typeof referrer !== 'string') return null
@@ -261,8 +300,13 @@ export function getReferrerFavicon(referrer: string): string | null {
   if (!normalized.includes('.')) return null
   try {
     const url = new URL(referrer.startsWith('http') ? referrer : `https://${referrer}`)
-    if (REFERRER_USE_X_ICON.has(url.hostname.toLowerCase())) return null
-    return `${FAVICON_SERVICE_URL}?domain=${url.hostname}&sz=32`
+    const hostname = url.hostname.toLowerCase()
+    // Use Phosphor icon for known services — Google favicons are unreliable for these
+    if (REFERRER_PREFER_ICON.has(hostname)) return null
+    // Also check if the label matches a known referrer (catches subdomains like search.google.com)
+    const label = getReferrerLabel(hostname)
+    if (REFERRER_DISPLAY_OVERRIDES[label]) return null
+    return `${FAVICON_SERVICE_URL}?domain=${hostname}&sz=32`
   } catch {
     return null
   }
