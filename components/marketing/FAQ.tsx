@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Plus } from 'lucide-react';
+import { Plus } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 
 interface FAQItem {
