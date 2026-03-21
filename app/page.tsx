@@ -151,12 +151,9 @@ export default function HomePage() {
     return (
       <>
         {/* HERO — full viewport */}
-        <div className="relative -mt-[88px] min-h-screen flex items-center pt-[88px] pb-20 lg:pb-32 overflow-hidden">
-          {/* Background atmosphere */}
-          <div className="absolute inset-0 -z-10 pointer-events-none">
-            <div className="absolute top-0 left-1/4 w-[800px] h-[800px] bg-brand-orange/5 rounded-full blur-[200px]" />
-            <div className="absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-neutral-500/5 rounded-full blur-[150px]" />
-          </div>
+        <div className="relative -mt-[88px] min-h-screen flex items-center pt-[88px] pb-20 lg:pb-32 bg-neutral-950 overflow-hidden">
+          <img src="/pulse-showcase-bg.png" alt="" className="absolute inset-0 w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-black/60" />
           <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-neutral-950 to-transparent" />
 
           <div className="relative z-10 w-full max-w-6xl mx-auto px-6">
