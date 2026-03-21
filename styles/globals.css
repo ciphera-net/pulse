@@ -56,11 +56,7 @@
   }
   
   body {
-    @apply bg-ciphera-gradient bg-fixed;
-  }
-  
-  .dark body {
-    @apply bg-ciphera-gradient-dark;
+    @apply bg-white dark:bg-neutral-950;
   }
 }
 
