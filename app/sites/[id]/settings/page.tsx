@@ -32,6 +32,25 @@ import {
   ZapIcon,
 } from '@ciphera-net/ui'
 import { PaperPlaneTilt, Envelope, WebhooksLogo, SpinnerGap, Trash, PencilSimple, Play, Plugs, ShieldCheck } from '@phosphor-icons/react'
+import { SiDiscord } from '@icons-pack/react-simple-icons'
+
+function SlackIcon({ size = 16, color = '#4A154B' }: { size?: number; color?: string }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill={color}><path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zm1.271 0a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zm0 1.271a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zm10.124 2.521a2.528 2.528 0 0 1 2.52-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.52V8.834zm-1.271 0a2.528 2.528 0 0 1-2.521 2.521 2.528 2.528 0 0 1-2.521-2.521V2.522A2.528 2.528 0 0 1 15.166 0a2.528 2.528 0 0 1 2.521 2.522v6.312zm-2.521 10.124a2.528 2.528 0 0 1 2.521 2.52A2.528 2.528 0 0 1 15.166 24a2.528 2.528 0 0 1-2.521-2.522v-2.52h2.521zm0-1.271a2.528 2.528 0 0 1-2.521-2.521 2.528 2.528 0 0 1 2.521-2.521h6.312A2.528 2.528 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.521h-6.312z"/></svg>
+}
+
+const CHANNEL_ICONS: Record<string, React.ReactNode> = {
+  email: <Envelope className="w-4 h-4" />,
+  slack: <SlackIcon size={16} color="#E01E5A" />,
+  discord: <SiDiscord size={16} color="#5865F2" />,
+  webhook: <WebhooksLogo className="w-4 h-4" />,
+}
+
+const CHANNEL_ICONS_LG: Record<string, React.ReactNode> = {
+  email: <Envelope className="w-5 h-5 text-neutral-400" />,
+  slack: <SlackIcon size={18} color="#E01E5A" />,
+  discord: <SiDiscord size={18} color="#5865F2" />,
+  webhook: <WebhooksLogo className="w-5 h-5 text-neutral-400" />,
+}
 
 const TIMEZONES = [
   'UTC',
@@ -1320,12 +1339,8 @@ export default function SiteSettingsPage() {
                       >
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex items-start gap-3 min-w-0">
-                            <div className="p-2 bg-neutral-100 dark:bg-neutral-800 rounded-lg mt-0.5">
-                              {schedule.channel === 'email' ? (
-                                <Envelope className="w-5 h-5 text-neutral-600 dark:text-neutral-400" />
-                              ) : (
-                                <WebhooksLogo className="w-5 h-5 text-neutral-600 dark:text-neutral-400" />
-                              )}
+                            <div className="p-2 bg-neutral-800 rounded-lg mt-0.5">
+                              {CHANNEL_ICONS_LG[schedule.channel] || <WebhooksLogo className="w-5 h-5 text-neutral-400" />}
                             </div>
                             <div className="min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
@@ -1883,7 +1898,7 @@ export default function SiteSettingsPage() {
                       : 'border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800'
                   }`}
                 >
-                  {ch === 'email' ? <Envelope className="w-4 h-4" /> : <WebhooksLogo className="w-4 h-4" />}
+                  {CHANNEL_ICONS[ch]}
                   {getChannelLabel(ch)}
                 </button>
               ))}
