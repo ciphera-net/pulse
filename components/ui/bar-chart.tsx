@@ -583,6 +583,50 @@ export function BarXAxis({ tickerHalfWidth = 50, showAllLabels = false, maxLabel
 
 BarXAxis.displayName = "BarXAxis";
 
+// ─── BarValueAxis (numeric Y-axis for vertical bar charts) ───────────────
+
+export interface BarValueAxisProps {
+  numTicks?: number;
+  formatValue?: (value: number) => string;
+}
+
+export function BarValueAxis({ numTicks = 5, formatValue }: BarValueAxisProps) {
+  const { yScale, margin, containerRef } = useChart();
+  const [container, setContainer] = useState<HTMLDivElement | null>(null);
+
+  useEffect(() => { setContainer(containerRef.current); }, [containerRef]);
+
+  const ticks = useMemo(() => {
+    const domain = yScale.domain() as [number, number];
+    const min = domain[0];
+    const max = domain[1];
+    const step = (max - min) / (numTicks - 1);
+    return Array.from({ length: numTicks }, (_, i) => {
+      const value = min + step * i;
+      return {
+        value,
+        y: (yScale(value) ?? 0) + margin.top,
+        label: formatValue ? formatValue(value) : value >= 1000 ? `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}k` : Math.round(value).toLocaleString(),
+      };
+    });
+  }, [yScale, margin.top, numTicks, formatValue]);
+
+  if (!container) return null;
+
+  return createPortal(
+    <div className="pointer-events-none absolute inset-0">
+      {ticks.map((tick) => (
+        <div key={tick.value} className="absolute" style={{ left: 0, top: tick.y, width: margin.left - 8, display: "flex", justifyContent: "flex-end", transform: "translateY(-50%)" }}>
+          <span className="whitespace-nowrap text-neutral-500 text-xs tabular-nums">{tick.label}</span>
+        </div>
+      ))}
+    </div>,
+    container
+  );
+}
+
+BarValueAxis.displayName = "BarValueAxis";
+
 // ─── Bar ─────────────────────────────────────────────────────────────────────
 
 export interface BarProps {

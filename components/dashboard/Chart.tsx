@@ -3,7 +3,7 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useTheme } from '@ciphera-net/ui'
 import { AreaChart as VisxAreaChart, Area as VisxArea, Grid as VisxGrid, XAxis as VisxXAxis, YAxis as VisxYAxis, ChartTooltip as VisxChartTooltip, type TooltipRow } from '@/components/ui/area-chart'
-import { BarChart as VisxBarChart, Bar as VisxBar, Grid as VisxBarGrid, BarXAxis as VisxBarXAxis, ChartTooltip as VisxBarChartTooltip } from '@/components/ui/bar-chart'
+import { BarChart as VisxBarChart, Bar as VisxBar, Grid as VisxBarGrid, BarXAxis as VisxBarXAxis, BarValueAxis as VisxBarYAxis, ChartTooltip as VisxBarChartTooltip } from '@/components/ui/bar-chart'
 import { ChartLine, ChartBar } from '@phosphor-icons/react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { formatNumber, formatDuration, formatUpdatedAgo, DatePicker } from '@ciphera-net/ui'
@@ -492,6 +492,13 @@ export default function Chart({
                     lineCap="round"
                   />
                   <VisxBarXAxis maxLabels={8} />
+                  <VisxBarYAxis
+                    numTicks={6}
+                    formatValue={(v) => {
+                      const config = METRIC_CONFIGS.find((m) => m.key === metric)
+                      return config ? config.format(v) : v.toString()
+                    }}
+                  />
                   <VisxBarChartTooltip
                     rows={(point) => {
                       const config = METRIC_CONFIGS.find((m) => m.key === metric)
