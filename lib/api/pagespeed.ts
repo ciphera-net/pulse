@@ -21,6 +21,8 @@ export interface AuditSummary {
   savings_ms?: number
   category: 'opportunity' | 'diagnostic' | 'passed'
   group?: string // "performance", "accessibility", "best-practices", "seo"
+  sub_group?: string // "a11y-names-labels", "a11y-contrast", etc.
+  sub_group_title?: string // "Names and Labels", "Contrast", etc.
   details?: AuditDetailItem[]
 }
 
