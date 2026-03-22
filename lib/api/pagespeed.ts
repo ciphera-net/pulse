@@ -20,6 +20,7 @@ export interface AuditSummary {
   display_value?: string
   savings_ms?: number
   category: 'opportunity' | 'diagnostic' | 'passed'
+  group?: string // "performance", "accessibility", "best-practices", "seo"
   details?: AuditDetailItem[]
 }
 

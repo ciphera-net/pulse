@@ -228,20 +228,31 @@ export default function PageSpeedPage() {
     score: c.performance_score,
   }))
 
-  // * Parse audits into groups
+  // * Parse audits into groups by Lighthouse category
   const audits = currentCheck?.audits ?? []
-  const failingAudits = audits
-    .filter(a => a.category !== 'passed')
-    .sort((a, b) => {
-      // Opportunities first (sorted by savings_ms desc), then diagnostics
-      if (a.category === 'opportunity' && b.category !== 'opportunity') return -1
-      if (a.category !== 'opportunity' && b.category === 'opportunity') return 1
-      if (a.category === 'opportunity' && b.category === 'opportunity') {
-        return (b.savings_ms ?? 0) - (a.savings_ms ?? 0)
-      }
-      return 0
-    })
   const passed = audits.filter(a => a.category === 'passed')
+
+  const categoryGroups = [
+    { key: 'performance', label: 'Performance' },
+    { key: 'accessibility', label: 'Accessibility' },
+    { key: 'best-practices', label: 'Best Practices' },
+    { key: 'seo', label: 'SEO' },
+  ]
+
+  // * Build per-category failing audits, sorted by impact
+  const auditsByGroup: Record<string, typeof audits> = {}
+  for (const group of categoryGroups) {
+    auditsByGroup[group.key] = audits
+      .filter(a => a.category !== 'passed' && a.group === group.key)
+      .sort((a, b) => {
+        if (a.category === 'opportunity' && b.category !== 'opportunity') return -1
+        if (a.category !== 'opportunity' && b.category === 'opportunity') return 1
+        if (a.category === 'opportunity' && b.category === 'opportunity') {
+          return (b.savings_ms ?? 0) - (a.savings_ms ?? 0)
+        }
+        return 0
+      })
+  }
 
   // * Core Web Vitals metrics
   const metrics = [
@@ -503,31 +514,38 @@ export default function PageSpeedPage() {
         </div>
       )}
 
-      {/* Section 4 — Diagnostics */}
+      {/* Section 4 — Diagnostics by Category */}
       {audits.length > 0 && (
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 sm:p-8">
-          <h3 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-4">
-            Diagnostics
-          </h3>
+        <div className="space-y-6">
+          {categoryGroups.map(group => {
+            const groupAudits = auditsByGroup[group.key] ?? []
+            const groupPassed = passed.filter(a => a.group === group.key)
+            if (groupAudits.length === 0 && groupPassed.length === 0) return null
+            return (
+              <div key={group.key} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 sm:p-8">
+                <h3 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-4">
+                  {group.label}
+                </h3>
 
-          {/* Failing audits — flat list sorted by impact */}
-          {failingAudits.length > 0 && (
-            <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
-              {failingAudits.map(audit => <AuditRow key={audit.id} audit={audit} />)}
-            </div>
-          )}
+                {groupAudits.length > 0 && (
+                  <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
+                    {groupAudits.map(audit => <AuditRow key={audit.id} audit={audit} />)}
+                  </div>
+                )}
 
-          {/* Passed audits — collapsed */}
-          {passed.length > 0 && (
-            <details className="mt-4">
-              <summary className="cursor-pointer text-sm font-medium text-neutral-500 dark:text-neutral-400 select-none hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors">
-                <span className="ml-1">{passed.length} passed audit{passed.length !== 1 ? 's' : ''}</span>
-              </summary>
-              <div className="mt-2 divide-y divide-neutral-100 dark:divide-neutral-800">
-                {passed.map(audit => <AuditRow key={audit.id} audit={audit} />)}
+                {groupPassed.length > 0 && (
+                  <details className="mt-4">
+                    <summary className="cursor-pointer text-sm font-medium text-neutral-500 dark:text-neutral-400 select-none hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors">
+                      <span className="ml-1">{groupPassed.length} passed audit{groupPassed.length !== 1 ? 's' : ''}</span>
+                    </summary>
+                    <div className="mt-2 divide-y divide-neutral-100 dark:divide-neutral-800">
+                      {groupPassed.map(audit => <AuditRow key={audit.id} audit={audit} />)}
+                    </div>
+                  </details>
+                )}
               </div>
-            </details>
-          )}
+            )
+          })}
         </div>
       )}
     </div>
