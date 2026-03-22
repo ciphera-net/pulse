@@ -37,6 +37,7 @@ type FeatureKey = (typeof FEATURES)[number]['key'] | 'frustration'
 export interface ScriptSetupBlockSite {
   domain: string
   name?: string
+  script_features?: Record<string, unknown>
 }
 
 interface ScriptSetupBlockProps {
@@ -44,27 +45,39 @@ interface ScriptSetupBlockProps {
   site: ScriptSetupBlockSite
   /** Called when user copies the script (e.g. for analytics). */
   onScriptCopy?: () => void
+  /** Called when features change so the parent can save to backend. */
+  onFeaturesChange?: (features: Record<string, unknown>) => void
   /** Show framework picker. Default true. */
   showFrameworkPicker?: boolean
   /** Optional class for the root wrapper. */
   className?: string
 }
 
+const DEFAULT_FEATURES: Record<FeatureKey, boolean> = {
+  scroll: true,
+  '404': true,
+  outbound: true,
+  downloads: true,
+  frustration: false,
+}
+
 export default function ScriptSetupBlock({
   site,
   onScriptCopy,
+  onFeaturesChange,
   showFrameworkPicker = true,
   className = '',
 }: ScriptSetupBlockProps) {
+  const sf = site.script_features || {}
   const [features, setFeatures] = useState<Record<FeatureKey, boolean>>({
-    scroll: true,
-    '404': true,
-    outbound: true,
-    downloads: true,
-    frustration: false,
+    scroll: sf.scroll != null ? Boolean(sf.scroll) : DEFAULT_FEATURES.scroll,
+    '404': sf['404'] != null ? Boolean(sf['404']) : DEFAULT_FEATURES['404'],
+    outbound: sf.outbound != null ? Boolean(sf.outbound) : DEFAULT_FEATURES.outbound,
+    downloads: sf.downloads != null ? Boolean(sf.downloads) : DEFAULT_FEATURES.downloads,
+    frustration: sf.frustration != null ? Boolean(sf.frustration) : DEFAULT_FEATURES.frustration,
   })
-  const [storage, setStorage] = useState('local')
-  const [ttl, setTtl] = useState('24')
+  const [storage, setStorage] = useState(typeof sf.storage === 'string' ? sf.storage : 'local')
+  const [ttl, setTtl] = useState(typeof sf.ttl === 'string' ? sf.ttl : '24')
   const [framework, setFramework] = useState('')
   const [copied, setCopied] = useState(false)
 
@@ -97,7 +110,11 @@ export default function ScriptSetupBlock({
   }, [scriptSnippet, onScriptCopy])
 
   const toggleFeature = (key: FeatureKey) => {
-    setFeatures((prev) => ({ ...prev, [key]: !prev[key] }))
+    setFeatures((prev) => {
+      const next = { ...prev, [key]: !prev[key] }
+      onFeaturesChange?.({ ...next, storage, ttl })
+      return next
+    })
   }
 
   const selectedIntegration = framework ? getIntegration(framework) : null
@@ -201,7 +218,7 @@ export default function ScriptSetupBlock({
             <Select
               variant="input"
               value={storage}
-              onChange={setStorage}
+              onChange={(v: string) => { setStorage(v); onFeaturesChange?.({ ...features, storage: v, ttl }) }}
               options={STORAGE_OPTIONS}
             />
           </div>
@@ -213,7 +230,7 @@ export default function ScriptSetupBlock({
               <Select
                 variant="input"
                 value={ttl}
-                onChange={setTtl}
+                onChange={(v: string) => { setTtl(v); onFeaturesChange?.({ ...features, storage, ttl: v }) }}
                 options={TTL_OPTIONS}
               />
             </div>
