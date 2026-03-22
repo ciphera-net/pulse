@@ -18,6 +18,7 @@ import {
   SearchIcon,
   CloudUploadIcon,
   HeartbeatIcon,
+  GaugeIcon,
   SettingsIcon,
   CollapseLeftIcon,
   CollapseRightIcon,
@@ -88,6 +89,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'CDN', href: (id) => `/sites/${id}/cdn`, icon: CloudUploadIcon, matchPrefix: true },
       { label: 'Uptime', href: (id) => `/sites/${id}/uptime`, icon: HeartbeatIcon, matchPrefix: true },
+      { label: 'PageSpeed', href: (id) => `/sites/${id}/pagespeed`, icon: GaugeIcon, matchPrefix: true },
     ],
   },
 ]

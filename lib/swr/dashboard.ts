@@ -31,6 +31,7 @@ import { getSite } from '@/lib/api/sites'
 import type { Site } from '@/lib/api/sites'
 import { listFunnels, type Funnel } from '@/lib/api/funnels'
 import { getUptimeStatus, type UptimeStatusResponse } from '@/lib/api/uptime'
+import { getPageSpeedConfig, getPageSpeedLatest, getPageSpeedHistory, type PageSpeedConfig, type PageSpeedCheck } from '@/lib/api/pagespeed'
 import { listGoals, type Goal } from '@/lib/api/goals'
 import { listReportSchedules, listAlertSchedules, type ReportSchedule } from '@/lib/api/report-schedules'
 import { listSessions, getBotFilterStats, type SessionSummary, type BotFilterStats } from '@/lib/api/bot-filter'
@@ -79,6 +80,9 @@ const fetchers = {
     getJourneyEntryPoints(siteId, start, end),
   funnels: (siteId: string) => listFunnels(siteId),
   uptimeStatus: (siteId: string) => getUptimeStatus(siteId),
+  pageSpeedConfig: (siteId: string) => getPageSpeedConfig(siteId),
+  pageSpeedLatest: (siteId: string) => getPageSpeedLatest(siteId),
+  pageSpeedHistory: (siteId: string, strategy: 'mobile' | 'desktop', days: number) => getPageSpeedHistory(siteId, strategy, days),
   goals: (siteId: string) => listGoals(siteId),
   reportSchedules: (siteId: string) => listReportSchedules(siteId),
   alertSchedules: (siteId: string) => listAlertSchedules(siteId),
@@ -547,6 +551,33 @@ export function useBotFilterStats(siteId: string) {
     siteId ? ['botFilterStats', siteId] : null,
     () => getBotFilterStats(siteId),
     { ...dashboardSWRConfig, refreshInterval: 60 * 1000, dedupingInterval: 10 * 1000 }
+  )
+}
+
+// * Hook for PageSpeed config
+export function usePageSpeedConfig(siteId: string) {
+  return useSWR<PageSpeedConfig>(
+    siteId ? ['pageSpeedConfig', siteId] : null,
+    () => fetchers.pageSpeedConfig(siteId),
+    { ...dashboardSWRConfig, refreshInterval: 0, dedupingInterval: 10 * 1000 }
+  )
+}
+
+// * Hook for latest PageSpeed checks (mobile + desktop)
+export function usePageSpeedLatest(siteId: string) {
+  return useSWR<PageSpeedCheck[]>(
+    siteId ? ['pageSpeedLatest', siteId] : null,
+    () => fetchers.pageSpeedLatest(siteId),
+    { ...dashboardSWRConfig, refreshInterval: 60 * 1000, dedupingInterval: 10 * 1000, keepPreviousData: true }
+  )
+}
+
+// * Hook for PageSpeed score history (trend chart)
+export function usePageSpeedHistory(siteId: string, strategy: 'mobile' | 'desktop', days = 90) {
+  return useSWR<PageSpeedCheck[]>(
+    siteId ? ['pageSpeedHistory', siteId, strategy, days] : null,
+    () => fetchers.pageSpeedHistory(siteId, strategy, days),
+    { ...dashboardSWRConfig, refreshInterval: 60 * 1000, dedupingInterval: 10 * 1000, keepPreviousData: true }
   )
 }
 
