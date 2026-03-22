@@ -509,8 +509,7 @@ export default function PageSpeedPage() {
           {categoryGroups.map(group => {
             const groupAudits = auditsByGroup[group.key] ?? []
             const groupPassed = passed.filter(a => a.group === group.key)
-            // * Hide categories with no failing audits — showing only passed count adds no value
-            if (groupAudits.length === 0) return null
+            if (groupAudits.length === 0 && groupPassed.length === 0) return null
             return (
               <div key={group.key} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 sm:p-8">
                 {/* Category header with gauge */}
@@ -521,7 +520,7 @@ export default function PageSpeedPage() {
                       {group.label}
                     </h3>
                     <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                      {groupAudits.length} issue{groupAudits.length !== 1 ? 's' : ''} found
+                      {groupAudits.length === 0 ? 'No issues found' : `${groupAudits.length} issue${groupAudits.length !== 1 ? 's' : ''} found`}
                     </p>
                   </div>
                 </div>
