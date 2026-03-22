@@ -230,21 +230,50 @@ export default function PageSpeedPage() {
 
   // * Parse audits into groups
   const audits = currentCheck?.audits ?? []
-  const opportunities = audits
-    .filter(a => a.category === 'opportunity')
-    .sort((a, b) => (b.savings_ms ?? 0) - (a.savings_ms ?? 0))
-  const diagnostics = audits.filter(a => a.category === 'diagnostic')
+  const failingAudits = audits
+    .filter(a => a.category !== 'passed')
+    .sort((a, b) => {
+      // Opportunities first (sorted by savings_ms desc), then diagnostics
+      if (a.category === 'opportunity' && b.category !== 'opportunity') return -1
+      if (a.category !== 'opportunity' && b.category === 'opportunity') return 1
+      if (a.category === 'opportunity' && b.category === 'opportunity') {
+        return (b.savings_ms ?? 0) - (a.savings_ms ?? 0)
+      }
+      return 0
+    })
   const passed = audits.filter(a => a.category === 'passed')
 
   // * Core Web Vitals metrics
   const metrics = [
-    { key: 'lcp', label: 'Largest Contentful Paint', value: currentCheck?.lcp_ms ?? null },
-    { key: 'cls', label: 'Cumulative Layout Shift', value: currentCheck?.cls ?? null },
-    { key: 'tbt', label: 'Total Blocking Time', value: currentCheck?.tbt_ms ?? null },
     { key: 'fcp', label: 'First Contentful Paint', value: currentCheck?.fcp_ms ?? null },
+    { key: 'lcp', label: 'Largest Contentful Paint', value: currentCheck?.lcp_ms ?? null },
+    { key: 'tbt', label: 'Total Blocking Time', value: currentCheck?.tbt_ms ?? null },
+    { key: 'cls', label: 'Cumulative Layout Shift', value: currentCheck?.cls ?? null },
     { key: 'si', label: 'Speed Index', value: currentCheck?.si_ms ?? null },
     { key: 'tti', label: 'Time to Interactive', value: currentCheck?.tti_ms ?? null },
   ]
+
+  // * Compact score helper for the hero section
+  const compactScores = [
+    { label: 'Accessibility', score: currentCheck?.accessibility_score ?? null },
+    { label: 'Best Practices', score: currentCheck?.best_practices_score ?? null },
+    { label: 'SEO', score: currentCheck?.seo_score ?? null },
+  ]
+
+  function getScoreColor(score: number | null): string {
+    if (score === null) return '#6b7280'
+    if (score >= 90) return '#0cce6b'
+    if (score >= 50) return '#ffa400'
+    return '#ff4e42'
+  }
+
+  function getMetricDotColor(metric: string, value: number | null): string {
+    if (value === null) return 'bg-neutral-400'
+    const status = getMetricStatus(metric, value)
+    if (status.label === 'Good') return 'bg-emerald-500'
+    if (status.label === 'Needs Improvement') return 'bg-amber-500'
+    return 'bg-red-500'
+  }
 
   // * Enabled state — show full PageSpeed dashboard
   return (
@@ -305,81 +334,101 @@ export default function PageSpeedPage() {
         </div>
       </div>
 
-      {/* Section 1 — Score Overview */}
-      <div className="flex flex-col lg:flex-row gap-6 mb-6">
-        {/* Score gauges */}
-        <div className="flex-1">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 flex justify-center">
-              <ScoreGauge score={currentCheck?.performance_score ?? null} label="Performance" />
+      {/* Section 1 — Hero Card: Score Gauge + Compact Scores + Screenshot */}
+      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 sm:p-8 mb-6">
+        <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
+          {/* Left — Large Performance Gauge */}
+          <div className="flex-shrink-0">
+            <ScoreGauge score={currentCheck?.performance_score ?? null} label="Performance" size={160} />
+          </div>
+
+          {/* Center — Compact Scores + Meta */}
+          <div className="flex-1 flex flex-col justify-center gap-4 min-w-0">
+            <div className="flex flex-col gap-3">
+              {compactScores.map(({ label, score }) => (
+                <div key={label} className="flex items-center gap-3">
+                  <span
+                    className="inline-block w-3 h-3 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: getScoreColor(score) }}
+                  />
+                  <span className="text-xl font-bold text-neutral-900 dark:text-white tabular-nums" style={{ color: getScoreColor(score) }}>
+                    {score !== null ? Math.round(score) : '--'}
+                  </span>
+                  <span className="text-sm text-neutral-600 dark:text-neutral-400">
+                    {label}
+                  </span>
+                </div>
+              ))}
             </div>
-            <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 flex justify-center">
-              <ScoreGauge score={currentCheck?.accessibility_score ?? null} label="Accessibility" />
+
+            {/* Last checked + frequency */}
+            <div className="flex items-center gap-3 text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+              {currentCheck?.checked_at && (
+                <span>Last checked {formatTimeAgo(currentCheck.checked_at)}</span>
+              )}
+              {config?.frequency && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400">
+                  {config.frequency}
+                </span>
+              )}
             </div>
-            <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 flex justify-center">
-              <ScoreGauge score={currentCheck?.best_practices_score ?? null} label="Best Practices" />
-            </div>
-            <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 flex justify-center">
-              <ScoreGauge score={currentCheck?.seo_score ?? null} label="SEO" />
+
+            {/* Score Legend */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-neutral-500 dark:text-neutral-400">
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500" />
+                0&ndash;49 Poor
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-500" />
+                50&ndash;89 Needs Improvement
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                90&ndash;100 Good
+              </span>
             </div>
           </div>
+
+          {/* Right — Screenshot */}
+          {currentCheck?.screenshot && (
+            <div className="flex-shrink-0 flex items-center justify-center">
+              <img
+                src={currentCheck.screenshot}
+                alt={`${strategy} screenshot`}
+                className="rounded-lg max-h-48 w-auto border border-neutral-200 dark:border-neutral-700 object-contain"
+              />
+            </div>
+          )}
         </div>
-        {/* Screenshot */}
-        {currentCheck?.screenshot && (
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 flex items-center justify-center lg:w-72">
-            <img
-              src={currentCheck.screenshot}
-              alt={`${strategy} screenshot`}
-              className="rounded-lg max-h-48 object-contain"
-            />
-          </div>
-        )}
       </div>
 
-      {/* Last checked info */}
-      <div className="flex items-center gap-3 mb-6 text-sm text-neutral-500 dark:text-neutral-400">
-        {currentCheck?.checked_at && (
-          <span>Last checked {formatTimeAgo(currentCheck.checked_at)}</span>
-        )}
-        {config?.frequency && (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400">
-            {config.frequency}
-          </span>
-        )}
-      </div>
-
-      {/* Section 2 — Core Web Vitals */}
-      <div className="mb-6">
-        <h3 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">
-          Core Web Vitals
+      {/* Section 2 — Metrics Card */}
+      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 sm:p-8 mb-6">
+        <h3 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-5">
+          Metrics
         </h3>
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-          {metrics.map(({ key, label, value }) => {
-            const status = getMetricStatus(key, value)
-            return (
-              <div
-                key={key}
-                className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5"
-              >
-                <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
+          {metrics.map(({ key, label, value }) => (
+            <div key={key} className="flex items-start gap-3">
+              <span className={`mt-1.5 inline-block w-2.5 h-2.5 rounded-full flex-shrink-0 ${getMetricDotColor(key, value)}`} />
+              <div>
+                <div className="text-sm text-neutral-500 dark:text-neutral-400">
                   {label}
                 </div>
-                <div className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">
+                <div className="text-2xl font-bold text-neutral-900 dark:text-white tabular-nums">
                   {formatMetricValue(key, value)}
                 </div>
-                <span className={`text-xs font-medium ${status.color}`}>
-                  {status.label}
-                </span>
               </div>
-            )
-          })}
+            </div>
+          ))}
         </div>
       </div>
 
       {/* Section 3 — Score Trend Chart */}
       {chartData.length >= 2 && (
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 mb-6">
-          <h3 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 sm:p-8 mb-6">
+          <h3 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-4">
             Performance Score Trend
           </h3>
           <ChartContainer config={chartConfig} className="h-48">
@@ -434,73 +483,74 @@ export default function PageSpeedPage() {
         </div>
       )}
 
-      {/* Section 4 — Diagnostics Accordion */}
+      {/* Section 4 — Diagnostics */}
       {audits.length > 0 && (
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5">
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 sm:p-8">
           <h3 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-4">
             Diagnostics
           </h3>
-          <div className="space-y-4">
-            {/* Opportunities */}
-            {opportunities.length > 0 && (
-              <details open>
-                <summary className="cursor-pointer text-sm font-semibold text-neutral-900 dark:text-white select-none">
-                  Opportunities ({opportunities.length})
-                </summary>
-                <div className="mt-2 space-y-1">
-                  {opportunities.map(audit => <AuditRow key={audit.id} audit={audit} />)}
-                </div>
-              </details>
-            )}
 
-            {/* Diagnostics */}
-            {diagnostics.length > 0 && (
-              <details open>
-                <summary className="cursor-pointer text-sm font-semibold text-neutral-900 dark:text-white select-none">
-                  Diagnostics ({diagnostics.length})
-                </summary>
-                <div className="mt-2 space-y-1">
-                  {diagnostics.map(audit => <AuditRow key={audit.id} audit={audit} />)}
-                </div>
-              </details>
-            )}
+          {/* Failing audits — flat list sorted by impact */}
+          {failingAudits.length > 0 && (
+            <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
+              {failingAudits.map(audit => <AuditRow key={audit.id} audit={audit} />)}
+            </div>
+          )}
 
-            {/* Passed Audits */}
-            {passed.length > 0 && (
-              <details>
-                <summary className="cursor-pointer text-sm font-semibold text-neutral-900 dark:text-white select-none">
-                  Passed Audits ({passed.length})
-                </summary>
-                <div className="mt-2 space-y-1">
-                  {passed.map(audit => <AuditRow key={audit.id} audit={audit} />)}
-                </div>
-              </details>
-            )}
-          </div>
+          {/* Passed audits — collapsed */}
+          {passed.length > 0 && (
+            <details className="mt-4">
+              <summary className="cursor-pointer text-sm font-medium text-neutral-500 dark:text-neutral-400 select-none hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors">
+                <span className="ml-1">{passed.length} passed audit{passed.length !== 1 ? 's' : ''}</span>
+              </summary>
+              <div className="mt-2 divide-y divide-neutral-100 dark:divide-neutral-800">
+                {passed.map(audit => <AuditRow key={audit.id} audit={audit} />)}
+              </div>
+            </details>
+          )}
         </div>
       )}
     </div>
   )
 }
 
+// * Severity indicator based on audit score (pagespeed.web.dev style)
+function AuditSeverityIcon({ score }: { score: number | null }) {
+  if (score === null || score < 0.5) {
+    // Red triangle for poor / unknown
+    return <span className="text-red-500 text-sm leading-none flex-shrink-0" aria-label="Poor">&#9650;</span>
+  }
+  if (score < 0.9) {
+    // Amber square for needs improvement
+    return <span className="text-amber-500 text-sm leading-none flex-shrink-0" aria-label="Needs Improvement">&#9632;</span>
+  }
+  // Green circle for good
+  return <span className="text-emerald-500 text-sm leading-none flex-shrink-0" aria-label="Good">&#9679;</span>
+}
+
 // * Expandable audit row with description and detail items
 function AuditRow({ audit }: { audit: AuditSummary }) {
   return (
     <details className="group">
-      <summary className="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800 cursor-pointer list-none">
-        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${getAuditDotColor(audit.score)}`} />
-        <span className="font-medium text-sm text-neutral-900 dark:text-white">{audit.title}</span>
+      <summary className="flex items-center gap-3 py-3 px-2 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800/50 cursor-pointer list-none">
+        <AuditSeverityIcon score={audit.score} />
+        <span className="font-medium text-sm text-neutral-900 dark:text-white flex-1 min-w-0 truncate">{audit.title}</span>
         {audit.display_value && (
-          <span className="text-xs text-neutral-500 dark:text-neutral-400">{audit.display_value}</span>
+          <span className="text-sm font-medium text-neutral-500 dark:text-neutral-400 flex-shrink-0 tabular-nums">{audit.display_value}</span>
         )}
-        <svg className="w-4 h-4 ml-auto text-neutral-400 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        {audit.savings_ms != null && audit.savings_ms > 0 && !audit.display_value && (
+          <span className="text-sm font-medium text-amber-600 dark:text-amber-400 flex-shrink-0 tabular-nums">
+            {audit.savings_ms < 1000 ? `${Math.round(audit.savings_ms)}ms` : `${(audit.savings_ms / 1000).toFixed(1)}s`}
+          </span>
+        )}
+        <svg className="w-4 h-4 text-neutral-400 transition-transform group-open:rotate-180 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
       </summary>
-      <div className="pl-6 pr-2 pb-2 pt-1">
+      <div className="pl-8 pr-2 pb-3 pt-1">
         {/* Description */}
         {audit.description && (
-          <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">{audit.description}</p>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-3 leading-relaxed">{audit.description}</p>
         )}
         {/* Items table */}
         {audit.details && Array.isArray(audit.details) && audit.details.length > 0 && (
