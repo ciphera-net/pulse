@@ -75,17 +75,8 @@ export async function getPageSpeedCheck(siteId: string, checkId: string): Promis
   return apiRequest<PageSpeedCheck>(`/sites/${siteId}/pagespeed/checks/${checkId}`)
 }
 
-export async function triggerPageSpeedCheck(siteId: string): Promise<PageSpeedCheck[]> {
-  // * PSI checks take 10-30s per strategy (mobile + desktop sequential = up to 60s)
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 120_000)
-  try {
-    const res = await apiRequest<{ checks: PageSpeedCheck[] }>(`/sites/${siteId}/pagespeed/check`, {
-      method: 'POST',
-      signal: controller.signal,
-    })
-    return res?.checks ?? []
-  } finally {
-    clearTimeout(timeoutId)
-  }
+// * Triggers an async PageSpeed check. Returns immediately (202).
+// * Caller should poll getPageSpeedLatest() for results.
+export async function triggerPageSpeedCheck(siteId: string): Promise<void> {
+  await apiRequest(`/sites/${siteId}/pagespeed/check`, { method: 'POST' })
 }
