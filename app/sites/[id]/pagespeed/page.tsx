@@ -566,7 +566,14 @@ function sortBySeverity(audits: AuditSummary[]): AuditSummary[] {
 
 // * Known sub-group ordering: insights-type groups come before diagnostics-type groups
 const subGroupPriority: Record<string, number> = {
+  // * Performance
   'budgets': 0, 'load-opportunities': 0, 'diagnostics': 1,
+  // * Accessibility
+  'a11y-names-labels': 0, 'a11y-contrast': 1, 'a11y-best-practices': 2,
+  'a11y-color-contrast': 1, 'a11y-aria': 3, 'a11y-navigation': 4,
+  'a11y-language': 5, 'a11y-audio-video': 6, 'a11y-tables-lists': 7,
+  // * SEO
+  'seo-mobile': 0, 'seo-content': 1, 'seo-crawl': 2,
 }
 
 // * Group audits by sub-group within a category (e.g., "Names and Labels", "Contrast")
