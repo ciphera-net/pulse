@@ -229,6 +229,9 @@ export default function PageSpeedPage() {
     date: new Date(c.checked_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
     score: c.performance_score,
   }))
+  // * Check if all chart labels are the same (single day of data)
+  const uniqueDates = new Set(chartData.map(d => d.date))
+  const hideXAxis = uniqueDates.size <= 1
 
   // * Parse audits into groups by Lighthouse category
   const audits = currentCheck?.audits ?? []
@@ -349,7 +352,7 @@ export default function PageSpeedPage() {
 
       {/* Section 1 — Hero Card: Score Gauge + Compact Scores + Screenshot */}
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 sm:p-8 mb-6">
-        <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
+        <div className="flex flex-col md:flex-row items-center gap-8">
           {/* Left — Large Performance Gauge */}
           <div className="flex-shrink-0">
             <ScoreGauge score={currentCheck?.performance_score ?? null} label="Performance" size={160} />
@@ -357,17 +360,17 @@ export default function PageSpeedPage() {
 
           {/* Center — Compact Scores + Meta */}
           <div className="flex-1 flex flex-col justify-center gap-4 min-w-0">
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
               {compactScores.map(({ label, score }) => (
-                <div key={label} className="flex items-center gap-3">
+                <div key={label} className="flex items-center gap-2.5">
                   <span
-                    className="inline-block w-3 h-3 rounded-full flex-shrink-0"
+                    className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
                     style={{ backgroundColor: getScoreColor(score) }}
                   />
-                  <span className="text-xl font-bold text-neutral-900 dark:text-white tabular-nums" style={{ color: getScoreColor(score) }}>
+                  <span className="text-lg font-semibold tabular-nums leading-tight" style={{ color: getScoreColor(score) }}>
                     {score !== null ? Math.round(score) : '--'}
                   </span>
-                  <span className="text-sm text-neutral-600 dark:text-neutral-400">
+                  <span className="text-sm text-neutral-500 dark:text-neutral-400">
                     {label}
                   </span>
                 </div>
@@ -387,18 +390,18 @@ export default function PageSpeedPage() {
             </div>
 
             {/* Score Legend */}
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-neutral-500 dark:text-neutral-400">
-              <span className="flex items-center gap-1.5">
-                <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500" />
-                0&ndash;49 Poor
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-neutral-400 dark:text-neutral-500">
+              <span className="flex items-center gap-1">
+                <span className="inline-block w-2 h-2 rounded-full bg-red-500" />
+                0&ndash;49
               </span>
-              <span className="flex items-center gap-1.5">
-                <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-500" />
-                50&ndash;89 Needs Improvement
+              <span className="flex items-center gap-1">
+                <span className="inline-block w-2 h-2 rounded-full bg-amber-500" />
+                50&ndash;89
               </span>
-              <span className="flex items-center gap-1.5">
-                <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                90&ndash;100 Good
+              <span className="flex items-center gap-1">
+                <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
+                90&ndash;100
               </span>
             </div>
           </div>
@@ -418,14 +421,14 @@ export default function PageSpeedPage() {
 
       {/* Filmstrip — page load progression */}
       {currentCheck?.filmstrip && currentCheck.filmstrip.length > 0 && (
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 mb-6">
-          <div className="flex items-center overflow-x-auto gap-1">
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 sm:p-8 mb-6 relative">
+          <div className="flex items-center overflow-x-auto gap-1 scrollbar-none">
             {currentCheck.filmstrip.map((frame, idx) => (
               <div key={idx} className="flex-shrink-0 text-center">
                 <img
                   src={frame.data}
                   alt={`${frame.timing}ms`}
-                  className="h-24 rounded border border-neutral-200 dark:border-neutral-700 object-contain bg-white"
+                  className="h-24 rounded border border-neutral-200 dark:border-neutral-700 object-contain bg-neutral-50 dark:bg-neutral-800"
                 />
                 <span className="text-[10px] text-neutral-400 mt-1 block">
                   {frame.timing < 1000 ? `${frame.timing}ms` : `${(frame.timing / 1000).toFixed(1)}s`}
@@ -433,6 +436,8 @@ export default function PageSpeedPage() {
               </div>
             ))}
           </div>
+          {/* Fade indicator for horizontal scroll */}
+          <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-white dark:from-neutral-900 to-transparent rounded-r-2xl pointer-events-none" />
         </div>
       )}
 
@@ -449,7 +454,7 @@ export default function PageSpeedPage() {
                 <div className="text-sm text-neutral-500 dark:text-neutral-400">
                   {label}
                 </div>
-                <div className="text-2xl font-bold text-neutral-900 dark:text-white tabular-nums">
+                <div className="text-2xl font-semibold text-neutral-900 dark:text-white tabular-nums">
                   {formatMetricValue(key, value)}
                 </div>
               </div>
@@ -464,7 +469,7 @@ export default function PageSpeedPage() {
           <h3 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-4">
             Performance Score Trend
           </h3>
-          <ChartContainer config={chartConfig} className="h-48">
+          <ChartContainer config={chartConfig} className="h-40">
             <AreaChart accessibilityLayer data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="scoreGradient" x1="0" y1="0" x2="0" y2="1">
@@ -480,10 +485,11 @@ export default function PageSpeedPage() {
               />
               <XAxis
                 dataKey="date"
-                tick={{ fontSize: 10, fill: 'var(--chart-axis)' }}
+                tick={hideXAxis ? false : { fontSize: 10, fill: 'var(--chart-axis)' }}
                 tickLine={false}
                 axisLine={false}
                 interval="preserveStartEnd"
+                hide={hideXAxis}
               />
               <YAxis
                 domain={[0, 100]}
@@ -522,7 +528,8 @@ export default function PageSpeedPage() {
           {categoryGroups.map(group => {
             const groupAudits = auditsByGroup[group.key] ?? []
             const groupPassed = passed.filter(a => a.group === group.key)
-            if (groupAudits.length === 0 && groupPassed.length === 0) return null
+            // * Hide categories with no failing audits — showing only passed count adds no value
+            if (groupAudits.length === 0) return null
             return (
               <div key={group.key} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 sm:p-8">
                 <h3 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-4">
@@ -576,7 +583,7 @@ function AuditRow({ audit }: { audit: AuditSummary }) {
         <AuditSeverityIcon score={audit.score} />
         <span className="font-medium text-sm text-neutral-900 dark:text-white flex-1 min-w-0 truncate">{audit.title}</span>
         {audit.display_value && (
-          <span className="text-sm font-medium text-neutral-500 dark:text-neutral-400 flex-shrink-0 tabular-nums">{audit.display_value}</span>
+          <span className="text-xs text-neutral-500 dark:text-neutral-500 flex-shrink-0 tabular-nums">{audit.display_value}</span>
         )}
         {audit.savings_ms != null && audit.savings_ms > 0 && !audit.display_value && (
           <span className="text-sm font-medium text-amber-600 dark:text-amber-400 flex-shrink-0 tabular-nums">
@@ -664,21 +671,29 @@ function PageSpeedSkeleton() {
         <div className="h-8 w-48 bg-neutral-200 dark:bg-neutral-700 rounded" />
         <div className="h-4 w-72 bg-neutral-200 dark:bg-neutral-700 rounded" />
       </div>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 animate-pulse">
-            <div className="w-24 h-24 rounded-full bg-neutral-200 dark:bg-neutral-700 mx-auto mb-3" />
-            <div className="h-4 w-20 bg-neutral-200 dark:bg-neutral-700 rounded mx-auto" />
+      {/* Hero skeleton */}
+      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 sm:p-8 animate-pulse">
+        <div className="flex items-center gap-8">
+          <div className="w-40 h-40 rounded-full bg-neutral-200 dark:bg-neutral-700 flex-shrink-0" />
+          <div className="flex-1 space-y-3">
+            <div className="h-5 w-32 bg-neutral-200 dark:bg-neutral-700 rounded" />
+            <div className="h-5 w-36 bg-neutral-200 dark:bg-neutral-700 rounded" />
+            <div className="h-5 w-24 bg-neutral-200 dark:bg-neutral-700 rounded" />
           </div>
-        ))}
+          <div className="w-48 h-36 bg-neutral-200 dark:bg-neutral-700 rounded-lg flex-shrink-0 hidden md:block" />
+        </div>
       </div>
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        {[...Array(6)].map((_, i) => (
-          <div key={i} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 animate-pulse">
-            <div className="h-4 w-24 bg-neutral-200 dark:bg-neutral-700 rounded mb-2" />
-            <div className="h-6 w-16 bg-neutral-200 dark:bg-neutral-700 rounded" />
-          </div>
-        ))}
+      {/* Metrics skeleton */}
+      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 sm:p-8 animate-pulse">
+        <div className="h-3 w-16 bg-neutral-200 dark:bg-neutral-700 rounded mb-5" />
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="space-y-2">
+              <div className="h-3 w-32 bg-neutral-200 dark:bg-neutral-700 rounded" />
+              <div className="h-7 w-20 bg-neutral-200 dark:bg-neutral-700 rounded" />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )
