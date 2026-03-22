@@ -1,7 +1,7 @@
 'use client'
 
 import { useAuth } from '@/lib/auth/context'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { useSite, usePageSpeedConfig, usePageSpeedLatest, usePageSpeedHistory } from '@/lib/swr/dashboard'
 import { updatePageSpeedConfig, triggerPageSpeedCheck, type PageSpeedCheck, type AuditSummary } from '@/lib/api/pagespeed'
@@ -116,15 +116,47 @@ export default function PageSpeedPage() {
   }
 
   // * Trigger a manual PageSpeed check
+  // * Poll for results after triggering an async check
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const stopPolling = useCallback(() => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current)
+      pollRef.current = null
+    }
+  }, [])
+
+  // * Clean up polling on unmount
+  useEffect(() => () => stopPolling(), [stopPolling])
+
   const handleRunCheck = async () => {
     setRunning(true)
     try {
       await triggerPageSpeedCheck(siteId)
-      mutateLatest()
-      toast.success('PageSpeed check complete')
+      toast.success('PageSpeed check started — results will appear in 30-60 seconds')
+
+      // * Poll every 5s for up to 2 minutes until new results appear
+      const startedAt = Date.now()
+      const initialCheckedAt = latestChecks?.[0]?.checked_at
+
+      stopPolling()
+      pollRef.current = setInterval(async () => {
+        const elapsed = Date.now() - startedAt
+        if (elapsed > 120_000) {
+          stopPolling()
+          setRunning(false)
+          toast.error('Check is taking longer than expected. Results will appear when ready.')
+          return
+        }
+        const freshData = await mutateLatest()
+        const freshCheckedAt = freshData?.[0]?.checked_at
+        if (freshCheckedAt && freshCheckedAt !== initialCheckedAt) {
+          stopPolling()
+          setRunning(false)
+          toast.success('PageSpeed check complete')
+        }
+      }, 5000)
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to run check')
-    } finally {
+      toast.error(err?.message || 'Failed to start check')
       setRunning(false)
     }
   }
