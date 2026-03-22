@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { updateSite, resetSiteData, type Site, type GeoDataLevel } from '@/lib/api/sites'
 import { createGoal, updateGoal, deleteGoal, type Goal } from '@/lib/api/goals'
-import { createReportSchedule, updateReportSchedule, deleteReportSchedule, testReportSchedule, type ReportSchedule, type CreateReportScheduleRequest, type EmailConfig, type WebhookConfig } from '@/lib/api/report-schedules'
+import { createReportSchedule, updateReportSchedule, deleteReportSchedule, testReportSchedule, listAlertSchedules, type ReportSchedule, type CreateReportScheduleRequest, type EmailConfig, type WebhookConfig } from '@/lib/api/report-schedules'
 import { botFilterSessions, botUnfilterSessions } from '@/lib/api/bot-filter'
 import { getGSCAuthURL, disconnectGSC } from '@/lib/api/gsc'
 import { getBunnyPullZones, connectBunny, disconnectBunny } from '@/lib/api/bunny'
@@ -21,7 +21,7 @@ import { Select, Modal, Button } from '@ciphera-net/ui'
 import { APP_URL } from '@/lib/api/client'
 import { generatePrivacySnippet } from '@/lib/utils/privacySnippet'
 import { useUnsavedChanges } from '@/lib/hooks/useUnsavedChanges'
-import { useSite, useGoals, useReportSchedules, useSubscription, useGSCStatus, useBunnyStatus, useSessions, useBotFilterStats } from '@/lib/swr/dashboard'
+import { useSite, useGoals, useReportSchedules, useAlertSchedules, useSubscription, useGSCStatus, useBunnyStatus, useSessions, useBotFilterStats } from '@/lib/swr/dashboard'
 import { getRetentionOptionsForPlan, formatRetentionMonths } from '@/lib/plans'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@/lib/auth/context'
@@ -32,7 +32,7 @@ import {
   AlertTriangleIcon,
   ZapIcon,
 } from '@ciphera-net/ui'
-import { PaperPlaneTilt, Envelope, WebhooksLogo, SpinnerGap, Trash, PencilSimple, Play, Plugs, ShieldCheck, Bug } from '@phosphor-icons/react'
+import { PaperPlaneTilt, Envelope, WebhooksLogo, SpinnerGap, Trash, PencilSimple, Play, Plugs, ShieldCheck, Bug, BellSimple } from '@phosphor-icons/react'
 import { SiDiscord } from '@icons-pack/react-simple-icons'
 
 function SlackIcon({ size = 16 }: { size?: number }) {
@@ -88,7 +88,7 @@ export default function SiteSettingsPage() {
   const { data: site, isLoading: siteLoading, mutate: mutateSite } = useSite(siteId)
   const [saving, setSaving] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [activeTab, setActiveTab] = useState<'general' | 'visibility' | 'data' | 'bot' | 'goals' | 'reports' | 'integrations'>('general')
+  const [activeTab, setActiveTab] = useState<'general' | 'visibility' | 'data' | 'bot' | 'goals' | 'notifications' | 'integrations'>('general')
   const searchParams = useSearchParams()
 
   const [formData, setFormData] = useState({
@@ -124,6 +124,8 @@ export default function SiteSettingsPage() {
 
   // Report schedules
   const { data: reportSchedules = [], isLoading: reportLoading, mutate: mutateReportSchedules } = useReportSchedules(siteId)
+  // Alert schedules (uptime alerts)
+  const { data: alertSchedules = [], isLoading: alertLoading, mutate: mutateAlertSchedules } = useAlertSchedules(siteId)
   const { data: gscStatus, mutate: mutateGSCStatus } = useGSCStatus(siteId)
   const [gscConnecting, setGscConnecting] = useState(false)
   const [gscDisconnecting, setGscDisconnecting] = useState(false)
@@ -147,6 +149,17 @@ export default function SiteSettingsPage() {
     timezone: '',
     sendHour: 9,
     sendDay: 1,
+  })
+
+  // Alert channel state
+  const [alertModalOpen, setAlertModalOpen] = useState(false)
+  const [editingAlert, setEditingAlert] = useState<ReportSchedule | null>(null)
+  const [alertSaving, setAlertSaving] = useState(false)
+  const [alertTesting, setAlertTesting] = useState<string | null>(null)
+  const [alertForm, setAlertForm] = useState({
+    channel: 'email' as string,
+    recipients: '',
+    webhookUrl: '',
   })
 
   // Bot & Spam tab state
@@ -334,6 +347,103 @@ export default function SiteSettingsPage() {
       toast.error(getAuthErrorMessage(error) || 'Failed to send test report')
     } finally {
       setReportTesting(null)
+    }
+  }
+
+  // Alert channel handlers
+  const resetAlertForm = () => {
+    setAlertForm({
+      channel: 'email',
+      recipients: '',
+      webhookUrl: '',
+    })
+  }
+
+  const openEditAlert = (schedule: ReportSchedule) => {
+    setEditingAlert(schedule)
+    const isEmail = schedule.channel === 'email'
+    setAlertForm({
+      channel: schedule.channel,
+      recipients: isEmail ? (schedule.channel_config as EmailConfig).recipients.join(', ') : '',
+      webhookUrl: !isEmail ? (schedule.channel_config as WebhookConfig).url : '',
+    })
+    setAlertModalOpen(true)
+  }
+
+  const handleAlertSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    let channelConfig: EmailConfig | WebhookConfig
+    if (alertForm.channel === 'email') {
+      const recipients = alertForm.recipients.split(',').map(r => r.trim()).filter(r => r.length > 0)
+      if (recipients.length === 0) {
+        toast.error('At least one recipient email is required')
+        return
+      }
+      channelConfig = { recipients }
+    } else {
+      if (!alertForm.webhookUrl.trim()) {
+        toast.error('Webhook URL is required')
+        return
+      }
+      channelConfig = { url: alertForm.webhookUrl.trim() }
+    }
+
+    const payload: CreateReportScheduleRequest = {
+      channel: alertForm.channel,
+      channel_config: channelConfig,
+      frequency: 'daily',
+      purpose: 'alert',
+    }
+
+    setAlertSaving(true)
+    try {
+      if (editingAlert) {
+        await updateReportSchedule(siteId, editingAlert.id, { ...payload, purpose: 'alert' })
+        toast.success('Alert channel updated')
+      } else {
+        await createReportSchedule(siteId, payload)
+        toast.success('Alert channel created')
+      }
+      setAlertModalOpen(false)
+      mutateAlertSchedules()
+    } catch (error: unknown) {
+      toast.error(getAuthErrorMessage(error) || 'Failed to save alert channel')
+    } finally {
+      setAlertSaving(false)
+    }
+  }
+
+  const handleAlertDelete = async (schedule: ReportSchedule) => {
+    if (!confirm('Delete this alert channel?')) return
+    try {
+      await deleteReportSchedule(siteId, schedule.id)
+      toast.success('Alert channel deleted')
+      mutateAlertSchedules()
+    } catch (error: unknown) {
+      toast.error(getAuthErrorMessage(error) || 'Failed to delete alert channel')
+    }
+  }
+
+  const handleAlertToggle = async (schedule: ReportSchedule) => {
+    try {
+      await updateReportSchedule(siteId, schedule.id, { enabled: !schedule.enabled })
+      toast.success(schedule.enabled ? 'Alert paused' : 'Alert enabled')
+      mutateAlertSchedules()
+    } catch (error: unknown) {
+      toast.error(getAuthErrorMessage(error) || 'Failed to update alert channel')
+    }
+  }
+
+  const handleAlertTest = async (schedule: ReportSchedule) => {
+    setAlertTesting(schedule.id)
+    try {
+      await testReportSchedule(siteId, schedule.id)
+      toast.success('Test alert sent successfully')
+    } catch (error: unknown) {
+      toast.error(getAuthErrorMessage(error) || 'Failed to send test alert')
+    } finally {
+      setAlertTesting(null)
     }
   }
 
@@ -701,17 +811,17 @@ export default function SiteSettingsPage() {
             Goals & Events
           </button>
           <button
-            onClick={() => setActiveTab('reports')}
+            onClick={() => setActiveTab('notifications')}
             role="tab"
-            aria-selected={activeTab === 'reports'}
+            aria-selected={activeTab === 'notifications'}
             className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 ${
-              activeTab === 'reports'
+              activeTab === 'notifications'
                 ? 'bg-brand-orange/10 text-brand-orange'
                 : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
             }`}
           >
-            <PaperPlaneTilt className="w-5 h-5" />
-            Reports
+            <BellSimple className="w-5 h-5" />
+            Notifications
           </button>
           <button
             onClick={() => setActiveTab('integrations')}
@@ -1530,128 +1640,257 @@ export default function SiteSettingsPage() {
               </div>
             )}
 
-            {activeTab === 'reports' && (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">Scheduled Reports</h2>
-                    <p className="text-sm text-neutral-500 dark:text-neutral-400">Automatically deliver analytics reports via email or webhooks.</p>
+            {activeTab === 'notifications' && (
+              <div className="space-y-8">
+                <div>
+                  <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">Notifications</h2>
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400">Configure how you receive reports and alerts.</p>
+                </div>
+
+                {/* Reports subsection */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-base font-medium text-neutral-900 dark:text-white">Reports</h3>
+                      <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">Automatically deliver analytics reports via email or webhooks.</p>
+                    </div>
+                    {canEdit && (
+                      <Button onClick={() => { setEditingSchedule(null); resetReportForm(); setReportModalOpen(true) }}>
+                        Add Report
+                      </Button>
+                    )}
                   </div>
-                  {canEdit && (
-                    <Button onClick={() => { setEditingSchedule(null); resetReportForm(); setReportModalOpen(true) }}>
-                      Add Report
-                    </Button>
+
+                  {reportLoading ? (
+                    <div className="space-y-2">
+                      {Array.from({ length: 3 }).map((_, i) => (
+                        <div key={i} className="h-20 animate-pulse rounded-xl bg-neutral-100 dark:bg-neutral-800" />
+                      ))}
+                    </div>
+                  ) : reportSchedules.length === 0 ? (
+                    <div className="p-6 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50 text-center text-neutral-500 dark:text-neutral-400 text-sm">
+                      No scheduled reports yet. Add a report to automatically receive analytics summaries.
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {reportSchedules.map((schedule) => (
+                        <div
+                          key={schedule.id}
+                          className={`rounded-xl border p-4 transition-colors ${
+                            schedule.enabled
+                              ? 'border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/50'
+                              : 'border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/30 opacity-60'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex items-start gap-3 min-w-0">
+                              <div className="p-2 bg-neutral-800 rounded-lg mt-0.5">
+                                {CHANNEL_ICONS_LG[schedule.channel] || <WebhooksLogo className="w-5 h-5 text-neutral-400" />}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-medium text-neutral-900 dark:text-white">
+                                    {getChannelLabel(schedule.channel)}
+                                  </span>
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-brand-orange/10 text-brand-orange">
+                                    {getFrequencyLabel(schedule.frequency)}
+                                  </span>
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400">
+                                    {getReportTypeLabel(schedule.report_type)}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1 truncate">
+                                  {schedule.channel === 'email'
+                                    ? (schedule.channel_config as EmailConfig).recipients.join(', ')
+                                    : (schedule.channel_config as WebhookConfig).url}
+                                </p>
+                                <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
+                                  {getScheduleDescription(schedule)}
+                                </p>
+                                <div className="flex items-center gap-3 mt-1 text-xs text-neutral-400 dark:text-neutral-500">
+                                  <span>
+                                    Last sent: {schedule.last_sent_at
+                                      ? formatDateTime(new Date(schedule.last_sent_at))
+                                      : 'Never'}
+                                  </span>
+                                </div>
+                                {schedule.last_error && (
+                                  <p className="text-xs text-red-500 dark:text-red-400 mt-1">
+                                    Error: {schedule.last_error}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            {canEdit && (
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => handleReportTest(schedule)}
+                                  disabled={reportTesting === schedule.id}
+                                  className="p-2 text-neutral-500 hover:text-brand-orange hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors disabled:opacity-50"
+                                  title="Send test report"
+                                >
+                                  {reportTesting === schedule.id ? (
+                                    <SpinnerGap className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Play className="w-4 h-4" />
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => openEditSchedule(schedule)}
+                                  className="p-2 text-neutral-500 hover:text-brand-orange hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
+                                  title="Edit schedule"
+                                >
+                                  <PencilSimple className="w-4 h-4" />
+                                </button>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={schedule.enabled}
+                                    onChange={() => handleReportToggle(schedule)}
+                                    className="sr-only peer"
+                                  />
+                                  <div className="w-9 h-5 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-orange/20 dark:peer-focus:ring-brand-orange/20 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-neutral-600 peer-checked:bg-brand-orange"></div>
+                                </label>
+                                <button
+                                  type="button"
+                                  onClick={() => handleReportDelete(schedule)}
+                                  className="p-2 text-neutral-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                  title="Delete schedule"
+                                >
+                                  <Trash className="w-4 h-4" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
 
-                {reportLoading ? (
-                  <div className="space-y-2">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                      <div key={i} className="h-20 animate-pulse rounded-xl bg-neutral-100 dark:bg-neutral-800" />
-                    ))}
-                  </div>
-                ) : reportSchedules.length === 0 ? (
-                  <div className="p-6 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50 text-center text-neutral-500 dark:text-neutral-400 text-sm">
-                    No scheduled reports yet. Add a report to automatically receive analytics summaries.
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {reportSchedules.map((schedule) => (
-                      <div
-                        key={schedule.id}
-                        className={`rounded-xl border p-4 transition-colors ${
-                          schedule.enabled
-                            ? 'border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/50'
-                            : 'border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/30 opacity-60'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex items-start gap-3 min-w-0">
-                            <div className="p-2 bg-neutral-800 rounded-lg mt-0.5">
-                              {CHANNEL_ICONS_LG[schedule.channel] || <WebhooksLogo className="w-5 h-5 text-neutral-400" />}
-                            </div>
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-medium text-neutral-900 dark:text-white">
-                                  {getChannelLabel(schedule.channel)}
-                                </span>
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-brand-orange/10 text-brand-orange">
-                                  {getFrequencyLabel(schedule.frequency)}
-                                </span>
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400">
-                                  {getReportTypeLabel(schedule.report_type)}
-                                </span>
-                              </div>
-                              <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1 truncate">
-                                {schedule.channel === 'email'
-                                  ? (schedule.channel_config as EmailConfig).recipients.join(', ')
-                                  : (schedule.channel_config as WebhookConfig).url}
-                              </p>
-                              <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
-                                {getScheduleDescription(schedule)}
-                              </p>
-                              <div className="flex items-center gap-3 mt-1 text-xs text-neutral-400 dark:text-neutral-500">
-                                <span>
-                                  Last sent: {schedule.last_sent_at
-                                    ? formatDateTime(new Date(schedule.last_sent_at))
-                                    : 'Never'}
-                                </span>
-                              </div>
-                              {schedule.last_error && (
-                                <p className="text-xs text-red-500 dark:text-red-400 mt-1">
-                                  Error: {schedule.last_error}
-                                </p>
-                              )}
-                            </div>
-                          </div>
+                {/* Divider */}
+                <div className="border-t border-neutral-200 dark:border-neutral-800" />
 
-                          {canEdit && (
-                            <div className="flex items-center gap-2 flex-shrink-0">
-                              <button
-                                type="button"
-                                onClick={() => handleReportTest(schedule)}
-                                disabled={reportTesting === schedule.id}
-                                className="p-2 text-neutral-500 hover:text-brand-orange hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors disabled:opacity-50"
-                                title="Send test report"
-                              >
-                                {reportTesting === schedule.id ? (
-                                  <SpinnerGap className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <Play className="w-4 h-4" />
-                                )}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => openEditSchedule(schedule)}
-                                className="p-2 text-neutral-500 hover:text-brand-orange hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
-                                title="Edit schedule"
-                              >
-                                <PencilSimple className="w-4 h-4" />
-                              </button>
-                              <label className="relative inline-flex items-center cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={schedule.enabled}
-                                  onChange={() => handleReportToggle(schedule)}
-                                  className="sr-only peer"
-                                />
-                                <div className="w-9 h-5 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-orange/20 dark:peer-focus:ring-brand-orange/20 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-neutral-600 peer-checked:bg-brand-orange"></div>
-                              </label>
-                              <button
-                                type="button"
-                                onClick={() => handleReportDelete(schedule)}
-                                className="p-2 text-neutral-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                                title="Delete schedule"
-                              >
-                                <Trash className="w-4 h-4" />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                {/* Alerts subsection */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-base font-medium text-neutral-900 dark:text-white">Alerts</h3>
+                      <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">Get notified when your site goes down or recovers.</p>
+                    </div>
+                    {canEdit && (
+                      <Button onClick={() => { setEditingAlert(null); resetAlertForm(); setAlertModalOpen(true) }}>
+                        Add Alert Channel
+                      </Button>
+                    )}
                   </div>
-                )}
+
+                  {alertLoading ? (
+                    <div className="space-y-2">
+                      {Array.from({ length: 2 }).map((_, i) => (
+                        <div key={i} className="h-20 animate-pulse rounded-xl bg-neutral-100 dark:bg-neutral-800" />
+                      ))}
+                    </div>
+                  ) : alertSchedules.length === 0 ? (
+                    <div className="p-6 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50 text-center text-neutral-500 dark:text-neutral-400 text-sm">
+                      No alert channels configured. Add a channel to receive uptime alerts when your site goes down or recovers.
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {alertSchedules.map((schedule) => (
+                        <div
+                          key={schedule.id}
+                          className={`rounded-xl border p-4 transition-colors ${
+                            schedule.enabled
+                              ? 'border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/50'
+                              : 'border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/30 opacity-60'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex items-start gap-3 min-w-0">
+                              <div className="p-2 bg-neutral-800 rounded-lg mt-0.5">
+                                {CHANNEL_ICONS_LG[schedule.channel] || <WebhooksLogo className="w-5 h-5 text-neutral-400" />}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-medium text-neutral-900 dark:text-white">
+                                    {getChannelLabel(schedule.channel)}
+                                  </span>
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-500">
+                                    Uptime Alert
+                                  </span>
+                                </div>
+                                <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1 truncate">
+                                  {schedule.channel === 'email'
+                                    ? (schedule.channel_config as EmailConfig).recipients.join(', ')
+                                    : (schedule.channel_config as WebhookConfig).url}
+                                </p>
+                                <div className="flex items-center gap-3 mt-1 text-xs text-neutral-400 dark:text-neutral-500">
+                                  <span>
+                                    Last sent: {schedule.last_sent_at
+                                      ? formatDateTime(new Date(schedule.last_sent_at))
+                                      : 'Never'}
+                                  </span>
+                                </div>
+                                {schedule.last_error && (
+                                  <p className="text-xs text-red-500 dark:text-red-400 mt-1">
+                                    Error: {schedule.last_error}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            {canEdit && (
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => handleAlertTest(schedule)}
+                                  disabled={alertTesting === schedule.id}
+                                  className="p-2 text-neutral-500 hover:text-brand-orange hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors disabled:opacity-50"
+                                  title="Send test alert"
+                                >
+                                  {alertTesting === schedule.id ? (
+                                    <SpinnerGap className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Play className="w-4 h-4" />
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => openEditAlert(schedule)}
+                                  className="p-2 text-neutral-500 hover:text-brand-orange hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
+                                  title="Edit alert channel"
+                                >
+                                  <PencilSimple className="w-4 h-4" />
+                                </button>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={schedule.enabled}
+                                    onChange={() => handleAlertToggle(schedule)}
+                                    className="sr-only peer"
+                                  />
+                                  <div className="w-9 h-5 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-orange/20 dark:peer-focus:ring-brand-orange/20 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-neutral-600 peer-checked:bg-brand-orange"></div>
+                                </label>
+                                <button
+                                  type="button"
+                                  onClick={() => handleAlertDelete(schedule)}
+                                  className="p-2 text-neutral-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                  title="Delete alert channel"
+                                >
+                                  <Trash className="w-4 h-4" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -2260,6 +2499,79 @@ export default function SiteSettingsPage() {
             </Button>
             <Button type="submit" variant="primary" disabled={reportSaving}>
               {reportSaving ? 'Saving...' : editingSchedule ? 'Update' : 'Create'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={alertModalOpen}
+        onClose={() => setAlertModalOpen(false)}
+        title={editingAlert ? 'Edit alert channel' : 'Add alert channel'}
+      >
+        <form onSubmit={handleAlertSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Channel</label>
+            <div className="grid grid-cols-2 gap-2">
+              {(['email', 'slack', 'discord', 'webhook'] as const).map((ch) => (
+                <button
+                  key={ch}
+                  type="button"
+                  onClick={() => setAlertForm({ ...alertForm, channel: ch })}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                    alertForm.channel === ch
+                      ? 'border-brand-orange bg-brand-orange/10 text-brand-orange'
+                      : 'border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800'
+                  }`}
+                >
+                  {CHANNEL_ICONS[ch]}
+                  {getChannelLabel(ch)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {alertForm.channel === 'email' ? (
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Recipients</label>
+              <input
+                type="text"
+                value={alertForm.recipients}
+                onChange={(e) => setAlertForm({ ...alertForm, recipients: e.target.value })}
+                placeholder="email1@example.com, email2@example.com"
+                className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white"
+                required
+              />
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Comma-separated email addresses.</p>
+            </div>
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                {alertForm.channel === 'slack' ? 'Slack Webhook URL' : alertForm.channel === 'discord' ? 'Discord Webhook URL' : 'Webhook URL'}
+              </label>
+              <input
+                type="url"
+                value={alertForm.webhookUrl}
+                onChange={(e) => setAlertForm({ ...alertForm, webhookUrl: e.target.value })}
+                placeholder="https://hooks.example.com/..."
+                className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white"
+                required
+              />
+            </div>
+          )}
+
+          <div className="p-3 rounded-lg bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700">
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">
+              Alerts are sent automatically when your site goes down or recovers. No schedule configuration needed.
+            </p>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="secondary" onClick={() => setAlertModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary" disabled={alertSaving}>
+              {alertSaving ? 'Saving...' : editingAlert ? 'Update' : 'Create'}
             </Button>
           </div>
         </form>
