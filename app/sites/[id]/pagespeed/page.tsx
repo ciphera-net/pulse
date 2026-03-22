@@ -306,19 +306,34 @@ export default function PageSpeedPage() {
       </div>
 
       {/* Section 1 — Score Overview */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 flex justify-center">
-          <ScoreGauge score={currentCheck?.performance_score ?? null} label="Performance" />
+      <div className="flex flex-col lg:flex-row gap-6 mb-6">
+        {/* Score gauges */}
+        <div className="flex-1">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 flex justify-center">
+              <ScoreGauge score={currentCheck?.performance_score ?? null} label="Performance" />
+            </div>
+            <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 flex justify-center">
+              <ScoreGauge score={currentCheck?.accessibility_score ?? null} label="Accessibility" />
+            </div>
+            <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 flex justify-center">
+              <ScoreGauge score={currentCheck?.best_practices_score ?? null} label="Best Practices" />
+            </div>
+            <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 flex justify-center">
+              <ScoreGauge score={currentCheck?.seo_score ?? null} label="SEO" />
+            </div>
+          </div>
         </div>
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 flex justify-center">
-          <ScoreGauge score={currentCheck?.accessibility_score ?? null} label="Accessibility" />
-        </div>
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 flex justify-center">
-          <ScoreGauge score={currentCheck?.best_practices_score ?? null} label="Best Practices" />
-        </div>
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 flex justify-center">
-          <ScoreGauge score={currentCheck?.seo_score ?? null} label="SEO" />
-        </div>
+        {/* Screenshot */}
+        {currentCheck?.screenshot && (
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 flex items-center justify-center lg:w-72">
+            <img
+              src={currentCheck.screenshot}
+              alt={`${strategy} screenshot`}
+              className="rounded-lg max-h-48 object-contain"
+            />
+          </div>
+        )}
       </div>
 
       {/* Last checked info */}
@@ -432,16 +447,8 @@ export default function PageSpeedPage() {
                 <summary className="cursor-pointer text-sm font-semibold text-neutral-900 dark:text-white select-none">
                   Opportunities ({opportunities.length})
                 </summary>
-                <div className="mt-2 space-y-2">
-                  {opportunities.map(audit => (
-                    <div key={audit.id} className="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800">
-                      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${getAuditDotColor(audit.score)}`} />
-                      <span className="font-medium text-sm text-neutral-900 dark:text-white">{audit.title}</span>
-                      {audit.display_value && (
-                        <span className="text-xs text-neutral-500 dark:text-neutral-400">{audit.display_value}</span>
-                      )}
-                    </div>
-                  ))}
+                <div className="mt-2 space-y-1">
+                  {opportunities.map(audit => <AuditRow key={audit.id} audit={audit} />)}
                 </div>
               </details>
             )}
@@ -452,16 +459,8 @@ export default function PageSpeedPage() {
                 <summary className="cursor-pointer text-sm font-semibold text-neutral-900 dark:text-white select-none">
                   Diagnostics ({diagnostics.length})
                 </summary>
-                <div className="mt-2 space-y-2">
-                  {diagnostics.map(audit => (
-                    <div key={audit.id} className="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800">
-                      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${getAuditDotColor(audit.score)}`} />
-                      <span className="font-medium text-sm text-neutral-900 dark:text-white">{audit.title}</span>
-                      {audit.display_value && (
-                        <span className="text-xs text-neutral-500 dark:text-neutral-400">{audit.display_value}</span>
-                      )}
-                    </div>
-                  ))}
+                <div className="mt-2 space-y-1">
+                  {diagnostics.map(audit => <AuditRow key={audit.id} audit={audit} />)}
                 </div>
               </details>
             )}
@@ -472,16 +471,8 @@ export default function PageSpeedPage() {
                 <summary className="cursor-pointer text-sm font-semibold text-neutral-900 dark:text-white select-none">
                   Passed Audits ({passed.length})
                 </summary>
-                <div className="mt-2 space-y-2">
-                  {passed.map(audit => (
-                    <div key={audit.id} className="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800">
-                      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${getAuditDotColor(audit.score)}`} />
-                      <span className="font-medium text-sm text-neutral-900 dark:text-white">{audit.title}</span>
-                      {audit.display_value && (
-                        <span className="text-xs text-neutral-500 dark:text-neutral-400">{audit.display_value}</span>
-                      )}
-                    </div>
-                  ))}
+                <div className="mt-2 space-y-1">
+                  {passed.map(audit => <AuditRow key={audit.id} audit={audit} />)}
                 </div>
               </details>
             )}
@@ -489,6 +480,72 @@ export default function PageSpeedPage() {
         </div>
       )}
     </div>
+  )
+}
+
+// * Expandable audit row with description and detail items
+function AuditRow({ audit }: { audit: AuditSummary }) {
+  return (
+    <details className="group">
+      <summary className="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800 cursor-pointer list-none">
+        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${getAuditDotColor(audit.score)}`} />
+        <span className="font-medium text-sm text-neutral-900 dark:text-white">{audit.title}</span>
+        {audit.display_value && (
+          <span className="text-xs text-neutral-500 dark:text-neutral-400">{audit.display_value}</span>
+        )}
+        <svg className="w-4 h-4 ml-auto text-neutral-400 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </summary>
+      <div className="pl-6 pr-2 pb-2 pt-1">
+        {/* Description */}
+        {audit.description && (
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">{audit.description}</p>
+        )}
+        {/* Items table */}
+        {audit.details && Array.isArray(audit.details) && audit.details.length > 0 && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
+                {audit.details.slice(0, 10).map((item: Record<string, any>, idx: number) => (
+                  <tr key={idx} className="text-neutral-600 dark:text-neutral-400">
+                    {/* URL or label */}
+                    <td className="py-1.5 pr-3 max-w-xs truncate">
+                      {item.url ? (
+                        <span className="font-mono text-xs break-all">{item.url}</span>
+                      ) : item.node?.snippet ? (
+                        <code className="text-xs bg-neutral-100 dark:bg-neutral-800 px-1 py-0.5 rounded break-all">{item.node.snippet}</code>
+                      ) : item.label || item.groupLabel || item.statistic || ''}
+                    </td>
+                    {/* Wasted bytes */}
+                    {item.wastedBytes != null && (
+                      <td className="py-1.5 pr-3 text-right whitespace-nowrap text-amber-600 dark:text-amber-400">
+                        {item.wastedBytes < 1024 ? `${item.wastedBytes} B` : `${(item.wastedBytes / 1024).toFixed(1)} KiB`}
+                      </td>
+                    )}
+                    {/* Total bytes */}
+                    {item.totalBytes != null && !item.wastedBytes && (
+                      <td className="py-1.5 pr-3 text-right whitespace-nowrap">
+                        {item.totalBytes < 1024 ? `${item.totalBytes} B` : `${(item.totalBytes / 1024).toFixed(1)} KiB`}
+                      </td>
+                    )}
+                    {/* Wasted ms */}
+                    {item.wastedMs != null && (
+                      <td className="py-1.5 text-right whitespace-nowrap text-amber-600 dark:text-amber-400">
+                        {item.wastedMs < 1000 ? `${Math.round(item.wastedMs)}ms` : `${(item.wastedMs / 1000).toFixed(1)}s`}
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {audit.details.length > 10 && (
+              <p className="text-xs text-neutral-400 mt-1">+ {audit.details.length - 10} more items</p>
+            )}
+          </div>
+        )}
+      </div>
+    </details>
   )
 }
 
