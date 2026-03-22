@@ -809,9 +809,15 @@ export default function SiteSettingsPage() {
                       Add this script to your website to start tracking visitors. Choose your framework for setup instructions.
                     </p>
                     <ScriptSetupBlock
-                      site={{ domain: site.domain, name: site.name }}
+                      site={{ domain: site.domain, name: site.name, script_features: site.script_features }}
                       showFrameworkPicker
                       className="mb-4"
+                      onFeaturesChange={async (features) => {
+                        try {
+                          await updateSite(siteId, { name: site.name, script_features: features })
+                          mutateSite()
+                        } catch { /* silent — not critical */ }
+                      }}
                     />
 
                     <div className="flex items-center gap-4 mt-4">
