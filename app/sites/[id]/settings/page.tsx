@@ -1337,12 +1337,13 @@ export default function SiteSettingsPage() {
                         </button>
                       </div>
                       {botView === 'review' && (
-                        <label className="flex items-center gap-2 text-sm text-neutral-400">
+                        <label className="flex items-center gap-2 text-sm text-neutral-400 cursor-pointer">
                           <input
                             type="checkbox"
                             checked={suspiciousOnly}
                             onChange={(e) => setSuspiciousOnly(e.target.checked)}
-                            className="rounded border-neutral-600 bg-neutral-800 text-brand-orange focus:ring-brand-orange"
+                            className="w-4 h-4 cursor-pointer"
+                            style={{ accentColor: '#FD5E0F' }}
                           />
                           Suspicious only
                         </label>
@@ -1384,7 +1385,8 @@ export default function SiteSettingsPage() {
                             else next.delete(session.session_id)
                             setSelectedSessions(next)
                           }}
-                          className="rounded border-neutral-600 bg-neutral-800 text-brand-orange focus:ring-brand-orange shrink-0"
+                          className="w-4 h-4 shrink-0 cursor-pointer"
+                          style={{ accentColor: '#FD5E0F' }}
                         />
 
                         <div className="flex-1 min-w-0">
