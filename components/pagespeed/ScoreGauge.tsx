@@ -21,10 +21,13 @@ export default function ScoreGauge({ score, label, size = 120 }: ScoreGaugeProps
   const offset = hasScore ? CIRCUMFERENCE * (1 - score / 100) : CIRCUMFERENCE
   const color = hasScore ? getColor(score) : '#6b7280'
 
-  const fontSize = size >= 160 ? 'text-4xl' : 'text-2xl'
+  const fontSize = size >= 160 ? 'text-4xl' : size >= 100 ? 'text-2xl' : size >= 80 ? 'text-lg' : 'text-xs'
+  const labelSize = size >= 100 ? 'text-sm' : 'text-[10px]'
+  const strokeWidth = size >= 100 ? 8 : 6
+  const gap = size >= 100 ? 'gap-2' : 'gap-1'
 
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className={`flex flex-col items-center ${gap}`}>
       <div className="relative" style={{ width: size, height: size }}>
         <svg
           className="w-full h-full -rotate-90"
@@ -38,7 +41,7 @@ export default function ScoreGauge({ score, label, size = 120 }: ScoreGaugeProps
             fill="none"
             stroke="currentColor"
             className="text-neutral-200 dark:text-neutral-700"
-            strokeWidth="8"
+            strokeWidth={strokeWidth}
           />
           {/* Filled arc */}
           <circle
@@ -47,7 +50,7 @@ export default function ScoreGauge({ score, label, size = 120 }: ScoreGaugeProps
             r={RADIUS}
             fill="none"
             stroke={color}
-            strokeWidth="8"
+            strokeWidth={strokeWidth}
             strokeLinecap="round"
             strokeDasharray={CIRCUMFERENCE}
             strokeDashoffset={offset}
@@ -66,7 +69,7 @@ export default function ScoreGauge({ score, label, size = 120 }: ScoreGaugeProps
           </span>
         </div>
       </div>
-      <span className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+      <span className={`${labelSize} font-medium text-neutral-600 dark:text-neutral-400 text-center`}>
         {label}
       </span>
     </div>
