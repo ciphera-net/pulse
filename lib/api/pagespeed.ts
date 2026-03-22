@@ -20,7 +20,11 @@ export interface AuditSummary {
   display_value?: string
   savings_ms?: number
   category: 'opportunity' | 'diagnostic' | 'passed'
+  details?: AuditDetailItem[]
 }
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type AuditDetailItem = Record<string, any>
 
 export interface PageSpeedCheck {
   id: string
@@ -37,6 +41,7 @@ export interface PageSpeedCheck {
   si_ms: number | null
   tti_ms: number | null
   audits: AuditSummary[] | null
+  screenshot?: string | null
   triggered_by: 'scheduled' | 'manual'
   checked_at: string
 }
