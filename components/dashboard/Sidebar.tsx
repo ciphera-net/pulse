@@ -10,6 +10,7 @@ import { getUserOrganizations, switchContext, type OrganizationMember } from '@/
 import { setSessionAction } from '@/app/actions/auth'
 import { logger } from '@/lib/utils/logger'
 import { FAVICON_SERVICE_URL } from '@/lib/utils/icons'
+import { Gauge as GaugeIcon } from '@phosphor-icons/react'
 import {
   LayoutDashboardIcon,
   PathIcon,
@@ -18,7 +19,6 @@ import {
   SearchIcon,
   CloudUploadIcon,
   HeartbeatIcon,
-  GaugeIcon,
   SettingsIcon,
   CollapseLeftIcon,
   CollapseRightIcon,
