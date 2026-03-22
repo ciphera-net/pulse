@@ -551,26 +551,48 @@ export default function PageSpeedPage() {
   )
 }
 
+// * Sort audits by severity: red (< 0.5) → orange (0.5-0.89) → empty (null) → green (>= 0.9)
+function sortBySeverity(audits: AuditSummary[]): AuditSummary[] {
+  return [...audits].sort((a, b) => {
+    const rank = (s: number | null | undefined) => {
+      if (s === null || s === undefined) return 2 // empty circle
+      if (s < 0.5) return 0 // red
+      if (s < 0.9) return 1 // orange
+      return 3 // green
+    }
+    return rank(a.score) - rank(b.score)
+  })
+}
+
+// * Known sub-group ordering: insights-type groups come before diagnostics-type groups
+const subGroupPriority: Record<string, number> = {
+  'budgets': 0, 'load-opportunities': 0, 'diagnostics': 1,
+}
+
 // * Group audits by sub-group within a category (e.g., "Names and Labels", "Contrast")
 function AuditsBySubGroup({ audits }: { audits: AuditSummary[] }) {
-  // * Collect unique sub-groups in order of appearance
-  const subGroupOrder: string[] = []
+  // * Collect unique sub-groups
   const bySubGroup: Record<string, AuditSummary[]> = {}
 
   for (const audit of audits) {
     const key = audit.sub_group || '__none__'
     if (!bySubGroup[key]) {
       bySubGroup[key] = []
-      subGroupOrder.push(key)
     }
     bySubGroup[key].push(audit)
   }
 
-  // * If no sub-groups exist, render flat list
+  const subGroupOrder = Object.keys(bySubGroup).sort((a, b) => {
+    const pa = subGroupPriority[a] ?? 0
+    const pb = subGroupPriority[b] ?? 0
+    return pa - pb
+  })
+
+  // * If no sub-groups exist, render flat list sorted by severity
   if (subGroupOrder.length === 1 && subGroupOrder[0] === '__none__') {
     return (
       <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
-        {audits.map(audit => <AuditRow key={audit.id} audit={audit} />)}
+        {sortBySeverity(audits).map(audit => <AuditRow key={audit.id} audit={audit} />)}
       </div>
     )
   }
@@ -578,7 +600,7 @@ function AuditsBySubGroup({ audits }: { audits: AuditSummary[] }) {
   return (
     <div className="space-y-5">
       {subGroupOrder.map(key => {
-        const items = bySubGroup[key]
+        const items = sortBySeverity(bySubGroup[key])
         const title = items[0]?.sub_group_title
         return (
           <div key={key}>
