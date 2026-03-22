@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation'
 import { useSite, usePageSpeedConfig, usePageSpeedLatest, usePageSpeedHistory } from '@/lib/swr/dashboard'
 import { updatePageSpeedConfig, triggerPageSpeedCheck, getPageSpeedLatest, type PageSpeedCheck, type AuditSummary } from '@/lib/api/pagespeed'
 import { toast, Button } from '@ciphera-net/ui'
+import { motion } from 'framer-motion'
 import ScoreGauge from '@/components/pagespeed/ScoreGauge'
 import {
   AreaChart,
@@ -306,27 +307,29 @@ export default function PageSpeedPage() {
         </div>
         <div className="flex items-center gap-3">
           {/* Mobile / Desktop toggle */}
-          <div className="flex gap-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg p-1">
-            <button
-              onClick={() => setStrategy('mobile')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                strategy === 'mobile'
-                  ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
-                  : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300'
-              }`}
-            >
-              Mobile
-            </button>
-            <button
-              onClick={() => setStrategy('desktop')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                strategy === 'desktop'
-                  ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
-                  : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300'
-              }`}
-            >
-              Desktop
-            </button>
+          <div className="flex gap-1" role="tablist" aria-label="Strategy tabs">
+            {(['mobile', 'desktop'] as const).map(tab => (
+              <button
+                key={tab}
+                onClick={() => setStrategy(tab)}
+                role="tab"
+                aria-selected={strategy === tab}
+                className={`relative px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded cursor-pointer ${
+                  strategy === tab
+                    ? 'text-white'
+                    : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-300'
+                }`}
+              >
+                {tab === 'mobile' ? 'Mobile' : 'Desktop'}
+                {strategy === tab && (
+                  <motion.div
+                    layoutId="pagespeedStrategyTab"
+                    className="absolute inset-x-0 -bottom-px h-0.5 bg-brand-orange"
+                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                  />
+                )}
+              </button>
+            ))}
           </div>
 
           {canEdit && (
@@ -360,20 +363,9 @@ export default function PageSpeedPage() {
 
           {/* Center — Compact Scores + Meta */}
           <div className="flex-1 flex flex-col justify-center gap-4 min-w-0">
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-wrap gap-4">
               {compactScores.map(({ label, score }) => (
-                <div key={label} className="flex items-center gap-2.5">
-                  <span
-                    className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: getScoreColor(score) }}
-                  />
-                  <span className="text-lg font-semibold tabular-nums leading-tight" style={{ color: getScoreColor(score) }}>
-                    {score !== null ? Math.round(score) : '--'}
-                  </span>
-                  <span className="text-sm text-neutral-500 dark:text-neutral-400">
-                    {label}
-                  </span>
-                </div>
+                <ScoreGauge key={label} score={score} label={label} size={64} />
               ))}
             </div>
 
@@ -422,6 +414,9 @@ export default function PageSpeedPage() {
       {/* Filmstrip — page load progression */}
       {currentCheck?.filmstrip && currentCheck.filmstrip.length > 0 && (
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 sm:p-8 mb-6 relative">
+          <h3 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-4">
+            Page Load Timeline
+          </h3>
           <div className="flex items-center overflow-x-auto gap-1 scrollbar-none">
             {currentCheck.filmstrip.map((frame, idx) => (
               <div key={idx} className="flex-shrink-0 text-center">
