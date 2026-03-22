@@ -216,16 +216,19 @@ export default function FunnelReportPage() {
         </div>
 
         {/* Chart */}
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm p-6 mb-8">
-          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-6">
+        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden shadow-sm p-6 mb-8">
+          <h3 className="text-lg font-semibold text-white mb-6">
             Funnel Visualization
           </h3>
           <FunnelChart
             data={chartData}
-            orientation="vertical"
+            orientation="horizontal"
             color="var(--chart-1)"
             layers={3}
-            className="mx-auto max-w-md"
+            labelLayout="grouped"
+            labelAlign="center"
+            labelOrientation="vertical"
+            style={{ aspectRatio: '4 / 1' }}
           />
         </div>
 

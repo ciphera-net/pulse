@@ -8,10 +8,9 @@ export default function VueIntegrationPage() {
     <div className="relative min-h-screen flex flex-col overflow-hidden">
       {/* * --- ATMOSPHERE (Background) --- */}
       <div className="absolute inset-0 -z-10 pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-brand-orange/10 rounded-full blur-[128px] opacity-60" />
-        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-neutral-500/10 dark:bg-neutral-400/10 rounded-full blur-[128px] opacity-40" />
+        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-neutral-400/10 rounded-full blur-[128px] opacity-40" />
         <div 
-          className="absolute inset-0 bg-grid-pattern opacity-[0.02] dark:opacity-[0.05]"
+          className="absolute inset-0 bg-grid-pattern opacity-[0.05]"
           style={{ maskImage: 'radial-gradient(ellipse at center, black 0%, transparent 70%)' }}
         />
       </div>
@@ -26,23 +25,23 @@ export default function VueIntegrationPage() {
         </Link>
 
         <div className="flex items-center gap-4 mb-8">
-          <div className="p-3 bg-neutral-100 dark:bg-neutral-800 rounded-xl">
+          <div className="p-3 bg-neutral-800 rounded-xl">
             <svg viewBox="0 0 128 128" className="w-10 h-10 text-[#4FC08D] fill-current">
               <path d="M82.8 24.6h27.8L64 103.4 17.4 24.6h27.8L64 59.4l18.8-34.8z" />
               <path d="M64 24.6H39L64 67.4l25-42.8H64z" fill="#35495E" />
             </svg>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-neutral-900 dark:text-white">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white">
             Vue.js Integration
           </h1>
         </div>
 
-        <div className="prose prose-neutral dark:prose-invert max-w-none">
-          <p className="lead text-xl text-neutral-600 dark:text-neutral-400">
+        <div className="prose prose-invert max-w-none">
+          <p className="lead text-xl text-neutral-400">
             Integrating Pulse with Vue.js is straightforward. You can add the script to your <code>index.html</code> file.
           </p>
 
-          <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
+          <hr className="my-8 border-neutral-800" />
 
           <h3>Method 1: index.html (Recommended)</h3>
           <p>

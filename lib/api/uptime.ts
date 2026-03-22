@@ -54,23 +54,6 @@ export interface UptimeStatusResponse {
   total_monitors: number
 }
 
-export interface CreateMonitorRequest {
-  name: string
-  url: string
-  check_interval_seconds?: number
-  expected_status_code?: number
-  timeout_seconds?: number
-}
-
-export interface UpdateMonitorRequest {
-  name: string
-  url: string
-  check_interval_seconds?: number
-  expected_status_code?: number
-  timeout_seconds?: number
-  enabled?: boolean
-}
-
 /**
  * Fetches the uptime status overview for all monitors of a site
  */
@@ -80,43 +63,6 @@ export async function getUptimeStatus(siteId: string, startDate?: string, endDat
   if (endDate) params.append('end_date', endDate)
   const query = params.toString()
   return apiRequest<UptimeStatusResponse>(`/sites/${siteId}/uptime/status${query ? `?${query}` : ''}`)
-}
-
-/**
- * Lists all uptime monitors for a site
- */
-export async function listUptimeMonitors(siteId: string): Promise<UptimeMonitor[]> {
-  const res = await apiRequest<{ monitors: UptimeMonitor[] }>(`/sites/${siteId}/uptime/monitors`)
-  return res?.monitors ?? []
-}
-
-/**
- * Creates a new uptime monitor
- */
-export async function createUptimeMonitor(siteId: string, data: CreateMonitorRequest): Promise<UptimeMonitor> {
-  return apiRequest<UptimeMonitor>(`/sites/${siteId}/uptime/monitors`, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  })
-}
-
-/**
- * Updates an existing uptime monitor
- */
-export async function updateUptimeMonitor(siteId: string, monitorId: string, data: UpdateMonitorRequest): Promise<UptimeMonitor> {
-  return apiRequest<UptimeMonitor>(`/sites/${siteId}/uptime/monitors/${monitorId}`, {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  })
-}
-
-/**
- * Deletes an uptime monitor
- */
-export async function deleteUptimeMonitor(siteId: string, monitorId: string): Promise<void> {
-  await apiRequest(`/sites/${siteId}/uptime/monitors/${monitorId}`, {
-    method: 'DELETE',
-  })
 }
 
 /**

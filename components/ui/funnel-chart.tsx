@@ -145,8 +145,8 @@ function hSegmentPath(
   straight = false
 ) {
   const my = H / 2;
-  const h0 = normStart * H * 0.44 * layerScale;
-  const h1 = normEnd * H * 0.44 * layerScale;
+  const h0 = normStart * H * 0.3 * layerScale;
+  const h1 = normEnd * H * 0.3 * layerScale;
 
   if (straight) {
     return `M 0 ${my - h0} L ${segW} ${my - h1} L ${segW} ${my + h1} L 0 ${my + h0} Z`;

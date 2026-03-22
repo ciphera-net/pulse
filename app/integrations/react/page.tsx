@@ -8,10 +8,9 @@ export default function ReactIntegrationPage() {
     <div className="relative min-h-screen flex flex-col overflow-hidden">
       {/* * --- ATMOSPHERE (Background) --- */}
       <div className="absolute inset-0 -z-10 pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-brand-orange/10 rounded-full blur-[128px] opacity-60" />
-        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-neutral-500/10 dark:bg-neutral-400/10 rounded-full blur-[128px] opacity-40" />
+        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-neutral-400/10 rounded-full blur-[128px] opacity-40" />
         <div 
-          className="absolute inset-0 bg-grid-pattern opacity-[0.02] dark:opacity-[0.05]"
+          className="absolute inset-0 bg-grid-pattern opacity-[0.05]"
           style={{ maskImage: 'radial-gradient(ellipse at center, black 0%, transparent 70%)' }}
         />
       </div>
@@ -26,23 +25,23 @@ export default function ReactIntegrationPage() {
         </Link>
 
         <div className="flex items-center gap-4 mb-8">
-          <div className="p-3 bg-neutral-100 dark:bg-neutral-800 rounded-xl">
+          <div className="p-3 bg-neutral-800 rounded-xl">
             <svg viewBox="0 0 128 128" className="w-10 h-10 text-[#61DAFB] fill-current">
               <path d="M64 10.6c18.4 0 34.6 5.8 44.6 14.8 6.4 5.8 10.2 12.8 10.2 20.6 0 21.6-28.6 41.2-64 41.2-1.6 0-3.2-.1-4.8-.2-1.2 10.8-6.2 20.2-13.8 27.6-8.8 8.6-20.6 13.4-33.2 13.4-2.2 0-4.4-.2-6.4-.4 10.2-12.8 15.6-29.2 15.6-46.2 0-2.6-.2-5.2-.4-7.8 13.6-1.6 26.2-5.4 37.4-11 11.2-5.6 20.2-13 26.2-21.4-6.4-5.8-15.4-10-25.6-12.2-10.2-2.2-21.4-3.4-33-3.4-1.6 0-3.2.1-4.8.2 1.2-10.8 6.2-20.2 13.8-27.6 8.8-8.6 20.6-13.4 33.2-13.4 2.2 0 4.4.2 6.4.4-10.2 12.8-15.6 29.2-15.6 46.2 0 2.6.2 5.2.4 7.8-13.6 1.6-26.2 5.4-37.4 11-11.2 5.6-20.2 13-26.2 21.4 6.4 5.8 15.4 10 25.6 12.2 10.2 2.2 21.4 3.4 33 3.4 1.6 0 3.2-.1 4.8-.2-1.2 10.8-6.2 20.2-13.8 27.6-8.8 8.6-20.6 13.4-33.2 13.4-2.2 0-4.4-.2-6.4-.4 10.2-12.8 15.6-29.2 15.6-46.2 0-2.6-.2-5.2-.4-7.8 13.6-1.6 26.2-5.4 37.4-11zm-33.4 62c-11.2 5.6-20.2 13-26.2 21.4 6.4 5.8 15.4 10 25.6 12.2 10.2 2.2 21.4 3.4 33 3.4 1.6 0 3.2-.1 4.8-.2-1.2 10.8-6.2 20.2-13.8 27.6-8.8 8.6-20.6 13.4-33.2 13.4-2.2 0-4.4-.2-6.4-.4 10.2-12.8 15.6-29.2 15.6-46.2 0-2.6-.2-5.2-.4-7.8 13.6-1.6 26.2-5.4 37.4-11zm-15.2-16.6c-6.4-5.8-10.2-12.8-10.2-20.6 0-21.6 28.6-41.2 64-41.2 1.6 0 3.2.1 4.8.2 1.2-10.8 6.2-20.2 13.8-27.6 8.8-8.6 20.6-13.4 33.2-13.4 2.2 0 4.4.2 6.4.4-10.2 12.8-15.6 29.2-15.6 46.2 0 2.6.2 5.2.4 7.8-13.6 1.6-26.2 5.4-37.4 11-11.2 5.6-20.2 13-26.2 21.4 6.4 5.8 15.4 10 25.6 12.2 10.2 2.2 21.4 3.4 33 3.4 1.6 0 3.2-.1 4.8-.2-1.2 10.8-6.2 20.2-13.8 27.6-8.8 8.6-20.6 13.4-33.2 13.4-2.2 0-4.4-.2-6.4-.4 10.2-12.8 15.6-29.2 15.6-46.2 0-2.6-.2-5.2-.4-7.8z" />
               <circle cx="64" cy="64" r="10.6" />
             </svg>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-neutral-900 dark:text-white">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white">
             React Integration
           </h1>
         </div>
 
-        <div className="prose prose-neutral dark:prose-invert max-w-none">
-          <p className="lead text-xl text-neutral-600 dark:text-neutral-400">
+        <div className="prose prose-invert max-w-none">
+          <p className="lead text-xl text-neutral-400">
             For standard React SPAs (Create React App, Vite, etc.), you can simply add the script tag to your <code>index.html</code>.
           </p>
 
-          <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
+          <hr className="my-8 border-neutral-800" />
 
           <h3>Method 1: index.html (Recommended)</h3>
           <p>

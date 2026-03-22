@@ -131,17 +131,17 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
 
   return (
     <>
-      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
+      <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
             <DeviceMobile className="w-5 h-5 text-neutral-400 dark:text-neutral-500" weight="bold" />
-            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
+            <h3 className="text-lg font-semibold text-white">
               Technology
             </h3>
             {showViewAll && (
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all cursor-pointer rounded-lg"
+                className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-lg"
                 aria-label="View all technology"
               >
                 <FrameCornersIcon className="w-4 h-4" weight="bold" />
@@ -157,8 +157,8 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
                 aria-selected={activeTab === tab}
                 className={`relative px-2.5 py-1 text-xs font-medium transition-colors capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded cursor-pointer ${
                   activeTab === tab
-                    ? 'text-neutral-900 dark:text-white'
-                    : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
+                    ? 'text-white'
+                    : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-300'
                 }`}
               >
                 {tab}
@@ -177,7 +177,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
         <div className="space-y-2 flex-1 min-h-[270px]">
           {isTabDisabled() ? (
             <div className="h-full flex flex-col items-center justify-center text-center px-4">
-              <p className="text-neutral-500 dark:text-neutral-400 text-sm">{getDisabledMessage()}</p>
+              <p className="text-neutral-400 text-sm">{getDisabledMessage()}</p>
             </div>
           ) : hasData ? (
             <>
@@ -190,13 +190,13 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
                   <div
                     key={item.name}
                     onClick={() => canFilter && onFilter({ dimension: dim, operator: 'is', values: [item.name] })}
-                    className={`relative flex items-center justify-between h-9 group hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 rounded-lg px-2 -mx-2 transition-colors${canFilter ? ' cursor-pointer' : ''}`}
+                    className={`relative flex items-center justify-between h-9 group hover:bg-neutral-800/50 rounded-lg px-2 -mx-2 transition-colors${canFilter ? ' cursor-pointer' : ''}`}
                   >
                     <div
                       className="absolute inset-y-0.5 left-0.5 bg-brand-orange/15 dark:bg-brand-orange/40 rounded-md transition-all"
                       style={{ width: `${barWidth}%` }}
                     />
-                    <div className="relative flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
+                    <div className="relative flex-1 truncate text-white flex items-center gap-3">
                       {item.icon && <span className="text-lg">{item.icon}</span>}
                       <span className="truncate">{capitalize(item.name)}</span>
                     </div>
@@ -204,7 +204,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
                       <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
                         {totalPageviews > 0 ? `${Math.round((item.pageviews / totalPageviews) * 100)}%` : ''}
                       </span>
-                      <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
+                      <span className="text-sm font-semibold text-neutral-400">
                         {formatNumber(item.pageviews)}
                       </span>
                     </div>
@@ -217,13 +217,13 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
             </>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
-              <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
-                <GridIcon className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
+              <div className="rounded-full bg-neutral-800 p-4">
+                <GridIcon className="w-8 h-8 text-neutral-400" />
               </div>
-              <h4 className="font-semibold text-neutral-900 dark:text-white">
+              <h4 className="font-semibold text-white">
                 No technology data yet
               </h4>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400 max-w-xs">
+              <p className="text-sm text-neutral-400 max-w-xs">
                 Browser, OS, and device information will appear as visitors arrive.
               </p>
               <Link
@@ -250,7 +250,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
             value={modalSearch}
             onChange={(e) => setModalSearch(e.target.value)}
             placeholder="Search technology..."
-            className="w-full px-3 py-2 mb-3 text-sm bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
+            className="w-full px-3 py-2 mb-3 text-sm bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
           />
         </div>
         <div className="max-h-[80vh]">
@@ -273,9 +273,9 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
                     <div
                       key={item.name}
                       onClick={() => { if (canFilter) { onFilter({ dimension: dim, operator: 'is', values: [item.name] }); setIsModalOpen(false) } }}
-                      className={`flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 transition-colors${canFilter ? ' cursor-pointer' : ''}`}
+                      className={`flex items-center justify-between h-9 group hover:bg-neutral-800 rounded-lg px-2 transition-colors${canFilter ? ' cursor-pointer' : ''}`}
                     >
-                      <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
+                      <div className="flex-1 truncate text-white flex items-center gap-3">
                         {item.icon && <span className="text-lg">{item.icon}</span>}
                         <span className="truncate">{capitalize(item.name)}</span>
                       </div>
@@ -283,7 +283,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
                         <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
                           {modalTotal > 0 ? `${Math.round((item.pageviews / modalTotal) * 100)}%` : ''}
                         </span>
-                        <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
+                        <span className="text-sm font-semibold text-neutral-400">
                           {formatNumber(item.pageviews)}
                         </span>
                       </div>

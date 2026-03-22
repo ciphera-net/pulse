@@ -1,9 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
-import { getPublicDashboard, getPublicStats, getPublicDailyStats, getPublicRealtime, type DashboardData, type Stats, type DailyStat } from '@/lib/api/stats'
+import { getPublicDashboard, getPublicStats, getPublicDailyStats, getPublicRealtime, authenticatePublicDashboard, type DashboardData, type Stats, type DailyStat } from '@/lib/api/stats'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { ApiError } from '@/lib/api/client'
@@ -40,7 +40,9 @@ export default function PublicDashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [password, setPassword] = useState(passwordParam || '')
   const [isPasswordProtected, setIsPasswordProtected] = useState(false)
-  
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [authLoading, setAuthLoading] = useState(false)
+
   // Captcha State
   const [captchaId, setCaptchaId] = useState('')
   const [captchaSolution, setCaptchaSolution] = useState('')
@@ -91,81 +93,42 @@ export default function PublicDashboardPage() {
 
   const loadRealtime = useCallback(async () => {
     try {
-      const auth = {
-        password,
-        captcha: {
-          captcha_id: captchaId,
-          captcha_solution: captchaSolution,
-          captcha_token: captchaToken
-        }
-      }
-      const realtimeData = await getPublicRealtime(siteId, auth)
+      const realtimeData = await getPublicRealtime(siteId)
       if (data) {
-        setData({
-          ...data,
-          realtime_visitors: realtimeData.visitors
-        })
+        setData({ ...data, realtime_visitors: realtimeData.visitors })
       }
-    } catch (error) {
+    } catch {
       // Silently fail for realtime updates
     }
-  }, [siteId, password, captchaId, captchaSolution, captchaToken, data])
+  }, [siteId, data])
 
   const loadDashboard = useCallback(async (silent = false) => {
     try {
       if (!silent) setLoading(true)
-      
+
       const interval = dateRange.start === dateRange.end ? todayInterval : multiDayInterval
-      const auth = {
-        password,
-        captcha: {
-            captcha_id: captchaId,
-            captcha_solution: captchaSolution,
-            captcha_token: captchaToken
-        }
-      }
 
       const [dashboardData, prevStatsData, prevDailyStatsData] = await Promise.all([
-        getPublicDashboard(
-            siteId,
-            dateRange.start,
-            dateRange.end,
-            10,
-            interval,
-            password,
-            auth.captcha
-        ),
+        getPublicDashboard(siteId, dateRange.start, dateRange.end, 10, interval),
         (async () => {
             const prevRange = getPreviousDateRange(dateRange.start, dateRange.end)
-            return getPublicStats(siteId, prevRange.start, prevRange.end, auth)
+            return getPublicStats(siteId, prevRange.start, prevRange.end)
         })(),
         (async () => {
             const prevRange = getPreviousDateRange(dateRange.start, dateRange.end)
-            return getPublicDailyStats(siteId, prevRange.start, prevRange.end, interval, auth)
+            return getPublicDailyStats(siteId, prevRange.start, prevRange.end, interval)
         })()
       ])
-      
+
       setData(dashboardData)
       setPrevStats(prevStatsData)
       setPrevDailyStats(prevDailyStatsData)
       setLastUpdatedAt(Date.now())
-
       setIsPasswordProtected(false)
-      // Reset captcha
-      setCaptchaId('')
-      setCaptchaSolution('')
-      setCaptchaToken('')
     } catch (error: unknown) {
       const apiErr = error instanceof ApiError ? error : null
       if (apiErr?.status === 401 && (apiErr.data as Record<string, unknown>)?.is_protected) {
         setIsPasswordProtected(true)
-        if (password) {
-          toast.error('Invalid password or captcha')
-          // Reset captcha on failure
-          setCaptchaId('')
-          setCaptchaSolution('')
-          setCaptchaToken('')
-        }
       } else if (apiErr?.status === 404) {
         toast.error('Site not found')
       } else if (!silent) {
@@ -174,7 +137,7 @@ export default function PublicDashboardPage() {
     } finally {
       if (!silent) setLoading(false)
     }
-  }, [siteId, dateRange, todayInterval, multiDayInterval, password, captchaId, captchaSolution, captchaToken])
+  }, [siteId, dateRange, todayInterval, multiDayInterval])
 
   // * Auto-refresh interval: chart, KPIs, and realtime count update every 30 seconds
   useEffect(() => {
@@ -185,15 +148,36 @@ export default function PublicDashboardPage() {
       }, 30000)
       return () => clearInterval(interval)
     }
-  }, [data, isPasswordProtected, dateRange, todayInterval, multiDayInterval, password, loadDashboard, loadRealtime])
+  }, [data, isPasswordProtected, dateRange, todayInterval, multiDayInterval, loadDashboard, loadRealtime])
 
   useEffect(() => {
     loadDashboard()
   }, [siteId, dateRange, todayInterval, multiDayInterval, loadDashboard])
 
-  const handlePasswordSubmit = (e: React.FormEvent) => {
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    loadDashboard()
+    setAuthLoading(true)
+    try {
+      await authenticatePublicDashboard(siteId, password, captchaToken, captchaId, captchaSolution)
+      // Cookie is now set — load dashboard (cookie sent automatically)
+      setIsAuthenticated(true)
+      await loadDashboard()
+    } catch (error: unknown) {
+      const apiErr = error instanceof ApiError ? error : null
+      if (apiErr?.status === 401) {
+        const errData = apiErr.data as Record<string, unknown> | undefined
+        const errMsg = errData?.error as string | undefined
+        toast.error(errMsg || 'Invalid password or captcha')
+      } else {
+        toast.error('Authentication failed')
+      }
+      // Reset captcha on failure
+      setCaptchaId('')
+      setCaptchaSolution('')
+      setCaptchaToken('')
+    } finally {
+      setAuthLoading(false)
+    }
   }
 
   const showSkeleton = useMinimumLoading(loading && !data && !isPasswordProtected)
