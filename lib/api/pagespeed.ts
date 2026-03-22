@@ -26,6 +26,11 @@ export interface AuditSummary {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type AuditDetailItem = Record<string, any>
 
+export interface FilmstripFrame {
+  timing: number
+  data: string
+}
+
 export interface PageSpeedCheck {
   id: string
   site_id: string
@@ -42,6 +47,7 @@ export interface PageSpeedCheck {
   tti_ms: number | null
   audits: AuditSummary[] | null
   screenshot?: string | null
+  filmstrip?: FilmstripFrame[] | null
   triggered_by: 'scheduled' | 'manual'
   checked_at: string
 }
