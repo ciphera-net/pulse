@@ -520,7 +520,10 @@ export default function PageSpeedPage() {
                       {group.label}
                     </h3>
                     <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                      {groupAudits.length === 0 ? 'No issues found' : `${groupAudits.length} issue${groupAudits.length !== 1 ? 's' : ''} found`}
+                      {(() => {
+                        const realIssues = groupAudits.filter(a => a.score !== null && a.score !== undefined).length
+                        return realIssues === 0 ? 'No issues found' : `${realIssues} issue${realIssues !== 1 ? 's' : ''} found`
+                      })()}
                     </p>
                   </div>
                 </div>
