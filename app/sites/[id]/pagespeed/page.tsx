@@ -552,43 +552,60 @@ function AuditRow({ audit }: { audit: AuditSummary }) {
         {audit.description && (
           <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-3 leading-relaxed">{audit.description}</p>
         )}
-        {/* Items table */}
+        {/* Items list */}
         {audit.details && Array.isArray(audit.details) && audit.details.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
-                {audit.details.slice(0, 10).map((item: Record<string, any>, idx: number) => (
-                  <tr key={idx} className="text-neutral-600 dark:text-neutral-400">
-                    {/* URL or label */}
-                    <td className="py-1.5 pr-3 max-w-xs truncate">
-                      {item.url ? (
-                        <span className="font-mono text-xs break-all">{item.url}</span>
-                      ) : item.node?.snippet ? (
-                        <code className="text-xs bg-neutral-100 dark:bg-neutral-800 px-1 py-0.5 rounded break-all">{item.node.snippet}</code>
-                      ) : item.label || item.groupLabel || item.statistic || ''}
-                    </td>
-                    {/* Wasted bytes */}
-                    {item.wastedBytes != null && (
-                      <td className="py-1.5 pr-3 text-right whitespace-nowrap text-amber-600 dark:text-amber-400">
-                        {item.wastedBytes < 1024 ? `${item.wastedBytes} B` : `${(item.wastedBytes / 1024).toFixed(1)} KiB`}
-                      </td>
-                    )}
-                    {/* Total bytes */}
-                    {item.totalBytes != null && !item.wastedBytes && (
-                      <td className="py-1.5 pr-3 text-right whitespace-nowrap">
-                        {item.totalBytes < 1024 ? `${item.totalBytes} B` : `${(item.totalBytes / 1024).toFixed(1)} KiB`}
-                      </td>
-                    )}
-                    {/* Wasted ms */}
-                    {item.wastedMs != null && (
-                      <td className="py-1.5 text-right whitespace-nowrap text-amber-600 dark:text-amber-400">
-                        {item.wastedMs < 1000 ? `${Math.round(item.wastedMs)}ms` : `${(item.wastedMs / 1000).toFixed(1)}s`}
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="space-y-2">
+            {audit.details.slice(0, 10).map((item: Record<string, any>, idx: number) => (
+              <div key={idx} className="flex items-start gap-3 py-2 border-b border-neutral-100 dark:border-neutral-800 last:border-0 text-xs text-neutral-600 dark:text-neutral-400">
+                {/* Element screenshot */}
+                {item.node?.screenshot?.data && (
+                  <img
+                    src={item.node.screenshot.data}
+                    alt=""
+                    className="w-20 h-14 object-contain rounded border border-neutral-200 dark:border-neutral-700 flex-shrink-0 bg-neutral-50 dark:bg-neutral-800"
+                  />
+                )}
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  {/* Label / node explanation */}
+                  {(item.node?.nodeLabel || item.label || item.groupLabel) && (
+                    <div className="font-medium text-neutral-900 dark:text-white text-xs mb-0.5">
+                      {item.node?.nodeLabel || item.label || item.groupLabel}
+                    </div>
+                  )}
+                  {/* URL */}
+                  {item.url && (
+                    <div className="font-mono text-xs text-neutral-500 dark:text-neutral-400 break-all">{item.url}</div>
+                  )}
+                  {/* HTML snippet */}
+                  {item.node?.snippet && (
+                    <code className="text-xs bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded break-all mt-1 inline-block">{item.node.snippet}</code>
+                  )}
+                  {/* Statistic-type items */}
+                  {!item.url && !item.node && item.statistic && (
+                    <span>{item.statistic}</span>
+                  )}
+                </div>
+                {/* Metrics on the right */}
+                <div className="flex-shrink-0 text-right space-y-0.5">
+                  {item.wastedBytes != null && (
+                    <div className="text-amber-600 dark:text-amber-400 whitespace-nowrap">
+                      {item.wastedBytes < 1024 ? `${item.wastedBytes} B` : `${(item.wastedBytes / 1024).toFixed(1)} KiB`}
+                    </div>
+                  )}
+                  {item.totalBytes != null && !item.wastedBytes && (
+                    <div className="whitespace-nowrap">
+                      {item.totalBytes < 1024 ? `${item.totalBytes} B` : `${(item.totalBytes / 1024).toFixed(1)} KiB`}
+                    </div>
+                  )}
+                  {item.wastedMs != null && (
+                    <div className="text-amber-600 dark:text-amber-400 whitespace-nowrap">
+                      {item.wastedMs < 1000 ? `${Math.round(item.wastedMs)}ms` : `${(item.wastedMs / 1000).toFixed(1)}s`}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
             {audit.details.length > 10 && (
               <p className="text-xs text-neutral-400 mt-1">+ {audit.details.length - 10} more items</p>
             )}
