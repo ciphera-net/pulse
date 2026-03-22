@@ -552,8 +552,12 @@ export default function PageSpeedPage() {
 
 // * Severity indicator based on audit score (pagespeed.web.dev style)
 function AuditSeverityIcon({ score }: { score: number | null }) {
-  if (score === null || score < 0.5) {
-    // Red triangle for poor / unknown
+  if (score === null) {
+    // Empty circle for informative/unscored audits
+    return <span className="text-neutral-400 text-sm leading-none flex-shrink-0" aria-label="Informative">&#9675;</span>
+  }
+  if (score < 0.5) {
+    // Red triangle for poor
     return <span className="text-red-500 text-sm leading-none flex-shrink-0" aria-label="Poor">&#9650;</span>
   }
   if (score < 0.9) {
