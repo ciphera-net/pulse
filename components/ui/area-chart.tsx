@@ -1293,6 +1293,7 @@ Grid.displayName = "Grid";
 export interface XAxisProps {
   numTicks?: number;
   tickerHalfWidth?: number;
+  formatLabel?: (date: Date) => string;
 }
 
 interface XAxisLabelProps {
@@ -1346,7 +1347,7 @@ function XAxisLabel({
   );
 }
 
-export function XAxis({ numTicks = 5, tickerHalfWidth = 50 }: XAxisProps) {
+export function XAxis({ numTicks = 5, tickerHalfWidth = 50, formatLabel }: XAxisProps) {
   const { xScale, margin, tooltipData, containerRef } = useChart();
   const [mounted, setMounted] = useState(false);
 
@@ -1376,15 +1377,15 @@ export function XAxis({ numTicks = 5, tickerHalfWidth = 50 }: XAxisProps) {
       dates.push(new Date(time));
     }
 
+    const defaultFormat = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    const fmt = formatLabel ?? defaultFormat;
+
     return dates.map((date) => ({
       date,
       x: (xScale(date) ?? 0) + margin.left,
-      label: date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      }),
+      label: fmt(date),
     }));
-  }, [xScale, margin.left, numTicks]);
+  }, [xScale, margin.left, numTicks, formatLabel]);
 
   const isHovering = tooltipData !== null;
   const crosshairX = tooltipData ? tooltipData.x + margin.left : null;

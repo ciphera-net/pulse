@@ -436,7 +436,13 @@ export default function Chart({
                   strokeWidth={2}
                   gradientToOpacity={0}
                 />
-                <VisxXAxis numTicks={6} />
+                <VisxXAxis
+                  numTicks={6}
+                  formatLabel={interval === 'minute' || interval === 'hour'
+                    ? (d) => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+                    : undefined
+                  }
+                />
                 <VisxYAxis
                   numTicks={6}
                   formatValue={(v) => {
@@ -445,14 +451,27 @@ export default function Chart({
                   }}
                 />
                 <VisxChartTooltip
-                  rows={(point) => {
+                  content={({ point }) => {
+                    const dateObj = point.dateObj as Date
                     const config = METRIC_CONFIGS.find((m) => m.key === metric)
                     const value = point[metric] as number
-                    return [{
-                      color: CHART_COLORS[metric],
-                      label: config?.label || metric,
-                      value: config ? config.format(value) : value,
-                    }]
+                    const title = interval === 'minute' || interval === 'hour'
+                      ? dateObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+                      : dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+                    return (
+                      <div className="px-3 py-2.5">
+                        <div className="mb-2 font-medium text-neutral-400 text-xs">{title}</div>
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-2">
+                            <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: CHART_COLORS[metric] }} />
+                            <span className="text-neutral-400 text-sm">{config?.label || metric}</span>
+                          </div>
+                          <span className="font-medium text-white text-sm tabular-nums">
+                            {config ? config.format(value) : value}
+                          </span>
+                        </div>
+                      </div>
+                    )
                   }}
                 />
               </VisxAreaChart>
