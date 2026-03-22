@@ -590,63 +590,17 @@ function AuditRow({ audit }: { audit: AuditSummary }) {
         </svg>
       </summary>
       <div className="pl-8 pr-2 pb-3 pt-1">
-        {/* Description */}
+        {/* Description with parsed markdown links */}
         {audit.description && (
-          <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-3 leading-relaxed">{audit.description}</p>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-3 leading-relaxed">
+            <AuditDescription text={audit.description} />
+          </p>
         )}
         {/* Items list */}
         {audit.details && Array.isArray(audit.details) && audit.details.length > 0 && (
           <div className="space-y-2">
             {audit.details.slice(0, 10).map((item: Record<string, any>, idx: number) => (
-              <div key={idx} className="flex items-start gap-3 py-2 border-b border-neutral-100 dark:border-neutral-800 last:border-0 text-xs text-neutral-600 dark:text-neutral-400">
-                {/* Element screenshot */}
-                {item.node?.screenshot?.data && (
-                  <img
-                    src={item.node.screenshot.data}
-                    alt=""
-                    className="w-20 h-14 object-contain rounded border border-neutral-200 dark:border-neutral-700 flex-shrink-0 bg-neutral-50 dark:bg-neutral-800"
-                  />
-                )}
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  {/* Label / node explanation */}
-                  {(item.node?.nodeLabel || item.label || item.groupLabel) && (
-                    <div className="font-medium text-neutral-900 dark:text-white text-xs mb-0.5">
-                      {item.node?.nodeLabel || item.label || item.groupLabel}
-                    </div>
-                  )}
-                  {/* URL */}
-                  {item.url && (
-                    <div className="font-mono text-xs text-neutral-500 dark:text-neutral-400 break-all">{item.url}</div>
-                  )}
-                  {/* HTML snippet */}
-                  {item.node?.snippet && (
-                    <code className="text-xs bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded break-all mt-1 inline-block">{item.node.snippet}</code>
-                  )}
-                  {/* Statistic-type items */}
-                  {!item.url && !item.node && item.statistic && (
-                    <span>{item.statistic}</span>
-                  )}
-                </div>
-                {/* Metrics on the right */}
-                <div className="flex-shrink-0 text-right space-y-0.5">
-                  {item.wastedBytes != null && (
-                    <div className="text-amber-600 dark:text-amber-400 whitespace-nowrap">
-                      {item.wastedBytes < 1024 ? `${item.wastedBytes} B` : `${(item.wastedBytes / 1024).toFixed(1)} KiB`}
-                    </div>
-                  )}
-                  {item.totalBytes != null && !item.wastedBytes && (
-                    <div className="whitespace-nowrap">
-                      {item.totalBytes < 1024 ? `${item.totalBytes} B` : `${(item.totalBytes / 1024).toFixed(1)} KiB`}
-                    </div>
-                  )}
-                  {item.wastedMs != null && (
-                    <div className="text-amber-600 dark:text-amber-400 whitespace-nowrap">
-                      {item.wastedMs < 1000 ? `${Math.round(item.wastedMs)}ms` : `${(item.wastedMs / 1000).toFixed(1)}s`}
-                    </div>
-                  )}
-                </div>
-              </div>
+              <AuditItem key={idx} item={item} />
             ))}
             {audit.details.length > 10 && (
               <p className="text-xs text-neutral-400 mt-1">+ {audit.details.length - 10} more items</p>
@@ -655,6 +609,94 @@ function AuditRow({ audit }: { audit: AuditSummary }) {
         )}
       </div>
     </details>
+  )
+}
+
+// * Parse markdown-style links [text](url) into clickable <a> tags
+function AuditDescription({ text }: { text: string }) {
+  const parts = text.split(/(\[[^\]]+\]\([^)]+\))/g)
+  return (
+    <>
+      {parts.map((part, i) => {
+        const match = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/)
+        if (match) {
+          return (
+            <a
+              key={i}
+              href={match[2]}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-brand-orange hover:underline"
+            >
+              {match[1]}
+            </a>
+          )
+        }
+        return <span key={i}>{part}</span>
+      })}
+    </>
+  )
+}
+
+// * Render a single audit detail item — handles various field types from the PSI API
+function AuditItem({ item }: { item: Record<string, any> }) {
+  // * Determine the primary label
+  const label = item.node?.nodeLabel || item.label || item.groupLabel || item.source?.url || null
+  // * URL can be in item.url or item.href
+  const url = item.url || item.href || null
+  // * Text content (used by SEO audits like "link text")
+  const text = item.text || item.linkText || null
+
+  return (
+    <div className="flex items-start gap-3 py-2 border-b border-neutral-100 dark:border-neutral-800 last:border-0 text-xs text-neutral-600 dark:text-neutral-400">
+      {/* Element screenshot */}
+      {item.node?.screenshot?.data && (
+        <img
+          src={item.node.screenshot.data}
+          alt=""
+          className="w-20 h-14 object-contain rounded border border-neutral-200 dark:border-neutral-700 flex-shrink-0 bg-neutral-50 dark:bg-neutral-800"
+        />
+      )}
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        {label && (
+          <div className="font-medium text-neutral-900 dark:text-white text-xs mb-0.5">
+            {label}
+          </div>
+        )}
+        {url && (
+          <div className="font-mono text-xs text-neutral-500 dark:text-neutral-400 break-all">{url}</div>
+        )}
+        {text && (
+          <div className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{text}</div>
+        )}
+        {item.node?.snippet && (
+          <code className="text-xs bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded break-all mt-1 inline-block">{item.node.snippet}</code>
+        )}
+        {/* Fallback for items with only string values we haven't handled */}
+        {!label && !url && !text && !item.node && item.statistic && (
+          <span>{item.statistic}</span>
+        )}
+      </div>
+      {/* Metrics on the right */}
+      <div className="flex-shrink-0 text-right space-y-0.5">
+        {item.wastedBytes != null && (
+          <div className="text-amber-600 dark:text-amber-400 whitespace-nowrap">
+            {item.wastedBytes < 1024 ? `${item.wastedBytes} B` : `${(item.wastedBytes / 1024).toFixed(1)} KiB`}
+          </div>
+        )}
+        {item.totalBytes != null && !item.wastedBytes && (
+          <div className="whitespace-nowrap">
+            {item.totalBytes < 1024 ? `${item.totalBytes} B` : `${(item.totalBytes / 1024).toFixed(1)} KiB`}
+          </div>
+        )}
+        {item.wastedMs != null && (
+          <div className="text-amber-600 dark:text-amber-400 whitespace-nowrap">
+            {item.wastedMs < 1000 ? `${Math.round(item.wastedMs)}ms` : `${(item.wastedMs / 1000).toFixed(1)}s`}
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 
