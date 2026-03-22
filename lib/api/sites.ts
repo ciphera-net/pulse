@@ -25,6 +25,8 @@ export interface Site {
   data_retention_months?: number
   // Script feature toggles
   script_features?: Record<string, unknown>
+  // Uptime monitoring toggle
+  uptime_enabled: boolean
   is_verified?: boolean
   created_at: string
   updated_at: string
@@ -53,6 +55,8 @@ export interface UpdateSiteRequest {
   filter_bots?: boolean
   // Script feature toggles
   script_features?: Record<string, unknown>
+  // Uptime monitoring toggle
+  uptime_enabled?: boolean
   // Hide unknown locations from stats
   hide_unknown_locations?: boolean
   // Data retention (months); 0 = keep forever

@@ -1,25 +1,19 @@
 'use client'
 
 import { useAuth } from '@/lib/auth/context'
-import { useEffect, useState, useRef } from 'react'
-import { useParams, useRouter } from 'next/navigation'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useEffect, useState } from 'react'
+import { useParams } from 'next/navigation'
 import { useSite, useUptimeStatus } from '@/lib/swr/dashboard'
+import { updateSite, type Site } from '@/lib/api/sites'
 import {
-  createUptimeMonitor,
-  updateUptimeMonitor,
-  deleteUptimeMonitor,
   getMonitorChecks,
   type UptimeStatusResponse,
   type MonitorStatus,
   type UptimeCheck,
   type UptimeDailyStat,
-  type CreateMonitorRequest,
 } from '@/lib/api/uptime'
 import { toast } from '@ciphera-net/ui'
-import { useTheme } from '@ciphera-net/ui'
-import { getAuthErrorMessage } from '@ciphera-net/ui'
-import { Button, Modal } from '@ciphera-net/ui'
+import { Button } from '@ciphera-net/ui'
 import { UptimeSkeleton, ChecksSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import { formatDateFull, formatTime, formatDateTimeShort } from '@/lib/utils/formatDate'
 import {
@@ -335,298 +329,63 @@ function ResponseTimeChart({ checks }: { checks: UptimeCheck[] }) {
   )
 }
 
-// * Component: Monitor card (matches the reference image design)
-function MonitorCard({
-  monitorStatus,
-  expanded,
-  onToggle,
-  onEdit,
-  onDelete,
-  canEdit,
-  siteId,
-}: {
-  monitorStatus: MonitorStatus
-  expanded: boolean
-  onToggle: () => void
-  onEdit: () => void
-  onDelete: () => void
-  canEdit: boolean
-  siteId: string
-}) {
-  const { monitor, daily_stats, overall_uptime } = monitorStatus
-  const [checks, setChecks] = useState<UptimeCheck[]>([])
-  const [loadingChecks, setLoadingChecks] = useState(false)
-
-  useEffect(() => {
-    if (expanded && checks.length === 0) {
-      const fetchChecks = async () => {
-        setLoadingChecks(true)
-        try {
-          const data = await getMonitorChecks(siteId, monitor.id, 50)
-          setChecks(data)
-        } catch {
-          // * Silent fail for check details
-        } finally {
-          setLoadingChecks(false)
-        }
-      }
-      fetchChecks()
-    }
-  }, [expanded, siteId, monitor.id, checks.length])
-
-  return (
-    <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden">
-      {/* Header */}
-      <button
-        onClick={onToggle}
-        className="w-full p-5 flex items-center justify-between hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"
-      >
-        <div className="flex items-center gap-3">
-          {/* Status indicator */}
-          <div className={`w-3 h-3 rounded-full ${getStatusDotColor(monitor.last_status)} shrink-0`} />
-          <span className="font-semibold text-neutral-900 dark:text-white">
-            {monitor.name}
-          </span>
-          <span className="text-sm text-neutral-500 dark:text-neutral-400 hidden sm:inline">
-            {monitor.url}
-          </span>
-        </div>
-        <div className="flex items-center gap-4">
-          {monitor.last_response_time_ms !== null && (
-            <span className="text-sm text-neutral-500 dark:text-neutral-400 hidden sm:inline">
-              {formatMs(monitor.last_response_time_ms)}
-            </span>
-          )}
-          <span className="text-sm font-semibold text-neutral-900 dark:text-white">
-            {formatUptime(overall_uptime)} uptime
-          </span>
-          <svg
-            className={`w-4 h-4 text-neutral-400 transition-transform ${expanded ? 'rotate-180' : ''}`}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-          </svg>
-        </div>
-      </button>
-
-      {/* Status bar */}
-      <div className="px-5 pb-4">
-        <UptimeStatusBar dailyStats={daily_stats} />
-        <div className="flex justify-between mt-1.5 text-xs text-neutral-400 dark:text-neutral-500">
-          <span>90 days ago</span>
-          <span>Today</span>
-        </div>
-      </div>
-
-      {/* Expanded details */}
-      <AnimatePresence>
-        {expanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden"
-          >
-            <div className="px-5 pb-5 border-t border-neutral-200 dark:border-neutral-800 pt-4">
-              {/* Monitor details grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
-                <div>
-                  <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
-                    Status
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${getStatusDotColor(monitor.last_status)}`} />
-                    <span className="text-sm font-medium text-neutral-900 dark:text-white">
-                      {getStatusLabel(monitor.last_status)}
-                    </span>
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
-                    Response Time
-                  </div>
-                  <span className="text-sm font-medium text-neutral-900 dark:text-white">
-                    {formatMs(monitor.last_response_time_ms)}
-                  </span>
-                </div>
-                <div>
-                  <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
-                    Check Interval
-                  </div>
-                  <span className="text-sm font-medium text-neutral-900 dark:text-white">
-                    {monitor.check_interval_seconds >= 60
-                      ? `${Math.floor(monitor.check_interval_seconds / 60)}m`
-                      : `${monitor.check_interval_seconds}s`}
-                  </span>
-                </div>
-                <div>
-                  <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
-                    Last Checked
-                  </div>
-                  <span className="text-sm font-medium text-neutral-900 dark:text-white">
-                    {formatTimeAgo(monitor.last_checked_at)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Response time chart */}
-              {loadingChecks ? (
-                <ChecksSkeleton />
-              ) : checks.length > 0 ? (
-                <>
-                  <ResponseTimeChart checks={checks} />
-
-                  {/* Recent checks */}
-                  <div className="mt-5">
-                    <h4 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">
-                      Recent Checks
-                    </h4>
-                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                      {checks.slice(0, 20).map((check) => (
-                        <div
-                          key={check.id}
-                          className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800 text-sm"
-                        >
-                          <div className="flex items-center gap-2">
-                            <div className={`w-2 h-2 rounded-full ${getStatusDotColor(check.status)}`} />
-                            <span className="text-neutral-600 dark:text-neutral-300 text-xs">
-                              {formatDateTimeShort(new Date(check.checked_at))}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            {check.status_code && (
-                              <span className="text-xs text-neutral-500 dark:text-neutral-400">
-                                {check.status_code}
-                              </span>
-                            )}
-                            <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
-                              {formatMs(check.response_time_ms)}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              ) : null}
-
-              {/* Actions */}
-              {canEdit && (
-                <div className="flex gap-2 mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-800">
-                  <Button
-                    onClick={(e: React.MouseEvent) => { e.stopPropagation(); onEdit() }}
-                    variant="secondary"
-                    className="text-sm"
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    onClick={(e: React.MouseEvent) => { e.stopPropagation(); onDelete() }}
-                    variant="secondary"
-                    className="text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
-                  >
-                    Delete
-                  </Button>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  )
-}
-
 // * Main uptime page
 export default function UptimePage() {
   const { user } = useAuth()
   const canEdit = user?.role === 'owner' || user?.role === 'admin'
   const params = useParams()
-  const router = useRouter()
   const siteId = params.id as string
 
-  const { data: site } = useSite(siteId)
+  const { data: site, mutate: mutateSite } = useSite(siteId)
   const { data: uptimeData, isLoading, mutate: mutateUptime } = useUptimeStatus(siteId)
-  const [expandedMonitor, setExpandedMonitor] = useState<string | null>(null)
-  const [showAddModal, setShowAddModal] = useState(false)
-  const [showEditModal, setShowEditModal] = useState(false)
-  const [editingMonitor, setEditingMonitor] = useState<MonitorStatus | null>(null)
-  const [formData, setFormData] = useState<CreateMonitorRequest>({
-    name: '',
-    url: '',
-    check_interval_seconds: 300,
-    expected_status_code: 200,
-    timeout_seconds: 30,
-  })
-  const [saving, setSaving] = useState(false)
+  const [toggling, setToggling] = useState(false)
+  const [checks, setChecks] = useState<UptimeCheck[]>([])
+  const [loadingChecks, setLoadingChecks] = useState(false)
 
-  const handleAddMonitor = async () => {
-    if (!formData.name || !formData.url) {
-      toast.error('Name and URL are required')
+  // * Single monitor from the auto-managed uptime system
+  const monitor = uptimeData?.monitors?.[0] ?? null
+  const overallUptime = uptimeData?.overall_uptime ?? 100
+  const overallStatus = uptimeData?.status ?? 'operational'
+
+  // * Fetch recent checks when we have a monitor
+  useEffect(() => {
+    if (!monitor) {
+      setChecks([])
       return
     }
-    setSaving(true)
-    try {
-      await createUptimeMonitor(siteId, formData)
-      toast.success('Monitor created successfully')
-      setShowAddModal(false)
-      setFormData({ name: '', url: '', check_interval_seconds: 300, expected_status_code: 200, timeout_seconds: 30 })
-      mutateUptime()
-    } catch (error: unknown) {
-      toast.error(getAuthErrorMessage(error) || 'Failed to create monitor')
-    } finally {
-      setSaving(false)
+    const fetchChecks = async () => {
+      setLoadingChecks(true)
+      try {
+        const data = await getMonitorChecks(siteId, monitor.monitor.id, 20)
+        setChecks(data)
+      } catch {
+        // * Silent fail for check details
+      } finally {
+        setLoadingChecks(false)
+      }
     }
-  }
+    fetchChecks()
+  }, [siteId, monitor?.monitor.id])
 
-  const handleEditMonitor = async () => {
-    if (!editingMonitor || !formData.name || !formData.url) return
-    setSaving(true)
+  const handleToggleUptime = async (enabled: boolean) => {
+    if (!site) return
+    setToggling(true)
     try {
-      await updateUptimeMonitor(siteId, editingMonitor.monitor.id, {
-        name: formData.name,
-        url: formData.url,
-        check_interval_seconds: formData.check_interval_seconds,
-        expected_status_code: formData.expected_status_code,
-        timeout_seconds: formData.timeout_seconds,
-        enabled: editingMonitor.monitor.enabled,
+      await updateSite(site.id, {
+        name: site.name,
+        timezone: site.timezone,
+        is_public: site.is_public,
+        excluded_paths: site.excluded_paths,
+        uptime_enabled: enabled,
       })
-      toast.success('Monitor updated successfully')
-      setShowEditModal(false)
-      setEditingMonitor(null)
+      mutateSite()
       mutateUptime()
-    } catch (error: unknown) {
-      toast.error(getAuthErrorMessage(error) || 'Failed to update monitor')
+      toast.success(enabled ? 'Uptime monitoring enabled' : 'Uptime monitoring disabled')
+    } catch {
+      toast.error('Failed to update uptime monitoring')
     } finally {
-      setSaving(false)
+      setToggling(false)
     }
-  }
-
-  const handleDeleteMonitor = async (monitorId: string) => {
-    if (!window.confirm('Are you sure you want to delete this monitor? All historical data will be lost.')) return
-    try {
-      await deleteUptimeMonitor(siteId, monitorId)
-      toast.success('Monitor deleted')
-      mutateUptime()
-    } catch (error: unknown) {
-      toast.error(getAuthErrorMessage(error) || 'Failed to delete monitor')
-    }
-  }
-
-  const openEditModal = (ms: MonitorStatus) => {
-    setEditingMonitor(ms)
-    setFormData({
-      name: ms.monitor.name,
-      url: ms.monitor.url,
-      check_interval_seconds: ms.monitor.check_interval_seconds,
-      expected_status_code: ms.monitor.expected_status_code,
-      timeout_seconds: ms.monitor.timeout_seconds,
-    })
-    setShowEditModal(true)
   }
 
   useEffect(() => {
@@ -639,10 +398,49 @@ export default function UptimePage() {
   if (showSkeleton) return <UptimeSkeleton />
   if (!site) return <div className="p-8 text-neutral-500">Site not found</div>
 
-  const monitors = Array.isArray(uptimeData?.monitors) ? uptimeData.monitors : []
-  const overallUptime = uptimeData?.overall_uptime ?? 100
-  const overallStatus = uptimeData?.status ?? 'operational'
+  const uptimeEnabled = site.uptime_enabled
 
+  // * Disabled state — show empty state with enable toggle
+  if (!uptimeEnabled) {
+    return (
+      <div className={`w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">
+            Uptime
+          </h1>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+            Monitor your site&apos;s availability and response time
+          </p>
+        </div>
+
+        {/* Empty state */}
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-12 text-center">
+          <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+            <svg className="w-8 h-8 text-neutral-500 dark:text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h3 className="font-semibold text-neutral-900 dark:text-white mb-2">
+            Uptime monitoring is disabled
+          </h3>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6 max-w-md mx-auto">
+            Enable uptime monitoring to track your site&apos;s availability and response time around the clock.
+          </p>
+          {canEdit && (
+            <Button
+              onClick={() => handleToggleUptime(true)}
+              disabled={toggling}
+            >
+              {toggling ? 'Enabling...' : 'Enable Uptime Monitoring'}
+            </Button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // * Enabled state — show uptime dashboard
   return (
     <div className={`w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
       {/* Header */}
@@ -652,327 +450,148 @@ export default function UptimePage() {
             Uptime
           </h1>
           <p className="text-sm text-neutral-500 dark:text-neutral-400">
-            Monitor your endpoints and track availability over time
+            Monitor your site&apos;s availability and response time
           </p>
         </div>
         {canEdit && (
           <Button
-            onClick={() => {
-              setFormData({ name: '', url: '', check_interval_seconds: 300, expected_status_code: 200, timeout_seconds: 30 })
-              setShowAddModal(true)
-            }}
+            variant="secondary"
+            onClick={() => handleToggleUptime(false)}
+            disabled={toggling}
+            className="text-sm"
           >
-            Add Monitor
+            {toggling ? 'Disabling...' : 'Disable Monitoring'}
           </Button>
         )}
       </div>
 
       {/* Overall status card */}
-      {monitors.length > 0 && (
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`w-3.5 h-3.5 rounded-full ${getStatusDotColor(overallStatus)}`} />
-              <div>
-                <span className="font-semibold text-neutral-900 dark:text-white text-lg">
-                  {site.name}
-                </span>
-                <span className={`text-sm font-medium ml-3 ${getOverallStatusTextColor(overallStatus)}`}>
-                  {getOverallStatusText(overallStatus)}
-                </span>
-              </div>
-            </div>
-            <div className="text-right">
-              <span className="text-sm font-semibold text-neutral-900 dark:text-white">
-                {formatUptime(overallUptime)} uptime
+      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 mb-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`w-3.5 h-3.5 rounded-full ${getStatusDotColor(overallStatus)}`} />
+            <div>
+              <span className="font-semibold text-neutral-900 dark:text-white text-lg">
+                {site.name}
               </span>
-              <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                {monitors.length} {monitors.length === 1 ? 'component' : 'components'}
-              </div>
+              <span className={`text-sm font-medium ml-3 ${getOverallStatusTextColor(overallStatus)}`}>
+                {getOverallStatusText(overallStatus)}
+              </span>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Monitor list */}
-      {monitors.length > 0 ? (
-        <div className="space-y-4">
-          {monitors.map((ms) => (
-            <MonitorCard
-              key={ms.monitor.id}
-              monitorStatus={ms}
-              expanded={expandedMonitor === ms.monitor.id}
-              onToggle={() => setExpandedMonitor(
-                expandedMonitor === ms.monitor.id ? null : ms.monitor.id
-              )}
-              onEdit={() => openEditModal(ms)}
-              onDelete={() => handleDeleteMonitor(ms.monitor.id)}
-              canEdit={canEdit}
-              siteId={siteId}
-            />
-          ))}
-        </div>
-      ) : (
-        /* Empty state */
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-12 text-center">
-          <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-            <svg className="w-8 h-8 text-neutral-500 dark:text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <h3 className="font-semibold text-neutral-900 dark:text-white mb-2">
-            No monitors yet
-          </h3>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6 max-w-md mx-auto">
-            Add a monitor to start tracking the uptime and response time of your endpoints. You can monitor APIs, websites, and any HTTP endpoint.
-          </p>
-          {canEdit && (
-            <Button
-              onClick={() => {
-                setFormData({ name: '', url: '', check_interval_seconds: 300, expected_status_code: 200, timeout_seconds: 30 })
-                setShowAddModal(true)
-              }}
-            >
-              Add Your First Monitor
-            </Button>
-          )}
-        </div>
-      )}
-
-      {/* Add Monitor Modal */}
-      <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Add Monitor">
-        <MonitorForm
-          formData={formData}
-          setFormData={setFormData}
-          onSubmit={handleAddMonitor}
-          onCancel={() => setShowAddModal(false)}
-          saving={saving}
-          submitLabel="Create Monitor"
-          siteDomain={site.domain}
-        />
-      </Modal>
-
-      {/* Edit Monitor Modal */}
-      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="Edit Monitor">
-        <MonitorForm
-          formData={formData}
-          setFormData={setFormData}
-          onSubmit={handleEditMonitor}
-          onCancel={() => setShowEditModal(false)}
-          saving={saving}
-          submitLabel="Save Changes"
-          siteDomain={site.domain}
-        />
-      </Modal>
-    </div>
-  )
-}
-
-// * Monitor creation/edit form
-function MonitorForm({
-  formData,
-  setFormData,
-  onSubmit,
-  onCancel,
-  saving,
-  submitLabel,
-  siteDomain,
-}: {
-  formData: CreateMonitorRequest
-  setFormData: (data: CreateMonitorRequest) => void
-  onSubmit: () => void
-  onCancel: () => void
-  saving: boolean
-  submitLabel: string
-  siteDomain: string
-}) {
-  // * Derive protocol from formData.url so edit modal shows the monitor's actual scheme (no desync)
-  const protocol: 'https://' | 'http://' = formData.url.startsWith('http://') ? 'http://' : 'https://'
-  const [showProtocolDropdown, setShowProtocolDropdown] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
-
-  // * Extract the path portion from the full URL
-  const getPath = (): string => {
-    const url = formData.url
-    if (!url) return ''
-    try {
-      const parsed = new URL(url)
-      const pathAndRest = parsed.pathname + parsed.search + parsed.hash
-      return pathAndRest === '/' ? '' : pathAndRest
-    } catch {
-      // ? If not a valid full URL, try stripping the protocol prefix
-      if (url.startsWith('https://')) return url.slice(8 + siteDomain.length)
-      if (url.startsWith('http://')) return url.slice(7 + siteDomain.length)
-      return url
-    }
-  }
-
-  const handlePathChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const path = e.target.value
-    const safePath = path.startsWith('/') || path === '' ? path : `/${path}`
-    setFormData({ ...formData, url: `${protocol}${siteDomain}${safePath}` })
-  }
-
-  const handleProtocolChange = (proto: 'https://' | 'http://') => {
-    setShowProtocolDropdown(false)
-    const path = getPath()
-    setFormData({ ...formData, url: `${proto}${siteDomain}${path}` })
-  }
-
-  // * Initialize URL if empty
-  useEffect(() => {
-    if (!formData.url) {
-      setFormData({ ...formData, url: `${protocol}${siteDomain}` })
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  // * Close dropdown on outside click
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setShowProtocolDropdown(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  return (
-    <div className="space-y-4">
-      {/* Name */}
-      <div>
-        <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-          Name
-        </label>
-        <input
-          type="text"
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          placeholder="e.g. API, Website, CDN"
-          autoFocus
-          maxLength={100}
-          className="w-full px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:border-transparent text-sm"
-        />
-        {formData.name.length > 80 && (
-          <span className={`text-xs tabular-nums mt-1 ${formData.name.length > 90 ? 'text-amber-500' : 'text-neutral-400'}`}>{formData.name.length}/100</span>
-        )}
-      </div>
-
-      {/* URL with protocol dropdown + domain prefix */}
-      <div>
-        <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-          URL
-        </label>
-        <div className="flex rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 focus-within:ring-2 focus-within:ring-brand-orange focus-within:border-transparent overflow-hidden">
-          {/* Protocol dropdown */}
-          <div ref={dropdownRef} className="relative">
-            <button
-              type="button"
-              onClick={() => setShowProtocolDropdown(!showProtocolDropdown)}
-              className="h-full px-3 flex items-center gap-1 bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 text-sm border-r border-neutral-300 dark:border-neutral-600 hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-colors select-none whitespace-nowrap"
-            >
-              {protocol}
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            {showProtocolDropdown && (
-              <div className="absolute top-full left-0 mt-1 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-lg transition-shadow duration-300 z-10 min-w-[100px]">
-                <button
-                  type="button"
-                  onClick={() => handleProtocolChange('https://')}
-                  className={`w-full text-left px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors rounded-t-lg ${protocol === 'https://' ? 'text-brand-orange font-medium' : 'text-neutral-700 dark:text-neutral-300'}`}
-                >
-                  https://
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleProtocolChange('http://')}
-                  className={`w-full text-left px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors rounded-b-lg ${protocol === 'http://' ? 'text-brand-orange font-medium' : 'text-neutral-700 dark:text-neutral-300'}`}
-                >
-                  http://
-                </button>
+          <div className="text-right">
+            <span className="text-sm font-semibold text-neutral-900 dark:text-white">
+              {formatUptime(overallUptime)} uptime
+            </span>
+            {monitor && (
+              <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                Last checked {formatTimeAgo(monitor.monitor.last_checked_at)}
               </div>
             )}
           </div>
-          {/* Domain prefix */}
-          <span className="flex items-center px-1.5 text-sm text-neutral-500 dark:text-neutral-400 select-none whitespace-nowrap bg-neutral-100 dark:bg-neutral-700 border-r border-neutral-300 dark:border-neutral-600">
-            {siteDomain}
-          </span>
-          {/* Path input */}
-          <input
-            type="text"
-            value={getPath()}
-            onChange={handlePathChange}
-            placeholder="/api/health"
-            className="flex-1 min-w-0 px-3 py-2 bg-transparent text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none text-sm"
-          />
         </div>
-        <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-          Add a specific path (e.g. /api/health) or leave empty for the root domain
-        </p>
       </div>
 
-      {/* Check interval */}
-      <div>
-        <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-          Check Interval
-        </label>
-        <select
-          value={formData.check_interval_seconds}
-          onChange={(e) => setFormData({ ...formData, check_interval_seconds: parseInt(e.target.value) })}
-          className="w-full px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-orange focus:border-transparent text-sm"
-        >
-          <option value={60}>Every 1 minute</option>
-          <option value={120}>Every 2 minutes</option>
-          <option value={300}>Every 5 minutes</option>
-          <option value={600}>Every 10 minutes</option>
-          <option value={900}>Every 15 minutes</option>
-          <option value={1800}>Every 30 minutes</option>
-          <option value={3600}>Every 1 hour</option>
-        </select>
-      </div>
+      {/* 90-day uptime bar */}
+      {monitor && (
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 mb-6">
+          <h3 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">
+            90-Day Availability
+          </h3>
+          <UptimeStatusBar dailyStats={monitor.daily_stats} />
+          <div className="flex justify-between mt-1.5 text-xs text-neutral-400 dark:text-neutral-500">
+            <span>90 days ago</span>
+            <span>Today</span>
+          </div>
+        </div>
+      )}
 
-      {/* Expected status code */}
-      <div>
-        <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-          Expected Status Code
-        </label>
-        <input
-          type="number"
-          value={formData.expected_status_code}
-          onChange={(e) => setFormData({ ...formData, expected_status_code: parseInt(e.target.value) || 200 })}
-          min={100}
-          max={599}
-          className="w-full px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-orange focus:border-transparent text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-        />
-      </div>
+      {/* Response time chart + Recent checks */}
+      {monitor && (
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5">
+          {/* Monitor details grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
+            <div>
+              <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
+                Status
+              </div>
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${getStatusDotColor(monitor.monitor.last_status)}`} />
+                <span className="text-sm font-medium text-neutral-900 dark:text-white">
+                  {getStatusLabel(monitor.monitor.last_status)}
+                </span>
+              </div>
+            </div>
+            <div>
+              <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
+                Response Time
+              </div>
+              <span className="text-sm font-medium text-neutral-900 dark:text-white">
+                {formatMs(monitor.monitor.last_response_time_ms)}
+              </span>
+            </div>
+            <div>
+              <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
+                Check Interval
+              </div>
+              <span className="text-sm font-medium text-neutral-900 dark:text-white">
+                {monitor.monitor.check_interval_seconds >= 60
+                  ? `${Math.floor(monitor.monitor.check_interval_seconds / 60)}m`
+                  : `${monitor.monitor.check_interval_seconds}s`}
+              </span>
+            </div>
+            <div>
+              <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
+                Overall Uptime
+              </div>
+              <span className="text-sm font-medium text-neutral-900 dark:text-white">
+                {formatUptime(monitor.overall_uptime)}
+              </span>
+            </div>
+          </div>
 
-      {/* Timeout */}
-      <div>
-        <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-          Timeout (seconds)
-        </label>
-        <input
-          type="number"
-          value={formData.timeout_seconds}
-          onChange={(e) => setFormData({ ...formData, timeout_seconds: parseInt(e.target.value) || 30 })}
-          min={5}
-          max={60}
-          className="w-full px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-orange focus:border-transparent text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-        />
-      </div>
+          {/* Response time chart */}
+          {loadingChecks ? (
+            <ChecksSkeleton />
+          ) : checks.length > 0 ? (
+            <>
+              <ResponseTimeChart checks={checks} />
 
-      {/* Actions */}
-      <div className="flex justify-end gap-2 pt-2">
-        <Button variant="secondary" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button onClick={onSubmit} disabled={saving || !formData.name || !formData.url}>
-          {saving ? 'Saving...' : submitLabel}
-        </Button>
-      </div>
+              {/* Recent checks */}
+              <div className="mt-5">
+                <h4 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">
+                  Recent Checks
+                </h4>
+                <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                  {checks.slice(0, 20).map((check) => (
+                    <div
+                      key={check.id}
+                      className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800 text-sm"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${getStatusDotColor(check.status)}`} />
+                        <span className="text-neutral-600 dark:text-neutral-300 text-xs">
+                          {formatDateTimeShort(new Date(check.checked_at))}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {check.status_code && (
+                          <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                            {check.status_code}
+                          </span>
+                        )}
+                        <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
+                          {formatMs(check.response_time_ms)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : null}
+        </div>
+      )}
     </div>
   )
 }
