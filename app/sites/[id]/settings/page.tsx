@@ -947,22 +947,30 @@ export default function SiteSettingsPage() {
                           </div>
 
                           <div>
-                            <div className="flex items-center justify-between mb-4">
-                              <div>
-                                <h3 className="text-sm font-medium text-neutral-900 dark:text-white">Password Protection</h3>
-                                <p className="text-xs text-neutral-500 mt-1">Restrict access to this dashboard.</p>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div>
+                                  <h3 className="text-sm font-medium text-white">Password Protection</h3>
+                                  <p className="text-xs text-neutral-500 mt-0.5">Restrict access to this dashboard.</p>
+                                </div>
+                                {isPasswordEnabled && site?.has_password && !formData.password && (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-900/30 text-green-400 border border-green-500/20">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                                    Password set
+                                  </span>
+                                )}
                               </div>
                               <label className="relative inline-flex items-center cursor-pointer">
-                                <input 
-                                  type="checkbox" 
-                                  checked={isPasswordEnabled} 
+                                <input
+                                  type="checkbox"
+                                  checked={isPasswordEnabled}
                                   onChange={(e) => {
                                     setIsPasswordEnabled(e.target.checked);
-                                    if (!e.target.checked) setFormData({...formData, password: ''}); 
+                                    if (!e.target.checked) setFormData({...formData, password: ''});
                                   }}
                                   className="sr-only peer"
                                 />
-                                <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-orange/20 dark:peer-focus:ring-brand-orange/20 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-neutral-600 peer-checked:bg-brand-orange"></div>
+                                <div className="w-11 h-6 bg-neutral-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-orange/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-orange"></div>
                               </label>
                             </div>
 
@@ -974,15 +982,36 @@ export default function SiteSettingsPage() {
                                   exit={{ opacity: 0, height: 0 }}
                                   className="overflow-hidden"
                                 >
-                                  <PasswordInput
-                                    id="password"
-                                    value={formData.password}
-                                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                    placeholder={site.has_password ? "Change password (leave empty to keep current)" : "Set a password"}
-                                  />
-                                  <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
-                                    Visitors will need to enter this password to view the dashboard.
-                                  </p>
+                                  <div className="mt-4 space-y-3">
+                                    <PasswordInput
+                                      id="password"
+                                      value={formData.password}
+                                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                      placeholder="Enter new password"
+                                    />
+                                    {site?.has_password && (
+                                      <p className="text-xs text-neutral-500">
+                                        Current password will remain unchanged unless you enter a new one.
+                                      </p>
+                                    )}
+                                    {site?.has_password && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setIsPasswordEnabled(false)
+                                          setFormData({ ...formData, password: '' })
+                                        }}
+                                        className="text-xs font-medium text-red-400 hover:text-red-300 transition-colors"
+                                      >
+                                        Remove password protection
+                                      </button>
+                                    )}
+                                    {!site?.has_password && (
+                                      <p className="text-xs text-neutral-500">
+                                        Visitors will need to enter this password to view the dashboard.
+                                      </p>
+                                    )}
+                                  </div>
                                 </motion.div>
                               )}
                             </AnimatePresence>
