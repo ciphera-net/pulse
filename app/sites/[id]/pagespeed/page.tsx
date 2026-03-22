@@ -526,9 +526,7 @@ export default function PageSpeedPage() {
                 </div>
 
                 {groupAudits.length > 0 && (
-                  <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
-                    {groupAudits.map(audit => <AuditRow key={audit.id} audit={audit} />)}
-                  </div>
+                  <AuditsBySubGroup audits={groupAudits} />
                 )}
 
                 {groupPassed.length > 0 && (
@@ -546,6 +544,52 @@ export default function PageSpeedPage() {
           })}
         </div>
       )}
+    </div>
+  )
+}
+
+// * Group audits by sub-group within a category (e.g., "Names and Labels", "Contrast")
+function AuditsBySubGroup({ audits }: { audits: AuditSummary[] }) {
+  // * Collect unique sub-groups in order of appearance
+  const subGroupOrder: string[] = []
+  const bySubGroup: Record<string, AuditSummary[]> = {}
+
+  for (const audit of audits) {
+    const key = audit.sub_group || '__none__'
+    if (!bySubGroup[key]) {
+      bySubGroup[key] = []
+      subGroupOrder.push(key)
+    }
+    bySubGroup[key].push(audit)
+  }
+
+  // * If no sub-groups exist, render flat list
+  if (subGroupOrder.length === 1 && subGroupOrder[0] === '__none__') {
+    return (
+      <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
+        {audits.map(audit => <AuditRow key={audit.id} audit={audit} />)}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-5">
+      {subGroupOrder.map(key => {
+        const items = bySubGroup[key]
+        const title = items[0]?.sub_group_title
+        return (
+          <div key={key}>
+            {title && (
+              <h4 className="text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-2">
+                {title}
+              </h4>
+            )}
+            <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
+              {items.map(audit => <AuditRow key={audit.id} audit={audit} />)}
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
