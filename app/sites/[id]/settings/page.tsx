@@ -1369,104 +1369,66 @@ export default function SiteSettingsPage() {
                     </div>
                   )}
 
-                  {/* Sessions table */}
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm">
-                      <thead className="border-b border-neutral-800">
-                        <tr>
-                          <th className="pb-2 pr-2 w-8">
-                            <input
-                              type="checkbox"
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  const allIds = new Set((sessions?.sessions || []).map(s => s.session_id))
-                                  setSelectedSessions(allIds)
-                                } else {
-                                  setSelectedSessions(new Set())
-                                }
-                              }}
-                              checked={selectedSessions.size > 0 && selectedSessions.size === (sessions?.sessions || []).length}
-                              className="rounded border-neutral-600 bg-neutral-800 text-brand-orange focus:ring-brand-orange"
-                            />
-                          </th>
-                          <th className="pb-2 text-neutral-400 font-medium">Session</th>
-                          <th className="pb-2 text-neutral-400 font-medium">Pages</th>
-                          <th className="pb-2 text-neutral-400 font-medium">Duration</th>
-                          <th className="pb-2 text-neutral-400 font-medium">Location</th>
-                          <th className="pb-2 text-neutral-400 font-medium">Browser</th>
-                          <th className="pb-2 text-neutral-400 font-medium">Referrer</th>
-                          <th className="pb-2 text-neutral-400 font-medium">Score</th>
-                          <th className="pb-2 text-neutral-400 font-medium">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-neutral-800">
-                        {(sessions?.sessions || [])
-                          .filter(s => botView === 'blocked' ? s.bot_filtered : !s.bot_filtered)
-                          .map((session) => (
-                          <tr key={session.session_id} className="hover:bg-neutral-800/50">
-                            <td className="py-2.5 pr-2">
-                              <input
-                                type="checkbox"
-                                checked={selectedSessions.has(session.session_id)}
-                                onChange={(e) => {
-                                  const next = new Set(selectedSessions)
-                                  if (e.target.checked) next.add(session.session_id)
-                                  else next.delete(session.session_id)
-                                  setSelectedSessions(next)
-                                }}
-                                className="rounded border-neutral-600 bg-neutral-800 text-brand-orange focus:ring-brand-orange"
-                              />
-                            </td>
-                            <td className="py-2.5">
-                              <div className="font-mono text-xs text-neutral-300">{session.session_id.slice(0, 12)}...</div>
-                              <div className="text-xs text-neutral-500 mt-0.5">{session.first_page}</div>
-                            </td>
-                            <td className="py-2.5 text-neutral-300">{session.pageviews}</td>
-                            <td className="py-2.5 text-neutral-300">
-                              {session.duration != null ? `${Math.round(session.duration)}s` : <span className="text-neutral-600">&mdash;</span>}
-                            </td>
-                            <td className="py-2.5 text-neutral-300 text-xs">
-                              {[session.city, session.country].filter(Boolean).join(', ') || '\u2014'}
-                            </td>
-                            <td className="py-2.5 text-neutral-300 text-xs">{session.browser || '\u2014'}</td>
-                            <td className="py-2.5 text-neutral-300 text-xs">{session.referrer || <span className="text-neutral-600">Direct</span>}</td>
-                            <td className="py-2.5">
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                                session.suspicion_score >= 5 ? 'bg-red-900/30 text-red-400' :
-                                session.suspicion_score >= 3 ? 'bg-yellow-900/30 text-yellow-400' :
-                                'bg-neutral-800 text-neutral-400'
-                              }`}>
-                                {session.suspicion_score}
-                              </span>
-                            </td>
-                            <td className="py-2.5">
-                              {botView === 'review' ? (
-                                <button
-                                  onClick={() => handleBotFilter([session.session_id])}
-                                  className="text-xs font-medium text-red-400 hover:text-red-300"
-                                >
-                                  Flag
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => handleBotUnfilter([session.session_id])}
-                                  className="text-xs font-medium text-green-400 hover:text-green-300"
-                                >
-                                  Unblock
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                        {(sessions?.sessions || []).filter(s => botView === 'blocked' ? s.bot_filtered : !s.bot_filtered).length === 0 && (
-                          <tr>
-                            <td colSpan={9} className="py-8 text-center text-neutral-500 text-sm">
-                              {botView === 'blocked' ? 'No blocked sessions' : 'No suspicious sessions found'}
-                            </td>
-                          </tr>
+                  {/* Session cards */}
+                  <div className="space-y-2">
+                    {(sessions?.sessions || [])
+                      .filter(s => botView === 'blocked' ? s.bot_filtered : !s.bot_filtered)
+                      .map((session) => (
+                      <div key={session.session_id} className="flex items-center gap-3 p-3 rounded-xl border border-neutral-800 hover:border-neutral-700 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={selectedSessions.has(session.session_id)}
+                          onChange={(e) => {
+                            const next = new Set(selectedSessions)
+                            if (e.target.checked) next.add(session.session_id)
+                            else next.delete(session.session_id)
+                            setSelectedSessions(next)
+                          }}
+                          className="rounded border-neutral-600 bg-neutral-800 text-brand-orange focus:ring-brand-orange shrink-0"
+                        />
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-sm font-medium text-white truncate">{session.first_page}</span>
+                            <span className={`shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                              session.suspicion_score >= 5 ? 'bg-red-900/30 text-red-400' :
+                              session.suspicion_score >= 3 ? 'bg-yellow-900/30 text-yellow-400' :
+                              'bg-neutral-800 text-neutral-400'
+                            }`}>
+                              {session.suspicion_score >= 5 ? 'High risk' : session.suspicion_score >= 3 ? 'Suspicious' : 'Low risk'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-neutral-500">
+                            <span>{session.pageviews} page{session.pageviews !== 1 ? 's' : ''}</span>
+                            <span>{session.duration != null ? `${Math.round(session.duration)}s` : 'No duration'}</span>
+                            <span>{[session.city, session.country].filter(Boolean).join(', ') || 'Unknown location'}</span>
+                            <span>{session.browser || 'Unknown browser'}</span>
+                            <span>{session.referrer || 'Direct'}</span>
+                          </div>
+                        </div>
+
+                        {botView === 'review' ? (
+                          <button
+                            onClick={() => handleBotFilter([session.session_id])}
+                            className="shrink-0 px-3 py-1.5 text-xs font-medium text-red-400 hover:text-white hover:bg-red-500/20 rounded-lg border border-red-500/20 transition-colors"
+                          >
+                            Flag as bot
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleBotUnfilter([session.session_id])}
+                            className="shrink-0 px-3 py-1.5 text-xs font-medium text-green-400 hover:text-white hover:bg-green-500/20 rounded-lg border border-green-500/20 transition-colors"
+                          >
+                            Unblock
+                          </button>
                         )}
-                      </tbody>
-                    </table>
+                      </div>
+                    ))}
+                    {(sessions?.sessions || []).filter(s => botView === 'blocked' ? s.bot_filtered : !s.bot_filtered).length === 0 && (
+                      <div className="py-12 text-center text-neutral-500 text-sm">
+                        {botView === 'blocked' ? 'No blocked sessions' : 'No suspicious sessions found'}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
