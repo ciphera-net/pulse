@@ -270,18 +270,20 @@ export default function PageSpeedPage() {
     { key: 'tti', label: 'Time to Interactive', value: currentCheck?.tti_ms ?? null },
   ]
 
-  // * Compact score helper for the hero section
-  const compactScores = [
-    { label: 'Accessibility', score: currentCheck?.accessibility_score ?? null },
-    { label: 'Best Practices', score: currentCheck?.best_practices_score ?? null },
-    { label: 'SEO', score: currentCheck?.seo_score ?? null },
+  // * All 4 category scores for the hero row
+  const allScores = [
+    { key: 'performance', label: 'Performance', score: currentCheck?.performance_score ?? null },
+    { key: 'accessibility', label: 'Accessibility', score: currentCheck?.accessibility_score ?? null },
+    { key: 'best-practices', label: 'Best Practices', score: currentCheck?.best_practices_score ?? null },
+    { key: 'seo', label: 'SEO', score: currentCheck?.seo_score ?? null },
   ]
 
-  function getScoreColor(score: number | null): string {
-    if (score === null) return '#6b7280'
-    if (score >= 90) return '#0cce6b'
-    if (score >= 50) return '#ffa400'
-    return '#ff4e42'
+  // * Map category key to score for diagnostics section
+  const scoreByGroup: Record<string, number | null> = {
+    'performance': currentCheck?.performance_score ?? null,
+    'accessibility': currentCheck?.accessibility_score ?? null,
+    'best-practices': currentCheck?.best_practices_score ?? null,
+    'seo': currentCheck?.seo_score ?? null,
   }
 
   function getMetricDotColor(metric: string, value: number | null): string {
@@ -353,61 +355,45 @@ export default function PageSpeedPage() {
         </div>
       </div>
 
-      {/* Section 1 — Hero Card: Score Gauge + Compact Scores + Screenshot */}
+      {/* Section 1 — Score Overview: 4 equal gauges + screenshot */}
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 sm:p-8 mb-6">
-        <div className="flex flex-col md:flex-row items-center gap-8">
-          {/* Left — Large Performance Gauge */}
-          <div className="flex-shrink-0">
-            <ScoreGauge score={currentCheck?.performance_score ?? null} label="Performance" size={160} />
+        <div className="flex flex-col lg:flex-row items-center gap-8">
+          {/* 4 equal gauges */}
+          <div className="flex-1 flex items-center justify-center gap-6 sm:gap-8 flex-wrap">
+            {allScores.map(({ label, score }) => (
+              <ScoreGauge key={label} score={score} label={label} size={90} />
+            ))}
           </div>
 
-          {/* Center — Compact Scores + Meta */}
-          <div className="flex-1 flex flex-col justify-center gap-4 min-w-0">
-            <div className="flex flex-wrap gap-4">
-              {compactScores.map(({ label, score }) => (
-                <ScoreGauge key={label} score={score} label={label} size={64} />
-              ))}
-            </div>
-
-            {/* Last checked + frequency */}
-            <div className="flex items-center gap-3 text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-              {currentCheck?.checked_at && (
-                <span>Last checked {formatTimeAgo(currentCheck.checked_at)}</span>
-              )}
-              {config?.frequency && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400">
-                  {config.frequency}
-                </span>
-              )}
-            </div>
-
-            {/* Score Legend */}
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-neutral-400 dark:text-neutral-500">
-              <span className="flex items-center gap-1">
-                <span className="inline-block w-2 h-2 rounded-full bg-red-500" />
-                0&ndash;49
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="inline-block w-2 h-2 rounded-full bg-amber-500" />
-                50&ndash;89
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
-                90&ndash;100
-              </span>
-            </div>
-          </div>
-
-          {/* Right — Screenshot */}
+          {/* Screenshot */}
           {currentCheck?.screenshot && (
             <div className="flex-shrink-0 flex items-center justify-center">
               <img
                 src={currentCheck.screenshot}
                 alt={`${strategy} screenshot`}
-                className="rounded-lg max-h-48 w-auto border border-neutral-200 dark:border-neutral-700 object-contain"
+                className="rounded-lg max-h-44 w-auto border border-neutral-200 dark:border-neutral-700 object-contain"
               />
             </div>
           )}
+        </div>
+
+        {/* Last checked + frequency + legend */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-6 pt-4 border-t border-neutral-100 dark:border-neutral-800">
+          <div className="flex items-center gap-3 text-sm text-neutral-500 dark:text-neutral-400">
+            {currentCheck?.checked_at && (
+              <span>Last checked {formatTimeAgo(currentCheck.checked_at)}</span>
+            )}
+            {config?.frequency && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400">
+                {config.frequency}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-x-3 text-[11px] text-neutral-400 dark:text-neutral-500 ml-auto">
+            <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-red-500" />0&ndash;49</span>
+            <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-amber-500" />50&ndash;89</span>
+            <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />90&ndash;100</span>
+          </div>
         </div>
       </div>
 
@@ -527,9 +513,18 @@ export default function PageSpeedPage() {
             if (groupAudits.length === 0) return null
             return (
               <div key={group.key} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 sm:p-8">
-                <h3 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-4">
-                  {group.label}
-                </h3>
+                {/* Category header with gauge */}
+                <div className="flex items-center gap-5 mb-6">
+                  <ScoreGauge score={scoreByGroup[group.key]} label="" size={56} />
+                  <div>
+                    <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
+                      {group.label}
+                    </h3>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                      {groupAudits.length} issue{groupAudits.length !== 1 ? 's' : ''} found
+                    </p>
+                  </div>
+                </div>
 
                 {groupAudits.length > 0 && (
                   <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
