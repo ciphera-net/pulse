@@ -33,6 +33,7 @@ import { listFunnels, type Funnel } from '@/lib/api/funnels'
 import { getUptimeStatus, type UptimeStatusResponse } from '@/lib/api/uptime'
 import { listGoals, type Goal } from '@/lib/api/goals'
 import { listReportSchedules, type ReportSchedule } from '@/lib/api/report-schedules'
+import { listSessions, getBotFilterStats, type SessionSummary, type BotFilterStats } from '@/lib/api/bot-filter'
 import { getGSCStatus, getGSCOverview, getGSCTopQueries, getGSCTopPages, getGSCDailyTotals, getGSCNewQueries } from '@/lib/api/gsc'
 import type { GSCStatus, GSCOverview, GSCQueryResponse, GSCPageResponse, GSCDailyTotal, GSCNewQueries } from '@/lib/api/gsc'
 import { getBunnyStatus, getBunnyOverview, getBunnyDailyStats, getBunnyTopCountries } from '@/lib/api/bunny'
@@ -514,6 +515,24 @@ export function useSubscription() {
       refreshInterval: 5 * 60 * 1000,
       dedupingInterval: 30 * 1000,
     }
+  )
+}
+
+// * Hook for session list (bot review)
+export function useSessions(siteId: string, startDate: string, endDate: string, suspiciousOnly: boolean) {
+  return useSWR<{ sessions: SessionSummary[] }>(
+    siteId && startDate && endDate ? ['sessions', siteId, startDate, endDate, suspiciousOnly] : null,
+    () => listSessions(siteId, startDate, endDate, suspiciousOnly),
+    { ...dashboardSWRConfig, refreshInterval: 0, dedupingInterval: 10 * 1000 }
+  )
+}
+
+// * Hook for bot filter stats
+export function useBotFilterStats(siteId: string) {
+  return useSWR<BotFilterStats>(
+    siteId ? ['botFilterStats', siteId] : null,
+    () => getBotFilterStats(siteId),
+    { ...dashboardSWRConfig, refreshInterval: 60 * 1000, dedupingInterval: 10 * 1000 }
   )
 }
 
