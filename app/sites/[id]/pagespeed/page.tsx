@@ -247,9 +247,10 @@ export default function PageSpeedPage() {
 
   // * Build per-category failing audits, sorted by impact
   const auditsByGroup: Record<string, typeof audits> = {}
+  const manualByGroup: Record<string, typeof audits> = {}
   for (const group of categoryGroups) {
     auditsByGroup[group.key] = audits
-      .filter(a => a.category !== 'passed' && a.group === group.key)
+      .filter(a => a.category !== 'passed' && a.category !== 'manual' && a.group === group.key)
       .sort((a, b) => {
         if (a.category === 'opportunity' && b.category !== 'opportunity') return -1
         if (a.category !== 'opportunity' && b.category === 'opportunity') return 1
@@ -258,6 +259,7 @@ export default function PageSpeedPage() {
         }
         return 0
       })
+    manualByGroup[group.key] = audits.filter(a => a.category === 'manual' && a.group === group.key)
   }
 
   // * Core Web Vitals metrics
@@ -509,7 +511,8 @@ export default function PageSpeedPage() {
           {categoryGroups.map(group => {
             const groupAudits = auditsByGroup[group.key] ?? []
             const groupPassed = passed.filter(a => a.group === group.key)
-            if (groupAudits.length === 0 && groupPassed.length === 0) return null
+            const groupManual = manualByGroup[group.key] ?? []
+            if (groupAudits.length === 0 && groupPassed.length === 0 && groupManual.length === 0) return null
             return (
               <div key={group.key} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 sm:p-8">
                 {/* Category header with gauge */}
@@ -530,6 +533,17 @@ export default function PageSpeedPage() {
 
                 {groupAudits.length > 0 && (
                   <AuditsBySubGroup audits={groupAudits} />
+                )}
+
+                {groupManual.length > 0 && (
+                  <details className="mt-4">
+                    <summary className="cursor-pointer text-sm font-medium text-neutral-500 dark:text-neutral-400 select-none hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors">
+                      <span className="ml-1">Additional items to manually check ({groupManual.length})</span>
+                    </summary>
+                    <div className="mt-2 divide-y divide-neutral-100 dark:divide-neutral-800">
+                      {groupManual.map(audit => <AuditRow key={audit.id} audit={audit} />)}
+                    </div>
+                  </details>
                 )}
 
                 {groupPassed.length > 0 && (
@@ -629,19 +643,15 @@ function AuditsBySubGroup({ audits }: { audits: AuditSummary[] }) {
 // * Severity indicator based on audit score (pagespeed.web.dev style)
 function AuditSeverityIcon({ score }: { score: number | null }) {
   if (score === null) {
-    // Empty circle for informative/unscored audits
-    return <span className="text-neutral-400 text-sm leading-none flex-shrink-0" aria-label="Informative">&#9675;</span>
+    return <span className="inline-block w-2.5 h-2.5 rounded-full border-2 border-neutral-400 flex-shrink-0" aria-label="Informative" />
   }
   if (score < 0.5) {
-    // Red triangle for poor
-    return <span className="text-red-500 text-sm leading-none flex-shrink-0" aria-label="Poor">&#9650;</span>
+    return <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500 flex-shrink-0" aria-label="Poor" />
   }
   if (score < 0.9) {
-    // Amber square for needs improvement
-    return <span className="text-amber-500 text-sm leading-none flex-shrink-0" aria-label="Needs Improvement">&#9632;</span>
+    return <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-500 flex-shrink-0" aria-label="Needs Improvement" />
   }
-  // Green circle for good
-  return <span className="text-emerald-500 text-sm leading-none flex-shrink-0" aria-label="Good">&#9679;</span>
+  return <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 flex-shrink-0" aria-label="Good" />
 }
 
 // * Expandable audit row with description and detail items
