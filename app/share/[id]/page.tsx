@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { getPublicDashboard, getPublicStats, getPublicDailyStats, getPublicRealtime, type DashboardData, type Stats, type DailyStat } from '@/lib/api/stats'
@@ -39,6 +39,7 @@ export default function PublicDashboardPage() {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<DashboardData | null>(null)
   const [password, setPassword] = useState(passwordParam || '')
+  const [submittedPassword, setSubmittedPassword] = useState(passwordParam || '')
   const [isPasswordProtected, setIsPasswordProtected] = useState(false)
   
   // Captcha State
@@ -92,11 +93,11 @@ export default function PublicDashboardPage() {
   const loadRealtime = useCallback(async () => {
     try {
       const auth = {
-        password,
+        password: passwordRef.current,
         captcha: {
-          captcha_id: captchaId,
-          captcha_solution: captchaSolution,
-          captcha_token: captchaToken
+          captcha_id: captchaIdRef.current,
+          captcha_solution: captchaSolutionRef.current,
+          captcha_token: captchaTokenRef.current
         }
       }
       const realtimeData = await getPublicRealtime(siteId, auth)
@@ -109,19 +110,30 @@ export default function PublicDashboardPage() {
     } catch (error) {
       // Silently fail for realtime updates
     }
-  }, [siteId, password, captchaId, captchaSolution, captchaToken, data])
+  }, [siteId, data])
+
+  // Use refs for auth values so loadDashboard doesn't recreate on every keystroke/captcha change
+  const passwordRef = useRef(submittedPassword)
+  const captchaIdRef = useRef(captchaId)
+  const captchaSolutionRef = useRef(captchaSolution)
+  const captchaTokenRef = useRef(captchaToken)
+  passwordRef.current = submittedPassword
+  captchaIdRef.current = captchaId
+  captchaSolutionRef.current = captchaSolution
+  captchaTokenRef.current = captchaToken
 
   const loadDashboard = useCallback(async (silent = false) => {
     try {
       if (!silent) setLoading(true)
-      
+
       const interval = dateRange.start === dateRange.end ? todayInterval : multiDayInterval
+      const pw = passwordRef.current
       const auth = {
-        password,
+        password: pw,
         captcha: {
-            captcha_id: captchaId,
-            captcha_solution: captchaSolution,
-            captcha_token: captchaToken
+            captcha_id: captchaIdRef.current,
+            captcha_solution: captchaSolutionRef.current,
+            captcha_token: captchaTokenRef.current
         }
       }
 
@@ -132,7 +144,7 @@ export default function PublicDashboardPage() {
             dateRange.end,
             10,
             interval,
-            password,
+            pw,
             auth.captcha
         ),
         (async () => {
@@ -144,7 +156,7 @@ export default function PublicDashboardPage() {
             return getPublicDailyStats(siteId, prevRange.start, prevRange.end, interval, auth)
         })()
       ])
-      
+
       setData(dashboardData)
       setPrevStats(prevStatsData)
       setPrevDailyStats(prevDailyStatsData)
@@ -159,7 +171,7 @@ export default function PublicDashboardPage() {
       const apiErr = error instanceof ApiError ? error : null
       if (apiErr?.status === 401 && (apiErr.data as Record<string, unknown>)?.is_protected) {
         setIsPasswordProtected(true)
-        if (password) {
+        if (passwordRef.current) {
           toast.error('Invalid password or captcha')
           // Reset captcha on failure
           setCaptchaId('')
@@ -174,7 +186,7 @@ export default function PublicDashboardPage() {
     } finally {
       if (!silent) setLoading(false)
     }
-  }, [siteId, dateRange, todayInterval, multiDayInterval, password, captchaId, captchaSolution, captchaToken])
+  }, [siteId, dateRange, todayInterval, multiDayInterval])
 
   // * Auto-refresh interval: chart, KPIs, and realtime count update every 30 seconds
   useEffect(() => {
@@ -185,7 +197,7 @@ export default function PublicDashboardPage() {
       }, 30000)
       return () => clearInterval(interval)
     }
-  }, [data, isPasswordProtected, dateRange, todayInterval, multiDayInterval, password, loadDashboard, loadRealtime])
+  }, [data, isPasswordProtected, dateRange, todayInterval, multiDayInterval, loadDashboard, loadRealtime])
 
   useEffect(() => {
     loadDashboard()
@@ -193,6 +205,9 @@ export default function PublicDashboardPage() {
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    // Update ref immediately so loadDashboard reads the latest password
+    passwordRef.current = password
+    setSubmittedPassword(password)
     loadDashboard()
   }
 
