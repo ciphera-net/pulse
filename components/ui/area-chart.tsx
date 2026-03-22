@@ -1061,7 +1061,7 @@ export function ChartTooltip({
     if (barXAccessor) {
       return barXAccessor(tooltipData.point);
     }
-    return xAccessor(tooltipData.point).toLocaleDateString("en-US", {
+    return xAccessor(tooltipData.point).toLocaleDateString("en-GB", {
       weekday: "short",
       month: "short",
       day: "numeric",
@@ -1377,7 +1377,7 @@ export function XAxis({ numTicks = 5, tickerHalfWidth = 50, formatLabel }: XAxis
       dates.push(new Date(time));
     }
 
-    const defaultFormat = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    const defaultFormat = (d: Date) => d.toLocaleDateString("en-GB", { month: "short", day: "numeric" });
     const fmt = formatLabel ?? defaultFormat;
 
     return dates.map((date) => ({
@@ -2135,7 +2135,7 @@ function ChartInner({
   const dateLabels = useMemo(
     () =>
       data.map((d) =>
-        xAccessor(d).toLocaleDateString("en-US", {
+        xAccessor(d).toLocaleDateString("en-GB", {
           month: "short",
           day: "numeric",
         })

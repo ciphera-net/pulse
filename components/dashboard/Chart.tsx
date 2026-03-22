@@ -439,8 +439,8 @@ export default function Chart({
                 <VisxXAxis
                   numTicks={6}
                   formatLabel={interval === 'minute' || interval === 'hour'
-                    ? (d) => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-                    : undefined
+                    ? (d) => d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+                    : (d) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
                   }
                 />
                 <VisxYAxis
@@ -452,12 +452,12 @@ export default function Chart({
                 />
                 <VisxChartTooltip
                   content={({ point }) => {
-                    const dateObj = point.dateObj as Date
+                    const dateObj = point.dateObj instanceof Date ? point.dateObj : new Date(point.dateObj as string || Date.now())
                     const config = METRIC_CONFIGS.find((m) => m.key === metric)
                     const value = point[metric] as number
                     const title = interval === 'minute' || interval === 'hour'
-                      ? dateObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-                      : dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+                      ? dateObj.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+                      : dateObj.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
                     return (
                       <div className="px-3 py-2.5">
                         <div className="mb-2 font-medium text-neutral-400 text-xs">{title}</div>
