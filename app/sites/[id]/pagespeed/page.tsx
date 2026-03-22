@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/auth/context'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { useSite, usePageSpeedConfig, usePageSpeedLatest, usePageSpeedHistory } from '@/lib/swr/dashboard'
-import { updatePageSpeedConfig, triggerPageSpeedCheck, type PageSpeedCheck, type AuditSummary } from '@/lib/api/pagespeed'
+import { updatePageSpeedConfig, triggerPageSpeedCheck, getPageSpeedLatest, type PageSpeedCheck, type AuditSummary } from '@/lib/api/pagespeed'
 import { toast, Button } from '@ciphera-net/ui'
 import ScoreGauge from '@/components/pagespeed/ScoreGauge'
 import {
@@ -116,7 +116,6 @@ export default function PageSpeedPage() {
   }
 
   // * Trigger a manual PageSpeed check
-  // * Poll for results after triggering an async check
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const stopPolling = useCallback(() => {
     if (pollRef.current) {
@@ -125,7 +124,6 @@ export default function PageSpeedPage() {
     }
   }, [])
 
-  // * Clean up polling on unmount
   useEffect(() => () => stopPolling(), [stopPolling])
 
   const handleRunCheck = async () => {
@@ -134,25 +132,29 @@ export default function PageSpeedPage() {
       await triggerPageSpeedCheck(siteId)
       toast.success('PageSpeed check started — results will appear in 30-60 seconds')
 
-      // * Poll every 5s for up to 2 minutes until new results appear
-      const startedAt = Date.now()
+      // * Poll silently without triggering SWR re-renders.
+      // * Fetch latest directly and only update SWR cache once when new data arrives.
       const initialCheckedAt = latestChecks?.[0]?.checked_at
+      const startedAt = Date.now()
 
       stopPolling()
       pollRef.current = setInterval(async () => {
-        const elapsed = Date.now() - startedAt
-        if (elapsed > 120_000) {
+        if (Date.now() - startedAt > 120_000) {
           stopPolling()
           setRunning(false)
           toast.error('Check is taking longer than expected. Results will appear when ready.')
           return
         }
-        const freshData = await mutateLatest()
-        const freshCheckedAt = freshData?.[0]?.checked_at
-        if (freshCheckedAt && freshCheckedAt !== initialCheckedAt) {
-          stopPolling()
-          setRunning(false)
-          toast.success('PageSpeed check complete')
+        try {
+          const fresh = await getPageSpeedLatest(siteId)
+          if (fresh?.[0]?.checked_at && fresh[0].checked_at !== initialCheckedAt) {
+            stopPolling()
+            setRunning(false)
+            mutateLatest() // * Single SWR revalidation when new data is ready
+            toast.success('PageSpeed check complete')
+          }
+        } catch {
+          // * Silent — keep polling
         }
       }, 5000)
     } catch (err: any) {
