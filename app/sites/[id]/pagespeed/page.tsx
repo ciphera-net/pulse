@@ -403,6 +403,26 @@ export default function PageSpeedPage() {
         </div>
       </div>
 
+      {/* Filmstrip — page load progression */}
+      {currentCheck?.filmstrip && currentCheck.filmstrip.length > 0 && (
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 mb-6">
+          <div className="flex items-center overflow-x-auto gap-1">
+            {currentCheck.filmstrip.map((frame, idx) => (
+              <div key={idx} className="flex-shrink-0 text-center">
+                <img
+                  src={frame.data}
+                  alt={`${frame.timing}ms`}
+                  className="h-24 rounded border border-neutral-200 dark:border-neutral-700 object-contain bg-white"
+                />
+                <span className="text-[10px] text-neutral-400 mt-1 block">
+                  {frame.timing < 1000 ? `${frame.timing}ms` : `${(frame.timing / 1000).toFixed(1)}s`}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Section 2 — Metrics Card */}
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 sm:p-8 mb-6">
         <h3 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-5">
