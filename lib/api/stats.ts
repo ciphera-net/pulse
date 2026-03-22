@@ -117,6 +117,21 @@ export interface FrustrationByPage {
   unique_elements: number
 }
 
+// ─── Public Auth ─────────────────────────────────────────────────────
+
+export function authenticatePublicDashboard(siteId: string, password: string, captchaToken?: string, captchaId?: string, captchaSolution?: string): Promise<{ status: string }> {
+  return apiRequest<{ status: string }>(`/public/sites/${siteId}/auth`, {
+    method: 'POST',
+    body: JSON.stringify({
+      password,
+      captcha_token: captchaToken || '',
+      captcha_id: captchaId || '',
+      captcha_solution: captchaSolution || '',
+    }),
+    credentials: 'include',
+  })
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────
 
 function appendAuthParams(params: URLSearchParams, auth?: AuthParams) {
