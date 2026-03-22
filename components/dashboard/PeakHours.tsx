@@ -131,14 +131,14 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
   }
 
   return (
-    <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
+    <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 h-full flex flex-col">
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-2">
           <Clock className="w-5 h-5 text-neutral-400 dark:text-neutral-500" weight="bold" />
-          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Peak Hours</h3>
+          <h3 className="text-lg font-semibold text-white">Peak Hours</h3>
         </div>
       </div>
-      <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-5">
+      <p className="text-sm text-neutral-400 mb-5">
         When your visitors are most active
       </p>
 
@@ -146,8 +146,8 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
         <div className="flex-1 min-h-[270px] flex flex-col justify-center gap-1.5">
           {Array.from({ length: 7 }).map((_, i) => (
             <div key={i} className="flex items-center gap-1">
-              <div className="w-7 h-3 rounded bg-neutral-200 dark:bg-neutral-800 animate-pulse" />
-              <div className="flex-1 h-5 rounded bg-neutral-200 dark:bg-neutral-800 animate-pulse" />
+              <div className="w-7 h-3 rounded bg-neutral-800 animate-pulse" />
+              <div className="flex-1 h-5 rounded bg-neutral-800 animate-pulse" />
             </div>
           ))}
         </div>
@@ -174,7 +174,7 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
                         key={`${animKey}-${dayIdx}-${bucket}`}
                         className={[
                           'aspect-square w-full rounded-[4px] border cursor-default transition-transform duration-100',
-                          'border-neutral-200 dark:border-neutral-800',
+                          'border-neutral-800',
                           isActive ? 'animate-cell-highlight' : '',
                           isHoveredCell ? 'scale-110 z-10 relative' : '',
                           isBestCell && !isHoveredCell ? 'ring-1 ring-brand-orange/40' : '',
@@ -201,14 +201,14 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
                 {Object.entries(BUCKET_LABELS).map(([b, label]) => (
                   <span
                     key={b}
-                    className="absolute text-[10px] text-neutral-400 dark:text-neutral-600 -translate-x-1/2"
+                    className="absolute text-[10px] text-neutral-600 -translate-x-1/2"
                     style={{ left: `${(Number(b) / BUCKETS) * 100}%` }}
                   >
                     {label}
                   </span>
                 ))}
                 <span
-                  className="absolute text-[10px] text-neutral-400 dark:text-neutral-600 -translate-x-full"
+                  className="absolute text-[10px] text-neutral-600 -translate-x-full"
                   style={{ left: '100%' }}
                 >
                   24:00
@@ -222,7 +222,7 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
               {HIGHLIGHT_COLORS.map((color, i) => (
                 <div
                   key={i}
-                  className="w-[10px] h-[10px] rounded-[2px] border border-neutral-200 dark:border-neutral-800"
+                  className="w-[10px] h-[10px] rounded-[2px] border border-neutral-800"
                   style={{ backgroundColor: color }}
                 />
               ))}
@@ -245,7 +245,7 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
                     transform: 'translate(-50%, -100%)',
                   }}
                 >
-                  <div className="bg-neutral-900 dark:bg-neutral-800 border border-neutral-700 text-white text-xs px-3 py-2 rounded-lg shadow-xl whitespace-nowrap">
+                  <div className="bg-neutral-800 border border-neutral-700 text-white text-xs px-3 py-2 rounded-lg shadow-xl whitespace-nowrap">
                     <div className="font-semibold mb-1">
                       {DAYS[hovered.day]} {formatBucket(hovered.bucket)}
                     </div>
@@ -269,7 +269,7 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.6 }}
-              className="mt-4 text-xs text-neutral-500 dark:text-neutral-400 text-center"
+              className="mt-4 text-xs text-neutral-400 text-center"
             >
               Your busiest time is{' '}
               <span className="text-brand-orange font-medium">
@@ -279,9 +279,15 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
           )}
         </>
       ) : (
-        <div className="flex-1 min-h-[270px] flex flex-col items-center justify-center text-center gap-3">
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">
-            No data available for this period
+        <div className="flex-1 min-h-[270px] flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
+          <div className="rounded-full bg-neutral-800 p-4">
+            <Clock className="w-8 h-8 text-neutral-400" />
+          </div>
+          <h4 className="font-semibold text-white">
+            No peak hours yet
+          </h4>
+          <p className="text-sm text-neutral-400 max-w-xs">
+            Once your site receives traffic, this heatmap will show when your visitors are most active.
           </p>
         </div>
       )}

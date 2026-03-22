@@ -238,8 +238,9 @@ async function apiRequest<T>(
     if (response.status === 401) {
       // * Attempt Token Refresh if 401
       if (typeof window !== 'undefined') {
-        // * Prevent infinite loop: Don't refresh if the failed request WAS a refresh request (unlikely via apiRequest but safe to check)
-        if (!endpoint.includes('/auth/refresh')) {
+        // * Skip token refresh for public endpoints (they use password auth, not session tokens)
+        // * and for refresh requests themselves (prevent infinite loop)
+        if (!endpoint.includes('/auth/refresh') && !endpoint.includes('/public/')) {
           if (isRefreshing) {
             // * If refresh is already in progress, wait for it to complete (or fail)
             return new Promise<T>((resolve, reject) => {

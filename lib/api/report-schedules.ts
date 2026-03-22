@@ -10,6 +10,7 @@ export interface ReportSchedule {
   timezone: string
   enabled: boolean
   report_type: 'summary' | 'pages' | 'sources' | 'goals'
+  purpose: 'report' | 'alert'
   send_hour: number
   send_day: number | null
   next_send_at: string | null
@@ -33,6 +34,7 @@ export interface CreateReportScheduleRequest {
   frequency: string
   timezone?: string
   report_type?: string
+  purpose?: 'report' | 'alert'
   send_hour?: number
   send_day?: number
 }
@@ -43,6 +45,7 @@ export interface UpdateReportScheduleRequest {
   frequency?: string
   timezone?: string
   report_type?: string
+  purpose?: 'report' | 'alert'
   enabled?: boolean
   send_hour?: number
   send_day?: number
@@ -71,6 +74,11 @@ export async function deleteReportSchedule(siteId: string, scheduleId: string): 
   await apiRequest(`/sites/${siteId}/report-schedules/${scheduleId}`, {
     method: 'DELETE',
   })
+}
+
+export async function listAlertSchedules(siteId: string): Promise<ReportSchedule[]> {
+  const res = await apiRequest<{ report_schedules: ReportSchedule[] }>(`/sites/${siteId}/report-schedules?purpose=alert`)
+  return res?.report_schedules ?? []
 }
 
 export async function testReportSchedule(siteId: string, scheduleId: string): Promise<void> {

@@ -111,7 +111,7 @@ export default function AddFilterDropdown({ onAdd, suggestions = {}, onFetchSugg
         className={`inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer ${
           isOpen
             ? 'bg-brand-orange/10 text-brand-orange border border-brand-orange/30'
-            : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700 hover:text-neutral-900 dark:hover:text-white border border-transparent'
+            : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-white border border-transparent'
         }`}
       >
         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -121,7 +121,7 @@ export default function AddFilterDropdown({ onAdd, suggestions = {}, onFetchSugg
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-1.5 z-50 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl overflow-hidden min-w-[280px]">
+        <div className="absolute top-full left-0 mt-1.5 z-50 bg-neutral-900 border border-neutral-700 rounded-xl shadow-xl overflow-hidden min-w-[280px]">
           {!selectedDim ? (
             /* Step 1: Dimension list */
             <div className="py-1">
@@ -129,9 +129,9 @@ export default function AddFilterDropdown({ onAdd, suggestions = {}, onFetchSugg
                 <button
                   key={dim}
                   onClick={() => setSelectedDim(dim)}
-                  className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-left hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
+                  className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-left hover:bg-neutral-800 transition-colors cursor-pointer"
                 >
-                  <span className="text-neutral-900 dark:text-white font-medium">{DIMENSION_LABELS[dim]}</span>
+                  <span className="text-white font-medium">{DIMENSION_LABELS[dim]}</span>
                   <svg className="w-3.5 h-3.5 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                   </svg>
@@ -145,13 +145,13 @@ export default function AddFilterDropdown({ onAdd, suggestions = {}, onFetchSugg
               <div className="flex items-center gap-2 px-3 pt-3 pb-2">
                 <button
                   onClick={() => { setSelectedDim(null); setSearch(''); setOperator('is'); setFetchedSuggestions([]) }}
-                  className="p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors cursor-pointer rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                  className="p-1 text-neutral-400 hover:text-neutral-300 transition-colors cursor-pointer rounded-md hover:bg-neutral-800"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
                   </svg>
                 </button>
-                <span className="text-sm font-semibold text-neutral-900 dark:text-white">
+                <span className="text-sm font-semibold text-white">
                   {DIMENSION_LABELS[selectedDim]}
                 </span>
               </div>
@@ -165,7 +165,7 @@ export default function AddFilterDropdown({ onAdd, suggestions = {}, onFetchSugg
                     className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors cursor-pointer ${
                       operator === op
                         ? 'bg-brand-orange text-white'
-                        : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'
+                        : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
                     }`}
                   >
                     {OPERATOR_LABELS[op]}
@@ -189,24 +189,24 @@ export default function AddFilterDropdown({ onAdd, suggestions = {}, onFetchSugg
                     }
                   }}
                   placeholder={`Search ${DIMENSION_LABELS[selectedDim]?.toLowerCase()}...`}
-                  className="w-full px-3 py-2 text-sm bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-orange/40 focus:border-brand-orange transition-colors"
+                  className="w-full px-3 py-2 text-sm bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-orange/40 focus:border-brand-orange transition-colors"
                 />
               </div>
 
               {/* Values list */}
               {isFetching ? (
                 <div className="px-4 py-6 text-center">
-                  <div className="inline-block w-4 h-4 border-2 border-neutral-300 dark:border-neutral-600 border-t-brand-orange rounded-full animate-spin" />
+                  <div className="inline-block w-4 h-4 border-2 border-neutral-600 border-t-brand-orange rounded-full animate-spin" />
                 </div>
               ) : filtered.length > 0 ? (
-                <div className="max-h-52 overflow-y-auto border-t border-neutral-100 dark:border-neutral-800">
+                <div className="max-h-52 overflow-y-auto border-t border-neutral-800">
                   {filtered.map(s => (
                     <button
                       key={s.value}
                       onClick={() => handleSelectValue(s.value)}
-                      className="w-full flex items-center justify-between px-4 py-2 text-sm text-left hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
+                      className="w-full flex items-center justify-between px-4 py-2 text-sm text-left hover:bg-neutral-800 transition-colors cursor-pointer"
                     >
-                      <span className="truncate text-neutral-900 dark:text-white">{s.label}</span>
+                      <span className="truncate text-white">{s.label}</span>
                       {s.count !== undefined && (
                         <span className="text-xs text-neutral-400 dark:text-neutral-500 ml-2 tabular-nums flex-shrink-0">
                           {s.count.toLocaleString()}
@@ -216,7 +216,7 @@ export default function AddFilterDropdown({ onAdd, suggestions = {}, onFetchSugg
                   ))}
                 </div>
               ) : search.trim() ? (
-                <div className="px-3 py-3 border-t border-neutral-100 dark:border-neutral-800">
+                <div className="px-3 py-3 border-t border-neutral-800">
                   <button
                     onClick={handleSubmitCustom}
                     className="w-full px-3 py-2 text-sm font-medium bg-brand-orange text-white rounded-lg hover:bg-brand-orange/90 transition-colors cursor-pointer"

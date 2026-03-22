@@ -150,7 +150,7 @@ export default function DottedMap({ data, className, formatValue = formatNumber 
 
       {tooltip && (
         <div
-          className="fixed z-50 px-2.5 py-1.5 text-xs font-medium text-white bg-neutral-900 dark:bg-neutral-800 border border-neutral-700 rounded-lg shadow-lg pointer-events-none -translate-x-1/2 -translate-y-full -mt-2"
+          className="fixed z-50 px-2.5 py-1.5 text-xs font-medium text-white bg-neutral-800 border border-neutral-700 rounded-lg shadow-lg pointer-events-none -translate-x-1/2 -translate-y-full -mt-2"
           style={{ left: tooltip.x, top: tooltip.y }}
         >
           <span>{getCountryName(tooltip.country)}</span>

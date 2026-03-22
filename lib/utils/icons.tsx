@@ -5,22 +5,42 @@ import {
   DeviceMobile,
   DeviceTablet,
   Desktop,
-  GoogleLogo,
-  FacebookLogo,
-  XLogo,
-  LinkedinLogo,
-  InstagramLogo,
-  GithubLogo,
-  YoutubeLogo,
-  RedditLogo,
-  Robot,
   Link,
-  WhatsappLogo,
-  TelegramLogo,
-  SnapchatLogo,
-  PinterestLogo,
-  ThreadsLogo,
 } from '@phosphor-icons/react'
+import {
+  SiGoogle,
+  SiFacebook,
+  SiInstagram,
+  SiGithub,
+  SiYoutube,
+  SiReddit,
+  SiWhatsapp,
+  SiTelegram,
+  SiSnapchat,
+  SiPinterest,
+  SiThreads,
+  SiDuckduckgo,
+  SiBrave,
+  SiPerplexity,
+  SiAnthropic,
+  SiGooglegemini,
+  SiGithubcopilot,
+  SiDiscord,
+} from '@icons-pack/react-simple-icons'
+
+// Inline SVG icons for brands not in @icons-pack/react-simple-icons
+function XIcon({ size = 16, color = '#fff' }: { size?: number; color?: string }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill={color}><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg>
+}
+function LinkedInIcon({ size = 16, color = '#0A66C2' }: { size?: number; color?: string }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill={color}><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+}
+function OpenAIIcon({ size = 16, color = '#fff' }: { size?: number; color?: string }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill={color}><path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.676l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.872zm16.597 3.855l-5.833-3.387L15.119 7.2a.076.076 0 0 1 .071 0l4.83 2.791a4.494 4.494 0 0 1-.676 8.105v-5.678a.79.79 0 0 0-.407-.667zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08L8.704 5.46a.795.795 0 0 0-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z"/></svg>
+}
+function BingIcon({ size = 16, color = '#258FFA' }: { size?: number; color?: string }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill={color}><path d="M5.71 0v18.39l4.44 2.46 8.14-4.69v-4.71l-8.14-2.84V4.09L5.71 0zm4.44 11.19l4.39 1.53v2.78l-4.39 2.53v-6.84z"/></svg>
+}
 
 /**
  * Google's public favicon service base URL.
@@ -97,33 +117,39 @@ export function getDeviceIcon(deviceName: string) {
   return <Question className="text-neutral-400" />
 }
 
+const SI = { size: 16 } as const
+
 export function getReferrerIcon(referrerName: string) {
   if (!referrerName) return <Globe className="text-neutral-400" />
   const lower = referrerName.toLowerCase()
-  if (lower.includes('google')) return <GoogleLogo className="text-blue-500" />
-  if (lower.includes('facebook')) return <FacebookLogo className="text-blue-600" />
-  if (lower.includes('twitter') || lower.includes('t.co') || lower.includes('x.com')) return <XLogo className="text-neutral-800 dark:text-neutral-200" />
-  if (lower.includes('linkedin')) return <LinkedinLogo className="text-blue-700" />
-  if (lower.includes('instagram')) return <InstagramLogo className="text-pink-600" />
-  if (lower.includes('github')) return <GithubLogo className="text-neutral-800 dark:text-neutral-200" />
-  if (lower.includes('youtube')) return <YoutubeLogo className="text-red-600" />
-  if (lower.includes('reddit')) return <RedditLogo className="text-orange-600" />
-  if (lower.includes('whatsapp')) return <WhatsappLogo className="text-green-500" />
-  if (lower.includes('telegram')) return <TelegramLogo className="text-blue-500" />
-  if (lower.includes('snapchat')) return <SnapchatLogo className="text-yellow-400" />
-  if (lower.includes('pinterest')) return <PinterestLogo className="text-red-600" />
-  if (lower.includes('threads')) return <ThreadsLogo className="text-neutral-800 dark:text-neutral-200" />
-  // AI assistants and search tools
-  if (lower.includes('chatgpt') || lower.includes('openai')) return <Robot className="text-neutral-800 dark:text-neutral-200" />
-  if (lower.includes('perplexity')) return <Robot className="text-teal-600" />
-  if (lower.includes('claude') || lower.includes('anthropic')) return <Robot className="text-orange-500" />
-  if (lower.includes('gemini')) return <Robot className="text-blue-500" />
-  if (lower.includes('copilot')) return <Robot className="text-blue-500" />
-  if (lower.includes('deepseek')) return <Robot className="text-blue-600" />
-  if (lower.includes('grok') || lower.includes('x.ai')) return <XLogo className="text-neutral-800 dark:text-neutral-200" />
-  if (lower.includes('phind')) return <Robot className="text-purple-600" />
-  if (lower.includes('you.com')) return <Robot className="text-indigo-600" />
-  // Shared Link (unattributed deep-page traffic)
+  // Social / platforms
+  if (lower.includes('google') && !lower.includes('gemini')) return <SiGoogle size={SI.size} color="#4285F4" />
+  if (lower.includes('facebook')) return <SiFacebook size={SI.size} color="#0866FF" />
+  if (lower.includes('twitter') || lower.includes('t.co') || lower.includes('x.com')) return <XIcon />
+  if (lower.includes('linkedin')) return <LinkedInIcon />
+  if (lower.includes('instagram')) return <SiInstagram size={SI.size} color="#E4405F" />
+  if (lower.includes('github')) return <SiGithub size={SI.size} color="#fff" />
+  if (lower.includes('youtube')) return <SiYoutube size={SI.size} color="#FF0000" />
+  if (lower.includes('reddit')) return <SiReddit size={SI.size} color="#FF4500" />
+  if (lower.includes('whatsapp')) return <SiWhatsapp size={SI.size} color="#25D366" />
+  if (lower.includes('telegram')) return <SiTelegram size={SI.size} color="#26A5E4" />
+  if (lower.includes('snapchat')) return <SiSnapchat size={SI.size} color="#FFFC00" />
+  if (lower.includes('pinterest')) return <SiPinterest size={SI.size} color="#BD081C" />
+  if (lower.includes('threads')) return <SiThreads size={SI.size} color="#fff" />
+  if (lower.includes('discord')) return <SiDiscord size={SI.size} color="#5865F2" />
+  // Search engines
+  if (lower.includes('bing')) return <BingIcon />
+  if (lower.includes('duckduckgo')) return <SiDuckduckgo size={SI.size} color="#DE5833" />
+  if (lower.includes('brave')) return <SiBrave size={SI.size} color="#FB542B" />
+  // AI assistants
+  if (lower.includes('chatgpt') || lower.includes('openai')) return <OpenAIIcon />
+  if (lower.includes('perplexity')) return <SiPerplexity size={SI.size} color="#1FB8CD" />
+  if (lower.includes('claude') || lower.includes('anthropic')) return <SiAnthropic size={SI.size} color="#D97757" />
+  if (lower.includes('gemini')) return <SiGooglegemini size={SI.size} color="#8E75B2" />
+  if (lower.includes('copilot')) return <SiGithubcopilot size={SI.size} color="#fff" />
+  if (lower.includes('deepseek')) return <OpenAIIcon color="#4D6BFE" />
+  if (lower.includes('grok') || lower.includes('x.ai')) return <XIcon />
+  // Shared Link
   if (lower === 'shared link') return <Link className="text-neutral-500" />
 
   return <Globe className="text-neutral-400" />
@@ -147,6 +173,8 @@ const REFERRER_DISPLAY_OVERRIDES: Record<string, string> = {
   youtube: 'YouTube',
   reddit: 'Reddit',
   github: 'GitHub',
+  bing: 'Bing',
+  brave: 'Brave',
   duckduckgo: 'DuckDuckGo',
   whatsapp: 'WhatsApp',
   telegram: 'Telegram',
@@ -246,12 +274,44 @@ export function mergeReferrersByDisplayName(
     .sort((a, b) => b.pageviews - a.pageviews)
 }
 
-/** Domains that always use the custom X icon instead of favicon (avoids legacy bird). */
-const REFERRER_USE_X_ICON = new Set(['t.co', 'x.com', 'twitter.com', 'www.twitter.com'])
+/**
+ * Domains/labels where the Phosphor icon is better than Google's favicon service.
+ * For these, getReferrerFavicon returns null so the caller falls back to getReferrerIcon.
+ */
+const REFERRER_PREFER_ICON = new Set([
+  // Social / platforms
+  't.co', 'x.com', 'twitter.com', 'www.twitter.com',
+  'google.com', 'www.google.com',
+  'facebook.com', 'www.facebook.com', 'm.facebook.com', 'l.facebook.com',
+  'instagram.com', 'www.instagram.com', 'l.instagram.com',
+  'linkedin.com', 'www.linkedin.com',
+  'github.com', 'www.github.com',
+  'youtube.com', 'www.youtube.com', 'm.youtube.com',
+  'reddit.com', 'www.reddit.com', 'old.reddit.com',
+  'whatsapp.com', 'www.whatsapp.com', 'web.whatsapp.com',
+  'telegram.org', 'web.telegram.org', 't.me',
+  'snapchat.com', 'www.snapchat.com',
+  'pinterest.com', 'www.pinterest.com',
+  'threads.net', 'www.threads.net',
+  // Search engines
+  'bing.com', 'www.bing.com',
+  'duckduckgo.com', 'www.duckduckgo.com',
+  'search.brave.com', 'brave.com',
+  // AI assistants
+  'chatgpt.com', 'chat.openai.com', 'openai.com',
+  'perplexity.ai', 'www.perplexity.ai',
+  'claude.ai', 'www.claude.ai', 'anthropic.com',
+  'gemini.google.com',
+  'copilot.microsoft.com',
+  'deepseek.com', 'chat.deepseek.com',
+  'grok.x.ai', 'x.ai',
+  'phind.com', 'www.phind.com',
+  'you.com', 'www.you.com',
+])
 
 /**
  * Returns a favicon URL for the referrer's domain, or null for non-URL referrers
- * (e.g. "Direct", "Unknown") so callers can show an icon fallback instead.
+ * (e.g. "Direct", "Unknown") or known services where the Phosphor icon is better.
  */
 export function getReferrerFavicon(referrer: string): string | null {
   if (!referrer || typeof referrer !== 'string') return null
@@ -261,8 +321,13 @@ export function getReferrerFavicon(referrer: string): string | null {
   if (!normalized.includes('.')) return null
   try {
     const url = new URL(referrer.startsWith('http') ? referrer : `https://${referrer}`)
-    if (REFERRER_USE_X_ICON.has(url.hostname.toLowerCase())) return null
-    return `${FAVICON_SERVICE_URL}?domain=${url.hostname}&sz=32`
+    const hostname = url.hostname.toLowerCase()
+    // Use Phosphor icon for known services — Google favicons are unreliable for these
+    if (REFERRER_PREFER_ICON.has(hostname)) return null
+    // Also check if the label matches a known referrer (catches subdomains like search.google.com)
+    const label = getReferrerLabel(hostname)
+    if (REFERRER_DISPLAY_OVERRIDES[label]) return null
+    return `${FAVICON_SERVICE_URL}?domain=${hostname}&sz=32`
   } catch {
     return null
   }

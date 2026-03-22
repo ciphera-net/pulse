@@ -162,12 +162,12 @@ function SitePicker({ sites, siteId, collapsed, onExpand, onCollapse, wasCollaps
             setOpen(!open)
           }
         }}
-        className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 overflow-hidden"
+        className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-neutral-200 hover:bg-neutral-800 overflow-hidden"
       >
         <span className="w-7 h-7 rounded-md bg-brand-orange/10 flex items-center justify-center shrink-0 overflow-hidden">
           {faviconUrl && !faviconFailed ? (
             <>
-              {!faviconLoaded && <span className="w-5 h-5 rounded animate-pulse bg-neutral-100 dark:bg-neutral-800" />}
+              {!faviconLoaded && <span className="w-5 h-5 rounded animate-pulse bg-neutral-800" />}
               <img
                 src={faviconUrl}
                 alt=""
@@ -187,14 +187,14 @@ function SitePicker({ sites, siteId, collapsed, onExpand, onCollapse, wasCollaps
       </button>
 
       {open && (
-        <div className="absolute left-3 top-full mt-1 z-50 w-[240px] bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl overflow-hidden">
+        <div className="absolute left-3 top-full mt-1 z-50 w-[240px] bg-neutral-900 border border-neutral-700 rounded-xl shadow-xl overflow-hidden">
           <div className="p-2">
             <input
               type="text"
               placeholder="Search sites..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full px-3 py-1.5 text-sm bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg outline-none focus:ring-2 focus:ring-brand-orange/40 text-neutral-900 dark:text-white placeholder:text-neutral-400"
+              className="w-full px-3 py-1.5 text-sm bg-neutral-800 border border-neutral-700 rounded-lg outline-none focus:ring-2 focus:ring-brand-orange/40 text-white placeholder:text-neutral-400"
               autoFocus
             />
           </div>
@@ -206,7 +206,7 @@ function SitePicker({ sites, siteId, collapsed, onExpand, onCollapse, wasCollaps
                 className={`w-full flex items-center gap-2.5 px-4 py-2 text-sm text-left ${
                   site.id === siteId
                     ? 'bg-brand-orange/10 text-brand-orange font-medium'
-                    : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800'
+                    : 'text-neutral-300 hover:bg-neutral-800'
                 }`}
               >
                 <img
@@ -222,8 +222,8 @@ function SitePicker({ sites, siteId, collapsed, onExpand, onCollapse, wasCollaps
             ))}
             {filtered.length === 0 && <p className="px-4 py-3 text-sm text-neutral-400">No sites found</p>}
           </div>
-          <div className="border-t border-neutral-200 dark:border-neutral-700 p-2">
-            <Link href="/sites/new" onClick={() => setOpen(false)} className="flex items-center gap-2 px-3 py-1.5 text-sm text-brand-orange hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg">
+          <div className="border-t border-neutral-700 p-2">
+            <Link href="/sites/new" onClick={() => setOpen(false)} className="flex items-center gap-2 px-3 py-1.5 text-sm text-brand-orange hover:bg-neutral-800 rounded-lg">
               <PlusIcon className="w-4 h-4" />
               Add new site
             </Link>
@@ -256,7 +256,7 @@ function NavLink({
       className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden ${
         active
           ? 'bg-brand-orange/10 text-brand-orange'
-          : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800'
+          : 'text-neutral-400 hover:text-white hover:bg-neutral-800'
       }`}
     >
       <span className="w-7 h-7 flex items-center justify-center shrink-0">
@@ -357,7 +357,7 @@ export default function Sidebar({
           <span className="w-9 h-9 flex items-center justify-center shrink-0">
             <img src="/pulse_icon_no_margins.png" alt="Pulse" className="w-9 h-9 shrink-0 object-contain group-hover:scale-105 transition-transform duration-200" />
           </span>
-          <span className={`text-xl font-bold text-neutral-900 dark:text-white tracking-tight group-hover:text-brand-orange whitespace-nowrap transition-opacity duration-150 ${c ? 'opacity-0' : 'opacity-100'}`}>
+          <span className={`text-xl font-bold text-white tracking-tight group-hover:text-brand-orange whitespace-nowrap transition-opacity duration-150 ${c ? 'opacity-0' : 'opacity-100'}`}>
             Pulse
           </span>
         </Link>
@@ -387,7 +387,7 @@ export default function Sidebar({
         </nav>
 
         {/* Bottom — utility items */}
-        <div className="border-t border-neutral-200/60 dark:border-neutral-800/60 px-2 py-3 shrink-0">
+        <div className="border-t border-neutral-800/60 px-2 py-3 shrink-0">
           {/* Notifications, Profile — same layout as nav items */}
           <div className="space-y-0.5 mb-1">
             <span title={c ? 'Notifications' : undefined}>
@@ -418,7 +418,7 @@ export default function Sidebar({
             {!isMobile && (
               <button
                 onClick={toggle}
-                className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 w-full overflow-hidden"
+                className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-neutral-400 dark:text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800 w-full overflow-hidden"
                 title={collapsed ? 'Expand sidebar (press [)' : 'Collapse sidebar (press [)'}
               >
                 <span className="w-7 h-7 flex items-center justify-center shrink-0">
@@ -437,7 +437,7 @@ export default function Sidebar({
     <>
       {/* Desktop — ssr:false means this only renders on client, no hydration flash */}
       <aside
-        className="hidden md:flex flex-col shrink-0 border-r border-neutral-200/60 dark:border-neutral-800/60 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl overflow-hidden relative z-10"
+        className="hidden md:flex flex-col shrink-0 border-r border-neutral-800/60 bg-neutral-900/90 backdrop-blur-xl overflow-hidden relative z-10"
         style={{ width: collapsed ? COLLAPSED : EXPANDED, transition: 'width 200ms cubic-bezier(0.4, 0, 0.2, 1)' }}
       >
         {sidebarContent(false)}
@@ -447,10 +447,10 @@ export default function Sidebar({
       {mobileOpen && (
         <>
           <div className="fixed inset-0 z-40 bg-black/30 md:hidden" onClick={onMobileClose} />
-          <aside className="fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800 shadow-xl md:hidden animate-in slide-in-from-left duration-200">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200 dark:border-neutral-800">
-              <span className="text-sm font-semibold text-neutral-900 dark:text-white">Navigation</span>
-              <button onClick={onMobileClose} className="p-1.5 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300">
+          <aside className="fixed inset-y-0 left-0 z-50 w-72 bg-neutral-900 border-r border-neutral-800 shadow-xl md:hidden animate-in slide-in-from-left duration-200">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-800">
+              <span className="text-sm font-semibold text-white">Navigation</span>
+              <button onClick={onMobileClose} className="p-1.5 text-neutral-400 hover:text-neutral-300">
                 <XIcon className="w-5 h-5" />
               </button>
             </div>
