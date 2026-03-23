@@ -432,15 +432,15 @@ export default function PageSpeedPage() {
 
       {/* Section 3 — Score Trend Chart (visx) */}
       {chartData.length >= 2 && (
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 sm:p-8 mb-6">
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 sm:p-8 mb-6 overflow-hidden">
           <h3 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-4">
             Performance Score Trend
           </h3>
-          <div className="h-40">
+          <div>
             <VisxAreaChart
               data={chartData as Record<string, unknown>[]}
               xDataKey="dateObj"
-              aspectRatio="3 / 1"
+              aspectRatio="4 / 1"
               margin={{ top: 10, right: 10, bottom: 30, left: 40 }}
             >
               <VisxGrid horizontal vertical={false} stroke="var(--chart-grid)" strokeDasharray="4,4" />
