@@ -332,7 +332,7 @@ export default function UnifiedSettingsModal() {
             className="fixed inset-0 z-[61] flex items-center justify-center p-4 pointer-events-none"
           >
             <div
-              className="pointer-events-auto w-full max-w-3xl max-h-[90vh] bg-neutral-900 border border-neutral-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+              className="pointer-events-auto w-full max-w-3xl h-[85vh] bg-neutral-900 border border-neutral-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
               onClick={e => e.stopPropagation()}
             >
               {/* Header */}
@@ -362,8 +362,8 @@ export default function UnifiedSettingsModal() {
                 </div>
               </div>
 
-              {/* Content — fixed min-height prevents size jumping between contexts */}
-              <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-[400px]">
+              {/* Content — parent has fixed h-[85vh] so this fills remaining space without jumping */}
+              <div className="flex-1 overflow-y-auto overflow-x-hidden">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={`${context}-${activeTab}`}
