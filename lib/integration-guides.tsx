@@ -2310,7 +2310,7 @@ export default defineConfig({
       </p>
 
       <details>
-        <summary className="cursor-pointer text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300">
+        <summary className="cursor-pointer text-sm text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300">
           Advanced: override domain or configure options
         </summary>
         <p className="mt-3 text-sm text-neutral-600 dark:text-neutral-400">

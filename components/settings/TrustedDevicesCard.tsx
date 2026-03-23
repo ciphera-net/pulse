@@ -56,8 +56,8 @@ export default function TrustedDevicesCard() {
 
   return (
     <div>
-      <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-1">Trusted Devices</h2>
-      <p className="text-neutral-500 dark:text-neutral-400 text-sm mb-6">
+      <h2 className="text-xl font-semibold text-white mb-1">Trusted Devices</h2>
+      <p className="text-neutral-400 text-sm mb-6">
         Devices that have signed in to your account. Removing a device means the next sign-in from it will trigger a new device alert.
       </p>
 
@@ -74,7 +74,7 @@ export default function TrustedDevicesCard() {
           <svg className="w-12 h-12 mx-auto mb-3 text-neutral-300 dark:text-neutral-600" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25A2.25 2.25 0 015.25 3h13.5A2.25 2.25 0 0121 5.25z" />
           </svg>
-          <p className="text-neutral-500 dark:text-neutral-400">No trusted devices yet. They appear after you sign in.</p>
+          <p className="text-neutral-400">No trusted devices yet. They appear after you sign in.</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -83,7 +83,7 @@ export default function TrustedDevicesCard() {
               key={device.id}
               className="flex items-center gap-3 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-4 py-3"
             >
-              <div className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400">
+              <div className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 text-neutral-400">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d={getDeviceIcon(device.display_hint)} />
                 </svg>
@@ -91,7 +91,7 @@ export default function TrustedDevicesCard() {
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-neutral-900 dark:text-white text-sm truncate">
+                  <span className="font-medium text-white text-sm truncate">
                     {device.display_hint || 'Unknown device'}
                   </span>
                   {device.is_current && (
@@ -100,7 +100,7 @@ export default function TrustedDevicesCard() {
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-2 mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
+                <div className="flex items-center gap-2 mt-0.5 text-xs text-neutral-400">
                   <span title={formatDateTimeFull(new Date(device.first_seen_at))}>
                     First seen {formatRelativeTime(device.first_seen_at)}
                   </span>

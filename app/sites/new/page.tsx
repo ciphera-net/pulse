@@ -113,7 +113,7 @@ export default function NewSitePage() {
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-500/10 text-green-600 dark:text-green-400 mb-6">
               <CheckCircleIcon className="h-7 w-7" />
             </div>
-            <h2 className="text-2xl font-bold text-neutral-900 dark:text-white">
+            <h2 className="text-2xl font-bold text-white">
               Site created
             </h2>
             <p className="mt-2 text-neutral-600 dark:text-neutral-400">
@@ -137,7 +137,7 @@ export default function NewSitePage() {
             >
               <span className="text-brand-orange">Verify installation</span>
             </button>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            <p className="text-xs text-neutral-400">
               Check if your site is sending data correctly.
             </p>
           </div>
@@ -146,7 +146,7 @@ export default function NewSitePage() {
             <button
               type="button"
               onClick={handleBackToForm}
-              className="text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 underline"
+              className="text-sm text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 underline"
             >
               Edit site details
             </button>
@@ -174,7 +174,7 @@ export default function NewSitePage() {
   // * Step 1: Name & domain form
   return (
     <div className="w-full max-w-2xl mx-auto px-4 sm:px-6 py-8">
-      <h1 className="text-2xl font-bold mb-8 text-neutral-900 dark:text-white">
+      <h1 className="text-2xl font-bold mb-8 text-white">
         Create New Site
       </h1>
 
@@ -186,7 +186,7 @@ export default function NewSitePage() {
 
       <form onSubmit={handleSubmit} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6">
         <div className="mb-4">
-          <label htmlFor="name" className="block text-sm font-medium mb-2 text-neutral-900 dark:text-white">
+          <label htmlFor="name" className="block text-sm font-medium mb-2 text-white">
             Site Name
           </label>
           <Input
@@ -201,7 +201,7 @@ export default function NewSitePage() {
         </div>
 
         <div className="mb-6">
-          <label htmlFor="domain" className="block text-sm font-medium mb-2 text-neutral-900 dark:text-white">
+          <label htmlFor="domain" className="block text-sm font-medium mb-2 text-white">
             Domain
           </label>
           <Input

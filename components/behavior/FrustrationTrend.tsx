@@ -59,7 +59,7 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<
         className="h-2.5 w-2.5 shrink-0 rounded-full"
         style={{ backgroundColor: item.fill }}
       />
-      <span className="text-neutral-500 dark:text-neutral-400">
+      <span className="text-neutral-400">
         {LABELS[item.type] ?? item.type}
       </span>
       <span className="font-mono font-medium tabular-nums text-neutral-900 dark:text-neutral-50">
@@ -93,21 +93,21 @@ export default function FrustrationTrend({ summary, loading }: FrustrationTrendP
     return (
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-1">
-          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
+          <h3 className="text-lg font-semibold text-white">
             Frustration Trend
           </h3>
         </div>
-        <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
+        <p className="text-sm text-neutral-400 mb-4">
           Rage vs. dead click breakdown
         </p>
         <div className="flex-1 min-h-[270px] flex flex-col items-center justify-center text-center px-6 py-8 gap-4">
           <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
-            <TrendUp className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
+            <TrendUp className="w-8 h-8 text-neutral-400" />
           </div>
-          <h4 className="font-semibold text-neutral-900 dark:text-white">
+          <h4 className="font-semibold text-white">
             No trend data yet
           </h4>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 max-w-md">
+          <p className="text-sm text-neutral-400 max-w-md">
             Frustration trend data will appear here once rage clicks or dead clicks are detected on your site.
           </p>
         </div>
@@ -118,11 +118,11 @@ export default function FrustrationTrend({ summary, loading }: FrustrationTrendP
   return (
     <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
       <div className="flex items-center justify-between mb-1">
-        <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
+        <h3 className="text-lg font-semibold text-white">
           Frustration Trend
         </h3>
       </div>
-      <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
+      <p className="text-sm text-neutral-400 mb-4">
         {hasPrevious
           ? 'Rage and dead clicks split across current and previous period'
           : 'Rage vs. dead click breakdown'}

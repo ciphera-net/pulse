@@ -38,11 +38,11 @@ export default function TopPathsTable({ paths, loading }: TopPathsTableProps) {
   return (
     <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6">
       <div className="mb-1">
-        <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
+        <h3 className="text-lg font-semibold text-white">
           Top Paths
         </h3>
       </div>
-      <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-5">
+      <p className="text-sm text-neutral-400 mb-5">
         Most common navigation paths across sessions
       </p>
 
@@ -83,7 +83,7 @@ export default function TopPathsTable({ paths, loading }: TopPathsTableProps) {
                           </span>
                         ) : (
                           <span
-                            className="text-sm text-neutral-900 dark:text-white truncate"
+                            className="text-sm text-white truncate"
                             title={page}
                           >
                             {smartLabel(page)}
@@ -113,12 +113,12 @@ export default function TopPathsTable({ paths, loading }: TopPathsTableProps) {
       ) : (
         <div className="flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
           <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
-            <Path className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
+            <Path className="w-8 h-8 text-neutral-400" />
           </div>
-          <h4 className="font-semibold text-neutral-900 dark:text-white">
+          <h4 className="font-semibold text-white">
             No path data yet
           </h4>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 max-w-xs">
+          <p className="text-sm text-neutral-400 max-w-xs">
             Common navigation paths will appear here as visitors browse your site.
           </p>
         </div>

@@ -167,7 +167,7 @@ export default function ScriptSetupBlock({
 
       {/* ── Feature toggles ─────────────────────────────────────────────── */}
       <div className="mt-6">
-        <h4 className="text-sm font-semibold text-neutral-900 dark:text-white mb-3">
+        <h4 className="text-sm font-semibold text-white mb-3">
           Features
         </h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -177,10 +177,10 @@ export default function ScriptSetupBlock({
               className="flex items-center justify-between rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-4 py-3"
             >
               <div className="min-w-0 mr-3">
-                <span className="text-sm font-medium text-neutral-900 dark:text-white block">
+                <span className="text-sm font-medium text-white block">
                   {f.label}
                 </span>
-                <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                <span className="text-xs text-neutral-400">
                   {f.description}
                 </span>
               </div>
@@ -191,10 +191,10 @@ export default function ScriptSetupBlock({
         {/* * Frustration — full-width, visually distinct as add-on */}
         <div className="mt-3 flex items-center justify-between rounded-xl border border-dashed border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900/50 px-4 py-3">
           <div className="min-w-0 mr-3">
-            <span className="text-sm font-medium text-neutral-900 dark:text-white block">
+            <span className="text-sm font-medium text-white block">
               Frustration tracking
             </span>
-            <span className="text-xs text-neutral-500 dark:text-neutral-400">
+            <span className="text-xs text-neutral-400">
               Rage clicks &amp; dead clicks &middot; Loads separate add-on script
             </span>
           </div>
@@ -204,15 +204,15 @@ export default function ScriptSetupBlock({
 
       {/* ── Storage + TTL ───────────────────────────────────────────────── */}
       <div className="mt-6">
-        <h4 className="text-sm font-semibold text-neutral-900 dark:text-white mb-1">
+        <h4 className="text-sm font-semibold text-white mb-1">
           Visitor identity
         </h4>
-        <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-3">
+        <p className="text-xs text-neutral-400 mb-3">
           How returning visitors are recognized. Stricter settings increase privacy but may raise unique visitor counts.
         </p>
         <div className="flex items-end gap-3">
           <div className="min-w-0">
-            <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1 block">
+            <label className="text-xs font-medium text-neutral-400 mb-1 block">
               Recognition
             </label>
             <Select
@@ -224,7 +224,7 @@ export default function ScriptSetupBlock({
           </div>
           {storage === 'local' && (
             <div>
-              <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1 block">
+              <label className="text-xs font-medium text-neutral-400 mb-1 block">
                 Reset after
               </label>
               <Select
@@ -242,14 +242,14 @@ export default function ScriptSetupBlock({
       {showFrameworkPicker && (
         <div className="mt-6">
           <div className="flex items-center justify-between mb-3">
-            <h4 className="text-sm font-semibold text-neutral-900 dark:text-white">
+            <h4 className="text-sm font-semibold text-white">
               Setup guide
             </h4>
             <Link
               href="/integrations"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs font-medium text-neutral-500 dark:text-neutral-400 hover:text-brand-orange transition-colors"
+              className="text-xs font-medium text-neutral-400 hover:text-brand-orange transition-colors"
             >
               All integrations →
             </Link>

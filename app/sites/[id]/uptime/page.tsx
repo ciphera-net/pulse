@@ -100,7 +100,7 @@ function getOverallStatusTextColor(status: string): string {
     case 'down':
       return 'text-red-600 dark:text-red-400'
     default:
-      return 'text-neutral-500 dark:text-neutral-400'
+      return 'text-neutral-400'
   }
 }
 
@@ -168,22 +168,22 @@ function StatusBarTooltip({
       style={{ left: position.x, top: position.y - 10, transform: 'translate(-50%, -100%)' }}
     >
       <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-lg transition-shadow duration-300 px-3 py-2.5 text-xs min-w-40">
-        <div className="font-semibold text-neutral-900 dark:text-white mb-1.5">{formattedDate}</div>
+        <div className="font-semibold text-white mb-1.5">{formattedDate}</div>
         {stat && stat.total_checks > 0 ? (
           <div className="space-y-1">
             <div className="flex justify-between gap-4">
-              <span className="text-neutral-500 dark:text-neutral-400">Uptime</span>
-              <span className="font-medium text-neutral-900 dark:text-white">
+              <span className="text-neutral-400">Uptime</span>
+              <span className="font-medium text-white">
                 {formatUptime(stat.uptime_percentage)}
               </span>
             </div>
             <div className="flex justify-between gap-4">
-              <span className="text-neutral-500 dark:text-neutral-400">Checks</span>
-              <span className="font-medium text-neutral-900 dark:text-white">{stat.total_checks}</span>
+              <span className="text-neutral-400">Checks</span>
+              <span className="font-medium text-white">{stat.total_checks}</span>
             </div>
             <div className="flex justify-between gap-4">
-              <span className="text-neutral-500 dark:text-neutral-400">Avg Response</span>
-              <span className="font-medium text-neutral-900 dark:text-white">
+              <span className="text-neutral-400">Avg Response</span>
+              <span className="font-medium text-white">
                 {formatMs(Math.round(stat.avg_response_time_ms))}
               </span>
             </div>
@@ -275,7 +275,7 @@ function ResponseTimeChart({ checks }: { checks: UptimeCheck[] }) {
 
   return (
     <div className="mt-4">
-      <h4 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">
+      <h4 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">
         Response Time
       </h4>
       <ChartContainer config={responseTimeChartConfig} className="h-40">
@@ -406,10 +406,10 @@ export default function UptimePage() {
       <div className={`w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">
+          <h1 className="text-2xl font-bold text-white mb-1">
             Uptime
           </h1>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+          <p className="text-sm text-neutral-400">
             Monitor your site&apos;s availability and response time
           </p>
         </div>
@@ -417,14 +417,14 @@ export default function UptimePage() {
         {/* Empty state */}
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-12 text-center">
           <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-            <svg className="w-8 h-8 text-neutral-500 dark:text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <svg className="w-8 h-8 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h3 className="font-semibold text-neutral-900 dark:text-white mb-2">
+          <h3 className="font-semibold text-white mb-2">
             Uptime monitoring is disabled
           </h3>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6 max-w-md mx-auto">
+          <p className="text-sm text-neutral-400 mb-6 max-w-md mx-auto">
             Enable uptime monitoring to track your site&apos;s availability and response time around the clock.
           </p>
           {canEdit && (
@@ -446,10 +446,10 @@ export default function UptimePage() {
       {/* Header */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">
+          <h1 className="text-2xl font-bold text-white mb-1">
             Uptime
           </h1>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+          <p className="text-sm text-neutral-400">
             Monitor your site&apos;s availability and response time
           </p>
         </div>
@@ -471,7 +471,7 @@ export default function UptimePage() {
           <div className="flex items-center gap-3">
             <div className={`w-3.5 h-3.5 rounded-full ${getStatusDotColor(overallStatus)}`} />
             <div>
-              <span className="font-semibold text-neutral-900 dark:text-white text-lg">
+              <span className="font-semibold text-white text-lg">
                 {site.name}
               </span>
               <span className={`text-sm font-medium ml-3 ${getOverallStatusTextColor(overallStatus)}`}>
@@ -480,11 +480,11 @@ export default function UptimePage() {
             </div>
           </div>
           <div className="text-right">
-            <span className="text-sm font-semibold text-neutral-900 dark:text-white">
+            <span className="text-sm font-semibold text-white">
               {formatUptime(overallUptime)} uptime
             </span>
             {monitor && (
-              <div className="text-xs text-neutral-500 dark:text-neutral-400">
+              <div className="text-xs text-neutral-400">
                 Last checked {formatTimeAgo(monitor.monitor.last_checked_at)}
               </div>
             )}
@@ -495,7 +495,7 @@ export default function UptimePage() {
       {/* 90-day uptime bar */}
       {monitor && (
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 mb-6">
-          <h3 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">
+          <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">
             90-Day Availability
           </h3>
           <UptimeStatusBar dailyStats={monitor.daily_stats} />
@@ -512,39 +512,39 @@ export default function UptimePage() {
           {/* Monitor details grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
             <div>
-              <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
+              <div className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-1">
                 Status
               </div>
               <div className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${getStatusDotColor(monitor.monitor.last_status)}`} />
-                <span className="text-sm font-medium text-neutral-900 dark:text-white">
+                <span className="text-sm font-medium text-white">
                   {getStatusLabel(monitor.monitor.last_status)}
                 </span>
               </div>
             </div>
             <div>
-              <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
+              <div className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-1">
                 Response Time
               </div>
-              <span className="text-sm font-medium text-neutral-900 dark:text-white">
+              <span className="text-sm font-medium text-white">
                 {formatMs(monitor.monitor.last_response_time_ms)}
               </span>
             </div>
             <div>
-              <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
+              <div className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-1">
                 Check Interval
               </div>
-              <span className="text-sm font-medium text-neutral-900 dark:text-white">
+              <span className="text-sm font-medium text-white">
                 {monitor.monitor.check_interval_seconds >= 60
                   ? `${Math.floor(monitor.monitor.check_interval_seconds / 60)}m`
                   : `${monitor.monitor.check_interval_seconds}s`}
               </span>
             </div>
             <div>
-              <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
+              <div className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-1">
                 Overall Uptime
               </div>
-              <span className="text-sm font-medium text-neutral-900 dark:text-white">
+              <span className="text-sm font-medium text-white">
                 {formatUptime(monitor.overall_uptime)}
               </span>
             </div>
@@ -559,7 +559,7 @@ export default function UptimePage() {
 
               {/* Recent checks */}
               <div className="mt-5">
-                <h4 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">
+                <h4 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">
                   Recent Checks
                 </h4>
                 <div className="space-y-1.5 max-h-48 overflow-y-auto">
@@ -576,7 +576,7 @@ export default function UptimePage() {
                       </div>
                       <div className="flex items-center gap-3">
                         {check.status_code && (
-                          <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                          <span className="text-xs text-neutral-400">
                             {check.status_code}
                           </span>
                         )}
