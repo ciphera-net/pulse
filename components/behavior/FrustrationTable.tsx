@@ -53,7 +53,7 @@ function SelectorCell({ selector }: { selector: string }) {
       className="flex items-center gap-1 min-w-0 group/copy cursor-pointer"
       title={selector}
     >
-      <span className="text-sm font-mono text-neutral-900 dark:text-white truncate">
+      <span className="text-sm font-mono text-white truncate">
         {selector}
       </span>
       <span className="opacity-0 group-hover/copy:opacity-100 transition-opacity shrink-0">
@@ -145,7 +145,7 @@ export default function FrustrationTable({
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-2">
-            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
+            <h3 className="text-lg font-semibold text-white">
               {title}
             </h3>
             {showViewAll && (
@@ -159,7 +159,7 @@ export default function FrustrationTable({
             )}
           </div>
         </div>
-        <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
+        <p className="text-sm text-neutral-400 mb-4">
           {description}
         </p>
 
@@ -177,18 +177,23 @@ export default function FrustrationTable({
             </>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-4">
-              <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
-                <CursorClick className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
-              </div>
-              <h4 className="font-semibold text-neutral-900 dark:text-white">
+              <img
+                src="/illustrations/blank-canvas.svg"
+                alt="No frustration signals"
+                className="w-44 h-auto mb-1"
+              />
+              <h4 className="font-semibold text-white">
                 No {title.toLowerCase()} detected
               </h4>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400 max-w-md">
+              <p className="text-sm text-neutral-400 max-w-md">
                 Frustration tracking requires the add-on script. Add it after your core Pulse script:
               </p>
               <code className="text-xs bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 px-3 py-2 rounded-lg font-mono break-all">
                 {'<script defer src="https://pulse.ciphera.net/script.frustration.js"></script>'}
               </code>
+              <a href="/installation" target="_blank" rel="noopener noreferrer" className="mt-1 text-sm font-medium text-brand-orange hover:underline">
+                View setup guide
+              </a>
             </div>
           )}
         </div>
@@ -212,7 +217,7 @@ export default function FrustrationTable({
               ))}
             </div>
           ) : (
-            <p className="text-sm text-neutral-500 dark:text-neutral-400 py-8 text-center">
+            <p className="text-sm text-neutral-400 py-8 text-center">
               No data available
             </p>
           )}

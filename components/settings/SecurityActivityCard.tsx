@@ -38,7 +38,7 @@ function getEventColor(eventType: string, outcome: string): string {
   if (eventType === '2fa_disabled') return 'text-amber-500 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30'
   if (eventType === 'account_deleted') return 'text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-950/30'
   if (eventType === 'recovery_codes_regenerated') return 'text-amber-500 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30'
-  return 'text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800'
+  return 'text-neutral-400 bg-neutral-100 dark:bg-neutral-800'
 }
 
 function getMethodLabel(entry: AuditLogEntry): string | null {
@@ -120,8 +120,8 @@ export default function SecurityActivityCard() {
 
   return (
     <div>
-      <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-1">Security Activity</h2>
-      <p className="text-neutral-500 dark:text-neutral-400 text-sm mb-6">
+      <h2 className="text-xl font-semibold text-white mb-1">Security Activity</h2>
+      <p className="text-neutral-400 text-sm mb-6">
         Recent security events on your account{totalCount > 0 ? ` (${totalCount})` : ''}
       </p>
 
@@ -138,7 +138,7 @@ export default function SecurityActivityCard() {
           <svg className="w-12 h-12 mx-auto mb-3 text-neutral-300 dark:text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
           </svg>
-          <p className="text-neutral-500 dark:text-neutral-400">No activity recorded yet.</p>
+          <p className="text-neutral-400">No activity recorded yet.</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -165,11 +165,11 @@ export default function SecurityActivityCard() {
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-medium text-neutral-900 dark:text-white text-sm">
+                    <span className="font-medium text-white text-sm">
                       {label}
                     </span>
                     {method && (
-                      <span className="text-xs px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400">
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-400">
                         {method}
                       </span>
                     )}
@@ -179,7 +179,7 @@ export default function SecurityActivityCard() {
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 mt-0.5 text-xs text-neutral-500 dark:text-neutral-400 flex-wrap">
+                  <div className="flex items-center gap-2 mt-0.5 text-xs text-neutral-400 flex-wrap">
                     {reason && <span>{reason}</span>}
                     {reason && (deviceStr || entry.ip_address) && <span>&middot;</span>}
                     {deviceStr && <span>{deviceStr}</span>}
@@ -189,7 +189,7 @@ export default function SecurityActivityCard() {
                 </div>
 
                 <div className="flex-shrink-0 text-right">
-                  <span className="text-xs text-neutral-500 dark:text-neutral-400" title={formatDateTimeFull(new Date(entry.created_at))}>
+                  <span className="text-xs text-neutral-400" title={formatDateTimeFull(new Date(entry.created_at))}>
                     {formatRelativeTime(entry.created_at)}
                   </span>
                 </div>

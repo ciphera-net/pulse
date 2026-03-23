@@ -124,7 +124,7 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
                       value={deleteConfirm}
                       onChange={(e) => setDeleteConfirm(e.target.value)}
                       autoComplete="off"
-                      className="w-full px-3 py-2 text-sm border border-neutral-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-red-500 dark:focus:ring-red-400"
+                      className="w-full px-3 py-2 text-sm border border-neutral-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-red-500 dark:focus:ring-red-400"
                       placeholder="DELETE"
                     />
                   </div>
@@ -187,7 +187,7 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
                       value={permanentConfirm}
                       onChange={(e) => setPermanentConfirm(e.target.value)}
                       autoComplete="off"
-                      className="w-full px-3 py-2 text-sm border border-neutral-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-red-500 dark:focus:ring-red-400"
+                      className="w-full px-3 py-2 text-sm border border-neutral-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-red-500 dark:focus:ring-red-400"
                       placeholder={siteDomain}
                     />
                   </div>

@@ -46,7 +46,7 @@ export default function SiteNav({ siteId }: SiteNavProps) {
             tabIndex={isActive(tab.href) ? 0 : -1}
             className={`relative shrink-0 whitespace-nowrap px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded-t cursor-pointer -mb-px ${
               isActive(tab.href)
-                ? 'text-neutral-900 dark:text-white'
+                ? 'text-white'
                 : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
             }`}
           >

@@ -105,7 +105,7 @@ export default function VerificationModal({ isOpen, onClose, site, onVerified }:
             >
               {/* Header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
-                <h3 className="font-semibold text-neutral-900 dark:text-white">
+                <h3 className="font-semibold text-white">
                   Verify Installation
                 </h3>
                 <button
@@ -148,10 +148,10 @@ export default function VerificationModal({ isOpen, onClose, site, onVerified }:
                       <div className="absolute inset-0 w-16 h-16 border-4 border-brand-orange border-t-transparent rounded-full animate-spin" />
                     </div>
                     <div className="text-center space-y-1">
-                      <h4 className="font-medium text-neutral-900 dark:text-white">
+                      <h4 className="font-medium text-white">
                         Checking connection...
                       </h4>
-                      <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                      <p className="text-sm text-neutral-400">
                         Waiting for signal from {site.domain}
                       </p>
                     </div>
@@ -164,10 +164,10 @@ export default function VerificationModal({ isOpen, onClose, site, onVerified }:
                       <CheckCircleIcon className="w-8 h-8" />
                     </div>
                     <div className="text-center space-y-1">
-                      <h4 className="text-xl font-bold text-neutral-900 dark:text-white">
+                      <h4 className="text-xl font-bold text-white">
                         You're all set!
                       </h4>
-                      <p className="text-neutral-500 dark:text-neutral-400">
+                      <p className="text-neutral-400">
                         We are successfully receiving data from your website.
                       </p>
                     </div>
@@ -189,7 +189,7 @@ export default function VerificationModal({ isOpen, onClose, site, onVerified }:
                     </div>
 
                     <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-neutral-100 dark:border-neutral-800">
-                      <p className="text-sm font-medium text-neutral-900 dark:text-white mb-2">
+                      <p className="text-sm font-medium text-white mb-2">
                         Troubleshooting Checklist:
                       </p>
                       <ul className="text-sm text-neutral-600 dark:text-neutral-400 space-y-1 list-disc list-inside">

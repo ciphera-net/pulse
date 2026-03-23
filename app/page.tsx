@@ -13,7 +13,7 @@ import { LoadingOverlay } from '@ciphera-net/ui'
 import SiteList from '@/components/sites/SiteList'
 import DeleteSiteModal from '@/components/sites/DeleteSiteModal'
 import { Button } from '@ciphera-net/ui'
-import { XIcon, GlobeIcon } from '@ciphera-net/ui'
+import { XIcon } from '@ciphera-net/ui'
 import { Cookie, ShieldCheck, Code, Lightning, ArrowRight, GithubLogo } from '@phosphor-icons/react'
 import DashboardDemo from '@/components/marketing/DashboardDemo'
 import FeatureSections from '@/components/marketing/FeatureSections'
@@ -334,7 +334,7 @@ export default function HomePage() {
                   return `${label} Plan`
                 })()}
               </p>
-              {(typeof subscription.sites_count === 'number' || (subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number') || (subscription.next_invoice_amount_due != null && subscription.next_invoice_currency && !subscription.cancel_at_period_end && (subscription.subscription_status === 'active' || subscription.subscription_status === 'trialing'))) && (
+              {(typeof subscription.sites_count === 'number' || (subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number') || (!subscription.cancel_at_period_end && (subscription.subscription_status === 'active' || subscription.subscription_status === 'trialing'))) && (
                 <p className="text-sm text-neutral-400 mt-1">
                   {typeof subscription.sites_count === 'number' && (
                     <span>Sites: {(() => {
@@ -346,20 +346,9 @@ export default function HomePage() {
                   {subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number' && (
                     <span>Pageviews: {subscription.pageview_usage.toLocaleString()}/{subscription.pageview_limit.toLocaleString()}</span>
                   )}
-                  {subscription.next_invoice_amount_due != null && subscription.next_invoice_currency && !subscription.cancel_at_period_end && (subscription.subscription_status === 'active' || subscription.subscription_status === 'trialing') && (
+                  {!subscription.cancel_at_period_end && (subscription.subscription_status === 'active' || subscription.subscription_status === 'trialing') && subscription.current_period_end && (
                     <span className="block mt-1">
-                      Renews {(() => {
-                        const ts = subscription.next_invoice_period_end ?? subscription.current_period_end
-                        const d = ts ? new Date(typeof ts === 'number' ? ts * 1000 : ts) : null
-                        const dateStr = d && !Number.isNaN(d.getTime()) && d.getTime() !== 0
-                          ? formatDate(d)
-                          : null
-                        const amount = (subscription.next_invoice_amount_due / 100).toLocaleString('en-US', {
-                          style: 'currency',
-                          currency: subscription.next_invoice_currency.toUpperCase(),
-                        })
-                        return dateStr ? `${dateStr} for ${amount}` : amount
-                      })()}
+                      Renews {formatDate(new Date(subscription.current_period_end))}
                     </span>
                   )}
                 </p>
@@ -383,10 +372,12 @@ export default function HomePage() {
       </div>
 
       {!sitesLoading && sites.length === 0 && (
-        <div className="mb-8 rounded-2xl border-2 border-dashed border-brand-orange/30 bg-brand-orange/10 p-6 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-orange/20 text-brand-orange mb-4">
-            <GlobeIcon className="h-7 w-7" />
-          </div>
+        <div className="mb-8 rounded-2xl border-2 border-dashed border-brand-orange/30 bg-brand-orange/10 p-8 text-center flex flex-col items-center">
+          <img
+            src="/illustrations/setup-analytics.svg"
+            alt="Set up your first site"
+            className="w-56 h-auto mb-6"
+          />
           <h2 className="text-xl font-bold text-white mb-2">Add your first site</h2>
           <p className="text-neutral-400 mb-6 max-w-md mx-auto">
             Connect a domain to start collecting privacy-friendly analytics. You can add more sites later from the dashboard.

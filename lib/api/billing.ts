@@ -19,16 +19,10 @@ export interface SubscriptionDetails {
   sites_count?: number
   /** Pageviews in current billing period (when pageview_limit > 0). Present when backend supports usage API. */
   pageview_usage?: number
-  /** Business name from Stripe Tax ID collection / business purchase flow (optional). */
+  /** Business name from billing (optional). */
   business_name?: string
-  /** Tax IDs collected on the Stripe customer (VAT, EIN, etc.) for invoice verification. */
-  tax_ids?: TaxID[]
-  /** Next invoice amount in cents (for "Renews on X for €Y" display). */
-  next_invoice_amount_due?: number
-  /** Currency for next invoice (e.g. eur). */
-  next_invoice_currency?: string
-  /** Unix timestamp when next invoice period ends. */
-  next_invoice_period_end?: number
+  /** Tax ID collected on the billing customer (VAT, EIN, etc.). */
+  tax_id?: TaxID | null
 }
 
 export async function getSubscription(): Promise<SubscriptionDetails> {
@@ -66,22 +60,6 @@ export interface ChangePlanParams {
   limit: number
 }
 
-export interface PreviewInvoiceResult {
-  amount_due: number
-  currency: string
-  period_end: number
-}
-
-export async function previewInvoice(params: ChangePlanParams): Promise<PreviewInvoiceResult | null> {
-  const res = await apiRequest<PreviewInvoiceResult | Record<string, never>>('/api/billing/preview-invoice', {
-    method: 'POST',
-    body: JSON.stringify(params),
-  })
-  if (res && typeof res === 'object' && 'amount_due' in res && typeof (res as PreviewInvoiceResult).amount_due === 'number') {
-    return res as PreviewInvoiceResult
-  }
-  return null
-}
 
 export async function changePlan(params: ChangePlanParams): Promise<{ ok: boolean }> {
   return apiRequest<{ ok: boolean }>('/api/billing/change-plan', {
@@ -103,17 +81,18 @@ export async function createCheckoutSession(params: CreateCheckoutParams): Promi
   })
 }
 
-export interface Invoice {
+export interface Order {
   id: string
-  amount_paid: number
-  amount_due: number
+  total_amount: number
+  subtotal_amount: number
+  tax_amount: number
   currency: string
   status: string
-  created: number
-  hosted_invoice_url: string
-  invoice_pdf: string
+  created_at: string
+  paid: boolean
+  invoice_number: string
 }
 
-export async function getInvoices(): Promise<Invoice[]> {
-  return apiRequest<Invoice[]>('/api/billing/invoices')
+export async function getOrders(): Promise<Order[]> {
+  return apiRequest<Order[]>('/api/billing/invoices')
 }

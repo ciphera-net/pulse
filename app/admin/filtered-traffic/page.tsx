@@ -28,8 +28,8 @@ export default function FilteredTrafficPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-neutral-900 dark:text-white">Filtered Traffic</h2>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+          <h2 className="text-xl font-semibold text-white">Filtered Traffic</h2>
+          <p className="text-sm text-neutral-400 mt-1">
             {totalBlocked.toLocaleString()} spam referrers blocked in the last {days} days
           </p>
         </div>
@@ -52,22 +52,22 @@ export default function FilteredTrafficPage() {
 
       <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-sm overflow-hidden">
         {referrers.length === 0 ? (
-          <div className="p-12 text-center text-neutral-500 dark:text-neutral-400">
+          <div className="p-12 text-center text-neutral-400">
             No filtered referrers in this period
           </div>
         ) : (
           <table className="w-full text-left text-sm">
             <thead className="border-b border-neutral-200 dark:border-neutral-800">
               <tr>
-                <th className="px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">Domain</th>
-                <th className="px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">Reason</th>
-                <th className="px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400 text-right">Blocked</th>
+                <th className="px-4 py-3 font-medium text-neutral-400">Domain</th>
+                <th className="px-4 py-3 font-medium text-neutral-400">Reason</th>
+                <th className="px-4 py-3 font-medium text-neutral-400 text-right">Blocked</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
               {referrers.map((r) => (
                 <tr key={`${r.domain}-${r.reason}`} className="hover:bg-neutral-50 dark:hover:bg-neutral-900/50">
-                  <td className="px-4 py-3 text-neutral-900 dark:text-white font-mono text-xs">{r.domain}</td>
+                  <td className="px-4 py-3 text-white font-mono text-xs">{r.domain}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                       r.reason === 'blocklist'
@@ -77,7 +77,7 @@ export default function FilteredTrafficPage() {
                       {r.reason}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right text-neutral-900 dark:text-white tabular-nums">
+                  <td className="px-4 py-3 text-right text-white tabular-nums">
                     {r.count.toLocaleString()}
                   </td>
                 </tr>

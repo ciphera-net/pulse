@@ -510,14 +510,17 @@ export default function SankeyJourney({
     return (
       <div className="h-[400px] flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
         <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
-          <TreeStructure className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
+          <TreeStructure className="w-8 h-8 text-neutral-400" />
         </div>
-        <h4 className="font-semibold text-neutral-900 dark:text-white">
+        <h4 className="font-semibold text-white">
           No journey data yet
         </h4>
-        <p className="text-sm text-neutral-500 dark:text-neutral-400 max-w-xs">
+        <p className="text-sm text-neutral-400 max-w-xs">
           Navigation flows will appear here as visitors browse through your site.
         </p>
+        <a href="/installation" target="_blank" rel="noopener noreferrer" className="mt-2 text-sm font-medium text-brand-orange hover:underline">
+          View setup guide
+        </a>
       </div>
     )
   }
@@ -528,7 +531,7 @@ export default function SankeyJourney({
         <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-lg bg-brand-orange/10 text-sm">
           <span className="text-neutral-700 dark:text-neutral-300">
             Showing flows through{' '}
-            <span className="font-medium text-neutral-900 dark:text-white">
+            <span className="font-medium text-white">
               {filterPath}
             </span>
           </span>

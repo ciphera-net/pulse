@@ -34,11 +34,11 @@ export default function FrustrationByPageTable({ pages, loading }: FrustrationBy
   return (
     <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 mb-8">
       <div className="flex items-center justify-between mb-1">
-        <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
+        <h3 className="text-lg font-semibold text-white">
           Frustration by Page
         </h3>
       </div>
-      <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
+      <p className="text-sm text-neutral-400 mb-4">
         Pages with the most frustration signals
       </p>
 
@@ -72,7 +72,7 @@ export default function FrustrationByPageTable({ pages, loading }: FrustrationBy
                     style={{ width: `${barWidth}%` }}
                   />
                   <span
-                    className="relative text-sm text-neutral-900 dark:text-white truncate max-w-[200px] sm:max-w-[300px]"
+                    className="relative text-sm text-white truncate max-w-[200px] sm:max-w-[300px]"
                     title={page.page_path}
                   >
                     {page.page_path}
@@ -84,7 +84,7 @@ export default function FrustrationByPageTable({ pages, loading }: FrustrationBy
                     <span className="w-12 text-right text-sm tabular-nums text-neutral-600 dark:text-neutral-400">
                       {formatNumber(page.dead_clicks)}
                     </span>
-                    <span className="w-12 text-right text-sm font-semibold tabular-nums text-neutral-900 dark:text-white">
+                    <span className="w-12 text-right text-sm font-semibold tabular-nums text-white">
                       {formatNumber(page.total)}
                     </span>
                     <span className="w-16 text-right text-sm tabular-nums text-neutral-600 dark:text-neutral-400">
@@ -99,14 +99,17 @@ export default function FrustrationByPageTable({ pages, loading }: FrustrationBy
       ) : (
         <div className="flex flex-col items-center justify-center text-center px-6 py-8 gap-4 min-h-[200px]">
           <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
-            <Files className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
+            <Files className="w-8 h-8 text-neutral-400" />
           </div>
-          <h4 className="font-semibold text-neutral-900 dark:text-white">
+          <h4 className="font-semibold text-white">
             No frustration signals detected
           </h4>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 max-w-md">
+          <p className="text-sm text-neutral-400 max-w-md">
             Page-level frustration data will appear here once rage clicks or dead clicks are detected on your site.
           </p>
+          <a href="/installation" target="_blank" rel="noopener noreferrer" className="mt-1 text-sm font-medium text-brand-orange hover:underline">
+            View setup guide
+          </a>
         </div>
       )}
     </div>

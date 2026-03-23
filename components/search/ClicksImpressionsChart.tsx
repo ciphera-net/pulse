@@ -31,19 +31,19 @@ function CustomTooltip({ active, payload, label }: TooltipProps) {
 
   return (
     <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-3 shadow-sm shadow-black/5 min-w-[140px]">
-      <div className="text-xs text-neutral-500 dark:text-neutral-400 mb-1.5">{label}</div>
+      <div className="text-xs text-neutral-400 mb-1.5">{label}</div>
       {clicks && (
         <div className="flex items-center gap-2 text-sm">
           <div className="size-1.5 rounded-full" style={{ backgroundColor: '#FD5E0F' }} />
-          <span className="text-neutral-500 dark:text-neutral-400">Clicks:</span>
-          <span className="font-semibold text-neutral-900 dark:text-white">{clicks.value.toLocaleString()}</span>
+          <span className="text-neutral-400">Clicks:</span>
+          <span className="font-semibold text-white">{clicks.value.toLocaleString()}</span>
         </div>
       )}
       {impressions && (
         <div className="flex items-center gap-2 text-sm mt-1">
           <div className="size-1.5 rounded-full" style={{ backgroundColor: '#9CA3AF' }} />
-          <span className="text-neutral-500 dark:text-neutral-400">Impressions:</span>
-          <span className="font-semibold text-neutral-900 dark:text-white">{impressions.value.toLocaleString()}</span>
+          <span className="text-neutral-400">Impressions:</span>
+          <span className="font-semibold text-white">{impressions.value.toLocaleString()}</span>
         </div>
       )}
     </div>

@@ -19,7 +19,7 @@ import {
   OrganizationInvitation,
   Organization
 } from '@/lib/api/organization'
-import { getSubscription, createPortalSession, getInvoices, cancelSubscription, resumeSubscription, changePlan, previewInvoice, createCheckoutSession, SubscriptionDetails, Invoice, PreviewInvoiceResult } from '@/lib/api/billing'
+import { getSubscription, createPortalSession, getOrders, cancelSubscription, resumeSubscription, changePlan, createCheckoutSession, SubscriptionDetails, Order } from '@/lib/api/billing'
 import { TRAFFIC_TIERS, PLAN_ID_SOLO, PLAN_ID_TEAM, PLAN_ID_BUSINESS, getTierIndexForLimit, getLimitForTierIndex, getSitesLimitForPlan } from '@/lib/plans'
 import { getAuditLog, AuditLogEntry, GetAuditLogParams } from '@/lib/api/audit'
 import { getNotificationSettings, updateNotificationSettings } from '@/lib/api/notification-settings'
@@ -36,7 +36,6 @@ import {
   XIcon,
   Captcha,
   BookOpenIcon,
-  DownloadIcon,
   ExternalLinkIcon,
   LayoutDashboardIcon,
   Spinner,
@@ -93,10 +92,8 @@ export default function OrganizationSettings() {
   const [changePlanId, setChangePlanId] = useState<string>(PLAN_ID_SOLO)
   const [changePlanTierIndex, setChangePlanTierIndex] = useState(2)
   const [changePlanYearly, setChangePlanYearly] = useState(false)
-  const [invoicePreview, setInvoicePreview] = useState<PreviewInvoiceResult | null>(null)
-  const [isLoadingPreview, setIsLoadingPreview] = useState(false)
   const [isChangingPlan, setIsChangingPlan] = useState(false)
-  const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [orders, setOrders] = useState<Order[]>([])
   const [isLoadingInvoices, setIsLoadingInvoices] = useState(false)
 
   // Invite State
@@ -195,14 +192,14 @@ export default function OrganizationSettings() {
     }
   }, [currentOrgId])
 
-  const loadInvoices = useCallback(async () => {
+  const loadOrders = useCallback(async () => {
     if (!currentOrgId) return
     setIsLoadingInvoices(true)
     try {
-      const invs = await getInvoices()
-      setInvoices(invs)
+      const ords = await getOrders()
+      setOrders(ords)
     } catch (error) {
-      logger.error('Failed to load invoices:', error)
+      logger.error('Failed to load orders:', error)
     } finally {
       setIsLoadingInvoices(false)
     }
@@ -231,9 +228,9 @@ export default function OrganizationSettings() {
   useEffect(() => {
     if (activeTab === 'billing' && currentOrgId) {
       loadSubscription()
-      loadInvoices()
+      loadOrders()
     }
-  }, [activeTab, currentOrgId, loadSubscription, loadInvoices])
+  }, [activeTab, currentOrgId, loadSubscription, loadOrders])
 
   const loadAudit = useCallback(async () => {
     if (!currentOrgId) return
@@ -307,25 +304,14 @@ export default function OrganizationSettings() {
 
   useEffect(() => {
     if (!showChangePlanModal || !hasActiveSubscription) {
-      setInvoicePreview(null)
       return
     }
-    let cancelled = false
-    setIsLoadingPreview(true)
-    setInvoicePreview(null)
-    const interval = changePlanYearly ? 'year' : 'month'
-    const limit = getLimitForTierIndex(changePlanTierIndex)
-    previewInvoice({ plan_id: changePlanId, interval, limit })
-      .then((res) => { if (!cancelled) setInvoicePreview(res ?? null) })
-      .catch(() => { if (!cancelled) { setInvoicePreview(null) } })
-      .finally(() => { if (!cancelled) setIsLoadingPreview(false) })
-    return () => { cancelled = true }
   }, [showChangePlanModal, hasActiveSubscription, changePlanId, changePlanTierIndex, changePlanYearly])
 
   // If no org ID, we are in personal organization context, so don't show org settings
   if (!currentOrgId) {
     return (
-        <div className="p-6 text-center text-neutral-500 dark:text-neutral-400">
+        <div className="p-6 text-center text-neutral-400">
             <p>You are in your personal context. Switch to an Organization to manage its settings.</p>
         </div>
     )
@@ -382,7 +368,6 @@ export default function OrganizationSettings() {
       setChangePlanTierIndex(2)
     }
     setChangePlanYearly(subscription?.billing_interval === 'year')
-    setInvoicePreview(null)
     setShowChangePlanModal(true)
   }
 
@@ -505,7 +490,7 @@ export default function OrganizationSettings() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Organization Settings</h1>
+        <h1 className="text-2xl font-bold text-white">Organization Settings</h1>
         <p className="mt-2 text-neutral-600 dark:text-neutral-400">
           Manage your organization workspace and members.
         </p>
@@ -595,8 +580,8 @@ export default function OrganizationSettings() {
             {activeTab === 'general' && (
               <div className="space-y-12">
                  <div>
-                    <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">General Information</h2>
-                    <p className="text-sm text-neutral-500 dark:text-neutral-400">Basic details about your organization.</p>
+                    <h2 className="text-2xl font-bold text-white mb-1">General Information</h2>
+                    <p className="text-sm text-neutral-400">Basic details about your organization.</p>
                   </div>
 
                  <form onSubmit={handleUpdateOrg} className="space-y-4">
@@ -612,7 +597,7 @@ export default function OrganizationSettings() {
                         minLength={2}
                         maxLength={50}
                         disabled={!isEditing}
-                        className={`bg-white dark:bg-neutral-900 ${!isEditing ? 'text-neutral-500 dark:text-neutral-400' : ''}`}
+                        className={`bg-white dark:bg-neutral-900 ${!isEditing ? 'text-neutral-400' : ''}`}
                       />
                     </div>
                     
@@ -621,7 +606,7 @@ export default function OrganizationSettings() {
                         Organization Slug
                       </label>
                       <div className="flex rounded-xl shadow-sm">
-                        <span className="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 text-neutral-500 dark:text-neutral-400 text-sm">
+                        <span className="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 text-neutral-400 text-sm">
                           pulse.ciphera.net/
                         </span>
                         <Input
@@ -632,10 +617,10 @@ export default function OrganizationSettings() {
                           minLength={3}
                           maxLength={30}
                           disabled={!isEditing}
-                          className={`rounded-l-none bg-white dark:bg-neutral-900 ${!isEditing ? 'text-neutral-500 dark:text-neutral-400' : ''}`}
+                          className={`rounded-l-none bg-white dark:bg-neutral-900 ${!isEditing ? 'text-neutral-400' : ''}`}
                         />
                       </div>
-                      <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                      <p className="text-xs text-neutral-400">
                         Changing the slug will change your organization's URL.
                       </p>
                     </div>
@@ -673,7 +658,7 @@ export default function OrganizationSettings() {
                  <div className="space-y-6">
                   <div>
                     <h2 className="text-2xl font-bold text-red-600 dark:text-red-500 mb-1">Danger Zone</h2>
-                    <p className="text-sm text-neutral-500 dark:text-neutral-400">Irreversible actions for this organization.</p>
+                    <p className="text-sm text-neutral-400">Irreversible actions for this organization.</p>
                   </div>
 
                   <div className="p-6 border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/10 rounded-2xl flex items-center justify-between">
@@ -711,11 +696,11 @@ export default function OrganizationSettings() {
               <div className="space-y-12">
                 {/* Invite Section */}
                 <div>
-                  <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">Organization Members</h2>
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6">Manage who has access to this organization.</p>
+                  <h2 className="text-2xl font-bold text-white mb-1">Organization Members</h2>
+                  <p className="text-sm text-neutral-400 mb-6">Manage who has access to this organization.</p>
                   
                   <div className="bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4">
-                    <h3 className="text-sm font-medium text-neutral-900 dark:text-white mb-3">Invite New Member</h3>
+                    <h3 className="text-sm font-medium text-white mb-3">Invite New Member</h3>
                     <form onSubmit={handleSendInvite} className="flex gap-3 items-end">
                       <div className="flex-1">
                         <Input 
@@ -759,12 +744,12 @@ export default function OrganizationSettings() {
 
                 {/* Members List */}
                 <div className="space-y-4">
-                  <h3 className="text-sm font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Active Members</h3>
+                  <h3 className="text-sm font-medium text-neutral-400 uppercase tracking-wider">Active Members</h3>
                   <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden divide-y divide-neutral-200 dark:divide-neutral-800">
                     {isLoadingMembers ? (
                       <MembersListSkeleton />
                     ) : members.length === 0 ? (
-                      <div className="p-8 text-center text-neutral-500 dark:text-neutral-400">No members found.</div>
+                      <div className="p-8 text-center text-neutral-400">No members found.</div>
                     ) : (
                       members.map((member) => (
                         <div key={member.user_id} className="p-4 flex items-center justify-between hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors">
@@ -773,10 +758,10 @@ export default function OrganizationSettings() {
                               {member.user_email?.[0].toUpperCase() || '?'}
                             </div>
                             <div>
-                              <div className="text-sm font-medium text-neutral-900 dark:text-white">
+                              <div className="text-sm font-medium text-white">
                                 {member.user_email || 'Unknown User'}
                               </div>
-                              <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                              <div className="text-xs text-neutral-400">
                                 Joined {formatDate(new Date(member.joined_at))}
                               </div>
                             </div>
@@ -801,7 +786,7 @@ export default function OrganizationSettings() {
                 {/* Pending Invitations */}
                 {invitations.length > 0 && (
                   <div className="space-y-4">
-                    <h3 className="text-sm font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Pending Invitations</h3>
+                    <h3 className="text-sm font-medium text-neutral-400 uppercase tracking-wider">Pending Invitations</h3>
                     <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden divide-y divide-neutral-200 dark:divide-neutral-800">
                       {invitations.map((invite) => (
                         <div key={invite.id} className="p-4 flex items-center justify-between">
@@ -810,10 +795,10 @@ export default function OrganizationSettings() {
                               <div className="w-2 h-2 rounded-full bg-neutral-400 animate-pulse"></div>
                             </div>
                             <div>
-                              <div className="text-sm font-medium text-neutral-900 dark:text-white">
+                              <div className="text-sm font-medium text-white">
                                 {invite.email}
                               </div>
-                              <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                              <div className="text-xs text-neutral-400">
                                 Invited as <span className="capitalize font-medium">{invite.role}</span> • Expires {formatDate(new Date(invite.expires_at))}
                               </div>
                             </div>
@@ -836,8 +821,8 @@ export default function OrganizationSettings() {
             {activeTab === 'billing' && (
               <div className="space-y-8">
                 <div>
-                  <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">Billing & Subscription</h2>
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400">Manage your plan, usage, and payment details.</p>
+                  <h2 className="text-2xl font-bold text-white mb-1">Billing & Subscription</h2>
+                  <p className="text-sm text-neutral-400">Manage your plan, usage, and payment details.</p>
                 </div>
 
                 {isLoadingSubscription ? (
@@ -847,7 +832,7 @@ export default function OrganizationSettings() {
                   </div>
                 ) : !subscription ? (
                   <div className="p-6 text-center bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-200 dark:border-neutral-800">
-                    <p className="text-neutral-500 dark:text-neutral-400">Could not load subscription details.</p>
+                    <p className="text-neutral-400">Could not load subscription details.</p>
                     <Button variant="ghost" onClick={loadSubscription} className="mt-4">Retry</Button>
                   </div>
                 ) : (
@@ -930,7 +915,7 @@ export default function OrganizationSettings() {
                       {/* Plan header */}
                       <div className="p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                         <div className="flex items-center gap-3">
-                          <span className="text-xl font-bold text-neutral-900 dark:text-white capitalize">
+                          <span className="text-xl font-bold text-white capitalize">
                             {subscription.plan_id?.startsWith('price_') ? 'Pro' : (subscription.plan_id === 'free' || !subscription.plan_id ? 'Free' : subscription.plan_id)} Plan
                           </span>
                           <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${
@@ -954,19 +939,15 @@ export default function OrganizationSettings() {
                           Change plan
                         </Button>
                       </div>
-                      {(subscription.business_name || (subscription.tax_ids && subscription.tax_ids.length > 0)) && (
-                        <div className="px-6 pb-2 -mt-2 space-y-1 text-sm text-neutral-500 dark:text-neutral-400">
+                      {(subscription.business_name || subscription.tax_id) && (
+                        <div className="px-6 pb-2 -mt-2 space-y-1 text-sm text-neutral-400">
                           {subscription.business_name && (
                             <div>Billing for: {subscription.business_name}</div>
                           )}
-                          {subscription.tax_ids && subscription.tax_ids.length > 0 && (
-                            <div>
-                              Tax ID{subscription.tax_ids.length > 1 ? 's' : ''}:{' '}
-                              {subscription.tax_ids.map((t) => {
-                                const label = t.type === 'eu_vat' ? 'VAT' : t.type === 'us_ein' ? 'EIN' : t.type.replace(/_/g, ' ').toUpperCase()
-                                return `${label} ${t.value}${t.country ? ` (${t.country})` : ''}`
-                              }).join(', ')}
-                            </div>
+                          {subscription.tax_id && (
+                            <span>
+                              Tax ID: {subscription.tax_id.value} ({subscription.tax_id.type})
+                            </span>
                           )}
                         </div>
                       )}
@@ -975,7 +956,7 @@ export default function OrganizationSettings() {
                       <div className="border-t border-neutral-200 dark:border-neutral-800 p-6 grid grid-cols-2 md:grid-cols-4 gap-y-4 gap-x-6">
                         <div>
                           <div className="text-xs text-neutral-500 uppercase tracking-wider mb-1">Sites</div>
-                          <div className="text-lg font-semibold text-neutral-900 dark:text-white">
+                          <div className="text-lg font-semibold text-white">
                             {typeof subscription.sites_count === 'number'
                               ? (() => {
                                   const limit = getSitesLimitForPlan(subscription.plan_id)
@@ -986,7 +967,7 @@ export default function OrganizationSettings() {
                         </div>
                         <div>
                           <div className="text-xs text-neutral-500 uppercase tracking-wider mb-1">Pageviews</div>
-                          <div className="text-lg font-semibold text-neutral-900 dark:text-white">
+                          <div className="text-lg font-semibold text-white">
                             {subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number'
                               ? `${subscription.pageview_usage.toLocaleString()} / ${subscription.pageview_limit.toLocaleString()}`
                               : '—'}
@@ -1012,26 +993,19 @@ export default function OrganizationSettings() {
                           <div className="text-xs text-neutral-500 uppercase tracking-wider mb-1">
                             {subscription.subscription_status === 'trialing' ? 'Trial ends' : (subscription.cancel_at_period_end ? 'Access until' : 'Renews')}
                           </div>
-                          <div className="text-lg font-semibold text-neutral-900 dark:text-white">
+                          <div className="text-lg font-semibold text-white">
                             {(() => {
-                              const ts = subscription.next_invoice_period_end ?? subscription.current_period_end
-                              const d = ts ? new Date(typeof ts === 'number' ? ts * 1000 : ts) : null
-                              const dateStr = d && !Number.isNaN(d.getTime()) && d.getTime() !== 0
+                              const ts = subscription.current_period_end
+                              const d = ts ? new Date(ts) : null
+                              return d && !Number.isNaN(d.getTime()) && d.getTime() !== 0
                                 ? formatDate(d)
                                 : '—'
-                              const amount = subscription.next_invoice_amount_due != null && subscription.next_invoice_currency
-                                ? (subscription.next_invoice_amount_due / 100).toLocaleString('en-US', {
-                                    style: 'currency',
-                                    currency: subscription.next_invoice_currency.toUpperCase(),
-                                  })
-                                : null
-                              return amount && dateStr !== '—' ? `${dateStr} for ${amount}` : dateStr
                             })()}
                           </div>
                         </div>
                         <div>
                           <div className="text-xs text-neutral-500 uppercase tracking-wider mb-1">Limit</div>
-                          <div className="text-lg font-semibold text-neutral-900 dark:text-white">
+                          <div className="text-lg font-semibold text-white">
                             {subscription.pageview_limit > 0 ? `${subscription.pageview_limit.toLocaleString()} / mo` : 'Unlimited'}
                           </div>
                         </div>
@@ -1062,57 +1036,38 @@ export default function OrganizationSettings() {
                       )}
                     </div>
 
-                    {/* Invoice History */}
+                    {/* Order History */}
                     <div>
-                      <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-3">Recent invoices</h3>
+                      <h3 className="text-lg font-semibold text-white mb-3">Recent orders</h3>
                       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden divide-y divide-neutral-200 dark:divide-neutral-800">
                         {isLoadingInvoices ? (
                           <InvoicesListSkeleton />
-                        ) : invoices.length === 0 ? (
-                          <div className="p-8 text-center text-neutral-500 dark:text-neutral-400">No invoices found.</div>
+                        ) : orders.length === 0 ? (
+                          <div className="p-8 text-center text-neutral-400">No orders found.</div>
                         ) : (
                           <>
-                            {invoices.map((invoice) => (
-                              <div key={invoice.id} className="px-4 py-3 flex items-center justify-between hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors">
+                            {orders.map((order) => (
+                              <div key={order.id} className="px-4 py-3 flex items-center justify-between hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors">
                                 <div className="flex items-center gap-3">
                                   <div>
-                                    <span className="font-medium text-sm text-neutral-900 dark:text-white">
-                                      {(invoice.amount_paid / 100).toLocaleString('en-US', { style: 'currency', currency: invoice.currency.toUpperCase() })}
+                                    <span className="font-medium text-sm text-white">
+                                      {(order.total_amount / 100).toLocaleString('en-US', { style: 'currency', currency: order.currency.toUpperCase() })}
                                     </span>
                                     <span className="text-xs text-neutral-500 ml-2">
-                                      {formatDate(new Date(invoice.created * 1000))}
+                                      {formatDate(new Date(order.created_at))}
                                     </span>
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-3">
                                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${
-                                    invoice.status === 'paid'
+                                    order.status === 'paid'
                                       ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                                      : invoice.status === 'open'
+                                      : order.status === 'open'
                                       ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
                                       : 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300'
                                   }`}>
-                                    {invoice.status}
+                                    {order.status}
                                   </span>
-                                  {invoice.invoice_pdf && (
-                                    <a href={invoice.invoice_pdf} target="_blank" rel="noopener noreferrer"
-                                       className="inline-flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange" title="Download PDF">
-                                      <DownloadIcon className="w-3.5 h-3.5" />
-                                      <span className="hidden sm:inline">Download</span> PDF
-                                    </a>
-                                  )}
-                                  {invoice.hosted_invoice_url && (
-                                    <a href={invoice.hosted_invoice_url} target="_blank" rel="noopener noreferrer"
-                                       className={`inline-flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ${
-                                         invoice.status === 'open'
-                                           ? 'bg-brand-orange text-white hover:bg-brand-orange-hover'
-                                           : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800'
-                                       }`}
-                                       title={invoice.status === 'open' ? 'Pay now' : 'View invoice'}>
-                                      <ExternalLinkIcon className="w-3.5 h-3.5" />
-                                      {invoice.status === 'open' ? 'Pay now' : <><span className="hidden sm:inline">View </span>Invoice</>}
-                                    </a>
-                                  )}
                                 </div>
                               </div>
                             ))}
@@ -1129,8 +1084,8 @@ export default function OrganizationSettings() {
             {activeTab === 'notifications' && (
               <div className="space-y-8">
                 <div>
-                  <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">Notification Settings</h2>
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6">
+                  <h2 className="text-2xl font-bold text-white mb-1">Notification Settings</h2>
+                  <p className="text-sm text-neutral-400 mb-6">
                     Choose which notification types you want to receive. These apply to the notification center for owners and admins.
                   </p>
                 </div>
@@ -1139,7 +1094,7 @@ export default function OrganizationSettings() {
                   <SettingsFormSkeleton />
                 ) : (
                   <div className="space-y-4">
-                    <h3 className="text-sm font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Notification categories</h3>
+                    <h3 className="text-sm font-medium text-neutral-400 uppercase tracking-wider">Notification categories</h3>
                     <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden divide-y divide-neutral-200 dark:divide-neutral-800">
                       {notificationCategories.map((cat) => (
                         <div
@@ -1147,8 +1102,8 @@ export default function OrganizationSettings() {
                           className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"
                         >
                           <div className="flex-1">
-                            <p className="text-sm font-medium text-neutral-900 dark:text-white">{cat.label}</p>
-                            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">{cat.description}</p>
+                            <p className="text-sm font-medium text-white">{cat.label}</p>
+                            <p className="text-sm text-neutral-400 mt-0.5">{cat.description}</p>
                           </div>
                           <div className="flex items-center shrink-0">
                             <button
@@ -1194,8 +1149,8 @@ export default function OrganizationSettings() {
             {activeTab === 'audit' && (
               <div className="space-y-12">
                 <div>
-                  <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">Audit log</h2>
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400">Who did what and when for this organization.</p>
+                  <h2 className="text-2xl font-bold text-white mb-1">Audit log</h2>
+                  <p className="text-sm text-neutral-400">Who did what and when for this organization.</p>
                 </div>
 
                 {/* Advanced Filters */}
@@ -1208,7 +1163,7 @@ export default function OrganizationSettings() {
                         placeholder="e.g. 8a2b3c"
                         value={auditLogIdFilter}
                         onChange={(e) => setAuditLogIdFilter(e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm text-neutral-900 dark:text-white focus:ring-2 focus:ring-brand-orange outline-none transition-all"
+                        className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm text-white focus:ring-2 focus:ring-brand-orange outline-none transition-all"
                       />
                     </div>
                     <div className="space-y-1">
@@ -1218,7 +1173,7 @@ export default function OrganizationSettings() {
                         placeholder="e.g. site_created"
                         value={auditActionFilter}
                         onChange={(e) => setAuditActionFilter(e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm text-neutral-900 dark:text-white focus:ring-2 focus:ring-brand-orange outline-none transition-all"
+                        className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm text-white focus:ring-2 focus:ring-brand-orange outline-none transition-all"
                       />
                     </div>
                     <div className="space-y-1">
@@ -1227,7 +1182,7 @@ export default function OrganizationSettings() {
                         type="date"
                         value={auditStartDate}
                         onChange={(e) => setAuditStartDate(e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm text-neutral-900 dark:text-white focus:ring-2 focus:ring-brand-orange outline-none transition-all"
+                        className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm text-white focus:ring-2 focus:ring-brand-orange outline-none transition-all"
                       />
                     </div>
                     <div className="space-y-1">
@@ -1236,7 +1191,7 @@ export default function OrganizationSettings() {
                         type="date"
                         value={auditEndDate}
                         onChange={(e) => setAuditEndDate(e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm text-neutral-900 dark:text-white focus:ring-2 focus:ring-brand-orange outline-none transition-all"
+                        className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm text-white focus:ring-2 focus:ring-brand-orange outline-none transition-all"
                       />
                     </div>
                   </div>
@@ -1285,10 +1240,10 @@ export default function OrganizationSettings() {
                               <td className="px-4 py-3 text-neutral-600 dark:text-neutral-400 whitespace-nowrap">
                                 {formatDateTime(new Date(entry.occurred_at))}
                               </td>
-                              <td className="px-4 py-3 text-neutral-900 dark:text-white whitespace-nowrap" title={entry.actor_email || entry.actor_id || 'System'}>
+                              <td className="px-4 py-3 text-white whitespace-nowrap" title={entry.actor_email || entry.actor_id || 'System'}>
                                 {entry.actor_email || entry.actor_id || 'System'}
                               </td>
-                              <td className="px-4 py-3 font-medium text-neutral-900 dark:text-white whitespace-nowrap" title={entry.action}>{entry.action}</td>
+                              <td className="px-4 py-3 font-medium text-white whitespace-nowrap" title={entry.action}>{entry.action}</td>
                               <td className="px-4 py-3 text-neutral-600 dark:text-neutral-400">{entry.resource_type}</td>
                             </tr>
                           ))}
@@ -1300,7 +1255,7 @@ export default function OrganizationSettings() {
                   {/* Pagination */}
                   {auditTotal > auditPageSize && (
                     <div className="flex items-center justify-between px-4 py-3 border-t border-neutral-200 dark:border-neutral-800">
-                      <span className="text-sm text-neutral-500 dark:text-neutral-400">
+                      <span className="text-sm text-neutral-400">
                         {auditPage * auditPageSize + 1}–{Math.min((auditPage + 1) * auditPageSize, auditTotal)} of {auditTotal}
                       </span>
                       <div className="flex gap-2">
@@ -1406,7 +1361,7 @@ export default function OrganizationSettings() {
                     value={deleteConfirm}
                     onChange={(e) => setDeleteConfirm(e.target.value)}
                     autoComplete="off"
-                    className="w-full px-3 py-2 text-sm border border-neutral-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-red-500 dark:focus:ring-red-400"
+                    className="w-full px-3 py-2 text-sm border border-neutral-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-red-500 dark:focus:ring-red-400"
                     placeholder="DELETE"
                   />
                 </div>
@@ -1455,7 +1410,7 @@ export default function OrganizationSettings() {
               className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl max-w-md w-full p-6 border border-neutral-200 dark:border-neutral-800"
             >
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Cancel subscription?</h3>
+                <h3 className="text-lg font-semibold text-white">Cancel subscription?</h3>
                 <button
                   onClick={() => setShowCancelPrompt(false)}
                   className="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-400"
@@ -1509,7 +1464,7 @@ export default function OrganizationSettings() {
               className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl max-w-md w-full p-6 border border-neutral-200 dark:border-neutral-800"
             >
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Change plan</h3>
+                <h3 className="text-lg font-semibold text-white">Change plan</h3>
                 <button
                   type="button"
                   onClick={() => setShowChangePlanModal(false)}
@@ -1545,7 +1500,7 @@ export default function OrganizationSettings() {
                               : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
                           }`}
                         >
-                          <span className={`block text-sm font-semibold ${isSelected ? 'text-brand-orange' : 'text-neutral-900 dark:text-white'}`}>
+                          <span className={`block text-sm font-semibold ${isSelected ? 'text-brand-orange' : 'text-white'}`}>
                             {plan.name}
                           </span>
                           <span className="block text-xs text-neutral-500 mt-0.5">{plan.sites}</span>
@@ -1564,7 +1519,7 @@ export default function OrganizationSettings() {
                   <select
                     value={changePlanTierIndex}
                     onChange={(e) => setChangePlanTierIndex(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:ring-2 focus:ring-brand-orange outline-none"
+                    className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-white focus:ring-2 focus:ring-brand-orange outline-none"
                   >
                     {TRAFFIC_TIERS.map((tier, idx) => (
                       <option key={tier.value} value={idx}>
@@ -1595,26 +1550,9 @@ export default function OrganizationSettings() {
               </div>
               {hasActiveSubscription && (
                 <div className="mt-4 p-4 rounded-lg bg-neutral-100 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700">
-                  {isLoadingPreview ? (
-                    <div className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
-                      <Spinner className="w-4 h-4" />
-                      Calculating next invoice…
-                    </div>
-                  ) : invoicePreview ? (
-                    <p className="text-sm text-neutral-700 dark:text-neutral-300">
-                      Next invoice:{' '}
-                      {(invoicePreview.amount_due / 100).toLocaleString('en-US', {
-                        style: 'currency',
-                        currency: invoicePreview.currency.toUpperCase(),
-                      })}{' '}
-                      on {formatDate(new Date(invoicePreview.period_end * 1000))}{' '}
-                      <span className="text-neutral-500">(prorated)</span>
-                    </p>
-                  ) : (
-                    <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                      Unable to calculate preview. Your next invoice will reflect prorations.
-                    </p>
-                  )}
+                  <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                    Your plan will be updated. Any prorations will be reflected on your next invoice.
+                  </p>
                 </div>
               )}
               <div className="flex gap-2 mt-6">

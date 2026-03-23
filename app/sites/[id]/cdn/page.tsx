@@ -177,10 +177,10 @@ export default function CDNPage() {
           <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-5 mb-6">
             <CloudArrowUp size={40} className="text-neutral-400 dark:text-neutral-500" />
           </div>
-          <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-2">
+          <h2 className="text-xl font-semibold text-white mb-2">
             Connect BunnyCDN
           </h2>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 max-w-md mb-6">
+          <p className="text-sm text-neutral-400 max-w-md mb-6">
             Monitor your CDN performance including bandwidth usage, cache hit rates, request volumes, and geographic distribution.
           </p>
           <Link
@@ -212,10 +212,10 @@ export default function CDNPage() {
       {/* Header */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">
+          <h1 className="text-2xl font-bold text-white mb-1">
             CDN Analytics
           </h1>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+          <p className="text-sm text-neutral-400">
             BunnyCDN performance, bandwidth, and cache metrics
           </p>
         </div>
@@ -281,7 +281,7 @@ export default function CDNPage() {
 
       {/* Bandwidth chart */}
       <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 mb-6">
-        <h2 className="text-sm font-semibold text-neutral-900 dark:text-white mb-4">Bandwidth</h2>
+        <h2 className="text-sm font-semibold text-white mb-4">Bandwidth</h2>
         {daily.length > 0 ? (
           <ResponsiveContainer width="100%" height={280}>
             <AreaChart data={daily} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
@@ -317,8 +317,8 @@ export default function CDNPage() {
                   if (!active || !payload?.length) return null
                   return (
                     <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 shadow-lg text-sm">
-                      <p className="text-neutral-500 dark:text-neutral-400 mb-1">{formatDateShort(label)}</p>
-                      <p className="text-neutral-900 dark:text-white font-medium">
+                      <p className="text-neutral-400 mb-1">{formatDateShort(label)}</p>
+                      <p className="text-white font-medium">
                         Total: {formatBytes(payload[0]?.value as number)}
                       </p>
                       {payload[1] && (
@@ -359,7 +359,7 @@ export default function CDNPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         {/* Requests chart */}
         <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6">
-          <h2 className="text-sm font-semibold text-neutral-900 dark:text-white mb-4">Requests</h2>
+          <h2 className="text-sm font-semibold text-white mb-4">Requests</h2>
           {daily.length > 0 ? (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={daily} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
@@ -385,8 +385,8 @@ export default function CDNPage() {
                     if (!active || !payload?.length) return null
                     return (
                       <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 shadow-lg text-sm">
-                        <p className="text-neutral-500 dark:text-neutral-400 mb-1">{formatDateShort(label)}</p>
-                        <p className="text-neutral-900 dark:text-white font-medium">
+                        <p className="text-neutral-400 mb-1">{formatDateShort(label)}</p>
+                        <p className="text-white font-medium">
                           {formatNumber(payload[0]?.value as number)} requests
                         </p>
                       </div>
@@ -405,7 +405,7 @@ export default function CDNPage() {
 
         {/* Errors chart */}
         <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6">
-          <h2 className="text-sm font-semibold text-neutral-900 dark:text-white mb-4">Errors</h2>
+          <h2 className="text-sm font-semibold text-white mb-4">Errors</h2>
           {daily.length > 0 ? (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart
@@ -439,7 +439,7 @@ export default function CDNPage() {
                     if (!active || !payload?.length) return null
                     return (
                       <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 shadow-lg text-sm">
-                        <p className="text-neutral-500 dark:text-neutral-400 mb-1">{formatDateShort(label)}</p>
+                        <p className="text-neutral-400 mb-1">{formatDateShort(label)}</p>
                         {payload.map((entry) => (
                           <p key={entry.name} style={{ color: entry.color }} className="font-medium">
                             {entry.name}: {formatNumber(entry.value as number)}
@@ -464,7 +464,7 @@ export default function CDNPage() {
 
       {/* Traffic Distribution */}
       <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6">
-        <h2 className="text-sm font-semibold text-neutral-900 dark:text-white mb-4">Traffic Distribution</h2>
+        <h2 className="text-sm font-semibold text-white mb-4">Traffic Distribution</h2>
         {countries.length > 0 ? (
           <>
             <div className="h-[360px] mb-8">
@@ -480,9 +480,9 @@ export default function CDNPage() {
                     <div className="flex items-center gap-2.5 mb-2">
                       {cc && getFlagIcon(cc)}
                       <div className="flex-1 min-w-0">
-                        <span className="text-sm font-medium text-neutral-900 dark:text-white truncate block">{city}</span>
+                        <span className="text-sm font-medium text-white truncate block">{city}</span>
                       </div>
-                      <span className="text-sm tabular-nums text-neutral-500 dark:text-neutral-400 shrink-0">
+                      <span className="text-sm tabular-nums text-neutral-400 shrink-0">
                         {formatBytes(row.bandwidth)}
                       </span>
                     </div>
@@ -530,13 +530,13 @@ function OverviewCard({
 
   return (
     <div className="p-4 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900">
-      <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">{label}</p>
-      <p className="text-2xl font-bold text-neutral-900 dark:text-white">{value}</p>
+      <p className="text-xs font-medium text-neutral-400 mb-1">{label}</p>
+      <p className="text-2xl font-bold text-white">{value}</p>
       {changeLabel && (
         <p className={`text-xs mt-1 font-medium ${
           isGood ? 'text-green-600 dark:text-green-400' :
           isBad ? 'text-red-600 dark:text-red-400' :
-          'text-neutral-500 dark:text-neutral-400'
+          'text-neutral-400'
         }`}>
           {changeLabel} vs previous period
         </p>
