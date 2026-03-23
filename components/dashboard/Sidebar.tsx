@@ -193,7 +193,7 @@ function SitePicker({ sites, siteId, collapsed, onExpand, onCollapse, wasCollaps
       </button>
 
       {open && (
-        <div className="absolute left-3 top-full mt-1 z-50 w-[240px] bg-neutral-900 border border-neutral-700 rounded-xl shadow-xl overflow-hidden">
+        <div className="absolute left-3 top-full mt-1 z-50 w-[240px] bg-neutral-900 border border-neutral-700 rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
           <div className="p-2">
             <input
               type="text"
@@ -262,21 +262,27 @@ function NavLink({
   const active = matchesPathname || matchesPending
 
   return (
-    <Link
-      href={href}
-      onClick={() => { onNavigate(href); onClick?.() }}
-      title={collapsed ? item.label : undefined}
-      className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden ${
-        active
-          ? 'bg-brand-orange/10 text-brand-orange'
-          : 'text-neutral-400 hover:text-white hover:bg-neutral-800'
-      }`}
-    >
-      <span className="w-7 h-7 flex items-center justify-center shrink-0">
-        <item.icon className="w-[18px] h-[18px]" weight={active ? 'fill' : 'regular'} />
-      </span>
-      <Label collapsed={collapsed}>{item.label}</Label>
-    </Link>
+    <div className="relative group/nav">
+      <Link
+        href={href}
+        onClick={() => { onNavigate(href); onClick?.() }}
+        className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-150 ${
+          active
+            ? 'bg-brand-orange/10 text-brand-orange'
+            : 'text-neutral-400 hover:text-white hover:bg-neutral-800 hover:translate-x-0.5'
+        }`}
+      >
+        <span className="w-7 h-7 flex items-center justify-center shrink-0">
+          <item.icon className="w-[18px] h-[18px]" weight={active ? 'fill' : 'regular'} />
+        </span>
+        <Label collapsed={collapsed}>{item.label}</Label>
+      </Link>
+      {collapsed && (
+        <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 rounded-md bg-neutral-800 text-white text-xs whitespace-nowrap opacity-0 group-hover/nav:opacity-100 transition-opacity duration-150 delay-150 z-50">
+          {item.label}
+        </span>
+      )}
+    </div>
   )
 }
 
@@ -365,12 +371,17 @@ function SidebarContent({
       <div className="border-t border-neutral-800/60 px-2 py-3 shrink-0">
         {/* Notifications, Profile — same layout as nav items */}
         <div className="space-y-0.5 mb-1">
-          <span title={c ? 'Notifications' : undefined}>
+          <div className="relative group/notif">
             <NotificationCenter anchor="right" variant="sidebar">
               <Label collapsed={c}>Notifications</Label>
             </NotificationCenter>
-          </span>
-          <span title={c ? (user?.display_name?.trim() || 'Profile') : undefined}>
+            {c && (
+              <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 rounded-md bg-neutral-800 text-white text-xs whitespace-nowrap opacity-0 group-hover/notif:opacity-100 transition-opacity duration-150 delay-150 z-50">
+                Notifications
+              </span>
+            )}
+          </div>
+          <div className="relative group/user">
             <UserMenu
               auth={auth}
               LinkComponent={Link}
@@ -385,22 +396,33 @@ function SidebarContent({
             >
               <Label collapsed={c}>{user?.display_name?.trim() || 'Profile'}</Label>
             </UserMenu>
-          </span>
+            {c && (
+              <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 rounded-md bg-neutral-800 text-white text-xs whitespace-nowrap opacity-0 group-hover/user:opacity-100 transition-opacity duration-150 delay-150 z-50">
+                {user?.display_name?.trim() || 'Profile'}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Settings + Collapse */}
         <div className="space-y-0.5">
           {!isMobile && (
-            <button
-              onClick={onToggle}
-              className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-neutral-400 dark:text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800 w-full overflow-hidden"
-              title={collapsed ? 'Expand sidebar (press [)' : 'Collapse sidebar (press [)'}
-            >
-              <span className="w-7 h-7 flex items-center justify-center shrink-0">
-                <CollapseLeftIcon className={`w-[18px] h-[18px] transition-transform duration-200 ${c ? 'rotate-180' : ''}`} />
-              </span>
-              <Label collapsed={c}>{c ? 'Expand' : 'Collapse'}</Label>
-            </button>
+            <div className="relative group/collapse">
+              <button
+                onClick={onToggle}
+                className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-neutral-400 dark:text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800 w-full overflow-hidden"
+              >
+                <span className="w-7 h-7 flex items-center justify-center shrink-0">
+                  <CollapseLeftIcon className={`w-[18px] h-[18px] transition-transform duration-200 ${c ? 'rotate-180' : ''}`} />
+                </span>
+                <Label collapsed={c}>{c ? 'Expand' : 'Collapse'}</Label>
+              </button>
+              {c && (
+                <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 rounded-md bg-neutral-800 text-white text-xs whitespace-nowrap opacity-0 group-hover/collapse:opacity-100 transition-opacity duration-150 delay-150 z-50">
+                  Expand (press [)
+                </span>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -424,6 +446,7 @@ export default function Sidebar({
   const [sites, setSites] = useState<Site[]>([])
   const [orgs, setOrgs] = useState<OrganizationMember[]>([])
   const [pendingHref, setPendingHref] = useState<string | null>(null)
+  const [mobileClosing, setMobileClosing] = useState(false)
   const wasCollapsedRef = useRef(false)
   const pickerOpenCallbackRef = useRef<(() => void) | null>(null)
   // Safe to read localStorage directly — this component is loaded with ssr:false
@@ -477,6 +500,14 @@ export default function Sidebar({
     setCollapsed(true); localStorage.setItem(SIDEBAR_KEY, 'true')
   }, [])
 
+  const handleMobileClose = useCallback(() => {
+    setMobileClosing(true)
+    setTimeout(() => {
+      setMobileClosing(false)
+      onMobileClose()
+    }, 200)
+  }, [onMobileClose])
+
   const handleNavigate = useCallback((href: string) => { setPendingHref(href) }, [])
 
   return (
@@ -514,13 +545,24 @@ export default function Sidebar({
       </aside>
 
       {/* Mobile overlay */}
-      {mobileOpen && (
+      {(mobileOpen || mobileClosing) && (
         <>
-          <div className="fixed inset-0 z-40 bg-black/30 md:hidden" onClick={onMobileClose} />
-          <aside className="fixed inset-y-0 left-0 z-50 w-72 bg-neutral-900 border-r border-neutral-800 shadow-xl md:hidden animate-in slide-in-from-left duration-200">
+          <div
+            className={`fixed inset-0 z-40 md:hidden transition-opacity duration-200 ${
+              mobileClosing ? 'bg-black/0' : 'bg-black/30'
+            }`}
+            onClick={handleMobileClose}
+          />
+          <aside
+            className={`fixed inset-y-0 left-0 z-50 w-72 bg-neutral-900 border-r border-neutral-800 shadow-xl md:hidden ${
+              mobileClosing
+                ? 'animate-out slide-out-to-left duration-200 fill-mode-forwards'
+                : 'animate-in slide-in-from-left duration-200'
+            }`}
+          >
             <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-800">
               <span className="text-sm font-semibold text-white">Navigation</span>
-              <button onClick={onMobileClose} className="p-1.5 text-neutral-400 hover:text-neutral-300">
+              <button onClick={handleMobileClose} className="p-1.5 text-neutral-400 hover:text-neutral-300">
                 <XIcon className="w-5 h-5" />
               </button>
             </div>
@@ -532,7 +574,7 @@ export default function Sidebar({
               canEdit={canEdit}
               pendingHref={pendingHref}
               onNavigate={handleNavigate}
-              onMobileClose={onMobileClose}
+              onMobileClose={handleMobileClose}
               onExpand={expand}
               onCollapse={collapse}
               onToggle={toggle}
