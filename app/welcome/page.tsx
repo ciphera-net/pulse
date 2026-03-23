@@ -39,8 +39,6 @@ import {
   ArrowRightIcon,
   ArrowLeftIcon,
   BarChartIcon,
-  GlobeIcon,
-  ZapIcon,
   PlusIcon,
 } from '@ciphera-net/ui'
 import Link from 'next/link'
@@ -440,9 +438,11 @@ function WelcomeContent() {
                 </>
               ) : (
                 <div className="text-center">
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-orange/10 text-brand-orange mb-6">
-                    <ZapIcon className="h-7 w-7" />
-                  </div>
+                  <img
+                    src="/illustrations/welcome.svg"
+                    alt="Welcome to Pulse"
+                    className="w-48 h-auto mx-auto mb-6"
+                  />
                   <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
                     Welcome to Pulse
                   </h1>
@@ -638,9 +638,11 @@ function WelcomeContent() {
                 Back
               </button>
               <div className="text-center mb-6">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-orange/10 text-brand-orange mb-4">
-                  <GlobeIcon className="h-7 w-7" />
-                </div>
+                <img
+                  src="/illustrations/website-setup.svg"
+                  alt="Add your first site"
+                  className="w-44 h-auto mx-auto mb-4"
+                />
                 <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
                   Add your first site
                 </h1>
@@ -723,9 +725,11 @@ function WelcomeContent() {
               className={cardClass}
             >
               <div className="text-center">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-500/10 text-green-600 dark:text-green-400 mb-6">
-                  <CheckCircleIcon className="h-7 w-7" />
-                </div>
+                <img
+                  src="/illustrations/confirmed.svg"
+                  alt="All set"
+                  className="w-44 h-auto mx-auto mb-6"
+                />
                 <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
                   You're all set
                 </h1>
