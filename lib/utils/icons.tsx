@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { type ReactNode } from 'react'
 import {
   Globe,
   Question,
@@ -48,6 +48,8 @@ function BingIcon({ size = 16, color = '#258FFA' }: { size?: number; color?: str
  * Append `?domain=<host>&sz=<px>` to get a favicon.
  */
 export const FAVICON_SERVICE_URL = 'https://www.google.com/s2/favicons'
+
+// ─── Browser, OS, Device icons (unchanged) ───────────────────────────────────
 
 const BROWSER_ICON_MAP: Record<string, { file: string; ext: 'svg' | 'png' }> = {
   'chrome':           { file: 'chrome',           ext: 'svg' },
@@ -118,49 +120,94 @@ export function getDeviceIcon(deviceName: string) {
   return <Question className="text-neutral-400" />
 }
 
+// ─── Referrer Registry ───────────────────────────────────────────────────────
+
 const SI = { size: 16 } as const
 
-export function getReferrerIcon(referrerName: string) {
-  if (!referrerName) return <Globe className="text-neutral-400" />
-  const lower = referrerName.toLowerCase()
-  // Direct traffic
-  if (lower === 'direct') return <CursorClick className="text-neutral-500" />
-  // Browsers as referrers (e.g. googlechrome.com, firefox.com)
-  if (lower.includes('googlechrome') || lower.includes('chrome')) return <img src="/icons/browsers/chrome.svg" alt="Chrome" width={16} height={16} className="inline-block" />
-  // Social / platforms
-  if (lower.includes('google') && !lower.includes('gemini')) return <SiGoogle size={SI.size} color="#4285F4" />
-  if (lower.includes('facebook') || lower === 'fb') return <SiFacebook size={SI.size} color="#0866FF" />
-  if (lower.includes('twitter') || lower === 't.co' || lower.includes('t.co/') || lower.includes('x.com')) return <XIcon />
-  if (lower.includes('linkedin')) return <LinkedInIcon />
-  if (lower.includes('instagram') || lower === 'ig') return <SiInstagram size={SI.size} color="#E4405F" />
-  if (lower.includes('github')) return <SiGithub size={SI.size} color="#fff" />
-  if (lower.includes('youtube')) return <SiYoutube size={SI.size} color="#FF0000" />
-  if (lower.includes('reddit')) return <SiReddit size={SI.size} color="#FF4500" />
-  if (lower.includes('whatsapp')) return <SiWhatsapp size={SI.size} color="#25D366" />
-  if (lower.includes('telegram')) return <SiTelegram size={SI.size} color="#26A5E4" />
-  if (lower.includes('snapchat')) return <SiSnapchat size={SI.size} color="#FFFC00" />
-  if (lower.includes('pinterest')) return <SiPinterest size={SI.size} color="#BD081C" />
-  if (lower.includes('threads')) return <SiThreads size={SI.size} color="#fff" />
-  if (lower.includes('discord')) return <SiDiscord size={SI.size} color="#5865F2" />
-  // Search engines
-  if (lower.includes('bing')) return <BingIcon />
-  if (lower.includes('duckduckgo')) return <SiDuckduckgo size={SI.size} color="#DE5833" />
-  if (lower.includes('brave')) return <SiBrave size={SI.size} color="#FB542B" />
-  // AI assistants
-  if (lower.includes('chatgpt') || lower.includes('openai')) return <OpenAIIcon />
-  if (lower.includes('perplexity')) return <SiPerplexity size={SI.size} color="#1FB8CD" />
-  if (lower.includes('claude') || lower.includes('anthropic')) return <SiAnthropic size={SI.size} color="#D97757" />
-  if (lower.includes('gemini')) return <SiGooglegemini size={SI.size} color="#8E75B2" />
-  if (lower.includes('copilot')) return <SiGithubcopilot size={SI.size} color="#fff" />
-  if (lower.includes('deepseek')) return <OpenAIIcon color="#4D6BFE" />
-  if (lower.includes('grok') || lower.includes('x.ai')) return <XIcon />
-  // Shared Link
-  if (lower === 'shared link') return <Link className="text-neutral-500" />
-
-  return <Globe className="text-neutral-400" />
+interface ReferrerEntry {
+  display: string
+  icon: () => ReactNode
+  hostnames?: string[]
+  aliases?: string[]
 }
 
-const REFERRER_NO_FAVICON = ['direct', 'shared link', 'unknown', '']
+/**
+ * Single source of truth for all known referrer brands.
+ * Key = canonical label (what getReferrerLabel extracts from hostnames).
+ * Adding a new brand = adding one entry here. Nothing else.
+ */
+const REFERRER_REGISTRY: Record<string, ReferrerEntry> = {
+  // ── Special ──
+  direct:      { display: 'Direct',      icon: () => <CursorClick className="text-neutral-500" /> },
+  'shared link': { display: 'Shared Link', icon: () => <Link className="text-neutral-500" /> },
+
+  // ── Social / platforms ──
+  google:      { display: 'Google',      icon: () => <SiGoogle size={SI.size} color="#4285F4" /> },
+  facebook:    { display: 'Facebook',    icon: () => <SiFacebook size={SI.size} color="#0866FF" />,    aliases: ['fb'] },
+  x:           { display: 'X',           icon: () => <XIcon />,                                       hostnames: ['t.co', 'x.com', 'twitter.com'] },
+  linkedin:    { display: 'LinkedIn',    icon: () => <LinkedInIcon /> },
+  instagram:   { display: 'Instagram',   icon: () => <SiInstagram size={SI.size} color="#E4405F" />,   aliases: ['ig'] },
+  github:      { display: 'GitHub',      icon: () => <SiGithub size={SI.size} color="#fff" /> },
+  youtube:     { display: 'YouTube',     icon: () => <SiYoutube size={SI.size} color="#FF0000" />,     aliases: ['yt'] },
+  reddit:      { display: 'Reddit',      icon: () => <SiReddit size={SI.size} color="#FF4500" /> },
+  whatsapp:    { display: 'WhatsApp',    icon: () => <SiWhatsapp size={SI.size} color="#25D366" /> },
+  telegram:    { display: 'Telegram',    icon: () => <SiTelegram size={SI.size} color="#26A5E4" />,    hostnames: ['t.me'] },
+  snapchat:    { display: 'Snapchat',    icon: () => <SiSnapchat size={SI.size} color="#FFFC00" /> },
+  pinterest:   { display: 'Pinterest',   icon: () => <SiPinterest size={SI.size} color="#BD081C" /> },
+  threads:     { display: 'Threads',     icon: () => <SiThreads size={SI.size} color="#fff" /> },
+  discord:     { display: 'Discord',     icon: () => <SiDiscord size={SI.size} color="#5865F2" /> },
+  tumblr:      { display: 'Tumblr',      icon: () => <Globe className="text-neutral-400" /> },
+  quora:       { display: 'Quora',       icon: () => <Globe className="text-neutral-400" /> },
+
+  // ── Search engines ──
+  bing:        { display: 'Bing',        icon: () => <BingIcon /> },
+  duckduckgo:  { display: 'DuckDuckGo',  icon: () => <SiDuckduckgo size={SI.size} color="#DE5833" /> },
+  brave:       { display: 'Brave',       icon: () => <SiBrave size={SI.size} color="#FB542B" /> },
+
+  // ── AI assistants ──
+  chatgpt:     { display: 'ChatGPT',     icon: () => <OpenAIIcon />,                                  hostnames: ['chat.openai.com', 'openai.com'] },
+  perplexity:  { display: 'Perplexity',  icon: () => <SiPerplexity size={SI.size} color="#1FB8CD" /> },
+  claude:      { display: 'Claude',      icon: () => <SiAnthropic size={SI.size} color="#D97757" />,   hostnames: ['anthropic.com'] },
+  gemini:      { display: 'Gemini',      icon: () => <SiGooglegemini size={SI.size} color="#8E75B2" />, hostnames: ['gemini.google.com'] },
+  copilot:     { display: 'Copilot',     icon: () => <SiGithubcopilot size={SI.size} color="#fff" />,  hostnames: ['copilot.microsoft.com'] },
+  deepseek:    { display: 'DeepSeek',    icon: () => <OpenAIIcon color="#4D6BFE" />,                   hostnames: ['chat.deepseek.com'] },
+  grok:        { display: 'Grok',        icon: () => <XIcon />,                                       hostnames: ['grok.x.ai', 'x.ai'] },
+  you:         { display: 'You.com',     icon: () => <Globe className="text-neutral-400" /> },
+  phind:       { display: 'Phind',       icon: () => <Globe className="text-neutral-400" /> },
+
+  // ── Browsers as referrers ──
+  googlechrome: { display: 'Google Chrome', icon: () => <img src="/icons/browsers/chrome.svg" alt="Chrome" width={16} height={16} className="inline-block" />, hostnames: ['googlechrome.github.io'] },
+}
+
+// ── Derived lookup maps (built once at module load) ──
+
+/** alias → registry key (e.g. "ig" → "instagram", "fb" → "facebook") */
+const ALIAS_TO_KEY: Record<string, string> = {}
+
+/** exact hostname → registry key (e.g. "t.co" → "x", "t.me" → "telegram") */
+const HOSTNAME_TO_KEY: Record<string, string> = {}
+
+/** All known hostnames — union of auto-derived (key + ".com") and explicit hostnames */
+const ALL_KNOWN_HOSTNAMES = new Set<string>()
+
+for (const [key, entry] of Object.entries(REFERRER_REGISTRY)) {
+  if (entry.aliases) {
+    for (const alias of entry.aliases) {
+      ALIAS_TO_KEY[alias] = key
+    }
+  }
+  if (entry.hostnames) {
+    for (const hostname of entry.hostnames) {
+      HOSTNAME_TO_KEY[hostname] = key
+      ALL_KNOWN_HOSTNAMES.add(hostname)
+    }
+  }
+  // Auto-derive common hostnames from the key itself
+  ALL_KNOWN_HOSTNAMES.add(`${key}.com`)
+  ALL_KNOWN_HOSTNAMES.add(`www.${key}.com`)
+}
+
+// ── Referrer resolution ──
 
 /** Common subdomains to skip when deriving the main label (e.g. l.instagram.com → instagram). */
 const REFERRER_SUBDOMAIN_SKIP = new Set([
@@ -168,59 +215,7 @@ const REFERRER_SUBDOMAIN_SKIP = new Set([
   'sub', 'api', 'static', 'cdn', 'blog', 'shop', 'support', 'help', 'link',
 ])
 
-/**
- * Override map for display names when the heuristic would be wrong (casing or brand alias).
- * Keys: lowercase label or hostname. Values: exact display name.
- */
-const REFERRER_DISPLAY_OVERRIDES: Record<string, string> = {
-  chatgpt: 'ChatGPT',
-  linkedin: 'LinkedIn',
-  youtube: 'YouTube',
-  reddit: 'Reddit',
-  github: 'GitHub',
-  bing: 'Bing',
-  brave: 'Brave',
-  duckduckgo: 'DuckDuckGo',
-  whatsapp: 'WhatsApp',
-  telegram: 'Telegram',
-  pinterest: 'Pinterest',
-  snapchat: 'Snapchat',
-  threads: 'Threads',
-  tumblr: 'Tumblr',
-  quora: 'Quora',
-  ig: 'Instagram',
-  fb: 'Facebook',
-  yt: 'YouTube',
-  googlechrome: 'Google Chrome',
-  't.co': 'X',
-  'x.com': 'X',
-  // AI assistants and search tools
-  openai: 'ChatGPT',
-  perplexity: 'Perplexity',
-  claude: 'Claude',
-  anthropic: 'Claude',
-  gemini: 'Gemini',
-  copilot: 'Copilot',
-  deepseek: 'DeepSeek',
-  grok: 'Grok',
-  'you': 'You.com',
-  phind: 'Phind',
-}
-
-/**
- * Returns the hostname for a referrer string (URL or plain hostname), or null if invalid.
- */
-function getReferrerHostname(referrer: string): string | null {
-  if (!referrer || typeof referrer !== 'string') return null
-  const trimmed = referrer.trim()
-  if (REFERRER_NO_FAVICON.includes(trimmed.toLowerCase())) return null
-  try {
-    const url = new URL(trimmed.startsWith('http') ? trimmed : `https://${trimmed}`)
-    return url.hostname.toLowerCase()
-  } catch {
-    return null
-  }
-}
+const REFERRER_NO_FAVICON = new Set(['direct', 'shared link', 'unknown', ''])
 
 /**
  * Derives the main label from a hostname (e.g. "l.instagram.com" → "instagram", "google.com" → "google").
@@ -234,32 +229,91 @@ function getReferrerLabel(hostname: string): string {
   return parts[0] ?? withoutWww
 }
 
+function getReferrerHostname(referrer: string): string | null {
+  if (!referrer || typeof referrer !== 'string') return null
+  const trimmed = referrer.trim()
+  if (REFERRER_NO_FAVICON.has(trimmed.toLowerCase())) return null
+  try {
+    const url = new URL(trimmed.startsWith('http') ? trimmed : `https://${trimmed}`)
+    return url.hostname.toLowerCase()
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Resolves a raw referrer string to a registry entry.
+ * Returns null if no known brand matches (unknown domain → use favicon service).
+ */
+function resolveReferrer(referrer: string): ReferrerEntry | null {
+  if (!referrer || typeof referrer !== 'string') return null
+  const lower = referrer.trim().toLowerCase()
+
+  // 1. Exact registry key match (e.g. "Direct", "Reddit", "Google")
+  if (REFERRER_REGISTRY[lower]) return REFERRER_REGISTRY[lower]
+
+  // 2. Alias match (e.g. "ig" → instagram, "fb" → facebook)
+  const aliasKey = ALIAS_TO_KEY[lower]
+  if (aliasKey) return REFERRER_REGISTRY[aliasKey]
+
+  // 3. Hostname-based matching
+  const hostname = getReferrerHostname(referrer)
+  if (!hostname) return null
+
+  // 3a. Exact hostname match (e.g. "t.co" → x, "t.me" → telegram)
+  const hostnameKey = HOSTNAME_TO_KEY[hostname]
+  if (hostnameKey) return REFERRER_REGISTRY[hostnameKey]
+
+  // 3b. Label-based lookup (e.g. "old.reddit.com" → label "reddit" → registry hit)
+  const label = getReferrerLabel(hostname)
+  if (REFERRER_REGISTRY[label]) return REFERRER_REGISTRY[label]
+
+  // 3c. Check alias from label (e.g. hostname "ig.something.com" → label "ig" → alias → instagram)
+  const labelAliasKey = ALIAS_TO_KEY[label]
+  if (labelAliasKey) return REFERRER_REGISTRY[labelAliasKey]
+
+  return null
+}
+
+// ── Public API (same signatures as before) ──
+
+export function getReferrerIcon(referrerName: string): ReactNode {
+  if (!referrerName) return <Globe className="text-neutral-400" />
+  const entry = resolveReferrer(referrerName)
+  if (entry) return entry.icon()
+  return <Globe className="text-neutral-400" />
+}
+
 function capitalizeLabel(label: string): string {
   if (!label) return label
   return label.charAt(0).toUpperCase() + label.slice(1).toLowerCase()
 }
 
-/**
- * Returns a friendly display name for the referrer (e.g. "Google" instead of "google.com").
- * Uses a heuristic (hostname → main label → capitalize) plus a small override map for famous brands.
- */
 export function getReferrerDisplayName(referrer: string): string {
   if (!referrer || typeof referrer !== 'string') return referrer || ''
   const trimmed = referrer.trim()
   if (trimmed === '') return ''
+  const entry = resolveReferrer(trimmed)
+  if (entry) return entry.display
+  // Unknown referrer — derive display name from hostname
   const hostname = getReferrerHostname(trimmed)
-  if (!hostname) {
-    // Plain names without a dot (e.g. "Ig", "Direct") — check override map before returning raw
-    const overrideByPlain = REFERRER_DISPLAY_OVERRIDES[trimmed.toLowerCase()]
-    if (overrideByPlain) return overrideByPlain
-    return trimmed
+  if (!hostname) return trimmed
+  return capitalizeLabel(getReferrerLabel(hostname))
+}
+
+export function getReferrerFavicon(referrer: string): string | null {
+  if (!referrer || typeof referrer !== 'string') return null
+  const normalized = referrer.trim().toLowerCase()
+  if (REFERRER_NO_FAVICON.has(normalized)) return null
+  if (!normalized.includes('.')) return null
+  // Known brand → skip favicon service, use registry icon
+  if (resolveReferrer(referrer)) return null
+  try {
+    const url = new URL(referrer.startsWith('http') ? referrer : `https://${referrer}`)
+    return `${FAVICON_SERVICE_URL}?domain=${url.hostname.toLowerCase()}&sz=32`
+  } catch {
+    return null
   }
-  const overrideByHostname = REFERRER_DISPLAY_OVERRIDES[hostname]
-  if (overrideByHostname) return overrideByHostname
-  const label = getReferrerLabel(hostname)
-  const overrideByLabel = REFERRER_DISPLAY_OVERRIDES[label]
-  if (overrideByLabel) return overrideByLabel
-  return capitalizeLabel(label)
 }
 
 /**
@@ -286,63 +340,4 @@ export function mergeReferrersByDisplayName(
   return Array.from(byDisplayName.values())
     .map(({ referrer, pageviews }) => ({ referrer, pageviews }))
     .sort((a, b) => b.pageviews - a.pageviews)
-}
-
-/**
- * Domains/labels where the Phosphor icon is better than Google's favicon service.
- * For these, getReferrerFavicon returns null so the caller falls back to getReferrerIcon.
- */
-const REFERRER_PREFER_ICON = new Set([
-  // Social / platforms
-  't.co', 'x.com', 'twitter.com', 'www.twitter.com',
-  'google.com', 'www.google.com',
-  'facebook.com', 'www.facebook.com', 'm.facebook.com', 'l.facebook.com',
-  'instagram.com', 'www.instagram.com', 'l.instagram.com',
-  'linkedin.com', 'www.linkedin.com',
-  'github.com', 'www.github.com',
-  'youtube.com', 'www.youtube.com', 'm.youtube.com',
-  'reddit.com', 'www.reddit.com', 'old.reddit.com',
-  'whatsapp.com', 'www.whatsapp.com', 'web.whatsapp.com',
-  'telegram.org', 'web.telegram.org', 't.me',
-  'snapchat.com', 'www.snapchat.com',
-  'pinterest.com', 'www.pinterest.com',
-  'threads.net', 'www.threads.net',
-  // Search engines
-  'bing.com', 'www.bing.com',
-  'duckduckgo.com', 'www.duckduckgo.com',
-  'search.brave.com', 'brave.com',
-  // AI assistants
-  'chatgpt.com', 'chat.openai.com', 'openai.com',
-  'perplexity.ai', 'www.perplexity.ai',
-  'claude.ai', 'www.claude.ai', 'anthropic.com',
-  'gemini.google.com',
-  'copilot.microsoft.com',
-  'deepseek.com', 'chat.deepseek.com',
-  'grok.x.ai', 'x.ai',
-  'phind.com', 'www.phind.com',
-  'you.com', 'www.you.com',
-])
-
-/**
- * Returns a favicon URL for the referrer's domain, or null for non-URL referrers
- * (e.g. "Direct", "Unknown") or known services where the Phosphor icon is better.
- */
-export function getReferrerFavicon(referrer: string): string | null {
-  if (!referrer || typeof referrer !== 'string') return null
-  const normalized = referrer.trim().toLowerCase()
-  if (REFERRER_NO_FAVICON.includes(normalized)) return null
-  // Plain names without a dot (e.g. "Instagram", "WhatsApp") are not real domains
-  if (!normalized.includes('.')) return null
-  try {
-    const url = new URL(referrer.startsWith('http') ? referrer : `https://${referrer}`)
-    const hostname = url.hostname.toLowerCase()
-    // Use Phosphor icon for known services — Google favicons are unreliable for these
-    if (REFERRER_PREFER_ICON.has(hostname)) return null
-    // Also check if the label matches a known referrer (catches subdomains like search.google.com)
-    const label = getReferrerLabel(hostname)
-    if (REFERRER_DISPLAY_OVERRIDES[label]) return null
-    return `${FAVICON_SERVICE_URL}?domain=${hostname}&sz=32`
-  } catch {
-    return null
-  }
 }
