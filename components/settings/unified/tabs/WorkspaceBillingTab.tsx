@@ -1,0 +1,166 @@
+'use client'
+
+import { useState } from 'react'
+import Link from 'next/link'
+import { Button, toast, Spinner } from '@ciphera-net/ui'
+import { CreditCard, ArrowSquareOut } from '@phosphor-icons/react'
+import { useSubscription } from '@/lib/swr/dashboard'
+import { createPortalSession, cancelSubscription, resumeSubscription } from '@/lib/api/billing'
+import { formatDateLong } from '@/lib/utils/formatDate'
+import { getAuthErrorMessage } from '@ciphera-net/ui'
+
+export default function WorkspaceBillingTab() {
+  const { data: subscription, isLoading, mutate } = useSubscription()
+  const [cancelling, setCancelling] = useState(false)
+
+  const handleManageBilling = async () => {
+    try {
+      const { url } = await createPortalSession()
+      if (url) window.open(url, '_blank')
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to open billing portal')
+    }
+  }
+
+  const handleCancel = async () => {
+    if (!confirm('Are you sure you want to cancel your subscription?')) return
+    setCancelling(true)
+    try {
+      await cancelSubscription()
+      await mutate()
+      toast.success('Subscription cancelled')
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to cancel subscription')
+    } finally {
+      setCancelling(false)
+    }
+  }
+
+  const handleResume = async () => {
+    try {
+      await resumeSubscription()
+      await mutate()
+      toast.success('Subscription resumed')
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to resume subscription')
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Spinner className="w-6 h-6 text-neutral-500" />
+      </div>
+    )
+  }
+
+  if (!subscription) {
+    return (
+      <div className="text-center py-12">
+        <CreditCard className="w-10 h-10 text-neutral-500 mx-auto mb-3" />
+        <h3 className="text-base font-semibold text-white mb-1">No subscription</h3>
+        <p className="text-sm text-neutral-400 mb-4">You're on the free plan.</p>
+        <Link href="/pricing">
+          <Button variant="primary" className="text-sm">View Plans</Button>
+        </Link>
+      </div>
+    )
+  }
+
+  const planLabel = (() => {
+    const raw = subscription.plan_id?.startsWith('price_') ? 'Pro'
+      : subscription.plan_id === 'free' || !subscription.plan_id ? 'Free'
+      : subscription.plan_id
+    return raw === 'Free' || raw === 'Pro' ? raw : raw.charAt(0).toUpperCase() + raw.slice(1)
+  })()
+
+  const isActive = subscription.subscription_status === 'active' || subscription.subscription_status === 'trialing'
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-base font-semibold text-white mb-1">Billing & Subscription</h3>
+        <p className="text-sm text-neutral-400">Manage your plan, usage, and payment details.</p>
+      </div>
+
+      {/* Plan card */}
+      <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <h4 className="text-lg font-bold text-white">{planLabel} Plan</h4>
+            {isActive && (
+              <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-green-900/30 text-green-400 border border-green-900/50">
+                {subscription.subscription_status === 'trialing' ? 'Trial' : 'Active'}
+              </span>
+            )}
+            {subscription.cancel_at_period_end && (
+              <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-900/30 text-yellow-400 border border-yellow-900/50">
+                Cancelling
+              </span>
+            )}
+          </div>
+          <Link href="/pricing">
+            <Button variant="primary" className="text-sm">Change Plan</Button>
+          </Link>
+        </div>
+
+        {/* Usage stats */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {typeof subscription.sites_count === 'number' && (
+            <div>
+              <p className="text-xs text-neutral-500 uppercase tracking-wider">Sites</p>
+              <p className="text-lg font-semibold text-white">{subscription.sites_count}</p>
+            </div>
+          )}
+          {subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number' && (
+            <div>
+              <p className="text-xs text-neutral-500 uppercase tracking-wider">Pageviews</p>
+              <p className="text-lg font-semibold text-white">{subscription.pageview_usage.toLocaleString()} / {subscription.pageview_limit.toLocaleString()}</p>
+            </div>
+          )}
+          {subscription.current_period_end && (
+            <div>
+              <p className="text-xs text-neutral-500 uppercase tracking-wider">
+                {subscription.cancel_at_period_end ? 'Ends' : 'Renews'}
+              </p>
+              <p className="text-lg font-semibold text-white">{formatDateLong(new Date(subscription.current_period_end))}</p>
+            </div>
+          )}
+          {subscription.pageview_limit > 0 && (
+            <div>
+              <p className="text-xs text-neutral-500 uppercase tracking-wider">Limit</p>
+              <p className="text-lg font-semibold text-white">{subscription.pageview_limit.toLocaleString()} / mo</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex flex-wrap gap-3">
+        {subscription.has_payment_method && (
+          <Button onClick={handleManageBilling} variant="secondary" className="text-sm gap-1.5">
+            <ArrowSquareOut weight="bold" className="w-3.5 h-3.5" />
+            Payment method & invoices
+          </Button>
+        )}
+
+        {isActive && !subscription.cancel_at_period_end && (
+          <Button
+            onClick={handleCancel}
+            variant="secondary"
+            className="text-sm text-neutral-400 hover:text-red-400"
+            disabled={cancelling}
+          >
+            {cancelling ? 'Cancelling...' : 'Cancel subscription'}
+          </Button>
+        )}
+
+        {subscription.cancel_at_period_end && (
+          <Button onClick={handleResume} variant="secondary" className="text-sm text-brand-orange">
+            Resume subscription
+          </Button>
+        )}
+      </div>
+    </div>
+  )
+}

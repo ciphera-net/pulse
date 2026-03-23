@@ -16,7 +16,9 @@ import { setSessionAction } from '@/app/actions/auth'
 import { LoadingOverlay } from '@ciphera-net/ui'
 import { useRouter } from 'next/navigation'
 import { SettingsModalProvider, useSettingsModal } from '@/lib/settings-modal-context'
+import { UnifiedSettingsProvider } from '@/lib/unified-settings-context'
 import SettingsModalWrapper from '@/components/settings/SettingsModalWrapper'
+import UnifiedSettingsModal from '@/components/settings/unified/UnifiedSettingsModal'
 
 const ORG_SWITCH_KEY = 'pulse_switching_org'
 
@@ -109,6 +111,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
         {showOfflineBar && <OfflineBanner isOnline={isOnline} />}
         {children}
         <SettingsModalWrapper />
+        <UnifiedSettingsModal />
       </>
     )
   }
@@ -141,6 +144,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
           {children}
         </main>
         <SettingsModalWrapper />
+        <UnifiedSettingsModal />
       </div>
     )
   }
@@ -165,7 +169,9 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
 export default function LayoutContent({ children }: { children: React.ReactNode }) {
   return (
     <SettingsModalProvider>
-      <LayoutInner>{children}</LayoutInner>
+      <UnifiedSettingsProvider>
+        <LayoutInner>{children}</LayoutInner>
+      </UnifiedSettingsProvider>
     </SettingsModalProvider>
   )
 }

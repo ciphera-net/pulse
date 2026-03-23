@@ -1,0 +1,386 @@
+'use client'
+
+import { useState, useCallback, useEffect } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { X, GearSix, Buildings, User, CaretDown } from '@phosphor-icons/react'
+import { useUnifiedSettings } from '@/lib/unified-settings-context'
+import { useAuth } from '@/lib/auth/context'
+import { useSite } from '@/lib/swr/dashboard'
+import { listSites, type Site } from '@/lib/api/sites'
+
+// Tab content components
+import SiteGeneralTab from './tabs/SiteGeneralTab'
+import SiteGoalsTab from './tabs/SiteGoalsTab'
+import WorkspaceGeneralTab from './tabs/WorkspaceGeneralTab'
+import WorkspaceBillingTab from './tabs/WorkspaceBillingTab'
+import AccountProfileTab from './tabs/AccountProfileTab'
+
+// ─── Types ──────────────────────────────────────────────────────
+
+type SettingsContext = 'site' | 'workspace' | 'account'
+
+interface TabDef {
+  id: string
+  label: string
+}
+
+const SITE_TABS: TabDef[] = [
+  { id: 'general', label: 'General' },
+  { id: 'goals', label: 'Goals' },
+  { id: 'visibility', label: 'Visibility' },
+  { id: 'privacy', label: 'Privacy' },
+  { id: 'bot-spam', label: 'Bot & Spam' },
+  { id: 'reports', label: 'Reports' },
+  { id: 'integrations', label: 'Integrations' },
+]
+
+const WORKSPACE_TABS: TabDef[] = [
+  { id: 'general', label: 'General' },
+  { id: 'members', label: 'Members' },
+  { id: 'billing', label: 'Billing' },
+  { id: 'notifications', label: 'Notifications' },
+  { id: 'audit', label: 'Audit Log' },
+]
+
+const ACCOUNT_TABS: TabDef[] = [
+  { id: 'profile', label: 'Profile' },
+  { id: 'security', label: 'Security' },
+  { id: 'devices', label: 'Devices' },
+]
+
+// ─── Context Switcher ───────────────────────────────────────────
+
+function ContextSwitcher({
+  active,
+  onChange,
+  sites,
+  activeSiteId,
+  onSiteChange,
+}: {
+  active: SettingsContext
+  onChange: (ctx: SettingsContext) => void
+  sites: Site[]
+  activeSiteId: string | null
+  onSiteChange: (id: string) => void
+}) {
+  const [siteDropdownOpen, setSiteDropdownOpen] = useState(false)
+  const activeSite = sites.find(s => s.id === activeSiteId)
+
+  return (
+    <div className="flex items-center gap-1 p-1 bg-neutral-800/50 rounded-xl">
+      {/* Site button with dropdown */}
+      <div className="relative">
+        <button
+          onClick={() => {
+            onChange('site')
+            if (active === 'site') setSiteDropdownOpen(!siteDropdownOpen)
+          }}
+          className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+            active === 'site'
+              ? 'bg-neutral-700 text-white shadow-sm'
+              : 'text-neutral-400 hover:text-white'
+          }`}
+        >
+          <GearSix weight="bold" className="w-4 h-4" />
+          <span className="hidden sm:inline">
+            {activeSite ? activeSite.domain : 'Site'}
+          </span>
+          <CaretDown weight="bold" className="w-3 h-3" />
+        </button>
+
+        <AnimatePresence>
+          {siteDropdownOpen && active === 'site' && sites.length > 1 && (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.15 }}
+              className="absolute top-full left-0 mt-1 w-56 rounded-xl bg-neutral-800 border border-neutral-700 shadow-xl z-50 py-1 overflow-hidden"
+            >
+              {sites.map(site => (
+                <button
+                  key={site.id}
+                  onClick={() => {
+                    onSiteChange(site.id)
+                    setSiteDropdownOpen(false)
+                  }}
+                  className={`w-full text-left px-3 py-2 text-sm transition-colors ${
+                    site.id === activeSiteId
+                      ? 'bg-brand-orange/10 text-brand-orange'
+                      : 'text-neutral-300 hover:bg-neutral-700/50'
+                  }`}
+                >
+                  <span className="font-medium">{site.name}</span>
+                  <span className="ml-2 text-neutral-500 text-xs">{site.domain}</span>
+                </button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <button
+        onClick={() => { onChange('workspace'); setSiteDropdownOpen(false) }}
+        className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+          active === 'workspace'
+            ? 'bg-neutral-700 text-white shadow-sm'
+            : 'text-neutral-400 hover:text-white'
+        }`}
+      >
+        <Buildings weight="bold" className="w-4 h-4" />
+        <span className="hidden sm:inline">Workspace</span>
+      </button>
+
+      <button
+        onClick={() => { onChange('account'); setSiteDropdownOpen(false) }}
+        className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+          active === 'account'
+            ? 'bg-neutral-700 text-white shadow-sm'
+            : 'text-neutral-400 hover:text-white'
+        }`}
+      >
+        <User weight="bold" className="w-4 h-4" />
+        <span className="hidden sm:inline">Account</span>
+      </button>
+    </div>
+  )
+}
+
+// ─── Tab Bar ────────────────────────────────────────────────────
+
+function TabBar({
+  tabs,
+  activeTab,
+  onChange,
+}: {
+  tabs: TabDef[]
+  activeTab: string
+  onChange: (id: string) => void
+}) {
+  return (
+    <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-px">
+      {tabs.map(tab => (
+        <button
+          key={tab.id}
+          onClick={() => onChange(tab.id)}
+          className={`relative px-3 py-2 text-sm font-medium whitespace-nowrap rounded-lg transition-all duration-200 ${
+            activeTab === tab.id
+              ? 'text-brand-orange'
+              : 'text-neutral-500 hover:text-neutral-300'
+          }`}
+        >
+          {tab.label}
+          {activeTab === tab.id && (
+            <motion.div
+              layoutId="settings-tab-indicator"
+              className="absolute bottom-0 left-2 right-2 h-0.5 bg-brand-orange rounded-full"
+              transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
+            />
+          )}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// ─── Tab Content ────────────────────────────────────────────────
+
+function ComingSoon({ label }: { label: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <div className="rounded-full bg-neutral-800 p-4 mb-4">
+        <GearSix className="w-8 h-8 text-neutral-500" />
+      </div>
+      <h3 className="text-lg font-semibold text-white mb-1">{label}</h3>
+      <p className="text-sm text-neutral-400 max-w-sm">
+        This section is being migrated. For now, use the existing settings page.
+      </p>
+    </div>
+  )
+}
+
+function TabContent({
+  context,
+  activeTab,
+  siteId,
+}: {
+  context: SettingsContext
+  activeTab: string
+  siteId: string | null
+}) {
+  // Site tabs
+  if (context === 'site' && siteId) {
+    switch (activeTab) {
+      case 'general': return <SiteGeneralTab siteId={siteId} />
+      case 'goals': return <SiteGoalsTab siteId={siteId} />
+      case 'visibility': return <ComingSoon label="Visibility" />
+      case 'privacy': return <ComingSoon label="Data & Privacy" />
+      case 'bot-spam': return <ComingSoon label="Bot & Spam" />
+      case 'reports': return <ComingSoon label="Reports" />
+      case 'integrations': return <ComingSoon label="Integrations" />
+    }
+  }
+
+  // Workspace tabs
+  if (context === 'workspace') {
+    switch (activeTab) {
+      case 'general': return <WorkspaceGeneralTab />
+      case 'billing': return <WorkspaceBillingTab />
+      case 'members': return <ComingSoon label="Members" />
+      case 'notifications': return <ComingSoon label="Notifications" />
+      case 'audit': return <ComingSoon label="Audit Log" />
+    }
+  }
+
+  // Account tabs
+  if (context === 'account') {
+    switch (activeTab) {
+      case 'profile': return <AccountProfileTab />
+      case 'security': return <ComingSoon label="Security" />
+      case 'devices': return <ComingSoon label="Devices" />
+    }
+  }
+
+  return null
+}
+
+// ─── Main Modal ─────────────────────────────────────────────────
+
+export default function UnifiedSettingsModal() {
+  const { isOpen, closeUnifiedSettings: closeSettings, initialTab: initTab } = useUnifiedSettings()
+  const { user } = useAuth()
+
+  const [context, setContext] = useState<SettingsContext>('site')
+  const [siteTabs, setSiteTabs] = useState('general')
+  const [workspaceTabs, setWorkspaceTabs] = useState('general')
+  const [accountTabs, setAccountTabs] = useState('profile')
+
+  const [sites, setSites] = useState<Site[]>([])
+  const [activeSiteId, setActiveSiteId] = useState<string | null>(null)
+
+  // Apply initial tab when modal opens
+  useEffect(() => {
+    if (isOpen && initTab) {
+      if (initTab.context) setContext(initTab.context)
+      if (initTab.tab) {
+        if (initTab.context === 'site') setSiteTabs(initTab.tab)
+        else if (initTab.context === 'workspace') setWorkspaceTabs(initTab.tab)
+        else if (initTab.context === 'account') setAccountTabs(initTab.tab)
+      }
+    }
+  }, [isOpen, initTab])
+
+  // Load sites when modal opens
+  useEffect(() => {
+    if (isOpen && user?.org_id) {
+      listSites().then(data => {
+        const list = Array.isArray(data) ? data : []
+        setSites(list)
+        if (!activeSiteId && list.length > 0) {
+          setActiveSiteId(list[0].id)
+        }
+      }).catch(() => {})
+    }
+  }, [isOpen, user?.org_id])
+
+  // Try to pick up site from URL
+  useEffect(() => {
+    if (isOpen && typeof window !== 'undefined') {
+      const match = window.location.pathname.match(/\/sites\/([a-f0-9-]+)/)
+      if (match) setActiveSiteId(match[1])
+    }
+  }, [isOpen])
+
+  // Escape key closes
+  useEffect(() => {
+    if (!isOpen) return
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeSettings()
+    }
+    window.addEventListener('keydown', handleEsc)
+    return () => window.removeEventListener('keydown', handleEsc)
+  }, [isOpen, closeSettings])
+
+  const tabs = context === 'site' ? SITE_TABS : context === 'workspace' ? WORKSPACE_TABS : ACCOUNT_TABS
+  const activeTab = context === 'site' ? siteTabs : context === 'workspace' ? workspaceTabs : accountTabs
+  const setActiveTab = context === 'site' ? setSiteTabs : context === 'workspace' ? setWorkspaceTabs : setAccountTabs
+
+  const handleContextChange = useCallback((ctx: SettingsContext) => {
+    setContext(ctx)
+  }, [])
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm"
+            onClick={closeSettings}
+          />
+
+          {/* Modal */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.97, y: 8 }}
+            transition={{ type: 'spring', bounce: 0.15, duration: 0.35 }}
+            className="fixed inset-0 z-[61] flex items-center justify-center p-4 pointer-events-none"
+          >
+            <div
+              className="pointer-events-auto w-full max-w-3xl max-h-[90vh] bg-neutral-900 border border-neutral-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="shrink-0 px-6 pt-5 pb-4 border-b border-neutral-800/60">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-white">Settings</h2>
+                  <button
+                    onClick={closeSettings}
+                    className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors"
+                  >
+                    <X weight="bold" className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Context Switcher */}
+                <ContextSwitcher
+                  active={context}
+                  onChange={handleContextChange}
+                  sites={sites}
+                  activeSiteId={activeSiteId}
+                  onSiteChange={setActiveSiteId}
+                />
+
+                {/* Tabs */}
+                <div className="mt-4">
+                  <TabBar tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={`${context}-${activeTab}`}
+                    initial={{ opacity: 0, x: 8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -8 }}
+                    transition={{ duration: 0.15 }}
+                    className="p-6"
+                  >
+                    <TabContent context={context} activeTab={activeTab} siteId={activeSiteId} />
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  )
+}
