@@ -8,12 +8,24 @@ import { useAuth } from '@/lib/auth/context'
 import { useSite } from '@/lib/swr/dashboard'
 import { listSites, type Site } from '@/lib/api/sites'
 
-// Tab content components
+// Tab content components — Site
 import SiteGeneralTab from './tabs/SiteGeneralTab'
 import SiteGoalsTab from './tabs/SiteGoalsTab'
+import SiteVisibilityTab from './tabs/SiteVisibilityTab'
+import SitePrivacyTab from './tabs/SitePrivacyTab'
+import SiteBotSpamTab from './tabs/SiteBotSpamTab'
+import SiteReportsTab from './tabs/SiteReportsTab'
+import SiteIntegrationsTab from './tabs/SiteIntegrationsTab'
+// Tab content components — Workspace
 import WorkspaceGeneralTab from './tabs/WorkspaceGeneralTab'
 import WorkspaceBillingTab from './tabs/WorkspaceBillingTab'
+import WorkspaceMembersTab from './tabs/WorkspaceMembersTab'
+import WorkspaceNotificationsTab from './tabs/WorkspaceNotificationsTab'
+import WorkspaceAuditTab from './tabs/WorkspaceAuditTab'
+// Tab content components — Account
 import AccountProfileTab from './tabs/AccountProfileTab'
+import AccountSecurityTab from './tabs/AccountSecurityTab'
+import AccountDevicesTab from './tabs/AccountDevicesTab'
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -213,11 +225,11 @@ function TabContent({
     switch (activeTab) {
       case 'general': return <SiteGeneralTab siteId={siteId} />
       case 'goals': return <SiteGoalsTab siteId={siteId} />
-      case 'visibility': return <ComingSoon label="Visibility" />
-      case 'privacy': return <ComingSoon label="Data & Privacy" />
-      case 'bot-spam': return <ComingSoon label="Bot & Spam" />
-      case 'reports': return <ComingSoon label="Reports" />
-      case 'integrations': return <ComingSoon label="Integrations" />
+      case 'visibility': return <SiteVisibilityTab siteId={siteId} />
+      case 'privacy': return <SitePrivacyTab siteId={siteId} />
+      case 'bot-spam': return <SiteBotSpamTab siteId={siteId} />
+      case 'reports': return <SiteReportsTab siteId={siteId} />
+      case 'integrations': return <SiteIntegrationsTab siteId={siteId} />
     }
   }
 
@@ -226,9 +238,9 @@ function TabContent({
     switch (activeTab) {
       case 'general': return <WorkspaceGeneralTab />
       case 'billing': return <WorkspaceBillingTab />
-      case 'members': return <ComingSoon label="Members" />
-      case 'notifications': return <ComingSoon label="Notifications" />
-      case 'audit': return <ComingSoon label="Audit Log" />
+      case 'members': return <WorkspaceMembersTab />
+      case 'notifications': return <WorkspaceNotificationsTab />
+      case 'audit': return <WorkspaceAuditTab />
     }
   }
 
@@ -236,8 +248,8 @@ function TabContent({
   if (context === 'account') {
     switch (activeTab) {
       case 'profile': return <AccountProfileTab />
-      case 'security': return <ComingSoon label="Security" />
-      case 'devices': return <ComingSoon label="Devices" />
+      case 'security': return <AccountSecurityTab />
+      case 'devices': return <AccountDevicesTab />
     }
   }
 
