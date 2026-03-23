@@ -135,7 +135,15 @@ export default function SiteList({ sites, siteStats, loading, onDelete }: SiteLi
 
   if (sites.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-neutral-300 dark:border-neutral-700 p-12 text-center">
+      <div className="rounded-2xl border border-dashed border-neutral-300 dark:border-neutral-700 p-12 text-center flex flex-col items-center">
+        <Image
+          src="/illustrations/setup-analytics.svg"
+          alt="Set up your first site"
+          width={280}
+          height={210}
+          className="mb-6"
+          unoptimized
+        />
         <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">No sites yet</h3>
         <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400 mb-4">Create your first site to get started.</p>
         <Link href="/sites/new">

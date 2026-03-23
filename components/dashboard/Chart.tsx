@@ -414,7 +414,12 @@ export default function Chart({
           </div>
 
           {!hasData || !hasAnyNonZero ? (
-            <div className="flex h-96 flex-col items-center justify-center gap-2">
+            <div className="flex h-96 flex-col items-center justify-center gap-3">
+              <img
+                src="/illustrations/no-data.svg"
+                alt="No data available"
+                className="w-48 h-auto mb-2"
+              />
               <p className="text-sm text-neutral-400 dark:text-neutral-500">
                 {!hasData ? 'No data for this period' : `No ${METRIC_CONFIGS.find((m) => m.key === metric)?.label.toLowerCase()} recorded`}
               </p>

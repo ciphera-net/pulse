@@ -556,9 +556,11 @@ export default function ColumnJourney({
   if (!transitions.length) {
     return (
       <div className="h-[400px] flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
-        <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
-          <TreeStructure className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
-        </div>
+        <img
+          src="/illustrations/journey.svg"
+          alt="No journey data"
+          className="w-52 h-auto mb-2"
+        />
         <h4 className="font-semibold text-neutral-900 dark:text-white">
           No journey data yet
         </h4>
