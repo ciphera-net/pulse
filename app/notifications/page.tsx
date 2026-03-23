@@ -122,8 +122,8 @@ export default function NotificationsPage() {
           )}
         </div>
 
-        <h1 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">Notifications</h1>
-        <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6">
+        <h1 className="text-2xl font-bold text-white mb-2">Notifications</h1>
+        <p className="text-sm text-neutral-400 mb-6">
           Manage which notifications you receive in{' '}
           <Link href="/org-settings?tab=notifications" className="text-brand-orange hover:underline">
             Organization Settings → Notifications
@@ -137,7 +137,7 @@ export default function NotificationsPage() {
             {error}
           </div>
         ) : notifications.length === 0 ? (
-          <div className="p-6 text-center text-neutral-500 dark:text-neutral-400 rounded-2xl border border-neutral-200 dark:border-neutral-800">
+          <div className="p-6 text-center text-neutral-400 rounded-2xl border border-neutral-200 dark:border-neutral-800">
             <p>No notifications yet</p>
             <p className="text-sm mt-2">
               Manage which notifications you receive in{' '}
@@ -159,11 +159,11 @@ export default function NotificationsPage() {
                     <div className="flex gap-3">
                       {getTypeIcon(n.type)}
                       <div className="min-w-0 flex-1">
-                        <p className={`text-sm ${!n.read ? 'font-medium' : ''} text-neutral-900 dark:text-white`}>
+                        <p className={`text-sm ${!n.read ? 'font-medium' : ''} text-white`}>
                           {n.title}
                         </p>
                         {n.body && (
-                          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{n.body}</p>
+                          <p className="text-xs text-neutral-400 mt-0.5">{n.body}</p>
                         )}
                         <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
                           {formatTimeAgo(n.created_at)}
@@ -182,11 +182,11 @@ export default function NotificationsPage() {
                     <div className="flex gap-3">
                       {getTypeIcon(n.type)}
                       <div className="min-w-0 flex-1">
-                        <p className={`text-sm ${!n.read ? 'font-medium' : ''} text-neutral-900 dark:text-white`}>
+                        <p className={`text-sm ${!n.read ? 'font-medium' : ''} text-white`}>
                           {n.title}
                         </p>
                         {n.body && (
-                          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{n.body}</p>
+                          <p className="text-xs text-neutral-400 mt-0.5">{n.body}</p>
                         )}
                         <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
                           {formatTimeAgo(n.created_at)}

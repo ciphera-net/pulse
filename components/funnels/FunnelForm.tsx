@@ -206,7 +206,7 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
           Back to Funnels
         </Link>
 
-        <h1 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
+        <h1 className="text-2xl font-bold text-white mb-2">
           {initialData ? 'Edit Funnel' : 'Create New Funnel'}
         </h1>
         <p className="text-neutral-600 dark:text-neutral-400">
@@ -252,7 +252,7 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
         {/* Steps */}
         <div className="space-y-4 mb-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
+            <h3 className="text-lg font-semibold text-white">
               Funnel Steps
             </h3>
           </div>

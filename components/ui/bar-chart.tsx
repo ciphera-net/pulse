@@ -9,7 +9,7 @@ import {
   AnimatePresence,
   motion,
   useSpring,
-} from "motion/react";
+} from "framer-motion";
 import {
   Children,
   createContext,

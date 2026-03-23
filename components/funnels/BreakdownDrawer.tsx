@@ -50,7 +50,7 @@ export default function BreakdownDrawer({ siteId, funnelId, stepIndex, stepName,
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 dark:border-neutral-800">
           <div>
-            <h3 className="font-semibold text-neutral-900 dark:text-white">Step Breakdown</h3>
+            <h3 className="font-semibold text-white">Step Breakdown</h3>
             <p className="text-sm text-neutral-500">{stepName}</p>
           </div>
           <button onClick={onClose} className="p-2 text-neutral-400 hover:text-neutral-600 rounded-lg">
@@ -91,7 +91,7 @@ export default function BreakdownDrawer({ siteId, funnelId, stepIndex, stepName,
             <div className="space-y-2">
               {breakdown.entries.map(entry => (
                 <div key={entry.value} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800/50">
-                  <span className="text-sm text-neutral-900 dark:text-white truncate mr-4">
+                  <span className="text-sm text-white truncate mr-4">
                     {entry.value || '(unknown)'}
                   </span>
                   <div className="flex items-center gap-4 text-sm shrink-0">

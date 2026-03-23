@@ -16,7 +16,7 @@ import TechSpecs from '@/components/dashboard/TechSpecs'
 import { Select, DatePicker as DatePickerModal, Captcha, DownloadIcon, ZapIcon } from '@ciphera-net/ui'
 import { DashboardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import ExportModal from '@/components/dashboard/ExportModal'
-import { FAVICON_SERVICE_URL } from '@/lib/utils/icons'
+import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
 
 // Helper to get date ranges
 const getDateRange = (days: number) => {
@@ -195,7 +195,7 @@ export default function PublicDashboardPage() {
              <div className="w-12 h-12 bg-brand-orange/10 rounded-xl flex items-center justify-center mx-auto mb-4 text-brand-orange">
               <ZapIcon className="w-6 h-6" />
             </div>
-            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
+            <h1 className="text-2xl font-bold text-white mb-2">
               Protected Dashboard
             </h1>
             <p className="text-neutral-600 dark:text-neutral-400">
@@ -210,7 +210,7 @@ export default function PublicDashboardPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter password"
-                className="w-full px-4 py-2 border border-neutral-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-brand-orange focus:border-transparent"
+                className="w-full px-4 py-2 border border-neutral-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-white focus:ring-2 focus:ring-brand-orange focus:border-transparent"
                 autoFocus
               />
             </div>
@@ -270,7 +270,7 @@ export default function PublicDashboardPage() {
                         <div className="w-2 h-2 rounded-full bg-brand-orange animate-pulse" />
                         <span className="text-sm font-medium text-brand-orange uppercase tracking-wider">Public Dashboard</span>
                     </div>
-                    <h1 className="text-2xl font-bold text-neutral-900 dark:text-white flex items-center gap-3">
+                    <h1 className="text-2xl font-bold text-white flex items-center gap-3">
                     <Image
                         src={`${FAVICON_SERVICE_URL}?domain=${site.domain}&sz=64`}
                         alt={site.name}

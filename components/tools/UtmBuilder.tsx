@@ -125,7 +125,7 @@ export default function UtmBuilder({ initialSiteId }: UtmBuilderProps) {
         {/* Site Selector */}
         {sites.length > 0 && (
           <div>
-            <label className="block text-sm font-medium mb-1 text-neutral-900 dark:text-white">Select Site</label>
+            <label className="block text-sm font-medium mb-1 text-white">Select Site</label>
             <Select
               value={selectedSiteId}
               onChange={handleSiteChange}
@@ -138,7 +138,7 @@ export default function UtmBuilder({ initialSiteId }: UtmBuilderProps) {
         )}
 
         <div>
-          <label className="block text-sm font-medium mb-1.5 text-neutral-900 dark:text-white">Website URL *</label>
+          <label className="block text-sm font-medium mb-1.5 text-white">Website URL *</label>
           {selectedSite ? (
             <div className="flex rounded-xl shadow-sm transition-all duration-200 focus-within:ring-4 focus-within:ring-brand-orange/10 focus-within:border-brand-orange hover:border-brand-orange/50 border border-neutral-200 dark:border-neutral-800">
               <span className="inline-flex items-center px-4 rounded-l-xl border-r border-neutral-200 dark:border-neutral-800 bg-neutral-100 dark:bg-neutral-900 text-neutral-500 text-sm select-none">
@@ -146,7 +146,7 @@ export default function UtmBuilder({ initialSiteId }: UtmBuilderProps) {
               </span>
               <input
                 type="text"
-                className="flex-1 min-w-0 block w-full px-4 py-3 rounded-none rounded-r-xl bg-neutral-50/50 dark:bg-neutral-900/50 outline-none transition-all text-neutral-900 dark:text-white text-sm placeholder:text-neutral-400"
+                className="flex-1 min-w-0 block w-full px-4 py-3 rounded-none rounded-r-xl bg-neutral-50/50 dark:bg-neutral-900/50 outline-none transition-all text-white text-sm placeholder:text-neutral-400"
                 placeholder="/blog/post-1"
                 value={getCurrentPath()}
                 onChange={handlePathChange}
@@ -167,7 +167,7 @@ export default function UtmBuilder({ initialSiteId }: UtmBuilderProps) {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-1.5 text-neutral-900 dark:text-white">Source *</label>
+            <label className="block text-sm font-medium mb-1.5 text-white">Source *</label>
             <Input
               name="source"
               placeholder="google, newsletter"
@@ -176,7 +176,7 @@ export default function UtmBuilder({ initialSiteId }: UtmBuilderProps) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1.5 text-neutral-900 dark:text-white">Medium *</label>
+            <label className="block text-sm font-medium mb-1.5 text-white">Medium *</label>
             <Input
               name="medium"
               placeholder="cpc, email"
@@ -186,7 +186,7 @@ export default function UtmBuilder({ initialSiteId }: UtmBuilderProps) {
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1.5 text-neutral-900 dark:text-white">Campaign Name *</label>
+          <label className="block text-sm font-medium mb-1.5 text-white">Campaign Name *</label>
           <Input
             name="campaign"
             placeholder="spring_sale"

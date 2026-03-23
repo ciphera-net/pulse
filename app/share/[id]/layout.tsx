@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { FAVICON_SERVICE_URL } from '@/lib/utils/icons'
+import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8082'
 

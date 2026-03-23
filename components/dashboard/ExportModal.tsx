@@ -480,7 +480,7 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
         {/* Progress Bar */}
         {(isExporting || exportDone) && (
           <div className="space-y-2 pt-2">
-            <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400">
+            <div className="flex items-center justify-between text-xs text-neutral-400">
               <span>{exportDone ? 'Export complete' : exportProgress.label}</span>
               <span>{exportDone ? '100%' : `${Math.round((exportProgress.step / exportProgress.total) * 100)}%`}</span>
             </div>

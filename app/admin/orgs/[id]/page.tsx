@@ -107,7 +107,7 @@ export default function AdminOrgDetailPage() {
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-neutral-900 dark:text-white">
+        <h2 className="text-2xl font-bold text-white">
           {org.business_name || 'Unnamed Organization'}
         </h2>
         <span className="text-sm font-mono text-neutral-500">{org.organization_id}</span>
@@ -116,7 +116,7 @@ export default function AdminOrgDetailPage() {
       <div className="grid gap-6 md:grid-cols-2">
         {/* Current Status */}
         <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">Current Status</h3>
+          <h3 className="text-lg font-semibold text-white mb-4">Current Status</h3>
           <div className="grid grid-cols-2 gap-2 text-sm">
               <span className="text-neutral-500">Plan:</span>
               <span className="font-medium">{org.plan_id}</span>
@@ -135,17 +135,17 @@ export default function AdminOrgDetailPage() {
                 {org.current_period_end ? formatDateTime(new Date(org.current_period_end)) : '-'}
               </span>
 
-              <span className="text-neutral-500">Stripe Cust:</span>
-              <span className="font-mono text-xs">{org.stripe_customer_id || '-'}</span>
-              
-              <span className="text-neutral-500">Stripe Sub:</span>
-              <span className="font-mono text-xs">{org.stripe_subscription_id || '-'}</span>
+              <span className="text-neutral-500">Customer ID:</span>
+              <span className="font-mono text-xs">{org.billing_customer_id || '-'}</span>
+
+              <span className="text-neutral-500">Subscription ID:</span>
+              <span className="font-mono text-xs">{org.billing_subscription_id || '-'}</span>
           </div>
         </div>
 
         {/* Sites */}
         <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">Sites ({org.sites.length})</h3>
+          <h3 className="text-lg font-semibold text-white mb-4">Sites ({org.sites.length})</h3>
             <ul className="space-y-2 max-h-60 overflow-y-auto">
               {org.sites.map((site) => (
                 <li key={site.id} className="flex justify-between items-center text-sm p-2 bg-neutral-50 dark:bg-neutral-900 rounded">
@@ -160,7 +160,7 @@ export default function AdminOrgDetailPage() {
 
       {/* Grant Plan Form */}
       <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 shadow-sm">
-        <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">Grant Plan (Manual Override)</h3>
+        <h3 className="text-lg font-semibold text-white mb-4">Grant Plan (Manual Override)</h3>
           <form onSubmit={handleGrantPlan} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -196,7 +196,7 @@ export default function AdminOrgDetailPage() {
                   type="datetime-local"
                   value={periodEnd}
                   onChange={(e) => setPeriodEnd(e.target.value)}
-                  className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2"
+                  className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-lg bg-white dark:bg-neutral-900 text-white focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2"
                   required
                 />
                 <div className="flex gap-2 mt-1">

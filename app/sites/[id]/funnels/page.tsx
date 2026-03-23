@@ -6,6 +6,7 @@ import { useFunnels } from '@/lib/swr/dashboard'
 import { toast, PlusIcon, ArrowRightIcon, ChevronLeftIcon, TrashIcon, Button } from '@ciphera-net/ui'
 import { FunnelsListSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import Link from 'next/link'
+import Image from 'next/image'
 
 export default function FunnelsPage() {
   const params = useParams()
@@ -39,7 +40,7 @@ export default function FunnelsPage() {
       <div className="mb-8">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
+            <h1 className="text-2xl font-bold text-white">
               Funnels
             </h1>
             <p className="text-neutral-600 dark:text-neutral-400">
@@ -55,11 +56,16 @@ export default function FunnelsPage() {
         </div>
 
         {funnels.length === 0 ? (
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-12 text-center">
-            <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4 mx-auto mb-4 w-fit">
-              <ArrowRightIcon className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
-            </div>
-            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-2">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-12 text-center flex flex-col items-center">
+            <Image
+              src="/illustrations/data-trends.svg"
+              alt="Create your first funnel"
+              width={260}
+              height={195}
+              className="mb-6"
+              unoptimized
+            />
+            <h3 className="text-lg font-semibold text-white mb-2">
               No funnels yet
             </h3>
             <p className="text-neutral-600 dark:text-neutral-400 mb-6 max-w-md mx-auto">
@@ -83,7 +89,7 @@ export default function FunnelsPage() {
                 <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 hover:border-brand-orange/50 transition-colors">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-xl font-bold text-neutral-900 dark:text-white group-hover:text-brand-orange transition-colors">
+                      <h3 className="text-xl font-bold text-white group-hover:text-brand-orange transition-colors">
                         {funnel.name}
                       </h3>
                       {funnel.description && (

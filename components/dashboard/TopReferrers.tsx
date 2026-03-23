@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { logger } from '@/lib/utils/logger'
-import Image from 'next/image'
 import { formatNumber } from '@ciphera-net/ui'
 import { getReferrerDisplayName, getReferrerFavicon, getReferrerIcon, mergeReferrersByDisplayName } from '@/lib/utils/icons'
 import Link from 'next/link'
@@ -48,14 +47,21 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
     const useFavicon = faviconUrl && !faviconFailed.has(referrer)
     if (useFavicon) {
       return (
-        <Image
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
           src={faviconUrl}
           alt=""
           width={20}
           height={20}
           className="w-5 h-5 flex-shrink-0 rounded object-contain"
           onError={() => setFaviconFailed((prev) => new Set(prev).add(referrer))}
-          unoptimized
+          onLoad={(e) => {
+            // Google's favicon service returns a 16x16 default globe when no real favicon exists
+            const img = e.currentTarget
+            if (img.naturalWidth <= 16) {
+              setFaviconFailed((prev) => new Set(prev).add(referrer))
+            }
+          }}
         />
       )
     }
@@ -91,7 +97,7 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <ArrowSquareOut className="w-5 h-5 text-neutral-400 dark:text-neutral-500" weight="bold" />
-            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
+            <h3 className="text-lg font-semibold text-white">
               Referrers
             </h3>
             {showViewAll && (
@@ -109,7 +115,7 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
         <div className="space-y-2 flex-1 min-h-[270px]">
           {!collectReferrers ? (
             <div className="h-full flex flex-col items-center justify-center text-center px-4">
-              <p className="text-neutral-500 dark:text-neutral-400 text-sm">Referrer tracking is disabled in site settings</p>
+              <p className="text-neutral-400 text-sm">Referrer tracking is disabled in site settings</p>
             </div>
           ) : hasData ? (
             <>
@@ -126,7 +132,7 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
                       className="absolute inset-y-0.5 left-0.5 bg-brand-orange/15 dark:bg-brand-orange/40 rounded-md transition-all"
                       style={{ width: `${barWidth}%` }}
                     />
-                    <div className="relative flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
+                    <div className="relative flex-1 truncate text-white flex items-center gap-3">
                       {renderReferrerIcon(ref.referrer)}
                       <span className="truncate" title={ref.referrer}>{getReferrerDisplayName(ref.referrer)}</span>
                     </div>
@@ -148,12 +154,12 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
               <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
-                <GlobeIcon className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
+                <GlobeIcon className="w-8 h-8 text-neutral-400" />
               </div>
-              <h4 className="font-semibold text-neutral-900 dark:text-white">
+              <h4 className="font-semibold text-white">
                 No referrers yet
               </h4>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400 max-w-xs">
+              <p className="text-sm text-neutral-400 max-w-xs">
                 Traffic sources will appear here when visitors come from external sites.
               </p>
               <Link
@@ -180,7 +186,7 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
             value={modalSearch}
             onChange={(e) => setModalSearch(e.target.value)}
             placeholder="Search referrers..."
-            className="w-full px-3 py-2 mb-3 text-sm bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
+            className="w-full px-3 py-2 mb-3 text-sm bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
           />
         </div>
         <div className="max-h-[80vh]">
@@ -202,7 +208,7 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
                     onClick={() => { if (onFilter) { onFilter({ dimension: 'referrer', operator: 'is', values: [ref.referrer] }); setIsModalOpen(false) } }}
                     className={`flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 transition-colors${onFilter ? ' cursor-pointer' : ''}`}
                   >
-                    <div className="flex-1 truncate text-neutral-900 dark:text-white flex items-center gap-3">
+                    <div className="flex-1 truncate text-white flex items-center gap-3">
                       {renderReferrerIcon(ref.referrer)}
                       <span className="truncate" title={ref.referrer}>{getReferrerDisplayName(ref.referrer)}</span>
                     </div>

@@ -17,7 +17,7 @@ import {
   type Stats,
   type DailyStat,
 } from '@/lib/api/stats'
-import { getDateRange, formatDate } from '@ciphera-net/ui'
+import { getDateRange, formatDate, getThisWeekRange, getThisMonthRange } from '@/lib/utils/dateRanges'
 import { toast } from '@ciphera-net/ui'
 import { Button } from '@ciphera-net/ui'
 import { Select, DatePicker, DownloadIcon } from '@ciphera-net/ui'
@@ -63,19 +63,6 @@ function loadSavedSettings(): {
   }
 }
 
-function getThisWeekRange(): { start: string; end: string } {
-  const today = new Date()
-  const dayOfWeek = today.getDay()
-  const monday = new Date(today)
-  monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1))
-  return { start: formatDate(monday), end: formatDate(today) }
-}
-
-function getThisMonthRange(): { start: string; end: string } {
-  const today = new Date()
-  const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
-  return { start: formatDate(firstOfMonth), end: formatDate(today) }
-}
 
 function getInitialDateRange(): { start: string; end: string } {
   const settings = loadSavedSettings()
@@ -442,7 +429,7 @@ export default function SiteDashboardPage() {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">
+              <h1 className="text-2xl font-bold text-white mb-1">
                 {site.name}
               </h1>
               <p className="text-neutral-600 dark:text-neutral-400">

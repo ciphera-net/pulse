@@ -39,8 +39,6 @@ import {
   ArrowRightIcon,
   ArrowLeftIcon,
   BarChartIcon,
-  GlobeIcon,
-  ZapIcon,
   PlusIcon,
 } from '@ciphera-net/ui'
 import Link from 'next/link'
@@ -380,10 +378,10 @@ function WelcomeContent() {
                     <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-orange/20 to-brand-orange/5 text-brand-orange mb-5 shadow-sm">
                       <BarChartIcon className="h-8 w-8" />
                     </div>
-                    <h2 className="text-2xl font-bold tracking-tight text-neutral-900 dark:text-white">
+                    <h2 className="text-2xl font-bold tracking-tight text-white">
                       Choose your organization
                     </h2>
-                    <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400 max-w-sm mx-auto">
+                    <p className="mt-2 text-sm text-neutral-400 max-w-sm mx-auto">
                       Continue with an existing one or create a new organization.
                     </p>
                   </div>
@@ -415,7 +413,7 @@ function WelcomeContent() {
                           >
                             {initial}
                           </div>
-                          <span className="flex-1 font-medium text-neutral-900 dark:text-white truncate">
+                          <span className="flex-1 font-medium text-white truncate">
                             {org.organization_name || 'Organization'}
                           </span>
                           {isCurrent && (
@@ -440,10 +438,12 @@ function WelcomeContent() {
                 </>
               ) : (
                 <div className="text-center">
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-orange/10 text-brand-orange mb-6">
-                    <ZapIcon className="h-7 w-7" />
-                  </div>
-                  <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
+                  <img
+                    src="/illustrations/welcome.svg"
+                    alt="Welcome to Pulse"
+                    className="w-48 h-auto mx-auto mb-6"
+                  />
+                  <h1 className="text-2xl font-bold text-white">
                     Welcome to Pulse
                   </h1>
                   <p className="mt-2 text-neutral-600 dark:text-neutral-400">
@@ -475,7 +475,7 @@ function WelcomeContent() {
               <button
                 type="button"
                 onClick={() => setStep(1)}
-                className="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 mb-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded"
+                className="flex items-center gap-2 text-sm text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 mb-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded"
                 aria-label="Back to welcome"
               >
                 <ArrowLeftIcon className="h-4 w-4" />
@@ -485,7 +485,7 @@ function WelcomeContent() {
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-orange/10 text-brand-orange mb-4">
                   <BarChartIcon className="h-7 w-7" />
                 </div>
-                <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
+                <h1 className="text-2xl font-bold text-white">
                   Name your organization
                 </h1>
                 <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
@@ -520,7 +520,7 @@ function WelcomeContent() {
                     onChange={(e) => setOrgSlug(e.target.value)}
                     className="w-full"
                   />
-                  <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                  <p className="mt-1 text-xs text-neutral-400">
                     Used in your organization URL.
                   </p>
                 </div>
@@ -546,7 +546,7 @@ function WelcomeContent() {
               <button
                 type="button"
                 onClick={() => setStep(2)}
-                className="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 mb-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded"
+                className="flex items-center gap-2 text-sm text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 mb-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded"
                 aria-label="Back to organization"
               >
                 <ArrowLeftIcon className="h-4 w-4" />
@@ -556,7 +556,7 @@ function WelcomeContent() {
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-500/10 text-green-600 dark:text-green-400 mb-4">
                   <CheckCircleIcon className="h-7 w-7" />
                 </div>
-                <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
+                <h1 className="text-2xl font-bold text-white">
                   {showPendingCheckoutInStep3 ? 'Complete your plan' : "You're on the free plan"}
                 </h1>
                 <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
@@ -631,17 +631,19 @@ function WelcomeContent() {
               <button
                 type="button"
                 onClick={() => setStep(3)}
-                className="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 mb-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded"
+                className="flex items-center gap-2 text-sm text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 mb-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded"
                 aria-label="Back to plan"
               >
                 <ArrowLeftIcon className="h-4 w-4" />
                 Back
               </button>
               <div className="text-center mb-6">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-orange/10 text-brand-orange mb-4">
-                  <GlobeIcon className="h-7 w-7" />
-                </div>
-                <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
+                <img
+                  src="/illustrations/website-setup.svg"
+                  alt="Add your first site"
+                  className="w-44 h-auto mx-auto mb-4"
+                />
+                <h1 className="text-2xl font-bold text-white">
                   Add your first site
                 </h1>
                 <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
@@ -723,10 +725,12 @@ function WelcomeContent() {
               className={cardClass}
             >
               <div className="text-center">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-500/10 text-green-600 dark:text-green-400 mb-6">
-                  <CheckCircleIcon className="h-7 w-7" />
-                </div>
-                <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
+                <img
+                  src="/illustrations/confirmed.svg"
+                  alt="All set"
+                  className="w-44 h-auto mx-auto mb-6"
+                />
+                <h1 className="text-2xl font-bold text-white">
                   You're all set
                 </h1>
                 <p className="mt-2 text-neutral-600 dark:text-neutral-400">
@@ -754,7 +758,7 @@ function WelcomeContent() {
                   >
                     <span className="text-brand-orange">Verify installation</span>
                   </button>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                  <p className="text-xs text-neutral-400">
                     Check if your site is sending data correctly.
                   </p>
                 </div>

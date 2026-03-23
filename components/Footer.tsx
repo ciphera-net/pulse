@@ -48,7 +48,7 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
       <footer className="w-full py-8 mt-auto border-t border-neutral-100 dark:border-neutral-800 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="text-sm text-neutral-500 dark:text-neutral-400">
+            <div className="text-sm text-neutral-400">
               © 2024-{year} Ciphera. All rights reserved.
             </div>
             <div className="flex gap-6 text-sm font-medium text-neutral-600 dark:text-neutral-300">
@@ -88,7 +88,7 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
                 loading="lazy"
                 className="w-9 h-9 object-contain group-hover:scale-105 transition-transform duration-300"
               />
-              <span className="text-xl font-bold text-neutral-900 dark:text-white group-hover:text-brand-orange transition-colors duration-300">
+              <span className="text-xl font-bold text-white group-hover:text-brand-orange transition-colors duration-300">
                 Pulse
               </span>
             </Link>
@@ -125,7 +125,7 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
 
           {/* * Products */}
           <div>
-            <h4 className="font-semibold text-neutral-900 dark:text-white mb-4">Products</h4>
+            <h4 className="font-semibold text-white mb-4">Products</h4>
             <ul className="space-y-3">
               {footerLinks.products.map((link) => (
                 <li key={link.name}>
@@ -153,7 +153,7 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
 
           {/* * Company */}
           <div>
-            <h4 className="font-semibold text-neutral-900 dark:text-white mb-4">Company</h4>
+            <h4 className="font-semibold text-white mb-4">Company</h4>
             <ul className="space-y-3">
               {footerLinks.company.map((link) => (
                 <li key={link.name}>
@@ -181,7 +181,7 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
 
           {/* * Resources */}
           <div>
-            <h4 className="font-semibold text-neutral-900 dark:text-white mb-4">Resources</h4>
+            <h4 className="font-semibold text-white mb-4">Resources</h4>
             <ul className="space-y-3">
               {footerLinks.resources.map((link) => (
                 <li key={link.name}>
@@ -209,7 +209,7 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
 
           {/* * Legal */}
           <div>
-            <h4 className="font-semibold text-neutral-900 dark:text-white mb-4">Legal</h4>
+            <h4 className="font-semibold text-white mb-4">Legal</h4>
             <ul className="space-y-3">
               {footerLinks.legal.map((link) => (
                 <li key={link.name}>
@@ -232,10 +232,10 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
 
         {/* * Bottom bar */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+          <p className="text-sm text-neutral-400">
             © 2024-{year} Ciphera. All rights reserved.
           </p>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+          <p className="text-sm text-neutral-400">
             Where Privacy Still Exists
           </p>
         </div>

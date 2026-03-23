@@ -31,7 +31,7 @@ function ChangeIndicator({ change }: { change: ReturnType<typeof pctChange> }) {
           ? 'text-red-600 dark:text-red-400'
           : isDown
             ? 'text-green-600 dark:text-green-400'
-            : 'text-neutral-500 dark:text-neutral-400'
+            : 'text-neutral-400'
       }`}
     >
       {isUp ? '+' : ''}{change.value}%
@@ -71,11 +71,11 @@ export default function FrustrationSummaryCards({ data, loading }: FrustrationSu
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
       {/* Rage Clicks */}
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6">
-        <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">
+        <p className="text-sm font-medium text-neutral-400 mb-1">
           Rage Clicks
         </p>
         <div className="flex items-baseline gap-2">
-          <span className="text-2xl font-bold text-neutral-900 dark:text-white tabular-nums">
+          <span className="text-2xl font-bold text-white tabular-nums">
             {data.rage_clicks.toLocaleString()}
           </span>
           <ChangeIndicator change={rageChange} />
@@ -87,11 +87,11 @@ export default function FrustrationSummaryCards({ data, loading }: FrustrationSu
 
       {/* Dead Clicks */}
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6">
-        <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">
+        <p className="text-sm font-medium text-neutral-400 mb-1">
           Dead Clicks
         </p>
         <div className="flex items-baseline gap-2">
-          <span className="text-2xl font-bold text-neutral-900 dark:text-white tabular-nums">
+          <span className="text-2xl font-bold text-white tabular-nums">
             {data.dead_clicks.toLocaleString()}
           </span>
           <ChangeIndicator change={deadChange} />
@@ -103,10 +103,10 @@ export default function FrustrationSummaryCards({ data, loading }: FrustrationSu
 
       {/* Total Frustration Signals */}
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6">
-        <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">
+        <p className="text-sm font-medium text-neutral-400 mb-1">
           Total Signals
         </p>
-        <span className="text-2xl font-bold text-neutral-900 dark:text-white tabular-nums">
+        <span className="text-2xl font-bold text-white tabular-nums">
           {totalSignals.toLocaleString()}
         </span>
         {topPage ? (
