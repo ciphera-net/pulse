@@ -135,11 +135,11 @@ export default function AdminOrgDetailPage() {
                 {org.current_period_end ? formatDateTime(new Date(org.current_period_end)) : '-'}
               </span>
 
-              <span className="text-neutral-500">Stripe Cust:</span>
-              <span className="font-mono text-xs">{org.stripe_customer_id || '-'}</span>
-              
-              <span className="text-neutral-500">Stripe Sub:</span>
-              <span className="font-mono text-xs">{org.stripe_subscription_id || '-'}</span>
+              <span className="text-neutral-500">Customer ID:</span>
+              <span className="font-mono text-xs">{org.billing_customer_id || '-'}</span>
+
+              <span className="text-neutral-500">Subscription ID:</span>
+              <span className="font-mono text-xs">{org.billing_subscription_id || '-'}</span>
           </div>
         </div>
 
