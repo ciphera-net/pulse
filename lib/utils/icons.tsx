@@ -130,7 +130,7 @@ export function getReferrerIcon(referrerName: string) {
   // Social / platforms
   if (lower.includes('google') && !lower.includes('gemini')) return <SiGoogle size={SI.size} color="#4285F4" />
   if (lower.includes('facebook') || lower === 'fb') return <SiFacebook size={SI.size} color="#0866FF" />
-  if (lower.includes('twitter') || lower.includes('t.co') || lower.includes('x.com')) return <XIcon />
+  if (lower.includes('twitter') || lower === 't.co' || lower.includes('t.co/') || lower.includes('x.com')) return <XIcon />
   if (lower.includes('linkedin')) return <LinkedInIcon />
   if (lower.includes('instagram') || lower === 'ig') return <SiInstagram size={SI.size} color="#E4405F" />
   if (lower.includes('github')) return <SiGithub size={SI.size} color="#fff" />
