@@ -177,9 +177,11 @@ export default function FrustrationTable({
             </>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-4">
-              <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
-                <CursorClick className="w-8 h-8 text-neutral-500 dark:text-neutral-400" />
-              </div>
+              <img
+                src="/illustrations/blank-canvas.svg"
+                alt="No frustration signals"
+                className="w-44 h-auto mb-1"
+              />
               <h4 className="font-semibold text-neutral-900 dark:text-white">
                 No {title.toLowerCase()} detected
               </h4>
