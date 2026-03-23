@@ -8,20 +8,7 @@ import { updatePageSpeedConfig, triggerPageSpeedCheck, getPageSpeedLatest, type 
 import { toast, Button } from '@ciphera-net/ui'
 import { motion } from 'framer-motion'
 import ScoreGauge from '@/components/pagespeed/ScoreGauge'
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  ReferenceLine,
-} from 'recharts'
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/charts'
-
-// * Chart configuration for score trend
-const chartConfig = {
-  score: { label: 'Performance', color: 'var(--chart-1)' },
-} satisfies ChartConfig
+import { AreaChart as VisxAreaChart, Area as VisxArea, Grid as VisxGrid, XAxis as VisxXAxis, YAxis as VisxYAxis, ChartTooltip as VisxChartTooltip } from '@/components/ui/area-chart'
 
 // * Metric status thresholds (Google's Core Web Vitals thresholds)
 function getMetricStatus(metric: string, value: number | null): { label: string; color: string } {
@@ -225,14 +212,11 @@ export default function PageSpeedPage() {
     )
   }
 
-  // * Prepare chart data from history
+  // * Prepare chart data from history (visx needs Date objects for x-axis)
   const chartData = (historyChecks ?? []).map(c => ({
-    date: new Date(c.checked_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
-    score: c.performance_score,
+    dateObj: new Date(c.checked_at),
+    score: c.performance_score ?? 0,
   }))
-  // * Check if all chart labels are the same (single day of data)
-  const uniqueDates = new Set(chartData.map(d => d.date))
-  const hideXAxis = uniqueDates.size <= 1
 
   // * Parse audits into groups by Lighthouse category
   const audits = currentCheck?.audits ?? []
@@ -446,62 +430,45 @@ export default function PageSpeedPage() {
         </div>
       </div>
 
-      {/* Section 3 — Score Trend Chart */}
+      {/* Section 3 — Score Trend Chart (visx) */}
       {chartData.length >= 2 && (
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 sm:p-8 mb-6">
           <h3 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-4">
             Performance Score Trend
           </h3>
-          <ChartContainer config={chartConfig} className="h-40">
-            <AreaChart accessibilityLayer data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-              <defs>
-                <linearGradient id="scoreGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--color-score)" stopOpacity={0.3} />
-                  <stop offset="100%" stopColor="var(--color-score)" stopOpacity={0.02} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="var(--chart-grid)"
-                strokeOpacity={0.5}
-                vertical={false}
-              />
-              <XAxis
-                dataKey="date"
-                tick={hideXAxis ? false : { fontSize: 10, fill: 'var(--chart-axis)' }}
-                tickLine={false}
-                axisLine={false}
-                interval="preserveStartEnd"
-                hide={hideXAxis}
-              />
-              <YAxis
-                domain={[0, 100]}
-                tick={{ fontSize: 10, fill: 'var(--chart-axis)' }}
-                tickLine={false}
-                axisLine={false}
-              />
-              <ReferenceLine y={90} stroke="#0cce6b" strokeDasharray="4 4" strokeOpacity={0.6} />
-              <ReferenceLine y={50} stroke="#ff4e42" strokeDasharray="4 4" strokeOpacity={0.6} />
-              <ChartTooltip
-                content={
-                  <ChartTooltipContent
-                    className="text-xs"
-                    labelKey="date"
-                    formatter={(value) => <span className="font-semibold">{value}</span>}
-                  />
-                }
-              />
-              <Area
-                type="monotone"
+          <div className="h-40">
+            <VisxAreaChart
+              data={chartData as Record<string, unknown>[]}
+              xDataKey="dateObj"
+              aspectRatio="3 / 1"
+              margin={{ top: 10, right: 10, bottom: 30, left: 40 }}
+            >
+              <VisxGrid horizontal vertical={false} stroke="var(--chart-grid)" strokeDasharray="4,4" />
+              <VisxArea
                 dataKey="score"
-                stroke="var(--color-score)"
+                fill="var(--chart-line-primary)"
+                fillOpacity={0.15}
+                stroke="var(--chart-line-primary)"
                 strokeWidth={2}
-                fill="url(#scoreGradient)"
-                dot={false}
-                activeDot={{ r: 4, fill: 'var(--color-score)', strokeWidth: 0 }}
+                gradientToOpacity={0}
               />
-            </AreaChart>
-          </ChartContainer>
+              <VisxXAxis
+                numTicks={5}
+                formatLabel={(d: Date) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+              />
+              <VisxYAxis
+                numTicks={5}
+                formatValue={(v: number) => String(Math.round(v))}
+              />
+              <VisxChartTooltip
+                rows={(point: Record<string, unknown>) => [{
+                  label: 'Score',
+                  value: String(Math.round(point.score as number)),
+                  color: 'var(--chart-line-primary)',
+                }]}
+              />
+            </VisxAreaChart>
+          </div>
         </div>
       )}
 
