@@ -514,7 +514,7 @@ export default function Sidebar({
     <>
       {/* Desktop — ssr:false means this only renders on client, no hydration flash */}
       <aside
-        className="hidden md:flex flex-col shrink-0 border-r border-neutral-800/60 bg-neutral-900/90 backdrop-blur-xl overflow-hidden relative z-10"
+        className="hidden md:flex flex-col shrink-0 bg-neutral-900 overflow-hidden relative z-10"
         style={{ width: collapsed ? COLLAPSED : EXPANDED, transition: 'width 200ms cubic-bezier(0.4, 0, 0.2, 1)' }}
         onTransitionEnd={(e) => {
           if (e.propertyName === 'width' && pickerOpenCallbackRef.current) {
