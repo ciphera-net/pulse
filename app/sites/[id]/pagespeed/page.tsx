@@ -1,10 +1,10 @@
 'use client'
 
 import { useAuth } from '@/lib/auth/context'
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useParams } from 'next/navigation'
 import { useSite, usePageSpeedConfig, usePageSpeedLatest, usePageSpeedHistory } from '@/lib/swr/dashboard'
-import { updatePageSpeedConfig, triggerPageSpeedCheck, getPageSpeedLatest, type PageSpeedCheck, type AuditSummary } from '@/lib/api/pagespeed'
+import { updatePageSpeedConfig, triggerPageSpeedCheck, getPageSpeedLatest, getPageSpeedCheck, type PageSpeedCheck, type AuditSummary } from '@/lib/api/pagespeed'
 import { toast, Button } from '@ciphera-net/ui'
 import { motion } from 'framer-motion'
 import ScoreGauge from '@/components/pagespeed/ScoreGauge'
@@ -75,8 +75,80 @@ export default function PageSpeedPage() {
 
   const { data: historyChecks } = usePageSpeedHistory(siteId, strategy)
 
-  // * Get the check for the current strategy
-  const currentCheck = latestChecks?.find(c => c.strategy === strategy) ?? null
+  // * Check history navigation — build unique check timestamps from history data
+  const [selectedCheckId, setSelectedCheckId] = useState<string | null>(null)
+  const [selectedCheckData, setSelectedCheckData] = useState<PageSpeedCheck | null>(null)
+  const [loadingCheck, setLoadingCheck] = useState(false)
+
+  // * Build unique check timestamps (each check has mobile+desktop at the same time)
+  const checkTimestamps = useMemo(() => {
+    if (!historyChecks?.length) return []
+    const seen = new Set<string>()
+    const timestamps: { id: string; checked_at: string }[] = []
+    // * History is sorted ASC by checked_at, reverse for newest first
+    for (let i = historyChecks.length - 1; i >= 0; i--) {
+      const c = historyChecks[i]
+      // * Group by minute to deduplicate mobile+desktop pairs
+      const key = c.checked_at.slice(0, 16)
+      if (!seen.has(key)) {
+        seen.add(key)
+        timestamps.push({ id: c.id, checked_at: c.checked_at })
+      }
+    }
+    return timestamps
+  }, [historyChecks])
+
+  const selectedIndex = selectedCheckId
+    ? checkTimestamps.findIndex(t => t.id === selectedCheckId)
+    : 0 // * 0 = latest
+
+  const canGoPrev = selectedIndex < checkTimestamps.length - 1
+  const canGoNext = selectedIndex > 0
+
+  const handlePrevCheck = () => {
+    if (!canGoPrev) return
+    const next = checkTimestamps[selectedIndex + 1]
+    setSelectedCheckId(next.id)
+  }
+
+  const handleNextCheck = () => {
+    if (selectedIndex <= 1) {
+      // * Going back to latest
+      setSelectedCheckId(null)
+      setSelectedCheckData(null)
+      return
+    }
+    const next = checkTimestamps[selectedIndex - 1]
+    setSelectedCheckId(next.id)
+  }
+
+  // * Fetch full check data when navigating to a historical check
+  useEffect(() => {
+    if (!selectedCheckId || !siteId) {
+      setSelectedCheckData(null)
+      return
+    }
+    let cancelled = false
+    setLoadingCheck(true)
+    getPageSpeedCheck(siteId, selectedCheckId).then(data => {
+      if (!cancelled) {
+        setSelectedCheckData(data)
+        setLoadingCheck(false)
+      }
+    }).catch(() => {
+      if (!cancelled) setLoadingCheck(false)
+    })
+    return () => { cancelled = true }
+  }, [selectedCheckId, siteId])
+
+  // * Determine which check to display — selected historical or latest
+  const displayCheck = selectedCheckId && selectedCheckData
+    ? selectedCheckData
+    : latestChecks?.find(c => c.strategy === strategy) ?? null
+
+  // * When viewing a historical check, we need both strategies — fetch the other one too
+  // * For simplicity, historical view shows the selected strategy's check
+  const currentCheck = displayCheck
 
   // * Set document title
   useEffect(() => {
@@ -299,7 +371,7 @@ export default function PageSpeedPage() {
             {(['mobile', 'desktop'] as const).map(tab => (
               <button
                 key={tab}
-                onClick={() => setStrategy(tab)}
+                onClick={() => { setStrategy(tab); setSelectedCheckId(null); setSelectedCheckData(null) }}
                 role="tab"
                 aria-selected={strategy === tab}
                 className={`relative px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded cursor-pointer ${
@@ -363,16 +435,49 @@ export default function PageSpeedPage() {
           )}
         </div>
 
-        {/* Last checked + frequency + legend */}
+        {/* Check navigator + frequency + legend */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-6 pt-4 border-t border-neutral-100 dark:border-neutral-800">
-          <div className="flex items-center gap-3 text-sm text-neutral-500 dark:text-neutral-400">
+          <div className="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400">
+            {/* Prev/Next arrows */}
+            {checkTimestamps.length > 1 && (
+              <button
+                onClick={handlePrevCheck}
+                disabled={!canGoPrev}
+                className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                aria-label="Previous check"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+            )}
             {currentCheck?.checked_at && (
-              <span>Last checked {formatTimeAgo(currentCheck.checked_at)}</span>
+              <span className="tabular-nums">
+                {selectedCheckId
+                  ? new Date(currentCheck.checked_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                  : `Last checked ${formatTimeAgo(currentCheck.checked_at)}`
+                }
+              </span>
+            )}
+            {checkTimestamps.length > 1 && (
+              <button
+                onClick={handleNextCheck}
+                disabled={!canGoNext}
+                className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                aria-label="Next check"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
             )}
             {config?.frequency && (
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400">
                 {config.frequency}
               </span>
+            )}
+            {loadingCheck && (
+              <span className="text-xs text-neutral-400 animate-pulse">Loading...</span>
             )}
           </div>
           <div className="flex items-center gap-x-3 text-[11px] text-neutral-400 dark:text-neutral-500 ml-auto">
