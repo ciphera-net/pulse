@@ -21,7 +21,8 @@ import { Select, Modal, Button } from '@ciphera-net/ui'
 import { APP_URL } from '@/lib/api/client'
 import { generatePrivacySnippet } from '@/lib/utils/privacySnippet'
 import { useUnsavedChanges } from '@/lib/hooks/useUnsavedChanges'
-import { useSite, useGoals, useReportSchedules, useAlertSchedules, useSubscription, useGSCStatus, useBunnyStatus, useSessions, useBotFilterStats } from '@/lib/swr/dashboard'
+import { useSite, useGoals, useReportSchedules, useAlertSchedules, useSubscription, useGSCStatus, useBunnyStatus, useSessions, useBotFilterStats, usePageSpeedConfig } from '@/lib/swr/dashboard'
+import { updatePageSpeedConfig } from '@/lib/api/pagespeed'
 import { getRetentionOptionsForPlan, formatRetentionMonths } from '@/lib/plans'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@/lib/auth/context'
@@ -130,6 +131,7 @@ export default function SiteSettingsPage() {
   const [gscConnecting, setGscConnecting] = useState(false)
   const [gscDisconnecting, setGscDisconnecting] = useState(false)
   const { data: bunnyStatus, mutate: mutateBunnyStatus } = useBunnyStatus(siteId)
+  const { data: psiConfig, mutate: mutatePSIConfig } = usePageSpeedConfig(siteId)
   const [bunnyApiKey, setBunnyApiKey] = useState('')
   const [bunnyPullZones, setBunnyPullZones] = useState<BunnyPullZone[]>([])
   const [bunnySelectedZone, setBunnySelectedZone] = useState<BunnyPullZone | null>(null)
@@ -1342,6 +1344,47 @@ export default function SiteSettingsPage() {
                           Free plan supports up to 6 months. <a href="/pricing" className="text-brand-orange hover:underline">Upgrade</a> for longer retention.
                         </p>
                       )}
+                    </div>
+                  </div>
+
+                  {/* PageSpeed Monitoring */}
+                  <div className="space-y-4 pt-6 border-t border-neutral-100 dark:border-neutral-800">
+                    <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">PageSpeed Monitoring</h3>
+                    <div className="p-6 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-medium text-neutral-900 dark:text-white">Check frequency</h4>
+                          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
+                            How often PageSpeed Insights runs automated checks on your site.
+                          </p>
+                        </div>
+                        {psiConfig?.enabled ? (
+                          <Select
+                            value={psiConfig.frequency}
+                            onChange={async (v) => {
+                              try {
+                                await updatePageSpeedConfig(siteId, { enabled: true, frequency: v })
+                                mutatePSIConfig()
+                                toast.success(`PageSpeed frequency updated to ${v}`)
+                              } catch {
+                                toast.error('Failed to update frequency')
+                              }
+                            }}
+                            options={[
+                              { value: 'daily', label: 'Daily' },
+                              { value: 'weekly', label: 'Weekly' },
+                              { value: 'monthly', label: 'Monthly' },
+                            ]}
+                            variant="input"
+                            align="right"
+                            className="min-w-[130px]"
+                          />
+                        ) : (
+                          <span className="text-sm text-neutral-400 dark:text-neutral-500">
+                            Not enabled
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 

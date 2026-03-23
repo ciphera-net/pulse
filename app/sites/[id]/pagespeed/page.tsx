@@ -471,34 +471,7 @@ export default function PageSpeedPage() {
                 </svg>
               </button>
             )}
-            {/* Frequency selector */}
-            {canEdit && config && (
-              <div className="flex items-center gap-0.5 ml-1 bg-neutral-100 dark:bg-neutral-800 rounded-md p-0.5">
-                {(['daily', 'weekly', 'monthly'] as const).map(f => (
-                  <button
-                    key={f}
-                    onClick={async () => {
-                      if (f === config.frequency) return
-                      try {
-                        await updatePageSpeedConfig(siteId, { enabled: true, frequency: f })
-                        mutateConfig()
-                        toast.success(`Frequency updated to ${f}`)
-                      } catch {
-                        toast.error('Failed to update frequency')
-                      }
-                    }}
-                    className={`px-2 py-0.5 text-[11px] font-medium rounded transition-colors ${
-                      config.frequency === f
-                        ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
-                        : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300'
-                    }`}
-                  >
-                    {f.charAt(0).toUpperCase() + f.slice(1)}
-                  </button>
-                ))}
-              </div>
-            )}
-            {!canEdit && config?.frequency && (
+            {config?.frequency && (
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400">
                 {config.frequency}
               </span>
