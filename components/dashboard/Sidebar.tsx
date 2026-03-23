@@ -112,9 +112,10 @@ function Label({ children, collapsed }: { children: React.ReactNode; collapsed: 
 
 // ─── Site Picker ────────────────────────────────────────────
 
-function SitePicker({ sites, siteId, collapsed, onExpand, onCollapse, wasCollapsed }: {
+function SitePicker({ sites, siteId, collapsed, onExpand, onCollapse, wasCollapsed, pickerOpenCallback }: {
   sites: Site[]; siteId: string; collapsed: boolean
   onExpand: () => void; onCollapse: () => void; wasCollapsed: React.MutableRefObject<boolean>
+  pickerOpenCallback: React.MutableRefObject<(() => void) | null>
 }) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -157,9 +158,8 @@ function SitePicker({ sites, siteId, collapsed, onExpand, onCollapse, wasCollaps
         onClick={() => {
           if (collapsed) {
             wasCollapsed.current = true
+            pickerOpenCallback.current = () => setOpen(true)
             onExpand()
-            // Open picker after sidebar expands
-            setTimeout(() => setOpen(true), 220)
           } else {
             setOpen(!open)
           }
@@ -178,7 +178,11 @@ function SitePicker({ sites, siteId, collapsed, onExpand, onCollapse, wasCollaps
                 onError={() => setFaviconFailed(true)}
               />
             </>
-          ) : null}
+          ) : (
+            <span className="text-xs font-bold text-brand-orange">
+              {currentSite?.name?.charAt(0).toUpperCase() || '?'}
+            </span>
+          )}
         </span>
         <Label collapsed={collapsed}>
           <span className="flex items-center gap-1">
@@ -196,6 +200,13 @@ function SitePicker({ sites, siteId, collapsed, onExpand, onCollapse, wasCollaps
               placeholder="Search sites..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  setOpen(false)
+                  setSearch('')
+                  if (wasCollapsed.current) { onCollapse(); wasCollapsed.current = false }
+                }
+              }}
               className="w-full px-3 py-1.5 text-sm bg-neutral-800 border border-neutral-700 rounded-lg outline-none focus:ring-2 focus:ring-brand-orange/40 text-white placeholder:text-neutral-400"
               autoFocus
             />
@@ -284,6 +295,7 @@ interface SidebarContentProps {
   onCollapse: () => void
   onToggle: () => void
   wasCollapsed: React.MutableRefObject<boolean>
+  pickerOpenCallbackRef: React.MutableRefObject<(() => void) | null>
   auth: ReturnType<typeof useAuth>
   orgs: OrganizationMember[]
   onSwitchOrganization: (orgId: string | null) => Promise<void>
@@ -293,7 +305,7 @@ interface SidebarContentProps {
 function SidebarContent({
   isMobile, collapsed, siteId, sites, canEdit, pendingHref,
   onNavigate, onMobileClose, onExpand, onCollapse, onToggle,
-  wasCollapsed, auth, orgs, onSwitchOrganization, openSettings,
+  wasCollapsed, pickerOpenCallbackRef, auth, orgs, onSwitchOrganization, openSettings,
 }: SidebarContentProps) {
   const router = useRouter()
   const c = isMobile ? false : collapsed
@@ -322,17 +334,21 @@ function SidebarContent({
       </Link>
 
       {/* Site Picker */}
-      <SitePicker sites={sites} siteId={siteId} collapsed={c} onExpand={onExpand} onCollapse={onCollapse} wasCollapsed={wasCollapsed} />
+      <SitePicker sites={sites} siteId={siteId} collapsed={c} onExpand={onExpand} onCollapse={onCollapse} wasCollapsed={wasCollapsed} pickerOpenCallback={pickerOpenCallbackRef} />
 
       {/* Nav Groups */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 space-y-4">
         {NAV_GROUPS.map((group) => (
           <div key={group.label}>
-            <div className="h-5 flex items-center overflow-hidden">
-              <p className={`px-2.5 text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider whitespace-nowrap transition-opacity duration-150 ${c ? 'opacity-0' : 'opacity-100'}`}>
-                {group.label}
-              </p>
-            </div>
+            {c ? (
+              <div className="mx-3 my-2 border-t border-neutral-800/40" />
+            ) : (
+              <div className="h-5 flex items-center overflow-hidden">
+                <p className="px-2.5 text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider whitespace-nowrap">
+                  {group.label}
+                </p>
+              </div>
+            )}
             <div className="space-y-0.5">
               {group.items.map((item) => (
                 <NavLink key={item.label} item={item} siteId={siteId} collapsed={c} onClick={isMobile ? onMobileClose : undefined} pendingHref={pendingHref} onNavigate={onNavigate} />
@@ -383,7 +399,7 @@ function SidebarContent({
               <span className="w-7 h-7 flex items-center justify-center shrink-0">
                 <CollapseLeftIcon className={`w-[18px] h-[18px] transition-transform duration-200 ${c ? 'rotate-180' : ''}`} />
               </span>
-              <Label collapsed={c}>Collapse</Label>
+              <Label collapsed={c}>{c ? 'Expand' : 'Collapse'}</Label>
             </button>
           )}
         </div>
@@ -409,6 +425,7 @@ export default function Sidebar({
   const [orgs, setOrgs] = useState<OrganizationMember[]>([])
   const [pendingHref, setPendingHref] = useState<string | null>(null)
   const wasCollapsedRef = useRef(false)
+  const pickerOpenCallbackRef = useRef<(() => void) | null>(null)
   // Safe to read localStorage directly — this component is loaded with ssr:false
   const [collapsed, setCollapsed] = useState(() => {
     return localStorage.getItem(SIDEBAR_KEY) !== 'false'
@@ -468,6 +485,12 @@ export default function Sidebar({
       <aside
         className="hidden md:flex flex-col shrink-0 border-r border-neutral-800/60 bg-neutral-900/90 backdrop-blur-xl overflow-hidden relative z-10"
         style={{ width: collapsed ? COLLAPSED : EXPANDED, transition: 'width 200ms cubic-bezier(0.4, 0, 0.2, 1)' }}
+        onTransitionEnd={(e) => {
+          if (e.propertyName === 'width' && pickerOpenCallbackRef.current) {
+            pickerOpenCallbackRef.current()
+            pickerOpenCallbackRef.current = null
+          }
+        }}
       >
         <SidebarContent
           isMobile={false}
@@ -482,6 +505,7 @@ export default function Sidebar({
           onCollapse={collapse}
           onToggle={toggle}
           wasCollapsed={wasCollapsedRef}
+          pickerOpenCallbackRef={pickerOpenCallbackRef}
           auth={auth}
           orgs={orgs}
           onSwitchOrganization={handleSwitchOrganization}
@@ -513,6 +537,7 @@ export default function Sidebar({
               onCollapse={collapse}
               onToggle={toggle}
               wasCollapsed={wasCollapsedRef}
+              pickerOpenCallbackRef={pickerOpenCallbackRef}
               auth={auth}
               orgs={orgs}
               onSwitchOrganization={handleSwitchOrganization}
