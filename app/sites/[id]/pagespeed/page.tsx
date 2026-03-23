@@ -49,18 +49,6 @@ function formatTimeAgo(dateString: string | null): string {
   return `${Math.floor(diffSec / 86400)}d ago`
 }
 
-function formatTimeUntil(dateString: string | null): string | null {
-  if (!dateString) return null
-  const date = new Date(dateString)
-  const now = new Date()
-  const diffMs = date.getTime() - now.getTime()
-  if (diffMs <= 0) return 'soon'
-  const diffSec = Math.floor(diffMs / 1000)
-  if (diffSec < 3600) return `in ${Math.floor(diffSec / 60)}m`
-  if (diffSec < 86400) return `in ${Math.floor(diffSec / 3600)}h`
-  return `in ${Math.floor(diffSec / 86400)}d`
-}
-
 // * Get dot color for audit items based on score
 function getAuditDotColor(score: number | null): string {
   if (score === null) return 'bg-neutral-400'
@@ -184,18 +172,6 @@ export default function PageSpeedPage() {
       toast.error('Failed to update PageSpeed monitoring')
     } finally {
       setToggling(false)
-    }
-  }
-
-  // * Change frequency inline (without disabling/re-enabling)
-  const handleFrequencyChange = async (newFrequency: string) => {
-    setFrequency(newFrequency)
-    try {
-      await updatePageSpeedConfig(siteId, { enabled: true, frequency: newFrequency })
-      mutateConfig()
-    } catch {
-      toast.error('Failed to update check frequency')
-      if (config?.frequency) setFrequency(config.frequency)
     }
   }
 
@@ -424,13 +400,14 @@ export default function PageSpeedPage() {
               >
                 {running ? 'Running...' : 'Run Check'}
               </Button>
-              <button
+              <Button
+                variant="secondary"
                 onClick={() => handleToggle(false)}
                 disabled={toggling}
-                className="text-sm text-neutral-400 dark:text-neutral-500 hover:text-red-500 dark:hover:text-red-400 disabled:opacity-50 cursor-pointer transition-colors"
+                className="text-sm"
               >
                 {toggling ? 'Disabling...' : 'Disable'}
-              </button>
+              </Button>
             </>
           )}
         </div>
@@ -466,7 +443,7 @@ export default function PageSpeedPage() {
               <button
                 onClick={handlePrevCheck}
                 disabled={!canGoPrev}
-                className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 aria-label="Previous check"
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -486,7 +463,7 @@ export default function PageSpeedPage() {
               <button
                 onClick={handleNextCheck}
                 disabled={!canGoNext}
-                className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 aria-label="Next check"
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -494,35 +471,13 @@ export default function PageSpeedPage() {
                 </svg>
               </button>
             )}
-            {loadingCheck && (
-              <span className="text-xs text-neutral-400 animate-pulse">Loading...</span>
-            )}
-            <span className="text-neutral-300 dark:text-neutral-700 select-none">&middot;</span>
-            {/* Inline frequency selector */}
-            {canEdit ? (
-              <select
-                value={frequency}
-                onChange={(e) => handleFrequencyChange(e.target.value)}
-                className="text-xs bg-transparent border-none text-neutral-500 dark:text-neutral-400 cursor-pointer focus:outline-none focus:ring-0 p-0 pr-4 appearance-none"
-                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right center' }}
-              >
-                <option value="daily">daily</option>
-                <option value="weekly">weekly</option>
-                <option value="monthly">monthly</option>
-              </select>
-            ) : (
-              <span className="text-xs text-neutral-500 dark:text-neutral-400">
-                {config?.frequency}
+            {config?.frequency && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400">
+                {config.frequency}
               </span>
             )}
-            {/* Next check indicator */}
-            {config?.next_check_at && !selectedCheckId && (
-              <>
-                <span className="text-neutral-300 dark:text-neutral-700 select-none">&middot;</span>
-                <span className="text-xs text-neutral-400 dark:text-neutral-500">
-                  Next {formatTimeUntil(config.next_check_at)}
-                </span>
-              </>
+            {loadingCheck && (
+              <span className="text-xs text-neutral-400 animate-pulse">Loading...</span>
             )}
           </div>
           <div className="flex items-center gap-x-3 text-[11px] text-neutral-400 dark:text-neutral-500 ml-auto">
@@ -553,8 +508,8 @@ export default function PageSpeedPage() {
               </div>
             ))}
           </div>
-          {/* Fade indicator for horizontal scroll — only covers padding area */}
-          <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white dark:from-neutral-900 to-transparent rounded-r-2xl pointer-events-none" />
+          {/* Fade indicator for horizontal scroll */}
+          <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-white dark:from-neutral-900 to-transparent rounded-r-2xl pointer-events-none" />
         </div>
       )}
 
