@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { listSites, type Site } from '@/lib/api/sites'
 import { useAuth } from '@/lib/auth/context'
 import { useSettingsModal } from '@/lib/settings-modal-context'
+import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { getUserOrganizations, switchContext, type OrganizationMember } from '@/lib/api/organization'
 import { setSessionAction } from '@/app/actions/auth'
 import { logger } from '@/lib/utils/logger'
@@ -443,6 +444,7 @@ export default function Sidebar({
   const pathname = usePathname()
   const router = useRouter()
   const { openSettings } = useSettingsModal()
+  const { openUnifiedSettings } = useUnifiedSettings()
   const [sites, setSites] = useState<Site[]>([])
   const [orgs, setOrgs] = useState<OrganizationMember[]>([])
   const [pendingHref, setPendingHref] = useState<string | null>(null)
@@ -478,15 +480,19 @@ export default function Sidebar({
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
       if (e.key === '[' && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        const tag = (e.target as HTMLElement)?.tagName
-        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
         e.preventDefault(); toggle()
+      }
+      // `,` opens unified settings (same as GitHub/Linear)
+      if (e.key === ',' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault(); openUnifiedSettings()
       }
     }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [collapsed])
+  }, [collapsed, openUnifiedSettings])
 
   const toggle = useCallback(() => {
     setCollapsed((prev) => { const next = !prev; localStorage.setItem(SIDEBAR_KEY, String(next)); return next })
