@@ -7,7 +7,7 @@ import type { Stats } from '@/lib/api/stats'
 import { formatNumber } from '@ciphera-net/ui'
 import { BarChartIcon, SettingsIcon, BookOpenIcon, ExternalLinkIcon, Button } from '@ciphera-net/ui'
 import { useAuth } from '@/lib/auth/context'
-import { FAVICON_SERVICE_URL } from '@/lib/utils/icons'
+import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
 
 export type SiteStatsMap = Record<string, { stats: Stats }>
 

@@ -9,7 +9,7 @@ import { useSettingsModal } from '@/lib/settings-modal-context'
 import { getUserOrganizations, switchContext, type OrganizationMember } from '@/lib/api/organization'
 import { setSessionAction } from '@/app/actions/auth'
 import { logger } from '@/lib/utils/logger'
-import { FAVICON_SERVICE_URL } from '@/lib/utils/icons'
+import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
 import { Gauge as GaugeIcon } from '@phosphor-icons/react'
 import {
   LayoutDashboardIcon,

@@ -16,7 +16,7 @@ import TechSpecs from '@/components/dashboard/TechSpecs'
 import { Select, DatePicker as DatePickerModal, Captcha, DownloadIcon, ZapIcon } from '@ciphera-net/ui'
 import { DashboardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import ExportModal from '@/components/dashboard/ExportModal'
-import { FAVICON_SERVICE_URL } from '@/lib/utils/icons'
+import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
 
 // Helper to get date ranges
 const getDateRange = (days: number) => {

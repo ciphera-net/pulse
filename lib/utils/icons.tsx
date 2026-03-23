@@ -43,11 +43,8 @@ function BingIcon({ size = 16, color = '#258FFA' }: { size?: number; color?: str
   return <svg width={size} height={size} viewBox="0 0 24 24" fill={color}><path d="M5.71 0v18.39l4.44 2.46 8.14-4.69v-4.71l-8.14-2.84V4.09L5.71 0zm4.44 11.19l4.39 1.53v2.78l-4.39 2.53v-6.84z"/></svg>
 }
 
-/**
- * Google's public favicon service base URL.
- * Append `?domain=<host>&sz=<px>` to get a favicon.
- */
-export const FAVICON_SERVICE_URL = 'https://www.google.com/s2/favicons'
+import { FAVICON_SERVICE_URL } from './favicon'
+export { FAVICON_SERVICE_URL }
 
 // ─── Browser, OS, Device icons (unchanged) ───────────────────────────────────
 
