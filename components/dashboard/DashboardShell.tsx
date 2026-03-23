@@ -31,14 +31,15 @@ export default function DashboardShell({
   const openMobile = useCallback(() => setMobileOpen(true), [])
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-neutral-950">
       <Sidebar
         siteId={siteId}
         mobileOpen={mobileOpen}
         onMobileClose={closeMobile}
         onMobileOpen={openMobile}
       />
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      {/* Content panel — rounded on all corners with slight inset to separate from sidebar */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden my-2 mr-2 rounded-2xl bg-neutral-900 border border-neutral-800/60">
         <ContentHeader onMobileMenuOpen={openMobile} />
         <main className="flex-1 overflow-y-auto pt-4">
           {children}

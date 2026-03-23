@@ -12,7 +12,7 @@ import {
   motion,
   useMotionTemplate,
   useSpring,
-} from "motion/react";
+} from "framer-motion";
 import {
   Children,
   createContext,
