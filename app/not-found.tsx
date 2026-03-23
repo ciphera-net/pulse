@@ -14,9 +14,11 @@ export default function NotFound() {
       </div>
 
       <div className="text-center px-4 z-10">
-        <h1 className="text-9xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-white to-neutral-500 mb-4">
-          404
-        </h1>
+        <img
+          src="/illustrations/page-not-found.svg"
+          alt="Page not found"
+          className="w-72 h-auto mx-auto mb-8"
+        />
         <h2 className="text-2xl font-bold text-white mb-6">
           Page not found
         </h2>
