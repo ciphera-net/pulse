@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { logger } from '@/lib/utils/logger'
-import Image from 'next/image'
 import { formatNumber } from '@ciphera-net/ui'
 import { getReferrerDisplayName, getReferrerFavicon, getReferrerIcon, mergeReferrersByDisplayName } from '@/lib/utils/icons'
 import Link from 'next/link'
@@ -48,14 +47,21 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
     const useFavicon = faviconUrl && !faviconFailed.has(referrer)
     if (useFavicon) {
       return (
-        <Image
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
           src={faviconUrl}
           alt=""
           width={20}
           height={20}
           className="w-5 h-5 flex-shrink-0 rounded object-contain"
           onError={() => setFaviconFailed((prev) => new Set(prev).add(referrer))}
-          unoptimized
+          onLoad={(e) => {
+            // Google's favicon service returns a 16x16 default globe when no real favicon exists
+            const img = e.currentTarget
+            if (img.naturalWidth <= 16) {
+              setFaviconFailed((prev) => new Set(prev).add(referrer))
+            }
+          }}
         />
       )
     }

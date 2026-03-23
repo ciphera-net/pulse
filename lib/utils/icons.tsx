@@ -6,6 +6,7 @@ import {
   DeviceTablet,
   Desktop,
   Link,
+  CursorClick,
 } from '@phosphor-icons/react'
 import {
   SiGoogle,
@@ -122,12 +123,16 @@ const SI = { size: 16 } as const
 export function getReferrerIcon(referrerName: string) {
   if (!referrerName) return <Globe className="text-neutral-400" />
   const lower = referrerName.toLowerCase()
+  // Direct traffic
+  if (lower === 'direct') return <CursorClick className="text-neutral-500" />
+  // Browsers as referrers (e.g. googlechrome.com, firefox.com)
+  if (lower.includes('googlechrome') || lower.includes('chrome')) return <img src="/icons/browsers/chrome.svg" alt="Chrome" width={16} height={16} className="inline-block" />
   // Social / platforms
   if (lower.includes('google') && !lower.includes('gemini')) return <SiGoogle size={SI.size} color="#4285F4" />
-  if (lower.includes('facebook')) return <SiFacebook size={SI.size} color="#0866FF" />
+  if (lower.includes('facebook') || lower === 'fb') return <SiFacebook size={SI.size} color="#0866FF" />
   if (lower.includes('twitter') || lower.includes('t.co') || lower.includes('x.com')) return <XIcon />
   if (lower.includes('linkedin')) return <LinkedInIcon />
-  if (lower.includes('instagram')) return <SiInstagram size={SI.size} color="#E4405F" />
+  if (lower.includes('instagram') || lower === 'ig') return <SiInstagram size={SI.size} color="#E4405F" />
   if (lower.includes('github')) return <SiGithub size={SI.size} color="#fff" />
   if (lower.includes('youtube')) return <SiYoutube size={SI.size} color="#FF0000" />
   if (lower.includes('reddit')) return <SiReddit size={SI.size} color="#FF4500" />
@@ -183,6 +188,10 @@ const REFERRER_DISPLAY_OVERRIDES: Record<string, string> = {
   threads: 'Threads',
   tumblr: 'Tumblr',
   quora: 'Quora',
+  ig: 'Instagram',
+  fb: 'Facebook',
+  yt: 'YouTube',
+  googlechrome: 'Google Chrome',
   't.co': 'X',
   'x.com': 'X',
   // AI assistants and search tools
@@ -239,7 +248,12 @@ export function getReferrerDisplayName(referrer: string): string {
   const trimmed = referrer.trim()
   if (trimmed === '') return ''
   const hostname = getReferrerHostname(trimmed)
-  if (!hostname) return trimmed
+  if (!hostname) {
+    // Plain names without a dot (e.g. "Ig", "Direct") — check override map before returning raw
+    const overrideByPlain = REFERRER_DISPLAY_OVERRIDES[trimmed.toLowerCase()]
+    if (overrideByPlain) return overrideByPlain
+    return trimmed
+  }
   const overrideByHostname = REFERRER_DISPLAY_OVERRIDES[hostname]
   if (overrideByHostname) return overrideByHostname
   const label = getReferrerLabel(hostname)
