@@ -46,8 +46,8 @@ function SiteCard({ site, stats, statsLoading, onDelete, canDelete }: SiteCardPr
             />
           </div>
           <div>
-            <h3 className="font-semibold text-neutral-900 dark:text-white">{site.name}</h3>
-            <div className="flex items-center gap-1 text-sm text-neutral-500 dark:text-neutral-400">
+            <h3 className="font-semibold text-white">{site.name}</h3>
+            <div className="flex items-center gap-1 text-sm text-neutral-400">
               {site.domain}
               <a
                 href={`https://${site.domain}`}
@@ -84,13 +84,13 @@ function SiteCard({ site, stats, statsLoading, onDelete, canDelete }: SiteCardPr
       <div className="mb-6 grid grid-cols-2 gap-4 rounded-lg bg-neutral-50 p-3 dark:bg-neutral-800/50">
         <div>
           <p className="text-xs text-neutral-500">Visitors (24h)</p>
-          <p className="font-mono text-lg font-medium text-neutral-900 dark:text-white">
+          <p className="font-mono text-lg font-medium text-white">
             {statsLoading ? '--' : formatNumber(visitors24h)}
           </p>
         </div>
         <div>
           <p className="text-xs text-neutral-500">Pageviews</p>
-          <p className="font-mono text-lg font-medium text-neutral-900 dark:text-white">
+          <p className="font-mono text-lg font-medium text-white">
             {statsLoading ? '--' : formatNumber(pageviews)}
           </p>
         </div>
@@ -144,8 +144,8 @@ export default function SiteList({ sites, siteStats, loading, onDelete }: SiteLi
           className="mb-6"
           unoptimized
         />
-        <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">No sites yet</h3>
-        <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400 mb-4">Create your first site to get started.</p>
+        <h3 className="text-lg font-semibold text-white">No sites yet</h3>
+        <p className="mt-2 text-sm text-neutral-400 mb-4">Create your first site to get started.</p>
         <Link href="/sites/new">
           <Button variant="primary" className="text-sm">
             Add your first site
@@ -176,8 +176,8 @@ export default function SiteList({ sites, siteStats, loading, onDelete }: SiteLi
         <div className="mb-3 rounded-full bg-neutral-200 p-3 dark:bg-neutral-800">
           <BookOpenIcon className="h-6 w-6 text-neutral-500" />
         </div>
-        <h3 className="font-semibold text-neutral-900 dark:text-white">Need help setup?</h3>
-        <p className="mb-4 text-sm text-neutral-500 dark:text-neutral-400">Check our documentation for installation guides.</p>
+        <h3 className="font-semibold text-white">Need help setup?</h3>
+        <p className="mb-4 text-sm text-neutral-400">Check our documentation for installation guides.</p>
         <Link href="https://docs.ciphera.net" target="_blank" className="text-sm font-medium text-brand-orange hover:underline">
           Read Documentation &rarr;
         </Link>

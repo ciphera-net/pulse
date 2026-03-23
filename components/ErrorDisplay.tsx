@@ -36,7 +36,7 @@ export default function ErrorDisplay({
           className="w-56 h-auto mx-auto mb-8"
         />
 
-        <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-4">
+        <h2 className="text-2xl font-bold text-white mb-4">
           {title}
         </h2>
         <p className="text-lg text-neutral-600 dark:text-neutral-400 max-w-md mx-auto mb-10 leading-relaxed">

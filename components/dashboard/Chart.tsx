@@ -322,7 +322,7 @@ export default function Chart({
               >
                 <div className={cn('text-[10px] font-semibold uppercase tracking-widest mb-2', metric === m.key ? 'text-brand-orange' : 'text-neutral-400 dark:text-neutral-500')}>{m.label}</div>
                 <div className="flex items-baseline gap-2">
-                  <AnimatedNumber value={m.value} format={m.format} className="text-2xl font-bold text-neutral-900 dark:text-white" />
+                  <AnimatedNumber value={m.value} format={m.format} className="text-2xl font-bold text-white" />
                   {m.change !== null && (
                     <span className={cn('flex items-center gap-0.5 text-sm font-semibold', m.isPositive ? 'text-[#10B981]' : 'text-[#EF4444]')}>
                       {m.isPositive ? <ArrowUpRight weight="bold" className="size-3.5" /> : <ArrowDownRight weight="bold" className="size-3.5" />}
@@ -357,7 +357,7 @@ export default function Chart({
           {/* Toolbar */}
           <div className="flex items-center justify-between gap-3 mb-4 px-2">
             <div className="flex items-center gap-3">
-              <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
+              <span className="text-xs font-medium text-neutral-400">
                 {METRIC_CONFIGS.find((m) => m.key === metric)?.label}
               </span>
             </div>
@@ -526,7 +526,7 @@ export default function Chart({
                                   <span className="font-medium text-neutral-400 dark:text-neutral-500">
                                     {ANNOTATION_LABELS[a.category] || 'Note'} &middot; {formatEU(a.date)}{a.time ? ` at ${a.time}` : ''}
                                   </span>
-                                  <p className="text-neutral-900 dark:text-white">{a.text}</p>
+                                  <p className="text-white">{a.text}</p>
                                 </div>
                               </div>
                             ))}
@@ -593,16 +593,16 @@ export default function Chart({
       {annotationForm.visible && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/20 dark:bg-black/40 rounded-2xl">
           <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl p-5 w-[340px] max-w-[90%]">
-            <h3 className="text-sm font-semibold text-neutral-900 dark:text-white mb-3">
+            <h3 className="text-sm font-semibold text-white mb-3">
               {annotationForm.editingId ? 'Edit annotation' : 'Add annotation'}
             </h3>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Date</label>
+                <label className="block text-xs font-medium text-neutral-400 mb-1">Date</label>
                 <button
                   type="button"
                   onClick={() => setCalendarOpen(true)}
-                  className="w-full px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-orange/30 text-left flex items-center justify-between"
+                  className="w-full px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-white focus:outline-none focus:ring-2 focus:ring-brand-orange/30 text-left flex items-center justify-between"
                 >
                   <span>{annotationForm.date ? formatEU(annotationForm.date) : 'Select date'}</span>
                   <svg className="w-4 h-4 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -611,7 +611,7 @@ export default function Chart({
                 </button>
               </div>
               <div>
-                <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">
+                <label className="block text-xs font-medium text-neutral-400 mb-1">
                   Time <span className="text-neutral-400 dark:text-neutral-500">(optional)</span>
                 </label>
                 <div className="flex items-center gap-2">
@@ -619,7 +619,7 @@ export default function Chart({
                     type="time"
                     value={annotationForm.time}
                     onChange={(e) => setAnnotationForm((f) => ({ ...f, time: e.target.value }))}
-                    className="flex-1 px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
+                    className="flex-1 px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-white focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
                   />
                   {annotationForm.time && (
                     <button
@@ -634,20 +634,20 @@ export default function Chart({
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Note</label>
+                <label className="block text-xs font-medium text-neutral-400 mb-1">Note</label>
                 <input
                   type="text"
                   value={annotationForm.text}
                   onChange={(e) => setAnnotationForm((f) => ({ ...f, text: e.target.value.slice(0, 200) }))}
                   placeholder="e.g. Launched new homepage"
                   maxLength={200}
-                  className="w-full px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
+                  className="w-full px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-white focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
                   autoFocus
                 />
                 <span className="text-[10px] text-neutral-400 mt-0.5 block text-right">{annotationForm.text.length}/200</span>
               </div>
               <div>
-                <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Category</label>
+                <label className="block text-xs font-medium text-neutral-400 mb-1">Category</label>
                 <Select
                   value={annotationForm.category}
                   onChange={(v) => setAnnotationForm((f) => ({ ...f, category: v }))}
@@ -675,7 +675,7 @@ export default function Chart({
                 <button
                   type="button"
                   onClick={() => setAnnotationForm({ visible: false, date: '', time: '', text: '', category: 'other' })}
-                  className="px-3 py-1.5 text-xs font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 cursor-pointer"
+                  className="px-3 py-1.5 text-xs font-medium text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 cursor-pointer"
                 >
                   Cancel
                 </button>

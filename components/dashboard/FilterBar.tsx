@@ -29,7 +29,7 @@ export default function FilterBar({ filters, onRemove, onClear }: FilterBarProps
       {filters.length > 1 && (
         <button
           onClick={onClear}
-          className="px-2 py-1.5 text-xs font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer"
+          className="px-2 py-1.5 text-xs font-medium text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer"
         >
           Clear all
         </button>

@@ -212,7 +212,7 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
             style={anchor === 'right' && fixedPos ? { left: fixedPos.left, top: fixedPos.top, bottom: fixedPos.bottom } : undefined}
           >
             <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200 dark:border-neutral-700">
-              <h3 className="font-semibold text-neutral-900 dark:text-white">Notifications</h3>
+              <h3 className="font-semibold text-white">Notifications</h3>
               {unreadCount > 0 && (
                 <button
                   type="button"
@@ -243,7 +243,7 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
                 <div className="p-6 text-center text-red-500 text-sm">{error}</div>
               )}
               {!loading && !error && (notifications?.length ?? 0) === 0 && (
-                <div className="p-6 text-center text-neutral-500 dark:text-neutral-400 text-sm">
+                <div className="p-6 text-center text-neutral-400 text-sm">
                   No notifications yet
                 </div>
               )}
@@ -260,11 +260,11 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
                           <div className="flex gap-3">
                             {getTypeIcon(n.type)}
                             <div className="min-w-0 flex-1">
-                              <p className={`text-sm ${!n.read ? 'font-medium' : ''} text-neutral-900 dark:text-white`}>
+                              <p className={`text-sm ${!n.read ? 'font-medium' : ''} text-white`}>
                                 {n.title}
                               </p>
                               {n.body && (
-                                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 line-clamp-2">
+                                <p className="text-xs text-neutral-400 mt-0.5 line-clamp-2">
                                   {n.body}
                                 </p>
                               )}
@@ -283,11 +283,11 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
                           <div className="flex gap-3">
                             {getTypeIcon(n.type)}
                             <div className="min-w-0 flex-1">
-                              <p className={`text-sm ${!n.read ? 'font-medium' : ''} text-neutral-900 dark:text-white`}>
+                              <p className={`text-sm ${!n.read ? 'font-medium' : ''} text-white`}>
                                 {n.title}
                               </p>
                               {n.body && (
-                                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 line-clamp-2">
+                                <p className="text-xs text-neutral-400 mt-0.5 line-clamp-2">
                                   {n.body}
                                 </p>
                               )}
@@ -315,7 +315,7 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
               <Link
                 href="/org-settings?tab=notifications"
                 onClick={() => setOpen(false)}
-                className="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors"
+                className="flex items-center gap-2 text-sm text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors"
               >
                 <SettingsIcon className="w-4 h-4" aria-hidden="true" />
                 Manage settings

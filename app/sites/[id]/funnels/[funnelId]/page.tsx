@@ -25,7 +25,7 @@ export default function FunnelReportPage() {
   const [funnel, setFunnel] = useState<Funnel | null>(null)
   const [stats, setStats] = useState<FunnelStats | null>(null)
   const [loading, setLoading] = useState(true)
-  const [dateRange, setDateRange] = useState(getDateRange(30))
+  const [dateRange, setDateRange] = useState(() => getDateRange(30))
   const [datePreset, setDatePreset] = useState<'7' | '30' | 'custom'>('30')
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
   const [loadError, setLoadError] = useState<'not_found' | 'forbidden' | 'error' | null>(null)
@@ -154,7 +154,7 @@ export default function FunnelReportPage() {
               <ChevronLeftIcon className="w-5 h-5" />
             </Link>
             <div>
-              <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
+              <h1 className="text-2xl font-bold text-white">
                 {funnel.name}
               </h1>
               {funnel.description && (
@@ -236,7 +236,7 @@ export default function FunnelReportPage() {
         {trends && trends.dates.length > 1 && (
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm p-6 mb-8">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
+              <h3 className="text-lg font-semibold text-white">
                 Conversion Trends
               </h3>
               <div className="flex flex-wrap gap-2">
@@ -322,10 +322,10 @@ export default function FunnelReportPage() {
             <table className="w-full text-left text-sm">
               <thead className="bg-neutral-50 dark:bg-neutral-800/50 border-b border-neutral-200 dark:border-neutral-800">
                 <tr>
-                  <th className="px-6 py-4 font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Step</th>
-                  <th className="px-6 py-4 font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider text-right">Visitors</th>
-                  <th className="px-6 py-4 font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider text-right">Drop-off</th>
-                  <th className="px-6 py-4 font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider text-right">Conversion</th>
+                  <th className="px-6 py-4 font-medium text-neutral-400 uppercase tracking-wider">Step</th>
+                  <th className="px-6 py-4 font-medium text-neutral-400 uppercase tracking-wider text-right">Visitors</th>
+                  <th className="px-6 py-4 font-medium text-neutral-400 uppercase tracking-wider text-right">Drop-off</th>
+                  <th className="px-6 py-4 font-medium text-neutral-400 uppercase tracking-wider text-right">Conversion</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
@@ -338,13 +338,13 @@ export default function FunnelReportPage() {
                             {i + 1}
                           </span>
                           <div>
-                            <p className="font-medium text-neutral-900 dark:text-white">{step.step.name}</p>
-                            <p className="text-neutral-500 dark:text-neutral-400 text-xs font-mono mt-0.5">{step.step.value}</p>
+                            <p className="font-medium text-white">{step.step.name}</p>
+                            <p className="text-neutral-400 text-xs font-mono mt-0.5">{step.step.value}</p>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <span className="font-medium text-neutral-900 dark:text-white">
+                        <span className="font-medium text-white">
                           {step.visitors.toLocaleString()}
                         </span>
                       </td>

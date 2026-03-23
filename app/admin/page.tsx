@@ -9,9 +9,9 @@ export default function AdminDashboard() {
         href="/admin/orgs"
         className="block transition-transform hover:scale-[1.02] rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 shadow-sm"
       >
-        <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Organizations</h3>
-        <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">Manage organization plans and limits</p>
-        <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-4">
+        <h3 className="text-lg font-semibold text-white">Organizations</h3>
+        <p className="text-sm text-neutral-400 mt-1">Manage organization plans and limits</p>
+        <p className="text-sm text-neutral-400 mt-4">
           View all organizations, check billing status, and manually grant plans.
         </p>
       </Link>
@@ -19,9 +19,9 @@ export default function AdminDashboard() {
         href="/admin/filtered-traffic"
         className="block transition-transform hover:scale-[1.02] rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 shadow-sm"
       >
-        <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Filtered Traffic</h3>
-        <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">Monitor blocked referrer spam</p>
-        <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-4">
+        <h3 className="text-lg font-semibold text-white">Filtered Traffic</h3>
+        <p className="text-sm text-neutral-400 mt-1">Monitor blocked referrer spam</p>
+        <p className="text-sm text-neutral-400 mt-4">
           View domains blocked by the spam filter and check for false positives.
         </p>
       </Link>

@@ -43,28 +43,28 @@ export default function AdminOrgsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-neutral-900 dark:text-white">Organizations</h2>
+        <h2 className="text-xl font-semibold text-white">Organizations</h2>
       </div>
 
       <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 shadow-sm">
-        <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">All Organizations</h3>
+        <h3 className="text-lg font-semibold text-white mb-4">All Organizations</h3>
         <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="border-b border-neutral-200 dark:border-neutral-800">
                 <tr>
-                  <th className="px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">Name</th>
-                  <th className="px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">Org ID</th>
-                  <th className="px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">Plan</th>
-                  <th className="px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">Status</th>
-                  <th className="px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">Limit</th>
-                  <th className="px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">Updated</th>
-                  <th className="px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">Actions</th>
+                  <th className="px-4 py-3 font-medium text-neutral-400">Name</th>
+                  <th className="px-4 py-3 font-medium text-neutral-400">Org ID</th>
+                  <th className="px-4 py-3 font-medium text-neutral-400">Plan</th>
+                  <th className="px-4 py-3 font-medium text-neutral-400">Status</th>
+                  <th className="px-4 py-3 font-medium text-neutral-400">Limit</th>
+                  <th className="px-4 py-3 font-medium text-neutral-400">Updated</th>
+                  <th className="px-4 py-3 font-medium text-neutral-400">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
                 {orgs.map((org) => (
                   <tr key={org.organization_id} className="hover:bg-neutral-50 dark:hover:bg-neutral-900/50">
-                    <td className="px-4 py-3 text-neutral-900 dark:text-white font-medium">
+                    <td className="px-4 py-3 text-white font-medium">
                       {org.business_name || 'N/A'}
                     </td>
                     <td className="px-4 py-3">

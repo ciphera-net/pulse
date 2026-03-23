@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import { getDateRange, formatDate, Select, DatePicker } from '@ciphera-net/ui'
+import { Select, DatePicker } from '@ciphera-net/ui'
+import { getDateRange, formatDate, getThisWeekRange, getThisMonthRange } from '@/lib/utils/dateRanges'
 import { CaretDown, CaretUp, MagnifyingGlass, ArrowSquareOut } from '@phosphor-icons/react'
 import { useDashboard, useGSCStatus, useGSCOverview, useGSCTopQueries, useGSCTopPages, useGSCNewQueries } from '@/lib/swr/dashboard'
 import { getGSCQueryPages, getGSCPageQueries } from '@/lib/api/gsc'
@@ -12,20 +13,6 @@ import { SkeletonLine, StatCardSkeleton, useMinimumLoading, useSkeletonFade } fr
 import ClicksImpressionsChart from '@/components/search/ClicksImpressionsChart'
 
 // ─── Helpers ────────────────────────────────────────────────────
-
-function getThisWeekRange(): { start: string; end: string } {
-  const today = new Date()
-  const dayOfWeek = today.getDay()
-  const monday = new Date(today)
-  monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1))
-  return { start: formatDate(monday), end: formatDate(today) }
-}
-
-function getThisMonthRange(): { start: string; end: string } {
-  const today = new Date()
-  const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
-  return { start: formatDate(firstOfMonth), end: formatDate(today) }
-}
 
 const formatPosition = (pos: number) => pos.toFixed(1)
 const formatCTR = (ctr: number) => (ctr * 100).toFixed(1) + '%'
@@ -179,10 +166,10 @@ export default function SearchConsolePage() {
           <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-5 mb-6">
             <MagnifyingGlass size={40} className="text-neutral-400 dark:text-neutral-500" />
           </div>
-          <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-2">
+          <h2 className="text-xl font-semibold text-white mb-2">
             Connect Google Search Console
           </h2>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 max-w-md mb-6">
+          <p className="text-sm text-neutral-400 max-w-md mb-6">
             See how your site performs in Google Search. View top queries, pages, click-through rates, and average position data.
           </p>
           <Link
@@ -215,10 +202,10 @@ export default function SearchConsolePage() {
       {/* Header */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">
+          <h1 className="text-2xl font-bold text-white mb-1">
             Search Console
           </h1>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+          <p className="text-sm text-neutral-400">
             Google Search performance, queries, and page rankings
           </p>
         </div>
@@ -296,9 +283,9 @@ export default function SearchConsolePage() {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-6">
           {topQueries.queries.slice(0, 5).map((q) => (
             <div key={q.query} className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-3">
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate mb-1">{q.query}</p>
+              <p className="text-xs text-neutral-400 truncate mb-1">{q.query}</p>
               <div className="flex items-baseline gap-1.5">
-                <p className="text-lg font-semibold text-neutral-900 dark:text-white">{q.position.toFixed(1)}</p>
+                <p className="text-lg font-semibold text-white">{q.position.toFixed(1)}</p>
                 <p className="text-xs text-neutral-400">pos</p>
               </div>
               <p className="text-xs text-neutral-500 mt-0.5">{q.clicks} {q.clicks === 1 ? 'click' : 'clicks'}</p>
@@ -322,8 +309,8 @@ export default function SearchConsolePage() {
             onClick={() => { setActiveView('queries'); setExpandedQuery(null); setExpandedData([]) }}
             className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all cursor-pointer ${
               activeView === 'queries'
-                ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
-                : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300'
+                ? 'bg-white dark:bg-neutral-700 text-white shadow-sm'
+                : 'text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300'
             }`}
           >
             Top Queries
@@ -332,8 +319,8 @@ export default function SearchConsolePage() {
             onClick={() => { setActiveView('pages'); setExpandedPage(null); setExpandedData([]) }}
             className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all cursor-pointer ${
               activeView === 'pages'
-                ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
-                : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300'
+                ? 'bg-white dark:bg-neutral-700 text-white shadow-sm'
+                : 'text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300'
             }`}
           >
             Top Pages
@@ -347,12 +334,12 @@ export default function SearchConsolePage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-neutral-200 dark:border-neutral-800">
-                <th className="text-left px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400 w-8" />
-                <th className="text-left px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">Query</th>
-                <th className="text-right px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">Clicks</th>
-                <th className="text-right px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">Impressions</th>
-                <th className="text-right px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">CTR</th>
-                <th className="text-right px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">Position</th>
+                <th className="text-left px-4 py-3 font-medium text-neutral-400 w-8" />
+                <th className="text-left px-4 py-3 font-medium text-neutral-400">Query</th>
+                <th className="text-right px-4 py-3 font-medium text-neutral-400">Clicks</th>
+                <th className="text-right px-4 py-3 font-medium text-neutral-400">Impressions</th>
+                <th className="text-right px-4 py-3 font-medium text-neutral-400">CTR</th>
+                <th className="text-right px-4 py-3 font-medium text-neutral-400">Position</th>
               </tr>
             </thead>
             <tbody>
@@ -369,7 +356,7 @@ export default function SearchConsolePage() {
                 ))
               ) : queries.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-neutral-500 dark:text-neutral-400">
+                  <td colSpan={6} className="px-4 py-12 text-center text-neutral-400">
                     No query data available for this period.
                   </td>
                 </tr>
@@ -391,7 +378,7 @@ export default function SearchConsolePage() {
           {/* Pagination */}
           {queriesTotal > PAGE_SIZE && (
             <div className="flex items-center justify-between px-4 py-3 border-t border-neutral-200 dark:border-neutral-800">
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">
+              <p className="text-sm text-neutral-400">
                 Showing {queryPage * PAGE_SIZE + 1}-{Math.min((queryPage + 1) * PAGE_SIZE, queriesTotal)} of {queriesTotal.toLocaleString()}
               </p>
               <div className="flex gap-2">
@@ -421,12 +408,12 @@ export default function SearchConsolePage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-neutral-200 dark:border-neutral-800">
-                <th className="text-left px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400 w-8" />
-                <th className="text-left px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">Page</th>
-                <th className="text-right px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">Clicks</th>
-                <th className="text-right px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">Impressions</th>
-                <th className="text-right px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">CTR</th>
-                <th className="text-right px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">Position</th>
+                <th className="text-left px-4 py-3 font-medium text-neutral-400 w-8" />
+                <th className="text-left px-4 py-3 font-medium text-neutral-400">Page</th>
+                <th className="text-right px-4 py-3 font-medium text-neutral-400">Clicks</th>
+                <th className="text-right px-4 py-3 font-medium text-neutral-400">Impressions</th>
+                <th className="text-right px-4 py-3 font-medium text-neutral-400">CTR</th>
+                <th className="text-right px-4 py-3 font-medium text-neutral-400">Position</th>
               </tr>
             </thead>
             <tbody>
@@ -443,7 +430,7 @@ export default function SearchConsolePage() {
                 ))
               ) : pages.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-neutral-500 dark:text-neutral-400">
+                  <td colSpan={6} className="px-4 py-12 text-center text-neutral-400">
                     No page data available for this period.
                   </td>
                 </tr>
@@ -465,7 +452,7 @@ export default function SearchConsolePage() {
           {/* Pagination */}
           {pagesTotal > PAGE_SIZE && (
             <div className="flex items-center justify-between px-4 py-3 border-t border-neutral-200 dark:border-neutral-800">
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">
+              <p className="text-sm text-neutral-400">
                 Showing {pagePage * PAGE_SIZE + 1}-{Math.min((pagePage + 1) * PAGE_SIZE, pagesTotal)} of {pagesTotal.toLocaleString()}
               </p>
               <div className="flex gap-2">
@@ -522,13 +509,13 @@ function OverviewCard({
 
   return (
     <div className="p-4 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900">
-      <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">{label}</p>
-      <p className="text-2xl font-bold text-neutral-900 dark:text-white">{value}</p>
+      <p className="text-xs font-medium text-neutral-400 mb-1">{label}</p>
+      <p className="text-2xl font-bold text-white">{value}</p>
       {change && (
         <p className={`text-xs mt-1 font-medium ${
           isPositive ? 'text-green-600 dark:text-green-400' :
           isNegative ? 'text-red-600 dark:text-red-400' :
-          'text-neutral-500 dark:text-neutral-400'
+          'text-neutral-400'
         }`}>
           {change.label} vs previous period
         </p>
@@ -560,7 +547,7 @@ function QueryRow({
         <td className="px-4 py-3 text-neutral-400 dark:text-neutral-500">
           <Caret size={14} />
         </td>
-        <td className="px-4 py-3 text-neutral-900 dark:text-white font-medium">{row.query}</td>
+        <td className="px-4 py-3 text-white font-medium">{row.query}</td>
         <td className="px-4 py-3 text-right text-neutral-700 dark:text-neutral-300 tabular-nums">{row.clicks.toLocaleString()}</td>
         <td className="px-4 py-3 text-right text-neutral-700 dark:text-neutral-300 tabular-nums">{row.impressions.toLocaleString()}</td>
         <td className="px-4 py-3 text-right text-neutral-700 dark:text-neutral-300 tabular-nums">{formatCTR(row.ctr)}</td>
@@ -576,7 +563,7 @@ function QueryRow({
                 ))}
               </div>
             ) : expandedData.length === 0 ? (
-              <p className="text-sm text-neutral-500 dark:text-neutral-400 py-1">No pages found for this query.</p>
+              <p className="text-sm text-neutral-400 py-1">No pages found for this query.</p>
             ) : (
               <table className="w-full text-sm">
                 <thead>
@@ -631,7 +618,7 @@ function PageRow({
         <td className="px-4 py-3 text-neutral-400 dark:text-neutral-500">
           <Caret size={14} />
         </td>
-        <td className="px-4 py-3 text-neutral-900 dark:text-white font-medium max-w-md truncate" title={row.page}>{row.page}</td>
+        <td className="px-4 py-3 text-white font-medium max-w-md truncate" title={row.page}>{row.page}</td>
         <td className="px-4 py-3 text-right text-neutral-700 dark:text-neutral-300 tabular-nums">{row.clicks.toLocaleString()}</td>
         <td className="px-4 py-3 text-right text-neutral-700 dark:text-neutral-300 tabular-nums">{row.impressions.toLocaleString()}</td>
         <td className="px-4 py-3 text-right text-neutral-700 dark:text-neutral-300 tabular-nums">{formatCTR(row.ctr)}</td>
@@ -647,7 +634,7 @@ function PageRow({
                 ))}
               </div>
             ) : expandedData.length === 0 ? (
-              <p className="text-sm text-neutral-500 dark:text-neutral-400 py-1">No queries found for this page.</p>
+              <p className="text-sm text-neutral-400 py-1">No queries found for this page.</p>
             ) : (
               <table className="w-full text-sm">
                 <thead>

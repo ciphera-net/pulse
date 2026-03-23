@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { getDateRange, formatDate } from '@ciphera-net/ui'
+import { getDateRange, formatDate, getThisWeekRange, getThisMonthRange } from '@/lib/utils/dateRanges'
 import { Select, DatePicker } from '@ciphera-net/ui'
 import dynamic from 'next/dynamic'
 import { getRageClicks, getDeadClicks } from '@/lib/api/stats'
@@ -14,20 +14,6 @@ import { useDashboard, useBehavior } from '@/lib/swr/dashboard'
 import { BehaviorSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 
 const ScrollDepth = dynamic(() => import('@/components/dashboard/ScrollDepth'))
-
-function getThisWeekRange(): { start: string; end: string } {
-  const today = new Date()
-  const dayOfWeek = today.getDay()
-  const monday = new Date(today)
-  monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1))
-  return { start: formatDate(monday), end: formatDate(today) }
-}
-
-function getThisMonthRange(): { start: string; end: string } {
-  const today = new Date()
-  const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
-  return { start: formatDate(firstOfMonth), end: formatDate(today) }
-}
 
 export default function BehaviorPage() {
   const params = useParams()
@@ -74,10 +60,10 @@ export default function BehaviorPage() {
       {/* Header */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">
+          <h1 className="text-2xl font-bold text-white mb-1">
             Behavior
           </h1>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+          <p className="text-sm text-neutral-400">
             Frustration signals and user engagement patterns
           </p>
         </div>

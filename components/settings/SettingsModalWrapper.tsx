@@ -72,7 +72,7 @@ function NotificationCenterPlaceholder() {
   return (
     <div className="text-center max-w-md mx-auto py-8">
       <BellIcon className="w-12 h-12 text-neutral-300 mx-auto mb-4" />
-      <h3 className="text-lg font-medium text-neutral-900 dark:text-white mb-2">Notification Center</h3>
+      <h3 className="text-lg font-medium text-white mb-2">Notification Center</h3>
       <p className="text-sm text-neutral-500 mb-4">View and manage all your notifications in one place.</p>
       <Link href="/notifications" className="inline-flex items-center gap-2 px-4 py-2 bg-brand-orange text-white rounded-lg hover:bg-brand-orange/90 transition-colors">
         Open Notification Center

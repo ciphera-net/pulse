@@ -9,6 +9,7 @@ import { toast, Button } from '@ciphera-net/ui'
 import { motion } from 'framer-motion'
 import ScoreGauge from '@/components/pagespeed/ScoreGauge'
 import { AreaChart as VisxAreaChart, Area as VisxArea, Grid as VisxGrid, XAxis as VisxXAxis, YAxis as VisxYAxis, ChartTooltip as VisxChartTooltip } from '@/components/ui/area-chart'
+import { useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 
 // * Metric status thresholds (Google's Core Web Vitals thresholds)
 function getMetricStatus(metric: string, value: number | null): { label: string; color: string } {
@@ -223,8 +224,10 @@ export default function PageSpeedPage() {
     }
   }
 
-  // * Loading state
-  if (isLoading && !latestChecks) return <PageSpeedSkeleton />
+  // * Loading state with minimum display time (consistent with other pages)
+  const showSkeleton = useMinimumLoading(isLoading && !latestChecks)
+  const fadeClass = useSkeletonFade(showSkeleton)
+  if (showSkeleton) return <PageSpeedSkeleton />
   if (!site) return <div className="p-8 text-neutral-500">Site not found</div>
 
   const enabled = config?.enabled ?? false
@@ -235,10 +238,10 @@ export default function PageSpeedPage() {
       <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">
+          <h1 className="text-2xl font-bold text-white mb-1">
             PageSpeed
           </h1>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+          <p className="text-sm text-neutral-400">
             Monitor your site&apos;s performance and Core Web Vitals
           </p>
         </div>
@@ -246,14 +249,14 @@ export default function PageSpeedPage() {
         {/* Empty state */}
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-12 text-center">
           <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-            <svg className="w-8 h-8 text-neutral-500 dark:text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <svg className="w-8 h-8 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h3 className="font-semibold text-neutral-900 dark:text-white mb-2">
+          <h3 className="font-semibold text-white mb-2">
             PageSpeed monitoring is disabled
           </h3>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6 max-w-md mx-auto">
+          <p className="text-sm text-neutral-400 mb-6 max-w-md mx-auto">
             Enable PageSpeed monitoring to track your site&apos;s performance scores, Core Web Vitals, and get actionable improvement suggestions.
           </p>
 
@@ -263,7 +266,7 @@ export default function PageSpeedPage() {
             <select
               value={frequency}
               onChange={(e) => setFrequency(e.target.value)}
-              className="text-sm border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-neutral-100"
+              className="text-sm border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-white rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-neutral-100"
             >
               <option value="daily">Daily</option>
               <option value="weekly">Weekly</option>
@@ -358,10 +361,10 @@ export default function PageSpeedPage() {
       {/* Header */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">
+          <h1 className="text-2xl font-bold text-white mb-1">
             PageSpeed
           </h1>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+          <p className="text-sm text-neutral-400">
             Performance scores and Core Web Vitals for {site.domain}
           </p>
         </div>
@@ -443,7 +446,7 @@ export default function PageSpeedPage() {
 
         {/* Check navigator + frequency + legend */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-6 pt-4 border-t border-neutral-100 dark:border-neutral-800">
-          <div className="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400">
+          <div className="flex items-center gap-2 text-sm text-neutral-400">
             {/* Prev/Next arrows */}
             {checkTimestamps.length > 1 && (
               <button
@@ -497,7 +500,7 @@ export default function PageSpeedPage() {
       {/* Filmstrip — page load progression */}
       {currentCheck?.filmstrip && currentCheck.filmstrip.length > 0 && (
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 sm:p-8 mb-6 relative">
-          <h3 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-4">
+          <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-4">
             Page Load Timeline
           </h3>
           <div className="flex items-center overflow-x-auto gap-1 scrollbar-none">
@@ -521,7 +524,7 @@ export default function PageSpeedPage() {
 
       {/* Section 2 — Metrics Card */}
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 sm:p-8 mb-6">
-        <h3 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-5">
+        <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-5">
           Metrics
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
@@ -529,10 +532,10 @@ export default function PageSpeedPage() {
             <div key={key} className="flex items-start gap-3">
               <span className={`mt-1.5 inline-block w-2.5 h-2.5 rounded-full flex-shrink-0 ${getMetricDotColor(key, value)}`} />
               <div>
-                <div className="text-sm text-neutral-500 dark:text-neutral-400">
+                <div className="text-sm text-neutral-400">
                   {label}
                 </div>
-                <div className="text-2xl font-semibold text-neutral-900 dark:text-white tabular-nums">
+                <div className="text-2xl font-semibold text-white tabular-nums">
                   {formatMetricValue(key, value)}
                 </div>
               </div>
@@ -544,7 +547,7 @@ export default function PageSpeedPage() {
       {/* Section 3 — Score Trend Chart (visx) */}
       {chartData.length >= 2 && (
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 sm:p-8 mb-6 overflow-hidden">
-          <h3 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-4">
+          <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-4">
             Performance Score Trend
           </h3>
           <div>
@@ -597,10 +600,10 @@ export default function PageSpeedPage() {
                 <div className="flex items-center gap-5 mb-6">
                   <ScoreGauge score={scoreByGroup[group.key]} label="" size={56} />
                   <div>
-                    <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
+                    <h3 className="text-lg font-semibold text-white">
                       {group.label}
                     </h3>
-                    <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                    <p className="text-xs text-neutral-400">
                       {(() => {
                         const realIssues = groupAudits.filter(a => a.score !== null && a.score !== undefined).length
                         return realIssues === 0 ? 'No issues found' : `${realIssues} issue${realIssues !== 1 ? 's' : ''} found`
@@ -615,7 +618,7 @@ export default function PageSpeedPage() {
 
                 {groupManual.length > 0 && (
                   <details className="mt-4">
-                    <summary className="cursor-pointer text-sm font-medium text-neutral-500 dark:text-neutral-400 select-none hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors">
+                    <summary className="cursor-pointer text-sm font-medium text-neutral-400 select-none hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors">
                       <span className="ml-1">Additional items to manually check ({groupManual.length})</span>
                     </summary>
                     <div className="mt-2 divide-y divide-neutral-100 dark:divide-neutral-800">
@@ -626,7 +629,7 @@ export default function PageSpeedPage() {
 
                 {groupPassed.length > 0 && (
                   <details className="mt-4">
-                    <summary className="cursor-pointer text-sm font-medium text-neutral-500 dark:text-neutral-400 select-none hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors">
+                    <summary className="cursor-pointer text-sm font-medium text-neutral-400 select-none hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors">
                       <span className="ml-1">{groupPassed.length} passed audit{groupPassed.length !== 1 ? 's' : ''}</span>
                     </summary>
                     <div className="mt-2 divide-y divide-neutral-100 dark:divide-neutral-800">
@@ -738,7 +741,7 @@ function AuditRow({ audit }: { audit: AuditSummary }) {
     <details className="group">
       <summary className="flex items-center gap-3 py-3 px-2 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800/50 cursor-pointer list-none">
         <AuditSeverityIcon score={audit.score} />
-        <span className="font-medium text-sm text-neutral-900 dark:text-white flex-1 min-w-0 truncate">{audit.title}</span>
+        <span className="font-medium text-sm text-white flex-1 min-w-0 truncate">{audit.title}</span>
         {audit.display_value && (
           <span className="text-xs text-neutral-500 dark:text-neutral-500 flex-shrink-0 tabular-nums">{audit.display_value}</span>
         )}
@@ -754,7 +757,7 @@ function AuditRow({ audit }: { audit: AuditSummary }) {
       <div className="pl-8 pr-2 pb-3 pt-1">
         {/* Description with parsed markdown links */}
         {audit.description && (
-          <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-3 leading-relaxed">
+          <p className="text-xs text-neutral-400 mb-3 leading-relaxed">
             <AuditDescription text={audit.description} />
           </p>
         )}
@@ -822,15 +825,15 @@ function AuditItem({ item }: { item: Record<string, any> }) {
       {/* Content */}
       <div className="flex-1 min-w-0">
         {label && (
-          <div className="font-medium text-neutral-900 dark:text-white text-xs mb-0.5">
+          <div className="font-medium text-white text-xs mb-0.5">
             {label}
           </div>
         )}
         {url && (
-          <div className="font-mono text-xs text-neutral-500 dark:text-neutral-400 break-all">{url}</div>
+          <div className="font-mono text-xs text-neutral-400 break-all">{url}</div>
         )}
         {text && (
-          <div className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{text}</div>
+          <div className="text-xs text-neutral-400 mt-0.5">{text}</div>
         )}
         {item.node?.snippet && (
           <code className="text-xs bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded break-all mt-1 inline-block">{item.node.snippet}</code>

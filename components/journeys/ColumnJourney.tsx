@@ -166,7 +166,7 @@ function ColumnHeader({
         {column.index === 0 ? 'Entry' : `Step ${column.index}`}
       </span>
       <div className="flex items-baseline gap-1.5">
-        <span className="text-sm font-semibold text-neutral-900 dark:text-white tabular-nums">
+        <span className="text-sm font-semibold text-white tabular-nums">
           {column.totalSessions.toLocaleString()} visitors
         </span>
         {column.dropOffPercent !== 0 && (
@@ -235,10 +235,10 @@ function PageRow({
       <span
         className={`relative flex-1 truncate text-sm ${
           isSelected
-            ? 'text-neutral-900 dark:text-white font-medium'
+            ? 'text-white font-medium'
             : isOther
               ? 'italic text-neutral-400 dark:text-neutral-500'
-              : 'text-neutral-900 dark:text-white'
+              : 'text-white'
         }`}
       >
         {isOther ? page.path : smartLabel(page.path)}
@@ -561,12 +561,15 @@ export default function ColumnJourney({
           alt="No journey data"
           className="w-52 h-auto mb-2"
         />
-        <h4 className="font-semibold text-neutral-900 dark:text-white">
+        <h4 className="font-semibold text-white">
           No journey data yet
         </h4>
-        <p className="text-sm text-neutral-500 dark:text-neutral-400 max-w-xs">
+        <p className="text-sm text-neutral-400 max-w-xs">
           Navigation flows will appear here as visitors browse through your site.
         </p>
+        <a href="/installation" target="_blank" rel="noopener noreferrer" className="mt-2 text-sm font-medium text-brand-orange hover:underline">
+          View setup guide
+        </a>
       </div>
     )
   }

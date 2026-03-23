@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { getDateRange, formatDate } from '@ciphera-net/ui'
+import { getDateRange, formatDate, getThisWeekRange, getThisMonthRange } from '@/lib/utils/dateRanges'
 import { Select, DatePicker } from '@ciphera-net/ui'
 import ColumnJourney from '@/components/journeys/ColumnJourney'
 import SankeyJourney from '@/components/journeys/SankeyJourney'
@@ -17,20 +17,6 @@ import {
 } from '@/lib/swr/dashboard'
 
 const DEFAULT_DEPTH = 4
-
-function getThisWeekRange(): { start: string; end: string } {
-  const today = new Date()
-  const dayOfWeek = today.getDay()
-  const monday = new Date(today)
-  monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1))
-  return { start: formatDate(monday), end: formatDate(today) }
-}
-
-function getThisMonthRange(): { start: string; end: string } {
-  const today = new Date()
-  const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
-  return { start: formatDate(firstOfMonth), end: formatDate(today) }
-}
 
 export default function JourneysPage() {
   const params = useParams()
@@ -91,10 +77,10 @@ export default function JourneysPage() {
       {/* Header */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">
+          <h1 className="text-2xl font-bold text-white mb-1">
             Journeys
           </h1>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+          <p className="text-sm text-neutral-400">
             How visitors navigate through your site
           </p>
         </div>
@@ -143,7 +129,7 @@ export default function JourneysPage() {
           <div className="flex flex-col sm:flex-row sm:items-center gap-6">
             {/* Depth slider */}
             <div className="flex-1">
-              <div className="flex justify-between text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-3">
+              <div className="flex justify-between text-sm font-medium text-neutral-400 mb-3">
                 <span>2 steps</span>
                 <span className="text-brand-orange font-bold">
                   {depth} steps deep
@@ -196,7 +182,7 @@ export default function JourneysPage() {
                 aria-selected={viewMode === mode}
                 className={`relative px-3 py-1 text-xs font-medium transition-colors capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded cursor-pointer ${
                   viewMode === mode
-                    ? 'text-neutral-900 dark:text-white'
+                    ? 'text-white'
                     : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
                 }`}
               >
@@ -232,7 +218,7 @@ export default function JourneysPage() {
 
         {/* Footer */}
         {totalSessions > 0 && (
-          <div className="px-6 pb-5 text-sm text-neutral-500 dark:text-neutral-400">
+          <div className="px-6 pb-5 text-sm text-neutral-400">
             {totalSessions.toLocaleString()} sessions tracked
           </div>
         )}

@@ -37,7 +37,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
       <div className="mb-8 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Pulse Admin</h1>
+        <h1 className="text-2xl font-bold text-white">Pulse Admin</h1>
       </div>
       {children}
     </div>

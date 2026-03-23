@@ -738,9 +738,9 @@ export default function SiteSettingsPage() {
 
       <div className="space-y-8">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Site Settings</h1>
+          <h1 className="text-2xl font-bold text-white">Site Settings</h1>
           <p className="mt-2 text-neutral-600 dark:text-neutral-400">
-            Manage settings for <span className="font-medium text-neutral-900 dark:text-white">{site.domain}</span>
+            Manage settings for <span className="font-medium text-white">{site.domain}</span>
           </p>
         </div>
 
@@ -860,8 +860,8 @@ export default function SiteSettingsPage() {
               <div className="space-y-12">
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div>
-                    <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">General Configuration</h2>
-                    <p className="text-sm text-neutral-500 dark:text-neutral-400">Update your site details and tracking script.</p>
+                    <h2 className="text-2xl font-bold text-white mb-1">General Configuration</h2>
+                    <p className="text-sm text-neutral-400">Update your site details and tracking script.</p>
                   </div>
 
                   <div className="space-y-4">
@@ -907,17 +907,17 @@ export default function SiteSettingsPage() {
                         type="text"
                         value={site.domain}
                         disabled
-                        className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-lg bg-neutral-100 dark:bg-neutral-800/50 text-neutral-500 dark:text-neutral-400 cursor-not-allowed"
+                        className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-lg bg-neutral-100 dark:bg-neutral-800/50 text-neutral-400 cursor-not-allowed"
                       />
-                      <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                      <p className="text-xs text-neutral-400">
                         Domain cannot be changed after creation
                       </p>
                     </div>
                   </div>
 
                   <div className="pt-4 border-t border-neutral-100 dark:border-neutral-800">
-                    <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-2">Tracking Script</h3>
-                    <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
+                    <h3 className="text-lg font-semibold text-white mb-2">Tracking Script</h3>
+                    <p className="text-sm text-neutral-400 mb-4">
                       Add this script to your website to start tracking visitors. Choose your framework for setup instructions.
                     </p>
                     <ScriptSetupBlock
@@ -945,7 +945,7 @@ export default function SiteSettingsPage() {
                         {site.is_verified ? <CheckIcon className="w-4 h-4" /> : <ZapIcon className="w-4 h-4" />}
                         {site.is_verified ? 'Verified' : 'Verify Installation'}
                       </button>
-                      <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                      <p className="text-xs text-neutral-400">
                         {site.is_verified ? 'Your site is sending data correctly.' : 'Check if your site is sending data correctly.'}
                       </p>
                     </div>
@@ -964,7 +964,7 @@ export default function SiteSettingsPage() {
                   <div className="space-y-6">
                     <div>
                       <h2 className="text-2xl font-bold text-red-600 dark:text-red-500 mb-1">Danger Zone</h2>
-                    <p className="text-sm text-neutral-500 dark:text-neutral-400">Irreversible actions for your site.</p>
+                    <p className="text-sm text-neutral-400">Irreversible actions for your site.</p>
                     </div>
 
                   <div className="space-y-4">
@@ -1003,8 +1003,8 @@ export default function SiteSettingsPage() {
               <div className="space-y-12">
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div>
-                    <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">Visibility Settings</h2>
-                    <p className="text-sm text-neutral-500 dark:text-neutral-400">Manage who can view your dashboard.</p>
+                    <h2 className="text-2xl font-bold text-white mb-1">Visibility Settings</h2>
+                    <p className="text-sm text-neutral-400">Manage who can view your dashboard.</p>
                   </div>
 
                   <div className="p-6 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
@@ -1014,8 +1014,8 @@ export default function SiteSettingsPage() {
                           <GlobeIcon className="w-6 h-6" />
                         </div>
                         <div>
-                          <h3 className="font-medium text-neutral-900 dark:text-white">Public Dashboard</h3>
-                          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                          <h3 className="font-medium text-white">Public Dashboard</h3>
+                          <p className="text-sm text-neutral-400">
                             Allow anyone with the link to view this dashboard
                           </p>
                         </div>
@@ -1041,7 +1041,7 @@ export default function SiteSettingsPage() {
                           className="mt-6 pt-6 border-t border-neutral-200 dark:border-neutral-800 overflow-hidden space-y-6"
                         >
                           <div>
-                            <label className="block text-sm font-medium mb-2 text-neutral-900 dark:text-white">
+                            <label className="block text-sm font-medium mb-2 text-white">
                               Public Link
                             </label>
                             <div className="flex gap-2">
@@ -1054,12 +1054,12 @@ export default function SiteSettingsPage() {
                               <button
                                 type="button"
                                 onClick={copyLink}
-                                className="px-4 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-white rounded-xl font-medium hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2"
+                                className="px-4 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-white rounded-xl font-medium hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2"
                               >
                                 {linkCopied ? 'Copied!' : 'Copy Link'}
                               </button>
                             </div>
-                            <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
+                            <p className="mt-2 text-xs text-neutral-400">
                               Share this link with others to view the dashboard.
                             </p>
                           </div>
@@ -1154,8 +1154,8 @@ export default function SiteSettingsPage() {
               <div className="space-y-12">
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div>
-                    <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">Data & Privacy</h2>
-                    <p className="text-sm text-neutral-500 dark:text-neutral-400">Control what visitor data is collected. Less data = more privacy.</p>
+                    <h2 className="text-2xl font-bold text-white mb-1">Data & Privacy</h2>
+                    <p className="text-sm text-neutral-400">Control what visitor data is collected. Less data = more privacy.</p>
                   </div>
 
                   {/* Data Collection Controls */}
@@ -1166,8 +1166,8 @@ export default function SiteSettingsPage() {
                     <div className="p-6 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                       <div className="flex items-center justify-between">
                         <div>
-                          <h4 className="font-medium text-neutral-900 dark:text-white">Page Paths</h4>
-                          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
+                          <h4 className="font-medium text-white">Page Paths</h4>
+                          <p className="text-sm text-neutral-400 mt-0.5">
                             Track which pages visitors view
                           </p>
                         </div>
@@ -1187,8 +1187,8 @@ export default function SiteSettingsPage() {
                     <div className="p-6 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                       <div className="flex items-center justify-between">
                         <div>
-                          <h4 className="font-medium text-neutral-900 dark:text-white">Referrers</h4>
-                          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
+                          <h4 className="font-medium text-white">Referrers</h4>
+                          <p className="text-sm text-neutral-400 mt-0.5">
                             Track where visitors come from
                           </p>
                         </div>
@@ -1208,8 +1208,8 @@ export default function SiteSettingsPage() {
                     <div className="p-6 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                       <div className="flex items-center justify-between">
                         <div>
-                          <h4 className="font-medium text-neutral-900 dark:text-white">Device Info</h4>
-                          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
+                          <h4 className="font-medium text-white">Device Info</h4>
+                          <p className="text-sm text-neutral-400 mt-0.5">
                             Track browser, OS, and device type
                           </p>
                         </div>
@@ -1229,8 +1229,8 @@ export default function SiteSettingsPage() {
                     <div className="p-6 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                       <div className="flex items-center justify-between">
                         <div>
-                          <h4 className="font-medium text-neutral-900 dark:text-white">Geographic Data</h4>
-                          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
+                          <h4 className="font-medium text-white">Geographic Data</h4>
+                          <p className="text-sm text-neutral-400 mt-0.5">
                             Control location tracking granularity
                           </p>
                         </div>
@@ -1253,8 +1253,8 @@ export default function SiteSettingsPage() {
                     <div className="p-6 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                       <div className="flex items-center justify-between">
                         <div>
-                          <h4 className="font-medium text-neutral-900 dark:text-white">Screen Resolution</h4>
-                          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
+                          <h4 className="font-medium text-white">Screen Resolution</h4>
+                          <p className="text-sm text-neutral-400 mt-0.5">
                             Track visitor screen sizes
                           </p>
                         </div>
@@ -1277,8 +1277,8 @@ export default function SiteSettingsPage() {
                     <div className="p-6 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                       <div className="flex items-center justify-between">
                         <div>
-                          <h4 className="font-medium text-neutral-900 dark:text-white">Hide unknown locations</h4>
-                          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
+                          <h4 className="font-medium text-white">Hide unknown locations</h4>
+                          <p className="text-sm text-neutral-400 mt-0.5">
                             Exclude entries where geographic data could not be resolved from location stats
                           </p>
                         </div>
@@ -1315,8 +1315,8 @@ export default function SiteSettingsPage() {
                     <div className="p-6 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                       <div className="flex items-center justify-between">
                         <div>
-                          <h4 className="font-medium text-neutral-900 dark:text-white">Keep raw event data for</h4>
-                          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
+                          <h4 className="font-medium text-white">Keep raw event data for</h4>
+                          <p className="text-sm text-neutral-400 mt-0.5">
                             Events older than this are automatically deleted. Aggregated daily stats are kept permanently.
                           </p>
                         </div>
@@ -1353,8 +1353,8 @@ export default function SiteSettingsPage() {
                     <div className="p-6 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                       <div className="flex items-center justify-between">
                         <div>
-                          <h4 className="font-medium text-neutral-900 dark:text-white">Check frequency</h4>
-                          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
+                          <h4 className="font-medium text-white">Check frequency</h4>
+                          <p className="text-sm text-neutral-400 mt-0.5">
                             How often PageSpeed Insights runs automated checks on your site.
                           </p>
                         </div>
@@ -1406,7 +1406,7 @@ export default function SiteSettingsPage() {
                           focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all duration-200 dark:text-white font-mono text-sm"
                         />
                       </div>
-                      <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2">
+                      <p className="text-sm text-neutral-400 mt-2">
                         Enter paths to exclude from tracking (one per line). Supports wildcards (e.g., /admin/*).
                       </p>
                     </div>
@@ -1417,7 +1417,7 @@ export default function SiteSettingsPage() {
                     <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                       For your privacy policy
                     </h3>
-                    <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                    <p className="text-sm text-neutral-400">
                       Copy the text below into your site&apos;s Privacy Policy to describe your use of Pulse.
                       It updates automatically based on your saved settings above.
                     </p>
@@ -1445,7 +1445,7 @@ export default function SiteSettingsPage() {
                         {snippetCopied ? (
                           <CheckIcon className="w-4 h-4 text-green-600" />
                         ) : (
-                          <svg className="w-4 h-4 text-neutral-500 dark:text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <svg className="w-4 h-4 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <rect x="9" y="9" width="13" height="13" rx="2" ry="2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
@@ -1468,7 +1468,7 @@ export default function SiteSettingsPage() {
             {activeTab === 'bot' && (
               <div className="flex-1 space-y-6">
                 <div>
-                  <h2 className="text-xl font-bold text-white mb-1">Bot & Spam</h2>
+                  <h2 className="text-2xl font-bold text-white mb-1">Bot & Spam</h2>
                   <p className="text-neutral-400 text-sm">Manage automated and manual bot filtering.</p>
                 </div>
 
@@ -1627,8 +1627,8 @@ export default function SiteSettingsPage() {
             {activeTab === 'goals' && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">Goals & Events</h2>
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                  <h2 className="text-2xl font-bold text-white mb-1">Goals & Events</h2>
+                  <p className="text-sm text-neutral-400">
                     Define goals to label custom events (e.g. signup, purchase). Track with <code className="px-1.5 py-0.5 rounded bg-neutral-200 dark:bg-neutral-700 text-xs">pulse.track(&apos;event_name&apos;)</code> in your snippet.
                   </p>
                 </div>
@@ -1643,7 +1643,7 @@ export default function SiteSettingsPage() {
                     )}
                     <div className="space-y-2">
                       {goals.length === 0 ? (
-                        <div className="p-6 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50 text-center text-neutral-500 dark:text-neutral-400 text-sm">
+                        <div className="p-6 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50 text-center text-neutral-400 text-sm">
                           No goals yet. Add a goal to give custom events a display name in the dashboard.
                         </div>
                       ) : (
@@ -1653,8 +1653,8 @@ export default function SiteSettingsPage() {
                             className="flex items-center justify-between py-3 px-4 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50"
                           >
                             <div>
-                              <span className="font-medium text-neutral-900 dark:text-white">{goal.name}</span>
-                              <span className="text-neutral-500 dark:text-neutral-400 text-sm ml-2">({goal.event_name})</span>
+                              <span className="font-medium text-white">{goal.name}</span>
+                              <span className="text-neutral-400 text-sm ml-2">({goal.event_name})</span>
                             </div>
                             {canEdit && (
                               <div className="flex items-center gap-2">
@@ -1686,16 +1686,16 @@ export default function SiteSettingsPage() {
             {activeTab === 'notifications' && (
               <div className="space-y-8">
                 <div>
-                  <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">Notifications</h2>
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400">Configure how you receive reports and alerts.</p>
+                  <h2 className="text-2xl font-bold text-white mb-1">Notifications</h2>
+                  <p className="text-sm text-neutral-400">Configure how you receive reports and alerts.</p>
                 </div>
 
                 {/* Reports subsection */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-base font-medium text-neutral-900 dark:text-white">Reports</h3>
-                      <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">Automatically deliver analytics reports via email or webhooks.</p>
+                      <h3 className="text-base font-medium text-white">Reports</h3>
+                      <p className="text-sm text-neutral-400 mt-0.5">Automatically deliver analytics reports via email or webhooks.</p>
                     </div>
                     {canEdit && (
                       <Button onClick={() => { setEditingSchedule(null); resetReportForm(); setReportModalOpen(true) }}>
@@ -1711,7 +1711,7 @@ export default function SiteSettingsPage() {
                       ))}
                     </div>
                   ) : reportSchedules.length === 0 ? (
-                    <div className="p-6 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50 text-center text-neutral-500 dark:text-neutral-400 text-sm">
+                    <div className="p-6 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50 text-center text-neutral-400 text-sm">
                       No scheduled reports yet. Add a report to automatically receive analytics summaries.
                     </div>
                   ) : (
@@ -1732,7 +1732,7 @@ export default function SiteSettingsPage() {
                               </div>
                               <div className="min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="font-medium text-neutral-900 dark:text-white">
+                                  <span className="font-medium text-white">
                                     {getChannelLabel(schedule.channel)}
                                   </span>
                                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-brand-orange/10 text-brand-orange">
@@ -1742,7 +1742,7 @@ export default function SiteSettingsPage() {
                                     {getReportTypeLabel(schedule.report_type)}
                                   </span>
                                 </div>
-                                <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1 truncate">
+                                <p className="text-sm text-neutral-400 mt-1 truncate">
                                   {schedule.channel === 'email'
                                     ? (schedule.channel_config as EmailConfig).recipients.join(', ')
                                     : (schedule.channel_config as WebhookConfig).url}
@@ -1821,8 +1821,8 @@ export default function SiteSettingsPage() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-base font-medium text-neutral-900 dark:text-white">Alerts</h3>
-                      <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">Get notified when your site goes down or recovers.</p>
+                      <h3 className="text-base font-medium text-white">Alerts</h3>
+                      <p className="text-sm text-neutral-400 mt-0.5">Get notified when your site goes down or recovers.</p>
                     </div>
                     {canEdit && (
                       <Button onClick={() => { setEditingAlert(null); resetAlertForm(); setAlertModalOpen(true) }}>
@@ -1838,7 +1838,7 @@ export default function SiteSettingsPage() {
                       ))}
                     </div>
                   ) : alertSchedules.length === 0 ? (
-                    <div className="p-6 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50 text-center text-neutral-500 dark:text-neutral-400 text-sm">
+                    <div className="p-6 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50 text-center text-neutral-400 text-sm">
                       No alert channels configured. Add a channel to receive uptime alerts when your site goes down or recovers.
                     </div>
                   ) : (
@@ -1859,14 +1859,14 @@ export default function SiteSettingsPage() {
                               </div>
                               <div className="min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="font-medium text-neutral-900 dark:text-white">
+                                  <span className="font-medium text-white">
                                     {getChannelLabel(schedule.channel)}
                                   </span>
                                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-500">
                                     Uptime Alert
                                   </span>
                                 </div>
-                                <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1 truncate">
+                                <p className="text-sm text-neutral-400 mt-1 truncate">
                                   {schedule.channel === 'email'
                                     ? (schedule.channel_config as EmailConfig).recipients.join(', ')
                                     : (schedule.channel_config as WebhookConfig).url}
@@ -1940,8 +1940,8 @@ export default function SiteSettingsPage() {
             {activeTab === 'integrations' && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-1">Integrations</h2>
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400">Connect external services to enrich your analytics data.</p>
+                  <h2 className="text-2xl font-bold text-white mb-1">Integrations</h2>
+                  <p className="text-sm text-neutral-400">Connect external services to enrich your analytics data.</p>
                 </div>
 
                 {/* Google Search Console */}
@@ -1958,7 +1958,7 @@ export default function SiteSettingsPage() {
                           </svg>
                         </div>
                         <div>
-                          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Google Search Console</h3>
+                          <h3 className="text-lg font-semibold text-white">Google Search Console</h3>
                           <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
                             See which search queries bring visitors to your site, with impressions, clicks, CTR, and ranking position.
                           </p>
@@ -1968,7 +1968,7 @@ export default function SiteSettingsPage() {
                         <svg className="w-4 h-4 text-neutral-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
                         </svg>
-                        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                        <p className="text-xs text-neutral-400">
                           Pulse only requests read-only access. Your tokens are encrypted at rest and all data can be fully removed at any time.
                         </p>
                       </div>
@@ -2005,7 +2005,7 @@ export default function SiteSettingsPage() {
                             </svg>
                           </div>
                           <div>
-                            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Google Search Console</h3>
+                            <h3 className="text-lg font-semibold text-white">Google Search Console</h3>
                             <div className="flex items-center gap-2 mt-1.5">
                               <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${
                                 gscStatus.status === 'active'
@@ -2031,28 +2031,28 @@ export default function SiteSettingsPage() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {gscStatus.google_email && (
                           <div className="p-3 bg-white dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
-                            <p className="text-xs text-neutral-500 dark:text-neutral-400">Google Account</p>
-                            <p className="text-sm font-medium text-neutral-900 dark:text-white mt-0.5 truncate">{gscStatus.google_email}</p>
+                            <p className="text-xs text-neutral-400">Google Account</p>
+                            <p className="text-sm font-medium text-white mt-0.5 truncate">{gscStatus.google_email}</p>
                           </div>
                         )}
                         {gscStatus.gsc_property && (
                           <div className="p-3 bg-white dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
-                            <p className="text-xs text-neutral-500 dark:text-neutral-400">Property</p>
-                            <p className="text-sm font-medium text-neutral-900 dark:text-white mt-0.5 truncate">{gscStatus.gsc_property}</p>
+                            <p className="text-xs text-neutral-400">Property</p>
+                            <p className="text-sm font-medium text-white mt-0.5 truncate">{gscStatus.gsc_property}</p>
                           </div>
                         )}
                         {gscStatus.last_synced_at && (
                           <div className="p-3 bg-white dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
-                            <p className="text-xs text-neutral-500 dark:text-neutral-400">Last Synced</p>
-                            <p className="text-sm font-medium text-neutral-900 dark:text-white mt-0.5">
+                            <p className="text-xs text-neutral-400">Last Synced</p>
+                            <p className="text-sm font-medium text-white mt-0.5">
                               {new Date(gscStatus.last_synced_at).toLocaleString('en-GB')}
                             </p>
                           </div>
                         )}
                         {gscStatus.created_at && (
                           <div className="p-3 bg-white dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
-                            <p className="text-xs text-neutral-500 dark:text-neutral-400">Connected Since</p>
-                            <p className="text-sm font-medium text-neutral-900 dark:text-white mt-0.5">
+                            <p className="text-xs text-neutral-400">Connected Since</p>
+                            <p className="text-sm font-medium text-white mt-0.5">
                               {new Date(gscStatus.created_at).toLocaleString('en-GB')}
                             </p>
                           </div>
@@ -2121,7 +2121,7 @@ export default function SiteSettingsPage() {
                           </svg>
                         </div>
                         <div>
-                          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">BunnyCDN</h3>
+                          <h3 className="text-lg font-semibold text-white">BunnyCDN</h3>
                           <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
                             Monitor CDN performance with bandwidth usage, cache hit rates, response times, and geographic distribution.
                           </p>
@@ -2131,7 +2131,7 @@ export default function SiteSettingsPage() {
                         <svg className="w-4 h-4 text-neutral-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
                         </svg>
-                        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                        <p className="text-xs text-neutral-400">
                           Your API key is encrypted at rest and only used to fetch read-only statistics. You can disconnect at any time.
                         </p>
                       </div>
@@ -2147,7 +2147,7 @@ export default function SiteSettingsPage() {
                                 setBunnySelectedZone(null)
                               }}
                               placeholder="BunnyCDN API key"
-                              className="flex-1 px-4 py-2.5 border border-neutral-200 dark:border-neutral-800 rounded-xl bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white text-sm placeholder:text-neutral-400"
+                              className="flex-1 px-4 py-2.5 border border-neutral-200 dark:border-neutral-800 rounded-xl bg-white dark:bg-neutral-900 text-white text-sm placeholder:text-neutral-400"
                             />
                             <button
                               onClick={async () => {
@@ -2190,7 +2190,7 @@ export default function SiteSettingsPage() {
                                     const zone = bunnyPullZones.find(z => z.id === Number(e.target.value))
                                     setBunnySelectedZone(zone || null)
                                   }}
-                                  className="w-full px-4 py-2.5 border border-neutral-200 dark:border-neutral-800 rounded-xl bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white text-sm"
+                                  className="w-full px-4 py-2.5 border border-neutral-200 dark:border-neutral-800 rounded-xl bg-white dark:bg-neutral-900 text-white text-sm"
                                 >
                                   {bunnyPullZones.map((zone) => (
                                     <option key={zone.id} value={zone.id}>{zone.name}</option>
@@ -2252,7 +2252,7 @@ export default function SiteSettingsPage() {
                             </svg>
                           </div>
                           <div>
-                            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">BunnyCDN</h3>
+                            <h3 className="text-lg font-semibold text-white">BunnyCDN</h3>
                             <div className="flex items-center gap-2 mt-1.5">
                               <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${
                                 bunnyStatus.status === 'active'
@@ -2278,22 +2278,22 @@ export default function SiteSettingsPage() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {bunnyStatus.pull_zone_name && (
                           <div className="p-3 bg-white dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
-                            <p className="text-xs text-neutral-500 dark:text-neutral-400">Pull Zone</p>
-                            <p className="text-sm font-medium text-neutral-900 dark:text-white mt-0.5 truncate">{bunnyStatus.pull_zone_name}</p>
+                            <p className="text-xs text-neutral-400">Pull Zone</p>
+                            <p className="text-sm font-medium text-white mt-0.5 truncate">{bunnyStatus.pull_zone_name}</p>
                           </div>
                         )}
                         {bunnyStatus.last_synced_at && (
                           <div className="p-3 bg-white dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
-                            <p className="text-xs text-neutral-500 dark:text-neutral-400">Last Synced</p>
-                            <p className="text-sm font-medium text-neutral-900 dark:text-white mt-0.5">
+                            <p className="text-xs text-neutral-400">Last Synced</p>
+                            <p className="text-sm font-medium text-white mt-0.5">
                               {new Date(bunnyStatus.last_synced_at).toLocaleString('en-GB')}
                             </p>
                           </div>
                         )}
                         {bunnyStatus.created_at && (
                           <div className="p-3 bg-white dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
-                            <p className="text-xs text-neutral-500 dark:text-neutral-400">Connected Since</p>
-                            <p className="text-sm font-medium text-neutral-900 dark:text-white mt-0.5">
+                            <p className="text-xs text-neutral-400">Connected Since</p>
+                            <p className="text-sm font-medium text-white mt-0.5">
                               {new Date(bunnyStatus.created_at).toLocaleString('en-GB')}
                             </p>
                           </div>
@@ -2354,7 +2354,7 @@ export default function SiteSettingsPage() {
               onChange={(e) => setGoalForm({ ...goalForm, name: e.target.value })}
               placeholder="e.g. Signups"
               autoFocus
-              className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white"
+              className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-lg bg-white dark:bg-neutral-900 text-white"
               required
             />
           </div>
@@ -2366,11 +2366,11 @@ export default function SiteSettingsPage() {
               onChange={(e) => setGoalForm({ ...goalForm, event_name: e.target.value })}
               placeholder="e.g. signup_click (letters, numbers, underscores only)"
               maxLength={64}
-              className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white"
+              className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-lg bg-white dark:bg-neutral-900 text-white"
               required
             />
             <div className="flex justify-between mt-1">
-              <p className="text-xs text-neutral-500 dark:text-neutral-400">Letters, numbers, and underscores only. Spaces become underscores.</p>
+              <p className="text-xs text-neutral-400">Letters, numbers, and underscores only. Spaces become underscores.</p>
               <span className={`text-xs tabular-nums ${goalForm.event_name.length > 56 ? 'text-amber-500' : 'text-neutral-400'}`}>{goalForm.event_name.length}/64</span>
             </div>
             {editingGoal && goalForm.event_name.trim().toLowerCase().replace(/\s+/g, '_') !== editingGoal.event_name && (
@@ -2423,10 +2423,10 @@ export default function SiteSettingsPage() {
                 value={reportForm.recipients}
                 onChange={(e) => setReportForm({ ...reportForm, recipients: e.target.value })}
                 placeholder="email1@example.com, email2@example.com"
-                className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white"
+                className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-lg bg-white dark:bg-neutral-900 text-white"
                 required
               />
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Comma-separated email addresses.</p>
+              <p className="text-xs text-neutral-400 mt-1">Comma-separated email addresses.</p>
             </div>
           ) : (
             <div>
@@ -2438,7 +2438,7 @@ export default function SiteSettingsPage() {
                 value={reportForm.webhookUrl}
                 onChange={(e) => setReportForm({ ...reportForm, webhookUrl: e.target.value })}
                 placeholder="https://hooks.example.com/..."
-                className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white"
+                className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-lg bg-white dark:bg-neutral-900 text-white"
                 required
               />
             </div>
@@ -2582,10 +2582,10 @@ export default function SiteSettingsPage() {
                 value={alertForm.recipients}
                 onChange={(e) => setAlertForm({ ...alertForm, recipients: e.target.value })}
                 placeholder="email1@example.com, email2@example.com"
-                className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white"
+                className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-lg bg-white dark:bg-neutral-900 text-white"
                 required
               />
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Comma-separated email addresses.</p>
+              <p className="text-xs text-neutral-400 mt-1">Comma-separated email addresses.</p>
             </div>
           ) : (
             <div>
@@ -2597,14 +2597,14 @@ export default function SiteSettingsPage() {
                 value={alertForm.webhookUrl}
                 onChange={(e) => setAlertForm({ ...alertForm, webhookUrl: e.target.value })}
                 placeholder="https://hooks.example.com/..."
-                className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white"
+                className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-lg bg-white dark:bg-neutral-900 text-white"
                 required
               />
             </div>
           )}
 
           <div className="p-3 rounded-lg bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700">
-            <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            <p className="text-xs text-neutral-400">
               Alerts are sent automatically when your site goes down or recovers. No schedule configuration needed.
             </p>
           </div>
