@@ -11,9 +11,11 @@ const Sidebar = dynamic(() => import('./Sidebar'), {
   // so page content never occupies the sidebar zone
   loading: () => (
     <div
-      className="hidden md:block shrink-0 border-r border-neutral-800/60 bg-neutral-900/90 backdrop-blur-xl"
+      className="hidden md:block shrink-0 border-r border-neutral-800/60 bg-neutral-900/90 backdrop-blur-xl overflow-hidden relative"
       style={{ width: 64 }}
-    />
+    >
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-neutral-800/10 to-transparent animate-shimmer" />
+    </div>
   ),
 })
 
