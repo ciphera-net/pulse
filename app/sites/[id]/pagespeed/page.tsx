@@ -416,10 +416,16 @@ export default function PageSpeedPage() {
       {/* Section 1 — Score Overview: 4 equal gauges + screenshot */}
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 sm:p-8 mb-6">
         <div className="flex flex-col lg:flex-row items-center gap-8">
-          {/* 4 equal gauges */}
+          {/* 4 equal gauges — click to scroll to diagnostics */}
           <div className="flex-1 flex items-center justify-center gap-6 sm:gap-8 flex-wrap">
-            {allScores.map(({ label, score }) => (
-              <ScoreGauge key={label} score={score} label={label} size={90} />
+            {allScores.map(({ key, label, score }) => (
+              <button
+                key={key}
+                onClick={() => document.getElementById(`diag-${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                className="cursor-pointer hover:opacity-80 transition-opacity"
+              >
+                <ScoreGauge score={score} label={label} size={90} />
+              </button>
             ))}
           </div>
 
@@ -586,7 +592,7 @@ export default function PageSpeedPage() {
             const groupManual = manualByGroup[group.key] ?? []
             if (groupAudits.length === 0 && groupPassed.length === 0 && groupManual.length === 0) return null
             return (
-              <div key={group.key} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 sm:p-8">
+              <div key={group.key} id={`diag-${group.key}`} className="scroll-mt-6 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 sm:p-8">
                 {/* Category header with gauge */}
                 <div className="flex items-center gap-5 mb-6">
                   <ScoreGauge score={scoreByGroup[group.key]} label="" size={56} />
