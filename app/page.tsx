@@ -13,7 +13,7 @@ import { LoadingOverlay } from '@ciphera-net/ui'
 import SiteList from '@/components/sites/SiteList'
 import DeleteSiteModal from '@/components/sites/DeleteSiteModal'
 import { Button } from '@ciphera-net/ui'
-import { XIcon, GlobeIcon } from '@ciphera-net/ui'
+import { XIcon } from '@ciphera-net/ui'
 import { Cookie, ShieldCheck, Code, Lightning, ArrowRight, GithubLogo } from '@phosphor-icons/react'
 import DashboardDemo from '@/components/marketing/DashboardDemo'
 import FeatureSections from '@/components/marketing/FeatureSections'
@@ -383,10 +383,12 @@ export default function HomePage() {
       </div>
 
       {!sitesLoading && sites.length === 0 && (
-        <div className="mb-8 rounded-2xl border-2 border-dashed border-brand-orange/30 bg-brand-orange/10 p-6 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-orange/20 text-brand-orange mb-4">
-            <GlobeIcon className="h-7 w-7" />
-          </div>
+        <div className="mb-8 rounded-2xl border-2 border-dashed border-brand-orange/30 bg-brand-orange/10 p-8 text-center flex flex-col items-center">
+          <img
+            src="/illustrations/setup-analytics.svg"
+            alt="Set up your first site"
+            className="w-56 h-auto mb-6"
+          />
           <h2 className="text-xl font-bold text-white mb-2">Add your first site</h2>
           <p className="text-neutral-400 mb-6 max-w-md mx-auto">
             Connect a domain to start collecting privacy-friendly analytics. You can add more sites later from the dashboard.
