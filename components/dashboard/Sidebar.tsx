@@ -269,6 +269,129 @@ function NavLink({
   )
 }
 
+// ─── Sidebar Content ────────────────────────────────────────
+
+interface SidebarContentProps {
+  isMobile: boolean
+  collapsed: boolean
+  siteId: string
+  sites: Site[]
+  canEdit: boolean
+  pendingHref: string | null
+  onNavigate: (href: string) => void
+  onMobileClose: () => void
+  onExpand: () => void
+  onCollapse: () => void
+  onToggle: () => void
+  wasCollapsed: React.MutableRefObject<boolean>
+  auth: ReturnType<typeof useAuth>
+  orgs: OrganizationMember[]
+  onSwitchOrganization: (orgId: string | null) => Promise<void>
+  openSettings: () => void
+}
+
+function SidebarContent({
+  isMobile, collapsed, siteId, sites, canEdit, pendingHref,
+  onNavigate, onMobileClose, onExpand, onCollapse, onToggle,
+  wasCollapsed, auth, orgs, onSwitchOrganization, openSettings,
+}: SidebarContentProps) {
+  const router = useRouter()
+  const c = isMobile ? false : collapsed
+  const { user } = auth
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* App Switcher — top of sidebar (scope-level switch) */}
+      <div className="flex items-center gap-2.5 px-[14px] pt-3 pb-1 shrink-0 overflow-hidden">
+        <span className="w-9 h-9 flex items-center justify-center shrink-0">
+          <AppLauncher apps={CIPHERA_APPS} currentAppId="pulse" anchor="right" />
+        </span>
+        <Label collapsed={c}>
+          <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">Ciphera</span>
+        </Label>
+      </div>
+
+      {/* Logo — fixed layout, text fades */}
+      <Link href="/" className="flex items-center gap-3 px-[14px] py-4 shrink-0 group overflow-hidden">
+        <span className="w-9 h-9 flex items-center justify-center shrink-0">
+          <img src="/pulse_icon_no_margins.png" alt="Pulse" className="w-9 h-9 shrink-0 object-contain group-hover:scale-105 transition-transform duration-200" />
+        </span>
+        <span className={`text-xl font-bold text-white tracking-tight group-hover:text-brand-orange whitespace-nowrap transition-opacity duration-150 ${c ? 'opacity-0' : 'opacity-100'}`}>
+          Pulse
+        </span>
+      </Link>
+
+      {/* Site Picker */}
+      <SitePicker sites={sites} siteId={siteId} collapsed={c} onExpand={onExpand} onCollapse={onCollapse} wasCollapsed={wasCollapsed} />
+
+      {/* Nav Groups */}
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 space-y-4">
+        {NAV_GROUPS.map((group) => (
+          <div key={group.label}>
+            <div className="h-5 flex items-center overflow-hidden">
+              <p className={`px-2.5 text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider whitespace-nowrap transition-opacity duration-150 ${c ? 'opacity-0' : 'opacity-100'}`}>
+                {group.label}
+              </p>
+            </div>
+            <div className="space-y-0.5">
+              {group.items.map((item) => (
+                <NavLink key={item.label} item={item} siteId={siteId} collapsed={c} onClick={isMobile ? onMobileClose : undefined} pendingHref={pendingHref} onNavigate={onNavigate} />
+              ))}
+              {group.label === 'Infrastructure' && canEdit && (
+                <NavLink item={SETTINGS_ITEM} siteId={siteId} collapsed={c} onClick={isMobile ? onMobileClose : undefined} pendingHref={pendingHref} onNavigate={onNavigate} />
+              )}
+            </div>
+          </div>
+        ))}
+      </nav>
+
+      {/* Bottom — utility items */}
+      <div className="border-t border-neutral-800/60 px-2 py-3 shrink-0">
+        {/* Notifications, Profile — same layout as nav items */}
+        <div className="space-y-0.5 mb-1">
+          <span title={c ? 'Notifications' : undefined}>
+            <NotificationCenter anchor="right" variant="sidebar">
+              <Label collapsed={c}>Notifications</Label>
+            </NotificationCenter>
+          </span>
+          <span title={c ? (user?.display_name?.trim() || 'Profile') : undefined}>
+            <UserMenu
+              auth={auth}
+              LinkComponent={Link}
+              orgs={orgs}
+              activeOrgId={auth.user?.org_id}
+              onSwitchOrganization={onSwitchOrganization}
+              onCreateOrganization={() => router.push('/onboarding')}
+              allowPersonalOrganization={false}
+              onOpenSettings={openSettings}
+              compact
+              anchor="right"
+            >
+              <Label collapsed={c}>{user?.display_name?.trim() || 'Profile'}</Label>
+            </UserMenu>
+          </span>
+        </div>
+
+        {/* Settings + Collapse */}
+        <div className="space-y-0.5">
+          {!isMobile && (
+            <button
+              onClick={onToggle}
+              className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-neutral-400 dark:text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800 w-full overflow-hidden"
+              title={collapsed ? 'Expand sidebar (press [)' : 'Collapse sidebar (press [)'}
+            >
+              <span className="w-7 h-7 flex items-center justify-center shrink-0">
+                <CollapseLeftIcon className={`w-[18px] h-[18px] transition-transform duration-200 ${c ? 'rotate-180' : ''}`} />
+              </span>
+              <Label collapsed={c}>Collapse</Label>
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main Sidebar ───────────────────────────────────────────
 
 export default function Sidebar({
@@ -339,102 +462,6 @@ export default function Sidebar({
 
   const handleNavigate = useCallback((href: string) => { setPendingHref(href) }, [])
 
-  const sidebarContent = (isMobile: boolean) => {
-    const c = isMobile ? false : collapsed
-
-    return (
-      <div className="flex flex-col h-full overflow-hidden">
-        {/* App Switcher — top of sidebar (scope-level switch) */}
-        <div className="flex items-center gap-2.5 px-[14px] pt-3 pb-1 shrink-0 overflow-hidden">
-          <span className="w-9 h-9 flex items-center justify-center shrink-0">
-            <AppLauncher apps={CIPHERA_APPS} currentAppId="pulse" anchor="right" />
-          </span>
-          <Label collapsed={c}>
-            <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">Ciphera</span>
-          </Label>
-        </div>
-
-        {/* Logo — fixed layout, text fades */}
-        <Link href="/" className="flex items-center gap-3 px-[14px] py-4 shrink-0 group overflow-hidden">
-          <span className="w-9 h-9 flex items-center justify-center shrink-0">
-            <img src="/pulse_icon_no_margins.png" alt="Pulse" className="w-9 h-9 shrink-0 object-contain group-hover:scale-105 transition-transform duration-200" />
-          </span>
-          <span className={`text-xl font-bold text-white tracking-tight group-hover:text-brand-orange whitespace-nowrap transition-opacity duration-150 ${c ? 'opacity-0' : 'opacity-100'}`}>
-            Pulse
-          </span>
-        </Link>
-
-        {/* Site Picker */}
-        <SitePicker sites={sites} siteId={siteId} collapsed={c} onExpand={expand} onCollapse={collapse} wasCollapsed={wasCollapsedRef} />
-
-        {/* Nav Groups */}
-        <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 space-y-4">
-          {NAV_GROUPS.map((group) => (
-            <div key={group.label}>
-              <div className="h-5 flex items-center overflow-hidden">
-                <p className={`px-2.5 text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider whitespace-nowrap transition-opacity duration-150 ${c ? 'opacity-0' : 'opacity-100'}`}>
-                  {group.label}
-                </p>
-              </div>
-              <div className="space-y-0.5">
-                {group.items.map((item) => (
-                  <NavLink key={item.label} item={item} siteId={siteId} collapsed={c} onClick={isMobile ? onMobileClose : undefined} pendingHref={pendingHref} onNavigate={handleNavigate} />
-                ))}
-                {group.label === 'Infrastructure' && canEdit && (
-                  <NavLink item={SETTINGS_ITEM} siteId={siteId} collapsed={c} onClick={isMobile ? onMobileClose : undefined} pendingHref={pendingHref} onNavigate={handleNavigate} />
-                )}
-              </div>
-            </div>
-          ))}
-        </nav>
-
-        {/* Bottom — utility items */}
-        <div className="border-t border-neutral-800/60 px-2 py-3 shrink-0">
-          {/* Notifications, Profile — same layout as nav items */}
-          <div className="space-y-0.5 mb-1">
-            <span title={c ? 'Notifications' : undefined}>
-              <NotificationCenter anchor="right" variant="sidebar">
-                <Label collapsed={c}>Notifications</Label>
-              </NotificationCenter>
-            </span>
-            <span title={c ? (user?.display_name?.trim() || 'Profile') : undefined}>
-              <UserMenu
-                auth={auth}
-                LinkComponent={Link}
-                orgs={orgs}
-                activeOrgId={auth.user?.org_id}
-                onSwitchOrganization={handleSwitchOrganization}
-                onCreateOrganization={() => router.push('/onboarding')}
-                allowPersonalOrganization={false}
-                onOpenSettings={openSettings}
-                compact
-                anchor="right"
-              >
-                <Label collapsed={c}>{user?.display_name?.trim() || 'Profile'}</Label>
-              </UserMenu>
-            </span>
-          </div>
-
-          {/* Settings + Collapse */}
-          <div className="space-y-0.5">
-            {!isMobile && (
-              <button
-                onClick={toggle}
-                className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-neutral-400 dark:text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800 w-full overflow-hidden"
-                title={collapsed ? 'Expand sidebar (press [)' : 'Collapse sidebar (press [)'}
-              >
-                <span className="w-7 h-7 flex items-center justify-center shrink-0">
-                  <CollapseLeftIcon className={`w-[18px] h-[18px] transition-transform duration-200 ${c ? 'rotate-180' : ''}`} />
-                </span>
-                <Label collapsed={c}>Collapse</Label>
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <>
       {/* Desktop — ssr:false means this only renders on client, no hydration flash */}
@@ -442,7 +469,24 @@ export default function Sidebar({
         className="hidden md:flex flex-col shrink-0 border-r border-neutral-800/60 bg-neutral-900/90 backdrop-blur-xl overflow-hidden relative z-10"
         style={{ width: collapsed ? COLLAPSED : EXPANDED, transition: 'width 200ms cubic-bezier(0.4, 0, 0.2, 1)' }}
       >
-        {sidebarContent(false)}
+        <SidebarContent
+          isMobile={false}
+          collapsed={collapsed}
+          siteId={siteId}
+          sites={sites}
+          canEdit={canEdit}
+          pendingHref={pendingHref}
+          onNavigate={handleNavigate}
+          onMobileClose={onMobileClose}
+          onExpand={expand}
+          onCollapse={collapse}
+          onToggle={toggle}
+          wasCollapsed={wasCollapsedRef}
+          auth={auth}
+          orgs={orgs}
+          onSwitchOrganization={handleSwitchOrganization}
+          openSettings={openSettings}
+        />
       </aside>
 
       {/* Mobile overlay */}
@@ -456,7 +500,24 @@ export default function Sidebar({
                 <XIcon className="w-5 h-5" />
               </button>
             </div>
-            {sidebarContent(true)}
+            <SidebarContent
+              isMobile={true}
+              collapsed={collapsed}
+              siteId={siteId}
+              sites={sites}
+              canEdit={canEdit}
+              pendingHref={pendingHref}
+              onNavigate={handleNavigate}
+              onMobileClose={onMobileClose}
+              onExpand={expand}
+              onCollapse={collapse}
+              onToggle={toggle}
+              wasCollapsed={wasCollapsedRef}
+              auth={auth}
+              orgs={orgs}
+              onSwitchOrganization={handleSwitchOrganization}
+              openSettings={openSettings}
+            />
           </aside>
         </>
       )}
