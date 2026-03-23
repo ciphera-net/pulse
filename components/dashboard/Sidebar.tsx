@@ -548,8 +548,8 @@ export default function Sidebar({
       {(mobileOpen || mobileClosing) && (
         <>
           <div
-            className={`fixed inset-0 z-40 md:hidden transition-opacity duration-200 ${
-              mobileClosing ? 'bg-black/0' : 'bg-black/30'
+            className={`fixed inset-0 z-40 bg-black/30 md:hidden transition-opacity duration-200 ${
+              mobileClosing ? 'opacity-0' : 'opacity-100'
             }`}
             onClick={handleMobileClose}
           />
