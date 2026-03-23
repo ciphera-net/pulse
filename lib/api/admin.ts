@@ -2,8 +2,8 @@ import { authFetch } from './client'
 
 export interface AdminOrgSummary {
   organization_id: string
-  stripe_customer_id: string
-  stripe_subscription_id: string
+  billing_customer_id: string
+  billing_subscription_id: string
   plan_id: string
   billing_interval: string
   pageview_limit: number

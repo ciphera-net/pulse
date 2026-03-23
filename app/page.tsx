@@ -334,7 +334,7 @@ export default function HomePage() {
                   return `${label} Plan`
                 })()}
               </p>
-              {(typeof subscription.sites_count === 'number' || (subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number') || (subscription.next_invoice_amount_due != null && subscription.next_invoice_currency && !subscription.cancel_at_period_end && (subscription.subscription_status === 'active' || subscription.subscription_status === 'trialing'))) && (
+              {(typeof subscription.sites_count === 'number' || (subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number') || (!subscription.cancel_at_period_end && (subscription.subscription_status === 'active' || subscription.subscription_status === 'trialing'))) && (
                 <p className="text-sm text-neutral-400 mt-1">
                   {typeof subscription.sites_count === 'number' && (
                     <span>Sites: {(() => {
@@ -346,20 +346,9 @@ export default function HomePage() {
                   {subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number' && (
                     <span>Pageviews: {subscription.pageview_usage.toLocaleString()}/{subscription.pageview_limit.toLocaleString()}</span>
                   )}
-                  {subscription.next_invoice_amount_due != null && subscription.next_invoice_currency && !subscription.cancel_at_period_end && (subscription.subscription_status === 'active' || subscription.subscription_status === 'trialing') && (
+                  {!subscription.cancel_at_period_end && (subscription.subscription_status === 'active' || subscription.subscription_status === 'trialing') && subscription.current_period_end && (
                     <span className="block mt-1">
-                      Renews {(() => {
-                        const ts = subscription.next_invoice_period_end ?? subscription.current_period_end
-                        const d = ts ? new Date(typeof ts === 'number' ? ts * 1000 : ts) : null
-                        const dateStr = d && !Number.isNaN(d.getTime()) && d.getTime() !== 0
-                          ? formatDate(d)
-                          : null
-                        const amount = (subscription.next_invoice_amount_due / 100).toLocaleString('en-US', {
-                          style: 'currency',
-                          currency: subscription.next_invoice_currency.toUpperCase(),
-                        })
-                        return dateStr ? `${dateStr} for ${amount}` : amount
-                      })()}
+                      Renews {formatDate(new Date(subscription.current_period_end))}
                     </span>
                   )}
                 </p>
