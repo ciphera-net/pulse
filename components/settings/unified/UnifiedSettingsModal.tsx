@@ -158,7 +158,7 @@ function TabBar({
   onChange: (id: string) => void
 }) {
   return (
-    <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-px">
+    <div className="flex gap-1 overflow-x-auto overflow-y-hidden scrollbar-hide pb-px">
       {tabs.map(tab => (
         <button
           key={tab.id}
@@ -362,15 +362,15 @@ export default function UnifiedSettingsModal() {
                 </div>
               </div>
 
-              {/* Content */}
-              <div className="flex-1 overflow-y-auto">
+              {/* Content — fixed min-height prevents size jumping between contexts */}
+              <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-[400px]">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={`${context}-${activeTab}`}
-                    initial={{ opacity: 0, x: 8 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -8 }}
-                    transition={{ duration: 0.15 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.12 }}
                     className="p-6"
                   >
                     <TabContent context={context} activeTab={activeTab} siteId={activeSiteId} />
