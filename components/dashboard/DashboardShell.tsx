@@ -11,7 +11,7 @@ const Sidebar = dynamic(() => import('./Sidebar'), {
   // so page content never occupies the sidebar zone
   loading: () => (
     <div
-      className="hidden md:block shrink-0 bg-neutral-950 overflow-hidden relative"
+      className="hidden md:block shrink-0 bg-transparent overflow-hidden relative"
       style={{ width: 64 }}
     >
       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-neutral-800/10 to-transparent animate-shimmer" />
@@ -31,7 +31,7 @@ export default function DashboardShell({
   const openMobile = useCallback(() => setMobileOpen(true), [])
 
   return (
-    <div className="flex h-screen overflow-hidden bg-neutral-950">
+    <div className="flex h-screen overflow-hidden bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/60">
       <Sidebar
         siteId={siteId}
         mobileOpen={mobileOpen}
