@@ -42,10 +42,10 @@ function GlassTopBar({ siteId }: { siteId: string }) {
       {/* Collapse toggle */}
       <button
         onClick={toggle}
-        className="flex items-center justify-center p-1.5 text-neutral-500 hover:text-white rounded-lg hover:bg-white/[0.06] transition-colors"
+        className="flex items-center justify-center p-1.5 text-neutral-400 hover:text-white rounded-lg hover:bg-white/[0.06] transition-colors"
         aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
       >
-        <SidebarSimple className="w-4 h-4" weight={collapsed ? 'regular' : 'fill'} />
+        <SidebarSimple className="w-[18px] h-[18px]" weight={collapsed ? 'regular' : 'fill'} />
       </button>
 
       {/* Realtime indicator */}
