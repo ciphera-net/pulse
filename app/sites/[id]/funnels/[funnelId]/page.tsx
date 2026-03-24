@@ -84,7 +84,7 @@ export default function FunnelReportPage() {
 
   if (loadError === 'not_found' || (!funnel && !stats && !loadError)) {
     return (
-      <div className="w-full mx-auto px-4 sm:px-6 pb-8">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
         <p className="text-neutral-600 dark:text-neutral-400">Funnel not found</p>
       </div>
     )
@@ -92,7 +92,7 @@ export default function FunnelReportPage() {
 
   if (loadError === 'forbidden') {
     return (
-      <div className="w-full mx-auto px-4 sm:px-6 pb-8">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
         <p className="text-neutral-600 dark:text-neutral-400">Access denied</p>
         <Link href={`/sites/${siteId}/funnels`}>
           <Button variant="primary" className="mt-4">
@@ -105,7 +105,7 @@ export default function FunnelReportPage() {
 
   if (loadError === 'error') {
     return (
-      <div className="w-full mx-auto px-4 sm:px-6 pb-8">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
         <p className="text-neutral-600 dark:text-neutral-400 mb-4">Unable to load funnel</p>
         <Button type="button" onClick={() => loadData()} variant="primary">
           Try again
@@ -116,7 +116,7 @@ export default function FunnelReportPage() {
 
   if (!funnel || !stats) {
     return (
-      <div className="w-full mx-auto px-4 sm:px-6 pb-8">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
         <p className="text-neutral-600 dark:text-neutral-400">Funnel not found</p>
       </div>
     )
@@ -143,7 +143,7 @@ export default function FunnelReportPage() {
   }) : []
 
   return (
-    <div className={`w-full mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
+    <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
       <div className="mb-8">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">

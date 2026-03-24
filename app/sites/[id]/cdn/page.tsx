@@ -135,7 +135,7 @@ export default function CDNPage() {
 
   if (showSkeleton) {
     return (
-      <div className="w-full mx-auto px-4 sm:px-6 pb-8">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
         <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <SkeletonLine className="h-8 w-48 mb-2" />
@@ -172,7 +172,7 @@ export default function CDNPage() {
 
   if (bunnyStatus && !bunnyStatus.connected) {
     return (
-      <div className={`w-full mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
+      <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
         <div className="flex flex-col items-center justify-center py-24 text-center">
           <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-5 mb-6">
             <CloudArrowUp size={40} className="text-neutral-400 dark:text-neutral-500" />
@@ -208,7 +208,7 @@ export default function CDNPage() {
   const totalBandwidth = countries.reduce((sum, row) => sum + row.bandwidth, 0)
 
   return (
-    <div className={`w-full mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
+    <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
       {/* Header */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

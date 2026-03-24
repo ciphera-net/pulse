@@ -235,7 +235,7 @@ export default function PageSpeedPage() {
   // * Disabled state — show empty state with enable toggle
   if (!enabled) {
     return (
-      <div className="w-full mx-auto px-4 sm:px-6 pb-8">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-white mb-1">
@@ -357,7 +357,7 @@ export default function PageSpeedPage() {
 
   // * Enabled state — show full PageSpeed dashboard
   return (
-    <div className="w-full mx-auto px-4 sm:px-6 pb-8">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
       {/* Header */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -868,7 +868,7 @@ function AuditItem({ item }: { item: Record<string, any> }) {
 // * Skeleton loading state
 function PageSpeedSkeleton() {
   return (
-    <div className="w-full mx-auto px-4 sm:px-6 pb-8 space-y-6 animate-pulse">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 space-y-6 animate-pulse">
       {/* Header — title + subtitle + toggle buttons */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="space-y-2">
