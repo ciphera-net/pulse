@@ -1,6 +1,7 @@
 'use client'
 
 import type { FrustrationSummary } from '@/lib/api/stats'
+import { StatCardSkeleton } from '@/components/skeletons'
 
 interface FrustrationSummaryCardsProps {
   data: FrustrationSummary | null
@@ -39,25 +40,13 @@ function ChangeIndicator({ change }: { change: ReturnType<typeof pctChange> }) {
   )
 }
 
-function SkeletonCard() {
-  return (
-    <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6">
-      <div className="animate-pulse space-y-3">
-        <div className="h-4 w-24 bg-neutral-200 dark:bg-neutral-700 rounded" />
-        <div className="h-8 w-16 bg-neutral-200 dark:bg-neutral-700 rounded" />
-        <div className="h-3 w-32 bg-neutral-200 dark:bg-neutral-700 rounded" />
-      </div>
-    </div>
-  )
-}
-
 export default function FrustrationSummaryCards({ data, loading }: FrustrationSummaryCardsProps) {
   if (loading || !data) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-        <SkeletonCard />
-        <SkeletonCard />
-        <SkeletonCard />
+        <StatCardSkeleton />
+        <StatCardSkeleton />
+        <StatCardSkeleton />
       </div>
     )
   }
