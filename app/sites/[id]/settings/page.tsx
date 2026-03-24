@@ -704,7 +704,7 @@ export default function SiteSettingsPage() {
 
   if (showSkeleton) {
     return (
-      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+      <div className="w-full mx-auto px-4 sm:px-6 pb-8">
         <div className="space-y-8">
           <div>
             <div className="h-8 w-40 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800 mb-2" />
@@ -727,14 +727,14 @@ export default function SiteSettingsPage() {
 
   if (!site) {
     return (
-      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+      <div className="w-full mx-auto px-4 sm:px-6 pb-8">
         <p className="text-neutral-600 dark:text-neutral-400">Site not found</p>
       </div>
     )
   }
 
   return (
-    <div className={`w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
+    <div className={`w-full mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
 
       <div className="space-y-8">
         <div>

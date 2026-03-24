@@ -73,7 +73,7 @@ export default function JourneysPage() {
   const totalSessions = transitionsData?.total_sessions ?? 0
 
   return (
-    <div className={`w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
+    <div className={`w-full mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
       {/* Header */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
