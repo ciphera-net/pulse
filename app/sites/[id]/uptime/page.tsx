@@ -403,7 +403,7 @@ export default function UptimePage() {
   // * Disabled state — show empty state with enable toggle
   if (!uptimeEnabled) {
     return (
-      <div className={`w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
+      <div className={`w-full mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-white mb-1">
@@ -442,7 +442,7 @@ export default function UptimePage() {
 
   // * Enabled state — show uptime dashboard
   return (
-    <div className={`w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
+    <div className={`w-full mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
       {/* Header */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

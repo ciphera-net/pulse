@@ -122,7 +122,7 @@ export function ChartSkeleton() {
 
 export function DashboardSkeleton() {
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+    <div className="w-full mx-auto px-4 sm:px-6 pb-8">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
@@ -170,7 +170,7 @@ export function DashboardSkeleton() {
 
 export function JourneysSkeleton() {
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+    <div className="w-full mx-auto px-4 sm:px-6 pb-8">
       {/* Header */}
       <div className="mb-8 flex items-center justify-between">
         <div>
@@ -199,7 +199,7 @@ export function JourneysSkeleton() {
 
 export function UptimeSkeleton() {
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+    <div className="w-full mx-auto px-4 sm:px-6 pb-8">
       {/* Header */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -273,7 +273,7 @@ export function ChecksSkeleton() {
 
 export function FunnelsListSkeleton() {
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+    <div className="w-full mx-auto px-4 sm:px-6 pb-8">
       <div className="mb-8">
         <div className="flex items-center gap-4 mb-6">
           <SkeletonLine className="h-10 w-10 rounded-xl" />
@@ -307,7 +307,7 @@ export function FunnelsListSkeleton() {
 
 export function FunnelDetailSkeleton() {
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+    <div className="w-full mx-auto px-4 sm:px-6 pb-8">
       <div className="mb-8">
         <SkeletonLine className="h-4 w-32 mb-2" />
         <SkeletonLine className="h-8 w-48 mb-1" />
@@ -395,7 +395,7 @@ export function PricingCardsSkeleton() {
 
 export function BehaviorSkeleton() {
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+    <div className="w-full mx-auto px-4 sm:px-6 pb-8">
       {/* Header */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
