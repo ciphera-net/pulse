@@ -165,7 +165,7 @@ function SitePicker({ sites, siteId, collapsed, onExpand, onCollapse, wasCollaps
             setOpen(!open)
           }
         }}
-        className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-neutral-200 hover:bg-neutral-800 overflow-hidden"
+        className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-neutral-200 hover:bg-white/[0.06] overflow-hidden"
       >
         <span className="w-7 h-7 rounded-md bg-brand-orange/10 flex items-center justify-center shrink-0 overflow-hidden">
           {faviconUrl && !faviconFailed ? (
@@ -194,7 +194,7 @@ function SitePicker({ sites, siteId, collapsed, onExpand, onCollapse, wasCollaps
       </button>
 
       {open && (
-        <div className="absolute left-3 top-full mt-1 z-50 w-[240px] bg-neutral-900 border border-neutral-700 rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="absolute left-3 top-full mt-1 z-50 w-[240px] bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/60 border border-white/[0.08] rounded-xl shadow-xl shadow-black/20 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
           <div className="p-2">
             <input
               type="text"
@@ -208,7 +208,7 @@ function SitePicker({ sites, siteId, collapsed, onExpand, onCollapse, wasCollaps
                   if (wasCollapsed.current) { onCollapse(); wasCollapsed.current = false }
                 }
               }}
-              className="w-full px-3 py-1.5 text-sm bg-neutral-800 border border-neutral-700 rounded-lg outline-none focus:ring-2 focus:ring-brand-orange/40 text-white placeholder:text-neutral-400"
+              className="w-full px-3 py-1.5 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg outline-none focus:ring-2 focus:ring-brand-orange/40 text-white placeholder:text-neutral-400"
               autoFocus
             />
           </div>
@@ -220,7 +220,7 @@ function SitePicker({ sites, siteId, collapsed, onExpand, onCollapse, wasCollaps
                 className={`w-full flex items-center gap-2.5 px-4 py-2 text-sm text-left ${
                   site.id === siteId
                     ? 'bg-brand-orange/10 text-brand-orange font-medium'
-                    : 'text-neutral-300 hover:bg-neutral-800'
+                    : 'text-neutral-300 hover:bg-white/[0.06]'
                 }`}
               >
                 <img
@@ -236,8 +236,8 @@ function SitePicker({ sites, siteId, collapsed, onExpand, onCollapse, wasCollaps
             ))}
             {filtered.length === 0 && <p className="px-4 py-3 text-sm text-neutral-400">No sites found</p>}
           </div>
-          <div className="border-t border-neutral-700 p-2">
-            <Link href="/sites/new" onClick={() => setOpen(false)} className="flex items-center gap-2 px-3 py-1.5 text-sm text-brand-orange hover:bg-neutral-800 rounded-lg">
+          <div className="border-t border-white/[0.06] p-2">
+            <Link href="/sites/new" onClick={() => setOpen(false)} className="flex items-center gap-2 px-3 py-1.5 text-sm text-brand-orange hover:bg-white/[0.06] rounded-lg">
               <PlusIcon className="w-4 h-4" />
               Add new site
             </Link>
@@ -270,7 +270,7 @@ function NavLink({
         className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-150 ${
           active
             ? 'bg-brand-orange/10 text-brand-orange'
-            : 'text-neutral-400 hover:text-white hover:bg-neutral-800 hover:translate-x-0.5'
+            : 'text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5'
         }`}
       >
         <span className="w-7 h-7 flex items-center justify-center shrink-0">
@@ -348,7 +348,7 @@ function SidebarContent({
         {NAV_GROUPS.map((group) => (
           <div key={group.label}>
             {c ? (
-              <div className="mx-3 my-2 border-t border-neutral-800/40" />
+              <div className="mx-3 my-2 border-t border-white/[0.04]" />
             ) : (
               <div className="h-5 flex items-center overflow-hidden">
                 <p className="px-2.5 text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider whitespace-nowrap">
@@ -369,7 +369,7 @@ function SidebarContent({
       </nav>
 
       {/* Bottom — utility items */}
-      <div className="border-t border-neutral-800/60 px-2 py-3 shrink-0">
+      <div className="border-t border-white/[0.06] px-2 py-3 shrink-0">
         {/* Notifications, Profile — same layout as nav items */}
         <div className="space-y-0.5 mb-1">
           <div className="relative group/notif">
@@ -411,7 +411,7 @@ function SidebarContent({
             <div className="relative group/collapse">
               <button
                 onClick={onToggle}
-                className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-neutral-400 dark:text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800 w-full overflow-hidden"
+                className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-neutral-400 dark:text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.06] w-full overflow-hidden"
               >
                 <span className="w-7 h-7 flex items-center justify-center shrink-0">
                   <CollapseLeftIcon className={`w-[18px] h-[18px] transition-transform duration-200 ${c ? 'rotate-180' : ''}`} />
@@ -516,7 +516,7 @@ export default function Sidebar({
     <>
       {/* Desktop — ssr:false means this only renders on client, no hydration flash */}
       <aside
-        className="hidden md:flex flex-col shrink-0 bg-neutral-900 overflow-hidden relative z-10"
+        className="hidden md:flex flex-col shrink-0 bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/60 border-r border-white/[0.08] overflow-hidden relative z-10"
         style={{ width: collapsed ? COLLAPSED : EXPANDED, transition: 'width 200ms cubic-bezier(0.4, 0, 0.2, 1)' }}
         onTransitionEnd={(e) => {
           if (e.propertyName === 'width' && pickerOpenCallbackRef.current) {
@@ -556,13 +556,13 @@ export default function Sidebar({
             onClick={handleMobileClose}
           />
           <aside
-            className={`fixed inset-y-0 left-0 z-50 w-72 bg-neutral-900 border-r border-neutral-800 shadow-xl md:hidden ${
+            className={`fixed inset-y-0 left-0 z-50 w-72 bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/60 border-r border-white/[0.08] shadow-xl shadow-black/20 md:hidden ${
               mobileClosing
                 ? 'animate-out slide-out-to-left duration-200 fill-mode-forwards'
                 : 'animate-in slide-in-from-left duration-200'
             }`}
           >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-800">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
               <span className="text-sm font-semibold text-white">Navigation</span>
               <button onClick={handleMobileClose} className="p-1.5 text-neutral-400 hover:text-neutral-300">
                 <XIcon className="w-5 h-5" />
