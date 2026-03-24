@@ -38,16 +38,7 @@ function GlassTopBar({ siteId }: { siteId: string }) {
   }, [realtime])
 
   return (
-    <div className="hidden md:flex items-center justify-between h-10 shrink-0 pr-3">
-      {/* Collapse toggle — negative margin to align with sidebar icons */}
-      <button
-        onClick={toggle}
-        className="flex items-center justify-center w-10 h-10 -ml-[52px] text-neutral-400 hover:text-white rounded-lg hover:bg-white/[0.06] transition-colors"
-        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-      >
-        <SidebarSimple className="w-[18px] h-[18px]" weight={collapsed ? 'regular' : 'fill'} />
-      </button>
-
+    <div className="hidden md:flex items-center justify-end h-10 shrink-0 px-3">
       {/* Realtime indicator */}
       {lastUpdatedRef.current != null && (
         <div className="flex items-center gap-1.5 text-xs text-neutral-500">

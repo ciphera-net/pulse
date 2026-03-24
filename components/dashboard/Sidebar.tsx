@@ -9,6 +9,7 @@ import { listSites, type Site } from '@/lib/api/sites'
 import { useAuth } from '@/lib/auth/context'
 import { useSettingsModal } from '@/lib/settings-modal-context'
 import { useSidebar } from '@/lib/sidebar-context'
+import { SidebarSimple } from '@phosphor-icons/react'
 // `,` shortcut handled globally by UnifiedSettingsModal
 import { getUserOrganizations, switchContext, type OrganizationMember } from '@/lib/api/organization'
 import { setSessionAction } from '@/app/actions/auth'
@@ -340,6 +341,7 @@ interface SidebarContentProps {
   onMobileClose: () => void
   onExpand: () => void
   onCollapse: () => void
+  onToggle: () => void
   wasCollapsed: React.MutableRefObject<boolean>
   pickerOpenCallbackRef: React.MutableRefObject<(() => void) | null>
   auth: ReturnType<typeof useAuth>
@@ -350,7 +352,7 @@ interface SidebarContentProps {
 
 function SidebarContent({
   isMobile, collapsed, siteId, sites, canEdit, pendingHref,
-  onNavigate, onMobileClose, onExpand, onCollapse,
+  onNavigate, onMobileClose, onExpand, onCollapse, onToggle,
   wasCollapsed, pickerOpenCallbackRef, auth, orgs, onSwitchOrganization, openSettings,
 }: SidebarContentProps) {
   const router = useRouter()
@@ -359,7 +361,20 @@ function SidebarContent({
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* App Switcher — top of sidebar (scope-level switch) */}
+      {/* Collapse toggle — first item, aligned with all other sidebar icons */}
+      {!isMobile && (
+        <div className="flex items-center gap-2.5 px-[14px] pt-3 pb-0 shrink-0 overflow-hidden">
+          <button
+            onClick={onToggle}
+            className="w-9 h-9 flex items-center justify-center shrink-0 text-neutral-400 hover:text-white rounded-lg hover:bg-white/[0.06] transition-colors"
+            aria-label={c ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            <SidebarSimple className="w-[18px] h-[18px]" weight={c ? 'regular' : 'fill'} />
+          </button>
+        </div>
+      )}
+
+      {/* App Switcher — scope-level switch */}
       <div className="flex items-center gap-2.5 px-[14px] pt-3 pb-1 shrink-0 overflow-hidden">
         <span className="w-9 h-9 flex items-center justify-center shrink-0">
           <AppLauncher apps={CIPHERA_APPS} currentAppId="pulse" anchor="right" />
@@ -525,7 +540,7 @@ export default function Sidebar({
           onMobileClose={onMobileClose}
           onExpand={expand}
           onCollapse={collapse}
-
+          onToggle={toggle}
           wasCollapsed={wasCollapsedRef}
           pickerOpenCallbackRef={pickerOpenCallbackRef}
           auth={auth}
@@ -568,7 +583,7 @@ export default function Sidebar({
               onMobileClose={handleMobileClose}
               onExpand={expand}
               onCollapse={collapse}
-    
+              onToggle={toggle}
               wasCollapsed={wasCollapsedRef}
               pickerOpenCallbackRef={pickerOpenCallbackRef}
               auth={auth}
