@@ -8,6 +8,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { listSites, type Site } from '@/lib/api/sites'
 import { useAuth } from '@/lib/auth/context'
 import { useSettingsModal } from '@/lib/settings-modal-context'
+import { useSidebar } from '@/lib/sidebar-context'
 // `,` shortcut handled globally by UnifiedSettingsModal
 import { getUserOrganizations, switchContext, type OrganizationMember } from '@/lib/api/organization'
 import { setSessionAction } from '@/app/actions/auth'
@@ -23,8 +24,6 @@ import {
   CloudUploadIcon,
   HeartbeatIcon,
   SettingsIcon,
-  CollapseLeftIcon,
-  CollapseRightIcon,
   ChevronUpDownIcon,
   PlusIcon,
   XIcon,
@@ -61,7 +60,6 @@ const CIPHERA_APPS: CipheraApp[] = [
   },
 ]
 
-const SIDEBAR_KEY = 'pulse_sidebar_collapsed'
 const EXPANDED = 256
 const COLLAPSED = 64
 
@@ -342,7 +340,6 @@ interface SidebarContentProps {
   onMobileClose: () => void
   onExpand: () => void
   onCollapse: () => void
-  onToggle: () => void
   wasCollapsed: React.MutableRefObject<boolean>
   pickerOpenCallbackRef: React.MutableRefObject<(() => void) | null>
   auth: ReturnType<typeof useAuth>
@@ -353,7 +350,7 @@ interface SidebarContentProps {
 
 function SidebarContent({
   isMobile, collapsed, siteId, sites, canEdit, pendingHref,
-  onNavigate, onMobileClose, onExpand, onCollapse, onToggle,
+  onNavigate, onMobileClose, onExpand, onCollapse,
   wasCollapsed, pickerOpenCallbackRef, auth, orgs, onSwitchOrganization, openSettings,
 }: SidebarContentProps) {
   const router = useRouter()
@@ -446,28 +443,6 @@ function SidebarContent({
             )}
           </div>
         </div>
-
-        {/* Settings + Collapse */}
-        <div className="space-y-0.5">
-          {!isMobile && (
-            <div className="relative group/collapse">
-              <button
-                onClick={onToggle}
-                className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-neutral-400 dark:text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.06] w-full overflow-hidden"
-              >
-                <span className="w-7 h-7 flex items-center justify-center shrink-0">
-                  <CollapseLeftIcon className={`w-[18px] h-[18px] transition-transform duration-200 ${c ? 'rotate-180' : ''}`} />
-                </span>
-                <Label collapsed={c}>{c ? 'Expand' : 'Collapse'}</Label>
-              </button>
-              {c && (
-                <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 rounded-md bg-neutral-800 text-white text-xs whitespace-nowrap opacity-0 group-hover/collapse:opacity-100 transition-opacity duration-150 delay-150 z-50">
-                  Expand (press [)
-                </span>
-              )}
-            </div>
-          )}
-        </div>
       </div>
     </div>
   )
@@ -492,10 +467,7 @@ export default function Sidebar({
   const [mobileClosing, setMobileClosing] = useState(false)
   const wasCollapsedRef = useRef(false)
   const pickerOpenCallbackRef = useRef<(() => void) | null>(null)
-  // Safe to read localStorage directly — this component is loaded with ssr:false
-  const [collapsed, setCollapsed] = useState(() => {
-    return localStorage.getItem(SIDEBAR_KEY) !== 'false'
-  })
+  const { collapsed, toggle, expand, collapse } = useSidebar()
 
   useEffect(() => { listSites().then(setSites).catch(() => {}) }, [])
   useEffect(() => {
@@ -518,31 +490,6 @@ export default function Sidebar({
     }
   }
   useEffect(() => { setPendingHref(null); onMobileClose() }, [pathname, onMobileClose])
-
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement)?.tagName
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
-      if (e.key === '[' && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        e.preventDefault(); toggle()
-      }
-      // `,` shortcut is handled globally by UnifiedSettingsModal — not here
-    }
-    document.addEventListener('keydown', handler)
-    return () => document.removeEventListener('keydown', handler)
-  }, [collapsed])
-
-  const toggle = useCallback(() => {
-    setCollapsed((prev) => { const next = !prev; localStorage.setItem(SIDEBAR_KEY, String(next)); return next })
-  }, [])
-
-  const expand = useCallback(() => {
-    setCollapsed(false); localStorage.setItem(SIDEBAR_KEY, 'false')
-  }, [])
-
-  const collapse = useCallback(() => {
-    setCollapsed(true); localStorage.setItem(SIDEBAR_KEY, 'true')
-  }, [])
 
   const handleMobileClose = useCallback(() => {
     setMobileClosing(true)
@@ -578,7 +525,7 @@ export default function Sidebar({
           onMobileClose={onMobileClose}
           onExpand={expand}
           onCollapse={collapse}
-          onToggle={toggle}
+
           wasCollapsed={wasCollapsedRef}
           pickerOpenCallbackRef={pickerOpenCallbackRef}
           auth={auth}
@@ -621,7 +568,7 @@ export default function Sidebar({
               onMobileClose={handleMobileClose}
               onExpand={expand}
               onCollapse={collapse}
-              onToggle={toggle}
+    
               wasCollapsed={wasCollapsedRef}
               pickerOpenCallbackRef={pickerOpenCallbackRef}
               auth={auth}
