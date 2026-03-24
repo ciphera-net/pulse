@@ -31,9 +31,9 @@ export default function WorkspaceGeneralTab() {
     setSaving(true)
     try {
       await updateOrganization(user.org_id, name, slug)
-      toast.success('Workspace updated')
+      toast.success('Organization updated')
     } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to update workspace')
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to update organization')
     } finally {
       setSaving(false)
     }
@@ -52,7 +52,7 @@ export default function WorkspaceGeneralTab() {
       <div className="space-y-4">
         <div>
           <h3 className="text-base font-semibold text-white mb-1">General Information</h3>
-          <p className="text-sm text-neutral-400">Basic details about your workspace.</p>
+          <p className="text-sm text-neutral-400">Basic details about your organization.</p>
         </div>
 
         <div>

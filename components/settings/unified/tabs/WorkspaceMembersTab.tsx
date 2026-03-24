@@ -82,7 +82,7 @@ export default function WorkspaceMembersTab() {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-base font-semibold text-white mb-1">Members</h3>
-          <p className="text-sm text-neutral-400">{members.length} member{members.length !== 1 ? 's' : ''} in your workspace.</p>
+          <p className="text-sm text-neutral-400">{members.length} member{members.length !== 1 ? 's' : ''} in your organization.</p>
         </div>
         {canManage && !showInvite && (
           <Button onClick={() => setShowInvite(true)} variant="primary" className="text-sm gap-1.5">
