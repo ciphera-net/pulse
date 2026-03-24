@@ -6,6 +6,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { listNotifications, markNotificationRead, markAllNotificationsRead, type Notification } from '@/lib/api/notifications'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
@@ -198,12 +199,18 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
       </button>
 
       {(() => {
-        const panel = open ? (
-          <div
+        const panel = (
+          <AnimatePresence>
+            {open && (
+          <motion.div
             ref={panelRef}
             id="notification-dropdown"
             role="dialog"
             aria-label="Notifications"
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            transition={{ duration: 0.15 }}
             className={`bg-white dark:bg-neutral-900/65 border border-neutral-200 dark:border-white/[0.08] rounded-xl shadow-xl dark:shadow-black/20 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:dark:bg-neutral-900/60 overflow-hidden z-[100] ${
               anchor === 'right'
                 ? `fixed w-96 ${fixedPos?.bottom !== undefined ? 'origin-bottom-left' : 'origin-top-left'}`
@@ -321,10 +328,12 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
                 Manage settings
               </Link>
             </div>
-          </div>
-        ) : null
+          </motion.div>
+            )}
+          </AnimatePresence>
+        )
 
-        return anchor === 'right' && panel && typeof document !== 'undefined'
+        return anchor === 'right' && typeof document !== 'undefined'
           ? createPortal(panel, document.body)
           : panel
       })()}
