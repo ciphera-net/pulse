@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { X, GearSix, Buildings, User, CaretDown } from '@phosphor-icons/react'
+import { X, GearSix, Buildings, User } from '@phosphor-icons/react'
 import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { useAuth } from '@/lib/auth/context'
 import { useSite } from '@/lib/swr/dashboard'
@@ -65,28 +65,18 @@ const ACCOUNT_TABS: TabDef[] = [
 function ContextSwitcher({
   active,
   onChange,
-  sites,
-  activeSiteId,
-  onSiteChange,
+  activeSiteDomain,
 }: {
   active: SettingsContext
   onChange: (ctx: SettingsContext) => void
-  sites: Site[]
-  activeSiteId: string | null
-  onSiteChange: (id: string) => void
+  activeSiteDomain: string | null
 }) {
-  const [siteDropdownOpen, setSiteDropdownOpen] = useState(false)
-  const activeSite = sites.find(s => s.id === activeSiteId)
-
   return (
     <div className="flex items-center gap-1 p-1 bg-neutral-800/50 rounded-xl">
-      {/* Site button with dropdown */}
-      <div className="relative">
+      {/* Site button — locked to current site, no dropdown */}
+      {activeSiteDomain && (
         <button
-          onClick={() => {
-            onChange('site')
-            if (active === 'site') setSiteDropdownOpen(!siteDropdownOpen)
-          }}
+          onClick={() => onChange('site')}
           className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
             active === 'site'
               ? 'bg-neutral-700 text-white shadow-sm'
@@ -94,45 +84,12 @@ function ContextSwitcher({
           }`}
         >
           <GearSix weight="bold" className="w-4 h-4" />
-          <span className="hidden sm:inline">
-            {activeSite ? activeSite.domain : 'Site'}
-          </span>
-          <CaretDown weight="bold" className="w-3 h-3" />
+          <span className="hidden sm:inline">{activeSiteDomain}</span>
         </button>
-
-        <AnimatePresence>
-          {siteDropdownOpen && active === 'site' && sites.length > 1 && (
-            <motion.div
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: 0.15 }}
-              className="absolute top-full left-0 mt-1 w-56 rounded-xl bg-neutral-800 border border-neutral-700 shadow-xl z-50 py-1 overflow-hidden"
-            >
-              {sites.map(site => (
-                <button
-                  key={site.id}
-                  onClick={() => {
-                    onSiteChange(site.id)
-                    setSiteDropdownOpen(false)
-                  }}
-                  className={`w-full text-left px-3 py-2 text-sm transition-colors ${
-                    site.id === activeSiteId
-                      ? 'bg-brand-orange/10 text-brand-orange'
-                      : 'text-neutral-300 hover:bg-neutral-700/50'
-                  }`}
-                >
-                  <span className="font-medium">{site.name}</span>
-                  <span className="ml-2 text-neutral-500 text-xs">{site.domain}</span>
-                </button>
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+      )}
 
       <button
-        onClick={() => { onChange('workspace'); setSiteDropdownOpen(false) }}
+        onClick={() => onChange('workspace')}
         className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
           active === 'workspace'
             ? 'bg-neutral-700 text-white shadow-sm'
@@ -140,11 +97,11 @@ function ContextSwitcher({
         }`}
       >
         <Buildings weight="bold" className="w-4 h-4" />
-        <span className="hidden sm:inline">Workspace</span>
+        <span className="hidden sm:inline">Organization</span>
       </button>
 
       <button
-        onClick={() => { onChange('account'); setSiteDropdownOpen(false) }}
+        onClick={() => onChange('account')}
         className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
           active === 'account'
             ? 'bg-neutral-700 text-white shadow-sm'
@@ -282,26 +239,28 @@ export default function UnifiedSettingsModal() {
     }
   }, [isOpen, initTab])
 
-  // Load sites when modal opens
+  // Detect site from URL and load sites list when modal opens
   useEffect(() => {
-    if (isOpen && user?.org_id) {
-      listSites().then(data => {
-        const list = Array.isArray(data) ? data : []
-        setSites(list)
-        if (!activeSiteId && list.length > 0) {
-          setActiveSiteId(list[0].id)
-        }
-      }).catch(() => {})
-    }
-  }, [isOpen, user?.org_id])
+    if (!isOpen || !user?.org_id) return
 
-  // Try to pick up site from URL
-  useEffect(() => {
-    if (isOpen && typeof window !== 'undefined') {
+    // Pick up site ID from URL — this is the only site the user can configure
+    if (typeof window !== 'undefined') {
       const match = window.location.pathname.match(/\/sites\/([a-f0-9-]+)/)
-      if (match) setActiveSiteId(match[1])
+      if (match) {
+        setActiveSiteId(match[1])
+        setContext('site')
+      } else {
+        // Not on a site page — default to organization context
+        setActiveSiteId(null)
+        if (!initTab?.context) setContext('workspace')
+      }
     }
-  }, [isOpen])
+
+    // Load sites for domain display
+    listSites().then(data => {
+      setSites(Array.isArray(data) ? data : [])
+    }).catch(() => {})
+  }, [isOpen, user?.org_id])
 
   // Escape key closes
   useEffect(() => {
@@ -363,9 +322,7 @@ export default function UnifiedSettingsModal() {
                 <ContextSwitcher
                   active={context}
                   onChange={handleContextChange}
-                  sites={sites}
-                  activeSiteId={activeSiteId}
-                  onSiteChange={setActiveSiteId}
+                  activeSiteDomain={sites.find(s => s.id === activeSiteId)?.domain ?? null}
                 />
 
                 {/* Tabs */}
