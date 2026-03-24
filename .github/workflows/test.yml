@@ -1,4 +1,5 @@
 # * Runs unit tests on push/PR to main and staging.
+# * Uses self-hosted runner for push events, GitHub-hosted for PRs (public repo security).
 name: Test
 
 on:
@@ -7,6 +8,10 @@ on:
   pull_request:
     branches: [main, staging]
 
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   packages: read
@@ -14,7 +19,7 @@ permissions:
 jobs:
   test:
     name: unit-tests
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || 'self-hosted' }}
     steps:
       - uses: actions/checkout@v4
 
