@@ -38,19 +38,19 @@ function GlassTopBar({ siteId }: { siteId: string }) {
   }, [realtime])
 
   return (
-    <div className="hidden md:flex items-center justify-between h-10 shrink-0 px-3">
-      {/* Collapse toggle — aligned above sidebar */}
+    <div className="hidden md:flex items-center justify-between h-10 shrink-0 pr-3">
+      {/* Collapse toggle — negative margin to align with sidebar icons */}
       <button
         onClick={toggle}
-        className="flex items-center justify-center p-1.5 text-neutral-400 hover:text-white rounded-lg hover:bg-white/[0.06] transition-colors"
+        className="flex items-center justify-center w-10 h-10 -ml-[52px] text-neutral-400 hover:text-white rounded-lg hover:bg-white/[0.06] transition-colors"
         aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
       >
         <SidebarSimple className="w-[18px] h-[18px]" weight={collapsed ? 'regular' : 'fill'} />
       </button>
 
-      {/* Realtime indicator — aligned above content right edge */}
+      {/* Realtime indicator */}
       {lastUpdatedRef.current != null && (
-        <div className="flex items-center gap-1.5 text-xs text-neutral-500 mr-2">
+        <div className="flex items-center gap-1.5 text-xs text-neutral-500">
           <span className="relative flex h-1.5 w-1.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
             <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
@@ -75,17 +75,16 @@ export default function DashboardShell({
 
   return (
     <SidebarProvider>
-      <div className="flex flex-col h-screen overflow-hidden bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/60">
-        {/* Full-width top bar in glass area */}
-        <GlassTopBar siteId={siteId} />
-        {/* Sidebar + content side by side */}
-        <div className="flex flex-1 min-h-0">
-          <Sidebar
-            siteId={siteId}
-            mobileOpen={mobileOpen}
-            onMobileClose={closeMobile}
-            onMobileOpen={openMobile}
-          />
+      <div className="flex h-screen overflow-hidden bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/60">
+        <Sidebar
+          siteId={siteId}
+          mobileOpen={mobileOpen}
+          onMobileClose={closeMobile}
+          onMobileOpen={openMobile}
+        />
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* Glass top bar — above content only, collapse icon reaches back into sidebar column */}
+          <GlassTopBar siteId={siteId} />
           {/* Content panel */}
           <div className="flex-1 flex flex-col min-w-0 mr-2 mb-2 rounded-2xl bg-neutral-950 border border-neutral-800/60 overflow-hidden">
             <ContentHeader onMobileMenuOpen={openMobile} />
