@@ -216,7 +216,7 @@ function TabContent({
 // ─── Main Modal ─────────────────────────────────────────────────
 
 export default function UnifiedSettingsModal() {
-  const { isOpen, closeUnifiedSettings: closeSettings, initialTab: initTab } = useUnifiedSettings()
+  const { isOpen, openUnifiedSettings, closeUnifiedSettings: closeSettings, initialTab: initTab } = useUnifiedSettings()
   const { user } = useAuth()
 
   const [context, setContext] = useState<SettingsContext>('site')
@@ -262,15 +262,24 @@ export default function UnifiedSettingsModal() {
     }).catch(() => {})
   }, [isOpen, user?.org_id])
 
-  // Escape key closes
+  // Global keyboard shortcuts: `,` toggles settings, Escape closes
   useEffect(() => {
-    if (!isOpen) return
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closeSettings()
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+
+      if (e.key === ',' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault()
+        if (isOpen) closeSettings()
+        else openUnifiedSettings()
+      }
+      if (e.key === 'Escape' && isOpen) {
+        closeSettings()
+      }
     }
-    window.addEventListener('keydown', handleEsc)
-    return () => window.removeEventListener('keydown', handleEsc)
-  }, [isOpen, closeSettings])
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [isOpen, openUnifiedSettings, closeSettings])
 
   const tabs = context === 'site' ? SITE_TABS : context === 'workspace' ? WORKSPACE_TABS : ACCOUNT_TABS
   const activeTab = context === 'site' ? siteTabs : context === 'workspace' ? workspaceTabs : accountTabs
