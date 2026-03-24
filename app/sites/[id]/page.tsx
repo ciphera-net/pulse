@@ -417,14 +417,14 @@ export default function SiteDashboardPage() {
 
   if (!site) {
     return (
-      <div className="w-full mx-auto px-4 sm:px-6 pb-8">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
         <p className="text-neutral-600 dark:text-neutral-400">Site not found</p>
       </div>
     )
   }
 
   return (
-    <div className={`w-full mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
+    <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
       <div className="mb-6">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-4">
