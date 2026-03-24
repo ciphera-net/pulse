@@ -136,14 +136,25 @@ function SitePicker({ sites, siteId, collapsed, onExpand, onCollapse, wasCollaps
   const updatePosition = useCallback(() => {
     if (buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect()
-      let top = rect.bottom + 4
-      if (panelRef.current) {
-        const maxTop = window.innerHeight - panelRef.current.offsetHeight - 8
-        top = Math.min(top, Math.max(8, maxTop))
+      if (collapsed) {
+        // Collapsed: open to the right, like AppLauncher/UserMenu/Notifications
+        let top = rect.top
+        if (panelRef.current) {
+          const maxTop = window.innerHeight - panelRef.current.offsetHeight - 8
+          top = Math.min(top, Math.max(8, maxTop))
+        }
+        setFixedPos({ left: rect.right + 8, top })
+      } else {
+        // Expanded: open below the button
+        let top = rect.bottom + 4
+        if (panelRef.current) {
+          const maxTop = window.innerHeight - panelRef.current.offsetHeight - 8
+          top = Math.min(top, Math.max(8, maxTop))
+        }
+        setFixedPos({ left: rect.left, top })
       }
-      setFixedPos({ left: rect.left, top })
     }
-  }, [])
+  }, [collapsed])
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -154,7 +165,6 @@ function SitePicker({ sites, siteId, collapsed, onExpand, onCollapse, wasCollaps
       ) {
         if (open) {
           setOpen(false); setSearch('')
-          if (wasCollapsed.current) { onCollapse(); wasCollapsed.current = false }
         }
       }
     }
@@ -171,7 +181,6 @@ function SitePicker({ sites, siteId, collapsed, onExpand, onCollapse, wasCollaps
 
   const closePicker = () => {
     setOpen(false); setSearch('')
-    if (wasCollapsed.current) { onCollapse(); wasCollapsed.current = false }
   }
 
   const switchSite = (id: string) => {
@@ -247,15 +256,7 @@ function SitePicker({ sites, siteId, collapsed, onExpand, onCollapse, wasCollaps
     <div className="relative mb-4 px-2" ref={ref}>
       <button
         ref={buttonRef}
-        onClick={() => {
-          if (collapsed) {
-            wasCollapsed.current = true
-            pickerOpenCallback.current = () => setOpen(true)
-            onExpand()
-          } else {
-            setOpen(!open)
-          }
-        }}
+        onClick={() => setOpen(!open)}
         className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-neutral-200 hover:bg-white/[0.06] overflow-hidden"
       >
         <span className="w-7 h-7 rounded-md bg-brand-orange/10 flex items-center justify-center shrink-0 overflow-hidden">
