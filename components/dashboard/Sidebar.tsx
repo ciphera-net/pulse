@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { listSites, type Site } from '@/lib/api/sites'
@@ -123,17 +125,35 @@ function SitePicker({ sites, siteId, collapsed, onExpand, onCollapse, wasCollaps
   const [faviconFailed, setFaviconFailed] = useState(false)
   const [faviconLoaded, setFaviconLoaded] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const [fixedPos, setFixedPos] = useState<{ left: number; top: number } | null>(null)
   const pathname = usePathname()
   const router = useRouter()
   const currentSite = sites.find((s) => s.id === siteId)
   const faviconUrl = currentSite?.domain ? `${FAVICON_SERVICE_URL}?domain=${currentSite.domain}&sz=64` : null
 
+  const updatePosition = useCallback(() => {
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect()
+      let top = rect.bottom + 4
+      if (panelRef.current) {
+        const maxTop = window.innerHeight - panelRef.current.offsetHeight - 8
+        top = Math.min(top, Math.max(8, maxTop))
+      }
+      setFixedPos({ left: rect.left, top })
+    }
+  }, [])
+
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
+      const target = e.target as Node
+      if (
+        ref.current && !ref.current.contains(target) &&
+        (!panelRef.current || !panelRef.current.contains(target))
+      ) {
         if (open) {
           setOpen(false); setSearch('')
-          // Re-collapse if we auto-expanded
           if (wasCollapsed.current) { onCollapse(); wasCollapsed.current = false }
         }
       }
@@ -142,20 +162,91 @@ function SitePicker({ sites, siteId, collapsed, onExpand, onCollapse, wasCollaps
     return () => document.removeEventListener('mousedown', handler)
   }, [open, onCollapse, wasCollapsed])
 
+  useEffect(() => {
+    if (open) {
+      updatePosition()
+      requestAnimationFrame(() => updatePosition())
+    }
+  }, [open, updatePosition])
+
+  const closePicker = () => {
+    setOpen(false); setSearch('')
+    if (wasCollapsed.current) { onCollapse(); wasCollapsed.current = false }
+  }
+
   const switchSite = (id: string) => {
     router.push(`/sites/${id}${pathname.replace(/^\/sites\/[^/]+/, '')}`)
-    setOpen(false); setSearch('')
-    // Re-collapse if we auto-expanded
-    if (wasCollapsed.current) { onCollapse(); wasCollapsed.current = false }
+    closePicker()
   }
 
   const filtered = sites.filter(
     (s) => s.name.toLowerCase().includes(search.toLowerCase()) || s.domain.toLowerCase().includes(search.toLowerCase())
   )
 
+  const dropdown = (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          ref={panelRef}
+          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+          transition={{ duration: 0.15 }}
+          className="fixed z-50 w-[240px] bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/60 border border-white/[0.08] rounded-xl shadow-xl shadow-black/20 overflow-hidden origin-top-left"
+          style={fixedPos ? { left: fixedPos.left, top: fixedPos.top } : undefined}
+        >
+          <div className="p-2">
+            <input
+              type="text"
+              placeholder="Search sites..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') closePicker()
+              }}
+              className="w-full px-3 py-1.5 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg outline-none focus:ring-2 focus:ring-brand-orange/40 text-white placeholder:text-neutral-400"
+              autoFocus
+            />
+          </div>
+          <div className="max-h-64 overflow-y-auto">
+            {filtered.map((site) => (
+              <button
+                key={site.id}
+                onClick={() => switchSite(site.id)}
+                className={`w-full flex items-center gap-2.5 px-4 py-2 text-sm text-left ${
+                  site.id === siteId
+                    ? 'bg-brand-orange/10 text-brand-orange font-medium'
+                    : 'text-neutral-300 hover:bg-white/[0.06]'
+                }`}
+              >
+                <img
+                  src={`${FAVICON_SERVICE_URL}?domain=${site.domain}&sz=64`}
+                  alt=""
+                  className="w-5 h-5 rounded object-contain shrink-0"
+                />
+                <span className="flex flex-col min-w-0">
+                  <span className="truncate">{site.name}</span>
+                  <span className="text-xs text-neutral-400 truncate">{site.domain}</span>
+                </span>
+              </button>
+            ))}
+            {filtered.length === 0 && <p className="px-4 py-3 text-sm text-neutral-400">No sites found</p>}
+          </div>
+          <div className="border-t border-white/[0.06] p-2">
+            <Link href="/sites/new" onClick={() => closePicker()} className="flex items-center gap-2 px-3 py-1.5 text-sm text-brand-orange hover:bg-white/[0.06] rounded-lg">
+              <PlusIcon className="w-4 h-4" />
+              Add new site
+            </Link>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+
   return (
     <div className="relative mb-4 px-2" ref={ref}>
       <button
+        ref={buttonRef}
         onClick={() => {
           if (collapsed) {
             wasCollapsed.current = true
@@ -193,57 +284,7 @@ function SitePicker({ sites, siteId, collapsed, onExpand, onCollapse, wasCollaps
         </Label>
       </button>
 
-      {open && (
-        <div className="absolute left-3 top-full mt-1 z-50 w-[240px] bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/60 border border-white/[0.08] rounded-xl shadow-xl shadow-black/20 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-          <div className="p-2">
-            <input
-              type="text"
-              placeholder="Search sites..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') {
-                  setOpen(false)
-                  setSearch('')
-                  if (wasCollapsed.current) { onCollapse(); wasCollapsed.current = false }
-                }
-              }}
-              className="w-full px-3 py-1.5 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg outline-none focus:ring-2 focus:ring-brand-orange/40 text-white placeholder:text-neutral-400"
-              autoFocus
-            />
-          </div>
-          <div className="max-h-64 overflow-y-auto">
-            {filtered.map((site) => (
-              <button
-                key={site.id}
-                onClick={() => switchSite(site.id)}
-                className={`w-full flex items-center gap-2.5 px-4 py-2 text-sm text-left ${
-                  site.id === siteId
-                    ? 'bg-brand-orange/10 text-brand-orange font-medium'
-                    : 'text-neutral-300 hover:bg-white/[0.06]'
-                }`}
-              >
-                <img
-                  src={`${FAVICON_SERVICE_URL}?domain=${site.domain}&sz=64`}
-                  alt=""
-                  className="w-5 h-5 rounded object-contain shrink-0"
-                />
-                <span className="flex flex-col min-w-0">
-                  <span className="truncate">{site.name}</span>
-                  <span className="text-xs text-neutral-400 truncate">{site.domain}</span>
-                </span>
-              </button>
-            ))}
-            {filtered.length === 0 && <p className="px-4 py-3 text-sm text-neutral-400">No sites found</p>}
-          </div>
-          <div className="border-t border-white/[0.06] p-2">
-            <Link href="/sites/new" onClick={() => setOpen(false)} className="flex items-center gap-2 px-3 py-1.5 text-sm text-brand-orange hover:bg-white/[0.06] rounded-lg">
-              <PlusIcon className="w-4 h-4" />
-              Add new site
-            </Link>
-          </div>
-        </div>
-      )}
+      {typeof document !== 'undefined' ? createPortal(dropdown, document.body) : dropdown}
     </div>
   )
 }
