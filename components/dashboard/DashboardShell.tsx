@@ -11,7 +11,7 @@ const Sidebar = dynamic(() => import('./Sidebar'), {
   // so page content never occupies the sidebar zone
   loading: () => (
     <div
-      className="hidden md:block shrink-0 bg-neutral-900 overflow-hidden relative"
+      className="hidden md:block shrink-0 bg-neutral-950 overflow-hidden relative"
       style={{ width: 64 }}
     >
       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-neutral-800/10 to-transparent animate-shimmer" />
@@ -31,7 +31,12 @@ export default function DashboardShell({
   const openMobile = useCallback(() => setMobileOpen(true), [])
 
   return (
-    <div className="flex h-screen overflow-hidden bg-neutral-900">
+    <div className="flex h-screen overflow-hidden bg-neutral-950 relative">
+      {/* Subtle gradient behind the sidebar to give glass something to diffuse */}
+      <div className="absolute inset-y-0 left-0 w-72 pointer-events-none" aria-hidden="true">
+        <div className="absolute inset-0 bg-gradient-to-b from-brand-orange/[0.06] via-transparent to-blue-500/[0.04]" />
+        <div className="absolute inset-0 bg-gradient-to-r from-brand-orange/[0.03] to-transparent" />
+      </div>
       <Sidebar
         siteId={siteId}
         mobileOpen={mobileOpen}
@@ -39,7 +44,7 @@ export default function DashboardShell({
         onMobileOpen={openMobile}
       />
       {/* Content panel — rounded corners, inset from edges. The left border doubles as the sidebar's right edge. */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden mt-2 mr-2 mb-2 rounded-2xl bg-neutral-950 border border-neutral-800/60">
+      <div className="flex-1 flex flex-col min-w-0 mt-2 mr-2 mb-2 rounded-2xl bg-neutral-950 border border-neutral-800/60 isolate overflow-clip">
         <ContentHeader onMobileMenuOpen={openMobile} />
         <main className="flex-1 overflow-y-auto pt-4">
           {children}
