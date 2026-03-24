@@ -194,7 +194,7 @@ function SitePicker({ sites, siteId, collapsed, onExpand, onCollapse, wasCollaps
       </button>
 
       {open && (
-        <div className="absolute left-3 top-full mt-1 z-50 w-[240px] bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/60 border border-white/[0.08] rounded-xl shadow-xl shadow-black/20 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="absolute left-3 top-full mt-1 z-50 w-[240px] bg-neutral-900/90 backdrop-blur-xl border border-white/[0.08] rounded-xl shadow-xl shadow-black/20 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
           <div className="p-2">
             <input
               type="text"
