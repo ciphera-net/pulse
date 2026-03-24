@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { listSites, type Site } from '@/lib/api/sites'
 import { useAuth } from '@/lib/auth/context'
 import { useSettingsModal } from '@/lib/settings-modal-context'
-import { useUnifiedSettings } from '@/lib/unified-settings-context'
+// `,` shortcut handled globally by UnifiedSettingsModal
 import { getUserOrganizations, switchContext, type OrganizationMember } from '@/lib/api/organization'
 import { setSessionAction } from '@/app/actions/auth'
 import { logger } from '@/lib/utils/logger'
@@ -444,7 +444,6 @@ export default function Sidebar({
   const pathname = usePathname()
   const router = useRouter()
   const { openSettings } = useSettingsModal()
-  const { openUnifiedSettings } = useUnifiedSettings()
   const [sites, setSites] = useState<Site[]>([])
   const [orgs, setOrgs] = useState<OrganizationMember[]>([])
   const [pendingHref, setPendingHref] = useState<string | null>(null)
@@ -485,14 +484,11 @@ export default function Sidebar({
       if (e.key === '[' && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault(); toggle()
       }
-      // `,` opens unified settings (same as GitHub/Linear)
-      if (e.key === ',' && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        e.preventDefault(); openUnifiedSettings()
-      }
+      // `,` shortcut is handled globally by UnifiedSettingsModal — not here
     }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [collapsed, openUnifiedSettings])
+  }, [collapsed])
 
   const toggle = useCallback(() => {
     setCollapsed((prev) => { const next = !prev; localStorage.setItem(SIDEBAR_KEY, String(next)); return next })
