@@ -31,12 +31,7 @@ export default function DashboardShell({
   const openMobile = useCallback(() => setMobileOpen(true), [])
 
   return (
-    <div className="flex h-screen overflow-hidden bg-neutral-950 relative">
-      {/* Subtle gradient behind the sidebar to give glass something to diffuse */}
-      <div className="absolute inset-y-0 left-0 w-72 pointer-events-none" aria-hidden="true">
-        <div className="absolute inset-0 bg-gradient-to-b from-brand-orange/[0.06] via-transparent to-blue-500/[0.04]" />
-        <div className="absolute inset-0 bg-gradient-to-r from-brand-orange/[0.03] to-transparent" />
-      </div>
+    <div className="flex h-screen overflow-hidden bg-neutral-950">
       <Sidebar
         siteId={siteId}
         mobileOpen={mobileOpen}
