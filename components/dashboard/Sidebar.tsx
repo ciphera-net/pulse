@@ -361,20 +361,7 @@ function SidebarContent({
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Collapse toggle — first item, aligned with all other sidebar icons */}
-      {!isMobile && (
-        <div className="flex items-center gap-2.5 px-[14px] pt-3 pb-0 shrink-0 overflow-hidden">
-          <button
-            onClick={onToggle}
-            className="w-9 h-9 flex items-center justify-center shrink-0 text-neutral-400 hover:text-white rounded-lg hover:bg-white/[0.06] transition-colors"
-            aria-label={c ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            <SidebarSimple className="w-[18px] h-[18px]" weight={c ? 'regular' : 'fill'} />
-          </button>
-        </div>
-      )}
-
-      {/* App Switcher — scope-level switch */}
+      {/* App Switcher — top of sidebar (scope-level switch) */}
       <div className="flex items-center gap-2.5 px-[14px] pt-3 pb-1 shrink-0 overflow-hidden">
         <span className="w-9 h-9 flex items-center justify-center shrink-0">
           <AppLauncher apps={CIPHERA_APPS} currentAppId="pulse" anchor="right" />
