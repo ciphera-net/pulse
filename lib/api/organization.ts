@@ -79,6 +79,13 @@ export async function getOrganizationMembers(organizationId: string): Promise<Or
   return data.members || []
 }
 
+// Remove a member from the organization
+export async function removeOrganizationMember(organizationId: string, userId: string): Promise<void> {
+  await authFetch(`/auth/organizations/${organizationId}/members/${userId}`, {
+    method: 'DELETE',
+  })
+}
+
 // Send an invitation
 export async function sendInvitation(
   organizationId: string, 
