@@ -1,17 +1,26 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Button, toast, Spinner } from '@ciphera-net/ui'
 import { CreditCard, ArrowSquareOut } from '@phosphor-icons/react'
 import { useSubscription } from '@/lib/swr/dashboard'
-import { createPortalSession, cancelSubscription, resumeSubscription } from '@/lib/api/billing'
-import { formatDateLong } from '@/lib/utils/formatDate'
+import { createPortalSession, cancelSubscription, resumeSubscription, getOrders, type Order } from '@/lib/api/billing'
+import { formatDateLong, formatDate } from '@/lib/utils/formatDate'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 
 export default function WorkspaceBillingTab() {
   const { data: subscription, isLoading, mutate } = useSubscription()
   const [cancelling, setCancelling] = useState(false)
+  const [orders, setOrders] = useState<Order[]>([])
+
+  useEffect(() => {
+    getOrders().then(setOrders).catch(() => {})
+  }, [])
+
+  const formatAmount = (amount: number, currency: string) => {
+    return new Intl.NumberFormat('en-GB', { style: 'currency', currency: currency || 'USD' }).format(amount / 100)
+  }
 
   const handleManageBilling = async () => {
     try {
@@ -161,6 +170,29 @@ export default function WorkspaceBillingTab() {
           </Button>
         )}
       </div>
+
+      {/* Recent Invoices */}
+      {orders.length > 0 && (
+        <div className="space-y-2 pt-4 border-t border-neutral-800">
+          <h4 className="text-sm font-medium text-neutral-300">Recent Invoices</h4>
+          <div className="space-y-1">
+            {orders.map(order => (
+              <div key={order.id} className="flex items-center justify-between p-3 rounded-lg border border-neutral-800 text-sm">
+                <div className="flex items-center gap-3">
+                  <span className="text-neutral-300">{formatDate(new Date(order.created_at))}</span>
+                  <span className="text-white font-medium">{formatAmount(order.total_amount, order.currency)}</span>
+                  {order.invoice_number && (
+                    <span className="text-neutral-500 text-xs">{order.invoice_number}</span>
+                  )}
+                </div>
+                <span className={`text-xs px-2 py-0.5 rounded-full ${order.paid ? 'bg-green-900/30 text-green-400' : 'bg-neutral-800 text-neutral-400'}`}>
+                  {order.paid ? 'Paid' : order.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
