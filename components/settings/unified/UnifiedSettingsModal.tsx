@@ -376,13 +376,13 @@ export default function UnifiedSettingsModal() {
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop — instant appear, animated close */}
+          {/* Backdrop — solid scrim, no blur (modal handles its own glass) */}
           <motion.div
             initial={{ opacity: 1 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-[60] bg-black/50"
             onClick={handleBackdropClick}
           />
 
