@@ -21,7 +21,7 @@ function PrivacyToggle({ label, desc, checked, onToggle }: { label: string; desc
     <div className="flex items-center justify-between py-3 px-4 rounded-xl hover:bg-neutral-800/20 transition-colors">
       <div>
         <p className="text-sm font-medium text-white">{label}</p>
-        <p className="text-xs text-neutral-400">{desc}</p>
+        <p className="text-xs text-neutral-500">{desc}</p>
       </div>
       <Toggle checked={checked} onChange={onToggle} />
     </div>
@@ -162,11 +162,11 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
           </div>
         )}
 
-        <div className="p-4 bg-neutral-900/50 rounded-xl border border-neutral-800">
+        <div className="p-4 bg-neutral-800/30 rounded-xl border border-neutral-800">
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium text-white text-sm">Keep raw event data for</p>
-              <p className="text-xs text-neutral-400 mt-0.5">Events older than this are automatically deleted. Aggregated daily stats are kept permanently.</p>
+              <p className="text-xs text-neutral-500 mt-0.5">Events older than this are automatically deleted. Aggregated daily stats are kept permanently.</p>
             </div>
             <Select
               value={String(dataRetention)}
@@ -199,7 +199,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
             onChange={e => setExcludedPaths(e.target.value)}
             rows={4}
             placeholder={"/admin/*\n/staging/*"}
-            className="w-full px-4 py-3 border border-neutral-800 rounded-lg bg-neutral-900/50 text-white font-mono text-sm focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all"
+            className="w-full px-4 py-3 border border-neutral-800 rounded-lg bg-neutral-800/30 text-white font-mono text-sm focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all"
           />
           <p className="text-xs text-neutral-500 mt-1">Enter paths to exclude from tracking (one per line). Supports wildcards (e.g., /admin/*).</p>
         </div>
@@ -208,11 +208,11 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
       {/* PageSpeed Monitoring */}
       <div className="space-y-3 pt-6 border-t border-neutral-800">
         <h4 className="text-sm font-medium text-neutral-300">PageSpeed Monitoring</h4>
-        <div className="p-4 bg-neutral-900/50 rounded-xl border border-neutral-800">
+        <div className="p-4 bg-neutral-800/30 rounded-xl border border-neutral-800">
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium text-white text-sm">Check frequency</p>
-              <p className="text-xs text-neutral-400 mt-0.5">How often PageSpeed Insights runs automated checks.</p>
+              <p className="text-xs text-neutral-500 mt-0.5">How often PageSpeed Insights runs automated checks.</p>
             </div>
             {psiConfig?.enabled ? (
               <Select
@@ -236,14 +236,14 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
       {/* Privacy Policy */}
       <div className="space-y-3 pt-6 border-t border-neutral-800">
         <h4 className="text-sm font-medium text-neutral-300">For your privacy policy</h4>
-        <p className="text-xs text-neutral-400">Copy the text below into your Privacy Policy. It updates automatically based on your saved settings.</p>
-        <p className="text-xs text-amber-600">This is provided for convenience and is not legal advice. Consult a lawyer for compliance requirements.</p>
+        <p className="text-xs text-neutral-500">Copy the text below into your Privacy Policy. It updates automatically based on your saved settings.</p>
+        <p className="text-xs text-amber-600 dark:text-amber-500">This is provided for convenience and is not legal advice. Consult a lawyer for compliance requirements.</p>
         <div className="relative">
           <textarea
             readOnly
             rows={6}
             value={generatePrivacySnippet(site)}
-            className="w-full px-4 py-3 pr-12 border border-neutral-800 rounded-xl bg-neutral-900/50 text-neutral-300 text-xs font-mono"
+            className="w-full px-4 py-3 pr-12 border border-neutral-800 rounded-xl bg-neutral-800/30 text-neutral-300 text-xs font-mono"
           />
           <button
             type="button"

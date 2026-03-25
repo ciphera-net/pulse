@@ -91,7 +91,7 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
           <ShieldCheck weight="bold" className="w-5 h-5 text-brand-orange" />
           <div>
             <p className="text-sm font-medium text-white">Enable bot filtering</p>
-            <p className="text-xs text-neutral-400">Filter known bots, crawlers, referrer spam, and suspicious traffic.</p>
+            <p className="text-xs text-neutral-500">Filter known bots, crawlers, referrer spam, and suspicious traffic.</p>
           </div>
         </div>
         <Toggle checked={filterBots} onChange={() => setFilterBots(p => !p)} />
@@ -102,15 +102,15 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
         <div className="grid grid-cols-3 gap-3">
           <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 p-4 text-center">
             <p className="text-2xl font-bold text-white">{botStats.filtered_sessions ?? 0}</p>
-            <p className="text-xs text-neutral-400 mt-1">Sessions filtered</p>
+            <p className="text-xs text-neutral-500 mt-1">Sessions filtered</p>
           </div>
           <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 p-4 text-center">
             <p className="text-2xl font-bold text-white">{botStats.filtered_events ?? 0}</p>
-            <p className="text-xs text-neutral-400 mt-1">Events filtered</p>
+            <p className="text-xs text-neutral-500 mt-1">Events filtered</p>
           </div>
           <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 p-4 text-center">
             <p className="text-2xl font-bold text-white">{botStats.auto_blocked_this_month ?? 0}</p>
-            <p className="text-xs text-neutral-400 mt-1">Auto-blocked this month</p>
+            <p className="text-xs text-neutral-500 mt-1">Auto-blocked this month</p>
           </div>
         </div>
       )}
@@ -138,16 +138,13 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
 
         {/* Suspicious only filter (review mode only) */}
         {botView === 'review' && (
-          <label className="flex items-center gap-2 text-sm text-neutral-400">
-            <input
-              type="checkbox"
-              checked={suspiciousOnly}
-              onChange={e => setSuspiciousOnly(e.target.checked)}
-              className="w-4 h-4 rounded"
-              style={{ accentColor: '#FD5E0F' }}
-            />
-            Suspicious only
-          </label>
+          <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-neutral-800/30 border border-neutral-800">
+            <div>
+              <p className="text-sm font-medium text-white">Suspicious only</p>
+              <p className="text-xs text-neutral-500">Show only sessions flagged as suspicious.</p>
+            </div>
+            <Toggle checked={suspiciousOnly} onChange={() => setSuspiciousOnly(v => !v)} />
+          </div>
         )}
 
         {/* Bulk actions bar */}
@@ -168,7 +165,7 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
           {(sessions || [])
             .filter(s => botView === 'blocked' ? s.bot_filtered : !s.bot_filtered)
             .map(session => (
-              <div key={session.session_id} className="flex items-center gap-3 p-3 rounded-xl border border-neutral-800 hover:border-neutral-700 transition-colors">
+              <div key={session.session_id} className="flex items-center gap-3 p-3 rounded-xl border border-neutral-800 hover:bg-neutral-800/40 hover:border-neutral-700 transition-colors">
                 <input
                   type="checkbox"
                   checked={selectedSessions.has(session.session_id)}
