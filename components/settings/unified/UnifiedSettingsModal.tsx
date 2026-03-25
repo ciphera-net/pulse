@@ -376,8 +376,12 @@ export default function UnifiedSettingsModal() {
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop — no opacity animation to prevent chart flash through glass */}
-          <div
+          {/* Backdrop — instant appear, animated close */}
+          <motion.div
+            initial={{ opacity: 1 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
             className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm"
             onClick={handleBackdropClick}
           />
@@ -385,8 +389,8 @@ export default function UnifiedSettingsModal() {
           {/* Modal */}
           <motion.div
             initial={{ scale: 0.97, y: 8 }}
-            animate={{ scale: 1, y: 0 }}
-            exit={{ scale: 0.97, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.97, y: 8 }}
             transition={{ type: 'spring', bounce: 0.15, duration: 0.35 }}
             className="fixed inset-0 z-[61] flex items-center justify-center p-4 pointer-events-none"
           >
