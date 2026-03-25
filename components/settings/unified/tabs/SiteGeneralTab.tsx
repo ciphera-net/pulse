@@ -7,6 +7,7 @@ import { useSite } from '@/lib/swr/dashboard'
 import { updateSite, resetSiteData } from '@/lib/api/sites'
 import { useAuth } from '@/lib/auth/context'
 import { useUnifiedSettings } from '@/lib/unified-settings-context'
+import { DangerZone } from '@/components/settings/unified/DangerZone'
 import DeleteSiteModal from '@/components/sites/DeleteSiteModal'
 import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
 import VerificationModal from '@/components/sites/VerificationModal'
@@ -95,7 +96,7 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Site details */}
       <div className="space-y-4">
         <div>
@@ -170,44 +171,24 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
 
       {/* Danger Zone */}
       {canEdit && (
-        <div className="space-y-4 pt-4 border-t border-neutral-800">
-          <div>
-            <h3 className="text-lg font-semibold text-red-600 dark:text-red-500 mb-1">Danger Zone</h3>
-            <p className="text-sm text-neutral-400">Irreversible actions for your site.</p>
-          </div>
-
-          <div className="p-4 border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/10 rounded-2xl">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-red-900 dark:text-red-300">Reset Data</p>
-                <p className="text-sm text-neutral-500 dark:text-neutral-400">Delete all stats and events. This cannot be undone.</p>
-              </div>
-              <button
-                type="button"
-                onClick={handleResetData}
-                className="px-4 py-2 bg-white dark:bg-neutral-900 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-sm font-medium"
-              >
-                Reset Data
-              </button>
-            </div>
-          </div>
-
-          <div className="p-4 border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/10 rounded-2xl">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-red-900 dark:text-red-300">Delete Site</p>
-                <p className="text-sm text-neutral-500 dark:text-neutral-400">Schedule this site for deletion with a 7-day grace period.</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowDeleteModal(true)}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium"
-              >
-                Delete Site...
-              </button>
-            </div>
-          </div>
-        </div>
+        <DangerZone
+          items={[
+            {
+              title: 'Reset Data',
+              description: 'Delete all stats and events. This cannot be undone.',
+              buttonLabel: 'Reset Data',
+              variant: 'outline',
+              onClick: handleResetData,
+            },
+            {
+              title: 'Delete Site',
+              description: 'Schedule this site for deletion with a 7-day grace period.',
+              buttonLabel: 'Delete Site...',
+              variant: 'solid',
+              onClick: () => setShowDeleteModal(true),
+            },
+          ]}
+        />
       )}
 
       <DeleteSiteModal
