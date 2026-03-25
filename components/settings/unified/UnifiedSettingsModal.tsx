@@ -382,12 +382,10 @@ export default function UnifiedSettingsModal() {
         onClick={handleBackdropClick}
       />
 
-      {/* Modal — always mounted, no opacity animation (prevents backdrop-filter flash) */}
+      {/* Modal — always mounted, instant show/hide (glass + animation = flash) */}
       <div
-        className={`fixed inset-0 z-[61] flex items-center justify-center p-4 transition-transform duration-200 ease-out ${
-          isOpen
-            ? 'visible scale-100 translate-y-0 pointer-events-auto'
-            : 'invisible scale-[0.97] translate-y-2 pointer-events-none'
+        className={`fixed inset-0 z-[61] flex items-center justify-center p-4 ${
+          isOpen ? 'visible pointer-events-auto' : 'invisible pointer-events-none'
         }`}
       >
         <div
