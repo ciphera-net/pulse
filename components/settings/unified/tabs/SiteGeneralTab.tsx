@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Input, Button, Select, toast, Spinner, getAuthErrorMessage } from '@ciphera-net/ui'
-import { Copy, CheckCircle } from '@phosphor-icons/react'
+import { Input, Button, Select, toast, Spinner, getAuthErrorMessage, CheckIcon, ZapIcon } from '@ciphera-net/ui'
 import { useSite } from '@/lib/swr/dashboard'
 import { updateSite, resetSiteData } from '@/lib/api/sites'
 import { useAuth } from '@/lib/auth/context'
 import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import DeleteSiteModal from '@/components/sites/DeleteSiteModal'
+import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
+import VerificationModal from '@/components/sites/VerificationModal'
 
 const TIMEZONES = [
   { value: 'UTC', label: 'UTC' },
@@ -27,9 +28,6 @@ const TIMEZONES = [
   { value: 'Australia/Sydney', label: 'Australia/Sydney (AEST)' },
 ]
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8082'
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3003'
-
 export default function SiteGeneralTab({ siteId }: { siteId: string }) {
   const router = useRouter()
   const { user } = useAuth()
@@ -38,8 +36,8 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
   const [name, setName] = useState('')
   const [timezone, setTimezone] = useState('UTC')
   const [saving, setSaving] = useState(false)
-  const [copied, setCopied] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [showVerificationModal, setShowVerificationModal] = useState(false)
 
   const canEdit = user?.role === 'owner' || user?.role === 'admin'
 
@@ -72,16 +70,6 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
     } catch (error: unknown) {
       toast.error(getAuthErrorMessage(error) || 'Failed to reset site data')
     }
-  }
-
-  const trackingScript = `<script defer data-domain="${site?.domain || ''}" data-api="${API_URL}" src="${APP_URL}/script.js"></script>`
-  const frustrationScript = `<script defer src="${APP_URL}/script.frustration.js"></script>`
-
-  const copyScript = () => {
-    navigator.clipboard.writeText(trackingScript + '\n' + frustrationScript)
-    setCopied(true)
-    toast.success('Copied to clipboard')
-    setTimeout(() => setCopied(false), 2000)
   }
 
   if (!site) {
@@ -129,21 +117,48 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
       <div className="space-y-3">
         <div>
           <h3 className="text-base font-semibold text-white mb-1">Tracking Script</h3>
-          <p className="text-sm text-neutral-400">Add this to your website to start tracking visitors.</p>
+          <p className="text-sm text-neutral-400">Add this to your website to start tracking visitors. Choose your framework for setup instructions.</p>
         </div>
 
-        <div className="relative rounded-xl bg-neutral-950 border border-neutral-800 p-4 overflow-x-auto">
-          <pre className="text-xs text-neutral-300 font-mono leading-relaxed whitespace-pre-wrap break-all pr-16">
-            {trackingScript}{'\n'}{frustrationScript}
-          </pre>
-          <button
-            onClick={copyScript}
-            className="absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-brand-orange/10 text-brand-orange hover:bg-brand-orange/20 transition-colors"
-          >
-            {copied ? <CheckCircle weight="bold" className="w-3.5 h-3.5" /> : <Copy weight="bold" className="w-3.5 h-3.5" />}
-            {copied ? 'Copied' : 'Copy'}
-          </button>
-        </div>
+        <ScriptSetupBlock
+          site={{ domain: site.domain, name: site.name, script_features: site.script_features }}
+          showFrameworkPicker
+          className="mb-4"
+          onFeaturesChange={async (features) => {
+            try {
+              await updateSite(siteId, { name: site.name, timezone: site.timezone, script_features: features })
+              await mutate()
+            } catch {
+              toast.error('Failed to update script features')
+            }
+          }}
+        />
+
+        {/* Verify Installation */}
+        <button
+          type="button"
+          onClick={() => setShowVerificationModal(true)}
+          className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl border transition-colors ${
+            site.is_verified
+              ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-900/30 text-green-700 dark:text-green-400'
+              : 'bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700'
+          }`}
+        >
+          {site.is_verified ? (
+            <>
+              <CheckIcon className="w-4 h-4" />
+              Verified
+            </>
+          ) : (
+            <>
+              <ZapIcon className="w-4 h-4" />
+              Verify Installation
+            </>
+          )}
+        </button>
+        <p className="text-xs text-neutral-500">
+          {site.is_verified ? 'Your site is sending data correctly.' : 'Check if your site is sending data correctly.'}
+        </p>
       </div>
 
       {/* Save */}
@@ -202,6 +217,13 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
         siteName={site?.name || ''}
         siteDomain={site?.domain || ''}
         siteId={siteId}
+      />
+
+      <VerificationModal
+        isOpen={showVerificationModal}
+        onClose={() => setShowVerificationModal(false)}
+        site={site}
+        onVerified={() => mutate()}
       />
     </div>
   )
