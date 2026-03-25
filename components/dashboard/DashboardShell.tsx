@@ -25,7 +25,7 @@ function usePageTitle() {
   const pathname = usePathname()
   // pathname is /sites/:id or /sites/:id/section/...
   const segment = pathname.replace(/^\/sites\/[^/]+\/?/, '').split('/')[0]
-  return PAGE_TITLES[segment] ?? segment.charAt(0).toUpperCase() + segment.slice(1) || 'Dashboard'
+  return PAGE_TITLES[segment] ?? (segment ? segment.charAt(0).toUpperCase() + segment.slice(1) : 'Dashboard')
 }
 
 // Load sidebar only on the client — prevents SSR flash
