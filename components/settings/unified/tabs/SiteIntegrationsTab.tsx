@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Button, Input, Select, toast, Spinner } from '@ciphera-net/ui'
-import { Plugs, Trash, ShieldCheck } from '@phosphor-icons/react'
+import { Plugs, LinkBreak, ShieldCheck } from '@phosphor-icons/react'
 import { useGSCStatus, useBunnyStatus } from '@/lib/swr/dashboard'
 import { disconnectGSC, getGSCAuthURL } from '@/lib/api/gsc'
 import { disconnectBunny, getBunnyPullZones, connectBunny, type BunnyPullZone } from '@/lib/api/bunny'
@@ -86,7 +86,7 @@ function IntegrationCard({
         </div>
         {connected ? (
           <Button onClick={onDisconnect} variant="secondary" className="text-sm text-red-400 border-red-900/50 hover:bg-red-900/20 gap-1.5">
-            <Trash weight="bold" className="w-3.5 h-3.5" /> Disconnect
+            <LinkBreak weight="bold" className="w-3.5 h-3.5" /> Disconnect
           </Button>
         ) : (
           <Button onClick={onConnect} variant="primary" className="text-sm gap-1.5">
