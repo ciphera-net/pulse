@@ -22,15 +22,25 @@ function GoogleIcon() {
 
 function BunnyIcon() {
   return (
-    <svg className="w-5 h-5" viewBox="0 0 24 24">
+    <svg className="w-5 h-5" viewBox="0 0 23 26" fill="none">
+      <path fillRule="evenodd" clipRule="evenodd" d="M9.94 7.77l5.106.883c-3.83-.663-4.065-3.85-9.218-6.653-.562 1.859.603 5.21 4.112 5.77z" fill="url(#b1)"/>
+      <path fillRule="evenodd" clipRule="evenodd" d="M5.828 2c5.153 2.803 5.388 5.99 9.218 6.653 1.922.332.186 3.612-1.864 3.266 3.684 1.252 7.044-2.085 5.122-3.132L5.828 2z" fill="url(#b2)"/>
+      <path fillRule="evenodd" clipRule="evenodd" d="M13.186 11.92c-.241-.041-.486-.131-.731-.284-1.542-.959-3.093-1.269-4.496-1.118 2.93.359 5.716 4.196 5.37 7.036.06.97-.281 1.958-1.021 2.699l-1.69 1.69c1.303.858 3.284-.037 3.889-1.281l3.41-7.014c.836-.198 6.176-1.583 3.767-3.024l-3.37-1.833c1.907 1.05-1.449 4.378-5.125 3.129z" fill="url(#b3)"/>
+      <path fillRule="evenodd" clipRule="evenodd" d="M7.953 10.518c-4.585.499-7.589 5.94-3.506 9.873l3.42 3.42c-2.243-2.243-2.458-5.525-1.073-7.806.149-.255.333-.495.551-.713 1.37-1.37 3.59-1.37 4.96 0 .629.628.969 1.436 1.02 2.26.346-2.84-2.439-6.675-5.367-7.035h-.005z" fill="url(#b4)"/>
+      <path fillRule="evenodd" clipRule="evenodd" d="M7.868 23.812l1.925 1.925c.643-.511 1.028-2.01.031-3.006l-2.48-2.48c-1.151-1.151-1.334-2.903-.55-4.246-1.385 2.281-1.17 5.563 1.074 7.807z" fill="url(#b5)"/>
+      <path fillRule="evenodd" clipRule="evenodd" d="M12.504 4.54l5.739 3.122L12.925.6c-.728.829-1.08 2.472-.421 3.94z" fill="url(#b6)"/>
+      <circle cx="9.825" cy="17.772" r="1.306" fill="url(#b7)"/>
+      <circle cx="1.507" cy="11.458" r="1.306" fill="url(#b8)"/>
       <defs>
-        <linearGradient id="bunny-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#FF6B00" />
-          <stop offset="100%" stopColor="#FF9E00" />
-        </linearGradient>
+        <linearGradient id="b1" x1="5.69" y1="8.5" x2="15.04" y2="8.5" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset=".69" stopColor="#FF7300"/><stop offset="1" stopColor="#F52900"/></linearGradient>
+        <linearGradient id="b2" x1="5.83" y1="12.65" x2="18.87" y2="12.65" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset=".69" stopColor="#FF7300"/><stop offset="1" stopColor="#F52900"/></linearGradient>
+        <linearGradient id="b3" x1="7.95" y1="22.04" x2="22.3" y2="22.04" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset="1" stopColor="#FF6200"/></linearGradient>
+        <linearGradient id="b4" x1="2.51" y1="22.59" x2="13.35" y2="22.59" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset=".69" stopColor="#FF7300"/><stop offset="1" stopColor="#F52900"/></linearGradient>
+        <linearGradient id="b5" x1="11.35" y1="20.74" x2="7.98" y2="17.71" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset=".69" stopColor="#FF7300"/><stop offset="1" stopColor="#F52900"/></linearGradient>
+        <linearGradient id="b6" x1="12.16" y1="7.48" x2="18.24" y2="7.48" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset="1" stopColor="#FF6200"/></linearGradient>
+        <linearGradient id="b7" x1="8.52" y1="19.08" x2="11.13" y2="19.08" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset="1" stopColor="#FF6200"/></linearGradient>
+        <linearGradient id="b8" x1=".2" y1="12.76" x2="2.81" y2="12.76" gradientUnits="userSpaceOnUse"><stop stopColor="#FFA600"/><stop offset=".34" stopColor="#FF9F00"/><stop offset="1" stopColor="#FF6200"/></linearGradient>
       </defs>
-      <circle cx="12" cy="12" r="11" fill="url(#bunny-grad)" />
-      <path d="M8.5 7c-.8-2-2.5-3-2.5-3s.5 2.5 1 3.5C5.5 8.5 5 10.5 5 12c0 3.9 3.1 7 7 7s7-3.1 7-7c0-1.5-.5-3.5-2-4.5.5-1 1-3.5 1-3.5s-1.7 1-2.5 3C14.5 6.5 13.3 6 12 6s-2.5.5-3.5 1z" fill="white" fillOpacity="0.9" />
     </svg>
   )
 }
@@ -123,7 +133,6 @@ function GSCDetails({ gscStatus }: { gscStatus: { connected: boolean; google_ema
   if (!gscStatus.connected) return null
 
   const rows = [
-    { label: 'Status', value: <StatusDot status={gscStatus.status} /> },
     { label: 'Google Account', value: gscStatus.google_email || 'Unknown' },
     { label: 'GSC Property', value: gscStatus.gsc_property || 'Unknown' },
     { label: 'Last Synced', value: gscStatus.last_synced_at ? formatDateTime(new Date(gscStatus.last_synced_at)) : 'Never' },
@@ -340,10 +349,6 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
                 <div className="flex flex-col gap-0.5">
                   <span className="text-xs text-neutral-500">Connected Since</span>
                   <span className="text-sm text-white">{bunnyStatus?.created_at ? formatDateTime(new Date(bunnyStatus.created_at)) : 'Unknown'}</span>
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-xs text-neutral-500">Status</span>
-                  <StatusDot status={bunnyStatus?.status} />
                 </div>
               </div>
               {bunnyStatus?.error_message && (
