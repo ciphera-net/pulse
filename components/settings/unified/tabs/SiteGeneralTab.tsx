@@ -46,7 +46,6 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
 
   useEffect(() => {
     if (!site || hasInitialized.current) return
-    console.log('[General] init from site.script_features:', site.script_features)
     setName(site.name || '')
     setTimezone(site.timezone || 'UTC')
     setScriptFeatures(site.script_features || {})
@@ -64,7 +63,6 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
   const handleSave = useCallback(async () => {
     if (!site) return
     try {
-      console.log('[General] saving script_features:', scriptFeatures)
       await updateSite(siteId, { name, timezone, script_features: scriptFeatures })
       await mutate()
       initialRef.current = JSON.stringify({ name, timezone, scriptFeatures: JSON.stringify(scriptFeatures) })
@@ -89,7 +87,7 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
     }
   }
 
-  if (!site) {
+  if (!site || !hasInitialized.current) {
     return (
       <div className="flex items-center justify-center py-12">
         <Spinner className="w-6 h-6 text-neutral-500" />
