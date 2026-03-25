@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button, Input, Toggle, toast, Spinner } from '@ciphera-net/ui'
 import { Copy, CheckCircle, Lock } from '@phosphor-icons/react'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -9,20 +9,30 @@ import { updateSite } from '@/lib/api/sites'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3003'
 
-export default function SiteVisibilityTab({ siteId }: { siteId: string }) {
+export default function SiteVisibilityTab({ siteId, onDirtyChange }: { siteId: string; onDirtyChange?: (dirty: boolean) => void }) {
   const { data: site, mutate } = useSite(siteId)
   const [isPublic, setIsPublic] = useState(false)
   const [password, setPassword] = useState('')
   const [passwordEnabled, setPasswordEnabled] = useState(false)
   const [saving, setSaving] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
+  const initialRef = useRef('')
 
   useEffect(() => {
     if (site) {
       setIsPublic(site.is_public ?? false)
       setPasswordEnabled(site.has_password ?? false)
+      initialRef.current = JSON.stringify({ isPublic: site.is_public ?? false, passwordEnabled: site.has_password ?? false })
     }
   }, [site])
+
+  // Track dirty state
+  useEffect(() => {
+    if (!initialRef.current) return
+    const current = JSON.stringify({ isPublic, passwordEnabled })
+    const dirty = current !== initialRef.current || password.length > 0
+    onDirtyChange?.(dirty)
+  }, [isPublic, passwordEnabled, password, onDirtyChange])
 
   const handleSave = async () => {
     setSaving(true)
@@ -35,6 +45,8 @@ export default function SiteVisibilityTab({ siteId }: { siteId: string }) {
       })
       setPassword('')
       await mutate()
+      initialRef.current = JSON.stringify({ isPublic, passwordEnabled })
+      onDirtyChange?.(false)
       toast.success('Visibility updated')
     } catch {
       toast.error('Failed to save')

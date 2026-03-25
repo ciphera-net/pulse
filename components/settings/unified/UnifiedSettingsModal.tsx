@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { X, GearSix, Buildings, User } from '@phosphor-icons/react'
+import { X, GearSix, Buildings, User, Warning } from '@phosphor-icons/react'
 import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { useAuth } from '@/lib/auth/context'
 import { useSite } from '@/lib/swr/dashboard'
@@ -172,19 +172,21 @@ function TabContent({
   context,
   activeTab,
   siteId,
+  onDirtyChange,
 }: {
   context: SettingsContext
   activeTab: string
   siteId: string | null
+  onDirtyChange: (dirty: boolean) => void
 }) {
   // Site tabs
   if (context === 'site' && siteId) {
     switch (activeTab) {
-      case 'general': return <SiteGeneralTab siteId={siteId} />
+      case 'general': return <SiteGeneralTab siteId={siteId} onDirtyChange={onDirtyChange} />
       case 'goals': return <SiteGoalsTab siteId={siteId} />
-      case 'visibility': return <SiteVisibilityTab siteId={siteId} />
-      case 'privacy': return <SitePrivacyTab siteId={siteId} />
-      case 'bot-spam': return <SiteBotSpamTab siteId={siteId} />
+      case 'visibility': return <SiteVisibilityTab siteId={siteId} onDirtyChange={onDirtyChange} />
+      case 'privacy': return <SitePrivacyTab siteId={siteId} onDirtyChange={onDirtyChange} />
+      case 'bot-spam': return <SiteBotSpamTab siteId={siteId} onDirtyChange={onDirtyChange} />
       case 'reports': return <SiteReportsTab siteId={siteId} />
       case 'integrations': return <SiteIntegrationsTab siteId={siteId} />
     }
@@ -227,6 +229,39 @@ export default function UnifiedSettingsModal() {
   const [sites, setSites] = useState<Site[]>([])
   const [activeSiteId, setActiveSiteId] = useState<string | null>(null)
 
+  // ─── Dirty state & pending navigation ────────────────────────
+  const isDirtyRef = useRef(false)
+  const [showDirtyBar, setShowDirtyBar] = useState(false)
+  const pendingActionRef = useRef<(() => void) | null>(null)
+
+  const handleDirtyChange = useCallback((dirty: boolean) => {
+    isDirtyRef.current = dirty
+    // Hide the bar if user saves (dirty becomes false) while bar is showing
+    if (!dirty) setShowDirtyBar(false)
+  }, [])
+
+  /** Try to execute an action — if dirty, show confirmation bar instead */
+  const guardedAction = useCallback((action: () => void) => {
+    if (isDirtyRef.current) {
+      pendingActionRef.current = action
+      setShowDirtyBar(true)
+    } else {
+      action()
+    }
+  }, [])
+
+  const handleDiscardAndContinue = useCallback(() => {
+    isDirtyRef.current = false
+    setShowDirtyBar(false)
+    pendingActionRef.current?.()
+    pendingActionRef.current = null
+  }, [])
+
+  const handleStayHere = useCallback(() => {
+    setShowDirtyBar(false)
+    pendingActionRef.current = null
+  }, [])
+
   // Apply initial tab when modal opens
   useEffect(() => {
     if (isOpen && initTab) {
@@ -239,24 +274,30 @@ export default function UnifiedSettingsModal() {
     }
   }, [isOpen, initTab])
 
+  // Reset dirty state when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      isDirtyRef.current = false
+      setShowDirtyBar(false)
+      pendingActionRef.current = null
+    }
+  }, [isOpen])
+
   // Detect site from URL and load sites list when modal opens
   useEffect(() => {
     if (!isOpen || !user?.org_id) return
 
-    // Pick up site ID from URL — this is the only site the user can configure
     if (typeof window !== 'undefined') {
       const match = window.location.pathname.match(/\/sites\/([a-f0-9-]+)/)
       if (match) {
         setActiveSiteId(match[1])
         setContext('site')
       } else {
-        // Not on a site page — default to organization context
         setActiveSiteId(null)
         if (!initTab?.context) setContext('workspace')
       }
     }
 
-    // Load sites for domain display
     listSites().then(data => {
       setSites(Array.isArray(data) ? data : [])
     }).catch(() => {})
@@ -270,28 +311,42 @@ export default function UnifiedSettingsModal() {
 
       if (e.key === ',' && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault()
-        if (isOpen) closeSettings()
+        if (isOpen) guardedAction(closeSettings)
         else openUnifiedSettings()
       }
       if (e.key === 'Escape' && isOpen) {
-        closeSettings()
+        if (showDirtyBar) handleStayHere()
+        else guardedAction(closeSettings)
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [isOpen, openUnifiedSettings, closeSettings])
+  }, [isOpen, openUnifiedSettings, closeSettings, guardedAction, showDirtyBar, handleStayHere])
 
   const tabs = context === 'site' ? SITE_TABS : context === 'workspace' ? WORKSPACE_TABS : ACCOUNT_TABS
   const activeTab = context === 'site' ? siteTabs : context === 'workspace' ? workspaceTabs : accountTabs
   const setActiveTab = context === 'site' ? setSiteTabs : context === 'workspace' ? setWorkspaceTabs : setAccountTabs
 
   const handleContextChange = useCallback((ctx: SettingsContext) => {
-    setContext(ctx)
-    // Reset tabs to defaults when switching context
-    if (ctx === 'site') setSiteTabs('general')
-    else if (ctx === 'workspace') setWorkspaceTabs('general')
-    else if (ctx === 'account') setAccountTabs('profile')
-  }, [])
+    guardedAction(() => {
+      setContext(ctx)
+      if (ctx === 'site') setSiteTabs('general')
+      else if (ctx === 'workspace') setWorkspaceTabs('general')
+      else if (ctx === 'account') setAccountTabs('profile')
+    })
+  }, [guardedAction])
+
+  const handleTabChange = useCallback((tabId: string) => {
+    guardedAction(() => setActiveTab(tabId))
+  }, [guardedAction, setActiveTab])
+
+  const handleClose = useCallback(() => {
+    guardedAction(closeSettings)
+  }, [guardedAction, closeSettings])
+
+  const handleBackdropClick = useCallback(() => {
+    guardedAction(closeSettings)
+  }, [guardedAction, closeSettings])
 
   return (
     <AnimatePresence>
@@ -304,7 +359,7 @@ export default function UnifiedSettingsModal() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm"
-            onClick={closeSettings}
+            onClick={handleBackdropClick}
           />
 
           {/* Modal */}
@@ -324,7 +379,7 @@ export default function UnifiedSettingsModal() {
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-semibold text-white">Settings</h2>
                   <button
-                    onClick={closeSettings}
+                    onClick={handleClose}
                     className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors"
                   >
                     <X weight="bold" className="w-4 h-4" />
@@ -340,11 +395,45 @@ export default function UnifiedSettingsModal() {
 
                 {/* Tabs */}
                 <div className="mt-4">
-                  <TabBar tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
+                  <TabBar tabs={tabs} activeTab={activeTab} onChange={handleTabChange} />
                 </div>
               </div>
 
-              {/* Content — parent has fixed h-[85vh] so this fills remaining space without jumping */}
+              {/* Unsaved changes bar */}
+              <AnimatePresence>
+                {showDirtyBar && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="shrink-0 overflow-hidden"
+                  >
+                    <div className="flex items-center justify-between gap-3 px-6 py-2.5 bg-amber-900/20 border-b border-amber-800/40">
+                      <div className="flex items-center gap-2 text-sm text-amber-200">
+                        <Warning weight="bold" className="w-4 h-4 text-amber-400 shrink-0" />
+                        You have unsaved changes.
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={handleDiscardAndContinue}
+                          className="px-3 py-1 text-xs font-medium text-amber-300 hover:text-white bg-amber-800/30 hover:bg-amber-800/50 rounded-lg transition-colors"
+                        >
+                          Discard & continue
+                        </button>
+                        <button
+                          onClick={handleStayHere}
+                          className="px-3 py-1 text-xs font-medium text-neutral-400 hover:text-white transition-colors"
+                        >
+                          Stay here
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Content */}
               <div className="flex-1 overflow-y-auto overflow-x-hidden">
                 <AnimatePresence mode="wait">
                   <motion.div
@@ -355,7 +444,7 @@ export default function UnifiedSettingsModal() {
                     transition={{ duration: 0.12 }}
                     className="p-6"
                   >
-                    <TabContent context={context} activeTab={activeTab} siteId={activeSiteId} />
+                    <TabContent context={context} activeTab={activeTab} siteId={activeSiteId} onDirtyChange={handleDirtyChange} />
                   </motion.div>
                 </AnimatePresence>
               </div>
