@@ -449,8 +449,12 @@ export default function UnifiedSettingsModal() {
                     transition={{ duration: 0.15 }}
                     className="shrink-0 overflow-hidden"
                   >
-                    <div className="px-6 py-3 border-t border-neutral-800 bg-neutral-950 flex items-center justify-between">
-                      <span className={`text-sm font-medium ${hasPendingAction ? 'text-red-400' : 'text-neutral-400'}`}>
+                    <div className={`px-6 py-3 border-t flex items-center justify-between ${
+                      hasPendingAction
+                        ? 'bg-red-900/10 border-red-900/30'
+                        : 'bg-neutral-950 border-neutral-800'
+                    }`}>
+                      <span className="text-sm font-medium text-neutral-400">
                         {hasPendingAction ? 'Save or discard to continue' : 'Unsaved changes'}
                       </span>
                       <div className="flex items-center gap-2">
