@@ -384,28 +384,28 @@ export default function UnifiedSettingsModal() {
         onClick={handleBackdropClick}
       />
 
-      {/* Glass panel — instant appear, fades out with content */}
+      {/* Glass panel — always mounted, fades out on close */}
       <div
         className={`fixed inset-0 z-[61] flex items-center justify-center p-4 ${
           isOpen
-            ? 'opacity-100 pointer-events-auto'
+            ? 'opacity-100 pointer-events-auto transition-opacity duration-150'
             : showGlass
               ? 'opacity-0 pointer-events-none transition-opacity duration-150'
               : 'opacity-0 pointer-events-none invisible'
         }`}
       >
         <div
-          className="w-full max-w-3xl h-[85vh] bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/60 border border-white/[0.08] rounded-2xl shadow-xl shadow-black/20 flex flex-col overflow-hidden"
+          className="relative w-full max-w-3xl h-[85vh] bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/60 border border-white/[0.08] rounded-2xl shadow-xl shadow-black/20 flex flex-col overflow-hidden"
           onClick={e => e.stopPropagation()}
         >
-          {/* Content animates in/out — glass panel stays visible during exit */}
+          {/* Content animates in/out */}
           <AnimatePresence onExitComplete={() => setShowGlass(false)}>
             {isOpen && (
             <motion.div
               className="flex flex-col h-full"
-              initial={{ opacity: 0, y: 10, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
               transition={{ duration: 0.15 }}
             >
               {/* Header */}
