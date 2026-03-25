@@ -173,20 +173,25 @@ function TabContent({
   activeTab,
   siteId,
   onDirtyChange,
+  hasPendingAction,
+  onDiscard,
 }: {
   context: SettingsContext
   activeTab: string
   siteId: string | null
   onDirtyChange: (dirty: boolean) => void
+  hasPendingAction: boolean
+  onDiscard: () => void
 }) {
+  const dirtyProps = { onDirtyChange, hasPendingAction, onDiscard }
   // Site tabs
   if (context === 'site' && siteId) {
     switch (activeTab) {
-      case 'general': return <SiteGeneralTab siteId={siteId} onDirtyChange={onDirtyChange} />
+      case 'general': return <SiteGeneralTab siteId={siteId} {...dirtyProps} />
       case 'goals': return <SiteGoalsTab siteId={siteId} />
-      case 'visibility': return <SiteVisibilityTab siteId={siteId} onDirtyChange={onDirtyChange} />
-      case 'privacy': return <SitePrivacyTab siteId={siteId} onDirtyChange={onDirtyChange} />
-      case 'bot-spam': return <SiteBotSpamTab siteId={siteId} onDirtyChange={onDirtyChange} />
+      case 'visibility': return <SiteVisibilityTab siteId={siteId} {...dirtyProps} />
+      case 'privacy': return <SitePrivacyTab siteId={siteId} {...dirtyProps} />
+      case 'bot-spam': return <SiteBotSpamTab siteId={siteId} {...dirtyProps} />
       case 'reports': return <SiteReportsTab siteId={siteId} />
       case 'integrations': return <SiteIntegrationsTab siteId={siteId} />
     }
@@ -229,23 +234,38 @@ export default function UnifiedSettingsModal() {
   const [sites, setSites] = useState<Site[]>([])
   const [activeSiteId, setActiveSiteId] = useState<string | null>(null)
 
-  // ─── Dirty state ──────────────────────────────────────────────
+  // ─── Dirty state & pending navigation ────────────────────────
   const isDirtyRef = useRef(false)
+  const pendingActionRef = useRef<(() => void) | null>(null)
+  const [hasPendingAction, setHasPendingAction] = useState(false)
 
   const handleDirtyChange = useCallback((dirty: boolean) => {
     isDirtyRef.current = dirty
+    // If user saved and there was a pending action, execute it
+    if (!dirty && pendingActionRef.current) {
+      const action = pendingActionRef.current
+      pendingActionRef.current = null
+      setHasPendingAction(false)
+      action()
+    }
   }, [])
 
-  /** Run action if clean, or confirm discard if dirty */
+  /** Run action if clean, or store as pending if dirty */
   const guardedAction = useCallback((action: () => void) => {
     if (isDirtyRef.current) {
-      if (confirm('You have unsaved changes. Discard and continue?')) {
-        isDirtyRef.current = false
-        action()
-      }
+      pendingActionRef.current = action
+      setHasPendingAction(true)
     } else {
       action()
     }
+  }, [])
+
+  const handleDiscard = useCallback(() => {
+    isDirtyRef.current = false
+    setHasPendingAction(false)
+    const action = pendingActionRef.current
+    pendingActionRef.current = null
+    action?.()
   }, [])
 
   // Apply initial tab when modal opens
@@ -262,7 +282,11 @@ export default function UnifiedSettingsModal() {
 
   // Reset dirty state when modal opens
   useEffect(() => {
-    if (isOpen) isDirtyRef.current = false
+    if (isOpen) {
+      isDirtyRef.current = false
+      pendingActionRef.current = null
+      setHasPendingAction(false)
+    }
   }, [isOpen])
 
   // Detect site from URL and load sites list when modal opens
@@ -391,7 +415,7 @@ export default function UnifiedSettingsModal() {
                     transition={{ duration: 0.12 }}
                     className="p-6"
                   >
-                    <TabContent context={context} activeTab={activeTab} siteId={activeSiteId} onDirtyChange={handleDirtyChange} />
+                    <TabContent context={context} activeTab={activeTab} siteId={activeSiteId} onDirtyChange={handleDirtyChange} hasPendingAction={hasPendingAction} onDiscard={handleDiscard} />
                   </motion.div>
                 </AnimatePresence>
               </div>
