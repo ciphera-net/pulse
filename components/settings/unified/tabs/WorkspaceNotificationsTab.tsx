@@ -74,7 +74,7 @@ export default function WorkspaceNotificationsTab({ onDirtyChange, onRegisterSav
         ))}
 
         {(!data?.categories || data.categories.length === 0) && (
-          <p className="text-sm text-neutral-500 text-center py-6">No notification preferences available.</p>
+          <p className="text-sm text-neutral-500 text-center py-8">No notification preferences available.</p>
         )}
       </div>
     </div>

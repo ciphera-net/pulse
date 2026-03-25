@@ -166,11 +166,14 @@ export default function WorkspaceMembersTab() {
             </div>
           </div>
         ))}
+        {members.length === 0 && (
+          <p className="text-sm text-neutral-500 text-center py-8">No members found.</p>
+        )}
       </div>
 
       {/* Pending Invitations */}
       {invitations.length > 0 && (
-        <div className="space-y-2 pt-4 border-t border-neutral-800">
+        <div className="space-y-2 pt-6 border-t border-neutral-800">
           <h4 className="text-sm font-medium text-neutral-300">Pending Invitations</h4>
           {invitations.map(inv => (
             <div key={inv.id} className="flex items-center justify-between p-3 rounded-xl border border-neutral-800">

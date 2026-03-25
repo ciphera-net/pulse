@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/auth/context'
 import { getOrganization, updateOrganization, deleteOrganization } from '@/lib/api/organization'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { useUnifiedSettings } from '@/lib/unified-settings-context'
+import { DangerZone } from '@/components/settings/unified/DangerZone'
 
 export default function WorkspaceGeneralTab({ onDirtyChange, onRegisterSave }: { onDirtyChange?: (dirty: boolean) => void; onRegisterSave?: (fn: () => Promise<void>) => void }) {
   const { user } = useAuth()
@@ -83,7 +84,7 @@ export default function WorkspaceGeneralTab({ onDirtyChange, onRegisterSave }: {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div className="space-y-4">
         <div>
           <h3 className="text-base font-semibold text-white mb-1">General Information</h3>
@@ -106,57 +107,47 @@ export default function WorkspaceGeneralTab({ onDirtyChange, onRegisterSave }: {
       </div>
 
       {/* Danger Zone */}
-      <div className="space-y-3 pt-4 border-t border-neutral-800">
-        <h3 className="text-base font-semibold text-red-500">Danger Zone</h3>
-        <div className="rounded-xl border border-red-900/30 bg-red-900/10 p-4">
-          <div className="flex items-center justify-between">
+      <DangerZone
+        items={[{
+          title: 'Delete Organization',
+          description: 'Permanently delete this organization and all its data.',
+          buttonLabel: 'Delete',
+          variant: 'solid',
+          onClick: () => setShowDeleteConfirm(prev => !prev),
+        }]}
+      >
+        {showDeleteConfirm && (
+          <div className="p-4 border border-red-900/50 bg-red-900/10 rounded-xl space-y-3">
+            <p className="text-sm text-red-300">This will permanently delete:</p>
+            <ul className="text-xs text-neutral-400 list-disc list-inside space-y-1">
+              <li>All sites and their analytics data</li>
+              <li>All team members and pending invitations</li>
+              <li>Active subscription will be cancelled</li>
+              <li>All notifications and settings</li>
+            </ul>
             <div>
-              <p className="text-sm font-medium text-white">Delete Organization</p>
-              <p className="text-xs text-neutral-400">Permanently delete this organization and all its data.</p>
+              <label className="block text-xs text-neutral-400 mb-1">Type DELETE to confirm</label>
+              <Input
+                value={deleteText}
+                onChange={e => setDeleteText(e.target.value)}
+                placeholder="DELETE"
+              />
             </div>
-            <Button
-              variant="secondary"
-              className="text-red-400 border-red-900 hover:bg-red-900/20 text-sm"
-              onClick={() => setShowDeleteConfirm(prev => !prev)}
-            >
-              Delete
-            </Button>
+            <div className="flex gap-2">
+              <button
+                onClick={handleDelete}
+                disabled={deleteText !== 'DELETE' || deleting}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium disabled:opacity-50"
+              >
+                {deleting ? 'Deleting...' : 'Delete Organization'}
+              </button>
+              <button onClick={() => { setShowDeleteConfirm(false); setDeleteText('') }} className="px-4 py-2 text-neutral-400 hover:text-white text-sm">
+                Cancel
+              </button>
+            </div>
           </div>
-          {showDeleteConfirm && (
-            <div className="mt-4 p-4 border border-red-900/50 bg-red-900/10 rounded-xl space-y-3">
-              <p className="text-sm text-red-300">This will permanently delete:</p>
-              <ul className="text-xs text-neutral-400 list-disc list-inside space-y-1">
-                <li>All sites and their analytics data</li>
-                <li>All team members and pending invitations</li>
-                <li>Active subscription will be cancelled</li>
-                <li>All notifications and settings</li>
-              </ul>
-              <div>
-                <label className="block text-xs text-neutral-400 mb-1">Type DELETE to confirm</label>
-                <input
-                  type="text"
-                  value={deleteText}
-                  onChange={e => setDeleteText(e.target.value)}
-                  className="w-full px-3 py-2 border border-neutral-700 rounded-lg bg-neutral-900 text-white text-sm"
-                  placeholder="DELETE"
-                />
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleDelete}
-                  disabled={deleteText !== 'DELETE' || deleting}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium disabled:opacity-50"
-                >
-                  {deleting ? 'Deleting...' : 'Delete Organization'}
-                </button>
-                <button onClick={() => { setShowDeleteConfirm(false); setDeleteText('') }} className="px-4 py-2 text-neutral-400 hover:text-white text-sm">
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+        )}
+      </DangerZone>
     </div>
   )
 }
