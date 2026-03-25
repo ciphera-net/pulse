@@ -376,12 +376,8 @@ export default function UnifiedSettingsModal() {
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
+          {/* Backdrop — no opacity animation to prevent chart flash through glass */}
+          <div
             className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm"
             onClick={handleBackdropClick}
           />
