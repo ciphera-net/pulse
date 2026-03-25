@@ -41,12 +41,14 @@ export default function SiteGeneralTab({ siteId, onDirtyChange }: { siteId: stri
 
   const canEdit = user?.role === 'owner' || user?.role === 'admin'
   const initialRef = useRef('')
+  const [isDirty, setIsDirty] = useState(false)
 
   useEffect(() => {
     if (site) {
       setName(site.name || '')
       setTimezone(site.timezone || 'UTC')
       initialRef.current = JSON.stringify({ name: site.name || '', timezone: site.timezone || 'UTC' })
+      setIsDirty(false)
     }
   }, [site])
 
@@ -54,7 +56,9 @@ export default function SiteGeneralTab({ siteId, onDirtyChange }: { siteId: stri
   useEffect(() => {
     if (!initialRef.current) return
     const current = JSON.stringify({ name, timezone })
-    onDirtyChange?.(current !== initialRef.current)
+    const dirty = current !== initialRef.current
+    setIsDirty(dirty)
+    onDirtyChange?.(dirty)
   }, [name, timezone, onDirtyChange])
 
   const handleSave = async () => {
@@ -172,12 +176,15 @@ export default function SiteGeneralTab({ siteId, onDirtyChange }: { siteId: stri
         </p>
       </div>
 
-      {/* Save */}
-      <div className="flex justify-end pt-2">
-        <Button onClick={handleSave} variant="primary" disabled={saving}>
-          {saving ? 'Saving...' : 'Save Changes'}
-        </Button>
-      </div>
+      {/* Sticky save bar */}
+      {isDirty && (
+        <div className="sticky bottom-0 -mx-6 -mb-6 px-6 py-3 bg-neutral-900/95 backdrop-blur-sm border-t border-neutral-800 flex items-center justify-between">
+          <span className="text-xs text-neutral-400">Unsaved changes</span>
+          <Button onClick={handleSave} variant="primary" disabled={saving} className="text-sm">
+            {saving ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </div>
+      )}
 
       {/* Danger Zone */}
       {canEdit && (

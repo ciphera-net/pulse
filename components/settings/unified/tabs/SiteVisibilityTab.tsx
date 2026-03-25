@@ -16,6 +16,7 @@ export default function SiteVisibilityTab({ siteId, onDirtyChange }: { siteId: s
   const [passwordEnabled, setPasswordEnabled] = useState(false)
   const [saving, setSaving] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
+  const [isDirty, setIsDirty] = useState(false)
   const initialRef = useRef('')
 
   useEffect(() => {
@@ -23,6 +24,7 @@ export default function SiteVisibilityTab({ siteId, onDirtyChange }: { siteId: s
       setIsPublic(site.is_public ?? false)
       setPasswordEnabled(site.has_password ?? false)
       initialRef.current = JSON.stringify({ isPublic: site.is_public ?? false, passwordEnabled: site.has_password ?? false })
+      setIsDirty(false)
     }
   }, [site])
 
@@ -31,6 +33,7 @@ export default function SiteVisibilityTab({ siteId, onDirtyChange }: { siteId: s
     if (!initialRef.current) return
     const current = JSON.stringify({ isPublic, passwordEnabled })
     const dirty = current !== initialRef.current || password.length > 0
+    setIsDirty(dirty)
     onDirtyChange?.(dirty)
   }, [isPublic, passwordEnabled, password, onDirtyChange])
 
@@ -142,11 +145,15 @@ export default function SiteVisibilityTab({ siteId, onDirtyChange }: { siteId: s
         )}
       </AnimatePresence>
 
-      <div className="flex justify-end pt-2">
-        <Button onClick={handleSave} variant="primary" disabled={saving}>
-          {saving ? 'Saving...' : 'Save Changes'}
-        </Button>
-      </div>
+      {/* Sticky save bar */}
+      {isDirty && (
+        <div className="sticky bottom-0 -mx-6 -mb-6 px-6 py-3 bg-neutral-900/95 backdrop-blur-sm border-t border-neutral-800 flex items-center justify-between">
+          <span className="text-xs text-neutral-400">Unsaved changes</span>
+          <Button onClick={handleSave} variant="primary" disabled={saving} className="text-sm">
+            {saving ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

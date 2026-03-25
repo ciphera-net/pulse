@@ -12,6 +12,7 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange }: { siteId: stri
   const { data: botStats, mutate: mutateBotStats } = useBotFilterStats(siteId)
   const [filterBots, setFilterBots] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [isDirty, setIsDirty] = useState(false)
   const initialFilterRef = useRef<boolean | null>(null)
 
   const [botView, setBotView] = useState<'review' | 'blocked'>('review')
@@ -32,7 +33,9 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange }: { siteId: stri
   // Track dirty state
   useEffect(() => {
     if (initialFilterRef.current === null) return
-    onDirtyChange?.(filterBots !== initialFilterRef.current)
+    const dirty = filterBots !== initialFilterRef.current
+    setIsDirty(dirty)
+    onDirtyChange?.(dirty)
   }, [filterBots, onDirtyChange])
 
   const handleSave = async () => {
@@ -219,11 +222,15 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange }: { siteId: stri
         </div>
       </div>
 
-      <div className="flex justify-end pt-2">
-        <Button onClick={handleSave} variant="primary" disabled={saving}>
-          {saving ? 'Saving...' : 'Save Changes'}
-        </Button>
-      </div>
+      {/* Sticky save bar */}
+      {isDirty && (
+        <div className="sticky bottom-0 -mx-6 -mb-6 px-6 py-3 bg-neutral-900/95 backdrop-blur-sm border-t border-neutral-800 flex items-center justify-between">
+          <span className="text-xs text-neutral-400">Unsaved changes</span>
+          <Button onClick={handleSave} variant="primary" disabled={saving} className="text-sm">
+            {saving ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </div>
+      )}
     </div>
   )
 }
