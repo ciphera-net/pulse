@@ -1,18 +1,16 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { Button, Toggle, toast, Spinner, getDateRange } from '@ciphera-net/ui'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { Toggle, toast, Spinner, getDateRange } from '@ciphera-net/ui'
 import { ShieldCheck } from '@phosphor-icons/react'
 import { useSite, useBotFilterStats, useSessions } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
 import { botFilterSessions, botUnfilterSessions } from '@/lib/api/bot-filter'
 
-export default function SiteBotSpamTab({ siteId, onDirtyChange, hasPendingAction, onDiscard }: { siteId: string; onDirtyChange?: (dirty: boolean) => void; hasPendingAction?: boolean; onDiscard?: () => void }) {
+export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }: { siteId: string; onDirtyChange?: (dirty: boolean) => void; onRegisterSave?: (fn: () => Promise<void>) => void }) {
   const { data: site, mutate } = useSite(siteId)
   const { data: botStats, mutate: mutateBotStats } = useBotFilterStats(siteId)
   const [filterBots, setFilterBots] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [isDirty, setIsDirty] = useState(false)
   const initialFilterRef = useRef<boolean | null>(null)
 
   const [botView, setBotView] = useState<'review' | 'blocked'>('review')
@@ -35,12 +33,10 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, hasPendingAction
   useEffect(() => {
     if (initialFilterRef.current === null) return
     const dirty = filterBots !== initialFilterRef.current
-    setIsDirty(dirty)
     onDirtyChange?.(dirty)
   }, [filterBots, onDirtyChange])
 
-  const handleSave = async () => {
-    setSaving(true)
+  const handleSave = useCallback(async () => {
     try {
       await updateSite(siteId, { name: site?.name || '', filter_bots: filterBots })
       await mutate()
@@ -49,10 +45,12 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, hasPendingAction
       toast.success('Bot filtering updated')
     } catch {
       toast.error('Failed to save')
-    } finally {
-      setSaving(false)
     }
-  }
+  }, [siteId, site?.name, filterBots, mutate, onDirtyChange])
+
+  useEffect(() => {
+    onRegisterSave?.(handleSave)
+  }, [handleSave, onRegisterSave])
 
   const handleBotFilter = async (sessionIds: string[]) => {
     try {
@@ -223,28 +221,6 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, hasPendingAction
         </div>
       </div>
 
-      {/* Sticky save bar */}
-      {isDirty && (
-        <div className={`sticky bottom-0 -mx-6 px-6 py-3 backdrop-blur-md border-t flex items-center justify-between transition-colors ${
-          hasPendingAction
-            ? 'bg-rose-950/95 border-rose-800/50'
-            : 'bg-neutral-950/90 border-neutral-800'
-        }`}>
-          <span className={`text-sm font-medium ${hasPendingAction ? 'text-rose-100' : 'text-neutral-400'}`}>
-            {hasPendingAction ? 'Save or discard to continue' : 'Unsaved changes'}
-          </span>
-          <div className="flex items-center gap-2">
-            {hasPendingAction && (
-              <Button onClick={onDiscard} variant="secondary" className="text-sm border-rose-700/50 text-rose-200 hover:bg-rose-900/40">
-                Discard
-              </Button>
-            )}
-            <Button onClick={handleSave} variant="primary" disabled={saving} className="text-sm">
-              {saving ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Input, Button, Select, toast, Spinner, getAuthErrorMessage, CheckIcon, ZapIcon } from '@ciphera-net/ui'
 import { useSite } from '@/lib/swr/dashboard'
@@ -28,21 +28,19 @@ const TIMEZONES = [
   { value: 'Australia/Sydney', label: 'Australia/Sydney (AEST)' },
 ]
 
-export default function SiteGeneralTab({ siteId, onDirtyChange, hasPendingAction, onDiscard }: { siteId: string; onDirtyChange?: (dirty: boolean) => void; hasPendingAction?: boolean; onDiscard?: () => void }) {
+export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }: { siteId: string; onDirtyChange?: (dirty: boolean) => void; onRegisterSave?: (fn: () => Promise<void>) => void }) {
   const router = useRouter()
   const { user } = useAuth()
   const { closeUnifiedSettings: closeSettings } = useUnifiedSettings()
   const { data: site, mutate } = useSite(siteId)
   const [name, setName] = useState('')
   const [timezone, setTimezone] = useState('UTC')
-  const [saving, setSaving] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showVerificationModal, setShowVerificationModal] = useState(false)
 
   const canEdit = user?.role === 'owner' || user?.role === 'admin'
   const initialRef = useRef('')
   const hasInitialized = useRef(false)
-  const [isDirty, setIsDirty] = useState(false)
 
   useEffect(() => {
     if (!site || hasInitialized.current) return
@@ -50,7 +48,6 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, hasPendingAction
     setTimezone(site.timezone || 'UTC')
     initialRef.current = JSON.stringify({ name: site.name || '', timezone: site.timezone || 'UTC' })
     hasInitialized.current = true
-    setIsDirty(false)
   }, [site])
 
   // Track dirty state
@@ -58,13 +55,11 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, hasPendingAction
     if (!initialRef.current) return
     const current = JSON.stringify({ name, timezone })
     const dirty = current !== initialRef.current
-    setIsDirty(dirty)
     onDirtyChange?.(dirty)
   }, [name, timezone, onDirtyChange])
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (!site) return
-    setSaving(true)
     try {
       await updateSite(siteId, { name, timezone })
       await mutate()
@@ -73,10 +68,12 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, hasPendingAction
       toast.success('Site updated')
     } catch {
       toast.error('Failed to save')
-    } finally {
-      setSaving(false)
     }
-  }
+  }, [site, siteId, name, timezone, mutate, onDirtyChange])
+
+  useEffect(() => {
+    onRegisterSave?.(handleSave)
+  }, [handleSave, onRegisterSave])
 
   const handleResetData = async () => {
     if (!confirm('Are you sure you want to delete ALL data for this site? This action cannot be undone.')) return
@@ -176,29 +173,6 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, hasPendingAction
           {site.is_verified ? 'Your site is sending data correctly.' : 'Check if your site is sending data correctly.'}
         </p>
       </div>
-
-      {/* Sticky save bar */}
-      {isDirty && (
-        <div className={`sticky bottom-0 -mx-6 px-6 py-3 backdrop-blur-md border-t flex items-center justify-between transition-colors ${
-          hasPendingAction
-            ? 'bg-rose-950/95 border-rose-800/50'
-            : 'bg-neutral-950/90 border-neutral-800'
-        }`}>
-          <span className={`text-sm font-medium ${hasPendingAction ? 'text-rose-100' : 'text-neutral-400'}`}>
-            {hasPendingAction ? 'Save or discard to continue' : 'Unsaved changes'}
-          </span>
-          <div className="flex items-center gap-2">
-            {hasPendingAction && (
-              <Button onClick={onDiscard} variant="secondary" className="text-sm border-rose-700/50 text-rose-200 hover:bg-rose-900/40">
-                Discard
-              </Button>
-            )}
-            <Button onClick={handleSave} variant="primary" disabled={saving} className="text-sm">
-              {saving ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </div>
-        </div>
-      )}
 
       {/* Danger Zone */}
       {canEdit && (
