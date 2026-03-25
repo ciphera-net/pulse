@@ -361,7 +361,7 @@ function SidebarContent({
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* App Switcher — top of sidebar (scope-level switch) */}
-      <div className="flex items-center gap-2.5 px-[14px] pt-3 pb-1 shrink-0 overflow-hidden">
+      <div className="flex items-center gap-2.5 px-[14px] pt-1.5 pb-1 shrink-0 overflow-hidden">
         <span className="w-9 h-9 flex items-center justify-center shrink-0">
           <AppLauncher apps={CIPHERA_APPS} currentAppId="pulse" anchor="right" />
         </span>
