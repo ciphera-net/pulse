@@ -392,81 +392,84 @@ export default function UnifiedSettingsModal() {
           className="w-full max-w-3xl h-[85vh] bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/60 border border-white/[0.08] rounded-2xl shadow-xl shadow-black/20 flex flex-col overflow-hidden"
           onClick={e => e.stopPropagation()}
         >
-          {/* Header */}
-          <div className="shrink-0 px-6 pt-5 pb-4 border-b border-white/[0.06]">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-white">Settings</h2>
-              <button
-                onClick={handleClose}
-                className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors"
-              >
-                <X weight="bold" className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Context Switcher */}
-            <ContextSwitcher
-              active={context}
-              onChange={handleContextChange}
-              activeSiteDomain={sites.find(s => s.id === activeSiteId)?.domain ?? null}
-            />
-
-            {/* Tabs */}
-            <div className="mt-4">
-              <TabBar tabs={tabs} activeTab={activeTab} onChange={handleTabChange} />
-            </div>
-          </div>
-
-          {/* Content — only render tab content when open to avoid unnecessary SWR calls */}
-          <div className="flex-1 overflow-y-auto overflow-x-hidden">
-            {isOpen && (
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={`${context}-${activeTab}`}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.12 }}
-                  className="p-6"
-                >
-                  <TabContent context={context} activeTab={activeTab} siteId={activeSiteId} onDirtyChange={handleDirtyChange} onRegisterSave={handleRegisterSave} />
-                </motion.div>
-              </AnimatePresence>
-            )}
-          </div>
-
-          {/* Save bar */}
-          <AnimatePresence>
-            {isDirtyVisible && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.15 }}
-                className="shrink-0 overflow-hidden"
-              >
-                <div className={`px-6 py-3 border-t flex items-center justify-between ${
-                  hasPendingAction
-                    ? 'bg-red-900/10 border-red-900/30'
-                    : 'bg-neutral-950/80 border-white/[0.06]'
-                }`}>
-                  <span className="text-sm font-medium text-neutral-400">
-                    {hasPendingAction ? 'Save or discard to continue' : 'Unsaved changes'}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    {hasPendingAction && (
-                      <Button onClick={handleDiscard} variant="secondary" className="text-sm">
-                        Discard
-                      </Button>
-                    )}
-                    <Button onClick={handleSaveFromBar} variant="primary" disabled={saving} className="text-sm">
-                      {saving ? 'Saving...' : 'Save Changes'}
-                    </Button>
-                  </div>
+          {/* All content gated by isOpen — empty glass box when closed (GPU keeps blur warm) */}
+          {isOpen && (
+            <>
+              {/* Header */}
+              <div className="shrink-0 px-6 pt-5 pb-4 border-b border-white/[0.06]">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-white">Settings</h2>
+                  <button
+                    onClick={handleClose}
+                    className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors"
+                  >
+                    <X weight="bold" className="w-4 h-4" />
+                  </button>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+
+                {/* Context Switcher */}
+                <ContextSwitcher
+                  active={context}
+                  onChange={handleContextChange}
+                  activeSiteDomain={sites.find(s => s.id === activeSiteId)?.domain ?? null}
+                />
+
+                {/* Tabs */}
+                <div className="mt-4">
+                  <TabBar tabs={tabs} activeTab={activeTab} onChange={handleTabChange} />
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto overflow-x-hidden">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={`${context}-${activeTab}`}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.12 }}
+                    className="p-6"
+                  >
+                    <TabContent context={context} activeTab={activeTab} siteId={activeSiteId} onDirtyChange={handleDirtyChange} onRegisterSave={handleRegisterSave} />
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+
+              {/* Save bar */}
+              <AnimatePresence>
+                {isDirtyVisible && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="shrink-0 overflow-hidden"
+                  >
+                    <div className={`px-6 py-3 border-t flex items-center justify-between ${
+                      hasPendingAction
+                        ? 'bg-red-900/10 border-red-900/30'
+                        : 'bg-neutral-950/80 border-white/[0.06]'
+                    }`}>
+                      <span className="text-sm font-medium text-neutral-400">
+                        {hasPendingAction ? 'Save or discard to continue' : 'Unsaved changes'}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        {hasPendingAction && (
+                          <Button onClick={handleDiscard} variant="secondary" className="text-sm">
+                            Discard
+                          </Button>
+                        )}
+                        <Button onClick={handleSaveFromBar} variant="primary" disabled={saving} className="text-sm">
+                          {saving ? 'Saving...' : 'Save Changes'}
+                        </Button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </>
+          )}
         </div>
       </div>
     </>
