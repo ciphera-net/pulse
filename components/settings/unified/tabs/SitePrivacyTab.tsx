@@ -28,7 +28,7 @@ function PrivacyToggle({ label, desc, checked, onToggle }: { label: string; desc
   )
 }
 
-export default function SitePrivacyTab({ siteId, onDirtyChange }: { siteId: string; onDirtyChange?: (dirty: boolean) => void }) {
+export default function SitePrivacyTab({ siteId, onDirtyChange, hasPendingAction, onDiscard }: { siteId: string; onDirtyChange?: (dirty: boolean) => void; hasPendingAction?: boolean; onDiscard?: () => void }) {
   const { data: site, mutate } = useSite(siteId)
   const { data: subscription, error: subscriptionError, mutate: mutateSubscription } = useSubscription()
   const { data: psiConfig, mutate: mutatePSIConfig } = usePageSpeedConfig(siteId)
@@ -253,10 +253,17 @@ export default function SitePrivacyTab({ siteId, onDirtyChange }: { siteId: stri
       {/* Sticky save bar — only visible when dirty */}
       {isDirty && (
         <div className="sticky bottom-0 -mx-6 -mb-6 px-6 py-3 bg-neutral-900/95 backdrop-blur-sm border-t border-neutral-800 flex items-center justify-between">
-          <span className="text-xs text-neutral-400">Unsaved changes</span>
-          <Button onClick={handleSave} variant="primary" disabled={saving} className="text-sm">
-            {saving ? 'Saving...' : 'Save Changes'}
-          </Button>
+          <span className="text-xs text-neutral-400">{hasPendingAction ? 'Save or discard to continue' : 'Unsaved changes'}</span>
+          <div className="flex items-center gap-2">
+            {hasPendingAction && (
+              <button onClick={onDiscard} className="px-3 py-1.5 text-xs font-medium text-neutral-400 hover:text-white transition-colors">
+                Discard
+              </button>
+            )}
+            <Button onClick={handleSave} variant="primary" disabled={saving} className="text-sm">
+              {saving ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </div>
         </div>
       )}
     </div>
