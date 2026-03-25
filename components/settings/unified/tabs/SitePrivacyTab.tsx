@@ -40,6 +40,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
   const [hideUnknownLocations, setHideUnknownLocations] = useState(false)
   const [dataRetention, setDataRetention] = useState(6)
   const [excludedPaths, setExcludedPaths] = useState('')
+  const [psiFrequency, setPsiFrequency] = useState('weekly')
   const [snippetCopied, setSnippetCopied] = useState(false)
   const initialRef = useRef('')
 
@@ -55,25 +56,40 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
     setHideUnknownLocations(site.hide_unknown_locations ?? false)
     setDataRetention(site.data_retention_months ?? 6)
     setExcludedPaths((site.excluded_paths || []).join('\n'))
-    initialRef.current = JSON.stringify({
-      collectPagePaths: site.collect_page_paths ?? true,
-      collectReferrers: site.collect_referrers ?? true,
-      collectDeviceInfo: site.collect_device_info ?? true,
-      collectScreenRes: site.collect_screen_resolution ?? true,
-      collectGeoData: site.collect_geo_data ?? 'full',
-      hideUnknownLocations: site.hide_unknown_locations ?? false,
-      dataRetention: site.data_retention_months ?? 6,
-      excludedPaths: (site.excluded_paths || []).join('\n'),
-    })
     hasInitialized.current = true
   }, [site])
+
+  // Sync PSI frequency separately (comes from a different SWR hook)
+  const psiInitialized = useRef(false)
+  useEffect(() => {
+    if (!psiConfig || psiInitialized.current) return
+    setPsiFrequency(psiConfig.frequency || 'weekly')
+    psiInitialized.current = true
+  }, [psiConfig])
+
+  // Build initial snapshot once both site + psi are loaded
+  useEffect(() => {
+    if (!hasInitialized.current || !initialRef.current && site) {
+      initialRef.current = JSON.stringify({
+        collectPagePaths: site?.collect_page_paths ?? true,
+        collectReferrers: site?.collect_referrers ?? true,
+        collectDeviceInfo: site?.collect_device_info ?? true,
+        collectScreenRes: site?.collect_screen_resolution ?? true,
+        collectGeoData: site?.collect_geo_data ?? 'full',
+        hideUnknownLocations: site?.hide_unknown_locations ?? false,
+        dataRetention: site?.data_retention_months ?? 6,
+        excludedPaths: (site?.excluded_paths || []).join('\n'),
+        psiFrequency: psiConfig?.frequency || 'weekly',
+      })
+    }
+  }, [site, psiConfig])
 
   // Track dirty state
   useEffect(() => {
     if (!initialRef.current) return
-    const current = JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectGeoData, hideUnknownLocations, dataRetention, excludedPaths })
+    const current = JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectGeoData, hideUnknownLocations, dataRetention, excludedPaths, psiFrequency })
     onDirtyChange?.(current !== initialRef.current)
-  }, [collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectGeoData, hideUnknownLocations, dataRetention, excludedPaths, onDirtyChange])
+  }, [collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectGeoData, hideUnknownLocations, dataRetention, excludedPaths, psiFrequency, onDirtyChange])
 
   const handleSave = useCallback(async () => {
     try {
@@ -88,14 +104,19 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
         data_retention_months: dataRetention,
         excluded_paths: excludedPaths.split('\n').map(p => p.trim()).filter(Boolean),
       })
+      // Save PSI frequency separately if it changed
+      if (psiConfig?.enabled && psiFrequency !== (psiConfig.frequency || 'weekly')) {
+        await updatePageSpeedConfig(siteId, { enabled: psiConfig.enabled, frequency: psiFrequency })
+        mutatePSIConfig()
+      }
       await mutate()
-      initialRef.current = JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectGeoData, hideUnknownLocations, dataRetention, excludedPaths })
+      initialRef.current = JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectGeoData, hideUnknownLocations, dataRetention, excludedPaths, psiFrequency })
       onDirtyChange?.(false)
       toast.success('Privacy settings updated')
     } catch {
       toast.error('Failed to save')
     }
-  }, [siteId, site?.name, collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectGeoData, hideUnknownLocations, dataRetention, excludedPaths, mutate, onDirtyChange])
+  }, [siteId, site?.name, collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectGeoData, hideUnknownLocations, dataRetention, excludedPaths, psiFrequency, psiConfig, mutatePSIConfig, mutate, onDirtyChange])
 
   // Register save handler with modal
   useEffect(() => {
@@ -195,16 +216,8 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
             </div>
             {psiConfig?.enabled ? (
               <Select
-                value={psiConfig.frequency || 'weekly'}
-                onChange={async (v) => {
-                  try {
-                    await updatePageSpeedConfig(siteId, { enabled: psiConfig.enabled, frequency: v })
-                    mutatePSIConfig()
-                    toast.success('Check frequency updated')
-                  } catch {
-                    toast.error('Failed to update')
-                  }
-                }}
+                value={psiFrequency}
+                onChange={(v) => setPsiFrequency(v)}
                 options={[
                   { value: 'daily', label: 'Daily' },
                   { value: 'weekly', label: 'Weekly' },

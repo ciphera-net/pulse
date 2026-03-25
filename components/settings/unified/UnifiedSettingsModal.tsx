@@ -202,7 +202,7 @@ function TabContent({
       case 'general': return <WorkspaceGeneralTab {...dirtyProps} />
       case 'billing': return <WorkspaceBillingTab />
       case 'members': return <WorkspaceMembersTab />
-      case 'notifications': return <WorkspaceNotificationsTab />
+      case 'notifications': return <WorkspaceNotificationsTab {...dirtyProps} />
       case 'audit': return <WorkspaceAuditTab />
     }
   }
