@@ -287,6 +287,10 @@ export default function UnifiedSettingsModal() {
 
   const handleContextChange = useCallback((ctx: SettingsContext) => {
     setContext(ctx)
+    // Reset tabs to defaults when switching context
+    if (ctx === 'site') setSiteTabs('general')
+    else if (ctx === 'workspace') setWorkspaceTabs('general')
+    else if (ctx === 'account') setAccountTabs('profile')
   }, [])
 
   return (
