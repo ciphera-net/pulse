@@ -7,7 +7,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { listSites, type Site } from '@/lib/api/sites'
 import { useAuth } from '@/lib/auth/context'
-import { useSettingsModal } from '@/lib/settings-modal-context'
+import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { useSidebar } from '@/lib/sidebar-context'
 // `,` shortcut handled globally by UnifiedSettingsModal
 import { getUserOrganizations, switchContext, type OrganizationMember } from '@/lib/api/organization'
@@ -461,7 +461,7 @@ export default function Sidebar({
   const canEdit = user?.role === 'owner' || user?.role === 'admin'
   const pathname = usePathname()
   const router = useRouter()
-  const { openSettings } = useSettingsModal()
+  const { openUnifiedSettings } = useUnifiedSettings()
   const [sites, setSites] = useState<Site[]>([])
   const [orgs, setOrgs] = useState<OrganizationMember[]>([])
   const [pendingHref, setPendingHref] = useState<string | null>(null)
@@ -532,7 +532,7 @@ export default function Sidebar({
           auth={auth}
           orgs={orgs}
           onSwitchOrganization={handleSwitchOrganization}
-          openSettings={openSettings}
+          openSettings={() => openUnifiedSettings({ context: 'account', tab: 'profile' })}
         />
       </aside>
 
@@ -575,7 +575,7 @@ export default function Sidebar({
               auth={auth}
               orgs={orgs}
               onSwitchOrganization={handleSwitchOrganization}
-              openSettings={openSettings}
+              openSettings={() => openUnifiedSettings({ context: 'account', tab: 'profile' })}
             />
           </aside>
         </>
