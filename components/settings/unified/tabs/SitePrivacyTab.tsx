@@ -30,6 +30,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange }: { siteId: stri
   const [excludedPaths, setExcludedPaths] = useState('')
   const [snippetCopied, setSnippetCopied] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [isDirty, setIsDirty] = useState(false)
   const initialRef = useRef('')
 
   useEffect(() => {
@@ -52,6 +53,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange }: { siteId: stri
         dataRetention: site.data_retention_months ?? 6,
         excludedPaths: (site.excluded_paths || []).join('\n'),
       })
+      setIsDirty(false)
     }
   }, [site])
 
@@ -59,7 +61,9 @@ export default function SitePrivacyTab({ siteId, onDirtyChange }: { siteId: stri
   useEffect(() => {
     if (!initialRef.current) return
     const current = JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectGeoData, hideUnknownLocations, dataRetention, excludedPaths })
-    onDirtyChange?.(current !== initialRef.current)
+    const dirty = current !== initialRef.current
+    setIsDirty(dirty)
+    onDirtyChange?.(dirty)
   }, [collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectGeoData, hideUnknownLocations, dataRetention, excludedPaths, onDirtyChange])
 
   const handleSave = async () => {
@@ -242,11 +246,15 @@ export default function SitePrivacyTab({ siteId, onDirtyChange }: { siteId: stri
         </div>
       </div>
 
-      <div className="flex justify-end pt-2">
-        <Button onClick={handleSave} variant="primary" disabled={saving}>
-          {saving ? 'Saving...' : 'Save Changes'}
-        </Button>
-      </div>
+      {/* Sticky save bar — only visible when dirty */}
+      {isDirty && (
+        <div className="sticky bottom-0 -mx-6 -mb-6 px-6 py-3 bg-neutral-900/95 backdrop-blur-sm border-t border-neutral-800 flex items-center justify-between">
+          <span className="text-xs text-neutral-400">Unsaved changes</span>
+          <Button onClick={handleSave} variant="primary" disabled={saving} className="text-sm">
+            {saving ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </div>
+      )}
     </div>
   )
 }
