@@ -147,7 +147,7 @@ function ScheduleRow({
           )}
         </div>
       </div>
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+      <div className="flex items-center gap-1 flex-shrink-0">
         <button onClick={() => onEdit(schedule)} className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors" title="Edit">
           <Pencil weight="bold" className="w-3.5 h-3.5" />
         </button>
@@ -205,7 +205,7 @@ function FormInput({ id, type = 'text', value, onChange, placeholder }: { id?: s
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full h-10 px-4 bg-transparent border border-neutral-800 rounded-lg text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-brand-orange focus:ring-2 focus:ring-ring/20 transition-colors"
+      className="w-full h-10 px-4 bg-transparent border border-neutral-800 rounded-lg text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 transition-colors"
     />
   )
 }
@@ -622,7 +622,7 @@ export default function SiteReportsTab({ siteId }: { siteId: string }) {
   if (loading) return <div className="flex items-center justify-center py-12"><Spinner className="w-6 h-6 text-neutral-500" /></div>
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Scheduled Reports */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
@@ -636,7 +636,7 @@ export default function SiteReportsTab({ siteId }: { siteId: string }) {
         </div>
 
         {reports.length === 0 ? (
-          <p className="text-sm text-neutral-500 text-center py-6">No scheduled reports yet.</p>
+          <p className="text-sm text-neutral-500 text-center py-8">No scheduled reports yet.</p>
         ) : (
           <div className="space-y-1">
             {reports.map((r) => (
@@ -647,19 +647,19 @@ export default function SiteReportsTab({ siteId }: { siteId: string }) {
       </div>
 
       {/* Alert Channels */}
-      <div className="space-y-3">
+      <div className="pt-6 border-t border-neutral-800 space-y-3">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-base font-semibold text-white mb-1">Alert Channels</h3>
             <p className="text-sm text-neutral-400">Get notified when uptime monitors go down.</p>
           </div>
-          <Button variant="secondary" className="text-sm gap-1.5" onClick={openNewAlert}>
+          <Button variant="primary" className="text-sm gap-1.5" onClick={openNewAlert}>
             <Plus weight="bold" className="w-3.5 h-3.5" /> Add Channel
           </Button>
         </div>
 
         {alerts.length === 0 ? (
-          <p className="text-sm text-neutral-500 text-center py-6">No alert channels configured.</p>
+          <p className="text-sm text-neutral-500 text-center py-8">No alert channels configured.</p>
         ) : (
           <div className="space-y-1">
             {alerts.map((a) => (

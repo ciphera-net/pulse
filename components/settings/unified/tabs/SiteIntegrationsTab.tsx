@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Button, toast, Spinner } from '@ciphera-net/ui'
-import { Plugs, Trash, ShieldCheck, CaretDown } from '@phosphor-icons/react'
+import { Button, Input, Select, toast, Spinner } from '@ciphera-net/ui'
+import { Plugs, Trash, ShieldCheck } from '@phosphor-icons/react'
 import { useGSCStatus, useBunnyStatus } from '@/lib/swr/dashboard'
 import { disconnectGSC, getGSCAuthURL } from '@/lib/api/gsc'
 import { disconnectBunny, getBunnyPullZones, connectBunny, type BunnyPullZone } from '@/lib/api/bunny'
@@ -57,7 +57,7 @@ function IntegrationCard({
   children?: React.ReactNode
 }) {
   return (
-    <div className="rounded-xl border border-neutral-800 bg-neutral-800/20">
+    <div className="rounded-xl border border-neutral-800 bg-neutral-800/30">
       <div className="flex items-center justify-between py-4 px-4">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-neutral-800">{icon}</div>
@@ -131,7 +131,7 @@ function GSCDetails({ gscStatus }: { gscStatus: { connected: boolean; google_ema
 
   return (
     <div className="px-4 pb-4 space-y-3">
-      <div className="grid grid-cols-2 gap-x-6 gap-y-2 px-4 py-3 rounded-lg bg-neutral-800/40 border border-neutral-700/50">
+      <div className="grid grid-cols-2 gap-x-6 gap-y-3 px-4 py-3 rounded-lg bg-neutral-800/40 border border-neutral-700/50">
         {rows.map(row => (
           <div key={row.label} className="flex flex-col gap-0.5">
             <span className="text-xs text-neutral-500">{row.label}</span>
@@ -200,12 +200,12 @@ function BunnySetupForm({ siteId, onConnected }: { siteId: string; onConnected: 
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-neutral-400">API Key</label>
           <div className="flex gap-2">
-            <input
+            <Input
               type="password"
               value={apiKey}
               onChange={e => setApiKey(e.target.value)}
               placeholder="Enter your BunnyCDN API key"
-              className="flex-1 px-3 py-2 text-sm bg-neutral-900 border border-neutral-700 rounded-lg text-white placeholder:text-neutral-500 focus:outline-none focus:border-neutral-500"
+              className="flex-1"
             />
             <Button
               onClick={handleLoadZones}
@@ -221,22 +221,19 @@ function BunnySetupForm({ siteId, onConnected }: { siteId: string; onConnected: 
         {zonesLoaded && pullZones.length > 0 && (
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-neutral-400">Pull Zone</label>
-            <div className="relative">
-              <select
-                value={selectedZone?.id ?? ''}
-                onChange={e => {
-                  const zone = pullZones.find(z => z.id === Number(e.target.value))
-                  setSelectedZone(zone || null)
-                }}
-                className="w-full px-3 py-2 text-sm bg-neutral-900 border border-neutral-700 rounded-lg text-white appearance-none focus:outline-none focus:border-neutral-500"
-              >
-                <option value="">Select a pull zone</option>
-                {pullZones.map(zone => (
-                  <option key={zone.id} value={zone.id}>{zone.name}</option>
-                ))}
-              </select>
-              <CaretDown weight="bold" className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400 pointer-events-none" />
-            </div>
+            <Select
+              value={String(selectedZone?.id ?? '')}
+              onChange={(v) => {
+                const zone = pullZones.find(z => z.id === Number(v))
+                setSelectedZone(zone || null)
+              }}
+              variant="input"
+              fullWidth
+              options={[
+                { value: '', label: 'Select a pull zone' },
+                ...pullZones.map(zone => ({ value: String(zone.id), label: zone.name })),
+              ]}
+            />
           </div>
         )}
 
@@ -331,7 +328,7 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
         >
           {bunnyConnected && (
             <div className="px-4 pb-4 space-y-3">
-              <div className="grid grid-cols-2 gap-x-6 gap-y-2 px-4 py-3 rounded-lg bg-neutral-800/40 border border-neutral-700/50">
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3 px-4 py-3 rounded-lg bg-neutral-800/40 border border-neutral-700/50">
                 <div className="flex flex-col gap-0.5">
                   <span className="text-xs text-neutral-500">Pull Zone</span>
                   <span className="text-sm text-white">{bunnyStatus?.pull_zone_name || 'Unknown'}</span>
