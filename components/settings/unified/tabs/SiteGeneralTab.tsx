@@ -179,7 +179,7 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, hasPendingAction
 
       {/* Sticky save bar */}
       {isDirty && (
-        <div className={`sticky bottom-0 -mx-6 -mb-6 px-6 py-3 backdrop-blur-md border-t flex items-center justify-between transition-colors ${
+        <div className={`sticky bottom-0 -mx-6 px-6 py-3 backdrop-blur-md border-t flex items-center justify-between transition-colors ${
           hasPendingAction
             ? 'bg-rose-950/95 border-rose-800/50'
             : 'bg-neutral-950/90 border-neutral-800'
