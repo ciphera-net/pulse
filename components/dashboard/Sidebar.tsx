@@ -9,7 +9,6 @@ import { listSites, type Site } from '@/lib/api/sites'
 import { useAuth } from '@/lib/auth/context'
 import { useSettingsModal } from '@/lib/settings-modal-context'
 import { useSidebar } from '@/lib/sidebar-context'
-import { SidebarSimple } from '@phosphor-icons/react'
 // `,` shortcut handled globally by UnifiedSettingsModal
 import { getUserOrganizations, switchContext, type OrganizationMember } from '@/lib/api/organization'
 import { setSessionAction } from '@/app/actions/auth'
