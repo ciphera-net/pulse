@@ -154,7 +154,7 @@ export default function FunnelReportPage() {
               <ChevronLeftIcon className="w-5 h-5" />
             </Link>
             <div>
-              <h1 className="text-2xl font-bold text-white">
+              <h1 className="text-lg font-semibold text-neutral-200">
                 {funnel.name}
               </h1>
               {funnel.description && (

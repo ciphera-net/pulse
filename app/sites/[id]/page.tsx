@@ -429,7 +429,7 @@ export default function SiteDashboardPage() {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-white mb-1">
+              <h1 className="text-lg font-semibold text-neutral-200 mb-1">
                 {site.name}
               </h1>
               <p className="text-neutral-600 dark:text-neutral-400">
