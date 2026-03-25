@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { X, GearSix, Buildings, User } from '@phosphor-icons/react'
+import { Button } from '@ciphera-net/ui'
 import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { useAuth } from '@/lib/auth/context'
 import { useSite } from '@/lib/swr/dashboard'
@@ -173,17 +174,15 @@ function TabContent({
   activeTab,
   siteId,
   onDirtyChange,
-  hasPendingAction,
-  onDiscard,
+  onRegisterSave,
 }: {
   context: SettingsContext
   activeTab: string
   siteId: string | null
   onDirtyChange: (dirty: boolean) => void
-  hasPendingAction: boolean
-  onDiscard: () => void
+  onRegisterSave: (fn: () => Promise<void>) => void
 }) {
-  const dirtyProps = { onDirtyChange, hasPendingAction, onDiscard }
+  const dirtyProps = { onDirtyChange, onRegisterSave }
   // Site tabs
   if (context === 'site' && siteId) {
     switch (activeTab) {
@@ -236,17 +235,35 @@ export default function UnifiedSettingsModal() {
 
   // ─── Dirty state & pending navigation ────────────────────────
   const isDirtyRef = useRef(false)
+  const [isDirtyVisible, setIsDirtyVisible] = useState(false)
   const pendingActionRef = useRef<(() => void) | null>(null)
   const [hasPendingAction, setHasPendingAction] = useState(false)
+  const saveHandlerRef = useRef<(() => Promise<void>) | null>(null)
+  const [saving, setSaving] = useState(false)
 
   const handleDirtyChange = useCallback((dirty: boolean) => {
     isDirtyRef.current = dirty
+    setIsDirtyVisible(dirty)
     // If user saved and there was a pending action, execute it
     if (!dirty && pendingActionRef.current) {
       const action = pendingActionRef.current
       pendingActionRef.current = null
       setHasPendingAction(false)
       action()
+    }
+  }, [])
+
+  const handleRegisterSave = useCallback((fn: () => Promise<void>) => {
+    saveHandlerRef.current = fn
+  }, [])
+
+  const handleSaveFromBar = useCallback(async () => {
+    if (!saveHandlerRef.current) return
+    setSaving(true)
+    try {
+      await saveHandlerRef.current()
+    } finally {
+      setSaving(false)
     }
   }, [])
 
@@ -415,10 +432,43 @@ export default function UnifiedSettingsModal() {
                     transition={{ duration: 0.12 }}
                     className="p-6"
                   >
-                    <TabContent context={context} activeTab={activeTab} siteId={activeSiteId} onDirtyChange={handleDirtyChange} hasPendingAction={hasPendingAction} onDiscard={handleDiscard} />
+                    <TabContent context={context} activeTab={activeTab} siteId={activeSiteId} onDirtyChange={handleDirtyChange} onRegisterSave={handleRegisterSave} />
                   </motion.div>
                 </AnimatePresence>
               </div>
+
+              {/* Save bar — fixed at modal bottom, outside scroll */}
+              <AnimatePresence>
+                {isDirtyVisible && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="shrink-0 overflow-hidden"
+                  >
+                    <div className={`px-6 py-3 border-t flex items-center justify-between ${
+                      hasPendingAction
+                        ? 'bg-rose-950 border-rose-800/50'
+                        : 'bg-neutral-950 border-neutral-800'
+                    }`}>
+                      <span className={`text-sm font-medium ${hasPendingAction ? 'text-rose-100' : 'text-neutral-400'}`}>
+                        {hasPendingAction ? 'Save or discard to continue' : 'Unsaved changes'}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        {hasPendingAction && (
+                          <Button onClick={handleDiscard} variant="secondary" className="text-sm border-rose-700/50 text-rose-200 hover:bg-rose-900/40">
+                            Discard
+                          </Button>
+                        )}
+                        <Button onClick={handleSaveFromBar} variant="primary" disabled={saving} className="text-sm">
+                          {saving ? 'Saving...' : 'Save Changes'}
+                        </Button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </motion.div>
         </>

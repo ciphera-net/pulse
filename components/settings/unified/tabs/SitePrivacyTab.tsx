@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { Button, Select, Toggle, toast, Spinner } from '@ciphera-net/ui'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { Select, Toggle, toast, Spinner } from '@ciphera-net/ui'
 import { useSite, useSubscription, usePageSpeedConfig } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
 import { updatePageSpeedConfig } from '@/lib/api/pagespeed'
@@ -28,7 +28,7 @@ function PrivacyToggle({ label, desc, checked, onToggle }: { label: string; desc
   )
 }
 
-export default function SitePrivacyTab({ siteId, onDirtyChange, hasPendingAction, onDiscard }: { siteId: string; onDirtyChange?: (dirty: boolean) => void; hasPendingAction?: boolean; onDiscard?: () => void }) {
+export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }: { siteId: string; onDirtyChange?: (dirty: boolean) => void; onRegisterSave?: (fn: () => Promise<void>) => void }) {
   const { data: site, mutate } = useSite(siteId)
   const { data: subscription, error: subscriptionError, mutate: mutateSubscription } = useSubscription()
   const { data: psiConfig, mutate: mutatePSIConfig } = usePageSpeedConfig(siteId)
@@ -41,8 +41,6 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, hasPendingAction
   const [dataRetention, setDataRetention] = useState(6)
   const [excludedPaths, setExcludedPaths] = useState('')
   const [snippetCopied, setSnippetCopied] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [isDirty, setIsDirty] = useState(false)
   const initialRef = useRef('')
 
   // Sync form state from site data — only on first load, not on SWR revalidation
@@ -68,20 +66,16 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, hasPendingAction
       excludedPaths: (site.excluded_paths || []).join('\n'),
     })
     hasInitialized.current = true
-    setIsDirty(false)
   }, [site])
 
   // Track dirty state
   useEffect(() => {
     if (!initialRef.current) return
     const current = JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectGeoData, hideUnknownLocations, dataRetention, excludedPaths })
-    const dirty = current !== initialRef.current
-    setIsDirty(dirty)
-    onDirtyChange?.(dirty)
+    onDirtyChange?.(current !== initialRef.current)
   }, [collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectGeoData, hideUnknownLocations, dataRetention, excludedPaths, onDirtyChange])
 
-  const handleSave = async () => {
-    setSaving(true)
+  const handleSave = useCallback(async () => {
     try {
       await updateSite(siteId, {
         name: site?.name || '',
@@ -100,10 +94,13 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, hasPendingAction
       toast.success('Privacy settings updated')
     } catch {
       toast.error('Failed to save')
-    } finally {
-      setSaving(false)
     }
-  }
+  }, [siteId, site?.name, collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectGeoData, hideUnknownLocations, dataRetention, excludedPaths, mutate, onDirtyChange])
+
+  // Register save handler with modal
+  useEffect(() => {
+    onRegisterSave?.(handleSave)
+  }, [handleSave, onRegisterSave])
 
   if (!site) return <div className="flex items-center justify-center py-12"><Spinner className="w-6 h-6 text-neutral-500" /></div>
 
@@ -250,28 +247,6 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, hasPendingAction
         </div>
       </div>
 
-      {/* Sticky save bar — only visible when dirty */}
-      {isDirty && (
-        <div className={`sticky bottom-0 -mx-6 px-6 py-3 backdrop-blur-md border-t flex items-center justify-between transition-colors ${
-          hasPendingAction
-            ? 'bg-rose-950/95 border-rose-800/50'
-            : 'bg-neutral-950/90 border-neutral-800'
-        }`}>
-          <span className={`text-sm font-medium ${hasPendingAction ? 'text-rose-100' : 'text-neutral-400'}`}>
-            {hasPendingAction ? 'Save or discard to continue' : 'Unsaved changes'}
-          </span>
-          <div className="flex items-center gap-2">
-            {hasPendingAction && (
-              <Button onClick={onDiscard} variant="secondary" className="text-sm border-rose-700/50 text-rose-200 hover:bg-rose-900/40">
-                Discard
-              </Button>
-            )}
-            <Button onClick={handleSave} variant="primary" disabled={saving} className="text-sm">
-              {saving ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
