@@ -41,15 +41,16 @@ export default function SiteGeneralTab({ siteId, onDirtyChange }: { siteId: stri
 
   const canEdit = user?.role === 'owner' || user?.role === 'admin'
   const initialRef = useRef('')
+  const hasInitialized = useRef(false)
   const [isDirty, setIsDirty] = useState(false)
 
   useEffect(() => {
-    if (site) {
-      setName(site.name || '')
-      setTimezone(site.timezone || 'UTC')
-      initialRef.current = JSON.stringify({ name: site.name || '', timezone: site.timezone || 'UTC' })
-      setIsDirty(false)
-    }
+    if (!site || hasInitialized.current) return
+    setName(site.name || '')
+    setTimezone(site.timezone || 'UTC')
+    initialRef.current = JSON.stringify({ name: site.name || '', timezone: site.timezone || 'UTC' })
+    hasInitialized.current = true
+    setIsDirty(false)
   }, [site])
 
   // Track dirty state
