@@ -38,7 +38,7 @@ function GlassTopBar({ siteId }: { siteId: string }) {
   }, [realtime])
 
   return (
-    <div className="hidden md:flex items-center justify-between shrink-0 px-3 pt-3 pb-1">
+    <div className="hidden md:flex items-center justify-between shrink-0 px-3 pt-1.5 pb-1">
       {/* Collapse toggle — mirrors sidebar AppLauncher row sizing for pixel alignment */}
       <button
         onClick={toggle}
