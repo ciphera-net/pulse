@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Button, Input, Select, toast, Spinner } from '@ciphera-net/ui'
 import { Plus, Trash, EnvelopeSimple, Crown, UserCircle } from '@phosphor-icons/react'
 import { useAuth } from '@/lib/auth/context'
-import { getOrganizationMembers, sendInvitation, type OrganizationMember } from '@/lib/api/organization'
+import { getOrganizationMembers, removeOrganizationMember, sendInvitation, getInvitations, revokeInvitation, type OrganizationMember, type OrganizationInvitation } from '@/lib/api/organization'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 
 const ROLE_OPTIONS = [
@@ -33,6 +33,7 @@ function RoleBadge({ role }: { role: string }) {
 export default function WorkspaceMembersTab() {
   const { user } = useAuth()
   const [members, setMembers] = useState<OrganizationMember[]>([])
+  const [invitations, setInvitations] = useState<OrganizationInvitation[]>([])
   const [loading, setLoading] = useState(true)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState('member')
@@ -44,8 +45,12 @@ export default function WorkspaceMembersTab() {
   const loadMembers = async () => {
     if (!user?.org_id) return
     try {
-      const data = await getOrganizationMembers(user.org_id)
-      setMembers(data)
+      const [membersData, invitationsData] = await Promise.all([
+        getOrganizationMembers(user.org_id),
+        getInvitations(user.org_id).catch(() => [] as OrganizationInvitation[]),
+      ])
+      setMembers(membersData)
+      setInvitations(invitationsData)
     } catch { }
     finally { setLoading(false) }
   }
@@ -68,11 +73,28 @@ export default function WorkspaceMembersTab() {
     }
   }
 
-  const handleRemove = async (_memberId: string, email: string) => {
-    // Member removal requires the full org settings page (auth API endpoint)
-    toast.message(`To remove ${email}, use Organization Settings → Members.`, {
-      action: { label: 'Open', onClick: () => { window.location.href = '/org-settings?tab=members' } },
-    })
+  const handleRemove = async (memberId: string, email: string) => {
+    if (!user?.org_id) return
+    if (!confirm(`Remove ${email} from the organization?`)) return
+    try {
+      await removeOrganizationMember(user.org_id, memberId)
+      toast.success(`${email} has been removed`)
+      loadMembers()
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to remove member')
+    }
+  }
+
+  const handleRevokeInvitation = async (inviteId: string) => {
+    if (!user?.org_id) return
+    if (!confirm('Revoke this invitation?')) return
+    try {
+      await revokeInvitation(user.org_id, inviteId)
+      toast.success('Invitation revoked')
+      loadMembers()
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to revoke invitation')
+    }
   }
 
   if (loading) return <div className="flex items-center justify-center py-12"><Spinner className="w-6 h-6 text-neutral-500" /></div>
@@ -145,6 +167,36 @@ export default function WorkspaceMembersTab() {
           </div>
         ))}
       </div>
+
+      {/* Pending Invitations */}
+      {invitations.length > 0 && (
+        <div className="space-y-2 pt-4 border-t border-neutral-800">
+          <h4 className="text-sm font-medium text-neutral-300">Pending Invitations</h4>
+          {invitations.map(inv => (
+            <div key={inv.id} className="flex items-center justify-between p-3 rounded-xl border border-neutral-800">
+              <div className="flex items-center gap-3">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400" />
+                </span>
+                <div>
+                  <span className="text-sm text-white">{inv.email}</span>
+                  <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-neutral-800 text-neutral-400">{inv.role}</span>
+                  <span className="ml-2 text-xs text-neutral-500">expires {new Date(inv.expires_at).toLocaleDateString('en-GB')}</span>
+                </div>
+              </div>
+              {canManage && (
+                <button
+                  onClick={() => handleRevokeInvitation(inv.id)}
+                  className="text-xs text-red-400 hover:text-red-300 font-medium"
+                >
+                  Revoke
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
