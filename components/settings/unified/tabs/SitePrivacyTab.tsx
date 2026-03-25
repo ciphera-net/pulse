@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button, Select, Toggle, toast, Spinner } from '@ciphera-net/ui'
 import { useSite, useSubscription, usePageSpeedConfig } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
@@ -16,7 +16,7 @@ const GEO_OPTIONS = [
   { value: 'none', label: 'Disabled' },
 ]
 
-export default function SitePrivacyTab({ siteId }: { siteId: string }) {
+export default function SitePrivacyTab({ siteId, onDirtyChange }: { siteId: string; onDirtyChange?: (dirty: boolean) => void }) {
   const { data: site, mutate } = useSite(siteId)
   const { data: subscription, error: subscriptionError, mutate: mutateSubscription } = useSubscription()
   const { data: psiConfig, mutate: mutatePSIConfig } = usePageSpeedConfig(siteId)
@@ -30,6 +30,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
   const [excludedPaths, setExcludedPaths] = useState('')
   const [snippetCopied, setSnippetCopied] = useState(false)
   const [saving, setSaving] = useState(false)
+  const initialRef = useRef('')
 
   useEffect(() => {
     if (site) {
@@ -41,8 +42,25 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
       setHideUnknownLocations(site.hide_unknown_locations ?? false)
       setDataRetention(site.data_retention_months ?? 6)
       setExcludedPaths((site.excluded_paths || []).join('\n'))
+      initialRef.current = JSON.stringify({
+        collectPagePaths: site.collect_page_paths ?? true,
+        collectReferrers: site.collect_referrers ?? true,
+        collectDeviceInfo: site.collect_device_info ?? true,
+        collectScreenRes: site.collect_screen_resolution ?? true,
+        collectGeoData: site.collect_geo_data ?? 'full',
+        hideUnknownLocations: site.hide_unknown_locations ?? false,
+        dataRetention: site.data_retention_months ?? 6,
+        excludedPaths: (site.excluded_paths || []).join('\n'),
+      })
     }
   }, [site])
+
+  // Track dirty state
+  useEffect(() => {
+    if (!initialRef.current) return
+    const current = JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectGeoData, hideUnknownLocations, dataRetention, excludedPaths })
+    onDirtyChange?.(current !== initialRef.current)
+  }, [collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectGeoData, hideUnknownLocations, dataRetention, excludedPaths, onDirtyChange])
 
   const handleSave = async () => {
     setSaving(true)
@@ -59,6 +77,8 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
         excluded_paths: excludedPaths.split('\n').map(p => p.trim()).filter(Boolean),
       })
       await mutate()
+      initialRef.current = JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectGeoData, hideUnknownLocations, dataRetention, excludedPaths })
+      onDirtyChange?.(false)
       toast.success('Privacy settings updated')
     } catch {
       toast.error('Failed to save')

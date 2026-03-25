@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Input, Button, Select, toast, Spinner, getAuthErrorMessage, CheckIcon, ZapIcon } from '@ciphera-net/ui'
 import { useSite } from '@/lib/swr/dashboard'
@@ -28,7 +28,7 @@ const TIMEZONES = [
   { value: 'Australia/Sydney', label: 'Australia/Sydney (AEST)' },
 ]
 
-export default function SiteGeneralTab({ siteId }: { siteId: string }) {
+export default function SiteGeneralTab({ siteId, onDirtyChange }: { siteId: string; onDirtyChange?: (dirty: boolean) => void }) {
   const router = useRouter()
   const { user } = useAuth()
   const { closeUnifiedSettings: closeSettings } = useUnifiedSettings()
@@ -40,13 +40,22 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
   const [showVerificationModal, setShowVerificationModal] = useState(false)
 
   const canEdit = user?.role === 'owner' || user?.role === 'admin'
+  const initialRef = useRef('')
 
   useEffect(() => {
     if (site) {
       setName(site.name || '')
       setTimezone(site.timezone || 'UTC')
+      initialRef.current = JSON.stringify({ name: site.name || '', timezone: site.timezone || 'UTC' })
     }
   }, [site])
+
+  // Track dirty state
+  useEffect(() => {
+    if (!initialRef.current) return
+    const current = JSON.stringify({ name, timezone })
+    onDirtyChange?.(current !== initialRef.current)
+  }, [name, timezone, onDirtyChange])
 
   const handleSave = async () => {
     if (!site) return
@@ -54,6 +63,8 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
     try {
       await updateSite(siteId, { name, timezone })
       await mutate()
+      initialRef.current = JSON.stringify({ name, timezone })
+      onDirtyChange?.(false)
       toast.success('Site updated')
     } catch {
       toast.error('Failed to save')

@@ -1,17 +1,18 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button, Toggle, toast, Spinner, getDateRange } from '@ciphera-net/ui'
 import { ShieldCheck } from '@phosphor-icons/react'
 import { useSite, useBotFilterStats, useSessions } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
 import { botFilterSessions, botUnfilterSessions } from '@/lib/api/bot-filter'
 
-export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
+export default function SiteBotSpamTab({ siteId, onDirtyChange }: { siteId: string; onDirtyChange?: (dirty: boolean) => void }) {
   const { data: site, mutate } = useSite(siteId)
   const { data: botStats, mutate: mutateBotStats } = useBotFilterStats(siteId)
   const [filterBots, setFilterBots] = useState(false)
   const [saving, setSaving] = useState(false)
+  const initialFilterRef = useRef<boolean | null>(null)
 
   const [botView, setBotView] = useState<'review' | 'blocked'>('review')
   const [suspiciousOnly, setSuspiciousOnly] = useState(true)
@@ -22,14 +23,25 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
   const sessions = sessionsData?.sessions
 
   useEffect(() => {
-    if (site) setFilterBots(site.filter_bots ?? false)
+    if (site) {
+      setFilterBots(site.filter_bots ?? false)
+      initialFilterRef.current = site.filter_bots ?? false
+    }
   }, [site])
+
+  // Track dirty state
+  useEffect(() => {
+    if (initialFilterRef.current === null) return
+    onDirtyChange?.(filterBots !== initialFilterRef.current)
+  }, [filterBots, onDirtyChange])
 
   const handleSave = async () => {
     setSaving(true)
     try {
       await updateSite(siteId, { name: site?.name || '', filter_bots: filterBots })
       await mutate()
+      initialFilterRef.current = filterBots
+      onDirtyChange?.(false)
       toast.success('Bot filtering updated')
     } catch {
       toast.error('Failed to save')
