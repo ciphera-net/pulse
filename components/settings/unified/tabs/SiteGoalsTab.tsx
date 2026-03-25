@@ -130,7 +130,7 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
 
       {/* Goals list */}
       {goals.length === 0 && !creating ? (
-        <div className="text-center py-10">
+        <div className="text-center py-8">
           <p className="text-sm text-neutral-500 mb-3">No goals yet. Add a goal to track custom events.</p>
           <Button onClick={startCreate} variant="primary" className="text-sm gap-1.5">
             <Plus weight="bold" className="w-3.5 h-3.5" /> Add your first goal
@@ -147,7 +147,7 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
                 <p className="text-sm font-medium text-white">{goal.name}</p>
                 <p className="text-xs text-neutral-500 font-mono">{goal.event_name}</p>
               </div>
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center gap-1">
                 <button
                   onClick={() => startEdit(goal)}
                   className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors"
