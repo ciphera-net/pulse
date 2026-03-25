@@ -69,8 +69,8 @@ export default function AccountProfileTab({ onDirtyChange, onRegisterSave }: { o
       </div>
 
       {/* Display Name */}
-      <div className="space-y-4">
-        <div>
+      <div className="space-y-3">
+        <div className="p-4 rounded-xl border border-neutral-800 bg-neutral-800/30">
           <label className="block text-sm font-medium text-neutral-300 mb-1.5">Display Name</label>
           <Input
             value={displayName}
@@ -80,7 +80,7 @@ export default function AccountProfileTab({ onDirtyChange, onRegisterSave }: { o
         </div>
 
         {/* Email — read-only display */}
-        <div>
+        <div className="p-4 rounded-xl border border-neutral-800 bg-neutral-800/30">
           <label className="block text-sm font-medium text-neutral-300 mb-1.5">Email Address</label>
           <Input value={user.email} disabled className="opacity-60" />
           <p className="text-xs text-neutral-500 mt-1">Email changes require password verification. Use <a href="https://auth.ciphera.net/settings" target="_blank" rel="noopener noreferrer" className="text-brand-orange hover:underline">Ciphera Auth</a> to change your email.</p>

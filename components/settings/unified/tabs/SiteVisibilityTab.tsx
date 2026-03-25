@@ -90,7 +90,7 @@ export default function SiteVisibilityTab({ siteId, onDirtyChange, onRegisterSav
             className="space-y-4 overflow-hidden"
           >
             {/* Share link */}
-            <div>
+            <div className="p-4 rounded-xl border border-neutral-800 bg-neutral-800/30">
               <label className="block text-sm font-medium text-neutral-300 mb-1.5">Public Link</label>
               <div className="flex gap-2">
                 <Input value={`${APP_URL}/share/${siteId}`} readOnly className="font-mono text-xs" />

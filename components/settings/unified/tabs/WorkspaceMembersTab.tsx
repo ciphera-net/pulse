@@ -144,9 +144,9 @@ export default function WorkspaceMembersTab() {
       )}
 
       {/* Members list */}
-      <div className="space-y-1">
+      <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
         {members.map(member => (
-          <div key={member.user_id} className="flex items-center justify-between px-4 py-3 rounded-xl hover:bg-neutral-800/40 transition-colors group">
+          <div key={member.user_id} className="flex items-center justify-between px-4 py-3 group">
             <div className="flex items-center gap-3">
               <UserCircle weight="fill" className="w-8 h-8 text-neutral-600" />
               <div>
