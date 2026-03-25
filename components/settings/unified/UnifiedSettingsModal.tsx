@@ -374,7 +374,7 @@ export default function UnifiedSettingsModal() {
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop — fades in/out */}
       <div
         className={`fixed inset-0 z-[60] bg-black/50 transition-opacity duration-200 ${
           isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
@@ -382,21 +382,19 @@ export default function UnifiedSettingsModal() {
         onClick={handleBackdropClick}
       />
 
-      {/* Modal outer wrapper — fades in/out, glass panel inside stays always-opaque */}
+      {/* Glass panel — always mounted, instant show/hide, blur always composited */}
       <div
-        className={`fixed inset-0 z-[61] flex items-center justify-center p-4 transition-all duration-200 ease-out ${
-          isOpen
-            ? 'opacity-100 scale-100 pointer-events-auto'
-            : 'opacity-0 scale-[0.97] pointer-events-none'
+        className={`fixed inset-0 z-[61] flex items-center justify-center p-4 ${
+          isOpen ? 'visible pointer-events-auto' : 'invisible pointer-events-none'
         }`}
       >
         <div
           className="w-full max-w-3xl h-[85vh] bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/60 border border-white/[0.08] rounded-2xl shadow-xl shadow-black/20 flex flex-col overflow-hidden"
           onClick={e => e.stopPropagation()}
         >
-          {/* All content gated by isOpen — empty glass box when closed (GPU keeps blur warm) */}
+          {/* Content fades in/out independently — glass stays solid */}
           {isOpen && (
-            <>
+            <div className="flex flex-col h-full animate-fade-in">
               {/* Header */}
               <div className="shrink-0 px-6 pt-5 pb-4 border-b border-white/[0.06]">
                 <div className="flex items-center justify-between mb-4">
@@ -470,7 +468,7 @@ export default function UnifiedSettingsModal() {
                   </motion.div>
                 )}
               </AnimatePresence>
-            </>
+            </div>
           )}
         </div>
       </div>
