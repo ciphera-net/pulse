@@ -16,6 +16,18 @@ const GEO_OPTIONS = [
   { value: 'none', label: 'Disabled' },
 ]
 
+function PrivacyToggle({ label, desc, checked, onToggle }: { label: string; desc: string; checked: boolean; onToggle: () => void }) {
+  return (
+    <div className="flex items-center justify-between py-3 px-4 rounded-xl hover:bg-neutral-800/20 transition-colors">
+      <div>
+        <p className="text-sm font-medium text-white">{label}</p>
+        <p className="text-xs text-neutral-400">{desc}</p>
+      </div>
+      <Toggle checked={checked} onChange={onToggle} />
+    </div>
+  )
+}
+
 export default function SitePrivacyTab({ siteId, onDirtyChange }: { siteId: string; onDirtyChange?: (dirty: boolean) => void }) {
   const { data: site, mutate } = useSite(siteId)
   const { data: subscription, error: subscriptionError, mutate: mutateSubscription } = useSubscription()
@@ -33,28 +45,30 @@ export default function SitePrivacyTab({ siteId, onDirtyChange }: { siteId: stri
   const [isDirty, setIsDirty] = useState(false)
   const initialRef = useRef('')
 
+  // Sync form state from site data — only on first load, not on SWR revalidation
+  const hasInitialized = useRef(false)
   useEffect(() => {
-    if (site) {
-      setCollectPagePaths(site.collect_page_paths ?? true)
-      setCollectReferrers(site.collect_referrers ?? true)
-      setCollectDeviceInfo(site.collect_device_info ?? true)
-      setCollectScreenRes(site.collect_screen_resolution ?? true)
-      setCollectGeoData(site.collect_geo_data ?? 'full')
-      setHideUnknownLocations(site.hide_unknown_locations ?? false)
-      setDataRetention(site.data_retention_months ?? 6)
-      setExcludedPaths((site.excluded_paths || []).join('\n'))
-      initialRef.current = JSON.stringify({
-        collectPagePaths: site.collect_page_paths ?? true,
-        collectReferrers: site.collect_referrers ?? true,
-        collectDeviceInfo: site.collect_device_info ?? true,
-        collectScreenRes: site.collect_screen_resolution ?? true,
-        collectGeoData: site.collect_geo_data ?? 'full',
-        hideUnknownLocations: site.hide_unknown_locations ?? false,
-        dataRetention: site.data_retention_months ?? 6,
-        excludedPaths: (site.excluded_paths || []).join('\n'),
-      })
-      setIsDirty(false)
-    }
+    if (!site || hasInitialized.current) return
+    setCollectPagePaths(site.collect_page_paths ?? true)
+    setCollectReferrers(site.collect_referrers ?? true)
+    setCollectDeviceInfo(site.collect_device_info ?? true)
+    setCollectScreenRes(site.collect_screen_resolution ?? true)
+    setCollectGeoData(site.collect_geo_data ?? 'full')
+    setHideUnknownLocations(site.hide_unknown_locations ?? false)
+    setDataRetention(site.data_retention_months ?? 6)
+    setExcludedPaths((site.excluded_paths || []).join('\n'))
+    initialRef.current = JSON.stringify({
+      collectPagePaths: site.collect_page_paths ?? true,
+      collectReferrers: site.collect_referrers ?? true,
+      collectDeviceInfo: site.collect_device_info ?? true,
+      collectScreenRes: site.collect_screen_resolution ?? true,
+      collectGeoData: site.collect_geo_data ?? 'full',
+      hideUnknownLocations: site.hide_unknown_locations ?? false,
+      dataRetention: site.data_retention_months ?? 6,
+      excludedPaths: (site.excluded_paths || []).join('\n'),
+    })
+    hasInitialized.current = true
+    setIsDirty(false)
   }, [site])
 
   // Track dirty state
@@ -101,21 +115,11 @@ export default function SitePrivacyTab({ siteId, onDirtyChange }: { siteId: stri
       </div>
 
       <div className="space-y-1">
-        {[
-          { label: 'Page paths', desc: 'Track which pages visitors view.', checked: collectPagePaths, onChange: setCollectPagePaths },
-          { label: 'Referrers', desc: 'Track where visitors come from.', checked: collectReferrers, onChange: setCollectReferrers },
-          { label: 'Device info', desc: 'Track browser, OS, and device type.', checked: collectDeviceInfo, onChange: setCollectDeviceInfo },
-          { label: 'Screen resolution', desc: 'Track visitor screen dimensions.', checked: collectScreenRes, onChange: setCollectScreenRes },
-          { label: 'Hide unknown locations', desc: 'Exclude "Unknown" from location stats.', checked: hideUnknownLocations, onChange: setHideUnknownLocations },
-        ].map(item => (
-          <div key={item.label} className="flex items-center justify-between py-3 px-4 rounded-xl hover:bg-neutral-800/20 transition-colors">
-            <div>
-              <p className="text-sm font-medium text-white">{item.label}</p>
-              <p className="text-xs text-neutral-400">{item.desc}</p>
-            </div>
-            <Toggle checked={item.checked} onChange={() => item.onChange((p: boolean) => !p)} />
-          </div>
-        ))}
+        <PrivacyToggle label="Page paths" desc="Track which pages visitors view." checked={collectPagePaths} onToggle={() => setCollectPagePaths(v => !v)} />
+        <PrivacyToggle label="Referrers" desc="Track where visitors come from." checked={collectReferrers} onToggle={() => setCollectReferrers(v => !v)} />
+        <PrivacyToggle label="Device info" desc="Track browser, OS, and device type." checked={collectDeviceInfo} onToggle={() => setCollectDeviceInfo(v => !v)} />
+        <PrivacyToggle label="Screen resolution" desc="Track visitor screen dimensions." checked={collectScreenRes} onToggle={() => setCollectScreenRes(v => !v)} />
+        <PrivacyToggle label="Hide unknown locations" desc='Exclude "Unknown" from location stats.' checked={hideUnknownLocations} onToggle={() => setHideUnknownLocations(v => !v)} />
       </div>
 
       <div>

@@ -18,14 +18,15 @@ export default function SiteVisibilityTab({ siteId, onDirtyChange }: { siteId: s
   const [linkCopied, setLinkCopied] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
   const initialRef = useRef('')
+  const hasInitialized = useRef(false)
 
   useEffect(() => {
-    if (site) {
-      setIsPublic(site.is_public ?? false)
-      setPasswordEnabled(site.has_password ?? false)
-      initialRef.current = JSON.stringify({ isPublic: site.is_public ?? false, passwordEnabled: site.has_password ?? false })
-      setIsDirty(false)
-    }
+    if (!site || hasInitialized.current) return
+    setIsPublic(site.is_public ?? false)
+    setPasswordEnabled(site.has_password ?? false)
+    initialRef.current = JSON.stringify({ isPublic: site.is_public ?? false, passwordEnabled: site.has_password ?? false })
+    hasInitialized.current = true
+    setIsDirty(false)
   }, [site])
 
   // Track dirty state

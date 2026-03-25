@@ -23,11 +23,12 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange }: { siteId: stri
   const { data: sessionsData, mutate: mutateSessions } = useSessions(siteId, botDateRange.start, botDateRange.end, botView === 'review' ? suspiciousOnly : false)
   const sessions = sessionsData?.sessions
 
+  const hasInitialized = useRef(false)
   useEffect(() => {
-    if (site) {
-      setFilterBots(site.filter_bots ?? false)
-      initialFilterRef.current = site.filter_bots ?? false
-    }
+    if (!site || hasInitialized.current) return
+    setFilterBots(site.filter_bots ?? false)
+    initialFilterRef.current = site.filter_bots ?? false
+    hasInitialized.current = true
   }, [site])
 
   // Track dirty state
