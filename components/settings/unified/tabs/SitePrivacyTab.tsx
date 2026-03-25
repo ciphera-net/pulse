@@ -252,11 +252,17 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, hasPendingAction
 
       {/* Sticky save bar — only visible when dirty */}
       {isDirty && (
-        <div className="sticky bottom-0 -mx-6 -mb-6 px-6 py-3 bg-neutral-900/95 backdrop-blur-sm border-t border-neutral-800 flex items-center justify-between">
-          <span className="text-xs text-neutral-400">{hasPendingAction ? 'Save or discard to continue' : 'Unsaved changes'}</span>
+        <div className={`sticky bottom-0 -mx-6 -mb-6 px-6 py-3 backdrop-blur-md border-t flex items-center justify-between transition-colors ${
+          hasPendingAction
+            ? 'bg-amber-950/90 border-amber-800/60'
+            : 'bg-neutral-950/90 border-neutral-800'
+        }`}>
+          <span className={`text-xs font-medium ${hasPendingAction ? 'text-amber-200' : 'text-neutral-400'}`}>
+            {hasPendingAction ? 'Save or discard to continue' : 'Unsaved changes'}
+          </span>
           <div className="flex items-center gap-2">
             {hasPendingAction && (
-              <button onClick={onDiscard} className="px-3 py-1.5 text-xs font-medium text-neutral-400 hover:text-white transition-colors">
+              <button onClick={onDiscard} className="px-3 py-1.5 text-xs font-medium text-amber-300 hover:text-white bg-amber-800/30 hover:bg-amber-800/50 rounded-lg transition-colors">
                 Discard
               </button>
             )}
