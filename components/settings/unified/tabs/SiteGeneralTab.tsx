@@ -46,6 +46,7 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
 
   useEffect(() => {
     if (!site || hasInitialized.current) return
+    console.log('[General] init from site.script_features:', site.script_features)
     setName(site.name || '')
     setTimezone(site.timezone || 'UTC')
     setScriptFeatures(site.script_features || {})
