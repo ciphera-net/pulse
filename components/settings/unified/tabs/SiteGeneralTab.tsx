@@ -63,6 +63,7 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
   const handleSave = useCallback(async () => {
     if (!site) return
     try {
+      console.log('[General] saving script_features:', scriptFeatures)
       await updateSite(siteId, { name, timezone, script_features: scriptFeatures })
       await mutate()
       initialRef.current = JSON.stringify({ name, timezone, scriptFeatures: JSON.stringify(scriptFeatures) })
