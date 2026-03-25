@@ -73,9 +73,13 @@ export default function SitePrivacyTab({ siteId, onDirtyChange }: { siteId: stri
 
   // Track dirty state
   useEffect(() => {
-    if (!initialRef.current) return
+    if (!initialRef.current) {
+      console.log('[Privacy] dirty check skipped — no initialRef')
+      return
+    }
     const current = JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectGeoData, hideUnknownLocations, dataRetention, excludedPaths })
     const dirty = current !== initialRef.current
+    console.log('[Privacy] dirty check:', { dirty, collectPagePaths, initial: initialRef.current.substring(0, 50) })
     setIsDirty(dirty)
     onDirtyChange?.(dirty)
   }, [collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectGeoData, hideUnknownLocations, dataRetention, excludedPaths, onDirtyChange])
@@ -115,7 +119,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange }: { siteId: stri
       </div>
 
       <div className="space-y-1">
-        <PrivacyToggle label="Page paths" desc="Track which pages visitors view." checked={collectPagePaths} onToggle={() => setCollectPagePaths(v => !v)} />
+        <PrivacyToggle label="Page paths" desc="Track which pages visitors view." checked={collectPagePaths} onToggle={() => { console.log('[Privacy] toggling page paths from', collectPagePaths, 'to', !collectPagePaths); setCollectPagePaths(v => !v) }} />
         <PrivacyToggle label="Referrers" desc="Track where visitors come from." checked={collectReferrers} onToggle={() => setCollectReferrers(v => !v)} />
         <PrivacyToggle label="Device info" desc="Track browser, OS, and device type." checked={collectDeviceInfo} onToggle={() => setCollectDeviceInfo(v => !v)} />
         <PrivacyToggle label="Screen resolution" desc="Track visitor screen dimensions." checked={collectScreenRes} onToggle={() => setCollectScreenRes(v => !v)} />
