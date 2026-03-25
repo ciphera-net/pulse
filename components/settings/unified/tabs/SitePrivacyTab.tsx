@@ -170,10 +170,10 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
             </div>
             {psiConfig?.enabled ? (
               <Select
-                value={psiConfig.check_frequency || 'weekly'}
+                value={psiConfig.frequency || 'weekly'}
                 onChange={async (v) => {
                   try {
-                    await updatePageSpeedConfig(siteId, { check_frequency: v })
+                    await updatePageSpeedConfig(siteId, { enabled: psiConfig.enabled, frequency: v })
                     mutatePSIConfig()
                     toast.success('Check frequency updated')
                   } catch {
