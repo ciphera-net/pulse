@@ -1,15 +1,17 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { toast, Spinner } from '@ciphera-net/ui'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { Toggle, toast, Spinner } from '@ciphera-net/ui'
 import { useAuth } from '@/lib/auth/context'
 import { getNotificationSettings, updateNotificationSettings, type NotificationSettingsResponse } from '@/lib/api/notification-settings'
 
-export default function WorkspaceNotificationsTab() {
+export default function WorkspaceNotificationsTab({ onDirtyChange, onRegisterSave }: { onDirtyChange?: (dirty: boolean) => void; onRegisterSave?: (fn: () => Promise<void>) => void }) {
   const { user } = useAuth()
   const [data, setData] = useState<NotificationSettingsResponse | null>(null)
   const [settings, setSettings] = useState<Record<string, boolean>>({})
   const [loading, setLoading] = useState(true)
+  const initialRef = useRef('')
+  const hasInitialized = useRef(false)
 
   useEffect(() => {
     if (!user?.org_id) return
@@ -17,22 +19,39 @@ export default function WorkspaceNotificationsTab() {
       .then(resp => {
         setData(resp)
         setSettings(resp.settings || {})
+        if (!hasInitialized.current) {
+          initialRef.current = JSON.stringify(resp.settings || {})
+          hasInitialized.current = true
+        }
       })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [user?.org_id])
 
-  const handleToggle = async (key: string) => {
-    const prev = { ...settings }
-    const updated = { ...settings, [key]: !settings[key] }
-    setSettings(updated)
-    try {
-      await updateNotificationSettings(updated)
-    } catch {
-      setSettings(prev)
-      toast.error('Failed to update notification preference')
-    }
+  // Track dirty state
+  useEffect(() => {
+    if (!initialRef.current) return
+    onDirtyChange?.(JSON.stringify(settings) !== initialRef.current)
+  }, [settings, onDirtyChange])
+
+  const handleToggle = (key: string) => {
+    setSettings(prev => ({ ...prev, [key]: !prev[key] }))
   }
+
+  const handleSave = useCallback(async () => {
+    try {
+      await updateNotificationSettings(settings)
+      initialRef.current = JSON.stringify(settings)
+      onDirtyChange?.(false)
+      toast.success('Notification preferences updated')
+    } catch {
+      toast.error('Failed to update notification preferences')
+    }
+  }, [settings, onDirtyChange])
+
+  useEffect(() => {
+    onRegisterSave?.(handleSave)
+  }, [handleSave, onRegisterSave])
 
   if (loading) return <div className="flex items-center justify-center py-12"><Spinner className="w-6 h-6 text-neutral-500" /></div>
 
@@ -50,12 +69,7 @@ export default function WorkspaceNotificationsTab() {
               <p className="text-sm font-medium text-white">{cat.label}</p>
               <p className="text-xs text-neutral-400">{cat.description}</p>
             </div>
-            <button
-              onClick={() => handleToggle(cat.id)}
-              className={`relative w-10 h-6 rounded-full transition-colors duration-200 ${settings[cat.id] ? 'bg-brand-orange' : 'bg-neutral-700'}`}
-            >
-              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${settings[cat.id] ? 'translate-x-4' : ''}`} />
-            </button>
+            <Toggle checked={settings[cat.id] ?? false} onChange={() => handleToggle(cat.id)} />
           </div>
         ))}
 
