@@ -114,6 +114,15 @@ export default function SiteVisibilityTab({ siteId }: { siteId: string }) {
                     onChange={e => setPassword(e.target.value)}
                     placeholder={site.has_password ? 'Leave empty to keep current password' : 'Set a password'}
                   />
+                  {site.has_password && (
+                    <button
+                      type="button"
+                      onClick={() => { setPasswordEnabled(false); setPassword('') }}
+                      className="mt-2 text-xs font-medium text-red-400 hover:text-red-300 transition-colors"
+                    >
+                      Remove password protection
+                    </button>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
