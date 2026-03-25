@@ -202,7 +202,7 @@ export default function SearchConsolePage() {
       {/* Header */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white mb-1">
+          <h1 className="text-lg font-semibold text-neutral-200 mb-1">
             Search Console
           </h1>
           <p className="text-sm text-neutral-400">

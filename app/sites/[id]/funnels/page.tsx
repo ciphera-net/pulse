@@ -40,7 +40,7 @@ export default function FunnelsPage() {
       <div className="mb-8">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-white">
+            <h1 className="text-lg font-semibold text-neutral-200">
               Funnels
             </h1>
             <p className="text-neutral-600 dark:text-neutral-400">

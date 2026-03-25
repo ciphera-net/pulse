@@ -738,7 +738,7 @@ export default function SiteSettingsPage() {
 
       <div className="space-y-8">
         <div>
-          <h1 className="text-2xl font-bold text-white">Site Settings</h1>
+          <h1 className="text-lg font-semibold text-neutral-200">Site Settings</h1>
           <p className="mt-2 text-neutral-600 dark:text-neutral-400">
             Manage settings for <span className="font-medium text-white">{site.domain}</span>
           </p>
