@@ -62,9 +62,9 @@ export default function WorkspaceNotificationsTab({ onDirtyChange, onRegisterSav
         <p className="text-sm text-neutral-400">Choose what notifications you receive.</p>
       </div>
 
-      <div className="space-y-1">
+      <div className="space-y-3">
         {(data?.categories || []).map(cat => (
-          <div key={cat.id} className="flex items-center justify-between py-3 px-4 rounded-xl hover:bg-neutral-800/20 transition-colors">
+          <div key={cat.id} className="flex items-center justify-between p-4 rounded-xl border border-neutral-800 bg-neutral-800/30">
             <div>
               <p className="text-sm font-medium text-white">{cat.label}</p>
               <p className="text-xs text-neutral-400">{cat.description}</p>

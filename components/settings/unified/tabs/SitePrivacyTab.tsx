@@ -18,7 +18,7 @@ const GEO_OPTIONS = [
 
 function PrivacyToggle({ label, desc, checked, onToggle }: { label: string; desc: string; checked: boolean; onToggle: () => void }) {
   return (
-    <div className="flex items-center justify-between py-3 px-4 rounded-xl hover:bg-neutral-800/20 transition-colors">
+    <div className="flex items-center justify-between p-4 rounded-xl border border-neutral-800 bg-neutral-800/30">
       <div>
         <p className="text-sm font-medium text-white">{label}</p>
         <p className="text-xs text-neutral-500">{desc}</p>
@@ -132,7 +132,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
         <p className="text-sm text-neutral-400">Control what data is collected from your visitors.</p>
       </div>
 
-      <div className="space-y-1">
+      <div className="space-y-3">
         <PrivacyToggle label="Page paths" desc="Track which pages visitors view." checked={collectPagePaths} onToggle={() => setCollectPagePaths(v => !v)} />
         <PrivacyToggle label="Referrers" desc="Track where visitors come from." checked={collectReferrers} onToggle={() => setCollectReferrers(v => !v)} />
         <PrivacyToggle label="Device info" desc="Track browser, OS, and device type." checked={collectDeviceInfo} onToggle={() => setCollectDeviceInfo(v => !v)} />
@@ -140,15 +140,20 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
         <PrivacyToggle label="Hide unknown locations" desc='Exclude "Unknown" from location stats.' checked={hideUnknownLocations} onToggle={() => setHideUnknownLocations(v => !v)} />
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-neutral-300 mb-1.5">Geographic data</label>
-        <Select
-          value={collectGeoData}
-          onChange={setCollectGeoData}
-          variant="input"
-          options={GEO_OPTIONS}
-        />
-        <p className="text-xs text-neutral-500 mt-1">Controls location granularity. "Disabled" collects no geographic data at all.</p>
+      <div className="p-4 rounded-xl border border-neutral-800 bg-neutral-800/30">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-white">Geographic data</p>
+            <p className="text-xs text-neutral-500 mt-0.5">Controls location granularity. &quot;Disabled&quot; collects no geographic data at all.</p>
+          </div>
+          <Select
+            value={collectGeoData}
+            onChange={setCollectGeoData}
+            variant="input"
+            options={GEO_OPTIONS}
+            className="min-w-[200px]"
+          />
+        </div>
       </div>
 
       {/* Data Retention */}
