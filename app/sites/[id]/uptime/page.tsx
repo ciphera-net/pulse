@@ -404,15 +404,10 @@ export default function UptimePage() {
   if (!uptimeEnabled) {
     return (
       <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-white mb-1">
-            Uptime
-          </h1>
-          <p className="text-sm text-neutral-400">
-            Monitor your site&apos;s availability and response time
-          </p>
-        </div>
+        {/* Description */}
+        <p className="text-sm text-neutral-400 mb-8">
+          Monitor your site&apos;s availability and response time
+        </p>
 
         {/* Empty state */}
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-12 text-center">
@@ -443,16 +438,11 @@ export default function UptimePage() {
   // * Enabled state — show uptime dashboard
   return (
     <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
-      {/* Header */}
+      {/* Description + action */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-white mb-1">
-            Uptime
-          </h1>
-          <p className="text-sm text-neutral-400">
-            Monitor your site&apos;s availability and response time
-          </p>
-        </div>
+        <p className="text-sm text-neutral-400">
+          Monitor your site&apos;s availability and response time
+        </p>
         {canEdit && (
           <Button
             variant="secondary"
