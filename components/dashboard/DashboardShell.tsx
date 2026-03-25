@@ -2,11 +2,31 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
+import { usePathname } from 'next/navigation'
 import { formatUpdatedAgo } from '@ciphera-net/ui'
 import { SidebarSimple } from '@phosphor-icons/react'
 import { SidebarProvider, useSidebar } from '@/lib/sidebar-context'
 import { useRealtime } from '@/lib/swr/dashboard'
 import ContentHeader from './ContentHeader'
+
+const PAGE_TITLES: Record<string, string> = {
+  '': 'Dashboard',
+  journeys: 'Journeys',
+  funnels: 'Funnels',
+  behavior: 'Behavior',
+  search: 'Search',
+  cdn: 'CDN',
+  uptime: 'Uptime',
+  pagespeed: 'PageSpeed',
+  settings: 'Site Settings',
+}
+
+function usePageTitle() {
+  const pathname = usePathname()
+  // pathname is /sites/:id or /sites/:id/section/...
+  const segment = pathname.replace(/^\/sites\/[^/]+\/?/, '').split('/')[0]
+  return PAGE_TITLES[segment] ?? segment.charAt(0).toUpperCase() + segment.slice(1) || 'Dashboard'
+}
 
 // Load sidebar only on the client — prevents SSR flash
 const Sidebar = dynamic(() => import('./Sidebar'), {
@@ -37,16 +57,21 @@ function GlassTopBar({ siteId }: { siteId: string }) {
     return () => clearInterval(timer)
   }, [realtime])
 
+  const pageTitle = usePageTitle()
+
   return (
     <div className="hidden md:flex items-center justify-between shrink-0 px-3 pt-1.5 pb-1">
-      {/* Collapse toggle — mirrors sidebar AppLauncher row sizing for pixel alignment */}
-      <button
-        onClick={toggle}
-        className="w-9 h-9 flex items-center justify-center text-neutral-400 hover:text-white rounded-lg hover:bg-white/[0.06] transition-colors"
-        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-      >
-        <SidebarSimple className="w-[18px] h-[18px]" weight={collapsed ? 'regular' : 'fill'} />
-      </button>
+      {/* Left: collapse toggle + page title */}
+      <div className="flex items-center gap-1.5">
+        <button
+          onClick={toggle}
+          className="w-9 h-9 flex items-center justify-center text-neutral-400 hover:text-white rounded-lg hover:bg-white/[0.06] transition-colors"
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <SidebarSimple className="w-[18px] h-[18px]" weight={collapsed ? 'regular' : 'fill'} />
+        </button>
+        <span className="text-sm text-neutral-400 font-medium">{pageTitle}</span>
+      </div>
 
       {/* Realtime indicator */}
       {lastUpdatedRef.current != null && (
