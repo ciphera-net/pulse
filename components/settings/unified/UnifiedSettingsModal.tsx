@@ -395,11 +395,11 @@ export default function UnifiedSettingsModal() {
             className="fixed inset-0 z-[61] flex items-center justify-center p-4 pointer-events-none"
           >
             <div
-              className="pointer-events-auto w-full max-w-3xl h-[85vh] bg-neutral-900 border border-neutral-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+              className="pointer-events-auto w-full max-w-3xl h-[85vh] bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/60 border border-white/[0.08] rounded-2xl shadow-xl shadow-black/20 flex flex-col overflow-hidden"
               onClick={e => e.stopPropagation()}
             >
               {/* Header */}
-              <div className="shrink-0 px-6 pt-5 pb-4 border-b border-neutral-800/60">
+              <div className="shrink-0 px-6 pt-5 pb-4 border-b border-white/[0.06]">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-semibold text-white">Settings</h2>
                   <button
@@ -452,7 +452,7 @@ export default function UnifiedSettingsModal() {
                     <div className={`px-6 py-3 border-t flex items-center justify-between ${
                       hasPendingAction
                         ? 'bg-red-900/10 border-red-900/30'
-                        : 'bg-neutral-950 border-neutral-800'
+                        : 'bg-neutral-950/80 border-white/[0.06]'
                     }`}>
                       <span className="text-sm font-medium text-neutral-400">
                         {hasPendingAction ? 'Save or discard to continue' : 'Unsaved changes'}
