@@ -1,10 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Input, Button, Select, toast, Spinner } from '@ciphera-net/ui'
+import { useRouter } from 'next/navigation'
+import { Input, Button, Select, toast, Spinner, getAuthErrorMessage } from '@ciphera-net/ui'
 import { Copy, CheckCircle } from '@phosphor-icons/react'
 import { useSite } from '@/lib/swr/dashboard'
-import { updateSite } from '@/lib/api/sites'
+import { updateSite, resetSiteData } from '@/lib/api/sites'
+import { useAuth } from '@/lib/auth/context'
+import { useUnifiedSettings } from '@/lib/unified-settings-context'
+import DeleteSiteModal from '@/components/sites/DeleteSiteModal'
 
 const TIMEZONES = [
   { value: 'UTC', label: 'UTC' },
@@ -27,11 +31,17 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8082'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3003'
 
 export default function SiteGeneralTab({ siteId }: { siteId: string }) {
+  const router = useRouter()
+  const { user } = useAuth()
+  const { closeUnifiedSettings: closeSettings } = useUnifiedSettings()
   const { data: site, mutate } = useSite(siteId)
   const [name, setName] = useState('')
   const [timezone, setTimezone] = useState('UTC')
   const [saving, setSaving] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+
+  const canEdit = user?.role === 'owner' || user?.role === 'admin'
 
   useEffect(() => {
     if (site) {
@@ -51,6 +61,16 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
       toast.error('Failed to save')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleResetData = async () => {
+    if (!confirm('Are you sure you want to delete ALL data for this site? This action cannot be undone.')) return
+    try {
+      await resetSiteData(siteId)
+      toast.success('All site data has been reset')
+    } catch (error: unknown) {
+      toast.error(getAuthErrorMessage(error) || 'Failed to reset site data')
     }
   }
 
@@ -132,6 +152,57 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
           {saving ? 'Saving...' : 'Save Changes'}
         </Button>
       </div>
+
+      {/* Danger Zone */}
+      {canEdit && (
+        <div className="space-y-4 pt-4 border-t border-neutral-800">
+          <div>
+            <h3 className="text-lg font-semibold text-red-600 dark:text-red-500 mb-1">Danger Zone</h3>
+            <p className="text-sm text-neutral-400">Irreversible actions for your site.</p>
+          </div>
+
+          <div className="p-4 border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/10 rounded-2xl">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-red-900 dark:text-red-300">Reset Data</p>
+                <p className="text-sm text-neutral-500 dark:text-neutral-400">Delete all stats and events. This cannot be undone.</p>
+              </div>
+              <button
+                type="button"
+                onClick={handleResetData}
+                className="px-4 py-2 bg-white dark:bg-neutral-900 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-sm font-medium"
+              >
+                Reset Data
+              </button>
+            </div>
+          </div>
+
+          <div className="p-4 border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/10 rounded-2xl">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-red-900 dark:text-red-300">Delete Site</p>
+                <p className="text-sm text-neutral-500 dark:text-neutral-400">Schedule this site for deletion with a 7-day grace period.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(true)}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium"
+              >
+                Delete Site...
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <DeleteSiteModal
+        open={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onDeleted={() => { router.push('/'); closeSettings(); }}
+        siteName={site?.name || ''}
+        siteDomain={site?.domain || ''}
+        siteId={siteId}
+      />
     </div>
   )
 }
