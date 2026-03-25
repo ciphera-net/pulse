@@ -105,9 +105,16 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
         </div>
 
         <div className="space-y-3">
-          <div className="p-4 rounded-xl border border-neutral-800 bg-neutral-800/30">
-            <label className="block text-sm font-medium text-neutral-300 mb-1.5">Site Name</label>
-            <Input value={name} onChange={e => setName(e.target.value)} placeholder="My Website" />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-4 rounded-xl border border-neutral-800 bg-neutral-800/30">
+              <label className="block text-sm font-medium text-neutral-300 mb-1.5">Site Name</label>
+              <Input value={name} onChange={e => setName(e.target.value)} placeholder="My Website" />
+            </div>
+            <div className="p-4 rounded-xl border border-neutral-800 bg-neutral-800/30">
+              <label className="block text-sm font-medium text-neutral-300 mb-1.5">Domain</label>
+              <Input value={site.domain} disabled className="opacity-60" />
+              <p className="text-xs text-neutral-500 mt-1">Cannot be changed.</p>
+            </div>
           </div>
 
           <div className="p-4 rounded-xl border border-neutral-800 bg-neutral-800/30">
@@ -118,12 +125,6 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
               variant="input"
               options={TIMEZONES.map(tz => ({ value: tz.value, label: tz.label }))}
             />
-          </div>
-
-          <div className="p-4 rounded-xl border border-neutral-800 bg-neutral-800/30">
-            <label className="block text-sm font-medium text-neutral-300 mb-1.5">Domain</label>
-            <Input value={site.domain} disabled className="opacity-60" />
-            <p className="text-xs text-neutral-500 mt-1">Domain cannot be changed after creation.</p>
           </div>
         </div>
       </div>
