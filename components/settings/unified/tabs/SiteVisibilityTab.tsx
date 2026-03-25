@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Button, Input, Toggle, toast, Spinner } from '@ciphera-net/ui'
 import { Copy, CheckCircle, Lock } from '@phosphor-icons/react'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -9,14 +9,12 @@ import { updateSite } from '@/lib/api/sites'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3003'
 
-export default function SiteVisibilityTab({ siteId, onDirtyChange, hasPendingAction, onDiscard }: { siteId: string; onDirtyChange?: (dirty: boolean) => void; hasPendingAction?: boolean; onDiscard?: () => void }) {
+export default function SiteVisibilityTab({ siteId, onDirtyChange, onRegisterSave }: { siteId: string; onDirtyChange?: (dirty: boolean) => void; onRegisterSave?: (fn: () => Promise<void>) => void }) {
   const { data: site, mutate } = useSite(siteId)
   const [isPublic, setIsPublic] = useState(false)
   const [password, setPassword] = useState('')
   const [passwordEnabled, setPasswordEnabled] = useState(false)
-  const [saving, setSaving] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
-  const [isDirty, setIsDirty] = useState(false)
   const initialRef = useRef('')
   const hasInitialized = useRef(false)
 
@@ -26,7 +24,6 @@ export default function SiteVisibilityTab({ siteId, onDirtyChange, hasPendingAct
     setPasswordEnabled(site.has_password ?? false)
     initialRef.current = JSON.stringify({ isPublic: site.is_public ?? false, passwordEnabled: site.has_password ?? false })
     hasInitialized.current = true
-    setIsDirty(false)
   }, [site])
 
   // Track dirty state
@@ -34,12 +31,10 @@ export default function SiteVisibilityTab({ siteId, onDirtyChange, hasPendingAct
     if (!initialRef.current) return
     const current = JSON.stringify({ isPublic, passwordEnabled })
     const dirty = current !== initialRef.current || password.length > 0
-    setIsDirty(dirty)
     onDirtyChange?.(dirty)
   }, [isPublic, passwordEnabled, password, onDirtyChange])
 
-  const handleSave = async () => {
-    setSaving(true)
+  const handleSave = useCallback(async () => {
     try {
       await updateSite(siteId, {
         name: site?.name || '',
@@ -54,10 +49,12 @@ export default function SiteVisibilityTab({ siteId, onDirtyChange, hasPendingAct
       toast.success('Visibility updated')
     } catch {
       toast.error('Failed to save')
-    } finally {
-      setSaving(false)
     }
-  }
+  }, [siteId, site?.name, isPublic, passwordEnabled, password, mutate, onDirtyChange])
+
+  useEffect(() => {
+    onRegisterSave?.(handleSave)
+  }, [handleSave, onRegisterSave])
 
   const copyLink = () => {
     navigator.clipboard.writeText(`${APP_URL}/share/${siteId}`)
@@ -146,28 +143,6 @@ export default function SiteVisibilityTab({ siteId, onDirtyChange, hasPendingAct
         )}
       </AnimatePresence>
 
-      {/* Sticky save bar */}
-      {isDirty && (
-        <div className={`sticky bottom-0 -mx-6 px-6 py-3 backdrop-blur-md border-t flex items-center justify-between transition-colors ${
-          hasPendingAction
-            ? 'bg-rose-950/95 border-rose-800/50'
-            : 'bg-neutral-950/90 border-neutral-800'
-        }`}>
-          <span className={`text-sm font-medium ${hasPendingAction ? 'text-rose-100' : 'text-neutral-400'}`}>
-            {hasPendingAction ? 'Save or discard to continue' : 'Unsaved changes'}
-          </span>
-          <div className="flex items-center gap-2">
-            {hasPendingAction && (
-              <Button onClick={onDiscard} variant="secondary" className="text-sm border-rose-700/50 text-rose-200 hover:bg-rose-900/40">
-                Discard
-              </Button>
-            )}
-            <Button onClick={handleSave} variant="primary" disabled={saving} className="text-sm">
-              {saving ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
