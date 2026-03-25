@@ -93,7 +93,7 @@ export default function WorkspaceBillingTab() {
       </div>
 
       {/* Plan card */}
-      <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 p-5">
+      <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 p-4">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <h4 className="text-lg font-bold text-white">{planLabel} Plan</h4>
@@ -173,7 +173,7 @@ export default function WorkspaceBillingTab() {
 
       {/* Recent Invoices */}
       {orders.length > 0 && (
-        <div className="space-y-2 pt-4 border-t border-neutral-800">
+        <div className="space-y-2 pt-6 border-t border-neutral-800">
           <h4 className="text-sm font-medium text-neutral-300">Recent Invoices</h4>
           <div className="space-y-1">
             {orders.map(order => (

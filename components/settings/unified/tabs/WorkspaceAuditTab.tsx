@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Spinner } from '@ciphera-net/ui'
+import { Spinner, Input, Button } from '@ciphera-net/ui'
 import { useAuth } from '@/lib/auth/context'
 import { getAuditLog, type AuditLogEntry } from '@/lib/api/audit'
 import { formatDateTimeShort } from '@/lib/utils/formatDate'
@@ -72,48 +72,46 @@ export default function WorkspaceAuditTab() {
       <div className="flex flex-wrap gap-2 items-end">
         <div>
           <label className="block text-xs text-neutral-500 mb-1">Action</label>
-          <input
-            type="text"
+          <Input
             value={actionFilter}
             onChange={e => { setActionFilter(e.target.value); setPage(1) }}
             placeholder="e.g. site_created"
-            className="px-3 py-1.5 border border-neutral-700 rounded-lg bg-neutral-900 text-white text-sm w-40"
+            className="w-40"
           />
         </div>
         <div>
           <label className="block text-xs text-neutral-500 mb-1">From</label>
-          <input
+          <Input
             type="date"
             value={startDate}
             onChange={e => { setStartDate(e.target.value); setPage(1) }}
-            className="px-3 py-1.5 border border-neutral-700 rounded-lg bg-neutral-900 text-white text-sm"
           />
         </div>
         <div>
           <label className="block text-xs text-neutral-500 mb-1">To</label>
-          <input
+          <Input
             type="date"
             value={endDate}
             onChange={e => { setEndDate(e.target.value); setPage(1) }}
-            className="px-3 py-1.5 border border-neutral-700 rounded-lg bg-neutral-900 text-white text-sm"
           />
         </div>
         {(actionFilter || startDate || endDate) && (
-          <button
+          <Button
+            variant="secondary"
+            className="text-sm"
             onClick={() => { setActionFilter(''); setStartDate(''); setEndDate(''); setPage(1) }}
-            className="text-xs text-neutral-400 hover:text-white px-3 py-1.5"
           >
             Clear
-          </button>
+          </Button>
         )}
       </div>
 
       {entries.length === 0 ? (
         <p className="text-sm text-neutral-500 text-center py-8">No activity recorded yet.</p>
       ) : (
-        <div className="space-y-0.5">
+        <div className="space-y-1">
           {entries.map(entry => (
-            <div key={entry.id} className="flex items-center justify-between px-4 py-3 rounded-xl hover:bg-neutral-800/20 transition-colors">
+            <div key={entry.id} className="flex items-center justify-between px-4 py-3 rounded-xl hover:bg-neutral-800/40 transition-colors">
               <div>
                 <p className="text-sm text-white">
                   <span className="font-medium">{entry.actor_email || 'System'}</span>
@@ -132,25 +130,27 @@ export default function WorkspaceAuditTab() {
         </div>
       )}
 
-      <div className="flex items-center justify-between pt-3 border-t border-neutral-800">
+      <div className="flex items-center justify-between pt-6 border-t border-neutral-800">
         <span className="text-xs text-neutral-500">
           {total > 0 ? `${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, total)} of ${total}` : 'No entries'}
         </span>
         <div className="flex gap-2">
-          <button
+          <Button
+            variant="secondary"
+            className="text-sm"
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={page <= 1}
-            className="px-3 py-1 text-xs text-neutral-400 hover:text-white disabled:opacity-30"
           >
             Previous
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="secondary"
+            className="text-sm"
             onClick={() => setPage(p => p + 1)}
             disabled={page * PAGE_SIZE >= total}
-            className="px-3 py-1 text-xs text-neutral-400 hover:text-white disabled:opacity-30"
           >
             Next
-          </button>
+          </Button>
         </div>
       </div>
     </div>
