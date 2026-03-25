@@ -35,6 +35,7 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
   const { data: site, mutate } = useSite(siteId)
   const [name, setName] = useState('')
   const [timezone, setTimezone] = useState('UTC')
+  const [scriptFeatures, setScriptFeatures] = useState<Record<string, unknown>>({})
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showVerificationModal, setShowVerificationModal] = useState(false)
 
@@ -46,30 +47,30 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
     if (!site || hasInitialized.current) return
     setName(site.name || '')
     setTimezone(site.timezone || 'UTC')
-    initialRef.current = JSON.stringify({ name: site.name || '', timezone: site.timezone || 'UTC' })
+    setScriptFeatures(site.script_features || {})
+    initialRef.current = JSON.stringify({ name: site.name || '', timezone: site.timezone || 'UTC', scriptFeatures: JSON.stringify(site.script_features || {}) })
     hasInitialized.current = true
   }, [site])
 
   // Track dirty state
   useEffect(() => {
     if (!initialRef.current) return
-    const current = JSON.stringify({ name, timezone })
-    const dirty = current !== initialRef.current
-    onDirtyChange?.(dirty)
-  }, [name, timezone, onDirtyChange])
+    const current = JSON.stringify({ name, timezone, scriptFeatures: JSON.stringify(scriptFeatures) })
+    onDirtyChange?.(current !== initialRef.current)
+  }, [name, timezone, scriptFeatures, onDirtyChange])
 
   const handleSave = useCallback(async () => {
     if (!site) return
     try {
-      await updateSite(siteId, { name, timezone })
+      await updateSite(siteId, { name, timezone, script_features: scriptFeatures })
       await mutate()
-      initialRef.current = JSON.stringify({ name, timezone })
+      initialRef.current = JSON.stringify({ name, timezone, scriptFeatures: JSON.stringify(scriptFeatures) })
       onDirtyChange?.(false)
       toast.success('Site updated')
     } catch {
       toast.error('Failed to save')
     }
-  }, [site, siteId, name, timezone, mutate, onDirtyChange])
+  }, [site, siteId, name, timezone, scriptFeatures, mutate, onDirtyChange])
 
   useEffect(() => {
     onRegisterSave?.(handleSave)
@@ -134,17 +135,10 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
         </div>
 
         <ScriptSetupBlock
-          site={{ domain: site.domain, name: site.name, script_features: site.script_features }}
+          site={{ domain: site.domain, name: site.name, script_features: scriptFeatures }}
           showFrameworkPicker
           className="mb-4"
-          onFeaturesChange={async (features) => {
-            try {
-              await updateSite(siteId, { name: site.name, timezone: site.timezone, script_features: features })
-              await mutate()
-            } catch {
-              toast.error('Failed to update script features')
-            }
-          }}
+          onFeaturesChange={(features) => setScriptFeatures(features)}
         />
 
         {/* Verify Installation */}
