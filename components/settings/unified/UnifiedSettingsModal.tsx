@@ -374,18 +374,20 @@ export default function UnifiedSettingsModal() {
 
   return (
     <>
-      {/* Backdrop — binary visibility, no opacity transition */}
+      {/* Backdrop */}
       <div
-        className={`fixed inset-0 z-[60] bg-black/50 ${
-          isOpen ? 'visible' : 'invisible'
+        className={`fixed inset-0 z-[60] bg-black/50 transition-opacity duration-200 ${
+          isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
         onClick={handleBackdropClick}
       />
 
-      {/* Modal — always mounted, instant show/hide (glass + animation = flash) */}
+      {/* Modal outer wrapper — fades in/out, glass panel inside stays always-opaque */}
       <div
-        className={`fixed inset-0 z-[61] flex items-center justify-center p-4 ${
-          isOpen ? 'visible pointer-events-auto' : 'invisible pointer-events-none'
+        className={`fixed inset-0 z-[61] flex items-center justify-center p-4 transition-all duration-200 ease-out ${
+          isOpen
+            ? 'opacity-100 scale-100 pointer-events-auto'
+            : 'opacity-0 scale-[0.97] pointer-events-none'
         }`}
       >
         <div
