@@ -91,12 +91,12 @@ export default function WorkspaceGeneralTab({ onDirtyChange, onRegisterSave }: {
           <p className="text-sm text-neutral-400">Basic details about your organization.</p>
         </div>
 
-        <div className="p-4 rounded-xl border border-neutral-800 bg-neutral-800/30">
+        <div>
           <label className="block text-sm font-medium text-neutral-300 mb-1.5">Organization Name</label>
           <Input value={name} onChange={e => setName(e.target.value)} placeholder="Acme Corp" />
         </div>
 
-        <div className="p-4 rounded-xl border border-neutral-800 bg-neutral-800/30">
+        <div>
           <label className="block text-sm font-medium text-neutral-300 mb-1.5">Organization Slug</label>
           <div className="flex items-center gap-2">
             <span className="text-sm text-neutral-500">pulse.ciphera.net/</span>

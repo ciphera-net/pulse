@@ -104,20 +104,20 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
           <p className="text-sm text-neutral-400">Update your site details and tracking script.</p>
         </div>
 
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="p-4 rounded-xl border border-neutral-800 bg-neutral-800/30">
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
               <label className="block text-sm font-medium text-neutral-300 mb-1.5">Site Name</label>
               <Input value={name} onChange={e => setName(e.target.value)} placeholder="My Website" />
             </div>
-            <div className="p-4 rounded-xl border border-neutral-800 bg-neutral-800/30">
+            <div>
               <label className="block text-sm font-medium text-neutral-300 mb-1.5">Domain</label>
               <Input value={site.domain} disabled className="opacity-60" />
               <p className="text-xs text-neutral-500 mt-1">Cannot be changed.</p>
             </div>
           </div>
 
-          <div className="p-4 rounded-xl border border-neutral-800 bg-neutral-800/30">
+          <div>
             <label className="block text-sm font-medium text-neutral-300 mb-1.5">Timezone</label>
             <Select
               value={timezone}

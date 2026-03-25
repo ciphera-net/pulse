@@ -44,7 +44,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
   const [snippetCopied, setSnippetCopied] = useState(false)
   const initialRef = useRef('')
 
-  // Sync form state from site data — only on first load, not on SWR revalidation
+  // Sync form state — only on first load, skip dirty tracking until ready
   const hasInitialized = useRef(false)
   useEffect(() => {
     if (!site || hasInitialized.current) return
@@ -56,33 +56,34 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
     setHideUnknownLocations(site.hide_unknown_locations ?? false)
     setDataRetention(site.data_retention_months ?? 6)
     setExcludedPaths((site.excluded_paths || []).join('\n'))
+    initialRef.current = JSON.stringify({
+      collectPagePaths: site.collect_page_paths ?? true,
+      collectReferrers: site.collect_referrers ?? true,
+      collectDeviceInfo: site.collect_device_info ?? true,
+      collectScreenRes: site.collect_screen_resolution ?? true,
+      collectGeoData: site.collect_geo_data ?? 'full',
+      hideUnknownLocations: site.hide_unknown_locations ?? false,
+      dataRetention: site.data_retention_months ?? 6,
+      excludedPaths: (site.excluded_paths || []).join('\n'),
+      psiFrequency: 'weekly',
+    })
     hasInitialized.current = true
   }, [site])
 
-  // Sync PSI frequency separately (comes from a different SWR hook)
+  // Sync PSI frequency separately — update both state AND snapshot when it first loads
   const psiInitialized = useRef(false)
   useEffect(() => {
     if (!psiConfig || psiInitialized.current) return
-    setPsiFrequency(psiConfig.frequency || 'weekly')
+    const freq = psiConfig.frequency || 'weekly'
+    setPsiFrequency(freq)
+    // Update the snapshot to include the real PSI frequency so it doesn't show as dirty
+    if (initialRef.current) {
+      const snap = JSON.parse(initialRef.current)
+      snap.psiFrequency = freq
+      initialRef.current = JSON.stringify(snap)
+    }
     psiInitialized.current = true
   }, [psiConfig])
-
-  // Build initial snapshot once both site + psi are loaded
-  useEffect(() => {
-    if (!hasInitialized.current || !initialRef.current && site) {
-      initialRef.current = JSON.stringify({
-        collectPagePaths: site?.collect_page_paths ?? true,
-        collectReferrers: site?.collect_referrers ?? true,
-        collectDeviceInfo: site?.collect_device_info ?? true,
-        collectScreenRes: site?.collect_screen_resolution ?? true,
-        collectGeoData: site?.collect_geo_data ?? 'full',
-        hideUnknownLocations: site?.hide_unknown_locations ?? false,
-        dataRetention: site?.data_retention_months ?? 6,
-        excludedPaths: (site?.excluded_paths || []).join('\n'),
-        psiFrequency: psiConfig?.frequency || 'weekly',
-      })
-    }
-  }, [site, psiConfig])
 
   // Track dirty state
   useEffect(() => {
