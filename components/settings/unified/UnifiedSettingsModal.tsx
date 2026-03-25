@@ -210,7 +210,7 @@ function TabContent({
   // Account tabs
   if (context === 'account') {
     switch (activeTab) {
-      case 'profile': return <AccountProfileTab />
+      case 'profile': return <AccountProfileTab {...dirtyProps} />
       case 'security': return <AccountSecurityTab />
       case 'devices': return <AccountDevicesTab />
     }
