@@ -150,15 +150,15 @@ export default function SiteVisibilityTab({ siteId, onDirtyChange, hasPendingAct
       {isDirty && (
         <div className={`sticky bottom-0 -mx-6 -mb-6 px-6 py-3 backdrop-blur-md border-t flex items-center justify-between transition-colors ${
           hasPendingAction
-            ? 'bg-amber-950/90 border-amber-800/60'
+            ? 'bg-red-950/90 border-red-800/60'
             : 'bg-neutral-950/90 border-neutral-800'
         }`}>
-          <span className={`text-xs font-medium ${hasPendingAction ? 'text-amber-200' : 'text-neutral-400'}`}>
+          <span className={`text-xs font-medium ${hasPendingAction ? 'text-red-200' : 'text-neutral-400'}`}>
             {hasPendingAction ? 'Save or discard to continue' : 'Unsaved changes'}
           </span>
           <div className="flex items-center gap-2">
             {hasPendingAction && (
-              <button onClick={onDiscard} className="px-3 py-1.5 text-xs font-medium text-amber-300 hover:text-white bg-amber-800/30 hover:bg-amber-800/50 rounded-lg transition-colors">
+              <button onClick={onDiscard} className="px-3 py-1.5 text-xs font-medium text-red-300 hover:text-white bg-red-800/30 hover:bg-red-800/50 rounded-lg transition-colors">
                 Discard
               </button>
             )}
