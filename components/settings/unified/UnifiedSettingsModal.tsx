@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { X, GearSix, Buildings, User, Warning } from '@phosphor-icons/react'
+import { X, GearSix, Buildings, User } from '@phosphor-icons/react'
 import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { useAuth } from '@/lib/auth/context'
 import { useSite } from '@/lib/swr/dashboard'
@@ -229,37 +229,23 @@ export default function UnifiedSettingsModal() {
   const [sites, setSites] = useState<Site[]>([])
   const [activeSiteId, setActiveSiteId] = useState<string | null>(null)
 
-  // ─── Dirty state & pending navigation ────────────────────────
+  // ─── Dirty state ──────────────────────────────────────────────
   const isDirtyRef = useRef(false)
-  const [showDirtyBar, setShowDirtyBar] = useState(false)
-  const pendingActionRef = useRef<(() => void) | null>(null)
 
   const handleDirtyChange = useCallback((dirty: boolean) => {
     isDirtyRef.current = dirty
-    // Hide the bar if user saves (dirty becomes false) while bar is showing
-    if (!dirty) setShowDirtyBar(false)
   }, [])
 
-  /** Try to execute an action — if dirty, show confirmation bar instead */
+  /** Run action if clean, or confirm discard if dirty */
   const guardedAction = useCallback((action: () => void) => {
     if (isDirtyRef.current) {
-      pendingActionRef.current = action
-      setShowDirtyBar(true)
+      if (confirm('You have unsaved changes. Discard and continue?')) {
+        isDirtyRef.current = false
+        action()
+      }
     } else {
       action()
     }
-  }, [])
-
-  const handleDiscardAndContinue = useCallback(() => {
-    isDirtyRef.current = false
-    setShowDirtyBar(false)
-    pendingActionRef.current?.()
-    pendingActionRef.current = null
-  }, [])
-
-  const handleStayHere = useCallback(() => {
-    setShowDirtyBar(false)
-    pendingActionRef.current = null
   }, [])
 
   // Apply initial tab when modal opens
@@ -276,11 +262,7 @@ export default function UnifiedSettingsModal() {
 
   // Reset dirty state when modal opens
   useEffect(() => {
-    if (isOpen) {
-      isDirtyRef.current = false
-      setShowDirtyBar(false)
-      pendingActionRef.current = null
-    }
+    if (isOpen) isDirtyRef.current = false
   }, [isOpen])
 
   // Detect site from URL and load sites list when modal opens
@@ -315,13 +297,12 @@ export default function UnifiedSettingsModal() {
         else openUnifiedSettings()
       }
       if (e.key === 'Escape' && isOpen) {
-        if (showDirtyBar) handleStayHere()
-        else guardedAction(closeSettings)
+        guardedAction(closeSettings)
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [isOpen, openUnifiedSettings, closeSettings, guardedAction, showDirtyBar, handleStayHere])
+  }, [isOpen, openUnifiedSettings, closeSettings, guardedAction])
 
   const tabs = context === 'site' ? SITE_TABS : context === 'workspace' ? WORKSPACE_TABS : ACCOUNT_TABS
   const activeTab = context === 'site' ? siteTabs : context === 'workspace' ? workspaceTabs : accountTabs
@@ -398,40 +379,6 @@ export default function UnifiedSettingsModal() {
                   <TabBar tabs={tabs} activeTab={activeTab} onChange={handleTabChange} />
                 </div>
               </div>
-
-              {/* Unsaved changes bar */}
-              <AnimatePresence>
-                {showDirtyBar && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.15 }}
-                    className="shrink-0 overflow-hidden"
-                  >
-                    <div className="flex items-center justify-between gap-3 px-6 py-2.5 bg-amber-900/20 border-b border-amber-800/40">
-                      <div className="flex items-center gap-2 text-sm text-amber-200">
-                        <Warning weight="bold" className="w-4 h-4 text-amber-400 shrink-0" />
-                        You have unsaved changes.
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          onClick={handleDiscardAndContinue}
-                          className="px-3 py-1 text-xs font-medium text-amber-300 hover:text-white bg-amber-800/30 hover:bg-amber-800/50 rounded-lg transition-colors"
-                        >
-                          Discard & continue
-                        </button>
-                        <button
-                          onClick={handleStayHere}
-                          className="px-3 py-1 text-xs font-medium text-neutral-400 hover:text-white transition-colors"
-                        >
-                          Stay here
-                        </button>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
 
               {/* Content */}
               <div className="flex-1 overflow-y-auto overflow-x-hidden">
