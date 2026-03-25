@@ -384,10 +384,14 @@ export default function UnifiedSettingsModal() {
         onClick={handleBackdropClick}
       />
 
-      {/* Glass panel — always mounted, blur always composited */}
+      {/* Glass panel — instant appear, fades out with content */}
       <div
         className={`fixed inset-0 z-[61] flex items-center justify-center p-4 ${
-          isOpen || showGlass ? 'visible pointer-events-auto' : 'invisible pointer-events-none'
+          isOpen
+            ? 'opacity-100 pointer-events-auto'
+            : showGlass
+              ? 'opacity-0 pointer-events-none transition-opacity duration-150'
+              : 'opacity-0 pointer-events-none invisible'
         }`}
       >
         <div
