@@ -76,7 +76,7 @@ export default function SiteVisibilityTab({ siteId, onDirtyChange, onRegisterSav
       <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-neutral-800/30 border border-neutral-800">
         <div>
           <p className="text-sm font-medium text-white">Public Dashboard</p>
-          <p className="text-xs text-neutral-400">Allow anyone with the link to view this dashboard.</p>
+          <p className="text-xs text-neutral-500">Allow anyone with the link to view this dashboard.</p>
         </div>
         <Toggle checked={isPublic} onChange={() => setIsPublic(p => !p)} />
       </div>
@@ -107,7 +107,7 @@ export default function SiteVisibilityTab({ siteId, onDirtyChange, onRegisterSav
                 <Lock weight="bold" className="w-4 h-4 text-neutral-500" />
                 <div>
                   <p className="text-sm font-medium text-white">Password Protection</p>
-                  <p className="text-xs text-neutral-400">Require a password to view the public dashboard.</p>
+                  <p className="text-xs text-neutral-500">Require a password to view the public dashboard.</p>
                 </div>
               </div>
               <Toggle checked={passwordEnabled} onChange={() => setPasswordEnabled(p => !p)} />
