@@ -1,18 +1,25 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Input, Button, toast } from '@ciphera-net/ui'
 import { Spinner } from '@ciphera-net/ui'
 import { useAuth } from '@/lib/auth/context'
-import { getOrganization, updateOrganization } from '@/lib/api/organization'
+import { getOrganization, updateOrganization, deleteOrganization } from '@/lib/api/organization'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
+import { useUnifiedSettings } from '@/lib/unified-settings-context'
 
 export default function WorkspaceGeneralTab() {
   const { user } = useAuth()
+  const router = useRouter()
+  const { closeUnifiedSettings } = useUnifiedSettings()
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteText, setDeleteText] = useState('')
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     if (!user?.org_id) return
@@ -36,6 +43,20 @@ export default function WorkspaceGeneralTab() {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to update organization')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!user?.org_id || deleteText !== 'DELETE') return
+    setDeleting(true)
+    try {
+      await deleteOrganization(user.org_id)
+      localStorage.clear()
+      closeUnifiedSettings()
+      router.push('/')
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to delete organization')
+      setDeleting(false)
     }
   }
 
@@ -79,18 +100,53 @@ export default function WorkspaceGeneralTab() {
       {/* Danger Zone */}
       <div className="space-y-3 pt-4 border-t border-neutral-800">
         <h3 className="text-base font-semibold text-red-500">Danger Zone</h3>
-        <div className="flex items-center justify-between rounded-xl border border-red-900/30 bg-red-900/10 p-4">
-          <div>
-            <p className="text-sm font-medium text-white">Delete Organization</p>
-            <p className="text-xs text-neutral-400">Permanently delete this organization and all its data.</p>
+        <div className="rounded-xl border border-red-900/30 bg-red-900/10 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-white">Delete Organization</p>
+              <p className="text-xs text-neutral-400">Permanently delete this organization and all its data.</p>
+            </div>
+            <Button
+              variant="secondary"
+              className="text-red-400 border-red-900 hover:bg-red-900/20 text-sm"
+              onClick={() => setShowDeleteConfirm(prev => !prev)}
+            >
+              Delete
+            </Button>
           </div>
-          <Button
-            variant="secondary"
-            className="text-red-400 border-red-900 hover:bg-red-900/20 text-sm"
-            onClick={() => toast.error('Use Organization Settings page for destructive actions')}
-          >
-            Delete
-          </Button>
+          {showDeleteConfirm && (
+            <div className="mt-4 p-4 border border-red-900/50 bg-red-900/10 rounded-xl space-y-3">
+              <p className="text-sm text-red-300">This will permanently delete:</p>
+              <ul className="text-xs text-neutral-400 list-disc list-inside space-y-1">
+                <li>All sites and their analytics data</li>
+                <li>All team members and pending invitations</li>
+                <li>Active subscription will be cancelled</li>
+                <li>All notifications and settings</li>
+              </ul>
+              <div>
+                <label className="block text-xs text-neutral-400 mb-1">Type DELETE to confirm</label>
+                <input
+                  type="text"
+                  value={deleteText}
+                  onChange={e => setDeleteText(e.target.value)}
+                  className="w-full px-3 py-2 border border-neutral-700 rounded-lg bg-neutral-900 text-white text-sm"
+                  placeholder="DELETE"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleDelete}
+                  disabled={deleteText !== 'DELETE' || deleting}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium disabled:opacity-50"
+                >
+                  {deleting ? 'Deleting...' : 'Delete Organization'}
+                </button>
+                <button onClick={() => { setShowDeleteConfirm(false); setDeleteText('') }} className="px-4 py-2 text-neutral-400 hover:text-white text-sm">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
