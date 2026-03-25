@@ -279,7 +279,9 @@ export default function UnifiedSettingsModal() {
 
   const handleDiscard = useCallback(() => {
     isDirtyRef.current = false
+    setIsDirtyVisible(false)
     setHasPendingAction(false)
+    saveHandlerRef.current = null
     const action = pendingActionRef.current
     pendingActionRef.current = null
     action?.()
