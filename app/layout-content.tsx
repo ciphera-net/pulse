@@ -15,9 +15,8 @@ import { getUserOrganizations, switchContext, type OrganizationMember } from '@/
 import { setSessionAction } from '@/app/actions/auth'
 import { LoadingOverlay } from '@ciphera-net/ui'
 import { useRouter } from 'next/navigation'
-import { SettingsModalProvider, useSettingsModal } from '@/lib/settings-modal-context'
-import { UnifiedSettingsProvider } from '@/lib/unified-settings-context'
-import SettingsModalWrapper from '@/components/settings/SettingsModalWrapper'
+import { SettingsModalProvider } from '@/lib/settings-modal-context'
+import { UnifiedSettingsProvider, useUnifiedSettings } from '@/lib/unified-settings-context'
 import UnifiedSettingsModal from '@/components/settings/unified/UnifiedSettingsModal'
 
 const ORG_SWITCH_KEY = 'pulse_switching_org'
@@ -54,7 +53,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const isOnline = useOnlineStatus()
-  const { openSettings } = useSettingsModal()
+  const { openUnifiedSettings } = useUnifiedSettings()
   const [orgs, setOrgs] = useState<OrganizationMember[]>([])
   const [isSwitchingOrg, setIsSwitchingOrg] = useState(() => {
     if (typeof window === 'undefined') return false
@@ -110,7 +109,6 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
       <>
         {showOfflineBar && <OfflineBanner isOnline={isOnline} />}
         {children}
-        <SettingsModalWrapper />
         <UnifiedSettingsModal />
       </>
     )
@@ -138,12 +136,11 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
           rightSideActions={<NotificationCenter />}
           apps={CIPHERA_APPS}
           currentAppId="pulse"
-          onOpenSettings={openSettings}
+          onOpenSettings={() => openUnifiedSettings({ context: 'account', tab: 'profile' })}
         />
         <main className="flex-1 pb-8">
           {children}
         </main>
-        <SettingsModalWrapper />
         <UnifiedSettingsModal />
       </div>
     )
@@ -161,7 +158,6 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
         appName="Pulse"
         isAuthenticated={false}
       />
-      <SettingsModalWrapper />
     </div>
   )
 }
