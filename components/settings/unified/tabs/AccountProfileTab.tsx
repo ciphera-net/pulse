@@ -14,6 +14,7 @@ export default function AccountProfileTab({ onDirtyChange, onRegisterSave }: { o
   const hasInitialized = useRef(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteText, setDeleteText] = useState('')
+  const [deletePassword, setDeletePassword] = useState('')
   const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
@@ -46,10 +47,10 @@ export default function AccountProfileTab({ onDirtyChange, onRegisterSave }: { o
   }, [handleSave, onRegisterSave])
 
   const handleDelete = async () => {
-    if (deleteText !== 'DELETE') return
+    if (deleteText !== 'DELETE' || !deletePassword) return
     setDeleting(true)
     try {
-      await deleteAccount()
+      await deleteAccount(deletePassword)
       logout()
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to delete account')
@@ -111,6 +112,16 @@ export default function AccountProfileTab({ onDirtyChange, onRegisterSave }: { o
                 <li>You will be removed from all organizations</li>
               </ul>
               <div>
+                <label className="block text-xs text-neutral-400 mb-1">Your password</label>
+                <input
+                  type="password"
+                  value={deletePassword}
+                  onChange={e => setDeletePassword(e.target.value)}
+                  className="w-full px-3 py-2 border border-neutral-700 rounded-lg bg-neutral-900 text-white text-sm"
+                  placeholder="Enter your password"
+                />
+              </div>
+              <div>
                 <label className="block text-xs text-neutral-400 mb-1">Type DELETE to confirm</label>
                 <input
                   type="text"
@@ -123,12 +134,12 @@ export default function AccountProfileTab({ onDirtyChange, onRegisterSave }: { o
               <div className="flex gap-2">
                 <button
                   onClick={handleDelete}
-                  disabled={deleteText !== 'DELETE' || deleting}
+                  disabled={deleteText !== 'DELETE' || !deletePassword || deleting}
                   className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium disabled:opacity-50"
                 >
                   {deleting ? 'Deleting...' : 'Delete Account'}
                 </button>
-                <button onClick={() => { setShowDeleteConfirm(false); setDeleteText('') }} className="px-4 py-2 text-neutral-400 hover:text-white text-sm">
+                <button onClick={() => { setShowDeleteConfirm(false); setDeleteText(''); setDeletePassword('') }} className="px-4 py-2 text-neutral-400 hover:text-white text-sm">
                   Cancel
                 </button>
               </div>
