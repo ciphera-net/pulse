@@ -317,7 +317,7 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
           name="Google Search Console"
           description="View search queries, clicks, impressions, and ranking data."
           connected={gscStatus?.connected ?? false}
-          detail={gscStatus?.connected ? `Connected as ${gscStatus.google_email || 'unknown'}` : undefined}
+          detail={undefined}
           onConnect={handleConnectGSC}
           onDisconnect={handleDisconnectGSC}
           connectLabel="Connect with Google"
@@ -331,7 +331,7 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
           name="BunnyCDN"
           description="Monitor bandwidth, cache hit rates, and CDN performance."
           connected={bunnyConnected}
-          detail={bunnyConnected ? `Pull zone: ${bunnyStatus?.pull_zone_name || 'connected'}` : undefined}
+          detail={undefined}
           onConnect={handleConnectBunny}
           onDisconnect={handleDisconnectBunny}
         >
