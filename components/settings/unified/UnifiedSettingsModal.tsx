@@ -199,7 +199,7 @@ function TabContent({
   // Workspace tabs
   if (context === 'workspace') {
     switch (activeTab) {
-      case 'general': return <WorkspaceGeneralTab />
+      case 'general': return <WorkspaceGeneralTab {...dirtyProps} />
       case 'billing': return <WorkspaceBillingTab />
       case 'members': return <WorkspaceMembersTab />
       case 'notifications': return <WorkspaceNotificationsTab />
