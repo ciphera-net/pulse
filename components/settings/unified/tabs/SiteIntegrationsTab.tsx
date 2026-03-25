@@ -262,9 +262,17 @@ function BunnySetupForm({ siteId, onConnected }: { siteId: string; onConnected: 
 }
 
 export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
-  const { data: gscStatus, mutate: mutateGSC } = useGSCStatus(siteId)
-  const { data: bunnyStatus, mutate: mutateBunny } = useBunnyStatus(siteId)
+  const { data: gscStatus, isLoading: gscLoading, mutate: mutateGSC } = useGSCStatus(siteId)
+  const { data: bunnyStatus, isLoading: bunnyLoading, mutate: mutateBunny } = useBunnyStatus(siteId)
   const [showBunnySetup, setShowBunnySetup] = useState(false)
+
+  if (gscLoading || bunnyLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Spinner className="w-6 h-6 text-neutral-500" />
+      </div>
+    )
+  }
 
   const handleConnectGSC = async () => {
     try {
