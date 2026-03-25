@@ -11,7 +11,7 @@ export default function AccountProfileTab() {
         <p className="text-sm text-neutral-400">Manage your personal account settings.</p>
       </div>
 
-      <ProfileSettings activeTab="profile" borderless hideDangerZone />
+      <ProfileSettings activeTab="profile" borderless />
     </div>
   )
 }
