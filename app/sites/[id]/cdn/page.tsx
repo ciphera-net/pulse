@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { useParams } from 'next/navigation'
-import Link from 'next/link'
+import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import * as Flags from 'country-flag-icons/react/3x2'
 
 const DottedMap = dynamic(() => import('@/components/dashboard/DottedMap'), { ssr: false })
@@ -115,6 +115,8 @@ export default function CDNPage() {
   const [period, setPeriod] = useState('7')
   const [dateRange, setDateRange] = useState(() => getDateRange(7))
 
+  const { openUnifiedSettings } = useUnifiedSettings()
+
   // Data fetching
   const { data: bunnyStatus } = useBunnyStatus(siteId)
   const { data: dashboard } = useDashboard(siteId, dateRange.start, dateRange.end)
@@ -183,13 +185,13 @@ export default function CDNPage() {
           <p className="text-sm text-neutral-400 max-w-md mb-6">
             Monitor your CDN performance including bandwidth usage, cache hit rates, request volumes, and geographic distribution.
           </p>
-          <Link
-            href={`/sites/${siteId}/settings?tab=integrations`}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-brand-orange hover:bg-brand-orange/90 text-white text-sm font-medium transition-colors"
+          <button
+            onClick={() => openUnifiedSettings({ context: 'site', tab: 'integrations' })}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-brand-orange hover:bg-brand-orange/90 text-white text-sm font-medium transition-colors cursor-pointer"
           >
             Connect in Settings
             <ArrowSquareOut size={16} weight="bold" />
-          </Link>
+          </button>
         </div>
       </div>
     )

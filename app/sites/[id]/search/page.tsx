@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
-import Link from 'next/link'
+import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { Select, DatePicker } from '@ciphera-net/ui'
 import { getDateRange, formatDate, getThisWeekRange, getThisMonthRange } from '@/lib/utils/dateRanges'
 import { CaretDown, CaretUp, MagnifyingGlass, ArrowSquareOut } from '@phosphor-icons/react'
@@ -36,6 +36,7 @@ const PAGE_SIZE = 50
 export default function SearchConsolePage() {
   const params = useParams()
   const siteId = params.id as string
+  const { openUnifiedSettings } = useUnifiedSettings()
 
   // Date range
   const [period, setPeriod] = useState('28')
@@ -172,13 +173,13 @@ export default function SearchConsolePage() {
           <p className="text-sm text-neutral-400 max-w-md mb-6">
             See how your site performs in Google Search. View top queries, pages, click-through rates, and average position data.
           </p>
-          <Link
-            href={`/sites/${siteId}/settings?tab=integrations`}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-brand-orange hover:bg-brand-orange/90 text-white text-sm font-medium transition-colors"
+          <button
+            onClick={() => openUnifiedSettings({ context: 'site', tab: 'integrations' })}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-brand-orange hover:bg-brand-orange/90 text-white text-sm font-medium transition-colors cursor-pointer"
           >
             Connect in Settings
             <ArrowSquareOut size={16} weight="bold" />
-          </Link>
+          </button>
         </div>
       </div>
     )

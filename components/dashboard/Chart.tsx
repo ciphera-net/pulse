@@ -431,6 +431,7 @@ export default function Chart({
                 xDataKey="dateObj"
                 aspectRatio="2.5 / 1"
                 margin={{ top: 20, right: 20, bottom: 40, left: 50 }}
+                animationDuration={400}
               >
                 <VisxGrid horizontal vertical={false} stroke="var(--chart-grid)" strokeDasharray="4,4" />
                 <VisxArea

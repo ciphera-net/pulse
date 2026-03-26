@@ -1,32 +1,32 @@
 'use client'
 
 import { useState, useCallback, useEffect, useRef } from 'react'
+import dynamic from 'next/dynamic'
 import { AnimatePresence, motion } from 'framer-motion'
 import { X, GearSix, Buildings, User } from '@phosphor-icons/react'
-import { Button } from '@ciphera-net/ui'
+import { Button, Spinner } from '@ciphera-net/ui'
 import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { useAuth } from '@/lib/auth/context'
 import { useSite } from '@/lib/swr/dashboard'
 import { listSites, type Site } from '@/lib/api/sites'
 
-// Tab content components — Site
-import SiteGeneralTab from './tabs/SiteGeneralTab'
-import SiteGoalsTab from './tabs/SiteGoalsTab'
-import SiteVisibilityTab from './tabs/SiteVisibilityTab'
-import SitePrivacyTab from './tabs/SitePrivacyTab'
-import SiteBotSpamTab from './tabs/SiteBotSpamTab'
-import SiteReportsTab from './tabs/SiteReportsTab'
-import SiteIntegrationsTab from './tabs/SiteIntegrationsTab'
-// Tab content components — Workspace
-import WorkspaceGeneralTab from './tabs/WorkspaceGeneralTab'
-import WorkspaceBillingTab from './tabs/WorkspaceBillingTab'
-import WorkspaceMembersTab from './tabs/WorkspaceMembersTab'
-import WorkspaceNotificationsTab from './tabs/WorkspaceNotificationsTab'
-import WorkspaceAuditTab from './tabs/WorkspaceAuditTab'
-// Tab content components — Account
-import AccountProfileTab from './tabs/AccountProfileTab'
-import AccountSecurityTab from './tabs/AccountSecurityTab'
-import AccountDevicesTab from './tabs/AccountDevicesTab'
+// Lazy-load tab components — only loaded when the tab is first rendered
+const tabLoader = () => <div className="flex items-center justify-center py-12"><Spinner className="w-6 h-6 text-neutral-500" /></div>
+const SiteGeneralTab = dynamic(() => import('./tabs/SiteGeneralTab'), { loading: tabLoader })
+const SiteGoalsTab = dynamic(() => import('./tabs/SiteGoalsTab'), { loading: tabLoader })
+const SiteVisibilityTab = dynamic(() => import('./tabs/SiteVisibilityTab'), { loading: tabLoader })
+const SitePrivacyTab = dynamic(() => import('./tabs/SitePrivacyTab'), { loading: tabLoader })
+const SiteBotSpamTab = dynamic(() => import('./tabs/SiteBotSpamTab'), { loading: tabLoader })
+const SiteReportsTab = dynamic(() => import('./tabs/SiteReportsTab'), { loading: tabLoader })
+const SiteIntegrationsTab = dynamic(() => import('./tabs/SiteIntegrationsTab'), { loading: tabLoader })
+const WorkspaceGeneralTab = dynamic(() => import('./tabs/WorkspaceGeneralTab'), { loading: tabLoader })
+const WorkspaceBillingTab = dynamic(() => import('./tabs/WorkspaceBillingTab'), { loading: tabLoader })
+const WorkspaceMembersTab = dynamic(() => import('./tabs/WorkspaceMembersTab'), { loading: tabLoader })
+const WorkspaceNotificationsTab = dynamic(() => import('./tabs/WorkspaceNotificationsTab'), { loading: tabLoader })
+const WorkspaceAuditTab = dynamic(() => import('./tabs/WorkspaceAuditTab'), { loading: tabLoader })
+const AccountProfileTab = dynamic(() => import('./tabs/AccountProfileTab'), { loading: tabLoader })
+const AccountSecurityTab = dynamic(() => import('./tabs/AccountSecurityTab'), { loading: tabLoader })
+const AccountDevicesTab = dynamic(() => import('./tabs/AccountDevicesTab'), { loading: tabLoader })
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -72,46 +72,35 @@ function ContextSwitcher({
   onChange: (ctx: SettingsContext) => void
   activeSiteDomain: string | null
 }) {
+  const items: { id: SettingsContext; icon: React.ReactNode; label: string; visible: boolean }[] = [
+    { id: 'site', icon: <GearSix weight="bold" className="w-4 h-4" />, label: activeSiteDomain || '', visible: !!activeSiteDomain },
+    { id: 'workspace', icon: <Buildings weight="bold" className="w-4 h-4" />, label: 'Organization', visible: true },
+    { id: 'account', icon: <User weight="bold" className="w-4 h-4" />, label: 'Account', visible: true },
+  ]
+
   return (
     <div className="flex items-center gap-1 p-1 bg-neutral-800/50 rounded-xl">
-      {/* Site button — locked to current site, no dropdown */}
-      {activeSiteDomain && (
+      {items.filter(i => i.visible).map(item => (
         <button
-          onClick={() => onChange('site')}
-          className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-            active === 'site'
-              ? 'bg-neutral-700 text-white shadow-sm'
-              : 'text-neutral-400 hover:text-white'
+          key={item.id}
+          onClick={() => onChange(item.id)}
+          className={`relative flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 ${
+            active === item.id ? 'text-white' : 'text-neutral-400 hover:text-white'
           }`}
         >
-          <GearSix weight="bold" className="w-4 h-4" />
-          <span className="hidden sm:inline">{activeSiteDomain}</span>
+          {active === item.id && (
+            <motion.div
+              layoutId="context-switcher-bg"
+              className="absolute inset-0 bg-neutral-700 rounded-lg shadow-sm"
+              transition={{ type: 'spring', bounce: 0.15, duration: 0.35 }}
+            />
+          )}
+          <span className="relative z-10 flex items-center gap-2">
+            {item.icon}
+            <span className="hidden sm:inline">{item.label}</span>
+          </span>
         </button>
-      )}
-
-      <button
-        onClick={() => onChange('workspace')}
-        className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-          active === 'workspace'
-            ? 'bg-neutral-700 text-white shadow-sm'
-            : 'text-neutral-400 hover:text-white'
-        }`}
-      >
-        <Buildings weight="bold" className="w-4 h-4" />
-        <span className="hidden sm:inline">Organization</span>
-      </button>
-
-      <button
-        onClick={() => onChange('account')}
-        className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-          active === 'account'
-            ? 'bg-neutral-700 text-white shadow-sm'
-            : 'text-neutral-400 hover:text-white'
-        }`}
-      >
-        <User weight="bold" className="w-4 h-4" />
-        <span className="hidden sm:inline">Account</span>
-      </button>
+      ))}
     </div>
   )
 }
@@ -318,16 +307,20 @@ export default function UnifiedSettingsModal() {
       const match = window.location.pathname.match(/\/sites\/([a-f0-9-]+)/)
       if (match) {
         setActiveSiteId(match[1])
-        setContext('site')
+        // Only default to site context if no specific context was requested
+        if (!initTab?.context) setContext('site')
       } else {
         setActiveSiteId(null)
         if (!initTab?.context) setContext('workspace')
       }
     }
 
-    listSites().then(data => {
-      setSites(Array.isArray(data) ? data : [])
-    }).catch(() => {})
+    // Only fetch sites if we don't have them yet
+    if (sites.length === 0) {
+      listSites().then(data => {
+        setSites(Array.isArray(data) ? data : [])
+      }).catch(() => {})
+    }
   }, [isOpen, user?.org_id])
 
   // Global keyboard shortcuts: `,` toggles settings, Escape closes
@@ -393,9 +386,10 @@ export default function UnifiedSettingsModal() {
               ? 'opacity-0 pointer-events-none transition-opacity duration-150'
               : 'opacity-0 pointer-events-none invisible'
         }`}
+        onClick={handleBackdropClick}
       >
         <div
-          className="relative w-full max-w-3xl h-[85vh] bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/60 border border-white/[0.08] rounded-2xl shadow-xl shadow-black/20 flex flex-col overflow-hidden"
+          className="relative w-full max-w-4xl h-[90vh] bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/60 border border-white/[0.08] rounded-2xl shadow-xl shadow-black/20 flex flex-col overflow-hidden"
           onClick={e => e.stopPropagation()}
         >
           {/* Content animates in/out */}
@@ -435,18 +429,9 @@ export default function UnifiedSettingsModal() {
 
               {/* Content */}
               <div className="flex-1 overflow-y-auto overflow-x-hidden">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={`${context}-${activeTab}`}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.12 }}
-                    className="p-6"
-                  >
-                    <TabContent context={context} activeTab={activeTab} siteId={activeSiteId} onDirtyChange={handleDirtyChange} onRegisterSave={handleRegisterSave} />
-                  </motion.div>
-                </AnimatePresence>
+                <div key={`${context}-${activeTab}`} className="p-6">
+                  <TabContent context={context} activeTab={activeTab} siteId={activeSiteId} onDirtyChange={handleDirtyChange} onRegisterSave={handleRegisterSave} />
+                </div>
               </div>
 
               {/* Save bar */}
