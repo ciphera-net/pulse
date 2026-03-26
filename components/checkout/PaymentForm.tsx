@@ -162,7 +162,7 @@ export default function PaymentForm({ plan, interval, limit }: PaymentFormProps)
         {/* Cardholder name */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-neutral-300 mb-1.5">Cardholder name</label>
-          <div id="mollie-card-holder" className={`${mollieFieldBase} ${mollieReady ? 'opacity-100' : 'opacity-0'}`} />
+          <div id="mollie-card-holder" className={mollieFieldBase} style={{ visibility: mollieReady ? 'visible' : 'hidden' }} />
           {submitted && cardErrors.cardHolder && (
             <p className="mt-1 text-xs text-red-400">{cardErrors.cardHolder}</p>
           )}
@@ -171,7 +171,7 @@ export default function PaymentForm({ plan, interval, limit }: PaymentFormProps)
         {/* Card number */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-neutral-300 mb-1.5">Card number</label>
-          <div id="mollie-card-number" className={`${mollieFieldBase} ${mollieReady ? 'opacity-100' : 'opacity-0'}`} />
+          <div id="mollie-card-number" className={mollieFieldBase} style={{ visibility: mollieReady ? 'visible' : 'hidden' }} />
           {submitted && cardErrors.cardNumber && (
             <p className="mt-1 text-xs text-red-400">{cardErrors.cardNumber}</p>
           )}
@@ -181,14 +181,14 @@ export default function PaymentForm({ plan, interval, limit }: PaymentFormProps)
         <div className="mb-4 grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-neutral-300 mb-1.5">Expiry date</label>
-            <div id="mollie-card-expiry" className={`${mollieFieldBase} ${mollieReady ? 'opacity-100' : 'opacity-0'}`} />
+            <div id="mollie-card-expiry" className={mollieFieldBase} style={{ visibility: mollieReady ? 'visible' : 'hidden' }} />
             {submitted && cardErrors.expiryDate && (
               <p className="mt-1 text-xs text-red-400">{cardErrors.expiryDate}</p>
             )}
           </div>
           <div>
             <label className="block text-sm font-medium text-neutral-300 mb-1.5">CVC</label>
-            <div id="mollie-card-cvc" className={`${mollieFieldBase} ${mollieReady ? 'opacity-100' : 'opacity-0'}`} />
+            <div id="mollie-card-cvc" className={mollieFieldBase} style={{ visibility: mollieReady ? 'visible' : 'hidden' }} />
             {submitted && cardErrors.verificationCode && (
               <p className="mt-1 text-xs text-red-400">{cardErrors.verificationCode}</p>
             )}
