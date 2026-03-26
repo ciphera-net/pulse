@@ -18,7 +18,7 @@ interface PaymentFormProps {
 const inputClass =
   'w-full rounded-lg border border-neutral-700 bg-neutral-800/50 px-3 py-2.5 text-sm text-white placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-brand-orange focus:border-brand-orange transition-colors'
 const mollieFieldBase =
-  'w-full rounded-lg border border-neutral-700 bg-neutral-800/50 px-3 py-2.5 h-[42px] transition-all focus-within:ring-1 focus-within:ring-brand-orange focus-within:border-brand-orange'
+  'w-full rounded-lg border border-neutral-700 bg-neutral-800/50 px-3 py-3 h-[48px] transition-all focus-within:ring-1 focus-within:ring-brand-orange focus-within:border-brand-orange'
 
 export default function PaymentForm({ plan, interval, limit }: PaymentFormProps) {
   const router = useRouter()
