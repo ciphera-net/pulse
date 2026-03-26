@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Script from 'next/script'
 import { Lock, ShieldCheck } from '@phosphor-icons/react'
+import { Select } from '@ciphera-net/ui'
 import { COUNTRY_OPTIONS } from '@/lib/countries'
 import { initMollie, getMollie, MOLLIE_FIELD_STYLES, type MollieComponent } from '@/lib/mollie'
 import { createEmbeddedCheckout } from '@/lib/api/billing'
@@ -30,6 +31,7 @@ export default function PaymentForm({ plan, interval, limit }: PaymentFormProps)
   const [mollieError, setMollieError] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [cardErrors, setCardErrors] = useState<Record<string, string>>({})
+  const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set())
   const [submitting, setSubmitting] = useState(false)
 
   const componentsRef = useRef<Record<string, MollieComponent | null>>({
@@ -71,6 +73,9 @@ export default function PaymentForm({ plan, interval, limit }: PaymentFormProps)
           component.mount(el)
           component.addEventListener('change', (event: unknown) => {
             const e = event as { error?: string; touched?: boolean }
+            if (e.touched) {
+              setTouchedFields((prev) => new Set(prev).add(type))
+            }
             setCardErrors((prev) => {
               const next = { ...prev }
               if (e.error) next[type] = e.error
@@ -157,13 +162,8 @@ export default function PaymentForm({ plan, interval, limit }: PaymentFormProps)
         {/* Cardholder name */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-neutral-300 mb-1.5">Cardholder name</label>
-          <div className="relative">
-            <div id="mollie-card-holder" className={mollieFieldClass} />
-            {!mollieReady && (
-              <div className="absolute inset-0 animate-pulse bg-neutral-700/30 rounded-lg" />
-            )}
-          </div>
-          {cardErrors.cardHolder && (
+          <div id="mollie-card-holder" className={mollieFieldClass} />
+          {touchedFields.has('cardHolder') && cardErrors.cardHolder && (
             <p className="mt-1 text-xs text-red-400">{cardErrors.cardHolder}</p>
           )}
         </div>
@@ -171,13 +171,8 @@ export default function PaymentForm({ plan, interval, limit }: PaymentFormProps)
         {/* Card number */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-neutral-300 mb-1.5">Card number</label>
-          <div className="relative">
-            <div id="mollie-card-number" className={mollieFieldClass} />
-            {!mollieReady && (
-              <div className="absolute inset-0 animate-pulse bg-neutral-700/30 rounded-lg" />
-            )}
-          </div>
-          {cardErrors.cardNumber && (
+          <div id="mollie-card-number" className={mollieFieldClass} />
+          {touchedFields.has('cardNumber') && cardErrors.cardNumber && (
             <p className="mt-1 text-xs text-red-400">{cardErrors.cardNumber}</p>
           )}
         </div>
@@ -186,25 +181,15 @@ export default function PaymentForm({ plan, interval, limit }: PaymentFormProps)
         <div className="mb-4 grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-neutral-300 mb-1.5">Expiry date</label>
-            <div className="relative">
-              <div id="mollie-card-expiry" className={mollieFieldClass} />
-              {!mollieReady && (
-                <div className="absolute inset-0 animate-pulse bg-neutral-700/30 rounded-lg" />
-              )}
-            </div>
-            {cardErrors.expiryDate && (
+            <div id="mollie-card-expiry" className={mollieFieldClass} />
+            {touchedFields.has('expiryDate') && cardErrors.expiryDate && (
               <p className="mt-1 text-xs text-red-400">{cardErrors.expiryDate}</p>
             )}
           </div>
           <div>
             <label className="block text-sm font-medium text-neutral-300 mb-1.5">CVC</label>
-            <div className="relative">
-              <div id="mollie-card-cvc" className={mollieFieldClass} />
-              {!mollieReady && (
-                <div className="absolute inset-0 animate-pulse bg-neutral-700/30 rounded-lg" />
-              )}
-            </div>
-            {cardErrors.verificationCode && (
+            <div id="mollie-card-cvc" className={mollieFieldClass} />
+            {touchedFields.has('verificationCode') && cardErrors.verificationCode && (
               <p className="mt-1 text-xs text-red-400">{cardErrors.verificationCode}</p>
             )}
           </div>
@@ -213,18 +198,12 @@ export default function PaymentForm({ plan, interval, limit }: PaymentFormProps)
         {/* Country */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-neutral-300 mb-1.5">Country</label>
-          <select
+          <Select
             value={country}
-            onChange={(e) => setCountry(e.target.value)}
-            className={`${inputClass} appearance-none`}
-          >
-            <option value="">Select country</option>
-            {COUNTRY_OPTIONS.map((c) => (
-              <option key={c.value} value={c.value}>
-                {c.label}
-              </option>
-            ))}
-          </select>
+            onChange={setCountry}
+            variant="input"
+            options={[{ value: '', label: 'Select country' }, ...COUNTRY_OPTIONS.map((c) => ({ value: c.value, label: c.label }))]}
+          />
         </div>
 
         {/* VAT ID */}

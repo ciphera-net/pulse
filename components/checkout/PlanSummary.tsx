@@ -57,7 +57,7 @@ export default function PlanSummary({ plan, interval, limit }: PlanSummaryProps)
       {/* Plan header */}
       <div className="flex items-center gap-3 mb-6">
         <h2 className="text-xl font-semibold text-white capitalize">{plan}</h2>
-        <span className="rounded-full bg-orange-500/15 px-3 py-0.5 text-xs font-medium text-orange-400">
+        <span className="rounded-full bg-brand-orange/15 px-3 py-0.5 text-xs font-medium text-brand-orange">
           30-day trial
         </span>
       </div>
@@ -75,7 +75,7 @@ export default function PlanSummary({ plan, interval, limit }: PlanSummaryProps)
             <span className="text-sm text-neutral-400">
               &euro;{displayPrice.toFixed(2)} billed yearly
             </span>
-            <span className="rounded-full bg-orange-500/15 px-2.5 py-0.5 text-xs font-medium text-orange-400">
+            <span className="rounded-full bg-brand-orange/15 px-2.5 py-0.5 text-xs font-medium text-brand-orange">
               Save 1 month
             </span>
           </div>
@@ -115,7 +115,7 @@ export default function PlanSummary({ plan, interval, limit }: PlanSummaryProps)
       <ul className="space-y-3">
         {features.map((feature) => (
           <li key={feature} className="flex items-center gap-3 text-sm text-neutral-300">
-            <Check weight="bold" className="h-4 w-4 shrink-0 text-orange-400" />
+            <Check weight="bold" className="h-4 w-4 shrink-0 text-brand-orange" />
             {feature}
           </li>
         ))}
