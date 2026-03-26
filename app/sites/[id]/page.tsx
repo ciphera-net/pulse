@@ -25,7 +25,7 @@ import dynamic from 'next/dynamic'
 import { DashboardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import FilterBar from '@/components/dashboard/FilterBar'
 import AddFilterDropdown, { type FilterSuggestion, type FilterSuggestions } from '@/components/dashboard/AddFilterDropdown'
-import Chart from '@/components/dashboard/Chart'
+const Chart = dynamic(() => import('@/components/dashboard/Chart'), { ssr: false })
 import ContentStats from '@/components/dashboard/ContentStats'
 import TopReferrers from '@/components/dashboard/TopReferrers'
 import Locations from '@/components/dashboard/Locations'
