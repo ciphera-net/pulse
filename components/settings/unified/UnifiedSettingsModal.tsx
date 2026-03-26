@@ -440,17 +440,9 @@ export default function UnifiedSettingsModal() {
 
               {/* Content */}
               <div className="flex-1 overflow-y-auto overflow-x-hidden">
-                <AnimatePresence initial={false}>
-                  <motion.div
-                    key={`${context}-${activeTab}`}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.08 }}
-                    className="p-6"
-                  >
-                    <TabContent context={context} activeTab={activeTab} siteId={activeSiteId} onDirtyChange={handleDirtyChange} onRegisterSave={handleRegisterSave} />
-                  </motion.div>
-                </AnimatePresence>
+                <div key={`${context}-${activeTab}`} className="p-6">
+                  <TabContent context={context} activeTab={activeTab} siteId={activeSiteId} onDirtyChange={handleDirtyChange} onRegisterSave={handleRegisterSave} />
+                </div>
               </div>
 
               {/* Save bar */}
