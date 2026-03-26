@@ -77,22 +77,6 @@ export default function FeatureSlideshow() {
           </motion.div>
         </AnimatePresence>
 
-        {/* Dot indicators */}
-        <div className="mt-8 flex items-center gap-2">
-          {slides.map((_, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => setActiveIndex(i)}
-              className={`h-2 rounded-full transition-all duration-300 ${
-                i === activeIndex
-                  ? 'w-6 bg-brand-orange'
-                  : 'w-2 bg-white/25 hover:bg-white/40'
-              }`}
-              aria-label={`Go to slide ${i + 1}`}
-            />
-          ))}
-        </div>
       </div>
     </div>
   )
