@@ -16,7 +16,6 @@ import {
   type Organization,
   type OrganizationMember,
 } from '@/lib/api/organization'
-import { createCheckoutSession } from '@/lib/api/billing'
 import { createSite, type Site } from '@/lib/api/sites'
 import { setSessionAction } from '@/app/actions/auth'
 import { useAuth } from '@/lib/auth/context'
@@ -88,7 +87,6 @@ function WelcomeContent() {
   const [orgLoading, setOrgLoading] = useState(false)
   const [orgError, setOrgError] = useState('')
 
-  const [planLoading, setPlanLoading] = useState(false)
   const [planError, setPlanError] = useState('')
 
   const [siteName, setSiteName] = useState('')
@@ -98,13 +96,8 @@ function WelcomeContent() {
   const [createdSite, setCreatedSite] = useState<Site | null>(null)
   const [showVerificationModal, setShowVerificationModal] = useState(false)
 
-  const [redirectingCheckout, setRedirectingCheckout] = useState(false)
   const [hadPendingCheckout, setHadPendingCheckout] = useState<boolean | null>(null)
   const [dismissedPendingCheckout, setDismissedPendingCheckout] = useState(false)
-
-  const [welcomeCountry, setWelcomeCountry] = useState('')
-  const [welcomeVatId, setWelcomeVatId] = useState('')
-  const [showBillingFields, setShowBillingFields] = useState(false)
 
   const [organizations, setOrganizations] = useState<OrganizationMember[] | null>(null)
   const [orgsLoading, setOrgsLoading] = useState(false)
@@ -216,36 +209,14 @@ function WelcomeContent() {
       return
     }
 
-    // Show billing fields first if country not yet selected
-    if (!welcomeCountry) {
-      setShowBillingFields(true)
-      return
-    }
-
-    setPlanLoading(true)
-    setPlanError('')
+    trackWelcomePlanContinue()
     try {
-      trackWelcomePlanContinue()
-      const intent = JSON.parse(raw)
-      const { url } = await createCheckoutSession({
-        plan_id: intent.planId,
-        interval: intent.interval || 'month',
-        limit: intent.limit ?? 100000,
-        country: welcomeCountry,
-        vat_id: welcomeVatId || undefined,
-      })
+      const { planId, interval, limit } = JSON.parse(raw)
       localStorage.removeItem('pulse_pending_checkout')
-      if (url) {
-        setRedirectingCheckout(true)
-        window.location.href = url
-        return
-      }
-      throw new Error('No checkout URL returned')
-    } catch (err: unknown) {
-      setPlanError(getAuthErrorMessage(err) || (err as Error)?.message || 'Failed to start checkout')
+      router.push(`/checkout?plan=${planId}&interval=${interval || 'month'}&limit=${limit ?? 100000}`)
+    } catch {
+      setPlanError('Failed to parse checkout data')
       localStorage.removeItem('pulse_pending_checkout')
-    } finally {
-      setPlanLoading(false)
     }
   }
 
@@ -331,15 +302,6 @@ function WelcomeContent() {
 
   if (switchingOrgId) {
     return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Switching organization..." />
-  }
-
-  if (redirectingCheckout || (planLoading && step === 3)) {
-    return (
-      <LoadingOverlay
-        logoSrc="/pulse_icon_no_margins.png"
-        title={redirectingCheckout ? 'Taking you to checkout...' : 'Preparing your plan...'}
-      />
-    )
   }
 
   const cardClass =
@@ -581,52 +543,6 @@ function WelcomeContent() {
               {planError && (
                 <p className="text-sm text-red-500 dark:text-red-400 mb-4 text-center">{planError}</p>
               )}
-              {showBillingFields && showPendingCheckoutInStep3 && (
-                <div className="space-y-3 mb-5">
-                  <div>
-                    <label htmlFor="welcome-country" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                      Country <span className="text-red-400">*</span>
-                    </label>
-                    <select
-                      id="welcome-country"
-                      required
-                      value={welcomeCountry}
-                      onChange={(e) => setWelcomeCountry(e.target.value)}
-                      className="w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2.5 text-sm text-neutral-900 dark:text-white focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange transition-colors"
-                    >
-                      <option value="" disabled>Select a country</option>
-                      {[
-                        { code: 'BE', label: 'Belgium' }, { code: 'NL', label: 'Netherlands' }, { code: 'DE', label: 'Germany' },
-                        { code: 'FR', label: 'France' }, { code: 'AT', label: 'Austria' }, { code: 'IT', label: 'Italy' },
-                        { code: 'ES', label: 'Spain' }, { code: 'PT', label: 'Portugal' }, { code: 'IE', label: 'Ireland' },
-                        { code: 'LU', label: 'Luxembourg' }, { code: 'FI', label: 'Finland' }, { code: 'SE', label: 'Sweden' },
-                        { code: 'DK', label: 'Denmark' }, { code: 'PL', label: 'Poland' }, { code: 'CZ', label: 'Czech Republic' },
-                        { code: 'RO', label: 'Romania' }, { code: 'BG', label: 'Bulgaria' }, { code: 'HR', label: 'Croatia' },
-                        { code: 'SI', label: 'Slovenia' }, { code: 'SK', label: 'Slovakia' }, { code: 'HU', label: 'Hungary' },
-                        { code: 'LT', label: 'Lithuania' }, { code: 'LV', label: 'Latvia' }, { code: 'EE', label: 'Estonia' },
-                        { code: 'MT', label: 'Malta' }, { code: 'CY', label: 'Cyprus' }, { code: 'GR', label: 'Greece' },
-                        { code: 'US', label: 'United States' }, { code: 'GB', label: 'United Kingdom' },
-                        { code: 'CH', label: 'Switzerland' }, { code: 'NO', label: 'Norway' },
-                        { code: 'CA', label: 'Canada' }, { code: 'AU', label: 'Australia' }, { code: 'OTHER', label: 'Other' },
-                      ].map((c) => (
-                        <option key={c.code} value={c.code}>{c.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label htmlFor="welcome-vat" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                      VAT ID <span className="text-neutral-500">(optional)</span>
-                    </label>
-                    <Input
-                      id="welcome-vat"
-                      type="text"
-                      value={welcomeVatId}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setWelcomeVatId(e.target.value)}
-                      placeholder="e.g. BE0123456789"
-                    />
-                  </div>
-                </div>
-              )}
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 {showPendingCheckoutInStep3 ? (
                   <>
@@ -634,15 +550,13 @@ function WelcomeContent() {
                       variant="primary"
                       className="w-full sm:w-auto"
                       onClick={handlePlanContinue}
-                      disabled={planLoading || (showBillingFields && !welcomeCountry)}
                     >
-                      {showBillingFields ? 'Continue to payment' : 'Continue to checkout'}
+                      Continue to checkout
                     </Button>
                     <Button
                       variant="secondary"
                       className="w-full sm:w-auto"
                       onClick={handlePlanSkip}
-                      disabled={planLoading}
                     >
                       Stay on free plan
                     </Button>
