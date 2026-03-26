@@ -180,8 +180,8 @@ function CheckoutContent() {
 
       {/* Right — Payment (scrollable) */}
       <div className="w-full lg:w-1/2 flex flex-col h-full overflow-y-auto">
-        {/* Header */}
-        <div className="px-6 py-5">
+        {/* Logo on mobile only (desktop logo is on the left panel) */}
+        <div className="px-6 py-5 lg:hidden">
           <Link href="/pricing" className="flex items-center gap-2 w-fit hover:opacity-80 transition-opacity">
             <Image
               src={pulseIcon}
