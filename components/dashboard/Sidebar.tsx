@@ -379,12 +379,13 @@ interface SidebarContentProps {
   orgs: OrganizationMember[]
   onSwitchOrganization: (orgId: string | null) => Promise<void>
   openSettings: () => void
+  openOrgSettings: () => void
 }
 
 function SidebarContent({
   isMobile, collapsed, siteId, sites, canEdit, pendingHref,
   onNavigate, onMobileClose, onExpand, onCollapse, onToggle,
-  wasCollapsed, pickerOpenCallbackRef, auth, orgs, onSwitchOrganization, openSettings,
+  wasCollapsed, pickerOpenCallbackRef, auth, orgs, onSwitchOrganization, openSettings, openOrgSettings,
 }: SidebarContentProps) {
   const router = useRouter()
   const c = isMobile ? false : collapsed
@@ -464,6 +465,7 @@ function SidebarContent({
               onCreateOrganization={() => router.push('/onboarding')}
               allowPersonalOrganization={false}
               onOpenSettings={openSettings}
+              onOpenOrgSettings={openOrgSettings}
               compact
               anchor="right"
             >
@@ -565,6 +567,7 @@ export default function Sidebar({
           orgs={orgs}
           onSwitchOrganization={handleSwitchOrganization}
           openSettings={() => openUnifiedSettings({ context: 'account', tab: 'profile' })}
+          openOrgSettings={() => openUnifiedSettings({ context: 'workspace', tab: 'general' })}
         />
       </aside>
 
@@ -608,6 +611,7 @@ export default function Sidebar({
               orgs={orgs}
               onSwitchOrganization={handleSwitchOrganization}
               openSettings={() => openUnifiedSettings({ context: 'account', tab: 'profile' })}
+              openOrgSettings={() => openUnifiedSettings({ context: 'workspace', tab: 'general' })}
             />
           </aside>
         </>
