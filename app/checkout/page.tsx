@@ -196,7 +196,7 @@ function CheckoutContent() {
         </div>
 
         {/* Main content */}
-        <div className="flex flex-1 flex-col px-4 pb-12 pt-2 sm:px-6 lg:px-10">
+        <div className="flex flex-1 flex-col px-4 pb-12 pt-6 lg:pt-10 sm:px-6 lg:px-10">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
