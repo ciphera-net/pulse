@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
+import pulseIcon from '@/public/pulse_icon_no_margins.png'
 import { AnimatePresence, motion } from 'framer-motion'
 import { PulseMockup } from '@/components/marketing/mockups/pulse-mockup'
 import { PagesCard, ReferrersCard, LocationsCard, TechnologyCard, PeakHoursCard } from '@/components/marketing/mockups/pulse-features-carousel'
@@ -36,7 +38,7 @@ export default function FeatureSlideshow() {
   }, [])
 
   useEffect(() => {
-    const timer = setInterval(advance, 5000)
+    const timer = setInterval(advance, 8000)
     return () => clearInterval(timer)
   }, [advance])
 
@@ -56,6 +58,21 @@ export default function FeatureSlideshow() {
 
       {/* Dark overlay */}
       <div className="absolute inset-0 bg-black/40" />
+
+      {/* Logo */}
+      <div className="absolute top-0 left-0 z-20 px-6 py-5">
+        <Link href="/pricing" className="flex items-center gap-2 w-fit hover:opacity-80 transition-opacity">
+          <Image
+            src={pulseIcon}
+            alt="Pulse"
+            width={36}
+            height={36}
+            unoptimized
+            className="object-contain w-8 h-8"
+          />
+          <span className="text-xl font-bold text-white tracking-tight">Pulse</span>
+        </Link>
+      </div>
 
       {/* Content */}
       <div className="relative z-10 flex h-full flex-col items-center justify-center px-10 xl:px-14 py-12 overflow-hidden">
