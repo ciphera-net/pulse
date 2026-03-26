@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Button, toast, Spinner } from '@ciphera-net/ui'
+import { Button, toast, Spinner, Modal } from '@ciphera-net/ui'
 import { CreditCard, ArrowSquareOut } from '@phosphor-icons/react'
 import { useSubscription } from '@/lib/swr/dashboard'
 import { updatePaymentMethod, cancelSubscription, resumeSubscription, getOrders, type Order } from '@/lib/api/billing'
@@ -12,6 +12,7 @@ import { getAuthErrorMessage } from '@ciphera-net/ui'
 export default function WorkspaceBillingTab() {
   const { data: subscription, isLoading, mutate } = useSubscription()
   const [cancelling, setCancelling] = useState(false)
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [orders, setOrders] = useState<Order[]>([])
 
   useEffect(() => {
@@ -32,7 +33,6 @@ export default function WorkspaceBillingTab() {
   }
 
   const handleCancel = async () => {
-    if (!confirm('Are you sure you want to cancel your subscription?')) return
     setCancelling(true)
     try {
       await cancelSubscription()
@@ -42,6 +42,7 @@ export default function WorkspaceBillingTab() {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to cancel subscription')
     } finally {
       setCancelling(false)
+      setShowCancelConfirm(false)
     }
   }
 
@@ -155,12 +156,11 @@ export default function WorkspaceBillingTab() {
 
         {isActive && !subscription.cancel_at_period_end && (
           <Button
-            onClick={handleCancel}
+            onClick={() => setShowCancelConfirm(true)}
             variant="secondary"
             className="text-sm text-neutral-400 hover:text-red-400"
-            disabled={cancelling}
           >
-            {cancelling ? 'Cancelling...' : 'Cancel subscription'}
+            Cancel subscription
           </Button>
         )}
 
@@ -170,6 +170,31 @@ export default function WorkspaceBillingTab() {
           </Button>
         )}
       </div>
+
+      {/* Cancel confirmation */}
+      <Modal isOpen={showCancelConfirm} onClose={() => setShowCancelConfirm(false)} title="Cancel subscription" className="max-w-md">
+        <p className="text-sm text-neutral-400 mb-1">
+          Are you sure you want to cancel your subscription?
+        </p>
+        {subscription.current_period_end && (
+          <p className="text-sm text-neutral-500 mb-5">
+            Your plan will remain active until {formatDateLong(new Date(subscription.current_period_end))}.
+          </p>
+        )}
+        <div className="flex justify-end gap-3">
+          <Button variant="secondary" className="text-sm" onClick={() => setShowCancelConfirm(false)} disabled={cancelling}>
+            Keep plan
+          </Button>
+          <Button
+            variant="primary"
+            className="text-sm bg-red-600 hover:bg-red-700 border-red-600 hover:border-red-700"
+            onClick={handleCancel}
+            disabled={cancelling}
+          >
+            {cancelling ? 'Cancelling...' : 'Yes, cancel'}
+          </Button>
+        </div>
+      </Modal>
 
       {/* Recent Invoices */}
       {orders.length > 0 && (
