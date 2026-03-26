@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import { AnimatePresence, motion } from 'framer-motion'
 import { PulseMockup } from '@/components/marketing/mockups/pulse-mockup'
-import { PulseFeaturesCarousel } from '@/components/marketing/mockups/pulse-features-carousel'
+import { PagesCard, ReferrersCard, LocationsCard, TechnologyCard, PeakHoursCard } from '@/components/marketing/mockups/pulse-features-carousel'
 import { FunnelMockup } from '@/components/marketing/mockups/funnel-mockup'
 import { EmailReportMockup } from '@/components/marketing/mockups/email-report-mockup'
 
@@ -13,9 +13,21 @@ interface Slide {
   mockup: React.ReactNode
 }
 
+function FeatureCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border border-white/[0.08] bg-neutral-900/80 px-6 py-5 shadow-2xl">
+      {children}
+    </div>
+  )
+}
+
 const slides: Slide[] = [
   { headline: 'Your traffic, at a glance.', mockup: <PulseMockup /> },
-  { headline: 'Everything you need to know about your visitors.', mockup: <PulseFeaturesCarousel /> },
+  { headline: 'See which pages perform best.', mockup: <FeatureCard><PagesCard /></FeatureCard> },
+  { headline: 'Know where your visitors come from.', mockup: <FeatureCard><ReferrersCard /></FeatureCard> },
+  { headline: 'Visitors from around the world.', mockup: <FeatureCard><LocationsCard /></FeatureCard> },
+  { headline: 'Understand your audience's tech stack.', mockup: <FeatureCard><TechnologyCard /></FeatureCard> },
+  { headline: 'Find your peak traffic hours.', mockup: <FeatureCard><PeakHoursCard /></FeatureCard> },
   { headline: 'See where visitors drop off.', mockup: <FunnelMockup /> },
   { headline: 'Reports delivered to your inbox.', mockup: <EmailReportMockup /> },
 ]
