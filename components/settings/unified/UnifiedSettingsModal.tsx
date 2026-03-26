@@ -72,46 +72,35 @@ function ContextSwitcher({
   onChange: (ctx: SettingsContext) => void
   activeSiteDomain: string | null
 }) {
+  const items: { id: SettingsContext; icon: React.ReactNode; label: string; visible: boolean }[] = [
+    { id: 'site', icon: <GearSix weight="bold" className="w-4 h-4" />, label: activeSiteDomain || '', visible: !!activeSiteDomain },
+    { id: 'workspace', icon: <Buildings weight="bold" className="w-4 h-4" />, label: 'Organization', visible: true },
+    { id: 'account', icon: <User weight="bold" className="w-4 h-4" />, label: 'Account', visible: true },
+  ]
+
   return (
     <div className="flex items-center gap-1 p-1 bg-neutral-800/50 rounded-xl">
-      {/* Site button — locked to current site, no dropdown */}
-      {activeSiteDomain && (
+      {items.filter(i => i.visible).map(item => (
         <button
-          onClick={() => onChange('site')}
-          className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-            active === 'site'
-              ? 'bg-neutral-700 text-white shadow-sm'
-              : 'text-neutral-400 hover:text-white'
+          key={item.id}
+          onClick={() => onChange(item.id)}
+          className={`relative flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 ${
+            active === item.id ? 'text-white' : 'text-neutral-400 hover:text-white'
           }`}
         >
-          <GearSix weight="bold" className="w-4 h-4" />
-          <span className="hidden sm:inline">{activeSiteDomain}</span>
+          {active === item.id && (
+            <motion.div
+              layoutId="context-switcher-bg"
+              className="absolute inset-0 bg-neutral-700 rounded-lg shadow-sm"
+              transition={{ type: 'spring', bounce: 0.15, duration: 0.35 }}
+            />
+          )}
+          <span className="relative z-10 flex items-center gap-2">
+            {item.icon}
+            <span className="hidden sm:inline">{item.label}</span>
+          </span>
         </button>
-      )}
-
-      <button
-        onClick={() => onChange('workspace')}
-        className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-          active === 'workspace'
-            ? 'bg-neutral-700 text-white shadow-sm'
-            : 'text-neutral-400 hover:text-white'
-        }`}
-      >
-        <Buildings weight="bold" className="w-4 h-4" />
-        <span className="hidden sm:inline">Organization</span>
-      </button>
-
-      <button
-        onClick={() => onChange('account')}
-        className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-          active === 'account'
-            ? 'bg-neutral-700 text-white shadow-sm'
-            : 'text-neutral-400 hover:text-white'
-        }`}
-      >
-        <User weight="bold" className="w-4 h-4" />
-        <span className="hidden sm:inline">Account</span>
-      </button>
+      ))}
     </div>
   )
 }
