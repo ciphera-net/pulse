@@ -6,6 +6,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { listNotifications, markNotificationRead, markAllNotificationsRead, type Notification } from '@/lib/api/notifications'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
@@ -173,7 +174,7 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
         aria-controls={open ? 'notification-dropdown' : undefined}
         className={isSidebar
           ? 'relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 w-full overflow-hidden transition-colors'
-          : 'relative p-2 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-lg hover:bg-neutral-100/50 dark:hover:bg-neutral-800/50 transition-colors'
+          : 'relative p-2 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-lg hover:bg-neutral-100/50 dark:hover:bg-white/[0.06] transition-colors'
         }
         aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
       >
@@ -198,20 +199,26 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
       </button>
 
       {(() => {
-        const panel = open ? (
-          <div
+        const panel = (
+          <AnimatePresence>
+            {open && (
+          <motion.div
             ref={panelRef}
             id="notification-dropdown"
             role="dialog"
             aria-label="Notifications"
-            className={`bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl overflow-hidden z-[100] ${
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            transition={{ duration: 0.15 }}
+            className={`bg-white dark:bg-neutral-900/65 border border-neutral-200 dark:border-white/[0.08] rounded-xl shadow-xl dark:shadow-black/20 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:dark:bg-neutral-900/60 overflow-hidden z-[100] ${
               anchor === 'right'
                 ? `fixed w-96 ${fixedPos?.bottom !== undefined ? 'origin-bottom-left' : 'origin-top-left'}`
                 : 'fixed left-4 right-4 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96'
             }`}
             style={anchor === 'right' && fixedPos ? { left: fixedPos.left, top: fixedPos.top, bottom: fixedPos.bottom } : undefined}
           >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200 dark:border-neutral-700">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200 dark:border-white/[0.06]">
               <h3 className="font-semibold text-white">Notifications</h3>
               {unreadCount > 0 && (
                 <button
@@ -248,14 +255,14 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
                 </div>
               )}
               {!loading && !error && (notifications?.length ?? 0) > 0 && (
-                <ul className="divide-y divide-neutral-200 dark:divide-neutral-700">
+                <ul className="divide-y divide-neutral-200 dark:divide-white/[0.06]">
                   {(notifications ?? []).map((n) => (
                     <li key={n.id}>
                       {n.link_url ? (
                         <Link
                           href={n.link_url}
                           onClick={() => handleNotificationClick(n)}
-                          className={`block px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors ${!n.read ? 'bg-brand-orange/5 dark:bg-brand-orange/10' : ''}`}
+                          className={`block px-4 py-3 hover:bg-neutral-50 dark:hover:bg-white/[0.06] transition-colors ${!n.read ? 'bg-brand-orange/5 dark:bg-brand-orange/10' : ''}`}
                         >
                           <div className="flex gap-3">
                             {getTypeIcon(n.type)}
@@ -278,7 +285,7 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
                         <button
                           type="button"
                           onClick={() => handleNotificationClick(n)}
-                          className={`w-full text-left block px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 cursor-pointer ${!n.read ? 'bg-brand-orange/5 dark:bg-brand-orange/10' : ''}`}
+                          className={`w-full text-left block px-4 py-3 hover:bg-neutral-50 dark:hover:bg-white/[0.06] cursor-pointer ${!n.read ? 'bg-brand-orange/5 dark:bg-brand-orange/10' : ''}`}
                         >
                           <div className="flex gap-3">
                             {getTypeIcon(n.type)}
@@ -304,7 +311,7 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
               )}
             </div>
 
-            <div className="border-t border-neutral-200 dark:border-neutral-700 px-4 py-3 flex items-center justify-between gap-2">
+            <div className="border-t border-neutral-200 dark:border-white/[0.06] px-4 py-3 flex items-center justify-between gap-2">
               <Link
                 href="/notifications"
                 onClick={() => setOpen(false)}
@@ -321,10 +328,12 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
                 Manage settings
               </Link>
             </div>
-          </div>
-        ) : null
+          </motion.div>
+            )}
+          </AnimatePresence>
+        )
 
-        return anchor === 'right' && panel && typeof document !== 'undefined'
+        return anchor === 'right' && typeof document !== 'undefined'
           ? createPortal(panel, document.body)
           : panel
       })()}

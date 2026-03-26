@@ -3,28 +3,11 @@
 import { formatNumber } from '@ciphera-net/ui'
 import { Files } from '@phosphor-icons/react'
 import type { FrustrationByPage } from '@/lib/api/stats'
+import { TableSkeleton } from '@/components/skeletons'
 
 interface FrustrationByPageTableProps {
   pages: FrustrationByPage[]
   loading: boolean
-}
-
-function SkeletonRows() {
-  return (
-    <div className="space-y-2">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className="animate-pulse flex items-center justify-between h-9 px-2">
-          <div className="h-4 w-40 bg-neutral-200 dark:bg-neutral-700 rounded" />
-          <div className="flex gap-6">
-            <div className="h-4 w-10 bg-neutral-200 dark:bg-neutral-700 rounded" />
-            <div className="h-4 w-10 bg-neutral-200 dark:bg-neutral-700 rounded" />
-            <div className="h-4 w-10 bg-neutral-200 dark:bg-neutral-700 rounded" />
-            <div className="h-4 w-10 bg-neutral-200 dark:bg-neutral-700 rounded" />
-          </div>
-        </div>
-      ))}
-    </div>
-  )
 }
 
 export default function FrustrationByPageTable({ pages, loading }: FrustrationByPageTableProps) {
@@ -43,7 +26,7 @@ export default function FrustrationByPageTable({ pages, loading }: FrustrationBy
       </p>
 
       {loading ? (
-        <SkeletonRows />
+        <TableSkeleton rows={5} cols={5} />
       ) : hasData ? (
         <div className="overflow-x-auto -mx-6 px-6">
           {/* Header */}

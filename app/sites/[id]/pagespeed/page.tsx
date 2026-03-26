@@ -235,10 +235,10 @@ export default function PageSpeedPage() {
   // * Disabled state — show empty state with enable toggle
   if (!enabled) {
     return (
-      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-white mb-1">
+          <h1 className="text-lg font-semibold text-neutral-200 mb-1">
             PageSpeed
           </h1>
           <p className="text-sm text-neutral-400">
@@ -357,11 +357,11 @@ export default function PageSpeedPage() {
 
   // * Enabled state — show full PageSpeed dashboard
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
       {/* Header */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white mb-1">
+          <h1 className="text-lg font-semibold text-neutral-200 mb-1">
             PageSpeed
           </h1>
           <p className="text-sm text-neutral-400">
@@ -868,34 +868,66 @@ function AuditItem({ item }: { item: Record<string, any> }) {
 // * Skeleton loading state
 function PageSpeedSkeleton() {
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8 space-y-6">
-      <div className="animate-pulse space-y-2 mb-8">
-        <div className="h-8 w-48 bg-neutral-200 dark:bg-neutral-700 rounded" />
-        <div className="h-4 w-72 bg-neutral-200 dark:bg-neutral-700 rounded" />
-      </div>
-      {/* Hero skeleton */}
-      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 sm:p-8 animate-pulse">
-        <div className="flex items-center gap-8">
-          <div className="w-40 h-40 rounded-full bg-neutral-200 dark:bg-neutral-700 flex-shrink-0" />
-          <div className="flex-1 space-y-3">
-            <div className="h-5 w-32 bg-neutral-200 dark:bg-neutral-700 rounded" />
-            <div className="h-5 w-36 bg-neutral-200 dark:bg-neutral-700 rounded" />
-            <div className="h-5 w-24 bg-neutral-200 dark:bg-neutral-700 rounded" />
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 space-y-6 animate-pulse">
+      {/* Header — title + subtitle + toggle buttons */}
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="space-y-2">
+          <div className="h-8 w-36 bg-neutral-700 rounded" />
+          <div className="h-4 w-72 bg-neutral-700 rounded" />
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex gap-1">
+            <div className="h-8 w-16 bg-neutral-700 rounded" />
+            <div className="h-8 w-20 bg-neutral-700 rounded" />
           </div>
-          <div className="w-48 h-36 bg-neutral-200 dark:bg-neutral-700 rounded-lg flex-shrink-0 hidden md:block" />
+          <div className="h-9 w-24 bg-neutral-700 rounded-lg" />
         </div>
       </div>
-      {/* Metrics skeleton */}
-      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 sm:p-8 animate-pulse">
-        <div className="h-3 w-16 bg-neutral-200 dark:bg-neutral-700 rounded mb-5" />
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
+
+      {/* Score overview — 4 gauge circles + screenshot */}
+      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 sm:p-8">
+        <div className="flex flex-col lg:flex-row items-center gap-8">
+          <div className="flex-1 flex items-center justify-center gap-6 sm:gap-8 flex-wrap">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="flex flex-col items-center gap-2">
+                <div className="w-[90px] h-[90px] rounded-full border-[6px] border-neutral-700 bg-transparent" />
+                <div className="h-3 w-16 bg-neutral-700 rounded" />
+              </div>
+            ))}
+          </div>
+          <div className="w-48 h-44 bg-neutral-700 rounded-lg flex-shrink-0 hidden md:block" />
+        </div>
+        {/* Legend bar */}
+        <div className="flex items-center gap-4 mt-6 pt-4 border-t border-neutral-800">
+          <div className="h-3 w-32 bg-neutral-700 rounded" />
+          <div className="ml-auto flex items-center gap-3">
+            <div className="h-2 w-10 bg-neutral-700 rounded" />
+            <div className="h-2 w-10 bg-neutral-700 rounded" />
+            <div className="h-2 w-10 bg-neutral-700 rounded" />
+          </div>
+        </div>
+      </div>
+
+      {/* Metrics card — 6 metrics in 3-col grid */}
+      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 sm:p-8">
+        <div className="h-3 w-16 bg-neutral-700 rounded mb-5" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="space-y-2">
-              <div className="h-3 w-32 bg-neutral-200 dark:bg-neutral-700 rounded" />
-              <div className="h-7 w-20 bg-neutral-200 dark:bg-neutral-700 rounded" />
+            <div key={i} className="flex items-start gap-3">
+              <div className="mt-1.5 w-2.5 h-2.5 rounded-full bg-neutral-700 flex-shrink-0" />
+              <div className="space-y-2">
+                <div className="h-3 w-32 bg-neutral-700 rounded" />
+                <div className="h-7 w-20 bg-neutral-700 rounded" />
+              </div>
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Score trend chart placeholder */}
+      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 sm:p-8">
+        <div className="h-3 w-40 bg-neutral-700 rounded mb-5" />
+        <div className="h-48 w-full bg-neutral-800 rounded-lg" />
       </div>
     </div>
   )

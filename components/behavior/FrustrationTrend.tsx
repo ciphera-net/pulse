@@ -8,24 +8,11 @@ import {
   type ChartConfig,
 } from '@/components/charts'
 import type { FrustrationSummary } from '@/lib/api/stats'
+import { WidgetSkeleton } from '@/components/skeletons'
 
 interface FrustrationTrendProps {
   summary: FrustrationSummary | null
   loading: boolean
-}
-
-function SkeletonCard() {
-  return (
-    <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
-      <div className="animate-pulse space-y-3 mb-4">
-        <div className="h-5 w-36 bg-neutral-200 dark:bg-neutral-700 rounded" />
-        <div className="h-4 w-48 bg-neutral-200 dark:bg-neutral-700 rounded" />
-      </div>
-      <div className="flex-1 min-h-[270px] animate-pulse flex items-center justify-center">
-        <div className="w-[200px] h-[200px] rounded-full bg-neutral-200 dark:bg-neutral-700" />
-      </div>
-    </div>
-  )
 }
 
 const LABELS: Record<string, string> = {
@@ -70,7 +57,7 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<
 }
 
 export default function FrustrationTrend({ summary, loading }: FrustrationTrendProps) {
-  if (loading || !summary) return <SkeletonCard />
+  if (loading || !summary) return <WidgetSkeleton />
 
   const hasData = summary.rage_clicks > 0 || summary.dead_clicks > 0 ||
     summary.prev_rage_clicks > 0 || summary.prev_dead_clicks > 0
