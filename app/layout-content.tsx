@@ -15,7 +15,6 @@ import { getUserOrganizations, switchContext, type OrganizationMember } from '@/
 import { setSessionAction } from '@/app/actions/auth'
 import { LoadingOverlay } from '@ciphera-net/ui'
 import { useRouter } from 'next/navigation'
-import { SettingsModalProvider } from '@/lib/settings-modal-context'
 import { UnifiedSettingsProvider, useUnifiedSettings } from '@/lib/unified-settings-context'
 import UnifiedSettingsModal from '@/components/settings/unified/UnifiedSettingsModal'
 
@@ -164,10 +163,8 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
 
 export default function LayoutContent({ children }: { children: React.ReactNode }) {
   return (
-    <SettingsModalProvider>
-      <UnifiedSettingsProvider>
-        <LayoutInner>{children}</LayoutInner>
-      </UnifiedSettingsProvider>
-    </SettingsModalProvider>
+    <UnifiedSettingsProvider>
+      <LayoutInner>{children}</LayoutInner>
+    </UnifiedSettingsProvider>
   )
 }
