@@ -50,7 +50,7 @@ export default function FeatureSlideshow() {
       <div className="absolute inset-0 bg-black/40" />
 
       {/* Content */}
-      <div className="relative z-10 flex h-full flex-col justify-center px-10 xl:px-14 py-12">
+      <div className="relative z-10 flex h-full flex-col items-center justify-center px-10 xl:px-14 py-12 overflow-hidden">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeIndex}
@@ -58,27 +58,24 @@ export default function FeatureSlideshow() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.45 }}
-            className="flex flex-col gap-8"
+            className="flex flex-col items-center gap-6 w-full max-w-lg"
           >
-            {/* Headline only */}
-            <h2 className="text-3xl xl:text-4xl font-bold text-white leading-tight">
+            {/* Headline — centered */}
+            <h2 className="text-3xl xl:text-4xl font-bold text-white leading-tight text-center">
               {slide.headline}
             </h2>
 
-            {/* Mockup */}
-            <div className="relative">
+            {/* Mockup — constrained */}
+            <div className="relative w-full">
               {/* Orange glow */}
               <div className="absolute -inset-8 rounded-3xl bg-brand-orange/8 blur-3xl pointer-events-none" />
 
-              <div className="relative rounded-2xl overflow-hidden max-h-[50vh]">
-                <div className="scale-[0.85] origin-top">
-                  {slide.mockup}
-                </div>
+              <div className="relative rounded-2xl overflow-hidden" style={{ maxHeight: '55vh' }}>
+                {slide.mockup}
               </div>
             </div>
           </motion.div>
         </AnimatePresence>
-
       </div>
     </div>
   )
