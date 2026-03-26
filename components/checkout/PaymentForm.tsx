@@ -60,7 +60,7 @@ export default function PaymentForm({ plan, interval, limit }: PaymentFormProps)
         ]
 
         for (const { type, selector } of fields) {
-          const el = document.querySelector(selector)
+          const el = document.querySelector(selector) as HTMLElement | null
           if (!el) {
             setMollieError(true)
             return
