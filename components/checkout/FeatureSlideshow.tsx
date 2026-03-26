@@ -70,8 +70,10 @@ export default function FeatureSlideshow() {
               {/* Orange glow */}
               <div className="absolute -inset-8 rounded-3xl bg-brand-orange/8 blur-3xl pointer-events-none" />
 
-              <div className="relative rounded-2xl border border-white/[0.08] overflow-hidden">
-                {slide.mockup}
+              <div className="relative rounded-2xl overflow-hidden max-h-[50vh]">
+                <div className="scale-[0.85] origin-top">
+                  {slide.mockup}
+                </div>
               </div>
             </div>
           </motion.div>
