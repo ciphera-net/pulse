@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { motion } from 'framer-motion'
 import { Check } from '@phosphor-icons/react'
 import {
   TRAFFIC_TIERS,
@@ -83,29 +84,26 @@ export default function PlanSummary({ plan, interval, limit }: PlanSummaryProps)
       </div>
 
       {/* Interval toggle */}
-      <div className="mb-6 flex rounded-lg bg-neutral-800/60 p-1">
-        <button
-          type="button"
-          onClick={() => handleIntervalToggle('month')}
-          className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-            currentInterval === 'month'
-              ? 'bg-neutral-700 text-white shadow-sm'
-              : 'text-neutral-400 hover:text-neutral-200'
-          }`}
-        >
-          Monthly
-        </button>
-        <button
-          type="button"
-          onClick={() => handleIntervalToggle('year')}
-          className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-            currentInterval === 'year'
-              ? 'bg-neutral-700 text-white shadow-sm'
-              : 'text-neutral-400 hover:text-neutral-200'
-          }`}
-        >
-          Yearly
-        </button>
+      <div className="mb-6 flex items-center gap-1 p-1 bg-neutral-800/50 rounded-xl">
+        {(['month', 'year'] as const).map((iv) => (
+          <button
+            key={iv}
+            type="button"
+            onClick={() => handleIntervalToggle(iv)}
+            className={`relative flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200 ${
+              currentInterval === iv ? 'text-white' : 'text-neutral-400 hover:text-white'
+            }`}
+          >
+            {currentInterval === iv && (
+              <motion.div
+                layoutId="checkout-interval-bg"
+                className="absolute inset-0 bg-neutral-700 rounded-lg shadow-sm"
+                transition={{ type: 'spring', bounce: 0.15, duration: 0.35 }}
+              />
+            )}
+            <span className="relative z-10">{iv === 'month' ? 'Monthly' : 'Yearly'}</span>
+          </button>
+        ))}
       </div>
 
       {/* Divider */}
