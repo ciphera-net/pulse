@@ -8,6 +8,7 @@ import { Button, CheckCircleIcon } from '@ciphera-net/ui'
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
 import { toast } from '@ciphera-net/ui'
+import { COUNTRY_OPTIONS } from '@/lib/countries'
 import { createCheckoutSession } from '@/lib/api/billing'
 
 // 1. Define Plans with IDs and Site Limits
@@ -102,40 +103,8 @@ const TRAFFIC_TIERS = [
   },
 ]
 
-const COUNTRY_OPTIONS = [
-  { code: 'BE', label: 'Belgium' },
-  { code: 'NL', label: 'Netherlands' },
-  { code: 'DE', label: 'Germany' },
-  { code: 'FR', label: 'France' },
-  { code: 'AT', label: 'Austria' },
-  { code: 'IT', label: 'Italy' },
-  { code: 'ES', label: 'Spain' },
-  { code: 'PT', label: 'Portugal' },
-  { code: 'IE', label: 'Ireland' },
-  { code: 'LU', label: 'Luxembourg' },
-  { code: 'FI', label: 'Finland' },
-  { code: 'SE', label: 'Sweden' },
-  { code: 'DK', label: 'Denmark' },
-  { code: 'PL', label: 'Poland' },
-  { code: 'CZ', label: 'Czech Republic' },
-  { code: 'RO', label: 'Romania' },
-  { code: 'BG', label: 'Bulgaria' },
-  { code: 'HR', label: 'Croatia' },
-  { code: 'SI', label: 'Slovenia' },
-  { code: 'SK', label: 'Slovakia' },
-  { code: 'HU', label: 'Hungary' },
-  { code: 'LT', label: 'Lithuania' },
-  { code: 'LV', label: 'Latvia' },
-  { code: 'EE', label: 'Estonia' },
-  { code: 'MT', label: 'Malta' },
-  { code: 'CY', label: 'Cyprus' },
-  { code: 'GR', label: 'Greece' },
-  { code: 'US', label: 'United States' },
-  { code: 'GB', label: 'United Kingdom' },
-  { code: 'CH', label: 'Switzerland' },
-  { code: 'NO', label: 'Norway' },
-  { code: 'CA', label: 'Canada' },
-  { code: 'AU', label: 'Australia' },
+const PRICING_COUNTRY_OPTIONS = [
+  ...COUNTRY_OPTIONS.map((c) => ({ code: c.value, label: c.label })),
   { code: 'OTHER', label: 'Other' },
 ]
 
@@ -528,7 +497,7 @@ export default function PricingSection() {
                   className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2.5 text-sm text-white placeholder-neutral-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange transition-colors"
                 >
                   <option value="" disabled>Select a country</option>
-                  {COUNTRY_OPTIONS.map((c) => (
+                  {PRICING_COUNTRY_OPTIONS.map((c) => (
                     <option key={c.code} value={c.code}>{c.label}</option>
                   ))}
                 </select>
