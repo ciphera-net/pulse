@@ -1,0 +1,256 @@
+'use client'
+
+import { useEffect, useRef, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import Script from 'next/script'
+import { Lock, ShieldCheck } from '@phosphor-icons/react'
+import { COUNTRY_OPTIONS } from '@/lib/countries'
+import { initMollie, getMollie, MOLLIE_FIELD_STYLES, type MollieComponent } from '@/lib/mollie'
+import { createEmbeddedCheckout } from '@/lib/api/billing'
+
+interface PaymentFormProps {
+  plan: string
+  interval: string
+  limit: number
+}
+
+const inputClass =
+  'w-full rounded-lg border border-neutral-700 bg-neutral-800/50 px-3 py-2.5 text-sm text-white placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-brand-orange focus:border-brand-orange transition-colors'
+const mollieFieldClass =
+  'w-full rounded-lg border border-neutral-700 bg-neutral-800/50 px-3 py-2.5 h-[42px] transition-colors focus-within:ring-1 focus-within:ring-brand-orange focus-within:border-brand-orange'
+
+export default function PaymentForm({ plan, interval, limit }: PaymentFormProps) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const currentInterval = searchParams.get('interval') || interval
+
+  const [country, setCountry] = useState('')
+  const [vatId, setVatId] = useState('')
+  const [mollieReady, setMollieReady] = useState(false)
+  const [mollieError, setMollieError] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
+  const [cardErrors, setCardErrors] = useState<Record<string, string>>({})
+  const [submitting, setSubmitting] = useState(false)
+
+  const componentsRef = useRef<Record<string, MollieComponent | null>>({
+    cardNumber: null,
+    cardExpiry: null,
+    cardCvc: null,
+  })
+
+  const mountMollieComponents = () => {
+    const mollie = initMollie()
+    if (!mollie) {
+      setMollieError(true)
+      return
+    }
+
+    try {
+      const fields: Array<{ type: string; selector: string }> = [
+        { type: 'cardNumber', selector: '#mollie-card-number' },
+        { type: 'cardExpiry', selector: '#mollie-card-expiry' },
+        { type: 'cardCvc', selector: '#mollie-card-cvc' },
+      ]
+
+      for (const { type, selector } of fields) {
+        const component = mollie.createComponent(type, { styles: MOLLIE_FIELD_STYLES })
+        component.mount(selector)
+        component.addEventListener('change', (event: unknown) => {
+          const e = event as { error?: string; touched?: boolean }
+          setCardErrors((prev) => {
+            const next = { ...prev }
+            if (e.error) next[type] = e.error
+            else delete next[type]
+            return next
+          })
+        })
+        componentsRef.current[type] = component
+      }
+
+      setMollieReady(true)
+    } catch {
+      setMollieError(true)
+    }
+  }
+
+  // Cleanup Mollie components on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(componentsRef.current).forEach((c) => c?.unmount())
+    }
+  }, [])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setFormError(null)
+    if (!country) {
+      setFormError('Please select your country')
+      return
+    }
+
+    const mollie = getMollie()
+    if (!mollie) {
+      setFormError('Payment system not loaded. Please refresh.')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      const { token, error } = await mollie.createToken()
+      if (error || !token) {
+        setFormError(error?.message || 'Invalid card details.')
+        setSubmitting(false)
+        return
+      }
+
+      const result = await createEmbeddedCheckout({
+        plan_id: plan,
+        interval: currentInterval,
+        limit,
+        country,
+        vat_id: vatId || undefined,
+        card_token: token,
+      })
+
+      if (result.status === 'success') router.push('/checkout?status=success')
+      else if (result.status === 'pending' && result.redirect_url)
+        window.location.href = result.redirect_url
+    } catch (err) {
+      setFormError((err as Error)?.message || 'Payment failed. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <>
+      <Script
+        src="https://js.mollie.com/v1/mollie.js"
+        onLoad={mountMollieComponents}
+        onError={() => setMollieError(true)}
+      />
+
+      <form
+        onSubmit={handleSubmit}
+        className="rounded-2xl border border-neutral-800 bg-neutral-900/50 backdrop-blur-xl p-6"
+      >
+        <h2 className="text-lg font-semibold text-white mb-6">Payment details</h2>
+
+        {/* Card number */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-neutral-300 mb-1.5">Card number</label>
+          <div className="relative">
+            <div id="mollie-card-number" className={mollieFieldClass} />
+            {!mollieReady && (
+              <div className="absolute inset-0 animate-pulse bg-neutral-700/30 rounded-lg" />
+            )}
+          </div>
+          {cardErrors.cardNumber && (
+            <p className="mt-1 text-xs text-red-400">{cardErrors.cardNumber}</p>
+          )}
+        </div>
+
+        {/* Expiry & CVC */}
+        <div className="mb-4 grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-neutral-300 mb-1.5">Expiry date</label>
+            <div className="relative">
+              <div id="mollie-card-expiry" className={mollieFieldClass} />
+              {!mollieReady && (
+                <div className="absolute inset-0 animate-pulse bg-neutral-700/30 rounded-lg" />
+              )}
+            </div>
+            {cardErrors.cardExpiry && (
+              <p className="mt-1 text-xs text-red-400">{cardErrors.cardExpiry}</p>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-neutral-300 mb-1.5">CVC</label>
+            <div className="relative">
+              <div id="mollie-card-cvc" className={mollieFieldClass} />
+              {!mollieReady && (
+                <div className="absolute inset-0 animate-pulse bg-neutral-700/30 rounded-lg" />
+              )}
+            </div>
+            {cardErrors.cardCvc && (
+              <p className="mt-1 text-xs text-red-400">{cardErrors.cardCvc}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Country */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-neutral-300 mb-1.5">Country</label>
+          <select
+            value={country}
+            onChange={(e) => setCountry(e.target.value)}
+            className={`${inputClass} appearance-none`}
+          >
+            <option value="">Select country</option>
+            {COUNTRY_OPTIONS.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* VAT ID */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-neutral-300 mb-1.5">
+            VAT ID <span className="text-neutral-500">(optional)</span>
+          </label>
+          <input
+            type="text"
+            value={vatId}
+            onChange={(e) => setVatId(e.target.value)}
+            placeholder="e.g. BE0123456789"
+            className={inputClass}
+          />
+        </div>
+
+        {/* Form / API errors */}
+        {formError && (
+          <div className="mb-4 rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
+            {formError}
+          </div>
+        )}
+
+        {/* Mollie fallback */}
+        {mollieError && (
+          <div className="mb-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20 px-4 py-3 text-sm text-yellow-400">
+            Card fields could not load.{' '}
+            <a
+              href={`/checkout?plan=${plan}&interval=${currentInterval}&limit=${limit}&fallback=1`}
+              className="underline hover:text-yellow-300"
+            >
+              Use the hosted checkout instead
+            </a>
+            .
+          </div>
+        )}
+
+        {/* Submit */}
+        <button
+          type="submit"
+          disabled={submitting || !mollieReady}
+          className="w-full rounded-lg bg-brand-orange px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-orange/90 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {submitting ? 'Processing...' : 'Start free trial'}
+        </button>
+
+        {/* Trust signals */}
+        <div className="mt-4 flex items-center justify-center gap-6 text-xs text-neutral-500">
+          <span className="flex items-center gap-1.5">
+            <Lock weight="fill" className="h-3.5 w-3.5" />
+            Secured with SSL
+          </span>
+          <span className="flex items-center gap-1.5">
+            <ShieldCheck weight="fill" className="h-3.5 w-3.5" />
+            Cancel anytime
+          </span>
+        </div>
+      </form>
+    </>
+  )
+}
