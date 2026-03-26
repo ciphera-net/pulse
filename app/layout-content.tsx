@@ -81,12 +81,10 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
       setIsSwitchingOrg(true)
       const { access_token } = await switchContext(orgId)
       await setSessionAction(access_token)
-      router.refresh()
-      // Allow time for server components to re-fetch with new auth
-      setTimeout(() => {
-        setIsSwitchingOrg(false)
-        router.push('/')
-      }, 600)
+      // Refresh auth context (re-fetches /auth/user/me with new JWT, updates org_id + SWR cache)
+      await auth.refresh()
+      router.push('/')
+      setTimeout(() => setIsSwitchingOrg(false), 300)
     } catch (err) {
       setIsSwitchingOrg(false)
       logger.error('Failed to switch organization', err)
