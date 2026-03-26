@@ -54,9 +54,11 @@ export function initMollie(): MollieInstance | null {
   if (mollieInstance) return mollieInstance
   if (typeof window === 'undefined' || !window.Mollie || !MOLLIE_PROFILE_ID) return null
 
-  // Mollie auto-detects test/live mode based on the API key configured server-side.
+  // testmode must match the API key type on the backend (test_ = true, live_ = false)
+  const testmode = process.env.NEXT_PUBLIC_MOLLIE_TESTMODE === 'true'
   mollieInstance = window.Mollie(MOLLIE_PROFILE_ID, {
     locale: 'en_US',
+    testmode,
   })
   return mollieInstance
 }
