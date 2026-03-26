@@ -172,14 +172,14 @@ function CheckoutContent() {
   const pageviewLimit = Number(limit)
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-screen overflow-hidden">
       {/* Left — Feature slideshow (hidden on mobile) */}
-      <div className="hidden lg:block lg:w-1/2 relative sticky top-0 h-screen overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 relative h-full overflow-hidden">
         <FeatureSlideshow />
       </div>
 
-      {/* Right — Payment */}
-      <div className="w-full lg:w-1/2 flex flex-col min-h-screen">
+      {/* Right — Payment (scrollable) */}
+      <div className="w-full lg:w-1/2 flex flex-col h-full overflow-y-auto">
         {/* Header */}
         <div className="px-6 py-5">
           <Link href="/pricing" className="flex items-center gap-2 w-fit hover:opacity-80 transition-opacity">
