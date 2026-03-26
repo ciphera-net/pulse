@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Check } from '@phosphor-icons/react'
 import { PulseMockup } from '@/components/marketing/mockups/pulse-mockup'
 import { PulseFeaturesCarousel } from '@/components/marketing/mockups/pulse-features-carousel'
 import { FunnelMockup } from '@/components/marketing/mockups/funnel-mockup'
@@ -11,60 +10,14 @@ import { EmailReportMockup } from '@/components/marketing/mockups/email-report-m
 
 interface Slide {
   headline: string
-  description: string
-  features: string[]
   mockup: React.ReactNode
 }
 
 const slides: Slide[] = [
-  {
-    headline: 'Your traffic, at a glance.',
-    description:
-      'A clean, real-time dashboard that shows pageviews, visitors, bounce rate, and session duration — no learning curve required.',
-    features: [
-      'Real-time visitor count',
-      'Pageview trends over time',
-      'Bounce rate & session duration',
-      'Top pages & referrers',
-    ],
-    mockup: <PulseMockup />,
-  },
-  {
-    headline: 'Everything you need to know about your visitors.',
-    description:
-      'Break down your audience by device, browser, OS, country, and language — all without cookies or fingerprinting.',
-    features: [
-      'Device & browser breakdown',
-      'Country & region stats',
-      'Language preferences',
-      'Screen size distribution',
-    ],
-    mockup: <PulseFeaturesCarousel />,
-  },
-  {
-    headline: 'See where visitors drop off.',
-    description:
-      'Build funnels to track multi-step flows and find exactly where users abandon your conversion paths.',
-    features: [
-      'Multi-step funnel builder',
-      'Drop-off visualization',
-      'Conversion rate tracking',
-      'Custom event support',
-    ],
-    mockup: <FunnelMockup />,
-  },
-  {
-    headline: 'Reports delivered to your inbox.',
-    description:
-      'Schedule weekly or monthly email reports so your team stays informed without logging in.',
-    features: [
-      'Weekly & monthly digests',
-      'Customizable metrics',
-      'Team-wide distribution',
-      'PDF & inline previews',
-    ],
-    mockup: <EmailReportMockup />,
-  },
+  { headline: 'Your traffic, at a glance.', mockup: <PulseMockup /> },
+  { headline: 'Everything you need to know about your visitors.', mockup: <PulseFeaturesCarousel /> },
+  { headline: 'See where visitors drop off.', mockup: <FunnelMockup /> },
+  { headline: 'Reports delivered to your inbox.', mockup: <EmailReportMockup /> },
 ]
 
 export default function FeatureSlideshow() {
@@ -107,24 +60,10 @@ export default function FeatureSlideshow() {
             transition={{ duration: 0.45 }}
             className="flex flex-col gap-8"
           >
-            {/* Text */}
-            <div>
-              <h2 className="text-3xl xl:text-4xl font-bold text-white leading-tight">
-                {slide.headline}
-              </h2>
-              <p className="mt-3 text-neutral-400 text-sm xl:text-base leading-relaxed max-w-md">
-                {slide.description}
-              </p>
-
-              <ul className="mt-5 space-y-2.5">
-                {slide.features.map((f) => (
-                  <li key={f} className="flex items-center gap-2.5 text-sm text-neutral-300">
-                    <Check weight="bold" className="h-4 w-4 shrink-0 text-brand-orange" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-            </div>
+            {/* Headline only */}
+            <h2 className="text-3xl xl:text-4xl font-bold text-white leading-tight">
+              {slide.headline}
+            </h2>
 
             {/* Mockup */}
             <div className="relative">
