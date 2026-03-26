@@ -34,8 +34,8 @@ export default function PaymentForm({ plan, interval, limit }: PaymentFormProps)
 
   const componentsRef = useRef<Record<string, MollieComponent | null>>({
     cardNumber: null,
-    cardExpiry: null,
-    cardCvc: null,
+    expiryDate: null,
+    verificationCode: null,
   })
 
   const [scriptLoaded, setScriptLoaded] = useState(false)
@@ -55,8 +55,8 @@ export default function PaymentForm({ plan, interval, limit }: PaymentFormProps)
       try {
         const fields: Array<{ type: string; selector: string }> = [
           { type: 'cardNumber', selector: '#mollie-card-number' },
-          { type: 'cardExpiry', selector: '#mollie-card-expiry' },
-          { type: 'cardCvc', selector: '#mollie-card-cvc' },
+          { type: 'expiryDate', selector: '#mollie-card-expiry' },
+          { type: 'verificationCode', selector: '#mollie-card-cvc' },
         ]
 
         for (const { type, selector } of fields) {
@@ -176,8 +176,8 @@ export default function PaymentForm({ plan, interval, limit }: PaymentFormProps)
                 <div className="absolute inset-0 animate-pulse bg-neutral-700/30 rounded-lg" />
               )}
             </div>
-            {cardErrors.cardExpiry && (
-              <p className="mt-1 text-xs text-red-400">{cardErrors.cardExpiry}</p>
+            {cardErrors.expiryDate && (
+              <p className="mt-1 text-xs text-red-400">{cardErrors.expiryDate}</p>
             )}
           </div>
           <div>
@@ -188,8 +188,8 @@ export default function PaymentForm({ plan, interval, limit }: PaymentFormProps)
                 <div className="absolute inset-0 animate-pulse bg-neutral-700/30 rounded-lg" />
               )}
             </div>
-            {cardErrors.cardCvc && (
-              <p className="mt-1 text-xs text-red-400">{cardErrors.cardCvc}</p>
+            {cardErrors.verificationCode && (
+              <p className="mt-1 text-xs text-red-400">{cardErrors.verificationCode}</p>
             )}
           </div>
         </div>
