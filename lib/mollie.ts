@@ -29,7 +29,7 @@ const MOLLIE_PROFILE_ID = process.env.NEXT_PUBLIC_MOLLIE_PROFILE_ID || ''
 export const MOLLIE_FIELD_STYLES = {
   base: {
     color: '#ffffff',
-    fontSize: '14px',
+    fontSize: '15px',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     fontWeight: '400',
     letterSpacing: '0.025em',
