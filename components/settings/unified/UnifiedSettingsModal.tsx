@@ -1,32 +1,32 @@
 'use client'
 
 import { useState, useCallback, useEffect, useRef } from 'react'
+import dynamic from 'next/dynamic'
 import { AnimatePresence, motion } from 'framer-motion'
 import { X, GearSix, Buildings, User } from '@phosphor-icons/react'
-import { Button } from '@ciphera-net/ui'
+import { Button, Spinner } from '@ciphera-net/ui'
 import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { useAuth } from '@/lib/auth/context'
 import { useSite } from '@/lib/swr/dashboard'
 import { listSites, type Site } from '@/lib/api/sites'
 
-// Tab content components — Site
-import SiteGeneralTab from './tabs/SiteGeneralTab'
-import SiteGoalsTab from './tabs/SiteGoalsTab'
-import SiteVisibilityTab from './tabs/SiteVisibilityTab'
-import SitePrivacyTab from './tabs/SitePrivacyTab'
-import SiteBotSpamTab from './tabs/SiteBotSpamTab'
-import SiteReportsTab from './tabs/SiteReportsTab'
-import SiteIntegrationsTab from './tabs/SiteIntegrationsTab'
-// Tab content components — Workspace
-import WorkspaceGeneralTab from './tabs/WorkspaceGeneralTab'
-import WorkspaceBillingTab from './tabs/WorkspaceBillingTab'
-import WorkspaceMembersTab from './tabs/WorkspaceMembersTab'
-import WorkspaceNotificationsTab from './tabs/WorkspaceNotificationsTab'
-import WorkspaceAuditTab from './tabs/WorkspaceAuditTab'
-// Tab content components — Account
-import AccountProfileTab from './tabs/AccountProfileTab'
-import AccountSecurityTab from './tabs/AccountSecurityTab'
-import AccountDevicesTab from './tabs/AccountDevicesTab'
+// Lazy-load tab components — only loaded when the tab is first rendered
+const tabLoader = () => <div className="flex items-center justify-center py-12"><Spinner className="w-6 h-6 text-neutral-500" /></div>
+const SiteGeneralTab = dynamic(() => import('./tabs/SiteGeneralTab'), { loading: tabLoader })
+const SiteGoalsTab = dynamic(() => import('./tabs/SiteGoalsTab'), { loading: tabLoader })
+const SiteVisibilityTab = dynamic(() => import('./tabs/SiteVisibilityTab'), { loading: tabLoader })
+const SitePrivacyTab = dynamic(() => import('./tabs/SitePrivacyTab'), { loading: tabLoader })
+const SiteBotSpamTab = dynamic(() => import('./tabs/SiteBotSpamTab'), { loading: tabLoader })
+const SiteReportsTab = dynamic(() => import('./tabs/SiteReportsTab'), { loading: tabLoader })
+const SiteIntegrationsTab = dynamic(() => import('./tabs/SiteIntegrationsTab'), { loading: tabLoader })
+const WorkspaceGeneralTab = dynamic(() => import('./tabs/WorkspaceGeneralTab'), { loading: tabLoader })
+const WorkspaceBillingTab = dynamic(() => import('./tabs/WorkspaceBillingTab'), { loading: tabLoader })
+const WorkspaceMembersTab = dynamic(() => import('./tabs/WorkspaceMembersTab'), { loading: tabLoader })
+const WorkspaceNotificationsTab = dynamic(() => import('./tabs/WorkspaceNotificationsTab'), { loading: tabLoader })
+const WorkspaceAuditTab = dynamic(() => import('./tabs/WorkspaceAuditTab'), { loading: tabLoader })
+const AccountProfileTab = dynamic(() => import('./tabs/AccountProfileTab'), { loading: tabLoader })
+const AccountSecurityTab = dynamic(() => import('./tabs/AccountSecurityTab'), { loading: tabLoader })
+const AccountDevicesTab = dynamic(() => import('./tabs/AccountDevicesTab'), { loading: tabLoader })
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -326,9 +326,12 @@ export default function UnifiedSettingsModal() {
       }
     }
 
-    listSites().then(data => {
-      setSites(Array.isArray(data) ? data : [])
-    }).catch(() => {})
+    // Only fetch sites if we don't have them yet
+    if (sites.length === 0) {
+      listSites().then(data => {
+        setSites(Array.isArray(data) ? data : [])
+      }).catch(() => {})
+    }
   }, [isOpen, user?.org_id])
 
   // Global keyboard shortcuts: `,` toggles settings, Escape closes
@@ -437,13 +440,12 @@ export default function UnifiedSettingsModal() {
 
               {/* Content */}
               <div className="flex-1 overflow-y-auto overflow-x-hidden">
-                <AnimatePresence mode="wait">
+                <AnimatePresence initial={false}>
                   <motion.div
                     key={`${context}-${activeTab}`}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.12 }}
+                    transition={{ duration: 0.08 }}
                     className="p-6"
                   >
                     <TabContent context={context} activeTab={activeTab} siteId={activeSiteId} onDirtyChange={handleDirtyChange} onRegisterSave={handleRegisterSave} />
