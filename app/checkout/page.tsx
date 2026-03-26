@@ -136,12 +136,13 @@ function CheckoutContent() {
     }
   }, [authLoading, user, router])
 
-  // -- Subscription guard --
+  // -- Subscription guard (skip on success page — it handles its own redirect) --
   useEffect(() => {
+    if (status === 'success') return
     if (subscription && (subscription.subscription_status === 'active' || subscription.subscription_status === 'trialing')) {
       router.replace('/')
     }
-  }, [subscription, router])
+  }, [subscription, status, router])
 
   // -- Param validation --
   useEffect(() => {

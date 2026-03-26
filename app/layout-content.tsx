@@ -98,8 +98,8 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
     return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" portal={false} />
   }
 
-  // While auth is loading on a site page, render nothing to prevent flash of public header
-  if (auth.loading && isSitePage) {
+  // While auth is loading on a site or checkout page, render nothing to prevent flash of public header
+  if (auth.loading && (isSitePage || isCheckoutPage)) {
     return null
   }
 
