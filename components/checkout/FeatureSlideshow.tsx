@@ -26,7 +26,7 @@ const slides: Slide[] = [
   { headline: 'See which pages perform best.', mockup: <FeatureCard><PagesCard /></FeatureCard> },
   { headline: 'Know where your visitors come from.', mockup: <FeatureCard><ReferrersCard /></FeatureCard> },
   { headline: 'Visitors from around the world.', mockup: <FeatureCard><LocationsCard /></FeatureCard> },
-  { headline: 'Understand your audience's tech stack.', mockup: <FeatureCard><TechnologyCard /></FeatureCard> },
+  { headline: 'Understand your audience\u2019s tech stack.', mockup: <FeatureCard><TechnologyCard /></FeatureCard> },
   { headline: 'Find your peak traffic hours.', mockup: <FeatureCard><PeakHoursCard /></FeatureCard> },
   { headline: 'See where visitors drop off.', mockup: <FunnelMockup /> },
   { headline: 'Reports delivered to your inbox.', mockup: <EmailReportMockup /> },
