@@ -1,10 +1,10 @@
 /**
  * Reusable skeleton loading primitives and composites for Pulse.
  * All skeletons follow the design-system pattern:
- *   animate-pulse + bg-neutral-100 dark:bg-neutral-800 + rounded
+ *   animate-pulse + bg-neutral-800 + rounded
  */
 
-const SK = 'animate-pulse bg-neutral-100 dark:bg-neutral-800'
+const SK = 'animate-pulse bg-neutral-800'
 
 export { useMinimumLoading, useSkeletonFade } from './useMinimumLoading'
 
@@ -71,7 +71,7 @@ export function TableSkeleton({ rows = 7, cols = 5 }: { rows?: number; cols?: nu
 
 export function WidgetSkeleton() {
   return (
-    <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
+    <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <SkeletonLine className="h-6 w-32" />
         <div className="flex gap-1">
@@ -90,7 +90,7 @@ export function WidgetSkeleton() {
 
 export function StatCardSkeleton() {
   return (
-    <div className="p-4 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900">
+    <div className="p-4 rounded-xl border border-neutral-800 bg-white dark:bg-neutral-900">
       <SkeletonLine className="h-4 w-20 mb-2" />
       <SkeletonLine className="h-8 w-28" />
     </div>
@@ -101,7 +101,7 @@ export function StatCardSkeleton() {
 
 export function ChartSkeleton() {
   return (
-    <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6">
+    <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
       <div className="flex items-center justify-between mb-6">
         <div className="flex gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -122,7 +122,7 @@ export function ChartSkeleton() {
 
 export function DashboardSkeleton() {
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
@@ -157,7 +157,7 @@ export function DashboardSkeleton() {
 
       {/* Campaigns table */}
       <div className="mb-8">
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6">
+        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
           <SkeletonLine className="h-6 w-32 mb-4" />
           <TableSkeleton rows={7} cols={5} />
         </div>
@@ -170,7 +170,7 @@ export function DashboardSkeleton() {
 
 export function JourneysSkeleton() {
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
       {/* Header */}
       <div className="mb-8 flex items-center justify-between">
         <div>
@@ -187,7 +187,7 @@ export function JourneysSkeleton() {
       {/* Sankey area */}
       <SkeletonCard className="h-[400px] mb-6" />
       {/* Top paths table */}
-      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6">
+      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
         <SkeletonLine className="h-6 w-24 mb-4" />
         <TableSkeleton rows={5} cols={4} />
       </div>
@@ -199,29 +199,50 @@ export function JourneysSkeleton() {
 
 export function UptimeSkeleton() {
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
-      <div className="mb-8">
-        <SkeletonLine className="h-4 w-32 mb-2" />
-        <SkeletonLine className="h-8 w-24 mb-1" />
-        <SkeletonLine className="h-4 w-64" />
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
+      {/* Header */}
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <SkeletonLine className="h-8 w-24 mb-2" />
+          <SkeletonLine className="h-4 w-64" />
+        </div>
+        <SkeletonLine className="h-9 w-36 rounded-lg" />
       </div>
-      {/* Overall status */}
-      <SkeletonCard className="h-20 mb-6" />
-      {/* Monitor cards */}
-      <div className="space-y-4">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <SkeletonCircle className="w-3 h-3" />
-                <SkeletonLine className="h-5 w-32" />
-                <SkeletonLine className="h-4 w-48 hidden sm:block" />
-              </div>
-              <SkeletonLine className="h-4 w-28" />
-            </div>
-            <SkeletonLine className="h-8 w-full rounded-sm" />
+      {/* Overall status card */}
+      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 mb-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <SkeletonCircle className="w-3.5 h-3.5" />
+            <SkeletonLine className="h-5 w-32" />
+            <SkeletonLine className="h-4 w-20" />
           </div>
-        ))}
+          <div className="space-y-1 text-right">
+            <SkeletonLine className="h-4 w-24 ml-auto" />
+            <SkeletonLine className="h-3 w-32 ml-auto" />
+          </div>
+        </div>
+      </div>
+      {/* 90-day uptime bar */}
+      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 mb-6">
+        <SkeletonLine className="h-3 w-28 mb-3" />
+        <SkeletonLine className="h-6 w-full rounded-sm" />
+        <div className="flex justify-between mt-1.5">
+          <SkeletonLine className="h-3 w-16" />
+          <SkeletonLine className="h-3 w-10" />
+        </div>
+      </div>
+      {/* Monitor details + chart + checks */}
+      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5">
+        {/* 4-col detail grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="space-y-1">
+              <SkeletonLine className="h-3 w-20" />
+              <SkeletonLine className="h-4 w-16" />
+            </div>
+          ))}
+        </div>
+        <ChecksSkeleton />
       </div>
     </div>
   )
@@ -252,7 +273,7 @@ export function ChecksSkeleton() {
 
 export function FunnelsListSkeleton() {
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
       <div className="mb-8">
         <div className="flex items-center gap-4 mb-6">
           <SkeletonLine className="h-10 w-10 rounded-xl" />
@@ -263,7 +284,7 @@ export function FunnelsListSkeleton() {
         </div>
         <div className="grid gap-4">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6">
+            <div key={i} className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
               <SkeletonLine className="h-6 w-40 mb-2" />
               <SkeletonLine className="h-4 w-64 mb-4" />
               <div className="flex items-center gap-2">
@@ -286,7 +307,7 @@ export function FunnelsListSkeleton() {
 
 export function FunnelDetailSkeleton() {
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
       <div className="mb-8">
         <SkeletonLine className="h-4 w-32 mb-2" />
         <SkeletonLine className="h-8 w-48 mb-1" />
@@ -308,7 +329,7 @@ export function NotificationsListSkeleton() {
   return (
     <div className="space-y-3">
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="flex items-start gap-3 p-4 rounded-xl border border-neutral-200 dark:border-neutral-800">
+        <div key={i} className="flex items-start gap-3 p-4 rounded-xl border border-neutral-800">
           <SkeletonCircle className="h-10 w-10 shrink-0" />
           <div className="flex-1 space-y-2">
             <SkeletonLine className="h-4 w-3/4" />
@@ -343,7 +364,7 @@ export function GoalsListSkeleton() {
   return (
     <div className="space-y-2">
       {Array.from({ length: 3 }).map((_, i) => (
-        <div key={i} className="flex items-center justify-between py-3 px-4 rounded-2xl border border-neutral-200 dark:border-neutral-800">
+        <div key={i} className="flex items-center justify-between py-3 px-4 rounded-2xl border border-neutral-800">
           <div className="flex items-center gap-2">
             <SkeletonLine className="h-4 w-24" />
             <SkeletonLine className="h-3 w-20" />
@@ -374,7 +395,7 @@ export function PricingCardsSkeleton() {
 
 export function BehaviorSkeleton() {
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
       {/* Header */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -387,7 +408,7 @@ export function BehaviorSkeleton() {
       {/* Summary cards (3 cols) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 space-y-3">
+          <div key={i} className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 space-y-3">
             <SkeletonLine className="h-4 w-24" />
             <SkeletonLine className="h-8 w-16" />
             <SkeletonLine className="h-3 w-32" />
@@ -403,7 +424,7 @@ export function BehaviorSkeleton() {
 
       {/* By-page table */}
       <div className="mb-8">
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6">
+        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
           <SkeletonLine className="h-6 w-40 mb-2" />
           <SkeletonLine className="h-4 w-64 mb-4" />
           <TableSkeleton rows={5} cols={4} />

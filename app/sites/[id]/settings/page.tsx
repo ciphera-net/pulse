@@ -704,7 +704,7 @@ export default function SiteSettingsPage() {
 
   if (showSkeleton) {
     return (
-      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
         <div className="space-y-8">
           <div>
             <div className="h-8 w-40 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800 mb-2" />
@@ -727,18 +727,18 @@ export default function SiteSettingsPage() {
 
   if (!site) {
     return (
-      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
         <p className="text-neutral-600 dark:text-neutral-400">Site not found</p>
       </div>
     )
   }
 
   return (
-    <div className={`w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
+    <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
 
       <div className="space-y-8">
         <div>
-          <h1 className="text-2xl font-bold text-white">Site Settings</h1>
+          <h1 className="text-lg font-semibold text-neutral-200">Site Settings</h1>
           <p className="mt-2 text-neutral-600 dark:text-neutral-400">
             Manage settings for <span className="font-medium text-white">{site.domain}</span>
           </p>
