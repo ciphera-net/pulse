@@ -17,8 +17,8 @@ interface PaymentFormProps {
 
 const inputClass =
   'w-full rounded-lg border border-neutral-700 bg-neutral-800/50 px-3 py-2.5 text-sm text-white placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-brand-orange focus:border-brand-orange transition-colors'
-const mollieFieldClass =
-  'w-full rounded-lg border border-neutral-700 bg-neutral-800/50 px-3 py-2.5 h-[42px] transition-colors focus-within:ring-1 focus-within:ring-brand-orange focus-within:border-brand-orange'
+const mollieFieldBase =
+  'w-full rounded-lg border border-neutral-700 bg-neutral-800/50 px-3 py-2.5 h-[42px] transition-all focus-within:ring-1 focus-within:ring-brand-orange focus-within:border-brand-orange'
 
 export default function PaymentForm({ plan, interval, limit }: PaymentFormProps) {
   const router = useRouter()
@@ -31,7 +31,7 @@ export default function PaymentForm({ plan, interval, limit }: PaymentFormProps)
   const [mollieError, setMollieError] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [cardErrors, setCardErrors] = useState<Record<string, string>>({})
-  const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set())
+  const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   const componentsRef = useRef<Record<string, MollieComponent | null>>({
@@ -56,26 +56,25 @@ export default function PaymentForm({ plan, interval, limit }: PaymentFormProps)
       }
 
       try {
-        const fields: Array<{ type: string; selector: string }> = [
-          { type: 'cardHolder', selector: '#mollie-card-holder' },
-          { type: 'cardNumber', selector: '#mollie-card-number' },
-          { type: 'expiryDate', selector: '#mollie-card-expiry' },
-          { type: 'verificationCode', selector: '#mollie-card-cvc' },
+        const fields: Array<{ type: string; selector: string; placeholder?: string }> = [
+          { type: 'cardHolder', selector: '#mollie-card-holder', placeholder: 'John Doe' },
+          { type: 'cardNumber', selector: '#mollie-card-number', placeholder: '1234 5678 9012 3456' },
+          { type: 'expiryDate', selector: '#mollie-card-expiry', placeholder: 'MM / YY' },
+          { type: 'verificationCode', selector: '#mollie-card-cvc', placeholder: 'CVC' },
         ]
 
-        for (const { type, selector } of fields) {
+        for (const { type, selector, placeholder } of fields) {
           const el = document.querySelector(selector) as HTMLElement | null
           if (!el) {
             setMollieError(true)
             return
           }
-          const component = mollie.createComponent(type, { styles: MOLLIE_FIELD_STYLES })
+          const opts: Record<string, unknown> = { styles: MOLLIE_FIELD_STYLES }
+          if (placeholder) opts.placeholder = placeholder
+          const component = mollie.createComponent(type, opts)
           component.mount(el)
           component.addEventListener('change', (event: unknown) => {
-            const e = event as { error?: string; touched?: boolean }
-            if (e.touched) {
-              setTouchedFields((prev) => new Set(prev).add(type))
-            }
+            const e = event as { error?: string }
             setCardErrors((prev) => {
               const next = { ...prev }
               if (e.error) next[type] = e.error
@@ -104,6 +103,7 @@ export default function PaymentForm({ plan, interval, limit }: PaymentFormProps)
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
+    setSubmitted(true)
     e.preventDefault()
     setFormError(null)
     if (!country) {
@@ -162,8 +162,8 @@ export default function PaymentForm({ plan, interval, limit }: PaymentFormProps)
         {/* Cardholder name */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-neutral-300 mb-1.5">Cardholder name</label>
-          <div id="mollie-card-holder" className={mollieFieldClass} />
-          {touchedFields.has('cardHolder') && cardErrors.cardHolder && (
+          <div id="mollie-card-holder" className={`${mollieFieldBase} ${mollieReady ? 'opacity-100' : 'opacity-0'}`} />
+          {submitted && cardErrors.cardHolder && (
             <p className="mt-1 text-xs text-red-400">{cardErrors.cardHolder}</p>
           )}
         </div>
@@ -171,8 +171,8 @@ export default function PaymentForm({ plan, interval, limit }: PaymentFormProps)
         {/* Card number */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-neutral-300 mb-1.5">Card number</label>
-          <div id="mollie-card-number" className={mollieFieldClass} />
-          {touchedFields.has('cardNumber') && cardErrors.cardNumber && (
+          <div id="mollie-card-number" className={`${mollieFieldBase} ${mollieReady ? 'opacity-100' : 'opacity-0'}`} />
+          {submitted && cardErrors.cardNumber && (
             <p className="mt-1 text-xs text-red-400">{cardErrors.cardNumber}</p>
           )}
         </div>
@@ -181,15 +181,15 @@ export default function PaymentForm({ plan, interval, limit }: PaymentFormProps)
         <div className="mb-4 grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-neutral-300 mb-1.5">Expiry date</label>
-            <div id="mollie-card-expiry" className={mollieFieldClass} />
-            {touchedFields.has('expiryDate') && cardErrors.expiryDate && (
+            <div id="mollie-card-expiry" className={`${mollieFieldBase} ${mollieReady ? 'opacity-100' : 'opacity-0'}`} />
+            {submitted && cardErrors.expiryDate && (
               <p className="mt-1 text-xs text-red-400">{cardErrors.expiryDate}</p>
             )}
           </div>
           <div>
             <label className="block text-sm font-medium text-neutral-300 mb-1.5">CVC</label>
-            <div id="mollie-card-cvc" className={mollieFieldClass} />
-            {touchedFields.has('verificationCode') && cardErrors.verificationCode && (
+            <div id="mollie-card-cvc" className={`${mollieFieldBase} ${mollieReady ? 'opacity-100' : 'opacity-0'}`} />
+            {submitted && cardErrors.verificationCode && (
               <p className="mt-1 text-xs text-red-400">{cardErrors.verificationCode}</p>
             )}
           </div>
