@@ -11,6 +11,7 @@ import { getSubscription } from '@/lib/api/billing'
 import { PLAN_PRICES, TRAFFIC_TIERS } from '@/lib/plans'
 import PlanSummary from '@/components/checkout/PlanSummary'
 import PaymentForm from '@/components/checkout/PaymentForm'
+import FeatureSlideshow from '@/components/checkout/FeatureSlideshow'
 import pulseIcon from '@/public/pulse_icon_no_margins.png'
 
 // ---------------------------------------------------------------------------
@@ -171,46 +172,52 @@ function CheckoutContent() {
   const pageviewLimit = Number(limit)
 
   return (
-    <div className="flex min-h-screen flex-col">
-      {/* Header */}
-      <div className="px-6 py-5">
-        <Link href="/pricing" className="flex items-center gap-2 w-fit hover:opacity-80 transition-opacity">
-          <Image
-            src={pulseIcon}
-            alt="Pulse"
-            width={36}
-            height={36}
-            unoptimized
-            className="object-contain w-8 h-8"
-          />
-          <span className="text-xl font-bold text-white tracking-tight">Pulse</span>
-        </Link>
+    <div className="flex min-h-screen">
+      {/* Left — Feature slideshow (hidden on mobile) */}
+      <div className="hidden lg:block lg:w-1/2 relative sticky top-0 h-screen overflow-hidden">
+        <FeatureSlideshow />
       </div>
 
-      {/* Main content */}
-      <div className="flex flex-1 items-start justify-center px-4 pb-12 pt-4 sm:px-6 lg:pt-8">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, ease: 'easeOut' }}
-          className="w-full max-w-4xl"
-        >
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {/* Left — Plan summary */}
+      {/* Right — Payment */}
+      <div className="w-full lg:w-1/2 flex flex-col min-h-screen">
+        {/* Header */}
+        <div className="px-6 py-5">
+          <Link href="/pricing" className="flex items-center gap-2 w-fit hover:opacity-80 transition-opacity">
+            <Image
+              src={pulseIcon}
+              alt="Pulse"
+              width={36}
+              height={36}
+              unoptimized
+              className="object-contain w-8 h-8"
+            />
+            <span className="text-xl font-bold text-white tracking-tight">Pulse</span>
+          </Link>
+        </div>
+
+        {/* Main content */}
+        <div className="flex flex-1 flex-col px-4 pb-12 pt-2 sm:px-6 lg:px-10">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, ease: 'easeOut' }}
+            className="w-full max-w-lg mx-auto flex flex-col gap-6"
+          >
+            {/* Plan summary (compact) */}
             <PlanSummary
               plan={planId}
               interval={billingInterval}
               limit={pageviewLimit}
             />
 
-            {/* Right — Payment form */}
+            {/* Payment form */}
             <PaymentForm
               plan={planId}
               interval={billingInterval}
               limit={pageviewLimit}
             />
-          </div>
-        </motion.div>
+          </motion.div>
+        </div>
       </div>
     </div>
   )
