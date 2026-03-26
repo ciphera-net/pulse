@@ -5,8 +5,6 @@ import Image from 'next/image'
 import { AnimatePresence, motion } from 'framer-motion'
 import { PulseMockup } from '@/components/marketing/mockups/pulse-mockup'
 import { PagesCard, ReferrersCard, LocationsCard, TechnologyCard, PeakHoursCard } from '@/components/marketing/mockups/pulse-features-carousel'
-import { FunnelMockup } from '@/components/marketing/mockups/funnel-mockup'
-import { EmailReportMockup } from '@/components/marketing/mockups/email-report-mockup'
 
 interface Slide {
   headline: string
@@ -28,8 +26,6 @@ const slides: Slide[] = [
   { headline: 'Visitors from around the world.', mockup: <FeatureCard><LocationsCard /></FeatureCard> },
   { headline: 'Understand your audience\u2019s tech stack.', mockup: <FeatureCard><TechnologyCard /></FeatureCard> },
   { headline: 'Find your peak traffic hours.', mockup: <FeatureCard><PeakHoursCard /></FeatureCard> },
-  { headline: 'See where visitors drop off.', mockup: <FunnelMockup /> },
-  { headline: 'Reports delivered to your inbox.', mockup: <EmailReportMockup /> },
 ]
 
 export default function FeatureSlideshow() {
