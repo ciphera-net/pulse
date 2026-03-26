@@ -1,30 +1,38 @@
-import { Suspense } from 'react'
-import OrganizationSettings from '@/components/settings/OrganizationSettings'
-import { SettingsFormSkeleton } from '@/components/skeletons'
+'use client'
 
-export const metadata = {
-  title: 'Organization Settings - Pulse',
-  description: 'Manage your organization settings',
-}
+import { useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useUnifiedSettings } from '@/lib/unified-settings-context'
+import { Spinner } from '@ciphera-net/ui'
 
-export default function OrgSettingsPage() {
+/**
+ * Legacy org settings page — now a redirect handler.
+ * Redirects to home and opens unified settings modal at the correct workspace tab.
+ */
+export default function OrgSettingsRedirect() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { openUnifiedSettings } = useUnifiedSettings()
+
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+
+    const tabMap: Record<string, string> = {
+      general: 'general',
+      members: 'members',
+      billing: 'billing',
+      notifications: 'notifications',
+      audit: 'audit',
+    }
+
+    const mappedTab = tab ? tabMap[tab] || 'general' : 'general'
+    router.replace('/')
+    setTimeout(() => openUnifiedSettings({ context: 'workspace', tab: mappedTab }), 100)
+  }, [searchParams, router, openUnifiedSettings])
+
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
-      <div>
-        <Suspense fallback={
-          <div className="space-y-8">
-            <div>
-              <div className="h-8 w-56 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800 mb-2" />
-              <div className="h-4 w-80 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
-            </div>
-            <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-6 md:p-8">
-              <SettingsFormSkeleton />
-            </div>
-          </div>
-        }>
-          <OrganizationSettings />
-        </Suspense>
-      </div>
+    <div className="flex items-center justify-center py-24">
+      <Spinner className="w-6 h-6 text-neutral-500" />
     </div>
   )
 }
