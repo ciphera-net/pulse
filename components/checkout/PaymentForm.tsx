@@ -38,40 +38,56 @@ export default function PaymentForm({ plan, interval, limit }: PaymentFormProps)
     cardCvc: null,
   })
 
-  const mountMollieComponents = () => {
-    const mollie = initMollie()
-    if (!mollie) {
-      setMollieError(true)
-      return
-    }
+  const [scriptLoaded, setScriptLoaded] = useState(false)
 
-    try {
-      const fields: Array<{ type: string; selector: string }> = [
-        { type: 'cardNumber', selector: '#mollie-card-number' },
-        { type: 'cardExpiry', selector: '#mollie-card-expiry' },
-        { type: 'cardCvc', selector: '#mollie-card-cvc' },
-      ]
+  // Mount Mollie components AFTER both script loaded AND DOM elements exist
+  useEffect(() => {
+    if (!scriptLoaded) return
 
-      for (const { type, selector } of fields) {
-        const component = mollie.createComponent(type, { styles: MOLLIE_FIELD_STYLES })
-        component.mount(selector)
-        component.addEventListener('change', (event: unknown) => {
-          const e = event as { error?: string; touched?: boolean }
-          setCardErrors((prev) => {
-            const next = { ...prev }
-            if (e.error) next[type] = e.error
-            else delete next[type]
-            return next
-          })
-        })
-        componentsRef.current[type] = component
+    // Small delay to ensure DOM elements are painted
+    const timer = setTimeout(() => {
+      const mollie = initMollie()
+      if (!mollie) {
+        setMollieError(true)
+        return
       }
 
-      setMollieReady(true)
-    } catch {
-      setMollieError(true)
-    }
-  }
+      try {
+        const fields: Array<{ type: string; selector: string }> = [
+          { type: 'cardNumber', selector: '#mollie-card-number' },
+          { type: 'cardExpiry', selector: '#mollie-card-expiry' },
+          { type: 'cardCvc', selector: '#mollie-card-cvc' },
+        ]
+
+        for (const { type, selector } of fields) {
+          const el = document.querySelector(selector)
+          if (!el) {
+            setMollieError(true)
+            return
+          }
+          const component = mollie.createComponent(type, { styles: MOLLIE_FIELD_STYLES })
+          component.mount(el)
+          component.addEventListener('change', (event: unknown) => {
+            const e = event as { error?: string; touched?: boolean }
+            setCardErrors((prev) => {
+              const next = { ...prev }
+              if (e.error) next[type] = e.error
+              else delete next[type]
+              return next
+            })
+          })
+          componentsRef.current[type] = component
+        }
+
+        setMollieReady(true)
+      } catch (err) {
+        console.error('Mollie mount error:', err)
+        setMollieError(true)
+      }
+    }, 100)
+
+    return () => clearTimeout(timer)
+  }, [scriptLoaded])
 
   // Cleanup Mollie components on unmount
   useEffect(() => {
@@ -126,7 +142,7 @@ export default function PaymentForm({ plan, interval, limit }: PaymentFormProps)
     <>
       <Script
         src="https://js.mollie.com/v1/mollie.js"
-        onLoad={mountMollieComponents}
+        onLoad={() => setScriptLoaded(true)}
         onError={() => setMollieError(true)}
       />
 
