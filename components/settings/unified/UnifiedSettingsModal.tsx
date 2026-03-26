@@ -318,7 +318,8 @@ export default function UnifiedSettingsModal() {
       const match = window.location.pathname.match(/\/sites\/([a-f0-9-]+)/)
       if (match) {
         setActiveSiteId(match[1])
-        setContext('site')
+        // Only default to site context if no specific context was requested
+        if (!initTab?.context) setContext('site')
       } else {
         setActiveSiteId(null)
         if (!initTab?.context) setContext('workspace')
@@ -393,6 +394,7 @@ export default function UnifiedSettingsModal() {
               ? 'opacity-0 pointer-events-none transition-opacity duration-150'
               : 'opacity-0 pointer-events-none invisible'
         }`}
+        onClick={handleBackdropClick}
       >
         <div
           className="relative w-full max-w-3xl h-[85vh] bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/60 border border-white/[0.08] rounded-2xl shadow-xl shadow-black/20 flex flex-col overflow-hidden"
