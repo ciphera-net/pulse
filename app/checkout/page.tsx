@@ -19,7 +19,7 @@ import pulseLogo from '@/public/pulse_logo_no_margins.png'
 
 const VALID_PLANS = new Set(Object.keys(PLAN_PRICES))
 const VALID_INTERVALS = new Set(['month', 'year'])
-const VALID_LIMITS = new Set(TRAFFIC_TIERS.map((t) => t.value))
+const VALID_LIMITS = new Set<number>(TRAFFIC_TIERS.map((t) => t.value))
 
 function isValidCheckoutParams(plan: string | null, interval: string | null, limit: string | null) {
   if (!plan || !interval || !limit) return false
@@ -196,14 +196,14 @@ function CheckoutContent() {
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             {/* Left — Plan summary */}
             <PlanSummary
-              planId={planId}
+              plan={planId}
               interval={billingInterval}
               limit={pageviewLimit}
             />
 
             {/* Right — Payment form */}
             <PaymentForm
-              planId={planId}
+              plan={planId}
               interval={billingInterval}
               limit={pageviewLimit}
             />
