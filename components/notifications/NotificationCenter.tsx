@@ -12,6 +12,7 @@ import { listNotifications, markNotificationRead, markAllNotificationsRead, type
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { formatTimeAgo, getTypeIcon } from '@/lib/utils/notifications'
 import { SettingsIcon } from '@ciphera-net/ui'
+import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { SkeletonLine, SkeletonCircle } from '@/components/skeletons'
 
 // * Bell icon (simple SVG, no extra deps)
@@ -58,6 +59,7 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
   const panelRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const [fixedPos, setFixedPos] = useState<{ left: number; top?: number; bottom?: number } | null>(null)
+  const { openUnifiedSettings } = useUnifiedSettings()
 
   const updatePosition = useCallback(() => {
     if (anchor === 'right' && buttonRef.current) {
@@ -319,14 +321,16 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
               >
                 View all
               </Link>
-              <Link
-                href="/org-settings?tab=notifications"
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-2 text-sm text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors"
+              <button
+                onClick={() => {
+                  setOpen(false)
+                  openUnifiedSettings({ context: 'workspace', tab: 'notifications' })
+                }}
+                className="flex items-center gap-2 text-sm text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors cursor-pointer"
               >
                 <SettingsIcon className="w-4 h-4" aria-hidden="true" />
                 Manage settings
-              </Link>
+              </button>
             </div>
           </motion.div>
             )}
