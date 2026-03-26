@@ -72,12 +72,21 @@ export interface CreateCheckoutParams {
   plan_id: string
   interval: string
   limit: number
+  country: string
+  vat_id?: string
 }
 
 export async function createCheckoutSession(params: CreateCheckoutParams): Promise<{ url: string }> {
   return apiRequest<{ url: string }>('/api/billing/checkout', {
     method: 'POST',
     body: JSON.stringify(params),
+  })
+}
+
+/** Creates a Mollie checkout session to update the payment mandate. */
+export async function updatePaymentMethod(): Promise<{ url: string }> {
+  return apiRequest<{ url: string }>('/api/billing/update-payment-method', {
+    method: 'POST',
   })
 }
 

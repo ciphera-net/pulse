@@ -109,7 +109,7 @@ export default function PricingSection() {
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
   const { user } = useAuth()
 
-  // * Show toast when redirected from Polar Checkout with canceled=true
+  // * Show toast when redirected from Mollie Checkout with canceled=true
   useEffect(() => {
     if (searchParams.get('canceled') === 'true') {
       toast.info('Checkout was canceled. You can try again whenever you’re ready.')
@@ -196,7 +196,7 @@ export default function PricingSection() {
         limit,
       })
 
-      // 3. Redirect to Polar Checkout
+      // 3. Redirect to Mollie Checkout
       if (url) {
         window.location.href = url
       } else {
