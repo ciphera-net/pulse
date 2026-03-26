@@ -102,11 +102,52 @@ const TRAFFIC_TIERS = [
   },
 ]
 
+const COUNTRY_OPTIONS = [
+  { code: 'BE', label: 'Belgium' },
+  { code: 'NL', label: 'Netherlands' },
+  { code: 'DE', label: 'Germany' },
+  { code: 'FR', label: 'France' },
+  { code: 'AT', label: 'Austria' },
+  { code: 'IT', label: 'Italy' },
+  { code: 'ES', label: 'Spain' },
+  { code: 'PT', label: 'Portugal' },
+  { code: 'IE', label: 'Ireland' },
+  { code: 'LU', label: 'Luxembourg' },
+  { code: 'FI', label: 'Finland' },
+  { code: 'SE', label: 'Sweden' },
+  { code: 'DK', label: 'Denmark' },
+  { code: 'PL', label: 'Poland' },
+  { code: 'CZ', label: 'Czech Republic' },
+  { code: 'RO', label: 'Romania' },
+  { code: 'BG', label: 'Bulgaria' },
+  { code: 'HR', label: 'Croatia' },
+  { code: 'SI', label: 'Slovenia' },
+  { code: 'SK', label: 'Slovakia' },
+  { code: 'HU', label: 'Hungary' },
+  { code: 'LT', label: 'Lithuania' },
+  { code: 'LV', label: 'Latvia' },
+  { code: 'EE', label: 'Estonia' },
+  { code: 'MT', label: 'Malta' },
+  { code: 'CY', label: 'Cyprus' },
+  { code: 'GR', label: 'Greece' },
+  { code: 'US', label: 'United States' },
+  { code: 'GB', label: 'United Kingdom' },
+  { code: 'CH', label: 'Switzerland' },
+  { code: 'NO', label: 'Norway' },
+  { code: 'CA', label: 'Canada' },
+  { code: 'AU', label: 'Australia' },
+  { code: 'OTHER', label: 'Other' },
+]
+
 export default function PricingSection() {
   const searchParams = useSearchParams()
   const [isYearly, setIsYearly] = useState(false)
   const [sliderIndex, setSliderIndex] = useState(2) // Default to 100k (index 2)
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
+  const [checkoutCountry, setCheckoutCountry] = useState('')
+  const [checkoutVatId, setCheckoutVatId] = useState('')
+  const [showCheckoutForm, setShowCheckoutForm] = useState(false)
+  const [pendingCheckout, setPendingCheckout] = useState<{ planId: string; interval: string; limit: number } | null>(null)
   const { user } = useAuth()
 
   // * Show toast when redirected from Mollie Checkout with canceled=true
@@ -167,48 +208,63 @@ export default function PricingSection() {
   }
 
   const handleSubscribe = async (planId: string, options?: { interval?: string, limit?: number }) => {
-    try {
-      setLoadingPlan(planId)
-      
-      // 1. If not logged in, redirect to login/signup
-      if (!user) {
-        // Store checkout intent
-        const intent = {
-          planId,
-          interval: isYearly ? 'year' : 'month',
-          limit: currentTraffic.value,
-          sliderIndex, // Store UI state to restore it
-          isYearly     // Store UI state to restore it
-        }
-        localStorage.setItem('pulse_pending_checkout', JSON.stringify(intent))
-        
-        initiateOAuthFlow() 
-        return
+    // 1. If not logged in, redirect to login/signup
+    if (!user) {
+      const intent = {
+        planId,
+        interval: isYearly ? 'year' : 'month',
+        limit: currentTraffic.value,
+        sliderIndex,
+        isYearly
       }
+      localStorage.setItem('pulse_pending_checkout', JSON.stringify(intent))
+      initiateOAuthFlow()
+      return
+    }
 
-      // 2. Call backend to create checkout session
-      const interval = options?.interval || (isYearly ? 'year' : 'month')
-      const limit = options?.limit || currentTraffic.value
+    // 2. Show checkout form to collect country + optional VAT
+    const interval = options?.interval || (isYearly ? 'year' : 'month')
+    const limit = options?.limit || currentTraffic.value
+    setPendingCheckout({ planId, interval, limit })
+    setCheckoutCountry('')
+    setCheckoutVatId('')
+    setShowCheckoutForm(true)
+  }
+
+  const handleCheckoutSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!pendingCheckout || !checkoutCountry) return
+
+    try {
+      setLoadingPlan(pendingCheckout.planId)
 
       const { url } = await createCheckoutSession({
-        plan_id: planId,
-        interval,
-        limit,
+        plan_id: pendingCheckout.planId,
+        interval: pendingCheckout.interval,
+        limit: pendingCheckout.limit,
+        country: checkoutCountry,
+        vat_id: checkoutVatId || undefined,
       })
 
-      // 3. Redirect to Mollie Checkout
       if (url) {
         window.location.href = url
       } else {
         throw new Error('No checkout URL returned')
       }
-
     } catch (error: unknown) {
       logger.error('Checkout error:', error)
       toast.error('Failed to start checkout — please try again')
     } finally {
       setLoadingPlan(null)
     }
+  }
+
+  const handleCheckoutCancel = () => {
+    setShowCheckoutForm(false)
+    setPendingCheckout(null)
+    setCheckoutCountry('')
+    setCheckoutVatId('')
+    setLoadingPlan(null)
   }
 
   return (
@@ -437,6 +493,85 @@ export default function PricingSection() {
           </div>
         </div>
       </motion.div>
+
+      {/* Checkout Country / VAT Modal */}
+      {showCheckoutForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={handleCheckoutCancel}
+          />
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2 }}
+            className="relative w-full max-w-md border border-neutral-800 rounded-2xl bg-neutral-900 p-6 shadow-xl"
+          >
+            <h3 className="text-lg font-bold text-white mb-1">
+              Billing details
+            </h3>
+            <p className="text-sm text-neutral-400 mb-6">
+              Select your country to calculate the correct tax rate.
+            </p>
+
+            <form onSubmit={handleCheckoutSubmit} className="space-y-4">
+              {/* Country */}
+              <div>
+                <label htmlFor="checkout-country" className="block text-sm font-medium text-neutral-300 mb-1.5">
+                  Country <span className="text-red-400">*</span>
+                </label>
+                <select
+                  id="checkout-country"
+                  required
+                  value={checkoutCountry}
+                  onChange={(e) => setCheckoutCountry(e.target.value)}
+                  className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2.5 text-sm text-white placeholder-neutral-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange transition-colors"
+                >
+                  <option value="" disabled>Select a country</option>
+                  {COUNTRY_OPTIONS.map((c) => (
+                    <option key={c.code} value={c.code}>{c.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* VAT ID */}
+              <div>
+                <label htmlFor="checkout-vat" className="block text-sm font-medium text-neutral-300 mb-1.5">
+                  VAT ID <span className="text-neutral-500">(optional)</span>
+                </label>
+                <input
+                  id="checkout-vat"
+                  type="text"
+                  value={checkoutVatId}
+                  onChange={(e) => setCheckoutVatId(e.target.value)}
+                  placeholder="e.g. BE0123456789"
+                  className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2.5 text-sm text-white placeholder-neutral-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange transition-colors"
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-3 pt-2">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  disabled={!checkoutCountry || !!loadingPlan}
+                  className="flex-1"
+                >
+                  {loadingPlan ? 'Loading...' : 'Continue to payment'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleCheckoutCancel}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
     </section>
   )
 }
