@@ -101,3 +101,19 @@ export interface Order {
 export async function getOrders(): Promise<Order[]> {
   return apiRequest<Order[]>('/api/billing/invoices')
 }
+
+export interface CreateEmbeddedCheckoutParams {
+  plan_id: string
+  interval: string
+  limit: number
+  country: string
+  vat_id?: string
+  card_token: string
+}
+
+export async function createEmbeddedCheckout(params: CreateEmbeddedCheckoutParams): Promise<{ status: 'success' | 'pending'; redirect_url?: string }> {
+  return apiRequest<{ status: 'success' | 'pending'; redirect_url?: string }>('/api/billing/checkout-embedded', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  })
+}
