@@ -112,14 +112,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const userData = await apiRequest<User>('/auth/user/me')
 
-      setUser(prev => {
-        const merged = {
-          ...userData,
-          org_id: prev?.org_id,
-          role: prev?.role
-        }
-        localStorage.setItem('user', JSON.stringify(merged))
-        return merged
+      setUser(() => {
+        localStorage.setItem('user', JSON.stringify(userData))
+        return userData
       })
     } catch (e) {
       logger.error('Failed to refresh user data', e)
