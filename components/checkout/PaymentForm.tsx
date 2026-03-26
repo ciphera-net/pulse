@@ -98,7 +98,9 @@ export default function PaymentForm({ plan, interval, limit }: PaymentFormProps)
   // Cleanup Mollie components on unmount
   useEffect(() => {
     return () => {
-      Object.values(componentsRef.current).forEach((c) => c?.unmount())
+      Object.values(componentsRef.current).forEach((c) => {
+        try { c?.unmount() } catch { /* DOM already removed */ }
+      })
     }
   }, [])
 
