@@ -11,7 +11,7 @@ import { getSubscription } from '@/lib/api/billing'
 import { PLAN_PRICES, TRAFFIC_TIERS } from '@/lib/plans'
 import PlanSummary from '@/components/checkout/PlanSummary'
 import PaymentForm from '@/components/checkout/PaymentForm'
-import pulseLogo from '@/public/pulse_logo_no_margins.png'
+import pulseIcon from '@/public/pulse_icon_no_margins.png'
 
 // ---------------------------------------------------------------------------
 // Validation helpers
@@ -174,15 +174,16 @@ function CheckoutContent() {
     <div className="flex min-h-screen flex-col">
       {/* Header */}
       <div className="px-6 py-5">
-        <Link href="/pricing" className="inline-block">
+        <Link href="/pricing" className="flex items-center gap-2 w-fit hover:opacity-80 transition-opacity">
           <Image
-            src={pulseLogo}
+            src={pulseIcon}
             alt="Pulse"
-            width={90}
-            height={28}
+            width={36}
+            height={36}
             unoptimized
-            className="opacity-80 hover:opacity-100 transition-opacity"
+            className="object-contain w-8 h-8"
           />
+          <span className="text-xl font-bold text-white tracking-tight">Pulse</span>
         </Link>
       </div>
 
