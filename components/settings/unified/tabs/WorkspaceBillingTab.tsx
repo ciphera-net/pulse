@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Button, toast, Spinner } from '@ciphera-net/ui'
 import { CreditCard, ArrowSquareOut } from '@phosphor-icons/react'
 import { useSubscription } from '@/lib/swr/dashboard'
-import { createPortalSession, cancelSubscription, resumeSubscription, getOrders, type Order } from '@/lib/api/billing'
+import { updatePaymentMethod, cancelSubscription, resumeSubscription, getOrders, type Order } from '@/lib/api/billing'
 import { formatDateLong, formatDate } from '@/lib/utils/formatDate'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 
@@ -18,16 +18,16 @@ export default function WorkspaceBillingTab() {
     getOrders().then(setOrders).catch(() => {})
   }, [])
 
-  const formatAmount = (amount: number, currency: string) => {
-    return new Intl.NumberFormat('en-GB', { style: 'currency', currency: currency || 'USD' }).format(amount / 100)
+  const formatAmount = (amount: string, currency: string) => {
+    return new Intl.NumberFormat('en-GB', { style: 'currency', currency: currency || 'EUR' }).format(parseFloat(amount))
   }
 
   const handleManageBilling = async () => {
     try {
-      const { url } = await createPortalSession()
-      if (url) window.open(url, '_blank')
+      const { url } = await updatePaymentMethod()
+      if (url) window.location.href = url
     } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to open billing portal')
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to update payment method')
     }
   }
 
@@ -149,7 +149,7 @@ export default function WorkspaceBillingTab() {
         {subscription.has_payment_method && (
           <Button onClick={handleManageBilling} variant="secondary" className="text-sm gap-1.5">
             <ArrowSquareOut weight="bold" className="w-3.5 h-3.5" />
-            Payment method & invoices
+            Update payment method
           </Button>
         )}
 
@@ -180,13 +180,10 @@ export default function WorkspaceBillingTab() {
               <div key={order.id} className="flex items-center justify-between p-3 rounded-lg border border-neutral-800 text-sm">
                 <div className="flex items-center gap-3">
                   <span className="text-neutral-300">{formatDate(new Date(order.created_at))}</span>
-                  <span className="text-white font-medium">{formatAmount(order.total_amount, order.currency)}</span>
-                  {order.invoice_number && (
-                    <span className="text-neutral-500 text-xs">{order.invoice_number}</span>
-                  )}
+                  <span className="text-white font-medium">{formatAmount(order.amount, order.currency)}</span>
                 </div>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${order.paid ? 'bg-green-900/30 text-green-400' : 'bg-neutral-800 text-neutral-400'}`}>
-                  {order.paid ? 'Paid' : order.status}
+                <span className={`text-xs px-2 py-0.5 rounded-full ${order.status === 'paid' ? 'bg-green-900/30 text-green-400' : 'bg-neutral-800 text-neutral-400'}`}>
+                  {order.status === 'paid' ? 'Paid' : order.status}
                 </span>
               </div>
             ))}

@@ -92,14 +92,10 @@ export async function updatePaymentMethod(): Promise<{ url: string }> {
 
 export interface Order {
   id: string
-  total_amount: number
-  subtotal_amount: number
-  tax_amount: number
+  amount: string
   currency: string
   status: string
   created_at: string
-  paid: boolean
-  invoice_number: string
 }
 
 export async function getOrders(): Promise<Order[]> {
