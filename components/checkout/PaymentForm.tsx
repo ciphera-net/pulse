@@ -33,6 +33,7 @@ export default function PaymentForm({ plan, interval, limit }: PaymentFormProps)
   const [submitting, setSubmitting] = useState(false)
 
   const componentsRef = useRef<Record<string, MollieComponent | null>>({
+    cardHolder: null,
     cardNumber: null,
     expiryDate: null,
     verificationCode: null,
@@ -54,6 +55,7 @@ export default function PaymentForm({ plan, interval, limit }: PaymentFormProps)
 
       try {
         const fields: Array<{ type: string; selector: string }> = [
+          { type: 'cardHolder', selector: '#mollie-card-holder' },
           { type: 'cardNumber', selector: '#mollie-card-number' },
           { type: 'expiryDate', selector: '#mollie-card-expiry' },
           { type: 'verificationCode', selector: '#mollie-card-cvc' },
@@ -151,6 +153,20 @@ export default function PaymentForm({ plan, interval, limit }: PaymentFormProps)
         className="rounded-2xl border border-neutral-800 bg-neutral-900/50 backdrop-blur-xl p-6"
       >
         <h2 className="text-lg font-semibold text-white mb-6">Payment details</h2>
+
+        {/* Cardholder name */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-neutral-300 mb-1.5">Cardholder name</label>
+          <div className="relative">
+            <div id="mollie-card-holder" className={mollieFieldClass} />
+            {!mollieReady && (
+              <div className="absolute inset-0 animate-pulse bg-neutral-700/30 rounded-lg" />
+            )}
+          </div>
+          {cardErrors.cardHolder && (
+            <p className="mt-1 text-xs text-red-400">{cardErrors.cardHolder}</p>
+          )}
+        </div>
 
         {/* Card number */}
         <div className="mb-4">
