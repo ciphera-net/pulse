@@ -22,8 +22,9 @@ function OrgSettingsInner() {
     }
 
     const mappedTab = tab ? tabMap[tab] || 'general' : 'general'
-    router.replace('/')
-    setTimeout(() => openUnifiedSettings({ context: 'workspace', tab: mappedTab }), 100)
+    // Go back to wherever the user came from (not always /)
+    router.back()
+    setTimeout(() => openUnifiedSettings({ context: 'workspace', tab: mappedTab }), 200)
   }, [searchParams, router, openUnifiedSettings])
 
   return (
