@@ -24,11 +24,13 @@ import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { getSitesLimitForPlan } from '@/lib/plans'
 import { formatDate } from '@/lib/utils/formatDate'
+import { useUnifiedSettings } from '@/lib/unified-settings-context'
 
 type SiteStatsMap = Record<string, { stats: Stats }>
 
 export default function HomePage() {
   const { user, loading: authLoading } = useAuth()
+  const { openUnifiedSettings } = useUnifiedSettings()
   const [sites, setSites] = useState<Site[]>([])
   const [sitesLoading, setSitesLoading] = useState(true)
   const [siteStats, setSiteStats] = useState<SiteStatsMap>({})
@@ -355,9 +357,9 @@ export default function HomePage() {
               )}
               <div className="mt-2 flex gap-2">
                 {subscription.has_payment_method ? (
-                  <Link href="/org-settings?tab=billing" className="text-sm font-medium text-brand-orange hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:rounded">
+                  <button onClick={() => openUnifiedSettings({ context: 'workspace', tab: 'billing' })} className="text-sm font-medium text-brand-orange hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:rounded cursor-pointer">
                     Manage billing
-                  </Link>
+                  </button>
                 ) : (
                   <Link href="/pricing" className="text-sm font-medium text-brand-orange hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:rounded">
                     Upgrade

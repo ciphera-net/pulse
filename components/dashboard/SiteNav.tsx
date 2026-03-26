@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
-import { useAuth } from '@/lib/auth/context'
 
 interface SiteNavProps {
   siteId: string
@@ -13,8 +12,6 @@ interface SiteNavProps {
 export default function SiteNav({ siteId }: SiteNavProps) {
   const pathname = usePathname()
   const handleTabKeyDown = useTabListKeyboard()
-  const { user } = useAuth()
-  const canEdit = user?.role === 'owner' || user?.role === 'admin'
 
   const tabs = [
     { label: 'Dashboard', href: `/sites/${siteId}` },
@@ -24,7 +21,6 @@ export default function SiteNav({ siteId }: SiteNavProps) {
     { label: 'Search', href: `/sites/${siteId}/search` },
     { label: 'CDN', href: `/sites/${siteId}/cdn` },
     { label: 'Uptime', href: `/sites/${siteId}/uptime` },
-    ...(canEdit ? [{ label: 'Settings', href: `/sites/${siteId}/settings` }] : []),
   ]
 
   const isActive = (href: string) => {

@@ -327,6 +327,38 @@ function NavLink({
   )
 }
 
+// ─── Settings Button (opens unified modal instead of navigating) ─────
+
+function SettingsButton({
+  item, collapsed, onClick,
+}: {
+  item: NavItem; collapsed: boolean; onClick?: () => void
+}) {
+  const { openUnifiedSettings } = useUnifiedSettings()
+
+  return (
+    <div className="relative group/nav">
+      <button
+        onClick={() => {
+          openUnifiedSettings({ context: 'site', tab: 'general' })
+          onClick?.()
+        }}
+        className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-150 text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5 w-full cursor-pointer"
+      >
+        <span className="w-7 h-7 flex items-center justify-center shrink-0">
+          <item.icon className="w-[18px] h-[18px]" weight="regular" />
+        </span>
+        <Label collapsed={collapsed}>{item.label}</Label>
+      </button>
+      {collapsed && (
+        <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 rounded-md bg-neutral-800 text-white text-xs whitespace-nowrap opacity-0 group-hover/nav:opacity-100 transition-opacity duration-150 delay-150 z-50">
+          {item.label}
+        </span>
+      )}
+    </div>
+  )
+}
+
 // ─── Sidebar Content ────────────────────────────────────────
 
 interface SidebarContentProps {
@@ -347,12 +379,13 @@ interface SidebarContentProps {
   orgs: OrganizationMember[]
   onSwitchOrganization: (orgId: string | null) => Promise<void>
   openSettings: () => void
+  openOrgSettings: () => void
 }
 
 function SidebarContent({
   isMobile, collapsed, siteId, sites, canEdit, pendingHref,
   onNavigate, onMobileClose, onExpand, onCollapse, onToggle,
-  wasCollapsed, pickerOpenCallbackRef, auth, orgs, onSwitchOrganization, openSettings,
+  wasCollapsed, pickerOpenCallbackRef, auth, orgs, onSwitchOrganization, openSettings, openOrgSettings,
 }: SidebarContentProps) {
   const router = useRouter()
   const c = isMobile ? false : collapsed
@@ -401,7 +434,7 @@ function SidebarContent({
                 <NavLink key={item.label} item={item} siteId={siteId} collapsed={c} onClick={isMobile ? onMobileClose : undefined} pendingHref={pendingHref} onNavigate={onNavigate} />
               ))}
               {group.label === 'Infrastructure' && canEdit && (
-                <NavLink item={SETTINGS_ITEM} siteId={siteId} collapsed={c} onClick={isMobile ? onMobileClose : undefined} pendingHref={pendingHref} onNavigate={onNavigate} />
+                <SettingsButton item={SETTINGS_ITEM} collapsed={c} onClick={isMobile ? onMobileClose : undefined} />
               )}
             </div>
           </div>
@@ -432,6 +465,7 @@ function SidebarContent({
               onCreateOrganization={() => router.push('/onboarding')}
               allowPersonalOrganization={false}
               onOpenSettings={openSettings}
+              onOpenOrgSettings={openOrgSettings}
               compact
               anchor="right"
             >
@@ -533,6 +567,7 @@ export default function Sidebar({
           orgs={orgs}
           onSwitchOrganization={handleSwitchOrganization}
           openSettings={() => openUnifiedSettings({ context: 'account', tab: 'profile' })}
+          openOrgSettings={() => openUnifiedSettings({ context: 'workspace', tab: 'general' })}
         />
       </aside>
 
@@ -576,6 +611,7 @@ export default function Sidebar({
               orgs={orgs}
               onSwitchOrganization={handleSwitchOrganization}
               openSettings={() => openUnifiedSettings({ context: 'account', tab: 'profile' })}
+              openOrgSettings={() => openUnifiedSettings({ context: 'workspace', tab: 'general' })}
             />
           </aside>
         </>

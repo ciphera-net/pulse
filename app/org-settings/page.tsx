@@ -1,30 +1,43 @@
-import { Suspense } from 'react'
-import OrganizationSettings from '@/components/settings/OrganizationSettings'
-import { SettingsFormSkeleton } from '@/components/skeletons'
+'use client'
 
-export const metadata = {
-  title: 'Organization Settings - Pulse',
-  description: 'Manage your organization settings',
+import { Suspense, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useUnifiedSettings } from '@/lib/unified-settings-context'
+import { Spinner } from '@ciphera-net/ui'
+
+function OrgSettingsInner() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { openUnifiedSettings } = useUnifiedSettings()
+
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+
+    const tabMap: Record<string, string> = {
+      general: 'general',
+      members: 'members',
+      billing: 'billing',
+      notifications: 'notifications',
+      audit: 'audit',
+    }
+
+    const mappedTab = tab ? tabMap[tab] || 'general' : 'general'
+    // Go back to wherever the user came from (not always /)
+    router.back()
+    setTimeout(() => openUnifiedSettings({ context: 'workspace', tab: mappedTab }), 200)
+  }, [searchParams, router, openUnifiedSettings])
+
+  return (
+    <div className="flex items-center justify-center py-24">
+      <Spinner className="w-6 h-6 text-neutral-500" />
+    </div>
+  )
 }
 
-export default function OrgSettingsPage() {
+export default function OrgSettingsRedirect() {
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
-      <div>
-        <Suspense fallback={
-          <div className="space-y-8">
-            <div>
-              <div className="h-8 w-56 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800 mb-2" />
-              <div className="h-4 w-80 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
-            </div>
-            <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-6 md:p-8">
-              <SettingsFormSkeleton />
-            </div>
-          </div>
-        }>
-          <OrganizationSettings />
-        </Suspense>
-      </div>
-    </div>
+    <Suspense fallback={<div className="flex items-center justify-center py-24"><Spinner className="w-6 h-6 text-neutral-500" /></div>}>
+      <OrgSettingsInner />
+    </Suspense>
   )
 }

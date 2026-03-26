@@ -16,6 +16,7 @@ import {
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { formatTimeAgo, getTypeIcon } from '@/lib/utils/notifications'
 import { Button, ArrowLeftIcon } from '@ciphera-net/ui'
+import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { NotificationsListSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import { toast } from '@ciphera-net/ui'
 
@@ -23,6 +24,7 @@ const PAGE_SIZE = 50
 
 export default function NotificationsPage() {
   const { user } = useAuth()
+  const { openUnifiedSettings } = useUnifiedSettings()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -125,9 +127,9 @@ export default function NotificationsPage() {
         <h1 className="text-2xl font-bold text-white mb-2">Notifications</h1>
         <p className="text-sm text-neutral-400 mb-6">
           Manage which notifications you receive in{' '}
-          <Link href="/org-settings?tab=notifications" className="text-brand-orange hover:underline">
+          <button onClick={() => openUnifiedSettings({ context: 'workspace', tab: 'notifications' })} className="text-brand-orange hover:underline cursor-pointer">
             Organization Settings → Notifications
-          </Link>
+          </button>
         </p>
 
         {showSkeleton ? (
@@ -141,9 +143,9 @@ export default function NotificationsPage() {
             <p>No notifications yet</p>
             <p className="text-sm mt-2">
               Manage which notifications you receive in{' '}
-              <Link href="/org-settings?tab=notifications" className="text-brand-orange hover:underline">
+              <button onClick={() => openUnifiedSettings({ context: 'workspace', tab: 'notifications' })} className="text-brand-orange hover:underline cursor-pointer">
                 Organization Settings → Notifications
-              </Link>
+              </button>
             </p>
           </div>
         ) : (
