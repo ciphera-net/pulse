@@ -91,6 +91,8 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   const showOfflineBar = Boolean(auth.user && !isOnline)
   // Site pages use DashboardShell with full sidebar — no Header needed
   const isSitePage = pathname.startsWith('/sites/') && pathname !== '/sites/new'
+  // Checkout page has its own minimal layout — no app header/footer
+  const isCheckoutPage = pathname.startsWith('/checkout')
 
   if (isSwitchingOrg) {
     return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" portal={false} />
@@ -111,6 +113,11 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
         <UnifiedSettingsModal />
       </>
     )
+  }
+
+  // Checkout page: render children only (has its own layout)
+  if (isAuthenticated && isCheckoutPage) {
+    return <>{children}</>
   }
 
   // Authenticated non-site pages (sites list, onboarding, etc.): static header
