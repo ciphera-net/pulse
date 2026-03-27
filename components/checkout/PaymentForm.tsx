@@ -219,14 +219,13 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
                 key={method.id}
                 type="button"
                 onClick={() => { setSelectedMethod(method.id); setFormError(null) }}
-                className={`flex flex-col items-center justify-center gap-1 rounded-xl border h-[52px] text-[10px] font-medium transition-all duration-200 ${
+                className={`flex items-center justify-center rounded-xl border h-[44px] transition-all duration-200 ${
                   isSelected
-                    ? 'border-brand-orange bg-brand-orange/5 text-white'
-                    : 'border-neutral-700/50 bg-neutral-800/30 text-neutral-400 hover:border-neutral-600 hover:text-neutral-300'
+                    ? 'border-brand-orange bg-brand-orange/5'
+                    : 'border-neutral-700/50 bg-neutral-800/30 hover:border-neutral-600'
                 }`}
               >
                 <MethodLogo type={method.id} />
-                <span>{method.label}</span>
               </button>
             )
           })}
