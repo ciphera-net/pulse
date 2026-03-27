@@ -102,6 +102,30 @@ export async function getOrders(): Promise<Order[]> {
   return apiRequest<Order[]>('/api/billing/invoices')
 }
 
+export interface VATResult {
+  base_amount: string
+  vat_rate: number
+  vat_amount: string
+  total_amount: string
+  vat_exempt: boolean
+  vat_reason: string
+}
+
+export interface CalculateVATParams {
+  plan_id: string
+  interval: string
+  limit: number
+  country: string
+  vat_id?: string
+}
+
+export async function calculateVAT(params: CalculateVATParams): Promise<VATResult> {
+  return apiRequest<VATResult>('/api/billing/calculate-vat', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  })
+}
+
 export interface CreateEmbeddedCheckoutParams {
   plan_id: string
   interval: string
