@@ -786,12 +786,14 @@ function AuditDescription({ text }: { text: string }) {
       {parts.map((part, i) => {
         const match = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/)
         if (match) {
+          const href = remapLearnUrl(match[2])
+          const isCiphera = href.startsWith('https://ciphera.net')
           return (
             <a
               key={i}
-              href={remapLearnUrl(match[2])}
+              href={href}
               target="_blank"
-              rel="noopener noreferrer"
+              rel={isCiphera ? 'noopener' : 'noopener noreferrer'}
               className="text-brand-orange hover:underline"
             >
               {match[1]}
