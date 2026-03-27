@@ -294,7 +294,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
 
         {/* Non-card info */}
         <AnimatePresence>
-          {!isCard && (
+          {selectedMethod && !isCard && (
             <motion.p
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
