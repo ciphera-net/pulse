@@ -65,6 +65,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
+  const submitRef = useRef<HTMLButtonElement>(null)
   const componentsRef = useRef<Record<string, MollieComponent | null>>({
     cardHolder: null,
     cardNumber: null,
@@ -223,7 +224,13 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
               <button
                 key={method.id}
                 type="button"
-                onClick={() => { setSelectedMethod(method.id); setFormError(null) }}
+                onClick={() => {
+                  setSelectedMethod(method.id)
+                  setFormError(null)
+                  if (method.id === 'card') {
+                    setTimeout(() => submitRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 350)
+                  }
+                }}
                 className={`flex items-center justify-center rounded-xl border h-[44px] transition-all duration-200 ${
                   isSelected
                     ? 'border-brand-orange bg-brand-orange/5'
@@ -323,6 +330,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
 
         {/* Submit */}
         <button
+          ref={submitRef}
           type="submit"
           disabled={submitting || !selectedMethod || (isCard && !mollieReady && !mollieError)}
           className="mt-4 w-full rounded-lg bg-brand-orange px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-orange/90 disabled:opacity-50 disabled:cursor-not-allowed"
