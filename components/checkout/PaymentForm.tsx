@@ -333,7 +333,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
           ref={submitRef}
           type="submit"
           disabled={submitting || !selectedMethod || (isCard && !mollieReady && !mollieError)}
-          className="mt-4 w-full rounded-lg bg-brand-orange px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-orange/90 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="mt-4 w-full rounded-lg bg-brand-orange-button px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-orange-button-hover disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {submitting ? 'Processing...' : 'Start free trial'}
         </button>

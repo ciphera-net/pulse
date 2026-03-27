@@ -674,7 +674,7 @@ export default function Chart({
                   type="button"
                   disabled={!annotationForm.text.trim() || !annotationForm.date || saving}
                   onClick={handleSaveAnnotation}
-                  className="px-3 py-1.5 text-xs font-medium text-white bg-brand-orange hover:bg-brand-orange/90 rounded-lg disabled:opacity-50 cursor-pointer"
+                  className="px-3 py-1.5 text-xs font-medium text-white bg-brand-orange-button hover:bg-brand-orange-button-hover rounded-lg disabled:opacity-50 cursor-pointer"
                 >
                   {saving ? 'Saving...' : annotationForm.editingId ? 'Save' : 'Add'}
                 </button>

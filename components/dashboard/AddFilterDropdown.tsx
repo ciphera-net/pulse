@@ -164,7 +164,7 @@ export default function AddFilterDropdown({ onAdd, suggestions = {}, onFetchSugg
                     onClick={() => setOperator(op)}
                     className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors cursor-pointer ${
                       operator === op
-                        ? 'bg-brand-orange text-white'
+                        ? 'bg-brand-orange-button text-white'
                         : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
                     }`}
                   >
@@ -219,7 +219,7 @@ export default function AddFilterDropdown({ onAdd, suggestions = {}, onFetchSugg
                 <div className="px-3 py-3 border-t border-neutral-800">
                   <button
                     onClick={handleSubmitCustom}
-                    className="w-full px-3 py-2 text-sm font-medium bg-brand-orange text-white rounded-lg hover:bg-brand-orange/90 transition-colors cursor-pointer"
+                    className="w-full px-3 py-2 text-sm font-medium bg-brand-orange-button text-white rounded-lg hover:bg-brand-orange/90 transition-colors cursor-pointer"
                   >
                     Filter by &ldquo;{search.trim()}&rdquo;
                   </button>
