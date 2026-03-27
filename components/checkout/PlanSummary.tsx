@@ -27,6 +27,7 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
   const [currentInterval, setCurrentInterval] = useState(interval)
   const [vatResult, setVatResult] = useState<VATResult | null>(null)
   const [vatLoading, setVatLoading] = useState(false)
+  const [verifiedVatId, setVerifiedVatId] = useState('')
 
   const monthlyCents = PLAN_PRICES[plan]?.[limit] || 0
   const isYearly = currentInterval === 'year'
@@ -56,11 +57,28 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
     }
   }, [plan, limit])
 
+  // Auto-fetch when country or interval changes (using the already-verified VAT ID if any)
   useEffect(() => {
     if (!country) { setVatResult(null); return }
-    const timer = setTimeout(() => fetchVAT(country, vatId, currentInterval), vatId ? 400 : 0)
-    return () => clearTimeout(timer)
-  }, [country, vatId, currentInterval, fetchVAT])
+    fetchVAT(country, verifiedVatId, currentInterval)
+  }, [country, currentInterval, fetchVAT, verifiedVatId])
+
+  // Clear verified state when VAT ID input changes
+  useEffect(() => {
+    if (vatId !== verifiedVatId) {
+      setVerifiedVatId('')
+      // Re-fetch without VAT ID to show the 21% rate
+      if (country) fetchVAT(country, '', currentInterval)
+    }
+  }, [vatId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleVerifyVatId = () => {
+    if (!vatId || !country) return
+    setVerifiedVatId(vatId)
+    fetchVAT(country, vatId, currentInterval)
+  }
+
+  const isVatVerified = verifiedVatId !== '' && verifiedVatId === vatId
 
   return (
     <div className="rounded-2xl border border-neutral-800 bg-neutral-900/50 backdrop-blur-xl p-5 space-y-4">
@@ -111,13 +129,35 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
         <label className="block text-sm font-medium text-neutral-300 mb-1.5">
           VAT ID <span className="text-neutral-500">(optional)</span>
         </label>
-        <input
-          type="text"
-          value={vatId}
-          onChange={(e) => onVatIdChange(e.target.value)}
-          placeholder="e.g. BE0123456789"
-          className={inputClass}
-        />
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={vatId}
+            onChange={(e) => onVatIdChange(e.target.value)}
+            placeholder="e.g. DE123456789"
+            className={inputClass}
+          />
+          <button
+            type="button"
+            onClick={handleVerifyVatId}
+            disabled={!vatId || !country || vatLoading || isVatVerified}
+            className="shrink-0 rounded-lg bg-neutral-700 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-neutral-600 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {vatLoading && vatId ? 'Verifying...' : isVatVerified ? 'Verified' : 'Verify'}
+          </button>
+        </div>
+        {/* Verified company info */}
+        {isVatVerified && vatResult?.company_name && (
+          <div className="mt-2 rounded-lg bg-green-500/5 border border-green-500/20 px-3 py-2 text-xs text-neutral-400">
+            <p className="font-medium text-green-400">{vatResult.company_name}</p>
+            {vatResult.company_address && (
+              <p className="mt-0.5 whitespace-pre-line">{vatResult.company_address}</p>
+            )}
+          </div>
+        )}
+        {isVatVerified && vatResult && !vatResult.vat_exempt && (
+          <p className="mt-1.5 text-xs text-yellow-400">VAT ID could not be verified. 21% VAT will apply.</p>
+        )}
       </div>
 
       {/* Price breakdown */}
@@ -138,7 +178,7 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
         ) : vatLoading ? (
           <div className="flex items-center gap-2 text-sm text-neutral-400">
             <div className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-600 border-t-white" />
-            Calculating VAT...
+            {vatId ? 'Verifying VAT ID...' : 'Calculating VAT...'}
           </div>
         ) : vatResult ? (
           <div className="space-y-1.5 text-sm">

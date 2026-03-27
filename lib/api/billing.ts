@@ -109,6 +109,8 @@ export interface VATResult {
   total_amount: string
   vat_exempt: boolean
   vat_reason: string
+  company_name?: string
+  company_address?: string
 }
 
 export interface CalculateVATParams {
