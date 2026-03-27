@@ -25,60 +25,30 @@ const PAYMENT_METHODS = [
   { id: 'directdebit', label: 'SEPA' },
 ]
 
+const METHOD_LOGOS: Record<string, { src: string | string[]; alt: string }> = {
+  card: { src: ['/images/payment/visa.svg', '/images/payment/mastercard.svg'], alt: 'Card' },
+  bancontact: { src: '/images/payment/bancontact.svg', alt: 'Bancontact' },
+  ideal: { src: '/images/payment/ideal.svg', alt: 'iDEAL' },
+  applepay: { src: '/images/payment/applepay.svg', alt: 'Apple Pay' },
+  googlepay: { src: '/images/payment/googlepay.svg', alt: 'Google Pay' },
+  directdebit: { src: '/images/payment/sepa.svg', alt: 'SEPA' },
+}
+
 function MethodLogo({ type }: { type: string }) {
-  switch (type) {
-    case 'card':
-      return (
-        <div className="flex items-center gap-1.5">
-          <svg viewBox="0 0 38 24" className="h-5 w-auto">
-            <circle cx="14" cy="12" r="7" fill="#EB001B" />
-            <circle cx="24" cy="12" r="7" fill="#F79E1B" />
-            <path d="M19 6.26a7 7 0 0 1 0 11.48 7 7 0 0 1 0-11.48z" fill="#FF5F00" />
-          </svg>
-        </div>
-      )
-    case 'bancontact':
-      return (
-        <svg viewBox="0 0 40 24" className="h-5 w-auto">
-          <rect width="40" height="24" rx="3" fill="#005498" />
-          <ellipse cx="15" cy="12" rx="7" ry="5.5" fill="#fff" opacity="0.9" />
-          <circle cx="29" cy="12" r="5" fill="#FFD800" />
-        </svg>
-      )
-    case 'ideal':
-      return (
-        <svg viewBox="0 0 40 24" className="h-5 w-auto">
-          <rect width="40" height="24" rx="3" fill="#CC0066" />
-          <rect x="8" y="5" width="24" height="14" rx="2" fill="#fff" />
-          <rect x="12" y="8" width="16" height="8" rx="1" fill="#CC0066" />
-        </svg>
-      )
-    case 'applepay':
-      return (
-        <svg viewBox="0 0 24 24" className="h-5 w-5 text-white">
-          <path d="M17.05 12.54c-.02-2.1 1.73-3.12 1.81-3.17-1-1.44-2.54-1.64-3.08-1.66-1.3-.14-2.57.78-3.23.78-.68 0-1.7-.76-2.8-.74-1.43.02-2.77.85-3.5 2.14-1.52 2.6-.39 6.43 1.07 8.54.73 1.03 1.58 2.19 2.7 2.15 1.1-.04 1.5-.7 2.82-.7 1.3 0 1.67.7 2.8.67 1.17-.02 1.9-1.04 2.6-2.08.84-1.2 1.18-2.37 1.19-2.43-.03-.01-2.27-.86-2.29-3.43zM14.95 5.89c.58-.73.98-1.72.87-2.73-.84.04-1.9.58-2.5 1.28-.54.63-1.02 1.66-.9 2.63.95.07 1.93-.48 2.53-1.18z" fill="currentColor" />
-        </svg>
-      )
-    case 'googlepay':
-      return (
-        <svg viewBox="0 0 24 24" className="h-5 w-5">
-          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
-          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05" />
-          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-        </svg>
-      )
-    case 'directdebit':
-      return (
-        <svg viewBox="0 0 40 24" className="h-5 w-auto">
-          <rect width="40" height="24" rx="3" fill="#003399" />
-          <circle cx="20" cy="12" r="7.5" fill="none" stroke="#FFCC00" strokeWidth="1" />
-          <path d="M17.5 9.5h5c.5 0 1 .3 1 .8v1.2h-6v-1.2c0-.5.5-.8 1-.8zm-1 3h7v1.2c0 .5-.5.8-1 .8h-5c-.5 0-1-.3-1-.8v-1.2zm0 0h7" stroke="#FFCC00" strokeWidth="0.8" fill="none" />
-        </svg>
-      )
-    default:
-      return null
+  const logo = METHOD_LOGOS[type]
+  if (!logo) return null
+
+  if (Array.isArray(logo.src)) {
+    return (
+      <div className="flex items-center gap-1">
+        {logo.src.map((s) => (
+          <img key={s} src={s} alt="" className="h-6 w-auto rounded-sm" />
+        ))}
+      </div>
+    )
   }
+
+  return <img src={logo.src} alt={logo.alt} className="h-6 w-auto rounded-sm" />
 }
 
 const mollieFieldBase =
