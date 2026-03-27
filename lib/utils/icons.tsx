@@ -322,15 +322,16 @@ export function getReferrerFavicon(referrer: string): string | null {
  */
 export function mergeReferrersByDisplayName(
   items: Array<{ referrer: string; pageviews: number }>
-): Array<{ referrer: string; pageviews: number }> {
-  const byDisplayName = new Map<string, { referrer: string; pageviews: number; maxSingle: number }>()
+): Array<{ referrer: string; pageviews: number; allReferrers: string[] }> {
+  const byDisplayName = new Map<string, { referrer: string; pageviews: number; maxSingle: number; allReferrers: Set<string> }>()
   for (const ref of items) {
     const name = getReferrerDisplayName(ref.referrer)
     const existing = byDisplayName.get(name)
     if (!existing) {
-      byDisplayName.set(name, { referrer: ref.referrer, pageviews: ref.pageviews, maxSingle: ref.pageviews })
+      byDisplayName.set(name, { referrer: ref.referrer, pageviews: ref.pageviews, maxSingle: ref.pageviews, allReferrers: new Set([ref.referrer]) })
     } else {
       existing.pageviews += ref.pageviews
+      existing.allReferrers.add(ref.referrer)
       if (ref.pageviews > existing.maxSingle) {
         existing.maxSingle = ref.pageviews
         existing.referrer = ref.referrer
@@ -338,6 +339,6 @@ export function mergeReferrersByDisplayName(
     }
   }
   return Array.from(byDisplayName.values())
-    .map(({ referrer, pageviews }) => ({ referrer, pageviews }))
+    .map(({ referrer, pageviews, allReferrers }) => ({ referrer, pageviews, allReferrers: Array.from(allReferrers) }))
     .sort((a, b) => b.pageviews - a.pageviews)
 }
