@@ -230,7 +230,7 @@ export default function PricingSection() {
               onChange={(e) => setSliderIndex(parseInt(e.target.value))}
               aria-label="Monthly pageview limit"
               aria-valuetext={`${currentTraffic.label} pageviews per month`}
-              className="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-brand-orange focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2"
+              className="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-brand-orange focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2"
             />
           </div>
 
