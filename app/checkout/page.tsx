@@ -123,6 +123,8 @@ function CheckoutContent() {
   const searchParams = useSearchParams()
   const { user, loading: authLoading } = useAuth()
   const { data: subscription } = useSubscription()
+  const [country, setCountry] = useState('')
+  const [vatId, setVatId] = useState('')
 
   const status = searchParams.get('status')
   const plan = searchParams.get('plan')
@@ -170,8 +172,6 @@ function CheckoutContent() {
   const planId = plan!
   const billingInterval = interval as 'month' | 'year'
   const pageviewLimit = Number(limit)
-  const [country, setCountry] = useState('')
-  const [vatId, setVatId] = useState('')
 
   return (
     <div className="flex h-screen overflow-hidden">

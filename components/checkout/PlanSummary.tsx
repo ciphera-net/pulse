@@ -158,11 +158,11 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
               </div>
             )}
             <div className="flex justify-between font-semibold text-white pt-1 border-t border-neutral-800">
-              <span>Total /mo</span>
+              <span>Total {isYearly ? '/year' : '/mo'}</span>
               <span>&euro;{vatResult.total_amount}</span>
             </div>
             {isYearly && (
-              <p className="text-xs text-neutral-500">Billed as &euro;{(parseFloat(vatResult.total_amount) * 12).toFixed(2)}/year</p>
+              <p className="text-xs text-neutral-500">&euro;{(parseFloat(vatResult.total_amount) / 12).toFixed(2)}/mo</p>
             )}
           </div>
         ) : null}
