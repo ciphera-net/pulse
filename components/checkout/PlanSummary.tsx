@@ -170,7 +170,7 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
               </div>
             </motion.div>
           )}
-          {isVatChecked && vatResult && !vatResult.vat_exempt && (
+          {isVatChecked && !vatLoading && !isVatValid && vatResult && !vatResult.vat_exempt && (
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
