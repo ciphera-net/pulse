@@ -38,8 +38,22 @@ export default function FeatureSlideshow() {
   }, [])
 
   useEffect(() => {
-    const timer = setInterval(advance, 8000)
-    return () => clearInterval(timer)
+    let timer: ReturnType<typeof setInterval> | null = null
+
+    const start = () => { timer = setInterval(advance, 8000) }
+    const stop = () => { if (timer) { clearInterval(timer); timer = null } }
+
+    const onVisibility = () => {
+      if (document.hidden) stop()
+      else start()
+    }
+
+    start()
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      stop()
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
   }, [advance])
 
   const slide = slides[activeIndex]
