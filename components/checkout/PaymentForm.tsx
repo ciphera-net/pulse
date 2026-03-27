@@ -1,11 +1,9 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Script from 'next/script'
 import { Lock, ShieldCheck } from '@phosphor-icons/react'
-import { Select } from '@ciphera-net/ui'
-import { COUNTRY_OPTIONS } from '@/lib/countries'
 import { initMollie, getMollie, MOLLIE_FIELD_STYLES, type MollieComponent } from '@/lib/mollie'
 import { createEmbeddedCheckout } from '@/lib/api/billing'
 
@@ -13,20 +11,16 @@ interface PaymentFormProps {
   plan: string
   interval: string
   limit: number
+  country: string
+  vatId: string
 }
 
-const inputClass =
-  'w-full rounded-lg border border-neutral-700 bg-neutral-800/50 px-3 py-2.5 text-sm text-white placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-brand-orange focus:border-brand-orange transition-colors'
 const mollieFieldBase =
   'w-full rounded-lg border border-neutral-700 bg-neutral-800/50 px-3 py-3 h-[48px] transition-all focus-within:ring-1 focus-within:ring-brand-orange focus-within:border-brand-orange'
 
-export default function PaymentForm({ plan, interval, limit }: PaymentFormProps) {
+export default function PaymentForm({ plan, interval, limit, country, vatId }: PaymentFormProps) {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const currentInterval = searchParams.get('interval') || interval
 
-  const [country, setCountry] = useState('')
-  const [vatId, setVatId] = useState('')
   const [mollieReady, setMollieReady] = useState(false)
   const [mollieError, setMollieError] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
@@ -130,7 +124,7 @@ export default function PaymentForm({ plan, interval, limit }: PaymentFormProps)
 
       const result = await createEmbeddedCheckout({
         plan_id: plan,
-        interval: currentInterval,
+        interval: interval,
         limit,
         country,
         vat_id: vatId || undefined,
@@ -209,31 +203,6 @@ export default function PaymentForm({ plan, interval, limit }: PaymentFormProps)
           </div>
         </div>
 
-        {/* Country */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-neutral-300 mb-1.5">Country</label>
-          <Select
-            value={country}
-            onChange={setCountry}
-            variant="input"
-            options={[{ value: '', label: 'Select country' }, ...COUNTRY_OPTIONS.map((c) => ({ value: c.value, label: c.label }))]}
-          />
-        </div>
-
-        {/* VAT ID */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-neutral-300 mb-1.5">
-            VAT ID <span className="text-neutral-500">(optional)</span>
-          </label>
-          <input
-            type="text"
-            value={vatId}
-            onChange={(e) => setVatId(e.target.value)}
-            placeholder="e.g. BE0123456789"
-            className={inputClass}
-          />
-        </div>
-
         {/* Form / API errors */}
         {formError && (
           <div className="mb-4 rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
@@ -246,7 +215,7 @@ export default function PaymentForm({ plan, interval, limit }: PaymentFormProps)
           <div className="mb-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20 px-4 py-3 text-sm text-yellow-400">
             Card fields could not load.{' '}
             <a
-              href={`/checkout?plan=${plan}&interval=${currentInterval}&limit=${limit}&fallback=1`}
+              href={`/checkout?plan=${plan}&interval=${interval}&limit=${limit}&fallback=1`}
               className="underline hover:text-yellow-300"
             >
               Use the hosted checkout instead
