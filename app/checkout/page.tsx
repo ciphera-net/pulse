@@ -170,6 +170,8 @@ function CheckoutContent() {
   const planId = plan!
   const billingInterval = interval as 'month' | 'year'
   const pageviewLimit = Number(limit)
+  const [country, setCountry] = useState('')
+  const [vatId, setVatId] = useState('')
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -208,6 +210,10 @@ function CheckoutContent() {
               plan={planId}
               interval={billingInterval}
               limit={pageviewLimit}
+              country={country}
+              vatId={vatId}
+              onCountryChange={setCountry}
+              onVatIdChange={setVatId}
             />
 
             {/* Payment form */}
@@ -215,6 +221,8 @@ function CheckoutContent() {
               plan={planId}
               interval={billingInterval}
               limit={pageviewLimit}
+              country={country}
+              vatId={vatId}
             />
           </motion.div>
         </div>
