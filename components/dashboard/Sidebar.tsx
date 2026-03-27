@@ -518,8 +518,8 @@ export default function Sidebar({
     try {
       const { access_token } = await switchContext(orgId)
       await setSessionAction(access_token)
-      sessionStorage.setItem('pulse_switching_org', 'true')
-      window.location.reload()
+      await auth.refresh()
+      router.push('/')
     } catch (err) {
       logger.error('Failed to switch organization', err)
     }
