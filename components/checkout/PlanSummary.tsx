@@ -63,9 +63,9 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
     fetchVAT(country, verifiedVatId, currentInterval)
   }, [country, currentInterval, fetchVAT, verifiedVatId])
 
-  // Clear verified state when VAT ID input changes
+  // Clear verified state when VAT ID input changes after a successful verification
   useEffect(() => {
-    if (vatId !== verifiedVatId) {
+    if (verifiedVatId !== '' && vatId !== verifiedVatId) {
       setVerifiedVatId('')
       // Re-fetch without VAT ID to show the 21% rate
       if (country) fetchVAT(country, '', currentInterval)
