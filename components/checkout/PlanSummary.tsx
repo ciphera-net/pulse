@@ -185,13 +185,8 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
       </div>
 
       {/* Price breakdown */}
-      <div className="pt-2 border-t border-neutral-800">
-        {vatLoading && !vatResult ? (
-          <div className="flex items-center gap-2 text-sm text-neutral-400">
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-600 border-t-white" />
-            Calculating VAT...
-          </div>
-        ) : vatResult ? (
+      <div className={`pt-2 border-t border-neutral-800 transition-opacity duration-200 ${vatLoading ? 'opacity-50' : 'opacity-100'}`}>
+        {vatResult ? (
           <div className="space-y-1.5 text-sm">
             <div className="flex justify-between text-neutral-400">
               <span>Subtotal ({tierLabel} pageviews)</span>
@@ -220,15 +215,15 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
           <div className="space-y-1.5 text-sm">
             <div className="flex justify-between text-neutral-400">
               <span>Subtotal ({tierLabel} pageviews)</span>
-              <span>&euro;{isYearly ? baseDisplay.toFixed(2) : baseDisplay.toFixed(2)}</span>
+              <span>&euro;{baseDisplay.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-neutral-500 text-xs">
               <span>VAT</span>
-              <span>Select country</span>
+              <span>{vatLoading ? 'Calculating...' : 'Select country'}</span>
             </div>
             <div className="flex justify-between font-semibold text-white pt-1 border-t border-neutral-800">
               <span>Total {isYearly ? '/year' : '/mo'} <span className="font-normal text-neutral-500 text-xs">excl. VAT</span></span>
-              <span>&euro;{isYearly ? baseDisplay.toFixed(2) : baseDisplay.toFixed(2)}</span>
+              <span>&euro;{baseDisplay.toFixed(2)}</span>
             </div>
             {isYearly && (
               <p className="text-xs text-neutral-500">&euro;{(baseDisplay / 12).toFixed(2)}/mo &middot; Save 1 month</p>

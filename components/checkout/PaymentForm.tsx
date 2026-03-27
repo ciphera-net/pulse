@@ -57,7 +57,7 @@ const mollieFieldBase =
 export default function PaymentForm({ plan, interval, limit, country, vatId }: PaymentFormProps) {
   const router = useRouter()
 
-  const [selectedMethod, setSelectedMethod] = useState('card')
+  const [selectedMethod, setSelectedMethod] = useState('')
   const [mollieReady, setMollieReady] = useState(false)
   const [mollieError, setMollieError] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
@@ -140,6 +140,11 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
     e.preventDefault()
     setSubmitted(true)
     setFormError(null)
+
+    if (!selectedMethod) {
+      setFormError('Please select a payment method')
+      return
+    }
 
     if (!country) {
       setFormError('Please select your country')
@@ -319,8 +324,8 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
         {/* Submit */}
         <button
           type="submit"
-          disabled={submitting || (isCard && !mollieReady && !mollieError)}
-          className="w-full rounded-lg bg-brand-orange px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-orange/90 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={submitting || !selectedMethod || (isCard && !mollieReady && !mollieError)}
+          className="mt-4 w-full rounded-lg bg-brand-orange px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-orange/90 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {submitting ? 'Processing...' : 'Start free trial'}
         </button>
