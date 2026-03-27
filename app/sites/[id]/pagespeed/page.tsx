@@ -8,6 +8,7 @@ import { updatePageSpeedConfig, triggerPageSpeedCheck, getPageSpeedLatest, getPa
 import { toast, Button } from '@ciphera-net/ui'
 import { motion } from 'framer-motion'
 import ScoreGauge from '@/components/pagespeed/ScoreGauge'
+import { remapLearnUrl } from '@/lib/learn-links'
 import { AreaChart as VisxAreaChart, Area as VisxArea, Grid as VisxGrid, XAxis as VisxXAxis, YAxis as VisxYAxis, ChartTooltip as VisxChartTooltip } from '@/components/ui/area-chart'
 import { useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 
@@ -788,7 +789,7 @@ function AuditDescription({ text }: { text: string }) {
           return (
             <a
               key={i}
-              href={match[2]}
+              href={remapLearnUrl(match[2])}
               target="_blank"
               rel="noopener noreferrer"
               className="text-brand-orange hover:underline"
