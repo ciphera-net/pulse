@@ -84,7 +84,7 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
   }
 
   const isVatChecked = verifiedVatId !== '' && verifiedVatId === vatId
-  const isVatValid = isVatChecked && vatResult?.vat_exempt === true
+  const isVatValid = isVatChecked && !!vatResult?.company_name
 
   return (
     <div className="rounded-2xl border border-neutral-800 bg-neutral-900/50 backdrop-blur-xl p-5 space-y-4">
