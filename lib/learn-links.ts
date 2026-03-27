@@ -133,6 +133,36 @@ const LEARN_URL_MAP: Record<string, string> = {
   'dequeuniversity.com/rules/axe/4.11/html-xml-lang-mismatch': 'https://ciphera.net/learn/pulse/html-xml-lang-mismatch',
   'dequeuniversity.com/rules/axe/4.11/valid-lang': 'https://ciphera.net/learn/pulse/valid-lang',
   'dequeuniversity.com/rules/axe/4.11/video-caption': 'https://ciphera.net/learn/pulse/video-caption',
+
+  // Best Practices General (batch 2)
+  'developer.chrome.com/docs/lighthouse/best-practices/trusted-types-xss': 'https://ciphera.net/learn/pulse/trusted-types-xss',
+  'developer.chrome.com/docs/lighthouse/best-practices/deprecations': 'https://ciphera.net/learn/pulse/deprecations',
+  'developer.chrome.com/docs/lighthouse/best-practices/errors-in-console': 'https://ciphera.net/learn/pulse/errors-in-console',
+  'developer.chrome.com/docs/lighthouse/best-practices/js-libraries': 'https://ciphera.net/learn/pulse/js-libraries',
+  'developer.chrome.com/docs/devtools/javascript/source-maps': 'https://ciphera.net/learn/pulse/valid-source-maps',
+
+  // Accessibility Best Practices (batch 2)
+  'dequeuniversity.com/rules/axe/4.11/aria-allowed-role': 'https://ciphera.net/learn/pulse/aria-allowed-role',
+  'dequeuniversity.com/rules/axe/4.11/identical-links-same-purpose': 'https://ciphera.net/learn/pulse/identical-links-same-purpose',
+  'dequeuniversity.com/rules/axe/4.11/landmark-one-main': 'https://ciphera.net/learn/pulse/landmark-one-main',
+  'dequeuniversity.com/rules/axe/4.11/table-duplicate-name': 'https://ciphera.net/learn/pulse/table-duplicate-name',
+
+  // Accessibility Experimental (batch 2)
+  'dequeuniversity.com/rules/axe/4.11/label-content-name-mismatch': 'https://ciphera.net/learn/pulse/label-content-name-mismatch',
+  'dequeuniversity.com/rules/axe/4.11/table-fake-caption': 'https://ciphera.net/learn/pulse/table-fake-caption',
+  'dequeuniversity.com/rules/axe/4.11/td-has-header': 'https://ciphera.net/learn/pulse/td-has-header',
+
+  // Accessibility Manual Audits
+  'developer.chrome.com/docs/lighthouse/accessibility/focusable-controls': 'https://ciphera.net/learn/pulse/focusable-controls',
+  'developer.chrome.com/docs/lighthouse/accessibility/interactive-element-affordance': 'https://ciphera.net/learn/pulse/interactive-element-affordance',
+  'developer.chrome.com/docs/lighthouse/accessibility/logical-tab-order': 'https://ciphera.net/learn/pulse/logical-tab-order',
+  'developer.chrome.com/docs/lighthouse/accessibility/visual-order-follows-dom': 'https://ciphera.net/learn/pulse/visual-order-follows-dom',
+  'developer.chrome.com/docs/lighthouse/accessibility/focus-traps': 'https://ciphera.net/learn/pulse/focus-traps',
+  'developer.chrome.com/docs/lighthouse/accessibility/managed-focus': 'https://ciphera.net/learn/pulse/managed-focus',
+  'developer.chrome.com/docs/lighthouse/accessibility/use-landmarks': 'https://ciphera.net/learn/pulse/use-landmarks',
+  'developer.chrome.com/docs/lighthouse/accessibility/offscreen-content-hidden': 'https://ciphera.net/learn/pulse/offscreen-content-hidden',
+  'developer.chrome.com/docs/lighthouse/accessibility/custom-controls-labels': 'https://ciphera.net/learn/pulse/custom-controls-labels',
+  'developer.chrome.com/docs/lighthouse/accessibility/custom-control-roles': 'https://ciphera.net/learn/pulse/custom-controls-roles',
 }
 
 function normalizeUrl(url: string): string {
