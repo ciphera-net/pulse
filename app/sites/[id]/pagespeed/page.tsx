@@ -787,13 +787,13 @@ function AuditDescription({ text }: { text: string }) {
         const match = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/)
         if (match) {
           const href = remapLearnUrl(match[2])
-          const isCiphera = href.startsWith('https://ciphera.net')
+          const isInternal = href.startsWith('https://ciphera.net') || href.startsWith('https://pulse.ciphera.net') || href.startsWith('https://pulse-staging.ciphera.net')
           return (
             <a
               key={i}
               href={href}
               target="_blank"
-              rel={isCiphera ? 'noopener' : 'noopener noreferrer'}
+              rel={isInternal ? 'noopener' : 'noopener noreferrer'}
               className="text-brand-orange hover:underline"
             >
               {match[1]}
