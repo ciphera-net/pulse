@@ -174,6 +174,9 @@ const REFERRER_REGISTRY: Record<string, ReferrerEntry> = {
 
   // ── Browsers as referrers ──
   googlechrome: { display: 'Google Chrome', icon: () => <img src="/icons/browsers/chrome.svg" alt="Chrome" width={16} height={16} className="inline-block" />, hostnames: ['googlechrome.github.io'] },
+
+  // ── Ciphera products ──
+  pulse:       { display: 'Pulse',        icon: () => <img src="/pulse_icon_no_margins.png" alt="Pulse" width={16} height={16} className="inline-block" />, hostnames: ['pulse.ciphera.net', 'pulse-staging.ciphera.net'] },
 }
 
 // ── Derived lookup maps (built once at module load) ──
