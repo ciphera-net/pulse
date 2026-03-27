@@ -74,6 +74,7 @@ export interface CreateCheckoutParams {
   limit: number
   country: string
   vat_id?: string
+  method?: string
 }
 
 export async function createCheckoutSession(params: CreateCheckoutParams): Promise<{ url: string }> {
