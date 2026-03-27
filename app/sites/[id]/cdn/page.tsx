@@ -187,7 +187,7 @@ export default function CDNPage() {
           </p>
           <button
             onClick={() => openUnifiedSettings({ context: 'site', tab: 'integrations' })}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-brand-orange hover:bg-brand-orange/90 text-white text-sm font-medium transition-colors cursor-pointer"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-brand-orange-button hover:bg-brand-orange-button-hover text-white text-sm font-medium transition-colors cursor-pointer"
           >
             Connect in Settings
             <ArrowSquareOut size={16} weight="bold" />
