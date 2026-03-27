@@ -78,7 +78,8 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
     fetchVAT(country, vatId, currentInterval)
   }
 
-  const isVatVerified = verifiedVatId !== '' && verifiedVatId === vatId
+  const isVatChecked = verifiedVatId !== '' && verifiedVatId === vatId
+  const isVatValid = isVatChecked && vatResult?.vat_exempt === true
 
   return (
     <div className="rounded-2xl border border-neutral-800 bg-neutral-900/50 backdrop-blur-xl p-5 space-y-4">
@@ -140,14 +141,14 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
           <button
             type="button"
             onClick={handleVerifyVatId}
-            disabled={!vatId || !country || vatLoading || isVatVerified}
+            disabled={!vatId || !country || vatLoading || isVatValid}
             className="shrink-0 rounded-lg bg-neutral-700 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-neutral-600 disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {vatLoading && vatId ? 'Verifying...' : isVatVerified ? 'Verified' : 'Verify'}
+            {vatLoading && vatId ? 'Verifying...' : isVatValid ? 'Verified' : 'Verify'}
           </button>
         </div>
         {/* Verified company info */}
-        {isVatVerified && vatResult?.company_name && (
+        {isVatValid && vatResult?.company_name && (
           <div className="mt-2 rounded-lg bg-green-500/5 border border-green-500/20 px-3 py-2 text-xs text-neutral-400">
             <p className="font-medium text-green-400">{vatResult.company_name}</p>
             {vatResult.company_address && (
@@ -155,7 +156,7 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
             )}
           </div>
         )}
-        {isVatVerified && vatResult && !vatResult.vat_exempt && (
+        {isVatChecked && vatResult && !vatResult.vat_exempt && (
           <p className="mt-1.5 text-xs text-yellow-400">VAT ID could not be verified. 21% VAT will apply.</p>
         )}
       </div>
