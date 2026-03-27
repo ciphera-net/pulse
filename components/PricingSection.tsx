@@ -331,6 +331,7 @@ export default function PricingSection() {
                             €{priceDetails.yearlyTotal}
                           </span>
                           <span className="text-neutral-400 font-medium">/year</span>
+                          <span className="text-xs text-neutral-500 ml-1">excl. VAT</span>
                         </div>
                         <div className="flex items-center gap-2 mt-2 text-sm font-medium">
                           <span className="text-neutral-400 line-through decoration-neutral-400">
@@ -347,6 +348,7 @@ export default function PricingSection() {
                           €{priceDetails.baseMonthly}
                         </span>
                         <span className="text-neutral-400 font-medium">/mo</span>
+                        <span className="text-xs text-neutral-500 ml-1">excl. VAT</span>
                       </div>
                     )
                   ) : (
