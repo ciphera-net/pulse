@@ -75,7 +75,7 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
   const handleVerifyVatId = () => {
     if (!vatId || !country) return
     setVerifiedVatId(vatId)
-    fetchVAT(country, vatId, currentInterval)
+    // useEffect on verifiedVatId will trigger the fetch
   }
 
   const isVatChecked = verifiedVatId !== '' && verifiedVatId === vatId
