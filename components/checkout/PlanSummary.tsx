@@ -186,20 +186,7 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
 
       {/* Price breakdown */}
       <div className="pt-2 border-t border-neutral-800">
-        {!country ? (
-          <div className="flex items-baseline gap-2 flex-wrap">
-            <span className="text-3xl font-bold tracking-tight text-white">
-              &euro;{isYearly ? (baseDisplay / 12).toFixed(2) : baseDisplay.toFixed(0)}
-            </span>
-            <span className="text-neutral-400 text-sm">/mo</span>
-            <span className="text-neutral-500 text-sm">excl. VAT &middot; {tierLabel} pageviews</span>
-            {isYearly && (
-              <span className="rounded-full bg-brand-orange/15 px-2.5 py-0.5 text-xs font-medium text-brand-orange">
-                Save 1 month
-              </span>
-            )}
-          </div>
-        ) : vatLoading && !vatResult ? (
+        {vatLoading && !vatResult ? (
           <div className="flex items-center gap-2 text-sm text-neutral-400">
             <div className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-600 border-t-white" />
             Calculating VAT...
@@ -229,7 +216,25 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
               <p className="text-xs text-neutral-500">&euro;{(parseFloat(vatResult.total_amount) / 12).toFixed(2)}/mo</p>
             )}
           </div>
-        ) : null}
+        ) : (
+          <div className="space-y-1.5 text-sm">
+            <div className="flex justify-between text-neutral-400">
+              <span>Subtotal ({tierLabel} pageviews)</span>
+              <span>&euro;{isYearly ? baseDisplay.toFixed(2) : baseDisplay.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-neutral-500 text-xs">
+              <span>VAT</span>
+              <span>Select country</span>
+            </div>
+            <div className="flex justify-between font-semibold text-white pt-1 border-t border-neutral-800">
+              <span>Total {isYearly ? '/year' : '/mo'} <span className="font-normal text-neutral-500 text-xs">excl. VAT</span></span>
+              <span>&euro;{isYearly ? baseDisplay.toFixed(2) : baseDisplay.toFixed(2)}</span>
+            </div>
+            {isYearly && (
+              <p className="text-xs text-neutral-500">&euro;{(baseDisplay / 12).toFixed(2)}/mo &middot; Save 1 month</p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
