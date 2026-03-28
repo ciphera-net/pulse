@@ -2,11 +2,13 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
+import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { formatUpdatedAgo } from '@ciphera-net/ui'
-import { SidebarSimple } from '@phosphor-icons/react'
+import { CaretRight, SidebarSimple } from '@phosphor-icons/react'
 import { SidebarProvider, useSidebar } from '@/lib/sidebar-context'
 import { useRealtime } from '@/lib/swr/dashboard'
+import { getSite } from '@/lib/api/sites'
 import ContentHeader from './ContentHeader'
 
 const PAGE_TITLES: Record<string, string> = {
@@ -58,6 +60,7 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
   const { data: realtime } = useRealtime(siteId ?? '')
   const lastUpdatedRef = useRef<number | null>(null)
   const [, setTick] = useState(0)
+  const [siteName, setSiteName] = useState<string | null>(null)
 
   useEffect(() => {
     if (siteId && realtime) lastUpdatedRef.current = Date.now()
@@ -69,13 +72,18 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
     return () => clearInterval(timer)
   }, [realtime])
 
+  useEffect(() => {
+    if (!siteId) { setSiteName(null); return }
+    getSite(siteId).then((s) => setSiteName(s.name)).catch(() => {})
+  }, [siteId])
+
   const dashboardTitle = usePageTitle()
   const homeTitle = useHomePageTitle()
   const pageTitle = siteId ? dashboardTitle : homeTitle
 
   return (
     <div className="hidden md:flex items-center justify-between shrink-0 px-3 pt-1.5 pb-1">
-      {/* Left: collapse toggle + page title */}
+      {/* Left: collapse toggle + breadcrumbs */}
       <div className="flex items-center gap-1.5">
         <button
           onClick={toggle}
@@ -84,7 +92,17 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
         >
           <SidebarSimple className="w-[18px] h-[18px]" weight={collapsed ? 'regular' : 'fill'} />
         </button>
-        <span className="text-sm text-neutral-400 font-medium">{pageTitle}</span>
+        {siteId && siteName ? (
+          <nav className="flex items-center gap-1 text-sm font-medium">
+            <Link href="/" className="text-neutral-500 hover:text-neutral-300 transition-colors">Your Sites</Link>
+            <CaretRight className="w-3 h-3 text-neutral-600" />
+            <Link href={`/sites/${siteId}`} className="text-neutral-500 hover:text-neutral-300 transition-colors truncate max-w-[160px]">{siteName}</Link>
+            <CaretRight className="w-3 h-3 text-neutral-600" />
+            <span className="text-neutral-400">{pageTitle}</span>
+          </nav>
+        ) : (
+          <span className="text-sm text-neutral-400 font-medium">{pageTitle}</span>
+        )}
       </div>
 
       {/* Realtime indicator */}
