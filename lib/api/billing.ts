@@ -109,7 +109,8 @@ export async function getInvoices(): Promise<Invoice[]> {
 }
 
 export async function downloadInvoicePDF(invoiceId: string): Promise<void> {
-  const res = await fetch('/api/billing/invoices/' + invoiceId + '/pdf', {
+  const { API_URL } = await import('./client')
+  const res = await fetch(API_URL + '/api/billing/invoices/' + invoiceId + '/pdf', {
     credentials: 'include',
   })
   if (!res.ok) throw new Error('Failed to download invoice PDF')
