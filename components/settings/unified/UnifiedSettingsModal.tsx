@@ -303,7 +303,11 @@ export default function UnifiedSettingsModal() {
   useEffect(() => {
     if (!isOpen || !user?.org_id) return
 
-    if (typeof window !== 'undefined') {
+    if (initTab?.siteId) {
+      // Site ID passed explicitly (e.g. from home page site card)
+      setActiveSiteId(initTab.siteId)
+      if (!initTab?.context) setContext('site')
+    } else if (typeof window !== 'undefined') {
       const match = window.location.pathname.match(/\/sites\/([a-f0-9-]+)/)
       if (match) {
         setActiveSiteId(match[1])

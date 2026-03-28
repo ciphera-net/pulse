@@ -1,0 +1,56 @@
+---
+title: "React"
+description: "Integrate Pulse analytics with any React SPA — Create React App, Vite, or custom setups. Two easy methods."
+category: "framework"
+brandColor: "#61DAFB"
+officialUrl: "https://react.dev"
+relatedIds: ["nextjs", "remix", "gatsby", "preact"]
+date: "2026-03-28"
+---
+
+For standard React SPAs, add the script to your `index.html`.
+
+---
+
+## Method 1: index.html (Recommended)
+
+The simplest approach is to add the Pulse script directly to your HTML entry point.
+
+<CodeBlock filename="public/index.html">{`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <script
+      defer
+      data-domain="your-site.com"
+      src="https://pulse.ciphera.net/script.js"
+    ></script>
+
+    <title>My React App</title>
+</head>
+<body>
+    <div id="root"></div>
+</body>
+</html>`}</CodeBlock>
+
+## Method 2: Programmatic injection via useEffect
+
+If you prefer to inject the script programmatically (e.g. only in production), use a `useEffect` hook.
+
+<CodeBlock filename="src/App.tsx">{`import { useEffect } from 'react'
+
+function App() {
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'production') {
+      const script = document.createElement('script')
+      script.defer = true
+      script.setAttribute('data-domain', 'your-site.com')
+      script.src = 'https://pulse.ciphera.net/script.js'
+      document.head.appendChild(script)
+    }
+  }, [])
+
+  return <div className="App"><h1>Hello World</h1></div>
+}`}</CodeBlock>

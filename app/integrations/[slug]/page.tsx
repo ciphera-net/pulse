@@ -1,46 +1,56 @@
 /**
  * @file Dynamic route for individual integration guide pages.
  *
- * Handles all 50 integration routes via [slug].
+ * Renders MDX content from content/integrations/*.mdx via next-mdx-remote.
  * Exports generateStaticParams for static generation and
  * generateMetadata for per-page SEO (title, description, OG, JSON-LD).
  */
 
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import { MDXRemote } from 'next-mdx-remote/rsc'
+import remarkGfm from 'remark-gfm'
+import { CodeBlock } from '@ciphera-net/ui'
 import { integrations, getIntegration } from '@/lib/integrations'
-import { getGuideContent } from '@/lib/integration-guides'
+import { getIntegrationGuide } from '@/lib/integration-content'
 import { IntegrationGuide } from '@/components/IntegrationGuide'
 
-// * ─── Static Params ───────────────────────────────────────────────
-export function generateStaticParams() {
-  return integrations.map((i) => ({ slug: i.id }))
+// * ─── MDX Components ────────────────────────────────────────────
+const mdxComponents = {
+  CodeBlock,
 }
 
-// * ─── SEO Metadata ────────────────────────────────────────────────
+// * ─── Static Params ─────────────────────────────────────────────
+export function generateStaticParams() {
+  return integrations
+    .filter((i) => i.dedicatedPage)
+    .map((i) => ({ slug: i.id }))
+}
+
+// * ─── SEO Metadata ──────────────────────────────────────────────
 interface PageProps {
   params: Promise<{ slug: string }>
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params
-  const integration = getIntegration(slug)
-  if (!integration) return {}
+  const guide = getIntegrationGuide(slug)
+  if (!guide) return {}
 
-  const title = `How to Add Pulse Analytics to ${integration.name} | Pulse by Ciphera`
-  const description = integration.seoDescription
-  const url = `https://pulse.ciphera.net/integrations/${integration.id}`
+  const title = `How to Add Pulse Analytics to ${guide.title} | Pulse by Ciphera`
+  const description = guide.description
+  const url = `https://pulse.ciphera.net/integrations/${guide.slug}`
 
   return {
     title,
     description,
     keywords: [
-      `${integration.name} analytics`,
-      `${integration.name} Pulse`,
+      `${guide.title} analytics`,
+      `${guide.title} Pulse`,
       'privacy-first analytics',
       'website analytics',
       'Ciphera Pulse',
-      integration.name,
+      guide.title,
     ],
     alternates: { canonical: url },
     openGraph: {
@@ -58,21 +68,19 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 }
 
-// * ─── Page Component ──────────────────────────────────────────────
+// * ─── Page Component ────────────────────────────────────────────
 export default async function IntegrationPage({ params }: PageProps) {
   const { slug } = await params
   const integration = getIntegration(slug)
-  if (!integration) return notFound()
-
-  const content = getGuideContent(slug)
-  if (!content) return notFound()
+  const guide = getIntegrationGuide(slug)
+  if (!integration || !guide) return notFound()
 
   // * HowTo JSON-LD for rich search snippets
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'HowTo',
     name: `How to Add Pulse Analytics to ${integration.name}`,
-    description: integration.seoDescription,
+    description: guide.description,
     step: [
       {
         '@type': 'HowToStep',
@@ -104,7 +112,11 @@ export default async function IntegrationPage({ params }: PageProps) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <IntegrationGuide integration={integration}>
-        {content}
+        <MDXRemote
+          source={guide.content}
+          components={mdxComponents}
+          options={{ mdxOptions: { remarkPlugins: [remarkGfm] } }}
+        />
       </IntegrationGuide>
     </>
   )

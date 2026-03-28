@@ -1,0 +1,27 @@
+---
+title: "Squarespace"
+description: "Add Pulse analytics to your Squarespace site via the Code Injection panel."
+category: "platform"
+brandColor: "#000000"
+officialUrl: "https://support.squarespace.com"
+relatedIds: ["webflow", "wix", "carrd"]
+date: "2026-03-28"
+---
+
+Use Squarespace's Code Injection feature to add the Pulse script.
+
+---
+
+## Add via Code Injection
+
+Go to **Settings -> Developer Tools -> Code Injection -> Header** and paste the Pulse script.
+
+<CodeBlock filename="Settings -> Code Injection -> Header">{`<script
+  defer
+  data-domain="your-site.com"
+  src="https://pulse.ciphera.net/script.js"
+></script>`}</CodeBlock>
+
+**Note:** Code Injection requires a Business or Commerce plan.
+
+For more details, see the [Squarespace code injection docs](https://support.squarespace.com/hc/en-us/articles/205815928).

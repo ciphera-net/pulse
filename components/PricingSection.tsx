@@ -105,7 +105,7 @@ export default function PricingSection() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [isYearly, setIsYearly] = useState(false)
-  const [sliderIndex, setSliderIndex] = useState(2) // Default to 100k (index 2)
+  const [sliderIndex, setSliderIndex] = useState(0) // Default to 10k (index 0)
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
   const { user } = useAuth()
 

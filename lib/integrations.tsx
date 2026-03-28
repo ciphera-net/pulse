@@ -34,10 +34,10 @@ export interface Integration {
   icon: ReactNode
   /** URL to official documentation / website */
   officialUrl: string
-  /** SEO meta description for this integration's guide page */
-  seoDescription: string
   /** Related integration IDs for cross-linking */
   relatedIds: string[]
+  /** Whether this integration has a dedicated guide page */
+  dedicatedPage: boolean
 }
 
 // * ─── Category labels (for UI grouping) ──────────────────────────────────────
@@ -79,9 +79,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://nextjs.org/docs',
-    seoDescription:
-      'Step-by-step guide to adding Pulse privacy-first analytics to your Next.js app with next/script. Covers App Router and Pages Router.',
     relatedIds: ['react', 'vercel', 'nuxt'],
+    dedicatedPage: true,
   },
   {
     id: 'react',
@@ -95,9 +94,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://react.dev',
-    seoDescription:
-      'Integrate Pulse analytics with any React SPA — Create React App, Vite, or custom setups. Two easy methods.',
     relatedIds: ['nextjs', 'remix', 'gatsby', 'preact'],
+    dedicatedPage: true,
   },
   {
     id: 'vue',
@@ -111,9 +109,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://vuejs.org',
-    seoDescription:
-      'Add Pulse privacy-first analytics to your Vue.js app. Works with Vue 2, Vue 3, Vue CLI, and Vite.',
     relatedIds: ['nuxt', 'vitepress'],
+    dedicatedPage: true,
   },
   {
     id: 'angular',
@@ -128,9 +125,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://angular.dev',
-    seoDescription:
-      'Add Pulse analytics to your Angular application. Simple index.html setup for all Angular versions.',
     relatedIds: ['react', 'vue'],
+    dedicatedPage: true,
   },
   {
     id: 'svelte',
@@ -144,9 +140,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://svelte.dev',
-    seoDescription:
-      'Add Pulse analytics to Svelte or SvelteKit. Simple setup for both Vite-based Svelte and SvelteKit applications.',
     relatedIds: ['astro', 'vue'],
+    dedicatedPage: true,
   },
   {
     id: 'nuxt',
@@ -160,9 +155,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://nuxt.com/docs',
-    seoDescription:
-      'Configure Pulse analytics in Nuxt 2 or Nuxt 3 via nuxt.config. Simple, framework-native setup.',
     relatedIds: ['vue', 'nextjs', 'vitepress'],
+    dedicatedPage: true,
   },
   {
     id: 'remix',
@@ -177,9 +171,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://remix.run/docs',
-    seoDescription:
-      'Add Pulse analytics to your Remix application via the root route. Simple script tag in app/root.tsx.',
     relatedIds: ['react', 'nextjs'],
+    dedicatedPage: true,
   },
   {
     id: 'astro',
@@ -193,9 +186,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://docs.astro.build',
-    seoDescription:
-      'Integrate Pulse analytics with Astro. Add the script to your base layout for all pages.',
     relatedIds: ['svelte', 'hugo', 'eleventy'],
+    dedicatedPage: true,
   },
   {
     id: 'solidjs',
@@ -209,9 +201,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://www.solidjs.com/docs',
-    seoDescription:
-      'Add Pulse analytics to your Solid.js application. Simple index.html script tag setup.',
     relatedIds: ['react', 'qwik', 'preact'],
+    dedicatedPage: false,
   },
   {
     id: 'qwik',
@@ -225,9 +216,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://qwik.dev/docs',
-    seoDescription:
-      'Integrate Pulse analytics with Qwik. Add the script to your root entry file.',
     relatedIds: ['react', 'solidjs', 'astro'],
+    dedicatedPage: false,
   },
   {
     id: 'preact',
@@ -241,9 +231,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://preactjs.com/guide',
-    seoDescription:
-      'Add Pulse analytics to your Preact application. Same simple setup as any Vite or HTML project.',
     relatedIds: ['react', 'solidjs'],
+    dedicatedPage: false,
   },
   {
     id: 'htmx',
@@ -257,9 +246,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://htmx.org/docs',
-    seoDescription:
-      'Add Pulse analytics to your HTMX-powered site. Works with any backend serving HTML.',
     relatedIds: ['django', 'flask', 'laravel', 'rails'],
+    dedicatedPage: false,
   },
   {
     id: 'ember',
@@ -273,9 +261,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://guides.emberjs.com',
-    seoDescription:
-      'Add Pulse analytics to your Ember.js app. Simple index.html script tag setup.',
     relatedIds: ['react', 'angular'],
+    dedicatedPage: false,
   },
 
   // * ─── Backend Frameworks ───────────────────────────────────────────────────
@@ -291,9 +278,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://laravel.com/docs',
-    seoDescription:
-      'Add Pulse analytics to your Laravel app. Blade template integration for all Laravel versions.',
     relatedIds: ['django', 'rails', 'wordpress'],
+    dedicatedPage: true,
   },
   {
     id: 'django',
@@ -307,9 +293,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://docs.djangoproject.com',
-    seoDescription:
-      'Add Pulse analytics to your Django app. Template-based integration for all Django versions.',
     relatedIds: ['flask', 'laravel', 'htmx'],
+    dedicatedPage: true,
   },
   {
     id: 'rails',
@@ -323,9 +308,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://guides.rubyonrails.org',
-    seoDescription:
-      'Add Pulse analytics to your Ruby on Rails app. ERB layout integration.',
     relatedIds: ['laravel', 'django', 'jekyll'],
+    dedicatedPage: true,
   },
   {
     id: 'flask',
@@ -339,9 +323,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://flask.palletsprojects.com',
-    seoDescription:
-      'Add Pulse analytics to your Flask app. Jinja2 template integration.',
     relatedIds: ['django', 'htmx', 'express'],
+    dedicatedPage: true,
   },
   {
     id: 'express',
@@ -356,9 +339,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://expressjs.com',
-    seoDescription:
-      'Serve Pulse analytics from your Express.js app. Middleware or template-based setup.',
     relatedIds: ['flask', 'nextjs', 'react'],
+    dedicatedPage: true,
   },
 
   // * ─── Static Sites & Documentation ─────────────────────────────────────────
@@ -374,9 +356,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://www.gatsbyjs.com/docs',
-    seoDescription:
-      'Add Pulse analytics to your Gatsby site using gatsby-ssr or the Gatsby Head API.',
     relatedIds: ['react', 'nextjs', 'hugo'],
+    dedicatedPage: true,
   },
   {
     id: 'hugo',
@@ -390,9 +371,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://gohugo.io/documentation',
-    seoDescription:
-      'Add Pulse analytics to your Hugo site via a partial or base template.',
     relatedIds: ['jekyll', 'eleventy', 'astro'],
+    dedicatedPage: true,
   },
   {
     id: 'eleventy',
@@ -407,9 +387,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://www.11ty.dev/docs',
-    seoDescription:
-      'Add Pulse analytics to your Eleventy (11ty) site. Template-based integration.',
     relatedIds: ['hugo', 'jekyll', 'astro'],
+    dedicatedPage: true,
   },
   {
     id: 'jekyll',
@@ -423,9 +402,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://jekyllrb.com/docs',
-    seoDescription:
-      'Add Pulse analytics to your Jekyll site. Liquid template integration for GitHub Pages and beyond.',
     relatedIds: ['hugo', 'eleventy', 'github-pages'],
+    dedicatedPage: false,
   },
   {
     id: 'docusaurus',
@@ -439,9 +417,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://docusaurus.io/docs',
-    seoDescription:
-      'Add Pulse analytics to your Docusaurus documentation site via docusaurus.config.js.',
     relatedIds: ['vitepress', 'mkdocs', 'gatsby'],
+    dedicatedPage: false,
   },
   {
     id: 'vitepress',
@@ -455,9 +432,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://vitepress.dev',
-    seoDescription:
-      'Add Pulse analytics to your VitePress documentation site via config.',
     relatedIds: ['docusaurus', 'vue', 'nuxt'],
+    dedicatedPage: false,
   },
   {
     id: 'hexo',
@@ -471,9 +447,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://hexo.io/docs',
-    seoDescription:
-      'Add Pulse analytics to your Hexo blog or documentation site.',
     relatedIds: ['hugo', 'jekyll', 'eleventy'],
+    dedicatedPage: false,
   },
   {
     id: 'mkdocs',
@@ -487,9 +462,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://www.mkdocs.org',
-    seoDescription:
-      'Add Pulse analytics to your MkDocs documentation site.',
     relatedIds: ['docusaurus', 'vitepress', 'django'],
+    dedicatedPage: false,
   },
 
   // * ─── CMS & Blogging ──────────────────────────────────────────────────────
@@ -505,9 +479,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://wordpress.org/documentation',
-    seoDescription:
-      'Add Pulse analytics to your WordPress site via a plugin or theme header code.',
     relatedIds: ['ghost', 'drupal', 'woocommerce'],
+    dedicatedPage: true,
   },
   {
     id: 'ghost',
@@ -522,9 +495,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://ghost.org/docs',
-    seoDescription:
-      'Add Pulse analytics to your Ghost blog via Code Injection settings.',
     relatedIds: ['wordpress', 'blogger'],
+    dedicatedPage: true,
   },
   {
     id: 'drupal',
@@ -538,9 +510,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://www.drupal.org/docs',
-    seoDescription:
-      'Add Pulse analytics to your Drupal site using a module or theme template.',
     relatedIds: ['wordpress', 'joomla'],
+    dedicatedPage: true,
   },
   {
     id: 'joomla',
@@ -554,9 +525,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://docs.joomla.org',
-    seoDescription:
-      'Add Pulse analytics to your Joomla site via template or extension.',
     relatedIds: ['wordpress', 'drupal'],
+    dedicatedPage: false,
   },
   {
     id: 'strapi',
@@ -570,9 +540,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://docs.strapi.io',
-    seoDescription:
-      'Add Pulse analytics to your Strapi-powered frontend.',
     relatedIds: ['contentful', 'sanity', 'nextjs'],
+    dedicatedPage: false,
   },
   {
     id: 'sanity',
@@ -587,9 +556,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://www.sanity.io/docs',
-    seoDescription:
-      'Add Pulse analytics to your Sanity-powered frontend application.',
     relatedIds: ['strapi', 'contentful', 'nextjs'],
+    dedicatedPage: false,
   },
   {
     id: 'contentful',
@@ -603,9 +571,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://www.contentful.com/developers/docs',
-    seoDescription:
-      'Add Pulse analytics to your Contentful-powered frontend.',
     relatedIds: ['strapi', 'sanity', 'nextjs'],
+    dedicatedPage: false,
   },
   {
     id: 'payload',
@@ -620,9 +587,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://payloadcms.com/docs',
-    seoDescription:
-      'Add Pulse analytics to your Payload CMS frontend application.',
     relatedIds: ['strapi', 'contentful', 'nextjs'],
+    dedicatedPage: false,
   },
 
   // * ─── eCommerce ────────────────────────────────────────────────────────────
@@ -638,9 +604,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://shopify.dev/docs',
-    seoDescription:
-      'Add Pulse privacy-first analytics to your Shopify store via the theme editor.',
     relatedIds: ['woocommerce', 'bigcommerce', 'prestashop'],
+    dedicatedPage: true,
   },
   {
     id: 'woocommerce',
@@ -654,9 +619,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://woocommerce.com/documentation',
-    seoDescription:
-      'Add Pulse analytics to your WooCommerce store. WordPress-based setup.',
     relatedIds: ['shopify', 'wordpress', 'bigcommerce'],
+    dedicatedPage: false,
   },
   {
     id: 'bigcommerce',
@@ -671,9 +635,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://developer.bigcommerce.com/docs',
-    seoDescription:
-      'Add Pulse analytics to your BigCommerce store via Script Manager.',
     relatedIds: ['shopify', 'woocommerce', 'prestashop'],
+    dedicatedPage: false,
   },
   {
     id: 'prestashop',
@@ -687,9 +650,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://devdocs.prestashop-project.org',
-    seoDescription:
-      'Add Pulse analytics to your PrestaShop store via theme template.',
     relatedIds: ['shopify', 'woocommerce', 'bigcommerce'],
+    dedicatedPage: false,
   },
 
   // * ─── Platforms & Tools ────────────────────────────────────────────────────
@@ -705,9 +667,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://university.webflow.com',
-    seoDescription:
-      'Add Pulse analytics to your Webflow site via project custom code settings.',
     relatedIds: ['squarespace', 'wix', 'framer'],
+    dedicatedPage: true,
   },
   {
     id: 'squarespace',
@@ -722,9 +683,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://support.squarespace.com',
-    seoDescription:
-      'Add Pulse analytics to your Squarespace site via the Code Injection panel.',
     relatedIds: ['webflow', 'wix', 'carrd'],
+    dedicatedPage: true,
   },
   {
     id: 'wix',
@@ -738,9 +698,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://support.wix.com',
-    seoDescription:
-      'Add Pulse analytics to your Wix site via Custom Code settings.',
     relatedIds: ['webflow', 'squarespace', 'framer'],
+    dedicatedPage: true,
   },
   {
     id: 'framer',
@@ -754,9 +713,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://www.framer.com/help',
-    seoDescription:
-      'Add Pulse analytics to your Framer site via custom code settings.',
     relatedIds: ['webflow', 'squarespace', 'wix'],
+    dedicatedPage: true,
   },
   {
     id: 'carrd',
@@ -770,9 +728,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://carrd.co/docs',
-    seoDescription:
-      'Add Pulse analytics to your Carrd one-page site via head code.',
     relatedIds: ['framer', 'webflow'],
+    dedicatedPage: false,
   },
   {
     id: 'blogger',
@@ -786,9 +743,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://support.google.com/blogger',
-    seoDescription:
-      'Add Pulse analytics to your Blogger blog via theme HTML editor.',
     relatedIds: ['wordpress', 'ghost'],
+    dedicatedPage: false,
   },
   {
     id: 'gtm',
@@ -802,9 +758,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://tagmanager.google.com',
-    seoDescription:
-      'Add Pulse analytics via Google Tag Manager. Works with any site using GTM.',
     relatedIds: ['wordpress', 'shopify', 'webflow'],
+    dedicatedPage: true,
   },
   {
     id: 'notion',
@@ -819,9 +774,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://www.notion.so',
-    seoDescription:
-      'Add Pulse analytics to Notion-powered websites using Super.so, Potion, or similar tools.',
     relatedIds: ['webflow', 'framer', 'carrd'],
+    dedicatedPage: false,
   },
 
   // * ─── Hosting & Deployment ─────────────────────────────────────────────────
@@ -837,9 +791,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://developers.cloudflare.com/pages',
-    seoDescription:
-      'Deploy with Pulse analytics on Cloudflare Pages. Works with any framework.',
     relatedIds: ['netlify', 'vercel', 'github-pages'],
+    dedicatedPage: false,
   },
   {
     id: 'netlify',
@@ -853,9 +806,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://docs.netlify.com',
-    seoDescription:
-      'Add Pulse analytics to sites deployed on Netlify. Snippet injection and build-based methods.',
     relatedIds: ['cloudflare-pages', 'vercel', 'github-pages'],
+    dedicatedPage: false,
   },
   {
     id: 'vercel',
@@ -870,9 +822,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://vercel.com/docs',
-    seoDescription:
-      'Add Pulse analytics to sites deployed on Vercel. Works with any framework.',
     relatedIds: ['netlify', 'cloudflare-pages', 'nextjs'],
+    dedicatedPage: false,
   },
   {
     id: 'github-pages',
@@ -887,9 +838,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://docs.github.com/en/pages',
-    seoDescription:
-      'Add Pulse analytics to your GitHub Pages site. Works with Jekyll, Hugo, or plain HTML.',
     relatedIds: ['jekyll', 'hugo', 'netlify'],
+    dedicatedPage: false,
   },
 
   // * ─── CMS & Blogging (continued) ──────────────────────────────────────────
@@ -905,9 +855,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://craftcms.com/docs',
-    seoDescription:
-      'Add Pulse analytics to your Craft CMS site via Twig templates. Simple installation.',
     relatedIds: ['wordpress', 'statamic', 'drupal'],
+    dedicatedPage: false,
   },
   {
     id: 'statamic',
@@ -921,9 +870,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://statamic.dev/docs',
-    seoDescription:
-      'Add Pulse analytics to your Statamic site. Antlers template integration.',
     relatedIds: ['craftcms', 'laravel', 'wordpress'],
+    dedicatedPage: false,
   },
   {
     id: 'typo3',
@@ -937,9 +885,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://docs.typo3.org',
-    seoDescription:
-      'Add Pulse analytics to your TYPO3 CMS site. TypoScript and Fluid template integration.',
     relatedIds: ['wordpress', 'drupal', 'joomla'],
+    dedicatedPage: false,
   },
   {
     id: 'kirby',
@@ -954,9 +901,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://getkirby.com/docs',
-    seoDescription:
-      'Add Pulse analytics to your Kirby CMS site. Simple PHP snippet integration.',
     relatedIds: ['craftcms', 'statamic', 'grav'],
+    dedicatedPage: false,
   },
   {
     id: 'grav',
@@ -971,9 +917,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://learn.getgrav.org',
-    seoDescription:
-      'Add Pulse analytics to your Grav flat-file CMS. Twig template integration.',
     relatedIds: ['kirby', 'craftcms', 'hugo'],
+    dedicatedPage: false,
   },
   {
     id: 'umbraco',
@@ -987,9 +932,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://docs.umbraco.com',
-    seoDescription:
-      'Add Pulse analytics to your Umbraco CMS site. Razor view integration for .NET.',
     relatedIds: ['wordpress', 'drupal', 'typo3'],
+    dedicatedPage: false,
   },
   {
     id: 'storyblok',
@@ -1003,9 +947,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://www.storyblok.com/docs',
-    seoDescription:
-      'Add Pulse analytics to your Storyblok-powered frontend application.',
     relatedIds: ['contentful', 'prismic', 'nextjs'],
+    dedicatedPage: false,
   },
   {
     id: 'prismic',
@@ -1019,9 +962,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://prismic.io/docs',
-    seoDescription:
-      'Add Pulse analytics to your Prismic-powered frontend application.',
     relatedIds: ['contentful', 'storyblok', 'nextjs'],
+    dedicatedPage: false,
   },
 
   // * ─── eCommerce (continued) ───────────────────────────────────────────────
@@ -1037,9 +979,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://developer.shopware.com/docs',
-    seoDescription:
-      'Add Pulse analytics to your Shopware 6 store via theme template.',
     relatedIds: ['shopify', 'woocommerce', 'magento'],
+    dedicatedPage: false,
   },
   {
     id: 'magento',
@@ -1053,9 +994,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://developer.adobe.com/commerce',
-    seoDescription:
-      'Add Pulse analytics to your Magento or Adobe Commerce store via layout XML.',
     relatedIds: ['shopify', 'woocommerce', 'shopware'],
+    dedicatedPage: false,
   },
 
   // * ─── Platforms & Tools (continued) ───────────────────────────────────────
@@ -1072,9 +1012,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://manual.bubble.io',
-    seoDescription:
-      'Add Pulse analytics to your Bubble no-code app via the SEO/Meta tags section.',
     relatedIds: ['webflow', 'framer', 'wix'],
+    dedicatedPage: false,
   },
   {
     id: 'discourse',
@@ -1089,9 +1028,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://meta.discourse.org/docs',
-    seoDescription:
-      'Add Pulse analytics to your Discourse forum via admin customization.',
     relatedIds: ['wordpress', 'ghost'],
+    dedicatedPage: false,
   },
   {
     id: 'hubspot',
@@ -1105,9 +1043,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://knowledge.hubspot.com',
-    seoDescription:
-      'Add Pulse analytics to HubSpot landing pages and website via Settings.',
     relatedIds: ['wordpress', 'webflow'],
+    dedicatedPage: false,
   },
   {
     id: 'substack',
@@ -1121,9 +1058,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://substack.com',
-    seoDescription:
-      'Add Pulse analytics to your Substack publication using custom domain settings.',
     relatedIds: ['ghost', 'blogger', 'wordpress'],
+    dedicatedPage: false,
   },
   {
     id: 'linktree',
@@ -1137,9 +1073,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://linktr.ee',
-    seoDescription:
-      'Add Pulse analytics to your Linktree link-in-bio page.',
     relatedIds: ['carrd', 'framer', 'webflow'],
+    dedicatedPage: false,
   },
   {
     id: 'weebly',
@@ -1153,9 +1088,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://www.weebly.com',
-    seoDescription:
-      'Add Pulse analytics to your Weebly website via the header code settings.',
     relatedIds: ['squarespace', 'wix', 'webflow'],
+    dedicatedPage: false,
   },
 
   // * ─── Static Sites & Documentation (continued) ───────────────────────────
@@ -1171,9 +1105,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://docs.gitbook.com',
-    seoDescription:
-      'Add Pulse analytics to your GitBook-hosted documentation.',
     relatedIds: ['docusaurus', 'readme', 'readthedocs'],
+    dedicatedPage: false,
   },
   {
     id: 'gridsome',
@@ -1187,9 +1120,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://gridsome.org/docs',
-    seoDescription:
-      'Add Pulse analytics to your Gridsome Vue-based static site.',
     relatedIds: ['gatsby', 'vue', 'nuxt'],
+    dedicatedPage: false,
   },
   {
     id: 'readthedocs',
@@ -1204,9 +1136,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://docs.readthedocs.io',
-    seoDescription:
-      'Add Pulse analytics to your Read the Docs documentation site.',
     relatedIds: ['sphinx', 'mkdocs', 'docusaurus'],
+    dedicatedPage: false,
   },
   {
     id: 'sphinx',
@@ -1221,9 +1152,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://www.sphinx-doc.org',
-    seoDescription:
-      'Add Pulse analytics to your Sphinx-generated documentation.',
     relatedIds: ['readthedocs', 'mkdocs', 'docusaurus'],
+    dedicatedPage: false,
   },
   {
     id: 'readme',
@@ -1237,9 +1167,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://docs.readme.com',
-    seoDescription:
-      'Add Pulse analytics to your ReadMe API documentation portal.',
     relatedIds: ['gitbook', 'docusaurus', 'readthedocs'],
+    dedicatedPage: false,
   },
 
   // * ─── JavaScript Frameworks (continued) ───────────────────────────────────
@@ -1255,9 +1184,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://docs.flutter.dev',
-    seoDescription:
-      'Add Pulse analytics to your Flutter web app via web/index.html.',
     relatedIds: ['react', 'angular', 'preact'],
+    dedicatedPage: false,
   },
 
   // * ─── Hosting & Deployment (continued) ────────────────────────────────────
@@ -1274,9 +1202,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://docs.render.com',
-    seoDescription:
-      'Add Pulse analytics to sites deployed on Render. Works with any framework.',
     relatedIds: ['netlify', 'vercel', 'cloudflare-pages'],
+    dedicatedPage: false,
   },
   {
     id: 'firebase',
@@ -1290,9 +1217,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://firebase.google.com/docs/hosting',
-    seoDescription:
-      'Add Pulse analytics to sites deployed on Firebase Hosting.',
     relatedIds: ['netlify', 'vercel', 'render'],
+    dedicatedPage: false,
   },
 
   // * ─── Platforms & Tools (continued) ───────────────────────────────────────
@@ -1308,9 +1234,8 @@ export const integrations: Integration[] = [
       </svg>
     ),
     officialUrl: 'https://amp.dev/documentation',
-    seoDescription:
-      'Add Pulse analytics to Google AMP pages using amp-analytics.',
     relatedIds: ['gtm', 'wordpress', 'webflow'],
+    dedicatedPage: false,
   },
 ]
 

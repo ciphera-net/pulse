@@ -1,0 +1,39 @@
+---
+title: "Google Tag Manager"
+description: "Add Pulse analytics via Google Tag Manager. Works with any site using GTM."
+category: "platform"
+brandColor: "#246FDB"
+officialUrl: "https://tagmanager.google.com"
+relatedIds: ["wordpress", "shopify", "webflow"]
+date: "2026-03-28"
+---
+
+Add Pulse via Google Tag Manager — works with any site that already has GTM installed.
+
+---
+
+## Create a Custom HTML tag
+
+Follow these steps to add Pulse through GTM:
+
+1. Go to **Tags -> New -> Custom HTML**
+2. Paste the snippet below
+3. Set the trigger to **All Pages**
+4. Publish your container
+
+<CodeBlock filename="GTM -> Custom HTML Tag">{`<script defer src="https://pulse.ciphera.net/script.js"></script>`}</CodeBlock>
+
+That's it. Pulse auto-detects the domain from the page, so no extra configuration is needed.
+
+<details>
+<summary className="cursor-pointer text-sm text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300">Advanced: override domain or configure options</summary>
+
+If your site is registered under a different domain than the page hostname, or you need custom options (API endpoint, storage mode, etc.), use `pulseConfig`:
+
+<CodeBlock filename="GTM -> Custom HTML Tag (with config)">{`<script>
+  window.pulseConfig = { domain: "your-site.com" };
+</script>
+<script defer src="https://pulse.ciphera.net/script.js"></script>`}</CodeBlock>
+</details>
+
+For more details, see the [GTM Custom HTML tag docs](https://support.google.com/tagmanager/answer/6103696).

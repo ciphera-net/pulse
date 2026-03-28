@@ -33,11 +33,11 @@ export const TRAFFIC_TIERS = [
 
 export function getTierIndexForLimit(limit: number): number {
   const idx = TRAFFIC_TIERS.findIndex((t) => t.value === limit)
-  return idx >= 0 ? idx : 2
+  return idx >= 0 ? idx : 0
 }
 
 export function getLimitForTierIndex(index: number): number {
-  if (index < 0 || index >= TRAFFIC_TIERS.length) return 100000
+  if (index < 0 || index >= TRAFFIC_TIERS.length) return 10000
   return TRAFFIC_TIERS[index].value
 }
 

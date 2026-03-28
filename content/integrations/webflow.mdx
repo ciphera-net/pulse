@@ -1,0 +1,27 @@
+---
+title: "Webflow"
+description: "Add Pulse analytics to your Webflow site via project custom code settings."
+category: "platform"
+brandColor: "#146EF5"
+officialUrl: "https://university.webflow.com"
+relatedIds: ["squarespace", "wix", "framer"]
+date: "2026-03-28"
+---
+
+Paste the Pulse script into your Webflow project's custom code settings.
+
+---
+
+## Add via Project Settings
+
+Go to **Project Settings -> Custom Code -> Head Code** and paste the Pulse script.
+
+<CodeBlock filename="Project Settings -> Head Code">{`<script
+  defer
+  data-domain="your-site.com"
+  src="https://pulse.ciphera.net/script.js"
+></script>`}</CodeBlock>
+
+**Note:** Custom code requires a paid Webflow site plan. The script won't appear in the Designer preview — publish your site to see it in action.
+
+For more details, see the [Webflow custom code docs](https://university.webflow.com/lesson/custom-code-in-the-head-and-body-tag).
