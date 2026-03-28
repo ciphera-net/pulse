@@ -1,0 +1,38 @@
+---
+title: "Eleventy"
+description: "Add Pulse analytics to your Eleventy (11ty) site. Template-based integration."
+category: "ssg"
+brandColor: "#222222"
+officialUrl: "https://www.11ty.dev/docs"
+relatedIds: ["hugo", "jekyll", "astro"]
+date: "2026-03-28"
+---
+
+Add the Pulse script to your base Nunjucks or Liquid layout.
+
+---
+
+## Add to your base layout
+
+Place the Pulse script inside the `<head>` of your shared base template.
+
+<CodeBlock filename="src/_includes/base.njk">{`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <script
+      defer
+      data-domain="your-site.com"
+      src="https://pulse.ciphera.net/script.js"
+    ></script>
+
+    <title>{{ title }}</title>
+</head>
+<body>
+    {{ content | safe }}
+</body>
+</html>`}</CodeBlock>
+
+For more details, see the [Eleventy layouts docs](https://www.11ty.dev/docs/layouts/).

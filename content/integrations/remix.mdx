@@ -1,0 +1,50 @@
+---
+title: "Remix"
+description: "Add Pulse analytics to your Remix application via the root route. Simple script tag in app/root.tsx."
+category: "framework"
+brandColor: "#000000"
+officialUrl: "https://remix.run/docs"
+relatedIds: ["react", "nextjs"]
+date: "2026-03-28"
+---
+
+Add the Pulse script to your `app/root.tsx` so it's included on every route.
+
+---
+
+## Add script to app/root.tsx
+
+The root route is the top-level layout in Remix. Add the Pulse script inside the `<head>` section.
+
+<CodeBlock filename="app/root.tsx">{`import {
+  Links,
+  Meta,
+  Outlet,
+  Scripts,
+  ScrollRestoration,
+} from '@remix-run/react'
+
+export default function App() {
+  return (
+    <html lang="en">
+      <head>
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <Meta />
+        <Links />
+        <script
+          defer
+          data-domain="your-site.com"
+          src="https://pulse.ciphera.net/script.js"
+        />
+      </head>
+      <body>
+        <Outlet />
+        <ScrollRestoration />
+        <Scripts />
+      </body>
+    </html>
+  )
+}`}</CodeBlock>
+
+For more details, see the [Remix root docs](https://remix.run/docs/en/main/file-conventions/root).

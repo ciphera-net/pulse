@@ -1,0 +1,53 @@
+---
+title: "Svelte"
+description: "Add Pulse analytics to Svelte or SvelteKit. Simple setup for both Vite-based Svelte and SvelteKit applications."
+category: "framework"
+brandColor: "#FF3E00"
+officialUrl: "https://svelte.dev"
+relatedIds: ["astro", "vue"]
+date: "2026-03-28"
+---
+
+Add the script to your `index.html` for Vite-based Svelte, or use `<svelte:head>` in SvelteKit.
+
+---
+
+## Method 1: Svelte (Vite)
+
+For standard Svelte projects using Vite, add the Pulse script to your `index.html`.
+
+<CodeBlock filename="index.html">{`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <script
+      defer
+      data-domain="your-site.com"
+      src="https://pulse.ciphera.net/script.js"
+    ></script>
+
+    <title>My Svelte App</title>
+</head>
+<body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+</body>
+</html>`}</CodeBlock>
+
+## Method 2: SvelteKit
+
+In SvelteKit, use `<svelte:head>` in your root layout to add the script to every page.
+
+<CodeBlock filename="src/routes/+layout.svelte">{`<svelte:head>
+  <script
+    defer
+    data-domain="your-site.com"
+    src="https://pulse.ciphera.net/script.js"
+  ></script>
+</svelte:head>
+
+<slot />`}</CodeBlock>
+
+Alternatively, you can add the script directly to `src/app.html` in your SvelteKit project.

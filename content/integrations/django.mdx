@@ -1,0 +1,42 @@
+---
+title: "Django"
+description: "Add Pulse analytics to your Django app. Template-based integration for all Django versions."
+category: "backend"
+brandColor: "#092E20"
+officialUrl: "https://docs.djangoproject.com"
+relatedIds: ["flask", "laravel", "htmx"]
+date: "2026-03-28"
+---
+
+Add the Pulse script to your base template with a debug guard.
+
+---
+
+## Add to your base template
+
+Use Django's template tags to only load the script when `DEBUG` is `False`.
+
+<CodeBlock filename="templates/base.html">{`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    {% if not debug %}
+    <script
+      defer
+      data-domain="your-site.com"
+      src="https://pulse.ciphera.net/script.js"
+    ></script>
+    {% endif %}
+
+    <title>{% block title %}My Django App{% endblock %}</title>
+</head>
+<body>
+    {% block content %}{% endblock %}
+</body>
+</html>`}</CodeBlock>
+
+Make sure to pass `debug` to the template context via `settings.DEBUG`, or use a context processor to make it available globally.
+
+For more details, see the [Django template docs](https://docs.djangoproject.com/en/stable/ref/templates/builtins/).
