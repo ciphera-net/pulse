@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Button, toast, Spinner, Modal } from '@ciphera-net/ui'
-import { CreditCard, ArrowSquareOut } from '@phosphor-icons/react'
+import { CreditCard, ArrowSquareOut, DownloadSimple } from '@phosphor-icons/react'
 import { useSubscription } from '@/lib/swr/dashboard'
-import { updatePaymentMethod, cancelSubscription, resumeSubscription, getOrders, type Order } from '@/lib/api/billing'
+import { updatePaymentMethod, cancelSubscription, resumeSubscription, getInvoices, downloadInvoicePDF, type Invoice } from '@/lib/api/billing'
 import { formatDateLong, formatDate } from '@/lib/utils/formatDate'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 
@@ -13,15 +13,11 @@ export default function WorkspaceBillingTab() {
   const { data: subscription, isLoading, mutate } = useSubscription()
   const [cancelling, setCancelling] = useState(false)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
-  const [orders, setOrders] = useState<Order[]>([])
+  const [invoices, setInvoices] = useState<Invoice[]>([])
 
   useEffect(() => {
-    getOrders().then(setOrders).catch(() => {})
+    getInvoices().then(setInvoices).catch(() => {})
   }, [])
-
-  const formatAmount = (amount: string, currency: string) => {
-    return new Intl.NumberFormat('en-GB', { style: 'currency', currency: currency || 'EUR' }).format(parseFloat(amount))
-  }
 
   const handleManageBilling = async () => {
     try {
@@ -197,19 +193,34 @@ export default function WorkspaceBillingTab() {
       </Modal>
 
       {/* Recent Invoices */}
-      {orders.length > 0 && (
+      {invoices.length > 0 && (
         <div className="space-y-2 pt-6 border-t border-neutral-800">
           <h4 className="text-sm font-medium text-neutral-300">Recent Invoices</h4>
           <div className="space-y-1">
-            {orders.map(order => (
-              <div key={order.id} className="flex items-center justify-between p-3 rounded-lg border border-neutral-800 text-sm">
+            {invoices.map(invoice => (
+              <div key={invoice.id} className="flex items-center justify-between p-3 rounded-lg border border-neutral-800 text-sm">
                 <div className="flex items-center gap-3">
-                  <span className="text-neutral-300">{formatDate(new Date(order.created_at))}</span>
-                  <span className="text-white font-medium">{formatAmount(order.amount, order.currency)}</span>
+                  <span className="text-neutral-400 font-mono text-xs">{invoice.invoice_number ?? '—'}</span>
+                  <span className="text-neutral-300">{formatDate(new Date(invoice.created_at))}</span>
+                  <span className="text-white font-medium">
+                    {new Intl.NumberFormat('en-GB', { style: 'currency', currency: invoice.currency || 'EUR' }).format(invoice.total_cents / 100)}
+                  </span>
+                  <span className="text-neutral-500 text-xs">
+                    (incl. {new Intl.NumberFormat('en-GB', { style: 'currency', currency: invoice.currency || 'EUR' }).format(invoice.vat_cents / 100)} VAT)
+                  </span>
                 </div>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${order.status === 'paid' ? 'bg-green-900/30 text-green-400' : 'bg-neutral-800 text-neutral-400'}`}>
-                  {order.status === 'paid' ? 'Paid' : order.status}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${invoice.status === 'sent' ? 'bg-green-900/30 text-green-400' : 'bg-neutral-800 text-neutral-400'}`}>
+                    {invoice.status === 'sent' ? 'Paid' : invoice.status}
+                  </span>
+                  <button
+                    onClick={() => downloadInvoicePDF(invoice.id).catch(() => toast.error('PDF not available yet'))}
+                    className="p-1.5 rounded-md hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors"
+                    title="Download PDF"
+                  >
+                    <DownloadSimple size={16} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
