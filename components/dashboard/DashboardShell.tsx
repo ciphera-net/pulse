@@ -89,14 +89,14 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-0.5 text-neutral-500 hover:text-neutral-300 transition-colors truncate max-w-[160px] cursor-pointer"
+        className="inline-flex items-center gap-1 text-neutral-500 hover:text-neutral-300 transition-colors max-w-[160px] cursor-pointer"
       >
         <span className="truncate">{currentSiteName}</span>
-        <CaretDown className="w-3 h-3 shrink-0" />
+        <CaretDown className="w-3 h-3 shrink-0 translate-y-px" />
       </button>
       {open && (
         <div className="absolute top-full left-0 mt-1 z-50 w-[220px] bg-neutral-900/90 backdrop-blur-2xl border border-white/[0.08] rounded-xl shadow-xl shadow-black/20 overflow-hidden">
-          <div className="max-h-64 overflow-y-auto py-1">
+          <div className="max-h-64 overflow-y-auto">
             {sites.map((site) => (
               <button
                 key={site.id}
