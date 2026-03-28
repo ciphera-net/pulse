@@ -297,15 +297,15 @@ function SidebarContent({
         <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 space-y-4">
           {NAV_GROUPS.map((group) => (
             <div key={group.label}>
-              {c ? (
-                <div className="mx-3 my-2 border-t border-white/[0.04]" />
-              ) : (
-                <div className="h-5 flex items-center overflow-hidden">
+              <div className="h-5 flex items-center overflow-hidden">
+                {c ? (
+                  <div className="mx-1 w-full border-t border-white/[0.04]" />
+                ) : (
                   <p className="px-2.5 text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider whitespace-nowrap">
                     {group.label}
                   </p>
-                </div>
-              )}
+                )}
+              </div>
               <div className="space-y-0.5">
                 {group.items.map((item) => (
                   <NavLink key={item.label} item={item} siteId={siteId} collapsed={c} onClick={isMobile ? onMobileClose : undefined} pendingHref={pendingHref} onNavigate={onNavigate} />
