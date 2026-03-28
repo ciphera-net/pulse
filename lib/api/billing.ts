@@ -91,16 +91,35 @@ export async function updatePaymentMethod(): Promise<{ url: string }> {
   })
 }
 
-export interface Order {
+export interface Invoice {
   id: string
-  amount: string
+  invoice_number: string | null
+  amount_cents: number
+  vat_cents: number
+  total_cents: number
   currency: string
+  description: string
   status: string
   created_at: string
 }
 
-export async function getOrders(): Promise<Order[]> {
-  return apiRequest<Order[]>('/api/billing/invoices')
+export async function getInvoices(): Promise<Invoice[]> {
+  const res = await apiRequest<{ invoices: Invoice[] }>('/api/billing/invoices')
+  return res.invoices ?? []
+}
+
+export async function downloadInvoicePDF(invoiceId: string): Promise<void> {
+  const res = await fetch('/api/billing/invoices/' + invoiceId + '/pdf', {
+    credentials: 'include',
+  })
+  if (!res.ok) throw new Error('Failed to download invoice PDF')
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'invoice.pdf'
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
 export interface VATResult {
