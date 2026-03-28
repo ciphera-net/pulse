@@ -57,7 +57,7 @@ const Sidebar = dynamic(() => import('./Sidebar'), {
   loading: () => (
     <div
       className="hidden md:block shrink-0 bg-transparent overflow-hidden relative"
-      style={{ width: 64 }}
+      style={{ width: 56 }}
     >
       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-neutral-800/10 to-transparent animate-shimmer" />
     </div>
@@ -340,13 +340,13 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
         </button>
         <nav className="flex items-center gap-1 text-sm font-medium">
           <BreadcrumbAppSwitcher />
-          <CaretRight className="w-3 h-3 text-neutral-600" />
+          <CaretRight className="w-3.5 h-3.5 text-neutral-600" weight="bold" />
           {siteId && siteName ? (
             <>
               <Link href="/" className="text-neutral-500 hover:text-neutral-300 transition-colors">Your Sites</Link>
-              <CaretRight className="w-3 h-3 text-neutral-600" />
+              <CaretRight className="w-3.5 h-3.5 text-neutral-600" weight="bold" />
               <BreadcrumbSitePicker currentSiteId={siteId} currentSiteName={siteName} />
-              <CaretRight className="w-3 h-3 text-neutral-600" />
+              <CaretRight className="w-3.5 h-3.5 text-neutral-600" weight="bold" />
               <span className="text-neutral-400">{pageTitle}</span>
             </>
           ) : (
