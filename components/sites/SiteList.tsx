@@ -5,8 +5,8 @@ import Image from 'next/image'
 import { Site } from '@/lib/api/sites'
 import type { Stats } from '@/lib/api/stats'
 import { formatNumber } from '@ciphera-net/ui'
-import { BarChartIcon, SettingsIcon, TrashIcon, BookOpenIcon, ExternalLinkIcon, Button } from '@ciphera-net/ui'
-import { useAuth } from '@/lib/auth/context'
+import { BarChartIcon, SettingsIcon, BookOpenIcon, ExternalLinkIcon, Button } from '@ciphera-net/ui'
+import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
 
 export type SiteStatsMap = Record<string, { stats: Stats }>
@@ -15,18 +15,16 @@ interface SiteListProps {
   sites: Site[]
   siteStats: SiteStatsMap
   loading: boolean
-  onDelete: (id: string) => void
 }
 
 interface SiteCardProps {
   site: Site
   stats: Stats | null
   statsLoading: boolean
-  onDelete: (id: string) => void
-  canDelete: boolean
 }
 
-function SiteCard({ site, stats, statsLoading, onDelete, canDelete }: SiteCardProps) {
+function SiteCard({ site, stats, statsLoading }: SiteCardProps) {
+  const { openUnifiedSettings } = useUnifiedSettings()
   const visitors24h = stats?.visitors ?? 0
   const pageviews = stats?.pageviews ?? 0
 
@@ -104,31 +102,20 @@ function SiteCard({ site, stats, statsLoading, onDelete, canDelete }: SiteCardPr
             View Dashboard
           </Button>
         </Link>
-        <Link
-          href={`/sites/${site.id}/settings`}
-          className="flex items-center justify-center rounded-lg border border-neutral-200 px-3 hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800 text-neutral-500 hover:text-neutral-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2"
+        <button
+          type="button"
+          onClick={() => openUnifiedSettings({ context: 'site', tab: 'general', siteId: site.id })}
+          className="flex items-center justify-center rounded-lg border border-neutral-200 px-3 hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800 text-neutral-500 hover:text-neutral-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 cursor-pointer"
           title="Site Settings"
         >
           <SettingsIcon className="h-4 w-4" />
-        </Link>
-        {canDelete && (
-          <button
-            type="button"
-            onClick={() => onDelete(site.id)}
-            className="flex items-center justify-center rounded-lg border border-neutral-200 px-3 hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800 text-neutral-500 hover:text-red-600 dark:hover:text-red-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
-            title="Delete Site"
-          >
-            <TrashIcon className="h-4 w-4" />
-          </button>
-        )}
+        </button>
       </div>
     </div>
   )
 }
 
-export default function SiteList({ sites, siteStats, loading, onDelete }: SiteListProps) {
-  const { user } = useAuth()
-  const canDelete = user?.role === 'owner' || user?.role === 'admin'
+export default function SiteList({ sites, siteStats, loading }: SiteListProps) {
 
   if (loading) {
     return (
@@ -172,8 +159,6 @@ export default function SiteList({ sites, siteStats, loading, onDelete }: SiteLi
             site={site}
             stats={data?.stats ?? null}
             statsLoading={!data}
-            onDelete={onDelete}
-            canDelete={canDelete}
           />
         )
       })}
