@@ -6,13 +6,19 @@ import { motion, AnimatePresence } from 'framer-motion'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { formatUpdatedAgo, PlusIcon } from '@ciphera-net/ui'
+import { formatUpdatedAgo, PlusIcon, ExternalLinkIcon, type CipheraApp } from '@ciphera-net/ui'
 import { CaretDown, CaretRight, SidebarSimple } from '@phosphor-icons/react'
 import { SidebarProvider, useSidebar } from '@/lib/sidebar-context'
 import { useRealtime } from '@/lib/swr/dashboard'
 import { getSite, listSites, type Site } from '@/lib/api/sites'
 import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
 import ContentHeader from './ContentHeader'
+
+const CIPHERA_APPS: CipheraApp[] = [
+  { id: 'pulse', name: 'Pulse', description: 'Your current app — Privacy-first analytics', icon: 'https://ciphera.net/pulse_icon_no_margins.png', href: 'https://pulse.ciphera.net', isAvailable: false },
+  { id: 'drop', name: 'Drop', description: 'Secure file sharing', icon: 'https://ciphera.net/drop_icon_no_margins.png', href: 'https://drop.ciphera.net', isAvailable: true },
+  { id: 'auth', name: 'Auth', description: 'Your Ciphera account settings', icon: 'https://ciphera.net/auth_icon_no_margins.png', href: 'https://auth.ciphera.net', isAvailable: true },
+]
 
 const PAGE_TITLES: Record<string, string> = {
   '': 'Dashboard',
@@ -57,6 +63,105 @@ const Sidebar = dynamic(() => import('./Sidebar'), {
     </div>
   ),
 })
+
+// ─── Breadcrumb App Switcher ───────────────────────────────
+
+function BreadcrumbAppSwitcher() {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const [fixedPos, setFixedPos] = useState<{ left: number; top: number } | null>(null)
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node
+      if (
+        ref.current && !ref.current.contains(target) &&
+        (!panelRef.current || !panelRef.current.contains(target))
+      ) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  useEffect(() => {
+    if (open && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect()
+      let top = rect.bottom + 4
+      if (panelRef.current) {
+        const maxTop = window.innerHeight - panelRef.current.offsetHeight - 8
+        top = Math.min(top, Math.max(8, maxTop))
+      }
+      setFixedPos({ left: rect.left, top })
+      requestAnimationFrame(() => {
+        if (buttonRef.current) {
+          const r = buttonRef.current.getBoundingClientRect()
+          setFixedPos({ left: r.left, top: r.bottom + 4 })
+        }
+      })
+    }
+  }, [open])
+
+  const dropdown = (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          ref={panelRef}
+          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+          transition={{ duration: 0.15 }}
+          className="fixed z-50 w-72 bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/60 border border-white/[0.08] rounded-xl shadow-xl shadow-black/20 overflow-hidden origin-top-left"
+          style={fixedPos ? { left: fixedPos.left, top: fixedPos.top } : undefined}
+        >
+          <div className="p-4">
+            <div className="text-xs font-medium text-neutral-400 tracking-wider mb-3">Ciphera Apps</div>
+            <div className="grid grid-cols-3 gap-3">
+              {CIPHERA_APPS.map((app) => {
+                const isCurrent = app.id === 'pulse'
+                return (
+                  <a
+                    key={app.id}
+                    href={app.href}
+                    onClick={(e) => { if (isCurrent) { e.preventDefault(); setOpen(false) } else setOpen(false) }}
+                    className={`group flex flex-col items-center gap-2 p-3 rounded-xl transition-all ${
+                      isCurrent ? 'bg-neutral-800/50 cursor-default' : 'hover:bg-neutral-800/50'
+                    }`}
+                  >
+                    <div className="w-10 h-10 flex items-center justify-center shrink-0">
+                      <img src={app.icon} alt={app.name} className="w-8 h-8 object-contain" />
+                    </div>
+                    <span className="text-xs font-medium text-white text-center">{app.name}</span>
+                  </a>
+                )
+              })}
+            </div>
+            <div className="h-px bg-white/[0.06] my-3" />
+            <a href="https://ciphera.net/products" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1 text-xs text-brand-orange hover:underline">
+              View all products
+              <ExternalLinkIcon className="h-3 w-3" />
+            </a>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        ref={buttonRef}
+        onClick={() => setOpen(!open)}
+        className="inline-flex items-center gap-1 text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer"
+      >
+        <span>Pulse</span>
+        <CaretDown className="w-3 h-3 shrink-0 translate-y-px" />
+      </button>
+      {typeof document !== 'undefined' ? createPortal(dropdown, document.body) : dropdown}
+    </div>
+  )
+}
 
 // ─── Breadcrumb Site Picker ────────────────────────────────
 
@@ -233,17 +338,21 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
         >
           <SidebarSimple className="w-[18px] h-[18px]" weight={collapsed ? 'regular' : 'fill'} />
         </button>
-        {siteId && siteName ? (
-          <nav className="flex items-center gap-1 text-sm font-medium">
-            <Link href="/" className="text-neutral-500 hover:text-neutral-300 transition-colors">Your Sites</Link>
-            <CaretRight className="w-3 h-3 text-neutral-600" />
-            <BreadcrumbSitePicker currentSiteId={siteId} currentSiteName={siteName} />
-            <CaretRight className="w-3 h-3 text-neutral-600" />
+        <nav className="flex items-center gap-1 text-sm font-medium">
+          <BreadcrumbAppSwitcher />
+          <CaretRight className="w-3 h-3 text-neutral-600" />
+          {siteId && siteName ? (
+            <>
+              <Link href="/" className="text-neutral-500 hover:text-neutral-300 transition-colors">Your Sites</Link>
+              <CaretRight className="w-3 h-3 text-neutral-600" />
+              <BreadcrumbSitePicker currentSiteId={siteId} currentSiteName={siteName} />
+              <CaretRight className="w-3 h-3 text-neutral-600" />
+              <span className="text-neutral-400">{pageTitle}</span>
+            </>
+          ) : (
             <span className="text-neutral-400">{pageTitle}</span>
-          </nav>
-        ) : (
-          <span className="text-sm text-neutral-400 font-medium">{pageTitle}</span>
-        )}
+          )}
+        </nav>
       </div>
 
       {/* Realtime indicator */}

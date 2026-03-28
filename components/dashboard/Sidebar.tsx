@@ -25,38 +25,9 @@ import {
   PlusIcon,
   XIcon,
   BookOpenIcon,
-  AppLauncher,
   UserMenu,
-  type CipheraApp,
 } from '@ciphera-net/ui'
 import NotificationCenter from '@/components/notifications/NotificationCenter'
-
-const CIPHERA_APPS: CipheraApp[] = [
-  {
-    id: 'pulse',
-    name: 'Pulse',
-    description: 'Your current app — Privacy-first analytics',
-    icon: 'https://ciphera.net/pulse_icon_no_margins.png',
-    href: 'https://pulse.ciphera.net',
-    isAvailable: false,
-  },
-  {
-    id: 'drop',
-    name: 'Drop',
-    description: 'Secure file sharing',
-    icon: 'https://ciphera.net/drop_icon_no_margins.png',
-    href: 'https://drop.ciphera.net',
-    isAvailable: true,
-  },
-  {
-    id: 'auth',
-    name: 'Auth',
-    description: 'Your Ciphera account settings',
-    icon: 'https://ciphera.net/auth_icon_no_margins.png',
-    href: 'https://auth.ciphera.net',
-    isAvailable: true,
-  },
-]
 
 const EXPANDED = 256
 const COLLAPSED = 64
@@ -287,16 +258,6 @@ function SidebarContent({
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* App Switcher — top of sidebar (scope-level switch) */}
-      <div className="flex items-center gap-2.5 px-[14px] pt-1.5 pb-1 shrink-0 overflow-hidden">
-        <span className="w-9 h-9 flex items-center justify-center shrink-0">
-          <AppLauncher apps={CIPHERA_APPS} currentAppId="pulse" anchor="right" />
-        </span>
-        <Label collapsed={c}>
-          <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">Ciphera</span>
-        </Label>
-      </div>
-
       {/* Logo — fixed layout, text fades */}
       <Link href="/" className="flex items-center gap-3 px-[14px] py-4 shrink-0 group overflow-hidden">
         <span className="w-9 h-9 flex items-center justify-center shrink-0">
