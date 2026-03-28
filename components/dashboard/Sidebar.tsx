@@ -14,7 +14,7 @@ import { getUserOrganizations, switchContext, type OrganizationMember } from '@/
 import { setSessionAction } from '@/app/actions/auth'
 import { logger } from '@/lib/utils/logger'
 import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
-import { Gauge as GaugeIcon } from '@phosphor-icons/react'
+import { Gauge as GaugeIcon, Plugs as PlugsIcon, Tag as TagIcon } from '@phosphor-icons/react'
 import {
   LayoutDashboardIcon,
   PathIcon,
@@ -27,6 +27,7 @@ import {
   ChevronUpDownIcon,
   PlusIcon,
   XIcon,
+  BookOpenIcon,
   AppLauncher,
   UserMenu,
   type CipheraApp,
@@ -330,9 +331,9 @@ function NavLink({
 // ─── Settings Button (opens unified modal instead of navigating) ─────
 
 function SettingsButton({
-  item, collapsed, onClick,
+  item, collapsed, onClick, settingsContext = 'site',
 }: {
-  item: NavItem; collapsed: boolean; onClick?: () => void
+  item: NavItem; collapsed: boolean; onClick?: () => void; settingsContext?: 'site' | 'workspace'
 }) {
   const { openUnifiedSettings } = useUnifiedSettings()
 
@@ -340,7 +341,7 @@ function SettingsButton({
     <div className="relative group/nav">
       <button
         onClick={() => {
-          openUnifiedSettings({ context: 'site', tab: 'general' })
+          openUnifiedSettings({ context: settingsContext, tab: 'general' })
           onClick?.()
         }}
         className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-150 text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5 w-full cursor-pointer"
@@ -353,6 +354,83 @@ function SettingsButton({
       {collapsed && (
         <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 rounded-md bg-neutral-800 text-white text-xs whitespace-nowrap opacity-0 group-hover/nav:opacity-100 transition-opacity duration-150 delay-150 z-50">
           {item.label}
+        </span>
+      )}
+    </div>
+  )
+}
+
+// ─── Home Nav Link (static href, no siteId) ───────────────
+
+function HomeNavLink({
+  href, icon: Icon, label, collapsed, onClick, external,
+}: {
+  href: string; icon: React.ComponentType<{ className?: string; weight?: IconWeight }>
+  label: string; collapsed: boolean; onClick?: () => void; external?: boolean
+}) {
+  const pathname = usePathname()
+  const active = !external && pathname === href
+
+  return (
+    <div className="relative group/nav">
+      <Link
+        href={href}
+        onClick={onClick}
+        {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+        className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-150 ${
+          active
+            ? 'bg-brand-orange/10 text-brand-orange'
+            : 'text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5'
+        }`}
+      >
+        <span className="w-7 h-7 flex items-center justify-center shrink-0">
+          <Icon className="w-[18px] h-[18px]" weight={active ? 'fill' : 'regular'} />
+        </span>
+        <Label collapsed={collapsed}>{label}</Label>
+      </Link>
+      {collapsed && (
+        <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 rounded-md bg-neutral-800 text-white text-xs whitespace-nowrap opacity-0 group-hover/nav:opacity-100 transition-opacity duration-150 delay-150 z-50">
+          {label}
+        </span>
+      )}
+    </div>
+  )
+}
+
+// ─── Home Site Link (favicon + name) ───────────────────────
+
+function HomeSiteLink({
+  site, collapsed, onClick,
+}: {
+  site: Site; collapsed: boolean; onClick?: () => void
+}) {
+  const pathname = usePathname()
+  const href = `/sites/${site.id}`
+  const active = pathname.startsWith(href)
+
+  return (
+    <div className="relative group/nav">
+      <Link
+        href={href}
+        onClick={onClick}
+        className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-150 ${
+          active
+            ? 'bg-brand-orange/10 text-brand-orange'
+            : 'text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5'
+        }`}
+      >
+        <span className="w-7 h-7 rounded-md bg-white/[0.04] flex items-center justify-center shrink-0 overflow-hidden">
+          <img
+            src={`${FAVICON_SERVICE_URL}?domain=${site.domain}&sz=64`}
+            alt=""
+            className="w-[18px] h-[18px] rounded object-contain"
+          />
+        </span>
+        <Label collapsed={collapsed}>{site.name}</Label>
+      </Link>
+      {collapsed && (
+        <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 rounded-md bg-neutral-800 text-white text-xs whitespace-nowrap opacity-0 group-hover/nav:opacity-100 transition-opacity duration-150 delay-150 z-50">
+          {site.name}
         </span>
       )}
     </div>
@@ -444,7 +522,60 @@ function SidebarContent({
           ))}
         </nav>
       ) : (
-        <div className="flex-1" />
+        <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 space-y-4">
+          {/* Your Sites */}
+          <div>
+            {c ? (
+              <div className="mx-3 my-2 border-t border-white/[0.04]" />
+            ) : (
+              <div className="h-5 flex items-center overflow-hidden">
+                <p className="px-2.5 text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider whitespace-nowrap">
+                  Your Sites
+                </p>
+              </div>
+            )}
+            <div className="space-y-0.5">
+              {sites.map((site) => (
+                <HomeSiteLink key={site.id} site={site} collapsed={c} onClick={isMobile ? onMobileClose : undefined} />
+              ))}
+              <HomeNavLink href="/sites/new" icon={PlusIcon} label="Add New Site" collapsed={c} onClick={isMobile ? onMobileClose : undefined} />
+            </div>
+          </div>
+
+          {/* Workspace */}
+          <div>
+            {c ? (
+              <div className="mx-3 my-2 border-t border-white/[0.04]" />
+            ) : (
+              <div className="h-5 flex items-center overflow-hidden">
+                <p className="px-2.5 text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider whitespace-nowrap">
+                  Workspace
+                </p>
+              </div>
+            )}
+            <div className="space-y-0.5">
+              <HomeNavLink href="/integrations" icon={PlugsIcon} label="Integrations" collapsed={c} onClick={isMobile ? onMobileClose : undefined} />
+              <HomeNavLink href="/pricing" icon={TagIcon} label="Pricing" collapsed={c} onClick={isMobile ? onMobileClose : undefined} />
+              <SettingsButton item={{ label: 'Workspace Settings', href: () => '', icon: SettingsIcon, matchPrefix: false }} collapsed={c} onClick={isMobile ? onMobileClose : undefined} settingsContext="workspace" />
+            </div>
+          </div>
+
+          {/* Resources */}
+          <div>
+            {c ? (
+              <div className="mx-3 my-2 border-t border-white/[0.04]" />
+            ) : (
+              <div className="h-5 flex items-center overflow-hidden">
+                <p className="px-2.5 text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider whitespace-nowrap">
+                  Resources
+                </p>
+              </div>
+            )}
+            <div className="space-y-0.5">
+              <HomeNavLink href="https://docs.ciphera.net" icon={BookOpenIcon} label="Documentation" collapsed={c} onClick={isMobile ? onMobileClose : undefined} external />
+            </div>
+          </div>
+        </nav>
       )}
 
       {/* Bottom — utility items */}
