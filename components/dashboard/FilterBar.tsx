@@ -17,7 +17,7 @@ export default function FilterBar({ filters, onRemove, onClear }: FilterBarProps
         <button
           key={`${f.dimension}-${f.operator}-${f.values.join(',')}`}
           onClick={() => onRemove(i)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-brand-orange text-white hover:bg-brand-orange/80 transition-colors cursor-pointer group"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-brand-orange-button text-white hover:bg-brand-orange-button-hover transition-colors cursor-pointer group"
           title={`Remove filter: ${filterLabel(f)}`}
         >
           <span>{filterLabel(f)}</span>

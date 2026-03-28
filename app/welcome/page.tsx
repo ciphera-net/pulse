@@ -16,7 +16,6 @@ import {
   type Organization,
   type OrganizationMember,
 } from '@/lib/api/organization'
-import { createCheckoutSession } from '@/lib/api/billing'
 import { createSite, type Site } from '@/lib/api/sites'
 import { setSessionAction } from '@/app/actions/auth'
 import { useAuth } from '@/lib/auth/context'
@@ -88,7 +87,6 @@ function WelcomeContent() {
   const [orgLoading, setOrgLoading] = useState(false)
   const [orgError, setOrgError] = useState('')
 
-  const [planLoading, setPlanLoading] = useState(false)
   const [planError, setPlanError] = useState('')
 
   const [siteName, setSiteName] = useState('')
@@ -98,7 +96,6 @@ function WelcomeContent() {
   const [createdSite, setCreatedSite] = useState<Site | null>(null)
   const [showVerificationModal, setShowVerificationModal] = useState(false)
 
-  const [redirectingCheckout, setRedirectingCheckout] = useState(false)
   const [hadPendingCheckout, setHadPendingCheckout] = useState<boolean | null>(null)
   const [dismissedPendingCheckout, setDismissedPendingCheckout] = useState(false)
 
@@ -211,28 +208,15 @@ function WelcomeContent() {
       setStep(4)
       return
     }
-    setPlanLoading(true)
-    setPlanError('')
+
+    trackWelcomePlanContinue()
     try {
-      trackWelcomePlanContinue()
-      const intent = JSON.parse(raw)
-      const { url } = await createCheckoutSession({
-        plan_id: intent.planId,
-        interval: intent.interval || 'month',
-        limit: intent.limit ?? 100000,
-      })
+      const { planId, interval, limit } = JSON.parse(raw)
       localStorage.removeItem('pulse_pending_checkout')
-      if (url) {
-        setRedirectingCheckout(true)
-        window.location.href = url
-        return
-      }
-      throw new Error('No checkout URL returned')
-    } catch (err: unknown) {
-      setPlanError(getAuthErrorMessage(err) || (err as Error)?.message || 'Failed to start checkout')
+      router.push(`/checkout?plan=${planId}&interval=${interval || 'month'}&limit=${limit ?? 100000}`)
+    } catch {
+      setPlanError('Failed to parse checkout data')
       localStorage.removeItem('pulse_pending_checkout')
-    } finally {
-      setPlanLoading(false)
     }
   }
 
@@ -318,15 +302,6 @@ function WelcomeContent() {
 
   if (switchingOrgId) {
     return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Switching organization..." />
-  }
-
-  if (redirectingCheckout || (planLoading && step === 3)) {
-    return (
-      <LoadingOverlay
-        logoSrc="/pulse_icon_no_margins.png"
-        title={redirectingCheckout ? 'Taking you to checkout...' : 'Preparing your plan...'}
-      />
-    )
   }
 
   const cardClass =
@@ -575,7 +550,6 @@ function WelcomeContent() {
                       variant="primary"
                       className="w-full sm:w-auto"
                       onClick={handlePlanContinue}
-                      disabled={planLoading}
                     >
                       Continue to checkout
                     </Button>
@@ -583,7 +557,6 @@ function WelcomeContent() {
                       variant="secondary"
                       className="w-full sm:w-auto"
                       onClick={handlePlanSkip}
-                      disabled={planLoading}
                     >
                       Stay on free plan
                     </Button>

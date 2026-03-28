@@ -125,7 +125,7 @@ export default function TopReferrers({ referrers, collectReferrers = true, siteI
                 return (
                   <div
                     key={ref.referrer}
-                    onClick={() => onFilter?.({ dimension: 'referrer', operator: 'is', values: [ref.referrer] })}
+                    onClick={() => onFilter?.({ dimension: 'referrer', operator: 'is', values: ref.allReferrers ?? [ref.referrer] })}
                     className={`relative flex items-center justify-between h-9 group hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 rounded-lg px-2 -mx-2 transition-colors${onFilter ? ' cursor-pointer' : ''}`}
                   >
                     <div

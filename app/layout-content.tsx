@@ -78,11 +78,15 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   const handleSwitchOrganization = async (orgId: string | null) => {
     if (!orgId) return
     try {
+      setIsSwitchingOrg(true)
       const { access_token } = await switchContext(orgId)
       await setSessionAction(access_token)
-      sessionStorage.setItem(ORG_SWITCH_KEY, 'true')
-      window.location.reload()
+      // Refresh auth context (re-fetches /auth/user/me with new JWT, updates org_id + SWR cache)
+      await auth.refresh()
+      router.push('/')
+      setTimeout(() => setIsSwitchingOrg(false), 300)
     } catch (err) {
+      setIsSwitchingOrg(false)
       logger.error('Failed to switch organization', err)
     }
   }
@@ -91,13 +95,15 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   const showOfflineBar = Boolean(auth.user && !isOnline)
   // Site pages use DashboardShell with full sidebar — no Header needed
   const isSitePage = pathname.startsWith('/sites/') && pathname !== '/sites/new'
+  // Checkout page has its own minimal layout — no app header/footer
+  const isCheckoutPage = pathname.startsWith('/checkout')
 
   if (isSwitchingOrg) {
     return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" portal={false} />
   }
 
-  // While auth is loading on a site page, render nothing to prevent flash of public header
-  if (auth.loading && isSitePage) {
+  // While auth is loading on a site or checkout page, render nothing to prevent flash of public header
+  if (auth.loading && (isSitePage || isCheckoutPage)) {
     return null
   }
 
@@ -111,6 +117,11 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
         <UnifiedSettingsModal />
       </>
     )
+  }
+
+  // Checkout page: render children only (has its own layout)
+  if (isAuthenticated && isCheckoutPage) {
+    return <>{children}</>
   }
 
   // Authenticated non-site pages (sites list, onboarding, etc.): static header

@@ -72,6 +72,9 @@ export interface CreateCheckoutParams {
   plan_id: string
   interval: string
   limit: number
+  country: string
+  vat_id?: string
+  method?: string
 }
 
 export async function createCheckoutSession(params: CreateCheckoutParams): Promise<{ url: string }> {
@@ -81,18 +84,63 @@ export async function createCheckoutSession(params: CreateCheckoutParams): Promi
   })
 }
 
+/** Creates a Mollie checkout session to update the payment mandate. */
+export async function updatePaymentMethod(): Promise<{ url: string }> {
+  return apiRequest<{ url: string }>('/api/billing/update-payment-method', {
+    method: 'POST',
+  })
+}
+
 export interface Order {
   id: string
-  total_amount: number
-  subtotal_amount: number
-  tax_amount: number
+  amount: string
   currency: string
   status: string
   created_at: string
-  paid: boolean
-  invoice_number: string
 }
 
 export async function getOrders(): Promise<Order[]> {
   return apiRequest<Order[]>('/api/billing/invoices')
+}
+
+export interface VATResult {
+  base_amount: string
+  vat_rate: number
+  vat_amount: string
+  total_amount: string
+  vat_exempt: boolean
+  vat_reason: string
+  company_name?: string
+  company_address?: string
+}
+
+export interface CalculateVATParams {
+  plan_id: string
+  interval: string
+  limit: number
+  country: string
+  vat_id?: string
+}
+
+export async function calculateVAT(params: CalculateVATParams): Promise<VATResult> {
+  return apiRequest<VATResult>('/api/billing/calculate-vat', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  })
+}
+
+export interface CreateEmbeddedCheckoutParams {
+  plan_id: string
+  interval: string
+  limit: number
+  country: string
+  vat_id?: string
+  card_token: string
+}
+
+export async function createEmbeddedCheckout(params: CreateEmbeddedCheckoutParams): Promise<{ status: 'success' | 'pending'; redirect_url?: string }> {
+  return apiRequest<{ status: 'success' | 'pending'; redirect_url?: string }>('/api/billing/checkout-embedded', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  })
 }

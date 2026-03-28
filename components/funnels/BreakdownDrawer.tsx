@@ -68,7 +68,7 @@ export default function BreakdownDrawer({ siteId, funnelId, stepIndex, stepName,
               onClick={() => setActiveDimension(dim)}
               className={`px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-colors ${
                 activeDimension === dim
-                  ? 'bg-brand-orange text-white'
+                  ? 'bg-brand-orange-button text-white'
                   : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 hover:bg-neutral-200 dark:hover:bg-neutral-700'
               }`}
             >

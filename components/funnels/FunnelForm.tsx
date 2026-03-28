@@ -296,7 +296,7 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
                         onClick={() => handleUpdateStep(index, 'category', 'page')}
                         className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
                           category === 'page'
-                            ? 'bg-brand-orange text-white'
+                            ? 'bg-brand-orange-button text-white'
                             : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'
                         }`}
                       >
@@ -307,7 +307,7 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
                         onClick={() => handleUpdateStep(index, 'category', 'event')}
                         className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
                           category === 'event'
-                            ? 'bg-brand-orange text-white'
+                            ? 'bg-brand-orange-button text-white'
                             : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'
                         }`}
                       >
@@ -470,7 +470,7 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
                 }}
                 className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
                   windowValue === preset.value && windowUnit === preset.unit
-                    ? 'bg-brand-orange text-white'
+                    ? 'bg-brand-orange-button text-white'
                     : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'
                 }`}
               >

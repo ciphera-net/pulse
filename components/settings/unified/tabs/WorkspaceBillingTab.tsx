@@ -2,37 +2,37 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Button, toast, Spinner } from '@ciphera-net/ui'
+import { Button, toast, Spinner, Modal } from '@ciphera-net/ui'
 import { CreditCard, ArrowSquareOut } from '@phosphor-icons/react'
 import { useSubscription } from '@/lib/swr/dashboard'
-import { createPortalSession, cancelSubscription, resumeSubscription, getOrders, type Order } from '@/lib/api/billing'
+import { updatePaymentMethod, cancelSubscription, resumeSubscription, getOrders, type Order } from '@/lib/api/billing'
 import { formatDateLong, formatDate } from '@/lib/utils/formatDate'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 
 export default function WorkspaceBillingTab() {
   const { data: subscription, isLoading, mutate } = useSubscription()
   const [cancelling, setCancelling] = useState(false)
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [orders, setOrders] = useState<Order[]>([])
 
   useEffect(() => {
     getOrders().then(setOrders).catch(() => {})
   }, [])
 
-  const formatAmount = (amount: number, currency: string) => {
-    return new Intl.NumberFormat('en-GB', { style: 'currency', currency: currency || 'USD' }).format(amount / 100)
+  const formatAmount = (amount: string, currency: string) => {
+    return new Intl.NumberFormat('en-GB', { style: 'currency', currency: currency || 'EUR' }).format(parseFloat(amount))
   }
 
   const handleManageBilling = async () => {
     try {
-      const { url } = await createPortalSession()
-      if (url) window.open(url, '_blank')
+      const { url } = await updatePaymentMethod()
+      if (url) window.location.href = url
     } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to open billing portal')
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to update payment method')
     }
   }
 
   const handleCancel = async () => {
-    if (!confirm('Are you sure you want to cancel your subscription?')) return
     setCancelling(true)
     try {
       await cancelSubscription()
@@ -42,6 +42,7 @@ export default function WorkspaceBillingTab() {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to cancel subscription')
     } finally {
       setCancelling(false)
+      setShowCancelConfirm(false)
     }
   }
 
@@ -149,18 +150,17 @@ export default function WorkspaceBillingTab() {
         {subscription.has_payment_method && (
           <Button onClick={handleManageBilling} variant="secondary" className="text-sm gap-1.5">
             <ArrowSquareOut weight="bold" className="w-3.5 h-3.5" />
-            Payment method & invoices
+            Update payment method
           </Button>
         )}
 
         {isActive && !subscription.cancel_at_period_end && (
           <Button
-            onClick={handleCancel}
+            onClick={() => setShowCancelConfirm(true)}
             variant="secondary"
             className="text-sm text-neutral-400 hover:text-red-400"
-            disabled={cancelling}
           >
-            {cancelling ? 'Cancelling...' : 'Cancel subscription'}
+            Cancel subscription
           </Button>
         )}
 
@@ -171,6 +171,31 @@ export default function WorkspaceBillingTab() {
         )}
       </div>
 
+      {/* Cancel confirmation */}
+      <Modal isOpen={showCancelConfirm} onClose={() => setShowCancelConfirm(false)} title="Cancel subscription" className="max-w-md">
+        <p className="text-sm text-neutral-400 mb-1">
+          Are you sure you want to cancel your subscription?
+        </p>
+        {subscription.current_period_end && (
+          <p className="text-sm text-neutral-500 mb-5">
+            Your plan will remain active until {formatDateLong(new Date(subscription.current_period_end))}.
+          </p>
+        )}
+        <div className="flex justify-end gap-3">
+          <Button variant="secondary" className="text-sm" onClick={() => setShowCancelConfirm(false)} disabled={cancelling}>
+            Keep plan
+          </Button>
+          <Button
+            variant="primary"
+            className="text-sm bg-red-600 hover:bg-red-700 border-red-600 hover:border-red-700"
+            onClick={handleCancel}
+            disabled={cancelling}
+          >
+            {cancelling ? 'Cancelling...' : 'Yes, cancel'}
+          </Button>
+        </div>
+      </Modal>
+
       {/* Recent Invoices */}
       {orders.length > 0 && (
         <div className="space-y-2 pt-6 border-t border-neutral-800">
@@ -180,13 +205,10 @@ export default function WorkspaceBillingTab() {
               <div key={order.id} className="flex items-center justify-between p-3 rounded-lg border border-neutral-800 text-sm">
                 <div className="flex items-center gap-3">
                   <span className="text-neutral-300">{formatDate(new Date(order.created_at))}</span>
-                  <span className="text-white font-medium">{formatAmount(order.total_amount, order.currency)}</span>
-                  {order.invoice_number && (
-                    <span className="text-neutral-500 text-xs">{order.invoice_number}</span>
-                  )}
+                  <span className="text-white font-medium">{formatAmount(order.amount, order.currency)}</span>
                 </div>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${order.paid ? 'bg-green-900/30 text-green-400' : 'bg-neutral-800 text-neutral-400'}`}>
-                  {order.paid ? 'Paid' : order.status}
+                <span className={`text-xs px-2 py-0.5 rounded-full ${order.status === 'paid' ? 'bg-green-900/30 text-green-400' : 'bg-neutral-800 text-neutral-400'}`}>
+                  {order.status === 'paid' ? 'Paid' : order.status}
                 </span>
               </div>
             ))}
