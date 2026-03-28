@@ -33,7 +33,6 @@ export default function HomePage() {
   const [siteStats, setSiteStats] = useState<SiteStatsMap>({})
   const [subscription, setSubscription] = useState<SubscriptionDetails | null>(null)
   const [showFinishSetupBanner, setShowFinishSetupBanner] = useState(true)
-  const [deleteModalSite, setDeleteModalSite] = useState<Site | null>(null)
   const [deletedSites, setDeletedSites] = useState<Site[]>([])
   const [permanentDeleteSiteModal, setPermanentDeleteSiteModal] = useState<Site | null>(null)
 
@@ -117,11 +116,6 @@ export default function HomePage() {
     } catch {
       setSubscription(null)
     }
-  }
-
-  const handleDelete = (id: string) => {
-    const site = sites.find((s) => s.id === id)
-    if (site) setDeleteModalSite(site)
   }
 
   const handleRestore = async (id: string) => {
@@ -312,17 +306,8 @@ export default function HomePage() {
       )}
 
       {(sitesLoading || sites.length > 0) && (
-        <SiteList sites={sites} siteStats={siteStats} loading={sitesLoading} onDelete={handleDelete} />
+        <SiteList sites={sites} siteStats={siteStats} loading={sitesLoading} />
       )}
-
-      <DeleteSiteModal
-        open={!!deleteModalSite}
-        onClose={() => setDeleteModalSite(null)}
-        onDeleted={loadSites}
-        siteName={deleteModalSite?.name || ''}
-        siteDomain={deleteModalSite?.domain || ''}
-        siteId={deleteModalSite?.id || ''}
-      />
 
       <DeleteSiteModal
         open={!!permanentDeleteSiteModal}
