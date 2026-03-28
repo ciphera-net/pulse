@@ -364,7 +364,7 @@ function SettingsButton({
 interface SidebarContentProps {
   isMobile: boolean
   collapsed: boolean
-  siteId: string
+  siteId: string | null
   sites: Site[]
   canEdit: boolean
   pendingHref: string | null
@@ -414,32 +414,38 @@ function SidebarContent({
       </Link>
 
       {/* Site Picker */}
-      <SitePicker sites={sites} siteId={siteId} collapsed={c} onExpand={onExpand} onCollapse={onCollapse} wasCollapsed={wasCollapsed} pickerOpenCallback={pickerOpenCallbackRef} />
+      {siteId && (
+        <SitePicker sites={sites} siteId={siteId} collapsed={c} onExpand={onExpand} onCollapse={onCollapse} wasCollapsed={wasCollapsed} pickerOpenCallback={pickerOpenCallbackRef} />
+      )}
 
       {/* Nav Groups */}
-      <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 space-y-4">
-        {NAV_GROUPS.map((group) => (
-          <div key={group.label}>
-            {c ? (
-              <div className="mx-3 my-2 border-t border-white/[0.04]" />
-            ) : (
-              <div className="h-5 flex items-center overflow-hidden">
-                <p className="px-2.5 text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider whitespace-nowrap">
-                  {group.label}
-                </p>
-              </div>
-            )}
-            <div className="space-y-0.5">
-              {group.items.map((item) => (
-                <NavLink key={item.label} item={item} siteId={siteId} collapsed={c} onClick={isMobile ? onMobileClose : undefined} pendingHref={pendingHref} onNavigate={onNavigate} />
-              ))}
-              {group.label === 'Infrastructure' && canEdit && (
-                <SettingsButton item={SETTINGS_ITEM} collapsed={c} onClick={isMobile ? onMobileClose : undefined} />
+      {siteId ? (
+        <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 space-y-4">
+          {NAV_GROUPS.map((group) => (
+            <div key={group.label}>
+              {c ? (
+                <div className="mx-3 my-2 border-t border-white/[0.04]" />
+              ) : (
+                <div className="h-5 flex items-center overflow-hidden">
+                  <p className="px-2.5 text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider whitespace-nowrap">
+                    {group.label}
+                  </p>
+                </div>
               )}
+              <div className="space-y-0.5">
+                {group.items.map((item) => (
+                  <NavLink key={item.label} item={item} siteId={siteId} collapsed={c} onClick={isMobile ? onMobileClose : undefined} pendingHref={pendingHref} onNavigate={onNavigate} />
+                ))}
+                {group.label === 'Infrastructure' && canEdit && (
+                  <SettingsButton item={SETTINGS_ITEM} collapsed={c} onClick={isMobile ? onMobileClose : undefined} />
+                )}
+              </div>
             </div>
-          </div>
-        ))}
-      </nav>
+          ))}
+        </nav>
+      ) : (
+        <div className="flex-1" />
+      )}
 
       {/* Bottom — utility items */}
       <div className="border-t border-white/[0.06] px-2 py-3 shrink-0">
@@ -488,7 +494,7 @@ function SidebarContent({
 export default function Sidebar({
   siteId, mobileOpen, onMobileClose, onMobileOpen,
 }: {
-  siteId: string; mobileOpen: boolean; onMobileClose: () => void; onMobileOpen: () => void
+  siteId: string | null; mobileOpen: boolean; onMobileClose: () => void; onMobileOpen: () => void
 }) {
   const auth = useAuth()
   const { user } = auth

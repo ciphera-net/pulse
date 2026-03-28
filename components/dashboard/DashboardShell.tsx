@@ -41,15 +41,15 @@ const Sidebar = dynamic(() => import('./Sidebar'), {
   ),
 })
 
-function GlassTopBar({ siteId }: { siteId: string }) {
+function GlassTopBar({ siteId }: { siteId: string | null }) {
   const { collapsed, toggle } = useSidebar()
-  const { data: realtime } = useRealtime(siteId)
+  const { data: realtime } = useRealtime(siteId ?? '')
   const lastUpdatedRef = useRef<number | null>(null)
   const [, setTick] = useState(0)
 
   useEffect(() => {
-    if (realtime) lastUpdatedRef.current = Date.now()
-  }, [realtime])
+    if (siteId && realtime) lastUpdatedRef.current = Date.now()
+  }, [siteId, realtime])
 
   useEffect(() => {
     if (lastUpdatedRef.current == null) return
@@ -57,7 +57,8 @@ function GlassTopBar({ siteId }: { siteId: string }) {
     return () => clearInterval(timer)
   }, [realtime])
 
-  const pageTitle = usePageTitle()
+  const dashboardTitle = usePageTitle()
+  const pageTitle = siteId ? dashboardTitle : 'Your Sites'
 
   return (
     <div className="hidden md:flex items-center justify-between shrink-0 px-3 pt-1.5 pb-1">
@@ -74,7 +75,7 @@ function GlassTopBar({ siteId }: { siteId: string }) {
       </div>
 
       {/* Realtime indicator */}
-      {lastUpdatedRef.current != null && (
+      {siteId && lastUpdatedRef.current != null && (
         <div className="flex items-center gap-1.5 text-xs text-neutral-500">
           <span className="relative flex h-1.5 w-1.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
@@ -91,7 +92,7 @@ export default function DashboardShell({
   siteId,
   children,
 }: {
-  siteId: string
+  siteId: string | null
   children: React.ReactNode
 }) {
   const [mobileOpen, setMobileOpen] = useState(false)

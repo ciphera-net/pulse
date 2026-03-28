@@ -95,6 +95,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   const showOfflineBar = Boolean(auth.user && !isOnline)
   // Site pages use DashboardShell with full sidebar — no Header needed
   const isSitePage = pathname.startsWith('/sites/') && pathname !== '/sites/new'
+  const isHomePage = pathname === '/'
   // Checkout page has its own minimal layout — no app header/footer
   const isCheckoutPage = pathname.startsWith('/checkout')
 
@@ -103,13 +104,13 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   }
 
   // While auth is loading on a site or checkout page, render nothing to prevent flash of public header
-  if (auth.loading && (isSitePage || isCheckoutPage)) {
+  if (auth.loading && (isSitePage || isCheckoutPage || isHomePage)) {
     return null
   }
 
   // Authenticated site pages: full sidebar layout
   // DashboardShell inside children handles everything
-  if (isAuthenticated && isSitePage) {
+  if (isAuthenticated && (isSitePage || isHomePage)) {
     return (
       <>
         {showOfflineBar && <OfflineBanner isOnline={isOnline} />}
