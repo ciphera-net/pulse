@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { Site } from '@/lib/api/sites'
 import type { Stats } from '@/lib/api/stats'
 import { formatNumber } from '@ciphera-net/ui'
-import { BarChartIcon, SettingsIcon, BookOpenIcon, ExternalLinkIcon, Button } from '@ciphera-net/ui'
+import { BarChartIcon, SettingsIcon, TrashIcon, BookOpenIcon, ExternalLinkIcon, Button } from '@ciphera-net/ui'
 import { useAuth } from '@/lib/auth/context'
 import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
 
@@ -104,6 +104,13 @@ function SiteCard({ site, stats, statsLoading, onDelete, canDelete }: SiteCardPr
             View Dashboard
           </Button>
         </Link>
+        <Link
+          href={`/sites/${site.id}/settings`}
+          className="flex items-center justify-center rounded-lg border border-neutral-200 px-3 hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800 text-neutral-500 hover:text-neutral-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2"
+          title="Site Settings"
+        >
+          <SettingsIcon className="h-4 w-4" />
+        </Link>
         {canDelete && (
           <button
             type="button"
@@ -111,7 +118,7 @@ function SiteCard({ site, stats, statsLoading, onDelete, canDelete }: SiteCardPr
             className="flex items-center justify-center rounded-lg border border-neutral-200 px-3 hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800 text-neutral-500 hover:text-red-600 dark:hover:text-red-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
             title="Delete Site"
           >
-            <SettingsIcon className="h-4 w-4" />
+            <TrashIcon className="h-4 w-4" />
           </button>
         )}
       </div>

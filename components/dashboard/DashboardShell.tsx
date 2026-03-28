@@ -28,6 +28,18 @@ function usePageTitle() {
   return PAGE_TITLES[segment] ?? (segment ? segment.charAt(0).toUpperCase() + segment.slice(1) : 'Dashboard')
 }
 
+const HOME_PAGE_TITLES: Record<string, string> = {
+  '': 'Your Sites',
+  integrations: 'Integrations',
+  pricing: 'Pricing',
+}
+
+function useHomePageTitle() {
+  const pathname = usePathname()
+  const segment = pathname.split('/').filter(Boolean)[0] ?? ''
+  return HOME_PAGE_TITLES[segment] ?? (segment ? segment.charAt(0).toUpperCase() + segment.slice(1) : 'Your Sites')
+}
+
 // Load sidebar only on the client — prevents SSR flash
 const Sidebar = dynamic(() => import('./Sidebar'), {
   ssr: false,
@@ -58,7 +70,8 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
   }, [realtime])
 
   const dashboardTitle = usePageTitle()
-  const pageTitle = siteId ? dashboardTitle : 'Your Sites'
+  const homeTitle = useHomePageTitle()
+  const pageTitle = siteId ? dashboardTitle : homeTitle
 
   return (
     <div className="hidden md:flex items-center justify-between shrink-0 px-3 pt-1.5 pb-1">
