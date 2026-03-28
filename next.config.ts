@@ -76,12 +76,31 @@ const nextConfig: NextConfig = {
     ]
   },
   async redirects() {
+    const removedIntegrations = [
+      'solidjs', 'qwik', 'preact', 'htmx', 'ember',
+      'jekyll', 'docusaurus', 'vitepress', 'hexo', 'mkdocs',
+      'joomla', 'strapi', 'sanity', 'contentful', 'payload',
+      'craftcms', 'statamic', 'typo3', 'kirby', 'grav', 'umbraco',
+      'storyblok', 'prismic', 'shopware', 'magento',
+      'woocommerce', 'bigcommerce', 'prestashop',
+      'blogger', 'substack', 'linktree', 'weebly', 'gitbook',
+      'gridsome', 'readthedocs', 'sphinx', 'readme',
+      'bubble', 'discourse', 'hubspot', 'notion',
+      'cloudflare-pages', 'netlify', 'vercel', 'github-pages',
+      'firebase', 'render', 'flutter', 'amp', 'carrd',
+    ]
+
     return [
       {
         source: '/dashboard',
         destination: '/',
         permanent: false,
       },
+      ...removedIntegrations.map((slug) => ({
+        source: `/integrations/${slug}`,
+        destination: '/integrations/script-tag',
+        permanent: true,
+      })),
     ]
   },
   async rewrites() {

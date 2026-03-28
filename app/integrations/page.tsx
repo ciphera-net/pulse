@@ -244,7 +244,7 @@ export default function IntegrationsPage() {
                         transition={{ duration: 0.4, delay: i * 0.05 }}
                       >
                         <Link
-                          href={`/integrations/${integration!.id}`}
+                          href={integration!.dedicatedPage ? `/integrations/${integration!.id}` : '/integrations/script-tag'}
                           className="group flex items-center gap-3 p-4 bg-neutral-900/50 backdrop-blur-sm border border-neutral-800 rounded-xl hover:border-brand-orange/50 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg h-full"
                         >
                           <div className="p-2 bg-neutral-800 rounded-lg shrink-0 group-hover:scale-110 transition-transform duration-300 [&_svg]:w-6 [&_svg]:h-6">
@@ -283,7 +283,7 @@ export default function IntegrationsPage() {
                         transition={{ duration: 0.5, delay: i * 0.05 }}
                       >
                         <Link
-                          href={`/integrations/${integration.id}`}
+                          href={integration.dedicatedPage ? `/integrations/${integration.id}` : '/integrations/script-tag'}
                           className="group relative p-6 bg-neutral-900/50 backdrop-blur-sm border border-neutral-800 rounded-2xl hover:border-brand-orange/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl block h-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2"
                         >
                           <div className="flex items-start justify-between mb-6">

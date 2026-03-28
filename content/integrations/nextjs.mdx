@@ -1,0 +1,68 @@
+---
+title: "Next.js"
+description: "Step-by-step guide to adding Pulse privacy-first analytics to your Next.js app with next/script. Covers App Router and Pages Router."
+category: "framework"
+brandColor: "#000000"
+officialUrl: "https://nextjs.org/docs"
+relatedIds: ["react", "vercel", "nuxt"]
+date: "2026-03-28"
+---
+
+The best way to add Pulse to your Next.js application is using the built-in `next/script` component.
+
+---
+
+## Method 1: App Router
+
+Add the Pulse script to your root layout so it loads on every page.
+
+<CodeBlock filename="app/layout.tsx">{`import Script from 'next/script'
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <html lang="en">
+      <head>
+        <Script
+          defer
+          src="https://pulse.ciphera.net/script.js"
+          data-domain="your-site.com"
+          strategy="afterInteractive"
+        />
+      </head>
+      <body>{children}</body>
+    </html>
+  )
+}`}</CodeBlock>
+
+## Method 2: Pages Router
+
+If you're using the Pages Router, add the script to your custom `_app.tsx`.
+
+<CodeBlock filename="pages/_app.tsx">{`import Script from 'next/script'
+import type { AppProps } from 'next/app'
+
+export default function App({ Component, pageProps }: AppProps) {
+  return (
+    <>
+      <Script
+        defer
+        src="https://pulse.ciphera.net/script.js"
+        data-domain="your-site.com"
+        strategy="afterInteractive"
+      />
+      <Component {...pageProps} />
+    </>
+  )
+}`}</CodeBlock>
+
+## Configuration options
+
+- `data-domain` — your site's domain (without `https://`)
+- `src` — the Pulse script URL
+- `strategy="afterInteractive"` — loads the script after the page becomes interactive
+
+For more details, see the [Next.js Script docs](https://nextjs.org/docs/app/api-reference/components/script).

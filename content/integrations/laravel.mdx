@@ -1,0 +1,41 @@
+---
+title: "Laravel"
+description: "Add Pulse analytics to your Laravel app. Blade template integration for all Laravel versions."
+category: "backend"
+brandColor: "#FF2D20"
+officialUrl: "https://laravel.com/docs"
+relatedIds: ["django", "rails", "wordpress"]
+date: "2026-03-28"
+---
+
+Add the Pulse script to your Blade layout template with a production guard.
+
+---
+
+## Add to your Blade layout
+
+Use Laravel's `@production` directive to only load the script in production.
+
+<CodeBlock filename="resources/views/layouts/app.blade.php">{`<!DOCTYPE html>
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    @production
+    <script
+      defer
+      data-domain="your-site.com"
+      src="https://pulse.ciphera.net/script.js"
+    ></script>
+    @endproduction
+
+    <title>@yield('title')</title>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+</head>
+<body>
+    @yield('content')
+</body>
+</html>`}</CodeBlock>
+
+For more details, see the [Laravel @production docs](https://laravel.com/docs/blade#the-production-directive).

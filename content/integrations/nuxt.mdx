@@ -1,0 +1,49 @@
+---
+title: "Nuxt"
+description: "Configure Pulse analytics in Nuxt 2 or Nuxt 3 via nuxt.config. Simple, framework-native setup."
+category: "framework"
+brandColor: "#00DC82"
+officialUrl: "https://nuxt.com/docs"
+relatedIds: ["vue", "nextjs", "vitepress"]
+date: "2026-03-28"
+---
+
+Configure Pulse analytics in your `nuxt.config` for a framework-native setup.
+
+---
+
+## Method 1: Nuxt 3
+
+Add the Pulse script via the `app.head` option in your Nuxt 3 config.
+
+<CodeBlock filename="nuxt.config.ts">{`export default defineNuxtConfig({
+  app: {
+    head: {
+      script: [
+        {
+          defer: true,
+          'data-domain': 'your-site.com',
+          src: 'https://pulse.ciphera.net/script.js',
+        },
+      ],
+    },
+  },
+})`}</CodeBlock>
+
+## Method 2: Nuxt 2
+
+In Nuxt 2, use the `head` property in your config.
+
+<CodeBlock filename="nuxt.config.js">{`export default {
+  head: {
+    script: [
+      {
+        defer: true,
+        'data-domain': 'your-site.com',
+        src: 'https://pulse.ciphera.net/script.js',
+      },
+    ],
+  },
+}`}</CodeBlock>
+
+For more details, see the [Nuxt head config docs](https://nuxt.com/docs/api/nuxt-config#head).

@@ -1,0 +1,27 @@
+---
+title: "Wix"
+description: "Add Pulse analytics to your Wix site via Custom Code settings."
+category: "platform"
+brandColor: "#0C6EFC"
+officialUrl: "https://support.wix.com"
+relatedIds: ["webflow", "squarespace", "framer"]
+date: "2026-03-28"
+---
+
+Use Wix's Custom Code settings to add the Pulse script.
+
+---
+
+## Add via Custom Code
+
+Go to **Settings -> Custom Code -> Add Custom Code**. Set the placement to **Head** and apply it to **All pages**.
+
+<CodeBlock filename="Custom Code Snippet">{`<script
+  defer
+  data-domain="your-site.com"
+  src="https://pulse.ciphera.net/script.js"
+></script>`}</CodeBlock>
+
+**Note:** Custom Code requires a Wix Premium plan.
+
+For more details, see the [Wix custom code docs](https://support.wix.com/en/article/embedding-custom-code-on-your-site).
