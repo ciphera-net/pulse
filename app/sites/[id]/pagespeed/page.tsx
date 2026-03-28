@@ -8,6 +8,7 @@ import { updatePageSpeedConfig, triggerPageSpeedCheck, getPageSpeedLatest, getPa
 import { toast, Button } from '@ciphera-net/ui'
 import { motion } from 'framer-motion'
 import ScoreGauge from '@/components/pagespeed/ScoreGauge'
+import { remapLearnUrl } from '@/lib/learn-links'
 import { AreaChart as VisxAreaChart, Area as VisxArea, Grid as VisxGrid, XAxis as VisxXAxis, YAxis as VisxYAxis, ChartTooltip as VisxChartTooltip } from '@/components/ui/area-chart'
 import { useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 
@@ -785,12 +786,14 @@ function AuditDescription({ text }: { text: string }) {
       {parts.map((part, i) => {
         const match = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/)
         if (match) {
+          const href = remapLearnUrl(match[2])
+          const isInternal = href.startsWith('https://ciphera.net') || href.startsWith('https://pulse.ciphera.net') || href.startsWith('https://pulse-staging.ciphera.net')
           return (
             <a
               key={i}
-              href={match[2]}
+              href={href}
               target="_blank"
-              rel="noopener noreferrer"
+              rel={isInternal ? 'noopener' : 'noopener noreferrer'}
               className="text-brand-orange hover:underline"
             >
               {match[1]}

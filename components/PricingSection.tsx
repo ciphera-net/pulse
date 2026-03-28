@@ -2,13 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { logger } from '@/lib/utils/logger'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Button, CheckCircleIcon } from '@ciphera-net/ui'
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
 import { toast } from '@ciphera-net/ui'
-import { createCheckoutSession } from '@/lib/api/billing'
 
 // 1. Define Plans with IDs and Site Limits
 const PLANS = [
@@ -104,12 +103,13 @@ const TRAFFIC_TIERS = [
 
 export default function PricingSection() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const [isYearly, setIsYearly] = useState(false)
   const [sliderIndex, setSliderIndex] = useState(2) // Default to 100k (index 2)
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
   const { user } = useAuth()
 
-  // * Show toast when redirected from Polar Checkout with canceled=true
+  // * Show toast when redirected from Mollie Checkout with canceled=true
   useEffect(() => {
     if (searchParams.get('canceled') === 'true') {
       toast.info('Checkout was canceled. You can try again whenever you’re ready.')
@@ -166,49 +166,25 @@ export default function PricingSection() {
     }
   }
 
-  const handleSubscribe = async (planId: string, options?: { interval?: string, limit?: number }) => {
-    try {
-      setLoadingPlan(planId)
-      
-      // 1. If not logged in, redirect to login/signup
-      if (!user) {
-        // Store checkout intent
-        const intent = {
-          planId,
-          interval: isYearly ? 'year' : 'month',
-          limit: currentTraffic.value,
-          sliderIndex, // Store UI state to restore it
-          isYearly     // Store UI state to restore it
-        }
-        localStorage.setItem('pulse_pending_checkout', JSON.stringify(intent))
-        
-        initiateOAuthFlow() 
-        return
+  const handleSubscribe = (planId: string, options?: { interval?: string, limit?: number }) => {
+    // 1. If not logged in, redirect to login/signup
+    if (!user) {
+      const intent = {
+        planId,
+        interval: isYearly ? 'year' : 'month',
+        limit: currentTraffic.value,
+        sliderIndex,
+        isYearly
       }
-
-      // 2. Call backend to create checkout session
-      const interval = options?.interval || (isYearly ? 'year' : 'month')
-      const limit = options?.limit || currentTraffic.value
-
-      const { url } = await createCheckoutSession({
-        plan_id: planId,
-        interval,
-        limit,
-      })
-
-      // 3. Redirect to Polar Checkout
-      if (url) {
-        window.location.href = url
-      } else {
-        throw new Error('No checkout URL returned')
-      }
-
-    } catch (error: unknown) {
-      logger.error('Checkout error:', error)
-      toast.error('Failed to start checkout — please try again')
-    } finally {
-      setLoadingPlan(null)
+      localStorage.setItem('pulse_pending_checkout', JSON.stringify(intent))
+      initiateOAuthFlow()
+      return
     }
+
+    // 2. Navigate to embedded checkout page
+    const selectedInterval = options?.interval || (isYearly ? 'year' : 'month')
+    const selectedLimit = options?.limit || currentTraffic.value
+    router.push(`/checkout?plan=${planId}&interval=${selectedInterval}&limit=${selectedLimit}`)
   }
 
   return (
@@ -254,7 +230,7 @@ export default function PricingSection() {
               onChange={(e) => setSliderIndex(parseInt(e.target.value))}
               aria-label="Monthly pageview limit"
               aria-valuetext={`${currentTraffic.label} pageviews per month`}
-              className="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-brand-orange focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2"
+              className="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-brand-orange focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2"
             />
           </div>
 
@@ -355,6 +331,7 @@ export default function PricingSection() {
                             €{priceDetails.yearlyTotal}
                           </span>
                           <span className="text-neutral-400 font-medium">/year</span>
+                          <span className="text-xs text-neutral-500 ml-1">excl. VAT</span>
                         </div>
                         <div className="flex items-center gap-2 mt-2 text-sm font-medium">
                           <span className="text-neutral-400 line-through decoration-neutral-400">
@@ -371,6 +348,7 @@ export default function PricingSection() {
                           €{priceDetails.baseMonthly}
                         </span>
                         <span className="text-neutral-400 font-medium">/mo</span>
+                        <span className="text-xs text-neutral-500 ml-1">excl. VAT</span>
                       </div>
                     )
                   ) : (
@@ -437,6 +415,7 @@ export default function PricingSection() {
           </div>
         </div>
       </motion.div>
+
     </section>
   )
 }

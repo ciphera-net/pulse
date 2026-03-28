@@ -70,7 +70,7 @@ export default function EventProperties({ siteId, eventName, dateRange, onClose 
                 onClick={() => setSelectedKey(k.key)}
                 className={`px-3 py-1 text-xs font-medium rounded-full transition-colors cursor-pointer ${
                   selectedKey === k.key
-                    ? 'bg-brand-orange text-white'
+                    ? 'bg-brand-orange-button text-white'
                     : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
                 }`}
               >

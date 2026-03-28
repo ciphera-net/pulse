@@ -113,7 +113,7 @@ function BarRow({
 
 // ─── Card 1: Pages ───────────────────────────────────────────────────────────
 
-function PagesCard() {
+export function PagesCard() {
   const data = [
     { label: '/', value: 142 },
     { label: '/products/drop', value: 68 },
@@ -169,7 +169,7 @@ function getReferrerIcon(name: string, favicon?: string) {
 
 const FAVICON_URL = 'https://www.google.com/s2/favicons'
 
-function ReferrersCard() {
+export function ReferrersCard() {
   const data = [
     { label: 'Direct', value: 186 },
     { label: 'Google', value: 94, domain: 'google.com' },
@@ -206,7 +206,7 @@ function ReferrersCard() {
 
 // ─── Card 3: Locations (Real Dotted Map) ─────────────────────────────────────
 
-function LocationsCard() {
+export function LocationsCard() {
   const mockData = [
     { country: 'CH', pageviews: 320 },
     { country: 'US', pageviews: 186 },
@@ -300,7 +300,7 @@ const BROWSER_ICONS: Record<string, string> = {
   Opera: '/icons/browsers/opera.svg',
 }
 
-function TechnologyCard() {
+export function TechnologyCard() {
   const data = [
     { label: 'Chrome', value: 412 },
     { label: 'Safari', value: 189 },
@@ -381,7 +381,7 @@ function getHighlightColor(value: number, max: number): string {
   return HIGHLIGHT_COLORS[4]
 }
 
-function PeakHoursCard() {
+export function PeakHoursCard() {
   const max = Math.max(...MOCK_GRID.flat())
 
   // Find best time
