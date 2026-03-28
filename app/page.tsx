@@ -231,7 +231,7 @@ export default function HomePage() {
 
   return (
     <DashboardShell siteId={null}>
-      <div className="px-6">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
       {showFinishSetupBanner && (
         <div className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-brand-orange/30 bg-brand-orange/10 px-4 py-3">
           <p className="text-sm text-neutral-300">
