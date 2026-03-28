@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { listSites, type Site } from '@/lib/api/sites'
@@ -80,6 +81,45 @@ function Label({ children, collapsed }: { children: React.ReactNode; collapsed: 
   )
 }
 
+// ─── Sidebar Tooltip (portal-based, escapes overflow-hidden) ──
+
+function SidebarTooltip({ children, label }: { children: React.ReactNode; label: string }) {
+  const [show, setShow] = useState(false)
+  const [pos, setPos] = useState({ x: 0, y: 0 })
+  const ref = useRef<HTMLDivElement>(null)
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
+
+  const handleEnter = () => {
+    timerRef.current = setTimeout(() => {
+      if (ref.current) {
+        const rect = ref.current.getBoundingClientRect()
+        setPos({ x: rect.right + 8, y: rect.top + rect.height / 2 })
+        setShow(true)
+      }
+    }, 100)
+  }
+
+  const handleLeave = () => {
+    clearTimeout(timerRef.current)
+    setShow(false)
+  }
+
+  return (
+    <div ref={ref} onMouseEnter={handleEnter} onMouseLeave={handleLeave}>
+      {children}
+      {show && typeof document !== 'undefined' && createPortal(
+        <span
+          className="fixed z-[100] px-2.5 py-1.5 rounded-lg bg-neutral-800 border border-white/[0.08] text-white text-xs font-medium whitespace-nowrap pointer-events-none shadow-lg shadow-black/20 -translate-y-1/2"
+          style={{ left: pos.x, top: pos.y }}
+        >
+          {label}
+        </span>,
+        document.body
+      )}
+    </div>
+  )
+}
+
 // ─── Nav Item ───────────────────────────────────────────────
 
 function NavLink({
@@ -94,29 +134,25 @@ function NavLink({
   const matchesPending = pendingHref !== null && (item.matchPrefix ? pendingHref.startsWith(href) : pendingHref === href)
   const active = matchesPathname || matchesPending
 
-  return (
-    <div className="relative group/nav">
-      <Link
-        href={href}
-        onClick={() => { onNavigate(href); onClick?.() }}
-        className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-150 ${
-          active
-            ? 'bg-brand-orange/10 text-brand-orange'
-            : 'text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5'
-        }`}
-      >
-        <span className="w-7 h-7 flex items-center justify-center shrink-0">
-          <item.icon className="w-[18px] h-[18px]" weight={active ? 'fill' : 'regular'} />
-        </span>
-        <Label collapsed={collapsed}>{item.label}</Label>
-      </Link>
-      {collapsed && (
-        <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 rounded-md bg-neutral-800 text-white text-xs whitespace-nowrap opacity-0 group-hover/nav:opacity-100 transition-opacity duration-150 delay-150 z-50">
-          {item.label}
-        </span>
-      )}
-    </div>
+  const link = (
+    <Link
+      href={href}
+      onClick={() => { onNavigate(href); onClick?.() }}
+      className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-150 ${
+        active
+          ? 'bg-brand-orange/10 text-brand-orange'
+          : 'text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5'
+      }`}
+    >
+      <span className="w-7 h-7 flex items-center justify-center shrink-0">
+        <item.icon className="w-[18px] h-[18px]" weight={active ? 'fill' : 'regular'} />
+      </span>
+      <Label collapsed={collapsed}>{item.label}</Label>
+    </Link>
   )
+
+  if (collapsed) return <SidebarTooltip label={item.label}>{link}</SidebarTooltip>
+  return link
 }
 
 // ─── Settings Button (opens unified modal instead of navigating) ─────
@@ -128,27 +164,23 @@ function SettingsButton({
 }) {
   const { openUnifiedSettings } = useUnifiedSettings()
 
-  return (
-    <div className="relative group/nav">
-      <button
-        onClick={() => {
-          openUnifiedSettings({ context: settingsContext, tab: 'general' })
-          onClick?.()
-        }}
-        className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-150 text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5 w-full cursor-pointer"
-      >
-        <span className="w-7 h-7 flex items-center justify-center shrink-0">
-          <item.icon className="w-[18px] h-[18px]" weight="regular" />
-        </span>
-        <Label collapsed={collapsed}>{item.label}</Label>
-      </button>
-      {collapsed && (
-        <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 rounded-md bg-neutral-800 text-white text-xs whitespace-nowrap opacity-0 group-hover/nav:opacity-100 transition-opacity duration-150 delay-150 z-50">
-          {item.label}
-        </span>
-      )}
-    </div>
+  const btn = (
+    <button
+      onClick={() => {
+        openUnifiedSettings({ context: settingsContext, tab: 'general' })
+        onClick?.()
+      }}
+      className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-150 text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5 w-full cursor-pointer"
+    >
+      <span className="w-7 h-7 flex items-center justify-center shrink-0">
+        <item.icon className="w-[18px] h-[18px]" weight="regular" />
+      </span>
+      <Label collapsed={collapsed}>{item.label}</Label>
+    </button>
   )
+
+  if (collapsed) return <SidebarTooltip label={item.label}>{btn}</SidebarTooltip>
+  return btn
 }
 
 // ─── Home Nav Link (static href, no siteId) ───────────────
@@ -162,30 +194,26 @@ function HomeNavLink({
   const pathname = usePathname()
   const active = !external && pathname === href
 
-  return (
-    <div className="relative group/nav">
-      <Link
-        href={href}
-        onClick={onClick}
-        {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-        className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-150 ${
-          active
-            ? 'bg-brand-orange/10 text-brand-orange'
-            : 'text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5'
-        }`}
-      >
-        <span className="w-7 h-7 flex items-center justify-center shrink-0">
-          <Icon className="w-[18px] h-[18px]" weight={active ? 'fill' : 'regular'} />
-        </span>
-        <Label collapsed={collapsed}>{label}</Label>
-      </Link>
-      {collapsed && (
-        <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 rounded-md bg-neutral-800 text-white text-xs whitespace-nowrap opacity-0 group-hover/nav:opacity-100 transition-opacity duration-150 delay-150 z-50">
-          {label}
-        </span>
-      )}
-    </div>
+  const link = (
+    <Link
+      href={href}
+      onClick={onClick}
+      {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+      className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-150 ${
+        active
+          ? 'bg-brand-orange/10 text-brand-orange'
+          : 'text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5'
+      }`}
+    >
+      <span className="w-7 h-7 flex items-center justify-center shrink-0">
+        <Icon className="w-[18px] h-[18px]" weight={active ? 'fill' : 'regular'} />
+      </span>
+      <Label collapsed={collapsed}>{label}</Label>
+    </Link>
   )
+
+  if (collapsed) return <SidebarTooltip label={label}>{link}</SidebarTooltip>
+  return link
 }
 
 // ─── Home Site Link (favicon + name) ───────────────────────
@@ -199,33 +227,29 @@ function HomeSiteLink({
   const href = `/sites/${site.id}`
   const active = pathname.startsWith(href)
 
-  return (
-    <div className="relative group/nav">
-      <Link
-        href={href}
-        onClick={onClick}
-        className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-150 ${
-          active
-            ? 'bg-brand-orange/10 text-brand-orange'
-            : 'text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5'
-        }`}
-      >
-        <span className="w-7 h-7 rounded-md bg-white/[0.04] flex items-center justify-center shrink-0 overflow-hidden">
-          <img
-            src={`${FAVICON_SERVICE_URL}?domain=${site.domain}&sz=64`}
-            alt=""
-            className="w-[18px] h-[18px] rounded object-contain"
-          />
-        </span>
-        <Label collapsed={collapsed}>{site.name}</Label>
-      </Link>
-      {collapsed && (
-        <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 rounded-md bg-neutral-800 text-white text-xs whitespace-nowrap opacity-0 group-hover/nav:opacity-100 transition-opacity duration-150 delay-150 z-50">
-          {site.name}
-        </span>
-      )}
-    </div>
+  const link = (
+    <Link
+      href={href}
+      onClick={onClick}
+      className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-150 ${
+        active
+          ? 'bg-brand-orange/10 text-brand-orange'
+          : 'text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5'
+      }`}
+    >
+      <span className="w-7 h-7 rounded-md bg-white/[0.04] flex items-center justify-center shrink-0 overflow-hidden">
+        <img
+          src={`${FAVICON_SERVICE_URL}?domain=${site.domain}&sz=64`}
+          alt=""
+          className="w-[18px] h-[18px] rounded object-contain"
+        />
+      </span>
+      <Label collapsed={collapsed}>{site.name}</Label>
+    </Link>
   )
+
+  if (collapsed) return <SidebarTooltip label={site.name}>{link}</SidebarTooltip>
+  return link
 }
 
 // ─── Sidebar Content ────────────────────────────────────────
@@ -354,17 +378,36 @@ function SidebarContent({
       <div className="border-t border-white/[0.06] px-2 py-3 shrink-0">
         {/* Notifications, Profile — same layout as nav items */}
         <div className="space-y-0.5 mb-1">
-          <div className="relative group/notif">
+          {c ? (
+            <SidebarTooltip label="Notifications">
+              <NotificationCenter anchor="right" variant="sidebar">
+                <Label collapsed={c}>Notifications</Label>
+              </NotificationCenter>
+            </SidebarTooltip>
+          ) : (
             <NotificationCenter anchor="right" variant="sidebar">
               <Label collapsed={c}>Notifications</Label>
             </NotificationCenter>
-            {c && (
-              <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 rounded-md bg-neutral-800 text-white text-xs whitespace-nowrap opacity-0 group-hover/notif:opacity-100 transition-opacity duration-150 delay-150 z-50">
-                Notifications
-              </span>
-            )}
-          </div>
-          <div className="relative group/user">
+          )}
+          {c ? (
+            <SidebarTooltip label={user?.display_name?.trim() || 'Profile'}>
+              <UserMenu
+                auth={auth}
+                LinkComponent={Link}
+                orgs={orgs}
+                activeOrgId={auth.user?.org_id}
+                onSwitchOrganization={onSwitchOrganization}
+                onCreateOrganization={() => router.push('/onboarding')}
+                allowPersonalOrganization={false}
+                onOpenSettings={openSettings}
+                onOpenOrgSettings={openOrgSettings}
+                compact
+                anchor="right"
+              >
+                <Label collapsed={c}>{user?.display_name?.trim() || 'Profile'}</Label>
+              </UserMenu>
+            </SidebarTooltip>
+          ) : (
             <UserMenu
               auth={auth}
               LinkComponent={Link}
@@ -380,12 +423,7 @@ function SidebarContent({
             >
               <Label collapsed={c}>{user?.display_name?.trim() || 'Profile'}</Label>
             </UserMenu>
-            {c && (
-              <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 rounded-md bg-neutral-800 text-white text-xs whitespace-nowrap opacity-0 group-hover/user:opacity-100 transition-opacity duration-150 delay-150 z-50">
-                {user?.display_name?.trim() || 'Profile'}
-              </span>
-            )}
-          </div>
+          )}
         </div>
       </div>
     </div>
