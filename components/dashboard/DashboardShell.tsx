@@ -3,12 +3,13 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { formatUpdatedAgo } from '@ciphera-net/ui'
-import { CaretRight, SidebarSimple } from '@phosphor-icons/react'
+import { CaretDown, CaretRight, SidebarSimple } from '@phosphor-icons/react'
 import { SidebarProvider, useSidebar } from '@/lib/sidebar-context'
 import { useRealtime } from '@/lib/swr/dashboard'
-import { getSite } from '@/lib/api/sites'
+import { getSite, listSites, type Site } from '@/lib/api/sites'
+import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
 import ContentHeader from './ContentHeader'
 
 const PAGE_TITLES: Record<string, string> = {
@@ -55,6 +56,74 @@ const Sidebar = dynamic(() => import('./Sidebar'), {
   ),
 })
 
+// ─── Breadcrumb Site Picker ────────────────────────────────
+
+function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteId: string; currentSiteName: string }) {
+  const [open, setOpen] = useState(false)
+  const [sites, setSites] = useState<Site[]>([])
+  const ref = useRef<HTMLDivElement>(null)
+  const pathname = usePathname()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (open && sites.length === 0) {
+      listSites().then(setSites).catch(() => {})
+    }
+  }, [open, sites.length])
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const switchSite = (id: string) => {
+    // Navigate to same section on the new site
+    router.push(`/sites/${id}${pathname.replace(/^\/sites\/[^/]+/, '')}`)
+    setOpen(false)
+  }
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-0.5 text-neutral-500 hover:text-neutral-300 transition-colors truncate max-w-[160px] cursor-pointer"
+      >
+        <span className="truncate">{currentSiteName}</span>
+        <CaretDown className="w-3 h-3 shrink-0" />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 mt-1 z-50 w-[220px] bg-neutral-900/90 backdrop-blur-2xl border border-white/[0.08] rounded-xl shadow-xl shadow-black/20 overflow-hidden">
+          <div className="max-h-64 overflow-y-auto py-1">
+            {sites.map((site) => (
+              <button
+                key={site.id}
+                onClick={() => switchSite(site.id)}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left transition-colors ${
+                  site.id === currentSiteId
+                    ? 'bg-brand-orange/10 text-brand-orange font-medium'
+                    : 'text-neutral-300 hover:bg-white/[0.06]'
+                }`}
+              >
+                <img
+                  src={`${FAVICON_SERVICE_URL}?domain=${site.domain}&sz=64`}
+                  alt=""
+                  className="w-4 h-4 rounded object-contain shrink-0"
+                />
+                <span className="truncate">{site.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Glass Top Bar ─────────────────────────────────────────
+
 function GlassTopBar({ siteId }: { siteId: string | null }) {
   const { collapsed, toggle } = useSidebar()
   const { data: realtime } = useRealtime(siteId ?? '')
@@ -96,7 +165,7 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
           <nav className="flex items-center gap-1 text-sm font-medium">
             <Link href="/" className="text-neutral-500 hover:text-neutral-300 transition-colors">Your Sites</Link>
             <CaretRight className="w-3 h-3 text-neutral-600" />
-            <Link href={`/sites/${siteId}`} className="text-neutral-500 hover:text-neutral-300 transition-colors truncate max-w-[160px]">{siteName}</Link>
+            <BreadcrumbSitePicker currentSiteId={siteId} currentSiteName={siteName} />
             <CaretRight className="w-3 h-3 text-neutral-600" />
             <span className="text-neutral-400">{pageTitle}</span>
           </nav>
