@@ -64,7 +64,7 @@ export default function SearchConsolePage() {
   const { data: topPages, isLoading: pagesLoading } = useGSCTopPages(siteId, dateRange.start, dateRange.end, PAGE_SIZE, pagePage * PAGE_SIZE)
   const { data: newQueries } = useGSCNewQueries(siteId, dateRange.start, dateRange.end)
 
-  const showSkeleton = useMinimumLoading(!gscStatus)
+  const showSkeleton = useMinimumLoading(!gscStatus || (gscStatus?.connected && !overview))
   const fadeClass = useSkeletonFade(showSkeleton)
 
   // Document title
