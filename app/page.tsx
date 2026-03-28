@@ -23,21 +23,16 @@ import PulseFAQ from '@/components/marketing/PulseFAQ'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { getSitesLimitForPlan } from '@/lib/plans'
-import { formatDate } from '@/lib/utils/formatDate'
-import { useUnifiedSettings } from '@/lib/unified-settings-context'
 
 type SiteStatsMap = Record<string, { stats: Stats }>
 
 export default function HomePage() {
   const { user, loading: authLoading } = useAuth()
-  const { openUnifiedSettings } = useUnifiedSettings()
   const [sites, setSites] = useState<Site[]>([])
   const [sitesLoading, setSitesLoading] = useState(true)
   const [siteStats, setSiteStats] = useState<SiteStatsMap>({})
   const [subscription, setSubscription] = useState<SubscriptionDetails | null>(null)
-  const [subscriptionLoading, setSubscriptionLoading] = useState(false)
   const [showFinishSetupBanner, setShowFinishSetupBanner] = useState(true)
-  const [deleteModalSite, setDeleteModalSite] = useState<Site | null>(null)
   const [deletedSites, setDeletedSites] = useState<Site[]>([])
   const [permanentDeleteSiteModal, setPermanentDeleteSiteModal] = useState<Site | null>(null)
 
@@ -116,19 +111,11 @@ export default function HomePage() {
 
   const loadSubscription = async () => {
     try {
-      setSubscriptionLoading(true)
       const sub = await getSubscription()
       setSubscription(sub)
     } catch {
       setSubscription(null)
-    } finally {
-      setSubscriptionLoading(false)
     }
-  }
-
-  const handleDelete = (id: string) => {
-    const site = sites.find((s) => s.id === id)
-    if (site) setDeleteModalSite(site)
   }
 
   const handleRestore = async (id: string) => {
@@ -236,7 +223,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
       {showFinishSetupBanner && (
         <div className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-brand-orange/30 bg-brand-orange/10 px-4 py-3">
           <p className="text-sm text-neutral-300">
@@ -263,10 +250,10 @@ export default function HomePage() {
         </div>
       )}
 
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Your Sites</h1>
-          <p className="mt-1 text-sm text-neutral-400">Manage your analytics sites and view insights.</p>
+          <h1 className="text-lg font-semibold text-neutral-200 mb-1">Your Sites</h1>
+          <p className="text-sm text-neutral-400">Manage your analytics sites and view insights.</p>
         </div>
         {(() => {
           const siteLimit = getSitesLimitForPlan(subscription?.plan_id)
@@ -299,80 +286,6 @@ export default function HomePage() {
         )}
       </div>
 
-      {/* * Global Overview - min-h ensures no layout shift when Plan & usage loads */}
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="flex min-h-[100px] sm:min-h-[160px] flex-col rounded-2xl border border-neutral-800 bg-neutral-900 p-4">
-          <p className="text-sm text-neutral-400">Total Sites</p>
-          <p className="text-2xl font-bold text-white">{sites.length}</p>
-        </div>
-        <div className="flex min-h-[100px] sm:min-h-[160px] flex-col rounded-2xl border border-neutral-800 bg-neutral-900 p-4">
-          <p className="text-sm text-neutral-400">Total Visitors (24h)</p>
-          <p className="text-2xl font-bold text-white">
-            {sites.length === 0 || Object.keys(siteStats).length < sites.length
-              ? '--'
-              : Object.values(siteStats).reduce((sum, { stats }) => sum + (stats?.visitors ?? 0), 0).toLocaleString()}
-          </p>
-        </div>
-        <div className="flex min-h-[160px] flex-col rounded-2xl border border-neutral-800 bg-brand-orange/10 p-4">
-          <p className="text-sm text-brand-orange">Plan & usage</p>
-          {subscriptionLoading ? (
-            <div className="animate-pulse space-y-2">
-              <div className="h-6 w-24 rounded bg-brand-orange/20" />
-              <div className="h-4 w-full rounded bg-brand-orange/20" />
-              <div className="h-4 w-3/4 rounded bg-brand-orange/20" />
-              <div className="h-4 w-20 rounded bg-brand-orange/20 pt-2" />
-            </div>
-          ) : subscription ? (
-            <>
-              <p className="text-lg font-bold text-brand-orange">
-                {(() => {
-                  const raw =
-                    subscription.plan_id?.startsWith('price_')
-                      ? 'Pro'
-                      : subscription.plan_id === 'free' || !subscription.plan_id
-                        ? 'Free'
-                        : subscription.plan_id
-                  const label = raw === 'Free' || raw === 'Pro' ? raw : raw.charAt(0).toUpperCase() + raw.slice(1)
-                  return `${label} Plan`
-                })()}
-              </p>
-              {(typeof subscription.sites_count === 'number' || (subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number') || (!subscription.cancel_at_period_end && (subscription.subscription_status === 'active' || subscription.subscription_status === 'trialing'))) && (
-                <p className="text-sm text-neutral-400 mt-1">
-                  {typeof subscription.sites_count === 'number' && (
-                    <span>Sites: {(() => {
-                      const limit = getSitesLimitForPlan(subscription.plan_id)
-                      return limit != null && typeof subscription.sites_count === 'number' ? `${subscription.sites_count}/${limit}` : subscription.sites_count
-                    })()}</span>
-                  )}
-                  {typeof subscription.sites_count === 'number' && (subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number') && ' · '}
-                  {subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number' && (
-                    <span>Pageviews: {subscription.pageview_usage.toLocaleString()}/{subscription.pageview_limit.toLocaleString()}</span>
-                  )}
-                  {!subscription.cancel_at_period_end && (subscription.subscription_status === 'active' || subscription.subscription_status === 'trialing') && subscription.current_period_end && (
-                    <span className="block mt-1">
-                      Renews {formatDate(new Date(subscription.current_period_end))}
-                    </span>
-                  )}
-                </p>
-              )}
-              <div className="mt-2 flex gap-2">
-                {subscription.has_payment_method ? (
-                  <button onClick={() => openUnifiedSettings({ context: 'workspace', tab: 'billing' })} className="text-sm font-medium text-brand-orange hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:rounded cursor-pointer">
-                    Manage billing
-                  </button>
-                ) : (
-                  <Link href="/pricing" className="text-sm font-medium text-brand-orange hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:rounded">
-                    Upgrade
-                  </Link>
-                )}
-              </div>
-            </>
-          ) : (
-            <p className="text-lg font-bold text-brand-orange">Free Plan</p>
-          )}
-        </div>
-      </div>
-
       {!sitesLoading && sites.length === 0 && (
         <div className="mb-8 rounded-2xl border-2 border-dashed border-brand-orange/30 bg-brand-orange/10 p-8 text-center flex flex-col items-center">
           <img
@@ -393,17 +306,8 @@ export default function HomePage() {
       )}
 
       {(sitesLoading || sites.length > 0) && (
-        <SiteList sites={sites} siteStats={siteStats} loading={sitesLoading} onDelete={handleDelete} />
+        <SiteList sites={sites} siteStats={siteStats} loading={sitesLoading} />
       )}
-
-      <DeleteSiteModal
-        open={!!deleteModalSite}
-        onClose={() => setDeleteModalSite(null)}
-        onDeleted={loadSites}
-        siteName={deleteModalSite?.name || ''}
-        siteDomain={deleteModalSite?.domain || ''}
-        siteId={deleteModalSite?.id || ''}
-      />
 
       <DeleteSiteModal
         open={!!permanentDeleteSiteModal}
@@ -452,6 +356,6 @@ export default function HomePage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
   )
 }

@@ -1,0 +1,27 @@
+---
+title: "Ghost"
+description: "Add Pulse analytics to your Ghost blog via Code Injection settings."
+category: "cms"
+brandColor: "#15171A"
+officialUrl: "https://ghost.org/docs"
+relatedIds: ["wordpress", "blogger"]
+date: "2026-03-28"
+---
+
+Use Ghost's built-in Code Injection feature to add the Pulse script — no theme editing required.
+
+---
+
+## Add via Code Injection
+
+Go to **Settings -> Code injection -> Site Header** and paste the Pulse script.
+
+<CodeBlock filename="Settings -> Code injection -> Site Header">{`<script
+  defer
+  data-domain="your-site.com"
+  src="https://pulse.ciphera.net/script.js"
+></script>`}</CodeBlock>
+
+Alternatively, you can add the script directly to your theme's `default.hbs` template file.
+
+For more details, see the [Ghost themes docs](https://ghost.org/docs/themes/).

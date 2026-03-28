@@ -17,6 +17,7 @@ import { LoadingOverlay } from '@ciphera-net/ui'
 import { useRouter } from 'next/navigation'
 import { UnifiedSettingsProvider, useUnifiedSettings } from '@/lib/unified-settings-context'
 import UnifiedSettingsModal from '@/components/settings/unified/UnifiedSettingsModal'
+import DashboardShell from '@/components/dashboard/DashboardShell'
 
 const ORG_SWITCH_KEY = 'pulse_switching_org'
 
@@ -95,6 +96,8 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   const showOfflineBar = Boolean(auth.user && !isOnline)
   // Site pages use DashboardShell with full sidebar — no Header needed
   const isSitePage = pathname.startsWith('/sites/') && pathname !== '/sites/new'
+  // Pages that use DashboardShell with home sidebar (no site context)
+  const isDashboardPage = pathname === '/' || pathname.startsWith('/integrations') || pathname === '/pricing'
   // Checkout page has its own minimal layout — no app header/footer
   const isCheckoutPage = pathname.startsWith('/checkout')
 
@@ -103,17 +106,27 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   }
 
   // While auth is loading on a site or checkout page, render nothing to prevent flash of public header
-  if (auth.loading && (isSitePage || isCheckoutPage)) {
+  if (auth.loading && (isSitePage || isCheckoutPage || isDashboardPage)) {
     return null
   }
 
-  // Authenticated site pages: full sidebar layout
-  // DashboardShell inside children handles everything
+  // Authenticated site pages: DashboardShell provided by sites layout
   if (isAuthenticated && isSitePage) {
     return (
       <>
         {showOfflineBar && <OfflineBanner isOnline={isOnline} />}
         {children}
+        <UnifiedSettingsModal />
+      </>
+    )
+  }
+
+  // Authenticated dashboard pages (home, integrations, pricing): wrap in DashboardShell
+  if (isAuthenticated && isDashboardPage) {
+    return (
+      <>
+        {showOfflineBar && <OfflineBanner isOnline={isOnline} />}
+        <DashboardShell siteId={null}>{children}</DashboardShell>
         <UnifiedSettingsModal />
       </>
     )

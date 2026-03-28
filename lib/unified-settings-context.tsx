@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useCallback } from 'react'
 
-type InitialTab = { context?: 'site' | 'workspace' | 'account'; tab?: string } | null
+type InitialTab = { context?: 'site' | 'workspace' | 'account'; tab?: string; siteId?: string } | null
 
 interface UnifiedSettingsContextType {
   isOpen: boolean

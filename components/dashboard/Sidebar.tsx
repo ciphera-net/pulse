@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { listSites, type Site } from '@/lib/api/sites'
@@ -14,7 +13,7 @@ import { getUserOrganizations, switchContext, type OrganizationMember } from '@/
 import { setSessionAction } from '@/app/actions/auth'
 import { logger } from '@/lib/utils/logger'
 import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
-import { Gauge as GaugeIcon } from '@phosphor-icons/react'
+import { Gauge as GaugeIcon, Plugs as PlugsIcon, Tag as TagIcon } from '@phosphor-icons/react'
 import {
   LayoutDashboardIcon,
   PathIcon,
@@ -24,41 +23,12 @@ import {
   CloudUploadIcon,
   HeartbeatIcon,
   SettingsIcon,
-  ChevronUpDownIcon,
   PlusIcon,
   XIcon,
-  AppLauncher,
+  BookOpenIcon,
   UserMenu,
-  type CipheraApp,
 } from '@ciphera-net/ui'
 import NotificationCenter from '@/components/notifications/NotificationCenter'
-
-const CIPHERA_APPS: CipheraApp[] = [
-  {
-    id: 'pulse',
-    name: 'Pulse',
-    description: 'Your current app — Privacy-first analytics',
-    icon: 'https://ciphera.net/pulse_icon_no_margins.png',
-    href: 'https://pulse.ciphera.net',
-    isAvailable: false,
-  },
-  {
-    id: 'drop',
-    name: 'Drop',
-    description: 'Secure file sharing',
-    icon: 'https://ciphera.net/drop_icon_no_margins.png',
-    href: 'https://drop.ciphera.net',
-    isAvailable: true,
-  },
-  {
-    id: 'auth',
-    name: 'Auth',
-    description: 'Your Ciphera account settings',
-    icon: 'https://ciphera.net/auth_icon_no_margins.png',
-    href: 'https://auth.ciphera.net',
-    isAvailable: true,
-  },
-]
 
 const EXPANDED = 256
 const COLLAPSED = 64
@@ -111,179 +81,41 @@ function Label({ children, collapsed }: { children: React.ReactNode; collapsed: 
   )
 }
 
-// ─── Site Picker ────────────────────────────────────────────
+// ─── Sidebar Tooltip (portal-based, escapes overflow-hidden) ──
 
-function SitePicker({ sites, siteId, collapsed, onExpand, onCollapse, wasCollapsed, pickerOpenCallback }: {
-  sites: Site[]; siteId: string; collapsed: boolean
-  onExpand: () => void; onCollapse: () => void; wasCollapsed: React.MutableRefObject<boolean>
-  pickerOpenCallback: React.MutableRefObject<(() => void) | null>
-}) {
-  const [open, setOpen] = useState(false)
-  const [search, setSearch] = useState('')
-  const [faviconFailed, setFaviconFailed] = useState(false)
-  const [faviconLoaded, setFaviconLoaded] = useState(false)
+function SidebarTooltip({ children, label }: { children: React.ReactNode; label: string }) {
+  const [show, setShow] = useState(false)
+  const [pos, setPos] = useState({ x: 0, y: 0 })
   const ref = useRef<HTMLDivElement>(null)
-  const panelRef = useRef<HTMLDivElement>(null)
-  const buttonRef = useRef<HTMLButtonElement>(null)
-  const [fixedPos, setFixedPos] = useState<{ left: number; top: number } | null>(null)
-  const pathname = usePathname()
-  const router = useRouter()
-  const currentSite = sites.find((s) => s.id === siteId)
-  const faviconUrl = currentSite?.domain ? `${FAVICON_SERVICE_URL}?domain=${currentSite.domain}&sz=64` : null
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
-  const updatePosition = useCallback(() => {
-    if (buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect()
-      if (collapsed) {
-        // Collapsed: open to the right, like AppLauncher/UserMenu/Notifications
-        let top = rect.top
-        if (panelRef.current) {
-          const maxTop = window.innerHeight - panelRef.current.offsetHeight - 8
-          top = Math.min(top, Math.max(8, maxTop))
-        }
-        setFixedPos({ left: rect.right + 8, top })
-      } else {
-        // Expanded: open below the button
-        let top = rect.bottom + 4
-        if (panelRef.current) {
-          const maxTop = window.innerHeight - panelRef.current.offsetHeight - 8
-          top = Math.min(top, Math.max(8, maxTop))
-        }
-        setFixedPos({ left: rect.left, top })
+  const handleEnter = () => {
+    timerRef.current = setTimeout(() => {
+      if (ref.current) {
+        const rect = ref.current.getBoundingClientRect()
+        setPos({ x: rect.right + 8, y: rect.top + rect.height / 2 })
+        setShow(true)
       }
-    }
-  }, [collapsed])
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      const target = e.target as Node
-      if (
-        ref.current && !ref.current.contains(target) &&
-        (!panelRef.current || !panelRef.current.contains(target))
-      ) {
-        if (open) {
-          setOpen(false); setSearch('')
-        }
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [open, onCollapse, wasCollapsed])
-
-  useEffect(() => {
-    if (open) {
-      updatePosition()
-      requestAnimationFrame(() => updatePosition())
-    }
-  }, [open, updatePosition])
-
-  const closePicker = () => {
-    setOpen(false); setSearch('')
+    }, 100)
   }
 
-  const switchSite = (id: string) => {
-    router.push(`/sites/${id}${pathname.replace(/^\/sites\/[^/]+/, '')}`)
-    closePicker()
+  const handleLeave = () => {
+    clearTimeout(timerRef.current)
+    setShow(false)
   }
-
-  const filtered = sites.filter(
-    (s) => s.name.toLowerCase().includes(search.toLowerCase()) || s.domain.toLowerCase().includes(search.toLowerCase())
-  )
-
-  const dropdown = (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          ref={panelRef}
-          initial={{ opacity: 0, y: 10, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 10, scale: 0.95 }}
-          transition={{ duration: 0.15 }}
-          className="fixed z-50 w-[240px] bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/60 border border-white/[0.08] rounded-xl shadow-xl shadow-black/20 overflow-hidden origin-top-left"
-          style={fixedPos ? { left: fixedPos.left, top: fixedPos.top } : undefined}
-        >
-          <div className="p-2">
-            <input
-              type="text"
-              placeholder="Search sites..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') closePicker()
-              }}
-              className="w-full px-3 py-1.5 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg outline-none focus:ring-2 focus:ring-brand-orange/40 text-white placeholder:text-neutral-400"
-              autoFocus
-            />
-          </div>
-          <div className="max-h-64 overflow-y-auto">
-            {filtered.map((site) => (
-              <button
-                key={site.id}
-                onClick={() => switchSite(site.id)}
-                className={`w-full flex items-center gap-2.5 px-4 py-2 text-sm text-left ${
-                  site.id === siteId
-                    ? 'bg-brand-orange/10 text-brand-orange font-medium'
-                    : 'text-neutral-300 hover:bg-white/[0.06]'
-                }`}
-              >
-                <img
-                  src={`${FAVICON_SERVICE_URL}?domain=${site.domain}&sz=64`}
-                  alt=""
-                  className="w-5 h-5 rounded object-contain shrink-0"
-                />
-                <span className="flex flex-col min-w-0">
-                  <span className="truncate">{site.name}</span>
-                  <span className="text-xs text-neutral-400 truncate">{site.domain}</span>
-                </span>
-              </button>
-            ))}
-            {filtered.length === 0 && <p className="px-4 py-3 text-sm text-neutral-400">No sites found</p>}
-          </div>
-          <div className="border-t border-white/[0.06] p-2">
-            <Link href="/sites/new" onClick={() => closePicker()} className="flex items-center gap-2 px-3 py-1.5 text-sm text-brand-orange hover:bg-white/[0.06] rounded-lg">
-              <PlusIcon className="w-4 h-4" />
-              Add new site
-            </Link>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  )
 
   return (
-    <div className="relative mb-4 px-2" ref={ref}>
-      <button
-        ref={buttonRef}
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-neutral-200 hover:bg-white/[0.06] overflow-hidden"
-      >
-        <span className="w-7 h-7 rounded-md bg-brand-orange/10 flex items-center justify-center shrink-0 overflow-hidden">
-          {faviconUrl && !faviconFailed ? (
-            <>
-              {!faviconLoaded && <span className="w-5 h-5 rounded animate-pulse bg-neutral-800" />}
-              <img
-                src={faviconUrl}
-                alt=""
-                className={`w-5 h-5 object-contain ${faviconLoaded ? '' : 'hidden'}`}
-                onLoad={() => setFaviconLoaded(true)}
-                onError={() => setFaviconFailed(true)}
-              />
-            </>
-          ) : (
-            <span className="text-xs font-bold text-brand-orange">
-              {currentSite?.name?.charAt(0).toUpperCase() || '?'}
-            </span>
-          )}
-        </span>
-        <Label collapsed={collapsed}>
-          <span className="flex items-center gap-1">
-            <span className="truncate">{currentSite?.name || ''}</span>
-            <ChevronUpDownIcon className="w-4 h-4 text-neutral-400 shrink-0" />
-          </span>
-        </Label>
-      </button>
-
-      {typeof document !== 'undefined' ? createPortal(dropdown, document.body) : dropdown}
+    <div ref={ref} onMouseEnter={handleEnter} onMouseLeave={handleLeave}>
+      {children}
+      {show && typeof document !== 'undefined' && createPortal(
+        <span
+          className="fixed z-[100] px-3 py-2 rounded-lg bg-neutral-950 border border-neutral-800/60 text-white text-sm font-medium whitespace-nowrap pointer-events-none shadow-lg shadow-black/20 -translate-y-1/2"
+          style={{ left: pos.x, top: pos.y }}
+        >
+          {label}
+        </span>,
+        document.body
+      )}
     </div>
   )
 }
@@ -302,61 +134,122 @@ function NavLink({
   const matchesPending = pendingHref !== null && (item.matchPrefix ? pendingHref.startsWith(href) : pendingHref === href)
   const active = matchesPathname || matchesPending
 
-  return (
-    <div className="relative group/nav">
-      <Link
-        href={href}
-        onClick={() => { onNavigate(href); onClick?.() }}
-        className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-150 ${
-          active
-            ? 'bg-brand-orange/10 text-brand-orange'
-            : 'text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5'
-        }`}
-      >
-        <span className="w-7 h-7 flex items-center justify-center shrink-0">
-          <item.icon className="w-[18px] h-[18px]" weight={active ? 'fill' : 'regular'} />
-        </span>
-        <Label collapsed={collapsed}>{item.label}</Label>
-      </Link>
-      {collapsed && (
-        <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 rounded-md bg-neutral-800 text-white text-xs whitespace-nowrap opacity-0 group-hover/nav:opacity-100 transition-opacity duration-150 delay-150 z-50">
-          {item.label}
-        </span>
-      )}
-    </div>
+  const link = (
+    <Link
+      href={href}
+      onClick={() => { onNavigate(href); onClick?.() }}
+      className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-150 ${
+        active
+          ? 'bg-brand-orange/10 text-brand-orange'
+          : 'text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5'
+      }`}
+    >
+      <span className="w-7 h-7 flex items-center justify-center shrink-0">
+        <item.icon className="w-[18px] h-[18px]" weight={active ? 'fill' : 'regular'} />
+      </span>
+      <Label collapsed={collapsed}>{item.label}</Label>
+    </Link>
   )
+
+  if (collapsed) return <SidebarTooltip label={item.label}>{link}</SidebarTooltip>
+  return link
 }
 
 // ─── Settings Button (opens unified modal instead of navigating) ─────
 
 function SettingsButton({
-  item, collapsed, onClick,
+  item, collapsed, onClick, settingsContext = 'site',
 }: {
-  item: NavItem; collapsed: boolean; onClick?: () => void
+  item: NavItem; collapsed: boolean; onClick?: () => void; settingsContext?: 'site' | 'workspace'
 }) {
   const { openUnifiedSettings } = useUnifiedSettings()
 
-  return (
-    <div className="relative group/nav">
-      <button
-        onClick={() => {
-          openUnifiedSettings({ context: 'site', tab: 'general' })
-          onClick?.()
-        }}
-        className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-150 text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5 w-full cursor-pointer"
-      >
-        <span className="w-7 h-7 flex items-center justify-center shrink-0">
-          <item.icon className="w-[18px] h-[18px]" weight="regular" />
-        </span>
-        <Label collapsed={collapsed}>{item.label}</Label>
-      </button>
-      {collapsed && (
-        <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 rounded-md bg-neutral-800 text-white text-xs whitespace-nowrap opacity-0 group-hover/nav:opacity-100 transition-opacity duration-150 delay-150 z-50">
-          {item.label}
-        </span>
-      )}
-    </div>
+  const btn = (
+    <button
+      onClick={() => {
+        openUnifiedSettings({ context: settingsContext, tab: 'general' })
+        onClick?.()
+      }}
+      className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-150 text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5 w-full cursor-pointer"
+    >
+      <span className="w-7 h-7 flex items-center justify-center shrink-0">
+        <item.icon className="w-[18px] h-[18px]" weight="regular" />
+      </span>
+      <Label collapsed={collapsed}>{item.label}</Label>
+    </button>
   )
+
+  if (collapsed) return <SidebarTooltip label={item.label}>{btn}</SidebarTooltip>
+  return btn
+}
+
+// ─── Home Nav Link (static href, no siteId) ───────────────
+
+function HomeNavLink({
+  href, icon: Icon, label, collapsed, onClick, external,
+}: {
+  href: string; icon: React.ComponentType<{ className?: string; weight?: IconWeight }>
+  label: string; collapsed: boolean; onClick?: () => void; external?: boolean
+}) {
+  const pathname = usePathname()
+  const active = !external && pathname === href
+
+  const link = (
+    <Link
+      href={href}
+      onClick={onClick}
+      {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+      className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-150 ${
+        active
+          ? 'bg-brand-orange/10 text-brand-orange'
+          : 'text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5'
+      }`}
+    >
+      <span className="w-7 h-7 flex items-center justify-center shrink-0">
+        <Icon className="w-[18px] h-[18px]" weight={active ? 'fill' : 'regular'} />
+      </span>
+      <Label collapsed={collapsed}>{label}</Label>
+    </Link>
+  )
+
+  if (collapsed) return <SidebarTooltip label={label}>{link}</SidebarTooltip>
+  return link
+}
+
+// ─── Home Site Link (favicon + name) ───────────────────────
+
+function HomeSiteLink({
+  site, collapsed, onClick,
+}: {
+  site: Site; collapsed: boolean; onClick?: () => void
+}) {
+  const pathname = usePathname()
+  const href = `/sites/${site.id}`
+  const active = pathname.startsWith(href)
+
+  const link = (
+    <Link
+      href={href}
+      onClick={onClick}
+      className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-150 ${
+        active
+          ? 'bg-brand-orange/10 text-brand-orange'
+          : 'text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5'
+      }`}
+    >
+      <span className="w-7 h-7 rounded-md bg-white/[0.04] flex items-center justify-center shrink-0 overflow-hidden">
+        <img
+          src={`${FAVICON_SERVICE_URL}?domain=${site.domain}&sz=64`}
+          alt=""
+          className="w-[18px] h-[18px] rounded object-contain"
+        />
+      </span>
+      <Label collapsed={collapsed}>{site.name}</Label>
+    </Link>
+  )
+
+  if (collapsed) return <SidebarTooltip label={site.name}>{link}</SidebarTooltip>
+  return link
 }
 
 // ─── Sidebar Content ────────────────────────────────────────
@@ -364,17 +257,13 @@ function SettingsButton({
 interface SidebarContentProps {
   isMobile: boolean
   collapsed: boolean
-  siteId: string
+  siteId: string | null
   sites: Site[]
   canEdit: boolean
   pendingHref: string | null
   onNavigate: (href: string) => void
   onMobileClose: () => void
-  onExpand: () => void
-  onCollapse: () => void
   onToggle: () => void
-  wasCollapsed: React.MutableRefObject<boolean>
-  pickerOpenCallbackRef: React.MutableRefObject<(() => void) | null>
   auth: ReturnType<typeof useAuth>
   orgs: OrganizationMember[]
   onSwitchOrganization: (orgId: string | null) => Promise<void>
@@ -384,8 +273,8 @@ interface SidebarContentProps {
 
 function SidebarContent({
   isMobile, collapsed, siteId, sites, canEdit, pendingHref,
-  onNavigate, onMobileClose, onExpand, onCollapse, onToggle,
-  wasCollapsed, pickerOpenCallbackRef, auth, orgs, onSwitchOrganization, openSettings, openOrgSettings,
+  onNavigate, onMobileClose, onToggle,
+  auth, orgs, onSwitchOrganization, openSettings, openOrgSettings,
 }: SidebarContentProps) {
   const router = useRouter()
   const c = isMobile ? false : collapsed
@@ -393,16 +282,6 @@ function SidebarContent({
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* App Switcher — top of sidebar (scope-level switch) */}
-      <div className="flex items-center gap-2.5 px-[14px] pt-1.5 pb-1 shrink-0 overflow-hidden">
-        <span className="w-9 h-9 flex items-center justify-center shrink-0">
-          <AppLauncher apps={CIPHERA_APPS} currentAppId="pulse" anchor="right" />
-        </span>
-        <Label collapsed={c}>
-          <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">Ciphera</span>
-        </Label>
-      </div>
-
       {/* Logo — fixed layout, text fades */}
       <Link href="/" className="flex items-center gap-3 px-[14px] py-4 shrink-0 group overflow-hidden">
         <span className="w-9 h-9 flex items-center justify-center shrink-0">
@@ -413,49 +292,122 @@ function SidebarContent({
         </span>
       </Link>
 
-      {/* Site Picker */}
-      <SitePicker sites={sites} siteId={siteId} collapsed={c} onExpand={onExpand} onCollapse={onCollapse} wasCollapsed={wasCollapsed} pickerOpenCallback={pickerOpenCallbackRef} />
-
       {/* Nav Groups */}
-      <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 space-y-4">
-        {NAV_GROUPS.map((group) => (
-          <div key={group.label}>
+      {siteId ? (
+        <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 space-y-4">
+          {NAV_GROUPS.map((group) => (
+            <div key={group.label}>
+              <div className="h-5 flex items-center overflow-hidden">
+                {c ? (
+                  <div className="mx-1 w-full border-t border-white/[0.04]" />
+                ) : (
+                  <p className="px-2.5 text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider whitespace-nowrap">
+                    {group.label}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-0.5">
+                {group.items.map((item) => (
+                  <NavLink key={item.label} item={item} siteId={siteId} collapsed={c} onClick={isMobile ? onMobileClose : undefined} pendingHref={pendingHref} onNavigate={onNavigate} />
+                ))}
+                {group.label === 'Infrastructure' && canEdit && (
+                  <SettingsButton item={SETTINGS_ITEM} collapsed={c} onClick={isMobile ? onMobileClose : undefined} />
+                )}
+              </div>
+            </div>
+          ))}
+        </nav>
+      ) : (
+        <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 space-y-4">
+          {/* Your Sites */}
+          <div>
             {c ? (
               <div className="mx-3 my-2 border-t border-white/[0.04]" />
             ) : (
               <div className="h-5 flex items-center overflow-hidden">
                 <p className="px-2.5 text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider whitespace-nowrap">
-                  {group.label}
+                  Your Sites
                 </p>
               </div>
             )}
             <div className="space-y-0.5">
-              {group.items.map((item) => (
-                <NavLink key={item.label} item={item} siteId={siteId} collapsed={c} onClick={isMobile ? onMobileClose : undefined} pendingHref={pendingHref} onNavigate={onNavigate} />
+              {sites.map((site) => (
+                <HomeSiteLink key={site.id} site={site} collapsed={c} onClick={isMobile ? onMobileClose : undefined} />
               ))}
-              {group.label === 'Infrastructure' && canEdit && (
-                <SettingsButton item={SETTINGS_ITEM} collapsed={c} onClick={isMobile ? onMobileClose : undefined} />
-              )}
+              <HomeNavLink href="/sites/new" icon={PlusIcon} label="Add New Site" collapsed={c} onClick={isMobile ? onMobileClose : undefined} />
             </div>
           </div>
-        ))}
-      </nav>
+
+          {/* Workspace */}
+          <div>
+            {c ? (
+              <div className="mx-3 my-2 border-t border-white/[0.04]" />
+            ) : (
+              <div className="h-5 flex items-center overflow-hidden">
+                <p className="px-2.5 text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider whitespace-nowrap">
+                  Workspace
+                </p>
+              </div>
+            )}
+            <div className="space-y-0.5">
+              <HomeNavLink href="/integrations" icon={PlugsIcon} label="Integrations" collapsed={c} onClick={isMobile ? onMobileClose : undefined} />
+              <HomeNavLink href="/pricing" icon={TagIcon} label="Pricing" collapsed={c} onClick={isMobile ? onMobileClose : undefined} />
+              <SettingsButton item={{ label: 'Workspace Settings', href: () => '', icon: SettingsIcon, matchPrefix: false }} collapsed={c} onClick={isMobile ? onMobileClose : undefined} settingsContext="workspace" />
+            </div>
+          </div>
+
+          {/* Resources */}
+          <div>
+            {c ? (
+              <div className="mx-3 my-2 border-t border-white/[0.04]" />
+            ) : (
+              <div className="h-5 flex items-center overflow-hidden">
+                <p className="px-2.5 text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider whitespace-nowrap">
+                  Resources
+                </p>
+              </div>
+            )}
+            <div className="space-y-0.5">
+              <HomeNavLink href="https://docs.ciphera.net" icon={BookOpenIcon} label="Documentation" collapsed={c} onClick={isMobile ? onMobileClose : undefined} external />
+            </div>
+          </div>
+        </nav>
+      )}
 
       {/* Bottom — utility items */}
       <div className="border-t border-white/[0.06] px-2 py-3 shrink-0">
         {/* Notifications, Profile — same layout as nav items */}
         <div className="space-y-0.5 mb-1">
-          <div className="relative group/notif">
+          {c ? (
+            <SidebarTooltip label="Notifications">
+              <NotificationCenter anchor="right" variant="sidebar">
+                <Label collapsed={c}>Notifications</Label>
+              </NotificationCenter>
+            </SidebarTooltip>
+          ) : (
             <NotificationCenter anchor="right" variant="sidebar">
               <Label collapsed={c}>Notifications</Label>
             </NotificationCenter>
-            {c && (
-              <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 rounded-md bg-neutral-800 text-white text-xs whitespace-nowrap opacity-0 group-hover/notif:opacity-100 transition-opacity duration-150 delay-150 z-50">
-                Notifications
-              </span>
-            )}
-          </div>
-          <div className="relative group/user">
+          )}
+          {c ? (
+            <SidebarTooltip label={user?.display_name?.trim() || 'Profile'}>
+              <UserMenu
+                auth={auth}
+                LinkComponent={Link}
+                orgs={orgs}
+                activeOrgId={auth.user?.org_id}
+                onSwitchOrganization={onSwitchOrganization}
+                onCreateOrganization={() => router.push('/onboarding')}
+                allowPersonalOrganization={false}
+                onOpenSettings={openSettings}
+                onOpenOrgSettings={openOrgSettings}
+                compact
+                anchor="right"
+              >
+                <Label collapsed={c}>{user?.display_name?.trim() || 'Profile'}</Label>
+              </UserMenu>
+            </SidebarTooltip>
+          ) : (
             <UserMenu
               auth={auth}
               LinkComponent={Link}
@@ -471,12 +423,7 @@ function SidebarContent({
             >
               <Label collapsed={c}>{user?.display_name?.trim() || 'Profile'}</Label>
             </UserMenu>
-            {c && (
-              <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 rounded-md bg-neutral-800 text-white text-xs whitespace-nowrap opacity-0 group-hover/user:opacity-100 transition-opacity duration-150 delay-150 z-50">
-                {user?.display_name?.trim() || 'Profile'}
-              </span>
-            )}
-          </div>
+          )}
         </div>
       </div>
     </div>
@@ -488,7 +435,7 @@ function SidebarContent({
 export default function Sidebar({
   siteId, mobileOpen, onMobileClose, onMobileOpen,
 }: {
-  siteId: string; mobileOpen: boolean; onMobileClose: () => void; onMobileOpen: () => void
+  siteId: string | null; mobileOpen: boolean; onMobileClose: () => void; onMobileOpen: () => void
 }) {
   const auth = useAuth()
   const { user } = auth
@@ -500,9 +447,7 @@ export default function Sidebar({
   const [orgs, setOrgs] = useState<OrganizationMember[]>([])
   const [pendingHref, setPendingHref] = useState<string | null>(null)
   const [mobileClosing, setMobileClosing] = useState(false)
-  const wasCollapsedRef = useRef(false)
-  const pickerOpenCallbackRef = useRef<(() => void) | null>(null)
-  const { collapsed, toggle, expand, collapse } = useSidebar()
+  const { collapsed, toggle } = useSidebar()
 
   useEffect(() => { listSites().then(setSites).catch(() => {}) }, [])
   useEffect(() => {
@@ -542,12 +487,6 @@ export default function Sidebar({
       <aside
         className="hidden md:flex flex-col shrink-0 bg-transparent overflow-hidden relative z-10"
         style={{ width: collapsed ? COLLAPSED : EXPANDED, transition: 'width 200ms cubic-bezier(0.4, 0, 0.2, 1)' }}
-        onTransitionEnd={(e) => {
-          if (e.propertyName === 'width' && pickerOpenCallbackRef.current) {
-            pickerOpenCallbackRef.current()
-            pickerOpenCallbackRef.current = null
-          }
-        }}
       >
         <SidebarContent
           isMobile={false}
@@ -558,11 +497,7 @@ export default function Sidebar({
           pendingHref={pendingHref}
           onNavigate={handleNavigate}
           onMobileClose={onMobileClose}
-          onExpand={expand}
-          onCollapse={collapse}
           onToggle={toggle}
-          wasCollapsed={wasCollapsedRef}
-          pickerOpenCallbackRef={pickerOpenCallbackRef}
           auth={auth}
           orgs={orgs}
           onSwitchOrganization={handleSwitchOrganization}
@@ -602,11 +537,7 @@ export default function Sidebar({
               pendingHref={pendingHref}
               onNavigate={handleNavigate}
               onMobileClose={handleMobileClose}
-              onExpand={expand}
-              onCollapse={collapse}
               onToggle={toggle}
-              wasCollapsed={wasCollapsedRef}
-              pickerOpenCallbackRef={pickerOpenCallbackRef}
               auth={auth}
               orgs={orgs}
               onSwitchOrganization={handleSwitchOrganization}

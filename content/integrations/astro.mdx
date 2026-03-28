@@ -1,0 +1,48 @@
+---
+title: "Astro"
+description: "Integrate Pulse analytics with Astro. Add the script to your base layout for all pages."
+category: "framework"
+brandColor: "#BC52EE"
+officialUrl: "https://docs.astro.build"
+relatedIds: ["svelte", "hugo", "eleventy"]
+date: "2026-03-28"
+---
+
+Add the Pulse script to your base layout so it's included on every page of your Astro site.
+
+---
+
+## Add to your base layout
+
+Place the Pulse script in the `<head>` of your shared layout component.
+
+<CodeBlock filename="src/layouts/BaseLayout.astro">{`---
+interface Props {
+  title: string
+}
+
+const { title } = Astro.props
+---
+
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <script
+      defer
+      data-domain="your-site.com"
+      src="https://pulse.ciphera.net/script.js"
+    ></script>
+
+    <title>{title}</title>
+</head>
+<body>
+    <slot />
+</body>
+</html>`}</CodeBlock>
+
+If you're using Astro's View Transitions, the script will persist across navigations by default since it's in the `<head>`.
+
+For more details, see the [Astro scripts docs](https://docs.astro.build/en/guides/client-side-scripts/).
