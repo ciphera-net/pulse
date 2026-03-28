@@ -96,7 +96,7 @@ function SidebarTooltip({ children, label }: { children: React.ReactNode; label:
         setPos({ x: rect.right + 8, y: rect.top + rect.height / 2 })
         setShow(true)
       }
-    }, 100)
+    }, 400)
   }
 
   const handleLeave = () => {
