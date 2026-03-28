@@ -23,7 +23,6 @@ import PulseFAQ from '@/components/marketing/PulseFAQ'
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { getSitesLimitForPlan } from '@/lib/plans'
-import DashboardShell from '@/components/dashboard/DashboardShell'
 
 type SiteStatsMap = Record<string, { stats: Stats }>
 
@@ -230,7 +229,6 @@ export default function HomePage() {
   }
 
   return (
-    <DashboardShell siteId={null}>
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
       {showFinishSetupBanner && (
         <div className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-brand-orange/30 bg-brand-orange/10 px-4 py-3">
@@ -374,6 +372,5 @@ export default function HomePage() {
         </div>
       )}
       </div>
-    </DashboardShell>
   )
 }
