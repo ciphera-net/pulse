@@ -96,7 +96,7 @@ function SidebarTooltip({ children, label }: { children: React.ReactNode; label:
         setPos({ x: rect.right + 8, y: rect.top + rect.height / 2 })
         setShow(true)
       }
-    }, 400)
+    }, 100)
   }
 
   const handleLeave = () => {
@@ -109,7 +109,7 @@ function SidebarTooltip({ children, label }: { children: React.ReactNode; label:
       {children}
       {show && typeof document !== 'undefined' && createPortal(
         <span
-          className="fixed z-[100] px-2.5 py-1.5 rounded-lg bg-neutral-800 border border-white/[0.08] text-white text-xs font-medium whitespace-nowrap pointer-events-none shadow-lg shadow-black/20 -translate-y-1/2"
+          className="fixed z-[100] px-2.5 py-1.5 rounded-lg bg-neutral-950 border border-neutral-800/60 text-white text-xs font-medium whitespace-nowrap pointer-events-none shadow-lg shadow-black/20 -translate-y-1/2"
           style={{ left: pos.x, top: pos.y }}
         >
           {label}
