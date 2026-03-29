@@ -7,7 +7,7 @@
  */
 
 import Link from 'next/link'
-import { ArrowLeftIcon, ArrowRightIcon } from '@ciphera-net/ui'
+import { ArrowLeftIcon, ArrowRightIcon, CodeBlock } from '@ciphera-net/ui'
 import { type ReactNode } from 'react'
 import { type Integration, getIntegration, categoryLabels } from '@/lib/integrations'
 
@@ -92,7 +92,7 @@ export function IntegrationGuide({ integration, children }: IntegrationGuideProp
             Detect rage clicks and dead clicks by adding the frustration tracking
             add-on after the core script:
           </p>
-          <pre><code>{`<script defer src="https://pulse.ciphera.net/script.frustration.js"></script>`}</code></pre>
+          <CodeBlock filename="index.html">{`<script defer src="https://pulse.ciphera.net/script.frustration.js"></script>`}</CodeBlock>
           <p>
             No extra configuration needed. Add <code>data-no-rage</code> or{' '}
             <code>data-no-dead</code> to disable individual signals.
