@@ -1,8 +1,7 @@
 /**
  * Pulse - Privacy-First Tracking Script
- * Lightweight, no cookies, GDPR compliant.
- * Default: cross-tab visitor ID (localStorage), optional data-storage-ttl in hours.
- * Optional: data-storage="session" for per-tab (ephemeral) counting.
+ * Lightweight, no cookies, no localStorage, no client-side identifiers. GDPR compliant.
+ * Unique visitors are identified server-side via a daily-rotating hash of IP + UA + domain.
  */
 
 (function() {
@@ -64,11 +63,8 @@
   }
 
   const apiUrl = attr('api') || 'https://pulse-api.ciphera.net';
-  // * Visitor ID storage: "local" (default, cross-tab) or "session" (ephemeral per-tab)
-  const storageMode = (attr('storage') || 'local').toLowerCase() === 'session' ? 'session' : 'local';
-  // * When storage is "local", optional TTL in hours; after TTL the ID is regenerated (e.g. 24 = one day)
-  const ttlHours = storageMode === 'local' ? parseFloat(attr('storage-ttl') || '24') : 0;
-  const ttlMs = ttlHours > 0 ? ttlHours * 60 * 60 * 1000 : 0;
+  // * Session identification is now fully server-side (daily-rotating hash of IP + UA + domain).
+  // * No client-side visitor ID storage — zero localStorage, zero sessionStorage, zero cookies.
 
   let currentEventId = null;
 
@@ -110,121 +106,8 @@
   });
   window.addEventListener('pagehide', sendMetrics);
 
-  // * Memory cache for session ID (fallback if storage is unavailable)
-  let cachedSessionId = null;
-
-  function generateId() {
-    return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-  }
-
-  // * Returns session/visitor ID. Default: persistent (localStorage, cross-tab), optional TTL in hours.
-  // * With data-storage="session": ephemeral (sessionStorage, per-tab).
-  function getSessionId() {
-    if (cachedSessionId) {
-      return cachedSessionId;
-    }
-
-    const key = 'ciphera_session_id';
-    const legacyKey = 'plausible_session_' + (domain ? domain.trim() : '');
-
-    if (storageMode === 'local') {
-      try {
-        const raw = localStorage.getItem(key);
-        if (raw) {
-          try {
-            const parsed = JSON.parse(raw);
-            if (parsed && typeof parsed.id === 'string') {
-              const hasValidCreated = typeof parsed.created === 'number';
-              const expired = ttlMs > 0 && (!hasValidCreated || (Date.now() - parsed.created > ttlMs));
-              if (!expired) {
-                cachedSessionId = parsed.id;
-                return cachedSessionId;
-              }
-            }
-          } catch (e) {
-            // * Invalid JSON: migrate legacy plain-string ID to { id, created } format
-            if (typeof raw === 'string' && raw.trim().length > 0) {
-              cachedSessionId = raw.trim();
-              try {
-                localStorage.setItem(key, JSON.stringify({ id: cachedSessionId, created: Date.now() }));
-              } catch (e2) {}
-              return cachedSessionId;
-            }
-          }
-        }
-        cachedSessionId = generateId();
-        // * Race fix: re-read before writing; if another tab wrote in the meantime, use that ID instead
-        var rawAgain = localStorage.getItem(key);
-        if (rawAgain) {
-          try {
-            var parsedAgain = JSON.parse(rawAgain);
-            if (parsedAgain && typeof parsedAgain.id === 'string') {
-              var hasValidCreatedAgain = typeof parsedAgain.created === 'number';
-              var expiredAgain = ttlMs > 0 && (!hasValidCreatedAgain || (Date.now() - parsedAgain.created > ttlMs));
-              if (!expiredAgain) {
-                cachedSessionId = parsedAgain.id;
-                return cachedSessionId;
-              }
-            }
-          } catch (e2) {
-            if (typeof rawAgain === 'string' && rawAgain.trim().length > 0) {
-              cachedSessionId = rawAgain.trim();
-              return cachedSessionId;
-            }
-          }
-        }
-        // * Final re-read immediately before write to avoid overwriting a fresher ID from another tab
-        var rawBeforeWrite = localStorage.getItem(key);
-        if (rawBeforeWrite) {
-          try {
-            var parsedBefore = JSON.parse(rawBeforeWrite);
-            if (parsedBefore && typeof parsedBefore.id === 'string') {
-              var hasValidCreatedBefore = typeof parsedBefore.created === 'number';
-              var expBefore = ttlMs > 0 && (!hasValidCreatedBefore || (Date.now() - parsedBefore.created > ttlMs));
-              if (!expBefore) {
-                cachedSessionId = parsedBefore.id;
-                return cachedSessionId;
-              }
-            }
-          } catch (e3) {
-            if (typeof rawBeforeWrite === 'string' && rawBeforeWrite.trim().length > 0) {
-              cachedSessionId = rawBeforeWrite.trim();
-              return cachedSessionId;
-            }
-          }
-        }
-        // * Best-effort only: another tab could write between here and setItem; without locks perfect sync is not achievable
-        localStorage.setItem(key, JSON.stringify({ id: cachedSessionId, created: Date.now() }));
-      } catch (e) {
-        cachedSessionId = generateId();
-      }
-      return cachedSessionId;
-    }
-
-    // * data-storage="session": session storage (ephemeral, per-tab)
-    try {
-      cachedSessionId = sessionStorage.getItem(key);
-      if (!cachedSessionId && legacyKey) {
-        cachedSessionId = sessionStorage.getItem(legacyKey);
-        if (cachedSessionId) {
-          sessionStorage.setItem(key, cachedSessionId);
-          sessionStorage.removeItem(legacyKey);
-        }
-      }
-    } catch (e) {
-      // * Access denied or unavailable - ignore
-    }
-
-    if (!cachedSessionId) {
-      cachedSessionId = generateId();
-      try {
-        sessionStorage.setItem(key, cachedSessionId);
-      } catch (e) {
-        // * Storage full or unavailable - ignore, will use memory cache
-      }
-    }
-    return cachedSessionId;
-  }
+  // * Session ID is computed server-side from a daily-rotating hash of IP + UA + domain.
+  // * No client-side visitor ID storage needed.
 
   // * Normalize path: strip trailing slash, return pathname only.
   // * UTM extraction and query handling moved server-side.
@@ -289,7 +172,6 @@
       title: document.title,
       referrer: document.referrer || '',
       screen: screenSize,
-      session_id: getSessionId(),
     };
 
     // * Send event
@@ -358,7 +240,6 @@
       title: document.title,
       referrer: document.referrer || '',
       screen: { width: window.innerWidth || window.screen.width, height: window.innerHeight || window.screen.height },
-      session_id: getSessionId(),
       name: eventName.trim().toLowerCase(),
     };
     if (props && typeof props === 'object' && !Array.isArray(props)) {
