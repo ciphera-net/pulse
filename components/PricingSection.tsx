@@ -304,6 +304,30 @@ export default function PricingSection() {
         </div>
       </motion.div>
 
+      {/* Hobby nudge */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.12 }}
+        className="rounded-2xl border border-brand-orange/30 bg-brand-orange/10 px-6 py-4 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
+      >
+        <p className="text-sm text-neutral-300">
+          <span className="font-semibold text-white">Just exploring?</span>{' '}
+          Start free with the Hobby plan — 1 site, 5k pageviews, no credit card needed.
+        </p>
+        <button
+          onClick={() => {
+            if (currentPlanId === 'free') return
+            if (!user) { initiateOAuthFlow(); return }
+            window.location.href = '/'
+          }}
+          disabled={currentPlanId === 'free'}
+          className="text-sm font-semibold text-brand-orange hover:text-white transition-colors shrink-0 disabled:opacity-50 disabled:cursor-default"
+        >
+          {currentPlanId === 'free' ? 'Your current plan' : 'Get started →'}
+        </button>
+      </motion.div>
+
       {/* Paid Plans — 3 column grid */}
       <div className="grid md:grid-cols-3 gap-6 mb-6">
         {PLANS.map((plan, index) => {
@@ -387,81 +411,24 @@ export default function PricingSection() {
         })}
       </div>
 
-      {/* Hobby + Enterprise — 2 column grid, centered */}
-      <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto mb-20">
-        {/* Hobby */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.45 }}
-          className="card-glass p-8 flex flex-col relative hover:-translate-y-1 hover:shadow-xl transition-all duration-300"
+      {/* Enterprise nudge */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.5 }}
+        className="card-glass px-6 py-4 mt-2 mb-20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
+      >
+        <p className="text-sm text-neutral-300">
+          <span className="font-semibold text-white">Need something bigger?</span>{' '}
+          We&apos;ll build a custom plan for you — unlimited sites, SLA, managed proxy, raw data export.
+        </p>
+        <a
+          href="mailto:business@ciphera.net?subject=Enterprise%20Plan%20Inquiry"
+          className="text-sm font-semibold text-brand-orange hover:text-white transition-colors shrink-0"
         >
-          <div className="mb-8">
-            <h3 className="text-xl font-bold text-white mb-2">Hobby</h3>
-            <p className="text-sm text-neutral-400 min-h-[40px] mb-4">For personal projects and small sites</p>
-            <div className="flex items-baseline gap-1">
-              <span className="text-4xl font-bold text-white">€0</span>
-              <span className="text-neutral-400 font-medium">/forever</span>
-            </div>
-          </div>
-
-          <Button
-            onClick={() => {
-              if (currentPlanId === 'free') return
-              if (!user) {
-                initiateOAuthFlow()
-                return
-              }
-              window.location.href = '/'
-            }}
-            disabled={currentPlanId === 'free'}
-            variant="secondary"
-            className="w-full mb-8"
-          >
-            {currentPlanId === 'free' ? 'Current plan' : 'Get started'}
-          </Button>
-
-          <ul className="space-y-4 flex-grow">
-            {['1 site', '5k monthly pageviews', '6 months data retention', '100% Data ownership'].map((feature) => (
-              <li key={feature} className="flex items-start gap-3 text-sm text-neutral-400">
-                <CheckCircleIcon className="w-5 h-5 shrink-0 text-neutral-400" />
-                <span>{feature}</span>
-              </li>
-            ))}
-          </ul>
-        </motion.div>
-
-        {/* Enterprise */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.55 }}
-          className="card-glass p-8 flex flex-col relative hover:-translate-y-1 hover:shadow-xl transition-all duration-300"
-        >
-          <div className="mb-8">
-            <h3 className="text-xl font-bold text-white mb-2">Enterprise</h3>
-            <p className="text-sm text-neutral-400 min-h-[40px] mb-4">For high volume sites and custom needs</p>
-            <div className="text-4xl font-bold text-white">Custom</div>
-          </div>
-
-          <Button
-            variant="secondary"
-            className="w-full mb-8"
-            onClick={() => { window.location.href = 'mailto:business@ciphera.net?subject=Enterprise%20Plan%20Inquiry' }}
-          >
-            Contact us
-          </Button>
-
-          <ul className="space-y-4 flex-grow">
-            {['Everything in Business', '10+ sites', 'Unlimited team members', 'SLA & Priority Support', 'Managed Proxy', 'Raw data export'].map((feature) => (
-              <li key={feature} className="flex items-start gap-3 text-sm text-neutral-400">
-                <CheckCircleIcon className="w-5 h-5 text-neutral-400 shrink-0" />
-                <span>{feature}</span>
-              </li>
-            ))}
-          </ul>
-        </motion.div>
-      </div>
+          Let&apos;s talk →
+        </a>
+      </motion.div>
 
       {/* Gradient Divider */}
       <div className="h-px w-full bg-gradient-to-r from-transparent via-neutral-800 to-transparent my-20" />
