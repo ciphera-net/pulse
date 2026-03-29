@@ -20,7 +20,8 @@ Install the [Asset Injector](https://www.drupal.org/project/asset_injector) modu
 
 Add the script directly to your theme's `html.html.twig` template in the head area.
 
-<CodeBlock filename="templates/html.html.twig">{`<!DOCTYPE html>
+```twig filename="templates/html.html.twig"
+<!DOCTYPE html>
 <html{{ html_attributes }}>
 <head>
     <head-placeholder token="{{ placeholder_token }}">
@@ -40,6 +41,7 @@ Add the script directly to your theme's `html.html.twig` template in the head ar
     {{ page_bottom }}
     <js-bottom-placeholder token="{{ placeholder_token }}">
 </body>
-</html>`}</CodeBlock>
+</html>
+```
 
 For more details, see the [Drupal theming docs](https://www.drupal.org/docs/theming-drupal).

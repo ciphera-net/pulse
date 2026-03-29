@@ -16,7 +16,8 @@ Add the Pulse script to your Jinja2 base template with a debug guard.
 
 Use Jinja2's conditional to only load the script when `DEBUG` is off.
 
-<CodeBlock filename="templates/base.html">{`<!DOCTYPE html>
+```html filename="templates/base.html"
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -35,6 +36,7 @@ Use Jinja2's conditional to only load the script when `DEBUG` is off.
 <body>
     {% block content %}{% endblock %}
 </body>
-</html>`}</CodeBlock>
+</html>
+```
 
 For more details, see the [Flask template docs](https://flask.palletsprojects.com/en/stable/patterns/templateinheritance/).

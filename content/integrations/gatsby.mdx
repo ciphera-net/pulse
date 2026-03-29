@@ -16,7 +16,8 @@ Use the Gatsby SSR API or the Gatsby Head API to add Pulse to your site.
 
 Use the `onRenderBody` hook to inject the Pulse script into every page's `<head>`.
 
-<CodeBlock filename="gatsby-ssr.js">{`import React from "react"
+```jsx filename="gatsby-ssr.js"
+import React from "react"
 
 export const onRenderBody = ({ setHeadComponents }) => {
   setHeadComponents([
@@ -27,13 +28,15 @@ export const onRenderBody = ({ setHeadComponents }) => {
       src="https://pulse.ciphera.net/script.js"
     />,
   ])
-}`}</CodeBlock>
+}
+```
 
 ## Method 2: Gatsby Head API (v4.19+)
 
 If you're on Gatsby 4.19 or later, you can use the Head export in any page or template component.
 
-<CodeBlock filename="src/pages/index.tsx">{`import React from "react"
+```tsx filename="src/pages/index.tsx"
+import React from "react"
 
 export function Head() {
   return (
@@ -47,6 +50,7 @@ export function Head() {
 
 export default function IndexPage() {
   return <h1>Hello World</h1>
-}`}</CodeBlock>
+}
+```
 
 For more details, see the [Gatsby Head API docs](https://www.gatsbyjs.com/docs/reference/built-in-components/gatsby-head/).

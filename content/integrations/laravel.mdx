@@ -16,7 +16,8 @@ Add the Pulse script to your Blade layout template with a production guard.
 
 Use Laravel's `@production` directive to only load the script in production.
 
-<CodeBlock filename="resources/views/layouts/app.blade.php">{`<!DOCTYPE html>
+```php filename="resources/views/layouts/app.blade.php"
+<!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="utf-8">
@@ -36,6 +37,7 @@ Use Laravel's `@production` directive to only load the script in production.
 <body>
     @yield('content')
 </body>
-</html>`}</CodeBlock>
+</html>
+```
 
 For more details, see the [Laravel @production docs](https://laravel.com/docs/blade#the-production-directive).

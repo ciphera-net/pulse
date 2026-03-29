@@ -21,7 +21,9 @@ Follow these steps to add Pulse through GTM:
 3. Set the trigger to **All Pages**
 4. Publish your container
 
-<CodeBlock filename="GTM -> Custom HTML Tag">{`<script defer src="https://pulse.ciphera.net/script.js"></script>`}</CodeBlock>
+```html filename="GTM -> Custom HTML Tag"
+<script defer src="https://pulse.ciphera.net/script.js"></script>
+```
 
 That's it. Pulse auto-detects the domain from the page, so no extra configuration is needed.
 
@@ -30,10 +32,12 @@ That's it. Pulse auto-detects the domain from the page, so no extra configuratio
 
 If your site is registered under a different domain than the page hostname, or you need custom options (API endpoint, storage mode, etc.), use `pulseConfig`:
 
-<CodeBlock filename="GTM -> Custom HTML Tag (with config)">{`<script>
+```html filename="GTM -> Custom HTML Tag (with config)"
+<script>
   window.pulseConfig = { domain: "your-site.com" };
 </script>
-<script defer src="https://pulse.ciphera.net/script.js"></script>`}</CodeBlock>
+<script defer src="https://pulse.ciphera.net/script.js"></script>
+```
 </details>
 
 For more details, see the [GTM Custom HTML tag docs](https://support.google.com/tagmanager/answer/6103696).

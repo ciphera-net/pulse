@@ -16,7 +16,8 @@ Add the Pulse script to your base layout so it's included on every page of your 
 
 Place the Pulse script in the `<head>` of your shared layout component.
 
-<CodeBlock filename="src/layouts/BaseLayout.astro">{`---
+```html filename="src/layouts/BaseLayout.astro"
+---
 interface Props {
   title: string
 }
@@ -41,7 +42,8 @@ const { title } = Astro.props
 <body>
     <slot />
 </body>
-</html>`}</CodeBlock>
+</html>
+```
 
 If you're using Astro's View Transitions, the script will persist across navigations by default since it's in the `<head>`.
 

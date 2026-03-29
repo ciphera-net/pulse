@@ -16,7 +16,8 @@ Add the script to your `index.html` for Vite-based Svelte, or use `<svelte:head>
 
 For standard Svelte projects using Vite, add the Pulse script to your `index.html`.
 
-<CodeBlock filename="index.html">{`<!DOCTYPE html>
+```html filename="index.html"
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
@@ -34,13 +35,15 @@ For standard Svelte projects using Vite, add the Pulse script to your `index.htm
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
 </body>
-</html>`}</CodeBlock>
+</html>
+```
 
 ## Method 2: SvelteKit
 
 In SvelteKit, use `<svelte:head>` in your root layout to add the script to every page.
 
-<CodeBlock filename="src/routes/+layout.svelte">{`<svelte:head>
+```svelte filename="src/routes/+layout.svelte"
+<svelte:head>
   <script
     defer
     data-domain="your-site.com"
@@ -48,6 +51,7 @@ In SvelteKit, use `<svelte:head>` in your root layout to add the script to every
   ></script>
 </svelte:head>
 
-<slot />`}</CodeBlock>
+<slot />
+```
 
 Alternatively, you can add the script directly to `src/app.html` in your SvelteKit project.

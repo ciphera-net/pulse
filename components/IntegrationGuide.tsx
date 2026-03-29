@@ -2,13 +2,14 @@
  * @file Shared layout component for individual integration guide pages.
  *
  * Provides the background atmosphere, back-link, header (logo + title),
- * prose-styled content area, and a related integrations section.
+ * category badge, prose-styled content area, and a related integrations section.
+ * Styling matches ciphera-website /learn article layout for consistency.
  */
 
 import Link from 'next/link'
 import { ArrowLeftIcon, ArrowRightIcon } from '@ciphera-net/ui'
 import { type ReactNode } from 'react'
-import { type Integration, getIntegration } from '@/lib/integrations'
+import { type Integration, getIntegration, categoryLabels } from '@/lib/integrations'
 
 interface IntegrationGuideProps {
   /** Integration metadata (name, icon, etc.) */
@@ -35,6 +36,8 @@ export function IntegrationGuide({ integration, children }: IntegrationGuideProp
     .filter((i): i is Integration => i !== undefined)
     .slice(0, 4)
 
+  const categoryLabel = categoryLabels[integration.category]
+
   return (
     <div className="relative min-h-screen flex flex-col overflow-hidden">
       {/* * --- ATMOSPHERE (Background) --- */}
@@ -47,6 +50,7 @@ export function IntegrationGuide({ integration, children }: IntegrationGuideProp
       </div>
 
       <div className="flex-grow w-full max-w-4xl mx-auto px-4 pt-20 pb-10 z-10">
+        {/* * --- Back link --- */}
         <Link
           href="/integrations"
           className="inline-flex items-center text-sm text-neutral-500 hover:text-brand-orange mb-8 transition-colors"
@@ -55,16 +59,31 @@ export function IntegrationGuide({ integration, children }: IntegrationGuideProp
           Back to Integrations
         </Link>
 
-        <div className="flex items-center gap-4 mb-8">
-          <div className="p-3 bg-neutral-800 rounded-xl">
-            {headerIcon}
-          </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-white">
-            {integration.name} Integration
-          </h1>
+        {/* * --- Category + Official site badges --- */}
+        <div className="flex items-center gap-2 mb-4">
+          <span
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border"
+            style={{
+              color: integration.brandColor,
+              borderColor: `${integration.brandColor}33`,
+              backgroundColor: `${integration.brandColor}15`,
+            }}
+          >
+            <div className="[&_svg]:w-3.5 [&_svg]:h-3.5">{integration.icon}</div>
+            {integration.name}
+          </span>
+          <span className="inline-flex items-center px-3 py-1 rounded-full border border-neutral-700 bg-neutral-800 text-xs text-neutral-400">
+            {categoryLabel}
+          </span>
         </div>
 
-        <div className="prose prose-invert max-w-none">
+        {/* * --- Title --- */}
+        <h1 className="text-3xl sm:text-4xl font-bold text-white leading-tight mb-8">
+          {integration.name} Integration
+        </h1>
+
+        {/* * --- Prose content (matches ciphera-website /learn styling) --- */}
+        <div className="prose prose-invert prose-neutral max-w-none prose-headings:text-white prose-a:text-brand-orange prose-a:no-underline hover:prose-a:underline prose-strong:text-white prose-code:text-brand-orange prose-code:bg-neutral-800 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none">
           {children}
 
           <hr className="my-8 border-neutral-800" />
