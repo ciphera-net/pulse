@@ -9,6 +9,7 @@ import { CreditCard, ArrowsClockwise, ShieldCheck, Check, Globe, Eye, LockSimple
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
 import { toast } from '@ciphera-net/ui'
+import { useSubscription } from '@/lib/swr/dashboard'
 import PricingFAQ from '@/components/marketing/PricingFAQ'
 import CTASection from '@/components/marketing/CTASection'
 
@@ -126,6 +127,8 @@ export default function PricingSection() {
   const [sliderIndex, setSliderIndex] = useState(0) // Default to 10k (index 0)
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
   const { user } = useAuth()
+  const { data: subscription } = useSubscription()
+  const currentPlanId = subscription?.plan_id || (user ? 'free' : null)
 
   // * Show toast when redirected from Mollie Checkout with canceled=true
   useEffect(() => {
@@ -306,6 +309,7 @@ export default function PricingSection() {
         {PLANS.map((plan, index) => {
           const priceDetails = getPriceDetails(plan.id)
           const isTeam = plan.id === 'team'
+          const isCurrent = currentPlanId === plan.id
 
           return (
             <motion.div
@@ -313,13 +317,13 @@ export default function PricingSection() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.15 + index * 0.1 }}
-              className={`card-glass p-8 flex flex-col relative hover:-translate-y-1 hover:shadow-xl transition-all duration-300 ${
+              className={`card-glass p-8 flex flex-col relative overflow-hidden hover:-translate-y-1 hover:shadow-xl transition-all duration-300 ${
                 isTeam ? 'border-brand-orange/20' : ''
               }`}
             >
               {isTeam && (
                 <>
-                  <div className="absolute top-0 left-0 w-full h-1 bg-brand-orange rounded-t-2xl" />
+                  <div className="absolute top-0 left-0 w-full h-1 bg-brand-orange" />
                   <span className="absolute top-4 right-4 badge-primary">Most Popular</span>
                 </>
               )}
@@ -362,12 +366,12 @@ export default function PricingSection() {
               </div>
 
               <Button
-                onClick={() => handleSubscribe(plan.id)}
-                disabled={loadingPlan === plan.id || !!loadingPlan || !priceDetails}
-                variant={isTeam ? 'primary' : 'secondary'}
+                onClick={() => !isCurrent && handleSubscribe(plan.id)}
+                disabled={isCurrent || loadingPlan === plan.id || !!loadingPlan || !priceDetails}
+                variant={isCurrent ? 'secondary' : isTeam ? 'primary' : 'secondary'}
                 className="w-full mb-8"
               >
-                {loadingPlan === plan.id ? 'Loading...' : !priceDetails ? 'Contact us' : 'Subscribe'}
+                {isCurrent ? 'Current plan' : loadingPlan === plan.id ? 'Loading...' : !priceDetails ? 'Contact us' : 'Subscribe'}
               </Button>
 
               <ul className="space-y-4 flex-grow">
@@ -403,16 +407,18 @@ export default function PricingSection() {
 
           <Button
             onClick={() => {
+              if (currentPlanId === 'free') return
               if (!user) {
                 initiateOAuthFlow()
                 return
               }
               window.location.href = '/'
             }}
+            disabled={currentPlanId === 'free'}
             variant="secondary"
             className="w-full mb-8"
           >
-            Get started
+            {currentPlanId === 'free' ? 'Current plan' : 'Get started'}
           </Button>
 
           <ul className="space-y-4 flex-grow">
