@@ -14,7 +14,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@ciphera-net/ui": "^0.4.3",
+    "@ciphera-net/ui": "^0.4.4",
     "@ducanh2912/next-pwa": "^10.2.9",
     "@icons-pack/react-simple-icons": "^13.13.0",
     "@phosphor-icons/react": "^2.1.10",
