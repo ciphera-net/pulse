@@ -121,7 +121,7 @@ const COMPARISON_FEATURES = [
 export default function PricingSection() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const [isYearly, setIsYearly] = useState(false)
+  const [isYearly, setIsYearly] = useState(true)
   const [sliderIndex, setSliderIndex] = useState(0) // Default to 10k (index 0)
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
   const { user } = useAuth()
@@ -215,28 +215,12 @@ export default function PricingSection() {
         transition={{ duration: 0.5 }}
         className="text-center mb-16"
       >
-        <span className="badge-primary mb-6 inline-flex">Simple Plans</span>
         <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-6">
           Transparent Pricing
         </h2>
-        <p className="text-xl text-neutral-400 max-w-2xl mx-auto leading-relaxed mb-8">
+        <p className="text-xl text-neutral-400 max-w-2xl mx-auto leading-relaxed">
           Scale with your traffic. No hidden fees.
         </p>
-
-        {/* Trust indicators */}
-        <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
-          {[
-            { icon: CreditCard, text: 'No credit card for Hobby' },
-            { icon: ArrowsClockwise, text: 'Cancel anytime' },
-            { icon: ShieldCheck, text: 'Swiss hosted' },
-          ].map((item, i) => (
-            <div key={i} className="flex items-center gap-2">
-              {i > 0 && <span className="hidden sm:block w-px h-4 bg-neutral-700 mr-2" />}
-              <item.icon className="w-5 h-5 text-brand-orange" weight="bold" />
-              <span className="text-sm font-medium text-neutral-400">{item.text}</span>
-            </div>
-          ))}
-        </div>
       </motion.div>
 
       {/* Slider + Toggle */}
@@ -355,33 +339,20 @@ export default function PricingSection() {
                 <p className="text-sm text-neutral-400 min-h-[40px] mb-4">{plan.description}</p>
 
                 {priceDetails ? (
-                  isYearly ? (
-                    <div>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-4xl font-bold text-white">
-                          €{priceDetails.yearlyTotal}
-                        </span>
-                        <span className="text-neutral-400 font-medium">/year</span>
-                        <span className="text-xs text-neutral-500 ml-1">excl. VAT</span>
-                      </div>
-                      <div className="flex items-center gap-2 mt-2 text-sm font-medium">
-                        <span className="text-neutral-400 line-through decoration-neutral-400">
-                          €{priceDetails.baseMonthly}/mo
-                        </span>
-                        <span className="text-brand-orange">
-                          €{priceDetails.effectiveMonthly}/mo
-                        </span>
-                      </div>
-                    </div>
-                  ) : (
+                  <div>
                     <div className="flex items-baseline gap-1">
                       <span className="text-4xl font-bold text-white">
-                        €{priceDetails.baseMonthly}
+                        €{isYearly ? priceDetails.effectiveMonthly : priceDetails.baseMonthly}
                       </span>
                       <span className="text-neutral-400 font-medium">/mo</span>
                       <span className="text-xs text-neutral-500 ml-1">excl. VAT</span>
                     </div>
-                  )
+                    {isYearly && (
+                      <p className="text-xs text-neutral-500 mt-1">
+                        €{priceDetails.yearlyTotal} billed yearly
+                      </p>
+                    )}
+                  </div>
                 ) : (
                   <div className="text-4xl font-bold text-white">Custom</div>
                 )}
