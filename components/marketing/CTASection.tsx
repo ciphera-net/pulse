@@ -6,7 +6,15 @@ import { Button } from '@ciphera-net/ui'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
 import Link from 'next/link'
 
-export default function CTASection() {
+interface CTASectionProps {
+  secondaryLabel?: string
+  secondaryHref?: string
+}
+
+export default function CTASection({
+  secondaryLabel = 'View Pricing',
+  secondaryHref = '/pricing',
+}: CTASectionProps = {}) {
   return (
     <section className="py-20 lg:py-32">
       <div className="container mx-auto px-6">
@@ -33,9 +41,9 @@ export default function CTASection() {
               <Button onClick={() => initiateOAuthFlow()} variant="primary" className="px-6 py-3 shadow-lg shadow-brand-orange/20 gap-2">
                 Try Pulse Free <ArrowRight weight="bold" className="w-4 h-4" />
               </Button>
-              <Link href="/pricing">
+              <Link href={secondaryHref}>
                 <Button variant="secondary" className="px-6 py-3">
-                  View Pricing
+                  {secondaryLabel}
                 </Button>
               </Link>
             </div>
