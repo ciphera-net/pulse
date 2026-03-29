@@ -2,7 +2,7 @@
 
 /**
  * Guided onboarding wizard for new Pulse users.
- * Steps: Welcome → Organization (create org) → Plan / trial → First site (optional) → Done.
+ * Steps: Welcome → Organization (create org) → Plan → First site (optional) → Done.
  * Supports ?step= in URL for back/refresh. Handles pulse_pending_checkout from pricing.
  */
 
@@ -532,11 +532,11 @@ function WelcomeContent() {
                   <CheckCircleIcon className="h-7 w-7" />
                 </div>
                 <h1 className="text-2xl font-bold text-white">
-                  {showPendingCheckoutInStep3 ? 'Complete your plan' : "You're on the free plan"}
+                  {showPendingCheckoutInStep3 ? 'Complete your plan' : "You're on the Hobby plan"}
                 </h1>
                 <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
                   {showPendingCheckoutInStep3
-                    ? 'You chose a plan on the pricing page. Continue to add a payment method and start your trial.'
+                    ? 'You chose a plan on the pricing page. Continue to add a payment method and subscribe.'
                     : 'Start with 1 site and 10k pageviews/month. Upgrade anytime from your dashboard.'}
                 </p>
               </div>
@@ -558,7 +558,7 @@ function WelcomeContent() {
                       className="w-full sm:w-auto"
                       onClick={handlePlanSkip}
                     >
-                      Stay on free plan
+                      Stay on Hobby plan
                     </Button>
                   </>
                 ) : (
