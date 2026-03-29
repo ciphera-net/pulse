@@ -16,7 +16,8 @@ Configure Pulse analytics in your `nuxt.config` for a framework-native setup.
 
 Add the Pulse script via the `app.head` option in your Nuxt 3 config.
 
-<CodeBlock filename="nuxt.config.ts">{`export default defineNuxtConfig({
+```tsx filename="nuxt.config.ts"
+export default defineNuxtConfig({
   app: {
     head: {
       script: [
@@ -28,13 +29,15 @@ Add the Pulse script via the `app.head` option in your Nuxt 3 config.
       ],
     },
   },
-})`}</CodeBlock>
+})
+```
 
 ## Method 2: Nuxt 2
 
 In Nuxt 2, use the `head` property in your config.
 
-<CodeBlock filename="nuxt.config.js">{`export default {
+```jsx filename="nuxt.config.js"
+export default {
   head: {
     script: [
       {
@@ -44,6 +47,7 @@ In Nuxt 2, use the `head` property in your config.
       },
     ],
   },
-}`}</CodeBlock>
+}
+```
 
 For more details, see the [Nuxt head config docs](https://nuxt.com/docs/api/nuxt-config#head).

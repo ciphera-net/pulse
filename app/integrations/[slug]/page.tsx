@@ -10,14 +10,34 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { MDXRemote } from 'next-mdx-remote/rsc'
 import remarkGfm from 'remark-gfm'
+import rehypeMdxCodeProps from 'rehype-mdx-code-props'
 import { CodeBlock } from '@ciphera-net/ui'
 import { integrations, getIntegration } from '@/lib/integrations'
 import { getIntegrationGuide } from '@/lib/integration-content'
 import { IntegrationGuide } from '@/components/IntegrationGuide'
 
 // * ─── MDX Components ────────────────────────────────────────────
+// Maps markdown code fences to CodeBlock. The `filename` meta is passed
+// as a prop via rehype-mdx-code-props (e.g. ```tsx filename="app.tsx").
 const mdxComponents = {
-  CodeBlock,
+  pre: ({ children }: { children: React.ReactNode }) => children,
+  code: ({ children, className, filename, ...props }: {
+    children: React.ReactNode
+    className?: string
+    filename?: string
+    [key: string]: unknown
+  }) => {
+    // Block code (inside <pre>) has className like "language-tsx"
+    if (className?.startsWith('language-') || filename) {
+      return (
+        <CodeBlock filename={filename || 'code'}>
+          {String(children).replace(/\n$/, '')}
+        </CodeBlock>
+      )
+    }
+    // Inline code
+    return <code className={className} {...props}>{children}</code>
+  },
 }
 
 // * ─── Static Params ─────────────────────────────────────────────
@@ -115,7 +135,7 @@ export default async function IntegrationPage({ params }: PageProps) {
         <MDXRemote
           source={guide.content}
           components={mdxComponents}
-          options={{ mdxOptions: { remarkPlugins: [remarkGfm] } }}
+          options={{ mdxOptions: { remarkPlugins: [remarkGfm], rehypePlugins: [rehypeMdxCodeProps] } }}
         />
       </IntegrationGuide>
     </>

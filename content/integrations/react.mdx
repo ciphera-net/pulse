@@ -16,7 +16,8 @@ For standard React SPAs, add the script to your `index.html`.
 
 The simplest approach is to add the Pulse script directly to your HTML entry point.
 
-<CodeBlock filename="public/index.html">{`<!DOCTYPE html>
+```html filename="public/index.html"
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
@@ -33,13 +34,15 @@ The simplest approach is to add the Pulse script directly to your HTML entry poi
 <body>
     <div id="root"></div>
 </body>
-</html>`}</CodeBlock>
+</html>
+```
 
 ## Method 2: Programmatic injection via useEffect
 
 If you prefer to inject the script programmatically (e.g. only in production), use a `useEffect` hook.
 
-<CodeBlock filename="src/App.tsx">{`import { useEffect } from 'react'
+```tsx filename="src/App.tsx"
+import { useEffect } from 'react'
 
 function App() {
   useEffect(() => {
@@ -53,4 +56,5 @@ function App() {
   }, [])
 
   return <div className="App"><h1>Hello World</h1></div>
-}`}</CodeBlock>
+}
+```

@@ -16,7 +16,8 @@ Add the Pulse script to your base Nunjucks or Liquid layout.
 
 Place the Pulse script inside the `<head>` of your shared base template.
 
-<CodeBlock filename="src/_includes/base.njk">{`<!DOCTYPE html>
+```html filename="src/_includes/base.njk"
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -33,6 +34,7 @@ Place the Pulse script inside the `<head>` of your shared base template.
 <body>
     {{ content | safe }}
 </body>
-</html>`}</CodeBlock>
+</html>
+```
 
 For more details, see the [Eleventy layouts docs](https://www.11ty.dev/docs/layouts/).

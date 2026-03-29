@@ -16,11 +16,13 @@ Use Ghost's built-in Code Injection feature to add the Pulse script — no theme
 
 Go to **Settings -> Code injection -> Site Header** and paste the Pulse script.
 
-<CodeBlock filename="Settings -> Code injection -> Site Header">{`<script
+```html filename="Settings -> Code injection -> Site Header"
+<script
   defer
   data-domain="your-site.com"
   src="https://pulse.ciphera.net/script.js"
-></script>`}</CodeBlock>
+></script>
+```
 
 Alternatively, you can add the script directly to your theme's `default.hbs` template file.
 
