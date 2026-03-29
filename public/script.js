@@ -18,6 +18,21 @@
     return;
   }
 
+  // * Self-traffic exclusion: site owners can exclude themselves via ?pulse-ignore
+  // * Visit any page with ?pulse-ignore to toggle the exclusion flag on/off
+  var IGNORE_KEY = 'pulse_ignore';
+  try {
+    if (location.search.indexOf('pulse-ignore') !== -1) {
+      if (localStorage.getItem(IGNORE_KEY)) {
+        localStorage.removeItem(IGNORE_KEY);
+      } else {
+        localStorage.setItem(IGNORE_KEY, 'true');
+      }
+    }
+    if (localStorage.getItem(IGNORE_KEY)) {
+      return;
+    }
+  } catch (e) {}
 
   // * Get config from script tag, or fall back to window.pulseConfig for GTM / tag managers
   // * GTM Custom HTML tags may not preserve data-* attributes on the injected <script> element,
