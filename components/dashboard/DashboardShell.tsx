@@ -395,7 +395,7 @@ export default function DashboardShell({
           {/* Content panel */}
           <div className="flex-1 flex flex-col min-w-0 mr-2 mb-2 rounded-2xl bg-neutral-950 border border-neutral-800/60 overflow-hidden">
             <ContentHeader onMobileMenuOpen={openMobile} />
-            <main className="flex-1 overflow-y-auto pt-4">
+            <main className="flex-1 overflow-y-auto overflow-x-hidden pt-4">
               {children}
             </main>
           </div>
