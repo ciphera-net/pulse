@@ -92,9 +92,12 @@ export async function deleteSite(id: string): Promise<{ message: string; purge_a
   })
 }
 
-export async function resetSiteData(id: string): Promise<void> {
-  await apiRequest(`/sites/${id}/reset`, {
+export type ResetModule = 'analytics' | 'journeys' | 'uptime' | 'pagespeed' | 'cdn' | 'search_console'
+
+export async function resetSiteData(id: string, modules: ResetModule[]): Promise<{ message: string; modules: string[] }> {
+  return apiRequest<{ message: string; modules: string[] }>(`/sites/${id}/reset`, {
     method: 'POST',
+    body: JSON.stringify({ modules }),
   })
 }
 
