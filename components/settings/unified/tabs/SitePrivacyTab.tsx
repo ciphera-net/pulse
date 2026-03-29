@@ -7,7 +7,7 @@ import { updateSite } from '@/lib/api/sites'
 import { updatePageSpeedConfig } from '@/lib/api/pagespeed'
 import { getRetentionOptionsForPlan, formatRetentionMonths } from '@/lib/plans'
 import { generatePrivacySnippet } from '@/lib/utils/privacySnippet'
-import { Copy, CheckCircle } from '@phosphor-icons/react'
+import { Copy, CheckCircle, EyeSlash } from '@phosphor-icons/react'
 import Link from 'next/link'
 
 const GEO_OPTIONS = [
@@ -208,6 +208,34 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
             className="w-full px-4 py-3 border border-neutral-800 rounded-lg bg-neutral-800/30 text-white font-mono text-sm focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all"
           />
           <p className="text-xs text-neutral-500 mt-1">Enter paths to exclude from tracking (one per line). Supports wildcards (e.g., /admin/*).</p>
+        </div>
+      </div>
+
+      {/* Exclude My Visits */}
+      <div className="space-y-3 pt-6 border-t border-neutral-800">
+        <h4 className="text-sm font-medium text-neutral-300">Exclude My Visits</h4>
+        <div className="p-4 rounded-xl border border-neutral-800 bg-neutral-800/30">
+          <div className="flex items-start gap-4">
+            <div className="p-2 rounded-lg bg-brand-orange/10 text-brand-orange mt-0.5">
+              <EyeSlash weight="bold" className="w-5 h-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-white">Stop tracking your own visits</p>
+              <p className="text-xs text-neutral-500 mt-1">
+                Click the link below to open your site with a special parameter. This sets a flag in your browser&apos;s localStorage that tells the Pulse script to skip tracking. Visit the link again to re-enable tracking.
+              </p>
+              <a
+                href={`https://${site.domain}?pulse-ignore`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 mt-3 text-sm font-medium text-brand-orange hover:text-brand-orange/80 transition-colors"
+              >
+                <EyeSlash weight="bold" className="w-4 h-4" />
+                Toggle exclusion on {site.domain}
+              </a>
+              <p className="text-xs text-neutral-500 mt-2">You need to do this once per browser. The flag persists until you clear localStorage or visit the link again to toggle it off.</p>
+            </div>
+          </div>
         </div>
       </div>
 
