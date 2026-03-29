@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Input, Button, Select, toast, Spinner, getAuthErrorMessage, CheckIcon, ZapIcon } from '@ciphera-net/ui'
+import { Input, Button, Select, toast, Spinner, CheckIcon, ZapIcon } from '@ciphera-net/ui'
 import { useSite } from '@/lib/swr/dashboard'
-import { updateSite, resetSiteData } from '@/lib/api/sites'
+import { updateSite } from '@/lib/api/sites'
 import { useAuth } from '@/lib/auth/context'
 import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { DangerZone } from '@/components/settings/unified/DangerZone'
 import DeleteSiteModal from '@/components/sites/DeleteSiteModal'
+import ResetDataModal from '@/components/settings/unified/ResetDataModal'
 import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
 import VerificationModal from '@/components/sites/VerificationModal'
 
@@ -77,15 +78,7 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
     onRegisterSave?.(handleSave)
   }, [handleSave, onRegisterSave])
 
-  const handleResetData = async () => {
-    if (!confirm('Are you sure you want to delete ALL data for this site? This action cannot be undone.')) return
-    try {
-      await resetSiteData(siteId)
-      toast.success('All site data has been reset')
-    } catch (error: unknown) {
-      toast.error(getAuthErrorMessage(error) || 'Failed to reset site data')
-    }
-  }
+  const [showResetModal, setShowResetModal] = useState(false)
 
   if (!site || !hasInitialized.current) {
     return (
@@ -179,7 +172,7 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
               description: 'Delete all stats and events. This cannot be undone.',
               buttonLabel: 'Reset Data',
               variant: 'outline',
-              onClick: handleResetData,
+              onClick: () => setShowResetModal(true),
             },
             {
               title: 'Delete Site',
@@ -191,6 +184,14 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
           ]}
         />
       )}
+
+      <ResetDataModal
+        open={showResetModal}
+        onClose={() => setShowResetModal(false)}
+        onReset={() => mutate()}
+        siteDomain={site?.domain || ''}
+        siteId={siteId}
+      />
 
       <DeleteSiteModal
         open={showDeleteModal}
