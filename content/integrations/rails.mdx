@@ -16,7 +16,8 @@ Add the Pulse script to your application layout with a production environment gu
 
 Use an `if` guard to only load the script in production.
 
-<CodeBlock filename="app/views/layouts/application.html.erb">{`<!DOCTYPE html>
+```erb filename="app/views/layouts/application.html.erb"
+<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
@@ -37,6 +38,7 @@ Use an `if` guard to only load the script in production.
 <body>
   <%= yield %>
 </body>
-</html>`}</CodeBlock>
+</html>
+```
 
 For more details, see the [Rails layout docs](https://guides.rubyonrails.org/layouts_and_rendering.html).

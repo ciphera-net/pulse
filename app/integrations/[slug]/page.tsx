@@ -10,14 +10,28 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { MDXRemote } from 'next-mdx-remote/rsc'
 import remarkGfm from 'remark-gfm'
+import rehypeMdxCodeProps from 'rehype-mdx-code-props'
 import { CodeBlock } from '@ciphera-net/ui'
 import { integrations, getIntegration } from '@/lib/integrations'
 import { getIntegrationGuide } from '@/lib/integration-content'
 import { IntegrationGuide } from '@/components/IntegrationGuide'
 
 // * ─── MDX Components ────────────────────────────────────────────
+// rehype-mdx-code-props passes meta (e.g. filename="app.tsx") as props
+// on the <pre> element. We intercept <pre> to extract filename and render CodeBlock.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mdxComponents = {
-  CodeBlock,
+  pre: ({ children, filename, ...props }: any) => {
+    const code = children?.props?.children
+    if (typeof code === 'string') {
+      return (
+        <CodeBlock filename={filename || 'code'}>
+          {code.replace(/\n$/, '')}
+        </CodeBlock>
+      )
+    }
+    return <pre {...props}>{children}</pre>
+  },
 }
 
 // * ─── Static Params ─────────────────────────────────────────────
@@ -115,7 +129,7 @@ export default async function IntegrationPage({ params }: PageProps) {
         <MDXRemote
           source={guide.content}
           components={mdxComponents}
-          options={{ mdxOptions: { remarkPlugins: [remarkGfm] } }}
+          options={{ mdxOptions: { remarkPlugins: [remarkGfm], rehypePlugins: [rehypeMdxCodeProps] } }}
         />
       </IntegrationGuide>
     </>
