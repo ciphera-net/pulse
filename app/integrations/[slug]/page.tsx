@@ -17,26 +17,23 @@ import { getIntegrationGuide } from '@/lib/integration-content'
 import { IntegrationGuide } from '@/components/IntegrationGuide'
 
 // * ─── MDX Components ────────────────────────────────────────────
-// Maps markdown code fences to CodeBlock. The `filename` meta is passed
-// as a prop via rehype-mdx-code-props (e.g. ```tsx filename="app.tsx").
+// rehype-mdx-code-props passes meta (e.g. filename="app.tsx") as props
+// on the <pre> element. We intercept <pre> to extract filename and render CodeBlock.
 const mdxComponents = {
-  pre: ({ children }: { children: React.ReactNode }) => children,
-  code: ({ children, className, filename, ...props }: {
-    children: React.ReactNode
-    className?: string
+  pre: ({ children, filename, ...props }: {
+    children: React.ReactElement
     filename?: string
     [key: string]: unknown
   }) => {
-    // Block code (inside <pre>) has className like "language-tsx"
-    if (className?.startsWith('language-') || filename) {
+    const code = children?.props?.children
+    if (typeof code === 'string') {
       return (
         <CodeBlock filename={filename || 'code'}>
-          {String(children).replace(/\n$/, '')}
+          {code.replace(/\n$/, '')}
         </CodeBlock>
       )
     }
-    // Inline code
-    return <code className={className} {...props}>{children}</code>
+    return <pre {...props}>{children}</pre>
   },
 }
 
