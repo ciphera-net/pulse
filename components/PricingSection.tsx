@@ -206,7 +206,7 @@ export default function PricingSection() {
   }
 
   return (
-    <section className="pt-8 pb-24 px-4 max-w-6xl mx-auto">
+    <section className="pb-24 px-4 max-w-6xl mx-auto">
       {/* Hero */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
