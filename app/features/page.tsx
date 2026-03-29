@@ -410,7 +410,7 @@ export default function FeaturesPage() {
             </Link>
           </div>
           <p className="mt-4 text-sm text-neutral-500">
-            Free plan includes 1 site and 10,000 pageviews/month
+            Hobby plan includes 1 site and 10,000 pageviews/month
           </p>
         </motion.div>
       </div>

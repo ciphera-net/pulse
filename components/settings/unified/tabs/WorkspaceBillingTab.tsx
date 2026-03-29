@@ -65,7 +65,7 @@ export default function WorkspaceBillingTab() {
       <div className="text-center py-12">
         <CreditCard className="w-10 h-10 text-neutral-500 mx-auto mb-3" />
         <h3 className="text-base font-semibold text-white mb-1">No subscription</h3>
-        <p className="text-sm text-neutral-400 mb-4">You're on the free plan.</p>
+        <p className="text-sm text-neutral-400 mb-4">You're on the Hobby plan.</p>
         <Link href="/pricing">
           <Button variant="primary" className="text-sm">View Plans</Button>
         </Link>
@@ -75,7 +75,7 @@ export default function WorkspaceBillingTab() {
 
   const planLabel = (() => {
     const raw = subscription.plan_id?.startsWith('price_') ? 'Pro'
-      : subscription.plan_id === 'free' || !subscription.plan_id ? 'Free'
+      : subscription.plan_id === 'free' || !subscription.plan_id ? 'Hobby'
       : subscription.plan_id
     return raw === 'Free' || raw === 'Pro' ? raw : raw.charAt(0).toUpperCase() + raw.slice(1)
   })()
@@ -96,7 +96,7 @@ export default function WorkspaceBillingTab() {
             <h4 className="text-lg font-bold text-white">{planLabel} Plan</h4>
             {isActive && (
               <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-green-900/30 text-green-400 border border-green-900/50">
-                {subscription.subscription_status === 'trialing' ? 'Trial' : 'Active'}
+                Active
               </span>
             )}
             {subscription.cancel_at_period_end && (

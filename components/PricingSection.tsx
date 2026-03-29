@@ -269,11 +269,11 @@ export default function PricingSection() {
 
         {/* Pricing Grid */}
         <div className="grid md:grid-cols-5 divide-y md:divide-y-0 md:divide-x divide-neutral-800">
-          {/* Free Plan */}
+          {/* Hobby Plan */}
           <div className="p-6 flex flex-col relative transition-colors hover:bg-neutral-800/50">
             <div className="mb-8">
-              <h3 className="text-lg font-bold text-white mb-2">Free</h3>
-              <p className="text-sm text-neutral-400 min-h-[40px] mb-4">For trying Pulse on a personal project</p>
+              <h3 className="text-lg font-bold text-white mb-2">Hobby</h3>
+              <p className="text-sm text-neutral-400 min-h-[40px] mb-4">For personal projects and small sites</p>
               <div className="flex items-baseline gap-1">
                 <span className="text-4xl font-bold text-white">€0</span>
                 <span className="text-neutral-400 font-medium">/forever</span>
@@ -364,7 +364,7 @@ export default function PricingSection() {
                   variant={isTeam ? 'primary' : 'secondary'}
                   className="w-full mb-8"
                 >
-                  {loadingPlan === plan.id ? 'Loading...' : !priceDetails ? 'Contact us' : 'Start free trial'}
+                  {loadingPlan === plan.id ? 'Loading...' : !priceDetails ? 'Contact us' : 'Subscribe'}
                 </Button>
 
                 <ul className="space-y-4 flex-grow">

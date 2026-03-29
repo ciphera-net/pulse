@@ -82,9 +82,9 @@ export default function HomePage() {
   useEffect(() => {
     if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
-    if (params.get('trial_started') === '1') {
-      toast.success('Your trial is active. You can add sites and start tracking.')
-      params.delete('trial_started')
+    if (params.get('subscribed') === '1') {
+      toast.success('Your subscription is active. You can add sites and start tracking.')
+      params.delete('subscribed')
       const newUrl = params.toString() ? `${window.location.pathname}?${params}` : window.location.pathname
       window.history.replaceState({}, '', newUrl)
     }
