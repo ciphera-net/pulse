@@ -16,19 +16,22 @@ Add the Pulse script via a Hugo partial or directly in your base template.
 
 Create an analytics partial with a production guard using Hugo's `.Site.IsServer` flag.
 
-<CodeBlock filename="layouts/partials/analytics.html">{`{{ if not .Site.IsServer }}
+```html filename="layouts/partials/analytics.html"
+{{ if not .Site.IsServer }}
 <script
   defer
   data-domain="your-site.com"
   src="https://pulse.ciphera.net/script.js"
 ></script>
-{{ end }}`}</CodeBlock>
+{{ end }}
+```
 
 ## Method 2: Include the partial in your base layout
 
 Add the partial to your `baseof.html` layout.
 
-<CodeBlock filename="layouts/_default/baseof.html">{`<!DOCTYPE html>
+```html filename="layouts/_default/baseof.html"
+<!DOCTYPE html>
 <html lang="{{ .Site.Language }}">
 <head>
     <meta charset="utf-8">
@@ -39,6 +42,7 @@ Add the partial to your `baseof.html` layout.
 <body>
     {{ block "main" . }}{{ end }}
 </body>
-</html>`}</CodeBlock>
+</html>
+```
 
 For more details, see the [Hugo partials docs](https://gohugo.io/templates/partials/).

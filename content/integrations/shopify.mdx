@@ -16,12 +16,14 @@ Add the Pulse script via the Shopify theme editor — no app needed.
 
 Go to **Online Store -> Themes -> Edit code** and open `layout/theme.liquid`. Add the Pulse script before the closing `</head>` tag.
 
-<CodeBlock filename="layout/theme.liquid">{`<!-- Add before </head> -->
+```liquid filename="layout/theme.liquid"
+<!-- Add before </head> -->
 <script
   defer
   data-domain="your-site.com"
   src="https://pulse.ciphera.net/script.js"
-></script>`}</CodeBlock>
+></script>
+```
 
 ## Method 2: Shopify Plus — Customer Events
 

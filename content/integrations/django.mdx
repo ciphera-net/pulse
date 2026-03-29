@@ -16,7 +16,8 @@ Add the Pulse script to your base template with a debug guard.
 
 Use Django's template tags to only load the script when `DEBUG` is `False`.
 
-<CodeBlock filename="templates/base.html">{`<!DOCTYPE html>
+```html filename="templates/base.html"
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -35,7 +36,8 @@ Use Django's template tags to only load the script when `DEBUG` is `False`.
 <body>
     {% block content %}{% endblock %}
 </body>
-</html>`}</CodeBlock>
+</html>
+```
 
 Make sure to pass `debug` to the template context via `settings.DEBUG`, or use a context processor to make it available globally.
 

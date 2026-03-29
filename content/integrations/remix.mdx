@@ -16,7 +16,8 @@ Add the Pulse script to your `app/root.tsx` so it's included on every route.
 
 The root route is the top-level layout in Remix. Add the Pulse script inside the `<head>` section.
 
-<CodeBlock filename="app/root.tsx">{`import {
+```tsx filename="app/root.tsx"
+import {
   Links,
   Meta,
   Outlet,
@@ -45,6 +46,7 @@ export default function App() {
       </body>
     </html>
   )
-}`}</CodeBlock>
+}
+```
 
 For more details, see the [Remix root docs](https://remix.run/docs/en/main/file-conventions/root).

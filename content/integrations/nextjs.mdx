@@ -16,7 +16,8 @@ The best way to add Pulse to your Next.js application is using the built-in `nex
 
 Add the Pulse script to your root layout so it loads on every page.
 
-<CodeBlock filename="app/layout.tsx">{`import Script from 'next/script'
+```tsx filename="app/layout.tsx"
+import Script from 'next/script'
 
 export default function RootLayout({
   children,
@@ -36,13 +37,15 @@ export default function RootLayout({
       <body>{children}</body>
     </html>
   )
-}`}</CodeBlock>
+}
+```
 
 ## Method 2: Pages Router
 
 If you're using the Pages Router, add the script to your custom `_app.tsx`.
 
-<CodeBlock filename="pages/_app.tsx">{`import Script from 'next/script'
+```tsx filename="pages/_app.tsx"
+import Script from 'next/script'
 import type { AppProps } from 'next/app'
 
 export default function App({ Component, pageProps }: AppProps) {
@@ -57,7 +60,8 @@ export default function App({ Component, pageProps }: AppProps) {
       <Component {...pageProps} />
     </>
   )
-}`}</CodeBlock>
+}
+```
 
 ## Configuration options
 

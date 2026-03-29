@@ -16,7 +16,8 @@ Add the Pulse script to your template engine's layout (EJS, Pug, Handlebars) or 
 
 If you use EJS as your template engine, add the script to your layout with a production guard.
 
-<CodeBlock filename="views/layout.ejs">{`<!DOCTYPE html>
+```html filename="views/layout.ejs"
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -35,13 +36,15 @@ If you use EJS as your template engine, add the script to your layout with a pro
 <body>
     <%- body %>
 </body>
-</html>`}</CodeBlock>
+</html>
+```
 
 ## Method 2: Static HTML
 
 If you serve static HTML files via Express, add the script directly.
 
-<CodeBlock filename="public/index.html">{`<!DOCTYPE html>
+```html filename="public/index.html"
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -58,4 +61,5 @@ If you serve static HTML files via Express, add the script directly.
 <body>
     <h1>Hello World</h1>
 </body>
-</html>`}</CodeBlock>
+</html>
+```
