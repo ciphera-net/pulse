@@ -106,18 +106,16 @@ const TRAFFIC_TIERS = [
 ]
 
 const COMPARISON_FEATURES = [
-  { feature: 'Sites', values: ['1', '1', 'Up to 5', 'Up to 10', 'Custom'] },
-  { feature: 'Pageviews', values: ['5k/mo', 'Based on plan', 'Based on plan', 'Based on plan', 'Custom'] },
-  { feature: 'Data retention', values: ['6 months', '1 year', '2 years', '3 years', 'Custom'] },
-  { feature: 'Team members', values: ['1', '1', 'Unlimited', 'Unlimited', 'Unlimited'] },
-  { feature: 'Custom events', values: [false, true, true, true, true] },
-  { feature: 'Funnels', values: [false, false, true, true, true] },
-  { feature: 'Uptime monitoring', values: [false, false, true, true, true] },
-  { feature: 'API access', values: [false, false, true, true, true] },
-  { feature: 'Email reports', values: [false, true, true, true, true] },
-  { feature: 'Priority support', values: [false, false, false, true, true] },
-  { feature: 'Managed proxy', values: [false, false, false, false, true] },
-  { feature: 'Raw data export', values: [false, false, false, false, true] },
+  { feature: 'Sites', values: ['1', '1', 'Up to 5', 'Up to 10'] },
+  { feature: 'Pageviews', values: ['5k/mo', 'Based on plan', 'Based on plan', 'Based on plan'] },
+  { feature: 'Data retention', values: ['6 months', '1 year', '2 years', '3 years'] },
+  { feature: 'Team members', values: ['1', '1', 'Unlimited', 'Unlimited'] },
+  { feature: 'Custom events', values: [false, true, true, true] },
+  { feature: 'Funnels', values: [false, false, true, true] },
+  { feature: 'Uptime monitoring', values: [false, false, true, true] },
+  { feature: 'API access', values: [false, false, true, true] },
+  { feature: 'Email reports', values: [false, true, true, true] },
+  { feature: 'Priority support', values: [false, false, false, true] },
 ]
 
 export default function PricingSection() {
@@ -447,7 +445,7 @@ export default function PricingSection() {
             <thead>
               <tr className="border-b border-neutral-800">
                 <th className="p-4 sm:p-6 text-sm font-medium text-neutral-500">Feature</th>
-                {['Hobby', 'Solo', 'Team', 'Business', 'Enterprise'].map((plan) => (
+                {['Hobby', 'Solo', 'Team', 'Business'].map((plan) => (
                   <th key={plan} className={`p-4 sm:p-6 text-sm font-bold ${plan === 'Team' ? 'text-brand-orange' : 'text-white'}`}>
                     {plan}
                   </th>
