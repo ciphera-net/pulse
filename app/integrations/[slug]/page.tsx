@@ -19,12 +19,9 @@ import { IntegrationGuide } from '@/components/IntegrationGuide'
 // * ─── MDX Components ────────────────────────────────────────────
 // rehype-mdx-code-props passes meta (e.g. filename="app.tsx") as props
 // on the <pre> element. We intercept <pre> to extract filename and render CodeBlock.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mdxComponents = {
-  pre: ({ children, filename, ...props }: {
-    children: React.ReactElement
-    filename?: string
-    [key: string]: unknown
-  }) => {
+  pre: ({ children, filename, ...props }: any) => {
     const code = children?.props?.children
     if (typeof code === 'string') {
       return (
