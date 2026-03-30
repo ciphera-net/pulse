@@ -41,19 +41,19 @@ const LIMIT = 7
 
 function getChannelIcon(channel: string) {
   switch (channel) {
-    case 'Direct': return <LinkIcon className="w-4 h-4" />
-    case 'Organic Search': return <MagnifyingGlass className="w-4 h-4" />
-    case 'Organic Social': return <UsersThree className="w-4 h-4" />
-    case 'Paid Search': return <CurrencyCircleDollar className="w-4 h-4" />
-    case 'Paid Social': return <Megaphone className="w-4 h-4" />
-    case 'AI': return <Robot className="w-4 h-4" />
-    case 'Email': return <Envelope className="w-4 h-4" />
-    case 'Referral': return <ArrowSquareOut className="w-4 h-4" />
-    case 'Organic Video': return <PlayCircle className="w-4 h-4" />
-    case 'Display': return <Monitor className="w-4 h-4" />
-    case 'Affiliate': return <Handshake className="w-4 h-4" />
-    case 'SMS': return <ChatCircle className="w-4 h-4" />
-    default: return <Question className="w-4 h-4" />
+    case 'Direct': return <LinkIcon className="w-5 h-5" />
+    case 'Organic Search': return <MagnifyingGlass className="w-5 h-5" />
+    case 'Organic Social': return <UsersThree className="w-5 h-5" />
+    case 'Paid Search': return <CurrencyCircleDollar className="w-5 h-5" />
+    case 'Paid Social': return <Megaphone className="w-5 h-5" />
+    case 'AI': return <Robot className="w-5 h-5" />
+    case 'Email': return <Envelope className="w-5 h-5" />
+    case 'Referral': return <ArrowSquareOut className="w-5 h-5" />
+    case 'Organic Video': return <PlayCircle className="w-5 h-5" />
+    case 'Display': return <Monitor className="w-5 h-5" />
+    case 'Affiliate': return <Handshake className="w-5 h-5" />
+    case 'SMS': return <ChatCircle className="w-5 h-5" />
+    default: return <Question className="w-5 h-5" />
   }
 }
 
