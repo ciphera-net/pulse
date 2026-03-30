@@ -92,7 +92,7 @@ export async function deleteSite(id: string): Promise<{ message: string; purge_a
   })
 }
 
-export type ResetModule = 'analytics' | 'journeys' | 'uptime' | 'pagespeed' | 'cdn' | 'search_console'
+export type ResetModule = 'analytics' | 'journeys' | 'funnels' | 'uptime' | 'pagespeed' | 'cdn' | 'search_console'
 
 export async function resetSiteData(id: string, modules: ResetModule[]): Promise<{ message: string; modules: string[] }> {
   return apiRequest<{ message: string; modules: string[] }>(`/sites/${id}/reset`, {
