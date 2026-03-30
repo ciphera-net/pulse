@@ -40,6 +40,11 @@ export interface TopReferrer {
   pageviews: number
 }
 
+export interface ChannelStat {
+  channel: string
+  pageviews: number
+}
+
 export interface CountryStat {
   country: string
   pageviews: number
@@ -199,6 +204,7 @@ export const getScreenResolutions = createListFetcher<ScreenResolutionStat>('scr
 export const getLanguages = createListFetcher<LanguageStat>('languages', 'languages')
 export const getTimezones = createListFetcher<TimezoneStat>('timezones', 'timezones')
 export const getGoalStats = createListFetcher<GoalCountStat>('goals/stats', 'goal_counts', 20)
+export const getChannels = createListFetcher<ChannelStat>('channels', 'channels', 20)
 export const getCampaigns = createListFetcher<CampaignStat>('campaigns', 'campaigns')
 
 // ─── Stats & Realtime ───────────────────────────────────────────────
@@ -249,6 +255,7 @@ export interface DashboardData {
   entry_pages: TopPage[]
   exit_pages: TopPage[]
   top_referrers: TopReferrer[]
+  channels?: ChannelStat[]
   countries: CountryStat[]
   cities: CityStat[]
   regions: RegionStat[]
@@ -311,6 +318,7 @@ export interface DashboardDevicesData {
 
 export interface DashboardReferrersData {
   top_referrers: TopReferrer[]
+  channels?: ChannelStat[]
 }
 
 export interface DashboardGoalsData {

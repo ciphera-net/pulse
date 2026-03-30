@@ -393,6 +393,7 @@ export default function PublicDashboardPage() {
           />
           <TopReferrers
             referrers={safeTopReferrers}
+            channels={data?.channels ?? []}
             collectReferrers={site.collect_referrers ?? true}
             siteId={siteId}
             dateRange={dateRange}
