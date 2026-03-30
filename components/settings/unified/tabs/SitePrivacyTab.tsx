@@ -36,6 +36,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
   const [collectReferrers, setCollectReferrers] = useState(true)
   const [collectDeviceInfo, setCollectDeviceInfo] = useState(true)
   const [collectScreenRes, setCollectScreenRes] = useState(true)
+  const [collectAudienceData, setCollectAudienceData] = useState(true)
   const [collectGeoData, setCollectGeoData] = useState('full')
   const [hideUnknownLocations, setHideUnknownLocations] = useState(false)
   const [dataRetention, setDataRetention] = useState(6)
@@ -52,6 +53,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
     setCollectReferrers(site.collect_referrers ?? true)
     setCollectDeviceInfo(site.collect_device_info ?? true)
     setCollectScreenRes(site.collect_screen_resolution ?? true)
+    setCollectAudienceData(site.collect_audience_data ?? true)
     setCollectGeoData(site.collect_geo_data ?? 'full')
     setHideUnknownLocations(site.hide_unknown_locations ?? false)
     setDataRetention(site.data_retention_months ?? 6)
@@ -61,6 +63,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
       collectReferrers: site.collect_referrers ?? true,
       collectDeviceInfo: site.collect_device_info ?? true,
       collectScreenRes: site.collect_screen_resolution ?? true,
+      collectAudienceData: site.collect_audience_data ?? true,
       collectGeoData: site.collect_geo_data ?? 'full',
       hideUnknownLocations: site.hide_unknown_locations ?? false,
       dataRetention: site.data_retention_months ?? 6,
@@ -88,9 +91,9 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
   // Track dirty state
   useEffect(() => {
     if (!initialRef.current) return
-    const current = JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectGeoData, hideUnknownLocations, dataRetention, excludedPaths, psiFrequency })
+    const current = JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, excludedPaths, psiFrequency })
     onDirtyChange?.(current !== initialRef.current)
-  }, [collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectGeoData, hideUnknownLocations, dataRetention, excludedPaths, psiFrequency, onDirtyChange])
+  }, [collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, excludedPaths, psiFrequency, onDirtyChange])
 
   const handleSave = useCallback(async () => {
     try {
@@ -100,6 +103,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
         collect_referrers: collectReferrers,
         collect_device_info: collectDeviceInfo,
         collect_screen_resolution: collectScreenRes,
+        collect_audience_data: collectAudienceData,
         collect_geo_data: collectGeoData as 'full' | 'country' | 'none',
         hide_unknown_locations: hideUnknownLocations,
         data_retention_months: dataRetention,
@@ -111,13 +115,13 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
         mutatePSIConfig()
       }
       await mutate()
-      initialRef.current = JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectGeoData, hideUnknownLocations, dataRetention, excludedPaths, psiFrequency })
+      initialRef.current = JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, excludedPaths, psiFrequency })
       onDirtyChange?.(false)
       toast.success('Privacy settings updated')
     } catch {
       toast.error('Failed to save')
     }
-  }, [siteId, site?.name, collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectGeoData, hideUnknownLocations, dataRetention, excludedPaths, psiFrequency, psiConfig, mutatePSIConfig, mutate, onDirtyChange])
+  }, [siteId, site?.name, collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, excludedPaths, psiFrequency, psiConfig, mutatePSIConfig, mutate, onDirtyChange])
 
   // Register save handler with modal
   useEffect(() => {
@@ -138,6 +142,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
         <PrivacyToggle label="Referrers" desc="Track where visitors come from." checked={collectReferrers} onToggle={() => setCollectReferrers(v => !v)} />
         <PrivacyToggle label="Device info" desc="Track browser, OS, and device type." checked={collectDeviceInfo} onToggle={() => setCollectDeviceInfo(v => !v)} />
         <PrivacyToggle label="Screen resolution" desc="Track visitor screen dimensions." checked={collectScreenRes} onToggle={() => setCollectScreenRes(v => !v)} />
+        <PrivacyToggle label="Audience data" desc="Track visitor language and timezone." checked={collectAudienceData} onToggle={() => setCollectAudienceData(v => !v)} />
         <PrivacyToggle label="Hide unknown locations" desc='Exclude "Unknown" from location stats.' checked={hideUnknownLocations} onToggle={() => setHideUnknownLocations(v => !v)} />
       </div>
 

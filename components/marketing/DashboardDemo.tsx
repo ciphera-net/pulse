@@ -3,7 +3,7 @@
 import Chart from '@/components/dashboard/Chart'
 import ContentStats from '@/components/dashboard/ContentStats'
 import TopReferrers from '@/components/dashboard/TopReferrers'
-import Locations from '@/components/dashboard/Locations'
+import Audience from '@/components/dashboard/Locations'
 import TechSpecs from '@/components/dashboard/TechSpecs'
 import { useState } from 'react'
 
@@ -245,10 +245,12 @@ export default function DashboardDemo() {
 
           {/* 2-col grid: Locations + Tech */}
           <div className="grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
-            <Locations
+            <Audience
               countries={FAKE_COUNTRIES}
               cities={FAKE_CITIES}
               regions={FAKE_REGIONS}
+              languages={[]}
+              timezones={[]}
               geoDataLevel="full"
               siteId="demo"
               dateRange={dateRange}

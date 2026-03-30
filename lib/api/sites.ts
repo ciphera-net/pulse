@@ -17,6 +17,7 @@ export interface Site {
   collect_device_info?: boolean
   collect_geo_data?: GeoDataLevel
   collect_screen_resolution?: boolean
+  collect_audience_data?: boolean
   // Bot and noise filtering
   filter_bots?: boolean
   // Hide unknown locations from stats
@@ -51,6 +52,7 @@ export interface UpdateSiteRequest {
   collect_device_info?: boolean
   collect_geo_data?: GeoDataLevel
   collect_screen_resolution?: boolean
+  collect_audience_data?: boolean
   // Bot and noise filtering
   filter_bots?: boolean
   // Script feature toggles

@@ -57,6 +57,16 @@ export interface RegionStat {
   pageviews: number
 }
 
+export interface LanguageStat {
+  language: string
+  pageviews: number
+}
+
+export interface TimezoneStat {
+  timezone: string
+  pageviews: number
+}
+
 export interface BrowserStat {
   browser: string
   pageviews: number
@@ -186,6 +196,8 @@ export const getDevices = createListFetcher<DeviceStat>('devices', 'devices')
 export const getEntryPages = createListFetcher<TopPage>('entry-pages', 'pages')
 export const getExitPages = createListFetcher<TopPage>('exit-pages', 'pages')
 export const getScreenResolutions = createListFetcher<ScreenResolutionStat>('screen-resolutions', 'screen_resolutions')
+export const getLanguages = createListFetcher<LanguageStat>('languages', 'languages')
+export const getTimezones = createListFetcher<TimezoneStat>('timezones', 'timezones')
 export const getGoalStats = createListFetcher<GoalCountStat>('goals/stats', 'goal_counts', 20)
 export const getCampaigns = createListFetcher<CampaignStat>('campaigns', 'campaigns')
 
@@ -240,6 +252,8 @@ export interface DashboardData {
   countries: CountryStat[]
   cities: CityStat[]
   regions: RegionStat[]
+  languages: LanguageStat[]
+  timezones: TimezoneStat[]
   browsers: BrowserStat[]
   os: OSStat[]
   devices: DeviceStat[]
@@ -284,6 +298,8 @@ export interface DashboardLocationsData {
   countries: CountryStat[]
   cities: CityStat[]
   regions: RegionStat[]
+  languages: LanguageStat[]
+  timezones: TimezoneStat[]
 }
 
 export interface DashboardDevicesData {
