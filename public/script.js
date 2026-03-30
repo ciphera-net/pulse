@@ -172,6 +172,8 @@
       title: document.title,
       referrer: document.referrer || '',
       screen: screenSize,
+      language: navigator.language || '',
+      timezone: (function() { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch(e) { return ''; } })(),
     };
 
     // * Send event
