@@ -15,32 +15,65 @@ import { Modal, GlobeIcon, ArrowRightIcon } from '@ciphera-net/ui'
 import { ListSkeleton } from '@/components/skeletons'
 import VirtualList from './VirtualList'
 import { ShieldCheck, Detective, Broadcast, MapPin, FrameCornersIcon } from '@phosphor-icons/react'
-import { getCountries, getCities, getRegions } from '@/lib/api/stats'
+import { getCountries, getCities, getRegions, getLanguages, getTimezones } from '@/lib/api/stats'
 import { type DimensionFilter } from '@/lib/filters'
 
-interface LocationProps {
+interface AudienceProps {
   countries: Array<{ country: string; pageviews: number }>
   cities: Array<{ city: string; country: string; pageviews: number }>
   regions: Array<{ region: string; country: string; pageviews: number }>
+  languages: Array<{ language: string; pageviews: number }>
+  timezones: Array<{ timezone: string; pageviews: number }>
   geoDataLevel?: 'full' | 'country' | 'none'
+  collectAudienceData?: boolean
   siteId: string
   dateRange: { start: string, end: string }
   onFilter?: (filter: DimensionFilter) => void
 }
 
-type Tab = 'map' | 'countries' | 'regions' | 'cities'
+type Tab = 'map' | 'countries' | 'regions' | 'cities' | 'languages' | 'timezones'
 
 const LIMIT = 7
 
-const TAB_TO_DIMENSION: Record<string, string> = { countries: 'country', regions: 'region', cities: 'city' }
+const TAB_TO_DIMENSION: Record<string, string> = { countries: 'country', regions: 'region', cities: 'city', languages: 'language', timezones: 'timezone' }
 
-export default function Locations({ countries, cities, regions, geoDataLevel = 'full', siteId, dateRange, onFilter }: LocationProps) {
+function formatLanguage(locale: string): string {
+  if (locale === 'Unknown') return 'Unknown'
+  try {
+    const parts = locale.split('-')
+    const langDisplay = new Intl.DisplayNames(['en'], { type: 'language' })
+    const langName = langDisplay.of(parts[0]) || parts[0]
+    if (parts[1]) {
+      const regionDisplay = new Intl.DisplayNames(['en'], { type: 'region' })
+      const regionName = regionDisplay.of(parts[1].toUpperCase())
+      if (regionName) return `${langName} (${regionName})`
+    }
+    return langName
+  } catch {
+    return locale
+  }
+}
+
+function formatTimezone(tz: string): string {
+  if (tz === 'Unknown') return 'Unknown'
+  try {
+    const now = new Date()
+    const formatter = new Intl.DateTimeFormat('en', { timeZone: tz, timeZoneName: 'shortOffset' })
+    const parts = formatter.formatToParts(now)
+    const offset = parts.find(p => p.type === 'timeZoneName')?.value || ''
+    return `${tz} (${offset})`
+  } catch {
+    return tz
+  }
+}
+
+export default function Audience({ countries, cities, regions, languages, timezones, geoDataLevel = 'full', collectAudienceData = true, siteId, dateRange, onFilter }: AudienceProps) {
   const [activeTab, setActiveTab] = useState<Tab>('countries')
   const handleTabKeyDown = useTabListKeyboard()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalSearch, setModalSearch] = useState('')
-  type LocationItem = { country?: string; city?: string; region?: string; pageviews: number }
-  const [fullData, setFullData] = useState<LocationItem[]>([])
+  type AudienceItem = { country?: string; city?: string; region?: string; language?: string; timezone?: string; pageviews: number }
+  const [fullData, setFullData] = useState<AudienceItem[]>([])
   const [isLoadingFull, setIsLoadingFull] = useState(false)
 
   const containerRef = useRef<HTMLDivElement>(null)
@@ -62,13 +95,17 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
       const fetchData = async () => {
         setIsLoadingFull(true)
         try {
-          let data: LocationItem[] = []
+          let data: AudienceItem[] = []
           if (activeTab === 'countries') {
             data = await getCountries(siteId, dateRange.start, dateRange.end, 250)
           } else if (activeTab === 'regions') {
             data = await getRegions(siteId, dateRange.start, dateRange.end, 250)
           } else if (activeTab === 'cities') {
             data = await getCities(siteId, dateRange.start, dateRange.end, 250)
+          } else if (activeTab === 'languages') {
+            data = await getLanguages(siteId, dateRange.start, dateRange.end, 250)
+          } else if (activeTab === 'timezones') {
+            data = await getTimezones(siteId, dateRange.start, dateRange.end, 250)
           }
           setFullData(data)
         } catch (e) {
@@ -85,7 +122,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
 
   const getFlagComponent = (countryCode: string) => {
     if (!countryCode || countryCode === 'Unknown') return null
-    
+
     switch (countryCode) {
       case 'T1':
         return <ShieldCheck className="w-5 h-5 text-purple-600 dark:text-purple-400" />
@@ -105,7 +142,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
 
   const getCountryName = (code: string) => {
     if (!code || code === 'Unknown') return 'Unknown'
-    
+
     switch (code) {
       case 'T1': return 'Tor Network'
       case 'A1': return 'Anonymous Proxy'
@@ -114,7 +151,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
       case 'EU': return 'Europe'
       case 'AP': return 'Asia/Pacific'
     }
-    
+
     try {
       const regionNames = new Intl.DisplayNames(['en'], { type: 'region' })
       return regionNames.of(code) || code
@@ -135,19 +172,19 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
     }
 
     if (!regionCode || regionCode === 'Unknown' || !countryCode || countryCode === 'Unknown') return 'Unknown'
-    
+
     try {
       const countryData = iso3166.data[countryCode]
       if (!countryData || !countryData.sub) return regionCode
-      
+
       // ISO 3166-2 structure keys are typically "US-OR"
       const fullCode = `${countryCode}-${regionCode}`
       const regionData = countryData.sub[fullCode]
-      
+
       if (regionData && regionData.name) {
         return regionData.name
       }
-      
+
       return regionCode
     } catch (e) {
       return regionCode
@@ -162,36 +199,68 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
       case 'A2': return 'Satellite Provider'
       case 'O1': return 'Other'
     }
-    
+
     if (!city || city === 'Unknown') return 'Unknown'
     return city
   }
 
-  const getData = () => {
+  const getItemLabel = (item: AudienceItem): string => {
+    switch (activeTab) {
+      case 'countries': return getCountryName(item.country ?? '')
+      case 'regions': return getRegionName(item.region ?? '', item.country ?? '')
+      case 'cities': return getCityName(item.city ?? '')
+      case 'languages': return formatLanguage(item.language ?? '')
+      case 'timezones': return formatTimezone(item.timezone ?? '')
+      default: return ''
+    }
+  }
+
+  const getItemFilterValue = (item: AudienceItem): string | undefined => {
+    switch (activeTab) {
+      case 'countries': return item.country
+      case 'regions': return item.region
+      case 'cities': return item.city
+      case 'languages': return item.language
+      case 'timezones': return item.timezone
+      default: return undefined
+    }
+  }
+
+  const getData = (): AudienceItem[] => {
     switch (activeTab) {
       case 'countries': return countries
       case 'regions': return regions
       case 'cities': return cities
+      case 'languages': return languages
+      case 'timezones': return timezones
       default: return []
     }
   }
 
   // Check if the current tab's data is disabled by privacy settings
   const isTabDisabled = () => {
+    if (activeTab === 'languages' || activeTab === 'timezones') {
+      return !collectAudienceData
+    }
     if (geoDataLevel === 'none') return true
     if (geoDataLevel === 'country' && (activeTab === 'regions' || activeTab === 'cities')) return true
     return false
   }
 
   // Filter out "Unknown" entries that result from disabled collection
-  const filterUnknown = (data: LocationItem[]) => {
+  const filterUnknown = (data: AudienceItem[]) => {
     return data.filter(item => {
       if (activeTab === 'countries') return item.country && item.country !== 'Unknown' && item.country !== ''
       if (activeTab === 'regions') return item.region && item.region !== 'Unknown' && item.region !== ''
       if (activeTab === 'cities') return item.city && item.city !== 'Unknown' && item.city !== ''
+      if (activeTab === 'languages') return item.language && item.language !== 'Unknown' && item.language !== ''
+      if (activeTab === 'timezones') return item.timezone && item.timezone !== 'Unknown' && item.timezone !== ''
       return true
     })
   }
+
+  // Whether the current tab shows a flag icon
+  const showsFlag = activeTab === 'countries' || activeTab === 'regions' || activeTab === 'cities'
 
   const isVisualTab = activeTab === 'map'
   const rawData = isVisualTab ? [] : getData()
@@ -205,6 +274,9 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
   const showViewAll = !isVisualTab && hasData && data.length > LIMIT
 
   const getDisabledMessage = () => {
+    if (activeTab === 'languages' || activeTab === 'timezones') {
+      return 'Audience data collection is disabled in site settings'
+    }
     if (geoDataLevel === 'none') {
       return 'Geographic data collection is disabled in site settings'
     }
@@ -221,20 +293,20 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
           <div className="flex items-center gap-2">
             <MapPin className="w-5 h-5 text-neutral-400 dark:text-neutral-500" weight="bold" />
             <h3 className="text-lg font-semibold text-white">
-              Locations
+              Audience
             </h3>
             {showViewAll && (
               <button
                 onClick={() => setIsModalOpen(true)}
                 className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-lg"
-                aria-label="View all locations"
+                aria-label="View all audience data"
               >
                 <FrameCornersIcon className="w-4 h-4" weight="bold" />
               </button>
             )}
           </div>
-          <div className="flex gap-1 overflow-x-auto scrollbar-hide" role="tablist" aria-label="Location view tabs" onKeyDown={handleTabKeyDown}>
-            {(['map', 'countries', 'regions', 'cities'] as Tab[]).map((tab) => (
+          <div className="flex gap-1 overflow-x-auto scrollbar-hide" role="tablist" aria-label="Audience view tabs" onKeyDown={handleTabKeyDown}>
+            {(['map', 'countries', 'regions', 'cities', 'languages', 'timezones'] as Tab[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -249,7 +321,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
                 {tab}
                 {activeTab === tab && (
                   <motion.div
-                    layoutId="locationsTab"
+                    layoutId="audienceTab"
                     className="absolute inset-x-0 -bottom-px h-0.5 bg-brand-orange"
                     transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                   />
@@ -290,15 +362,16 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
           ) : (
             hasData ? (
               <>
-                {displayedData.map((item) => {
+                {displayedData.map((item, idx) => {
                   const dim = TAB_TO_DIMENSION[activeTab]
-                  const filterValue = activeTab === 'countries' ? item.country : activeTab === 'regions' ? item.region : item.city
+                  const filterValue = getItemFilterValue(item)
                   const canFilter = onFilter && dim && filterValue
                   const maxPv = displayedData[0]?.pageviews ?? 0
                   const barWidth = maxPv > 0 ? (item.pageviews / maxPv) * 75 : 0
+                  const itemKey = activeTab === 'languages' ? (item.language ?? idx) : activeTab === 'timezones' ? (item.timezone ?? idx) : `${item.country ?? ''}-${item.region ?? ''}-${item.city ?? ''}`
                   return (
                     <div
-                      key={`${item.country ?? ''}-${item.region ?? ''}-${item.city ?? ''}`}
+                      key={itemKey}
                       onClick={() => canFilter && onFilter({ dimension: dim, operator: 'is', values: [filterValue!] })}
                       className={`relative flex items-center justify-between h-9 group hover:bg-neutral-800/50 rounded-lg px-2 -mx-2 transition-colors${canFilter ? ' cursor-pointer' : ''}`}
                     >
@@ -307,11 +380,9 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
                         style={{ width: `${barWidth}%` }}
                       />
                       <div className="relative flex-1 truncate text-white flex items-center gap-3">
-                        <span className="shrink-0">{getFlagComponent(item.country ?? '')}</span>
+                        {showsFlag && <span className="shrink-0">{getFlagComponent(item.country ?? '')}</span>}
                         <span className="truncate">
-                          {activeTab === 'countries' ? getCountryName(item.country ?? '') :
-                           activeTab === 'regions' ? getRegionName(item.region ?? '', item.country ?? '') :
-                           getCityName(item.city ?? '')}
+                          {getItemLabel(item)}
                         </span>
                       </div>
                       <div className="relative flex items-center gap-2 ml-4">
@@ -335,10 +406,12 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
                 <GlobeIcon className="w-8 h-8 text-neutral-400" />
               </div>
               <h4 className="font-semibold text-white">
-                No location data yet
+                No {activeTab === 'languages' ? 'language' : activeTab === 'timezones' ? 'timezone' : 'location'} data yet
               </h4>
               <p className="text-sm text-neutral-400 max-w-xs">
-                Visitor locations will appear here based on anonymous geographic data.
+                {activeTab === 'languages' ? 'Visitor language preferences will appear here.' :
+                 activeTab === 'timezones' ? 'Visitor timezones will appear here.' :
+                 'Visitor locations will appear here based on anonymous geographic data.'}
               </p>
             </div>
           )
@@ -357,7 +430,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
             type="text"
             value={modalSearch}
             onChange={(e) => setModalSearch(e.target.value)}
-            placeholder="Search locations..."
+            placeholder={`Search ${activeTab}...`}
             className="w-full px-3 py-2 mb-3 text-sm bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
           />
         </div>
@@ -370,7 +443,7 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
             const rawModalData = fullData.length > 0 ? fullData : data
             const search = modalSearch.toLowerCase()
             const modalData = !modalSearch ? rawModalData : rawModalData.filter(item => {
-              const label = activeTab === 'countries' ? getCountryName(item.country ?? '') : activeTab === 'regions' ? getRegionName(item.region ?? '', item.country ?? '') : getCityName(item.city ?? '')
+              const label = getItemLabel(item)
               return label.toLowerCase().includes(search)
             })
             const modalTotal = modalData.reduce((sum, item) => sum + item.pageviews, 0)
@@ -379,22 +452,21 @@ export default function Locations({ countries, cities, regions, geoDataLevel = '
                 items={modalData}
                 estimateSize={36}
                 className="max-h-[80vh] overflow-y-auto pr-2"
-                renderItem={(item) => {
+                renderItem={(item, idx) => {
                   const dim = TAB_TO_DIMENSION[activeTab]
-                  const filterValue = activeTab === 'countries' ? item.country : activeTab === 'regions' ? item.region : item.city
+                  const filterValue = getItemFilterValue(item)
                   const canFilter = onFilter && dim && filterValue
+                  const itemKey = activeTab === 'languages' ? (item.language ?? idx) : activeTab === 'timezones' ? (item.timezone ?? idx) : `${item.country ?? ''}-${item.region ?? ''}-${item.city ?? ''}`
                   return (
                     <div
-                      key={`${item.country ?? ''}-${item.region ?? ''}-${item.city ?? ''}`}
+                      key={itemKey}
                       onClick={() => { if (canFilter) { onFilter({ dimension: dim, operator: 'is', values: [filterValue!] }); setIsModalOpen(false) } }}
                       className={`flex items-center justify-between h-9 group hover:bg-neutral-800 rounded-lg px-2 transition-colors${canFilter ? ' cursor-pointer' : ''}`}
                     >
                       <div className="flex-1 truncate text-white flex items-center gap-3">
-                        <span className="shrink-0">{getFlagComponent(item.country ?? '')}</span>
+                        {showsFlag && <span className="shrink-0">{getFlagComponent(item.country ?? '')}</span>}
                         <span className="truncate">
-                          {activeTab === 'countries' ? getCountryName(item.country ?? '') :
-                           activeTab === 'regions' ? getRegionName(item.region ?? '', item.country ?? '') :
-                           getCityName(item.city ?? '')}
+                          {getItemLabel(item)}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 ml-4">

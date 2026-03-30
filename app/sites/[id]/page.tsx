@@ -28,7 +28,7 @@ import AddFilterDropdown, { type FilterSuggestion, type FilterSuggestions } from
 const Chart = dynamic(() => import('@/components/dashboard/Chart'), { ssr: false })
 import ContentStats from '@/components/dashboard/ContentStats'
 import TopReferrers from '@/components/dashboard/TopReferrers'
-import Locations from '@/components/dashboard/Locations'
+import Audience from '@/components/dashboard/Locations'
 import TechSpecs from '@/components/dashboard/TechSpecs'
 
 const GoalStats = dynamic(() => import('@/components/dashboard/GoalStats'))
@@ -567,11 +567,14 @@ export default function SiteDashboardPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2 mb-6 [&>*]:min-w-0">
-        <Locations
+        <Audience
           countries={dashboard?.countries ?? []}
           cities={dashboard?.cities ?? []}
           regions={dashboard?.regions ?? []}
+          languages={dashboard?.languages ?? []}
+          timezones={dashboard?.timezones ?? []}
           geoDataLevel={site.collect_geo_data || 'full'}
+          collectAudienceData={site.collect_audience_data ?? true}
           siteId={siteId}
           dateRange={dateRange}
           onFilter={handleAddFilter}
