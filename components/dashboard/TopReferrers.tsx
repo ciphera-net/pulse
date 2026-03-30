@@ -195,7 +195,7 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
                       className={`relative flex items-center justify-between h-9 group hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 rounded-lg px-2 -mx-2 transition-colors${onFilter ? ' cursor-pointer' : ''}`}
                     >
                       <div
-                        className="absolute inset-y-0.5 left-0.5 bg-gradient-to-r from-brand-orange/20 via-brand-orange/10 to-transparent border border-brand-orange/15 shadow-[inset_0_1px_0_rgba(253,94,15,0.1)] rounded-md transition-all"
+                        className="absolute inset-y-0.5 left-0.5 bg-gradient-to-r from-brand-orange/12 via-brand-orange/6 to-transparent border border-brand-orange/20 shadow-[inset_0_1px_0_rgba(253,94,15,0.08)] rounded-md transition-all"
                         style={{ width: `${barWidth}%` }}
                       />
                       <div className="relative flex-1 truncate text-white flex items-center gap-3">
@@ -250,7 +250,7 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
                       className="relative flex items-center justify-between h-9 group hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 rounded-lg px-2 -mx-2 transition-colors"
                     >
                       <div
-                        className="absolute inset-y-0.5 left-0.5 bg-gradient-to-r from-brand-orange/20 via-brand-orange/10 to-transparent border border-brand-orange/15 shadow-[inset_0_1px_0_rgba(253,94,15,0.1)] rounded-md transition-all"
+                        className="absolute inset-y-0.5 left-0.5 bg-gradient-to-r from-brand-orange/12 via-brand-orange/6 to-transparent border border-brand-orange/20 shadow-[inset_0_1px_0_rgba(253,94,15,0.08)] rounded-md transition-all"
                         style={{ width: `${barWidth}%` }}
                       />
                       <div className="relative flex-1 truncate text-white flex items-center gap-3">
