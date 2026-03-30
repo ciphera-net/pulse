@@ -453,7 +453,7 @@ export default function Audience({ countries, cities, regions, languages, timezo
                       className={`relative flex items-center justify-between h-9 group hover:bg-neutral-800/50 rounded-lg px-2 -mx-2 transition-colors${canFilter ? ' cursor-pointer' : ''}`}
                     >
                       <div
-                        className="absolute inset-y-0.5 left-0.5 bg-brand-orange/15 dark:bg-brand-orange/40 rounded-md transition-all"
+                        className="absolute inset-y-0.5 left-0.5 bg-gradient-to-r from-brand-orange/20 via-brand-orange/10 to-transparent border border-brand-orange/15 shadow-[inset_0_1px_0_rgba(253,94,15,0.1)] rounded-md transition-all"
                         style={{ width: `${barWidth}%` }}
                       />
                       <div className="relative flex-1 truncate text-white flex items-center gap-3">
