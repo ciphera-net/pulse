@@ -341,14 +341,16 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
         <nav className="flex items-center gap-1 text-sm font-medium">
           <BreadcrumbAppSwitcher />
           <CaretRight className="w-3 h-3 text-neutral-600" />
-          {siteId && siteName ? (
-            <>
-              <Link href="/" className="text-neutral-500 hover:text-neutral-300 transition-colors">Your Sites</Link>
-              <CaretRight className="w-3 h-3 text-neutral-600" />
-              <BreadcrumbSitePicker currentSiteId={siteId} currentSiteName={siteName} />
-              <CaretRight className="w-3 h-3 text-neutral-600" />
-              <span className="text-neutral-400">{pageTitle}</span>
-            </>
+          {siteId ? (
+            siteName ? (
+              <>
+                <Link href="/" className="text-neutral-500 hover:text-neutral-300 transition-colors">Your Sites</Link>
+                <CaretRight className="w-3 h-3 text-neutral-600" />
+                <BreadcrumbSitePicker currentSiteId={siteId} currentSiteName={siteName} />
+                <CaretRight className="w-3 h-3 text-neutral-600" />
+                <span className="text-neutral-400">{pageTitle}</span>
+              </>
+            ) : null
           ) : (
             <span className="text-neutral-400">{pageTitle}</span>
           )}
