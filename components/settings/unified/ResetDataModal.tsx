@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast, getAuthErrorMessage, AlertTriangleIcon, XIcon, Spinner } from '@ciphera-net/ui'
 import { resetSiteData, type ResetModule } from '@/lib/api/sites'
-import { ChartBar, Path, Heartbeat, Gauge, Cloud, MagnifyingGlass } from '@phosphor-icons/react'
+import { ChartBar, Path, Funnel, Heartbeat, Gauge, Cloud, MagnifyingGlass } from '@phosphor-icons/react'
 
 interface ResetModuleOption {
   id: ResetModule
@@ -29,6 +29,13 @@ const RESET_MODULES: ResetModuleOption[] = [
     description: 'Session flows and page transition data.',
     icon: Path,
     tables: ['session_flows', 'path_transitions'],
+  },
+  {
+    id: 'funnels',
+    label: 'Funnels',
+    description: 'Funnels and goals. Removes all funnel definitions and goal configurations.',
+    icon: Funnel,
+    tables: ['funnels', 'goals'],
   },
   {
     id: 'uptime',

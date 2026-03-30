@@ -212,8 +212,8 @@
     if (url !== lastUrl) {
       lastUrl = url;
       trackPageview();
-      // * Reset scroll depth tracking for the new page
-      if (trackScroll) scrollFired = {};
+      // * Flush & reset scroll depth tracking for the new page
+      if (trackScroll) { flushScroll(); maxScrollDepth = 0; }
     }
   }
   new MutationObserver(onUrlChange).observe(document, { subtree: true, childList: true });
@@ -228,7 +228,7 @@
     if (url === lastUrl) return;
     lastUrl = url;
     trackPageview();
-    if (trackScroll) scrollFired = {};
+    if (trackScroll) { flushScroll(); maxScrollDepth = 0; }
   });
 
   // * Custom events / goals
@@ -259,13 +259,13 @@
   window.pulse.cleanPath = cleanPath;
 
   // * Auto-track scroll depth at 25%, 50%, 75%, and 100% (on by default)
-  // * Each threshold fires once per pageview; resets on SPA navigation
+  // * Sends a SINGLE event (max depth reached) on page exit or SPA navigation
   // * Opt-out: add data-no-scroll to the script tag
   var trackScroll = !hasAttr('no-scroll');
 
   if (trackScroll) {
     var scrollThresholds = [25, 50, 75, 100];
-    var scrollFired = {};
+    var maxScrollDepth = 0;
     var scrollTicking = false;
 
     function checkScroll() {
@@ -276,14 +276,22 @@
       var scrollTop = window.scrollY;
       var scrollPercent = Math.round((scrollTop + viewHeight) / docHeight * 100);
 
-      for (var i = 0; i < scrollThresholds.length; i++) {
-        var t = scrollThresholds[i];
-        if (!scrollFired[t] && scrollPercent >= t) {
-          scrollFired[t] = true;
-          trackCustomEvent('scroll_' + t);
+      for (var i = scrollThresholds.length - 1; i >= 0; i--) {
+        if (scrollPercent >= scrollThresholds[i] && scrollThresholds[i] > maxScrollDepth) {
+          maxScrollDepth = scrollThresholds[i];
+          break;
         }
       }
+
       scrollTicking = false;
+    }
+
+    // * Flush: send a single scroll_N event for the deepest threshold reached
+    function flushScroll() {
+      if (maxScrollDepth > 0) {
+        trackCustomEvent('scroll_' + maxScrollDepth);
+        maxScrollDepth = 0;
+      }
     }
 
     window.addEventListener('scroll', function() {
@@ -292,6 +300,11 @@
         requestAnimationFrame(checkScroll);
       }
     }, { passive: true });
+
+    // * Send scroll depth on page exit
+    document.addEventListener('visibilitychange', function() {
+      if (document.visibilityState === 'hidden') flushScroll();
+    });
   }
 
   // * Auto-track outbound link clicks and file downloads (on by default)
