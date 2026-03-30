@@ -138,42 +138,39 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
     <>
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <ArrowSquareOut className="w-5 h-5 text-neutral-400 dark:text-neutral-500" weight="bold" />
-            <div className="flex gap-1" role="tablist" aria-label="Referrers view tabs">
-              {(['referrers', 'channels'] as const).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setView(tab)}
-                  role="tab"
-                  aria-selected={view === tab}
-                  className={`relative px-2.5 py-1 text-xs font-medium transition-colors capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded cursor-pointer ${
-                    view === tab
-                      ? 'text-white'
-                      : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-300'
-                  }`}
-                >
-                  {tab}
-                  {view === tab && (
-                    <motion.div
-                      layoutId="referrersTab"
-                      className="absolute inset-x-0 -bottom-px h-0.5 bg-brand-orange"
-                      transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                    />
-                  )}
-                </button>
-              ))}
-            </div>
-            {view === 'referrers' && showViewAll && (
+          <div className="flex gap-1" role="tablist" aria-label="Referrers view tabs">
+            {(['referrers', 'channels'] as const).map((tab) => (
               <button
-                onClick={() => setIsModalOpen(true)}
-                className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all cursor-pointer rounded-lg"
-                aria-label="View all referrers"
+                key={tab}
+                onClick={() => setView(tab)}
+                role="tab"
+                aria-selected={view === tab}
+                className={`relative px-2.5 py-1 text-xs font-medium transition-colors capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded cursor-pointer ${
+                  view === tab
+                    ? 'text-white'
+                    : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-300'
+                }`}
               >
-                <FrameCornersIcon className="w-4 h-4" weight="bold" />
+                {tab}
+                {view === tab && (
+                  <motion.div
+                    layoutId="referrersTab"
+                    className="absolute inset-x-0 -bottom-px h-0.5 bg-brand-orange"
+                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                  />
+                )}
               </button>
-            )}
+            ))}
           </div>
+          {view === 'referrers' && showViewAll && (
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all cursor-pointer rounded-lg"
+              aria-label="View all referrers"
+            >
+              <FrameCornersIcon className="w-4 h-4" weight="bold" />
+            </button>
+          )}
         </div>
 
         <div className="space-y-2 flex-1 min-h-[270px]">
