@@ -53,7 +53,7 @@ function CheckoutSuccess() {
           if (data.subscription_status === 'active' || data.subscription_status === 'trialing') {
             setReady(true)
             clearTimeout(timeout)
-            setTimeout(() => router.push('/'), 2000)
+            setTimeout(() => router.push('/?subscribed=1'), 2000)
             return
           }
         } catch {

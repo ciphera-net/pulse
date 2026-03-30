@@ -92,9 +92,6 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
       <div className="flex flex-col sm:flex-row sm:items-center gap-4">
         <div className="flex items-center gap-3">
           <h2 className="text-lg font-semibold text-white capitalize">{plan}</h2>
-          <span className="rounded-full bg-brand-orange/15 px-3 py-0.5 text-xs font-medium text-brand-orange">
-            30-day trial
-          </span>
         </div>
         <div className="flex items-center gap-1 p-1 bg-neutral-800/50 rounded-xl sm:ml-auto">
           {(['month', 'year'] as const).map((iv) => (
