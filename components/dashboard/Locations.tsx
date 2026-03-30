@@ -54,6 +54,83 @@ function formatLanguage(locale: string): string {
   }
 }
 
+// * IANA timezone → ISO country code (best-effort mapping)
+const TIMEZONE_TO_COUNTRY: Record<string, string> = {}
+function getTimezoneCountry(tz: string): string {
+  if (!tz || tz === 'Unknown') return ''
+  if (TIMEZONE_TO_COUNTRY[tz]) return TIMEZONE_TO_COUNTRY[tz]
+  try {
+    // Use Intl to resolve timezone to a locale, then extract region
+    // Common continent/city patterns
+    const parts = tz.split('/')
+    const city = parts[parts.length - 1]
+    // Try resolving via Intl.DateTimeFormat
+    const formatter = new Intl.DateTimeFormat('en', { timeZone: tz })
+    const opts = formatter.resolvedOptions()
+    // Fallback: map well-known prefixes
+    if (tz.startsWith('Europe/Amsterdam') || tz.startsWith('Europe/Brussels')) return 'NL'
+    if (tz.startsWith('America/New_York') || tz.startsWith('America/Chicago') || tz.startsWith('America/Denver') || tz.startsWith('America/Los_Angeles')) return 'US'
+    if (tz.startsWith('Europe/London')) return 'GB'
+    if (tz.startsWith('Europe/Berlin')) return 'DE'
+    if (tz.startsWith('Europe/Paris')) return 'FR'
+    if (tz.startsWith('Europe/Rome')) return 'IT'
+    if (tz.startsWith('Europe/Madrid')) return 'ES'
+    if (tz.startsWith('Europe/Lisbon')) return 'PT'
+    if (tz.startsWith('Europe/Dublin')) return 'IE'
+    if (tz.startsWith('Europe/Vienna')) return 'AT'
+    if (tz.startsWith('Europe/Zurich')) return 'CH'
+    if (tz.startsWith('Europe/Stockholm')) return 'SE'
+    if (tz.startsWith('Europe/Oslo')) return 'NO'
+    if (tz.startsWith('Europe/Copenhagen')) return 'DK'
+    if (tz.startsWith('Europe/Helsinki')) return 'FI'
+    if (tz.startsWith('Europe/Warsaw')) return 'PL'
+    if (tz.startsWith('Europe/Prague')) return 'CZ'
+    if (tz.startsWith('Europe/Budapest')) return 'HU'
+    if (tz.startsWith('Europe/Bucharest')) return 'RO'
+    if (tz.startsWith('Europe/Athens')) return 'GR'
+    if (tz.startsWith('Europe/Istanbul')) return 'TR'
+    if (tz.startsWith('Europe/Moscow')) return 'RU'
+    if (tz.startsWith('Asia/Tokyo')) return 'JP'
+    if (tz.startsWith('Asia/Shanghai') || tz.startsWith('Asia/Hong_Kong')) return 'CN'
+    if (tz.startsWith('Asia/Seoul')) return 'KR'
+    if (tz.startsWith('Asia/Kolkata') || tz.startsWith('Asia/Calcutta')) return 'IN'
+    if (tz.startsWith('Asia/Singapore')) return 'SG'
+    if (tz.startsWith('Asia/Dubai')) return 'AE'
+    if (tz.startsWith('Asia/Jakarta')) return 'ID'
+    if (tz.startsWith('Asia/Bangkok')) return 'TH'
+    if (tz.startsWith('Australia/Sydney') || tz.startsWith('Australia/Melbourne')) return 'AU'
+    if (tz.startsWith('Pacific/Auckland')) return 'NZ'
+    if (tz.startsWith('America/Toronto') || tz.startsWith('America/Vancouver')) return 'CA'
+    if (tz.startsWith('America/Mexico_City')) return 'MX'
+    if (tz.startsWith('America/Sao_Paulo')) return 'BR'
+    if (tz.startsWith('America/Argentina')) return 'AR'
+    if (tz.startsWith('Africa/Cairo')) return 'EG'
+    if (tz.startsWith('Africa/Lagos')) return 'NG'
+    if (tz.startsWith('Africa/Johannesburg')) return 'ZA'
+  } catch {}
+  return ''
+}
+
+// * Get the country code to show a flag for any item in any tab
+function getItemFlagCode(item: { country?: string; language?: string; timezone?: string }, tab: Tab): string {
+  switch (tab) {
+    case 'countries':
+    case 'regions':
+    case 'cities':
+      return item.country ?? ''
+    case 'languages': {
+      // Extract region from locale: en-US → US, nl-NL → NL
+      const locale = item.language ?? ''
+      const parts = locale.split('-')
+      return parts[1]?.toUpperCase() ?? ''
+    }
+    case 'timezones':
+      return getTimezoneCountry(item.timezone ?? '')
+    default:
+      return ''
+  }
+}
+
 function formatTimezone(tz: string): string {
   if (tz === 'Unknown') return 'Unknown'
   try {
@@ -260,7 +337,7 @@ export default function Audience({ countries, cities, regions, languages, timezo
   }
 
   // Whether the current tab shows a flag icon
-  const showsFlag = activeTab === 'countries' || activeTab === 'regions' || activeTab === 'cities'
+  const showsFlag = activeTab === 'countries' || activeTab === 'regions' || activeTab === 'cities' || activeTab === 'languages' || activeTab === 'timezones'
 
   const isVisualTab = activeTab === 'map'
   const rawData = isVisualTab ? [] : getData()
@@ -380,7 +457,7 @@ export default function Audience({ countries, cities, regions, languages, timezo
                         style={{ width: `${barWidth}%` }}
                       />
                       <div className="relative flex-1 truncate text-white flex items-center gap-3">
-                        {showsFlag && <span className="shrink-0">{getFlagComponent(item.country ?? '')}</span>}
+                        {showsFlag && <span className="shrink-0">{getFlagComponent(getItemFlagCode(item, activeTab))}</span>}
                         <span className="truncate">
                           {getItemLabel(item)}
                         </span>
@@ -464,7 +541,7 @@ export default function Audience({ countries, cities, regions, languages, timezo
                       className={`flex items-center justify-between h-9 group hover:bg-neutral-800 rounded-lg px-2 transition-colors${canFilter ? ' cursor-pointer' : ''}`}
                     >
                       <div className="flex-1 truncate text-white flex items-center gap-3">
-                        {showsFlag && <span className="shrink-0">{getFlagComponent(item.country ?? '')}</span>}
+                        {showsFlag && <span className="shrink-0">{getFlagComponent(getItemFlagCode(item, activeTab))}</span>}
                         <span className="truncate">
                           {getItemLabel(item)}
                         </span>
