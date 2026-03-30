@@ -303,14 +303,24 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
 
 function GlassTopBar({ siteId }: { siteId: string | null }) {
   const { collapsed, toggle } = useSidebar()
-  const { data: realtime } = useRealtime(siteId ?? '')
+  const { data: realtime, isValidating: realtimeValidating } = useRealtime(siteId ?? '')
   const lastUpdatedRef = useRef<number | null>(null)
+  const wasValidatingRef = useRef(false)
   const [, setTick] = useState(0)
   const [siteName, setSiteName] = useState<string | null>(null)
 
+  // * Update timestamp when a realtime fetch completes (not just when data changes)
   useEffect(() => {
-    if (siteId && realtime) lastUpdatedRef.current = Date.now()
-  }, [siteId, realtime])
+    if (!siteId || !realtime) return
+    if (wasValidatingRef.current && !realtimeValidating) {
+      // * Transition from validating → done = successful fetch
+      lastUpdatedRef.current = Date.now()
+    } else if (lastUpdatedRef.current == null) {
+      // * First data arrival
+      lastUpdatedRef.current = Date.now()
+    }
+    wasValidatingRef.current = realtimeValidating
+  }, [siteId, realtime, realtimeValidating])
 
   useEffect(() => {
     if (lastUpdatedRef.current == null) return

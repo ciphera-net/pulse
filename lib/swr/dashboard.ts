@@ -199,6 +199,9 @@ export function useRealtime(siteId: string, refreshInterval: number = 5000) {
       ...dashboardSWRConfig,
       // * Refresh frequently for real-time data (default 5 seconds)
       refreshInterval,
+      // * Revalidate on tab focus — SWR pauses polling when tab is hidden,
+      // * so re-fetch immediately when the user returns
+      revalidateOnFocus: true,
       // * Short deduping for real-time
       dedupingInterval: 2000,
       // * Keep previous data while loading new data
