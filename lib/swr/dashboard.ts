@@ -190,17 +190,20 @@ export function useDailyStats(
   )
 }
 
-// * Hook for realtime visitor count (refreshed frequently)
-export function useRealtime(siteId: string, refreshInterval: number = 5000) {
+// * Hook for realtime visitor count (refreshes with dashboard data)
+export function useRealtime(siteId: string, refreshInterval: number = 60_000) {
   return useSWR<{ visitors: number }>(
     siteId ? ['realtime', siteId] : null,
     () => fetchers.realtime(siteId),
     {
       ...dashboardSWRConfig,
-      // * Refresh frequently for real-time data (default 5 seconds)
+      // * Refresh every 60 seconds, aligned with dashboard data cycle
       refreshInterval,
-      // * Short deduping for real-time
-      dedupingInterval: 2000,
+      // * Revalidate on tab focus — SWR pauses polling when tab is hidden,
+      // * so re-fetch immediately when the user returns
+      revalidateOnFocus: true,
+      // * Deduping interval to prevent duplicate requests
+      dedupingInterval: 10_000,
       // * Keep previous data while loading new data
       keepPreviousData: true,
     }
