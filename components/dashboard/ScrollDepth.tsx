@@ -12,20 +12,28 @@ interface ScrollDepthProps {
 const THRESHOLDS = [25, 50, 75, 100] as const
 
 export default function ScrollDepth({ goalCounts, totalPageviews }: ScrollDepthProps) {
-  const scrollCounts = new Map<number, number>()
+  // Raw counts: each event represents the MAX depth that visitor reached
+  const rawCounts = new Map<number, number>()
   for (const row of goalCounts) {
     const match = row.event_name.match(/^scroll_(\d+)$/)
     if (match) {
-      scrollCounts.set(Number(match[1]), row.count)
+      rawCounts.set(Number(match[1]), row.count)
     }
   }
 
-  const hasData = scrollCounts.size > 0 && totalPageviews > 0
+  const hasData = rawCounts.size > 0 && totalPageviews > 0
 
-  const chartData = THRESHOLDS.map((threshold) => ({
-    label: `${threshold}%`,
-    value: totalPageviews > 0 ? Math.round(((scrollCounts.get(threshold) ?? 0) / totalPageviews) * 100) : 0,
-  }))
+  // Cumulative: scroll_100 implies 75, 50, 25 were also reached
+  // So each threshold's count = its own count + all higher thresholds' counts
+  const chartData = THRESHOLDS.map((threshold) => {
+    const cumulative = THRESHOLDS
+      .filter((t) => t >= threshold)
+      .reduce((sum, t) => sum + (rawCounts.get(t) ?? 0), 0)
+    return {
+      label: `${threshold}%`,
+      value: totalPageviews > 0 ? Math.round((cumulative / totalPageviews) * 100) : 0,
+    }
+  })
 
   return (
     <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 h-full flex flex-col">
