@@ -46,6 +46,7 @@ import {
   useCampaigns,
   useAnnotations,
 } from '@/lib/swr/dashboard'
+import { useLiveIndicator } from '@/lib/live-indicator-context'
 import { createAnnotation, updateAnnotation, deleteAnnotation, type AnnotationCategory } from '@/lib/api/annotations'
 
 function loadSavedSettings(): {
@@ -224,8 +225,8 @@ export default function SiteDashboardPage() {
   // Single dashboard request replaces focused hooks (overview, pages, locations,
   // devices, referrers, goals). The backend runs all queries in parallel
   // and caches the result in Redis for efficient data loading.
-  const { data: dashboard, isLoading: dashboardLoading, isValidating: dashboardValidating, error: dashboardError } = useDashboard(siteId, dateRange.start, dateRange.end, interval, filtersParam || undefined)
-  const { data: realtimeData } = useRealtime(siteId)
+  const { data: dashboard, isLoading: dashboardLoading, error: dashboardError } = useDashboard(siteId, dateRange.start, dateRange.end, interval, filtersParam || undefined)
+  const { data: realtimeData } = useRealtime(siteId, 15_000)
   const { data: prevStats } = useStats(siteId, prevRange.start, prevRange.end)
   const { data: prevDailyStats } = useDailyStats(siteId, prevRange.start, prevRange.end, interval)
   const { data: campaigns } = useCampaigns(siteId, dateRange.start, dateRange.end)
@@ -363,10 +364,14 @@ export default function SiteDashboardPage() {
     }
   }, [dashboardError])
 
-  // Track when data was last updated (for "Live · Xs ago" display)
+  // Track when dashboard data was last updated (drives the Live indicator in GlassTopBar)
+  const { markUpdated } = useLiveIndicator()
   useEffect(() => {
-    if (dashboard) lastUpdatedAtRef.current = Date.now()
-  }, [dashboard])
+    if (dashboard) {
+      lastUpdatedAtRef.current = Date.now()
+      markUpdated()
+    }
+  }, [dashboard, markUpdated])
 
   // Save settings to localStorage
   const saveSettings = (type: string, newDateRange?: { start: string; end: string }) => {
@@ -517,13 +522,6 @@ export default function SiteDashboardPage() {
         <AddFilterDropdown onAdd={handleAddFilter} suggestions={filterSuggestions} onFetchSuggestions={handleFetchSuggestions} />
         <FilterBar filters={filters} onRemove={handleRemoveFilter} onClear={handleClearFilters} />
       </div>
-
-      {/* Refetch indicator — visible when SWR is revalidating with stale data on screen */}
-      {dashboardValidating && !dashboardLoading && (
-        <div className="h-0.5 w-full rounded-full bg-neutral-100 dark:bg-neutral-800 overflow-hidden mb-2">
-          <div className="h-full w-1/3 rounded-full bg-brand-orange animate-[shimmer_1.2s_ease-in-out_infinite]" />
-        </div>
-      )}
 
       {/* Advanced Chart with Integrated Stats */}
       <div className="mb-6">

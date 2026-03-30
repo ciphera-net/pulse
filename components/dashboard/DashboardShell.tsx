@@ -9,7 +9,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { formatUpdatedAgo, PlusIcon, ExternalLinkIcon, type CipheraApp } from '@ciphera-net/ui'
 import { CaretDown, CaretRight, SidebarSimple } from '@phosphor-icons/react'
 import { SidebarProvider, useSidebar } from '@/lib/sidebar-context'
-import { useRealtime } from '@/lib/swr/dashboard'
+import { LiveIndicatorProvider, useLiveIndicator } from '@/lib/live-indicator-context'
 import { getSite, listSites, type Site } from '@/lib/api/sites'
 import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
 import ContentHeader from './ContentHeader'
@@ -303,30 +303,16 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
 
 function GlassTopBar({ siteId }: { siteId: string | null }) {
   const { collapsed, toggle } = useSidebar()
-  const { data: realtime, isValidating: realtimeValidating } = useRealtime(siteId ?? '')
-  const lastUpdatedRef = useRef<number | null>(null)
-  const wasValidatingRef = useRef(false)
+  const { lastUpdatedAt } = useLiveIndicator()
   const [, setTick] = useState(0)
   const [siteName, setSiteName] = useState<string | null>(null)
 
-  // * Update timestamp when a realtime fetch completes (not just when data changes)
+  // * Tick every second to keep the "Live · Xs ago" display current
   useEffect(() => {
-    if (!siteId || !realtime) return
-    if (wasValidatingRef.current && !realtimeValidating) {
-      // * Transition from validating → done = successful fetch
-      lastUpdatedRef.current = Date.now()
-    } else if (lastUpdatedRef.current == null) {
-      // * First data arrival
-      lastUpdatedRef.current = Date.now()
-    }
-    wasValidatingRef.current = realtimeValidating
-  }, [siteId, realtime, realtimeValidating])
-
-  useEffect(() => {
-    if (lastUpdatedRef.current == null) return
+    if (lastUpdatedAt == null) return
     const timer = setInterval(() => setTick((t) => t + 1), 1000)
     return () => clearInterval(timer)
-  }, [realtime])
+  }, [lastUpdatedAt])
 
   useEffect(() => {
     if (!siteId) { setSiteName(null); return }
@@ -367,14 +353,14 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
         </nav>
       </div>
 
-      {/* Realtime indicator */}
-      {siteId && lastUpdatedRef.current != null && (
+      {/* Live indicator — tied to dashboard data refresh (60s cycle) */}
+      {siteId && lastUpdatedAt != null && (
         <div className="flex items-center gap-1.5 text-xs text-neutral-500">
           <span className="relative flex h-1.5 w-1.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
             <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
           </span>
-          Live · {formatUpdatedAgo(lastUpdatedRef.current)}
+          Live · {formatUpdatedAgo(lastUpdatedAt)}
         </div>
       )}
     </div>
@@ -394,6 +380,7 @@ export default function DashboardShell({
 
   return (
     <SidebarProvider>
+      <LiveIndicatorProvider>
       <div className="flex h-screen overflow-hidden bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/60">
         <Sidebar
           siteId={siteId}
@@ -413,6 +400,7 @@ export default function DashboardShell({
           </div>
         </div>
       </div>
+      </LiveIndicatorProvider>
     </SidebarProvider>
   )
 }
