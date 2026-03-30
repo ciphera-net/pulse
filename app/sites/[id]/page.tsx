@@ -559,6 +559,7 @@ export default function SiteDashboardPage() {
         />
         <TopReferrers
           referrers={dashboard?.top_referrers ?? []}
+          channels={dashboard?.channels ?? []}
           collectReferrers={site.collect_referrers ?? true}
           siteId={siteId}
           dateRange={dateRange}
