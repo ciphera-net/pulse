@@ -11,7 +11,7 @@ import { LoadingOverlay, Button } from '@ciphera-net/ui'
 import Chart from '@/components/dashboard/Chart'
 import TopPages from '@/components/dashboard/ContentStats'
 import TopReferrers from '@/components/dashboard/TopReferrers'
-import Locations from '@/components/dashboard/Locations'
+import Audience from '@/components/dashboard/Locations'
 import TechSpecs from '@/components/dashboard/TechSpecs'
 import { Select, DatePicker as DatePickerModal, Captcha, DownloadIcon, ZapIcon } from '@ciphera-net/ui'
 import { DashboardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
@@ -240,7 +240,7 @@ export default function PublicDashboardPage() {
 
   if (!data) return null
 
-  const { site, stats, daily_stats, top_pages, entry_pages, exit_pages, top_referrers, countries, cities, regions, browsers, os, devices, screen_resolutions, realtime_visitors } = data
+  const { site, stats, daily_stats, top_pages, entry_pages, exit_pages, top_referrers, countries, cities, regions, languages, timezones, browsers, os, devices, screen_resolutions, realtime_visitors } = data
 
   // Provide defaults for potentially undefined data
   const safeDailyStats = daily_stats || []
@@ -252,6 +252,8 @@ export default function PublicDashboardPage() {
   const safeCountries = countries || []
   const safeCities = cities || []
   const safeRegions = regions || []
+  const safeLanguages = languages || []
+  const safeTimezones = timezones || []
   const safeBrowsers = browsers || []
   const safeOS = os || []
   const safeDevices = devices || []
@@ -398,11 +400,14 @@ export default function PublicDashboardPage() {
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2 mb-8">
-          <Locations
+          <Audience
             countries={safeCountries}
             cities={safeCities}
             regions={safeRegions}
+            languages={safeLanguages}
+            timezones={safeTimezones}
             geoDataLevel={site.collect_geo_data || 'full'}
+            collectAudienceData={site.collect_audience_data ?? true}
             siteId={siteId}
             dateRange={dateRange}
           />
