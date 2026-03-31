@@ -89,10 +89,60 @@ export interface GSCNewQueries {
   queries: string[]
 }
 
+export interface GSCCountryRow {
+  country: string
+  clicks: number
+  impressions: number
+  ctr: number
+  position: number
+}
+
+export interface GSCCountryResponse {
+  countries: GSCCountryRow[]
+  total: number
+}
+
+export interface GSCDeviceRow {
+  device: string
+  clicks: number
+  impressions: number
+  ctr: number
+  position: number
+}
+
+export interface GSCDeviceResponse {
+  devices: GSCDeviceRow[]
+}
+
+export interface GSCOpportunityRow {
+  query: string
+  clicks: number
+  impressions: number
+  position: number
+  potential_clicks: number
+}
+
+export interface GSCOpportunityResponse {
+  opportunities: GSCOpportunityRow[]
+  total: number
+}
+
 export async function getGSCDailyTotals(siteId: string, startDate: string, endDate: string): Promise<{ daily_totals: GSCDailyTotal[] }> {
   return apiRequest<{ daily_totals: GSCDailyTotal[] }>(`/sites/${siteId}/gsc/daily-totals?start_date=${startDate}&end_date=${endDate}`)
 }
 
 export async function getGSCNewQueries(siteId: string, startDate: string, endDate: string): Promise<GSCNewQueries> {
   return apiRequest<GSCNewQueries>(`/sites/${siteId}/gsc/new-queries?start_date=${startDate}&end_date=${endDate}`)
+}
+
+export async function getGSCTopCountries(siteId: string, startDate: string, endDate: string, limit = 50, offset = 0): Promise<GSCCountryResponse> {
+  return apiRequest<GSCCountryResponse>(`/sites/${siteId}/gsc/top-countries?start_date=${startDate}&end_date=${endDate}&limit=${limit}&offset=${offset}`)
+}
+
+export async function getGSCTopDevices(siteId: string, startDate: string, endDate: string): Promise<GSCDeviceResponse> {
+  return apiRequest<GSCDeviceResponse>(`/sites/${siteId}/gsc/top-devices?start_date=${startDate}&end_date=${endDate}`)
+}
+
+export async function getGSCOpportunities(siteId: string, startDate: string, endDate: string, limit = 50): Promise<GSCOpportunityResponse> {
+  return apiRequest<GSCOpportunityResponse>(`/sites/${siteId}/gsc/opportunities?start_date=${startDate}&end_date=${endDate}&limit=${limit}`)
 }
