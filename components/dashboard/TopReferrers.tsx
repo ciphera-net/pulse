@@ -155,7 +155,7 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
                 {view === tab && (
                   <motion.div
                     layoutId="referrersTab"
-                    className="absolute inset-x-0 -bottom-px h-0.5 bg-brand-orange"
+                    className="absolute inset-x-0 -bottom-px h-[3px] bg-brand-orange rounded-full"
                     transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                   />
                 )}

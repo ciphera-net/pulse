@@ -132,15 +132,6 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
 
   return (
     <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 h-full flex flex-col">
-      <div className="flex items-center justify-between mb-1">
-        <div className="flex items-center gap-2">
-          <Clock className="w-5 h-5 text-neutral-400 dark:text-neutral-500" weight="bold" />
-          <h3 className="text-lg font-semibold text-white">Peak Hours</h3>
-        </div>
-      </div>
-      <p className="text-sm text-neutral-400 mb-5">
-        When your visitors are most active
-      </p>
 
       {isLoading ? (
         <div className="flex-1 min-h-[270px] flex flex-col justify-center gap-1.5">

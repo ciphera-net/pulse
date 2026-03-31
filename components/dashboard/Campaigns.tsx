@@ -127,10 +127,6 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
       <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <Megaphone className="w-5 h-5 text-neutral-400 dark:text-neutral-500" weight="bold" />
-            <h3 className="text-lg font-semibold text-white">
-              Campaigns
-            </h3>
             {showViewAll && (
               <button
                 onClick={() => setIsModalOpen(true)}

@@ -344,7 +344,7 @@ export default function Chart({
                 {metric === m.key && (
                   <motion.div
                     layoutId="activeMetric"
-                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-orange"
+                    className="absolute bottom-0 left-0 right-0 h-[3px] bg-brand-orange rounded-full"
                     transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                   />
                 )}
