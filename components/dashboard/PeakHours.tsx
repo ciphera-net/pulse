@@ -132,6 +132,14 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
 
   return (
     <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 h-full flex flex-col">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex gap-1">
+          <span className="relative px-2.5 py-1 text-xs font-medium text-white">
+            Peak Hours
+            <span className="absolute inset-x-0 -bottom-px h-[3px] bg-brand-orange rounded-full" />
+          </span>
+        </div>
+      </div>
 
       {isLoading ? (
         <div className="flex-1 min-h-[270px] flex flex-col justify-center gap-1.5">
