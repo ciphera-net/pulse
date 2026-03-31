@@ -35,8 +35,8 @@ import { getPageSpeedConfig, getPageSpeedLatest, getPageSpeedHistory, type PageS
 import { listGoals, type Goal } from '@/lib/api/goals'
 import { listReportSchedules, listAlertSchedules, type ReportSchedule } from '@/lib/api/report-schedules'
 import { listSessions, getBotFilterStats, type SessionSummary, type BotFilterStats } from '@/lib/api/bot-filter'
-import { getGSCStatus, getGSCOverview, getGSCTopQueries, getGSCTopPages, getGSCDailyTotals, getGSCNewQueries } from '@/lib/api/gsc'
-import type { GSCStatus, GSCOverview, GSCQueryResponse, GSCPageResponse, GSCDailyTotal, GSCNewQueries } from '@/lib/api/gsc'
+import { getGSCStatus, getGSCOverview, getGSCTopQueries, getGSCTopPages, getGSCDailyTotals, getGSCNewQueries, getGSCTopCountries, getGSCTopDevices, getGSCOpportunities } from '@/lib/api/gsc'
+import type { GSCStatus, GSCOverview, GSCQueryResponse, GSCPageResponse, GSCDailyTotal, GSCNewQueries, GSCCountryResponse, GSCDeviceResponse, GSCOpportunityResponse } from '@/lib/api/gsc'
 import { getBunnyStatus, getBunnyOverview, getBunnyDailyStats, getBunnyTopCountries } from '@/lib/api/bunny'
 import type { BunnyStatus, BunnyOverview, BunnyDailyRow, BunnyGeoRow } from '@/lib/api/bunny'
 import { getSubscription, type SubscriptionDetails } from '@/lib/api/billing'
@@ -92,6 +92,9 @@ const fetchers = {
   gscTopPages: (siteId: string, start: string, end: string, limit: number, offset: number) => getGSCTopPages(siteId, start, end, limit, offset),
   gscDailyTotals: (siteId: string, start: string, end: string) => getGSCDailyTotals(siteId, start, end),
   gscNewQueries: (siteId: string, start: string, end: string) => getGSCNewQueries(siteId, start, end),
+  gscTopCountries: (siteId: string, start: string, end: string, limit: number, offset: number) => getGSCTopCountries(siteId, start, end, limit, offset),
+  gscTopDevices: (siteId: string, start: string, end: string) => getGSCTopDevices(siteId, start, end),
+  gscOpportunities: (siteId: string, start: string, end: string, limit: number) => getGSCOpportunities(siteId, start, end, limit),
   bunnyStatus: (siteId: string) => getBunnyStatus(siteId),
   bunnyOverview: (siteId: string, start: string, end: string) => getBunnyOverview(siteId, start, end),
   bunnyDailyStats: (siteId: string, start: string, end: string) => getBunnyDailyStats(siteId, start, end),
@@ -487,6 +490,36 @@ export function useGSCNewQueries(siteId: string, start: string, end: string) {
     siteId && start && end ? ['gscNewQueries', siteId, start, end] : null,
     () => fetchers.gscNewQueries(siteId, start, end),
     dashboardSWRConfig
+  )
+}
+
+// * Hook for GSC top countries
+export function useGSCTopCountries(siteId: string, start: string, end: string, limit = 50, offset = 0) {
+  const { data: status } = useGSCStatus(siteId)
+  return useSWR<GSCCountryResponse>(
+    status?.connected ? [`gsc-top-countries`, siteId, start, end, limit, offset] : null,
+    () => getGSCTopCountries(siteId, start, end, limit, offset),
+    { revalidateOnFocus: false }
+  )
+}
+
+// * Hook for GSC top devices
+export function useGSCTopDevices(siteId: string, start: string, end: string) {
+  const { data: status } = useGSCStatus(siteId)
+  return useSWR<GSCDeviceResponse>(
+    status?.connected ? [`gsc-top-devices`, siteId, start, end] : null,
+    () => getGSCTopDevices(siteId, start, end),
+    { revalidateOnFocus: false }
+  )
+}
+
+// * Hook for GSC opportunities (striking-distance queries)
+export function useGSCOpportunities(siteId: string, start: string, end: string, limit = 50) {
+  const { data: status } = useGSCStatus(siteId)
+  return useSWR<GSCOpportunityResponse>(
+    status?.connected ? [`gsc-opportunities`, siteId, start, end, limit] : null,
+    () => getGSCOpportunities(siteId, start, end, limit),
+    { revalidateOnFocus: false }
   )
 }
 

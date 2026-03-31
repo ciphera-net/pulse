@@ -7,7 +7,7 @@ import { formatNumber } from '@ciphera-net/ui'
 import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
 import { TopPage, getTopPages, getEntryPages, getExitPages } from '@/lib/api/stats'
 import Link from 'next/link'
-import { Files, FrameCornersIcon } from '@phosphor-icons/react'
+import { FrameCornersIcon } from '@phosphor-icons/react'
 import { Modal, ArrowUpRightIcon, ArrowRightIcon, LayoutDashboardIcon } from '@ciphera-net/ui'
 import { ListSkeleton } from '@/components/skeletons'
 import VirtualList from './VirtualList'
@@ -101,22 +101,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
     <>
       <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
-            <Files className="w-5 h-5 text-neutral-400 dark:text-neutral-500" weight="bold" />
-            <h3 className="text-lg font-semibold text-white">
-              Pages
-            </h3>
-            {showViewAll && (
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-lg"
-                aria-label="View all pages"
-              >
-                <FrameCornersIcon className="w-4 h-4" weight="bold" />
-              </button>
-            )}
-          </div>
-          <div className="flex gap-1 overflow-x-auto scrollbar-hide" role="tablist" aria-label="Pages view tabs" onKeyDown={handleTabKeyDown}>
+          <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-1" role="tablist" aria-label="Pages view tabs" onKeyDown={handleTabKeyDown}>
             {(['top_pages', 'entry_pages', 'exit_pages'] as Tab[]).map((tab) => (
               <button
                 key={tab}
@@ -133,13 +118,22 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
                 {activeTab === tab && (
                   <motion.div
                     layoutId="contentStatsTab"
-                    className="absolute inset-x-0 -bottom-px h-0.5 bg-brand-orange"
+                    className="absolute inset-x-0 -bottom-px h-[3px] bg-brand-orange rounded-full"
                     transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                   />
                 )}
               </button>
             ))}
           </div>
+          {showViewAll && (
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-lg"
+              aria-label="View all pages"
+            >
+              <FrameCornersIcon className="w-4 h-4" weight="bold" />
+            </button>
+          )}
         </div>
 
         <div className="space-y-2 flex-1 min-h-[270px]">

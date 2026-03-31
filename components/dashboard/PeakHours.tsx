@@ -132,15 +132,14 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
 
   return (
     <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 h-full flex flex-col">
-      <div className="flex items-center justify-between mb-1">
-        <div className="flex items-center gap-2">
-          <Clock className="w-5 h-5 text-neutral-400 dark:text-neutral-500" weight="bold" />
-          <h3 className="text-lg font-semibold text-white">Peak Hours</h3>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex gap-1">
+          <span className="relative px-2.5 py-1 text-xs font-medium text-white">
+            Peak Hours
+            <span className="absolute inset-x-0 -bottom-px h-[3px] bg-brand-orange rounded-full" />
+          </span>
         </div>
       </div>
-      <p className="text-sm text-neutral-400 mb-5">
-        When your visitors are most active
-      </p>
 
       {isLoading ? (
         <div className="flex-1 min-h-[270px] flex flex-col justify-center gap-1.5">
@@ -241,7 +240,7 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
                   className="absolute pointer-events-none z-20"
                   style={{
                     left: tooltipPos.x,
-                    top: tooltipPos.y - 8,
+                    top: tooltipPos.y - 12,
                     transform: 'translate(-50%, -100%)',
                   }}
                 >

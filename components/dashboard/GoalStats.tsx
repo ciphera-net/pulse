@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { formatNumber } from '@ciphera-net/ui'
-import { Target } from '@phosphor-icons/react'
 import { BookOpenIcon, ArrowRightIcon } from '@ciphera-net/ui'
 import type { GoalCountStat } from '@/lib/api/stats'
 
@@ -22,11 +21,11 @@ export default function GoalStats({ goalCounts, onSelectEvent }: GoalStatsProps)
   return (
     <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 h-full flex flex-col">
       <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Target className="w-5 h-5 text-neutral-400 dark:text-neutral-500" weight="bold" />
-          <h3 className="text-lg font-semibold text-white">
-            Goals & Events
-          </h3>
+        <div className="flex gap-1">
+          <span className="relative px-2.5 py-1 text-xs font-medium text-white">
+            Events
+            <span className="absolute inset-x-0 -bottom-px h-[3px] bg-brand-orange rounded-full" />
+          </span>
         </div>
       </div>
 
