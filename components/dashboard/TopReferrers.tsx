@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
 import { logger } from '@/lib/utils/logger'
 import { formatNumber } from '@ciphera-net/ui'
 import { getReferrerDisplayName, getReferrerFavicon, getReferrerIcon, mergeReferrersByDisplayName } from '@/lib/utils/icons'
@@ -136,9 +135,9 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
 
   return (
     <>
-      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
+      <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-4">
-          <div className="flex gap-1" role="tablist" aria-label="Referrers view tabs">
+          <div className="flex gap-1 pb-1" role="tablist" aria-label="Referrers view tabs">
             {(['referrers', 'channels'] as const).map((tab) => (
               <button
                 key={tab}
@@ -152,13 +151,11 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
                 }`}
               >
                 {tab}
-                {view === tab && (
-                  <motion.div
-                    layoutId="referrersTab"
-                    className="absolute inset-x-0 -bottom-px h-[3px] bg-brand-orange rounded-full"
-                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                  />
-                )}
+                <span
+                  className={`absolute inset-x-0 -bottom-px h-[3px] rounded-full transition-all duration-200 ${
+                    view === tab ? 'bg-brand-orange scale-x-100' : 'bg-transparent scale-x-0'
+                  }`}
+                />
               </button>
             ))}
           </div>
