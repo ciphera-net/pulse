@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
 import { logger } from '@/lib/utils/logger'
 import { formatNumber, Modal } from '@ciphera-net/ui'
 import { CaretUp, CaretDown, FrameCornersIcon, Monitor, DeviceMobile, DeviceTablet } from '@phosphor-icons/react'
@@ -457,13 +456,11 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
                 }`}
               >
                 {tabLabels[tab]}
-                {activeTab === tab && (
-                  <motion.div
-                    layoutId="searchTab"
-                    className="absolute inset-x-0 -bottom-px h-[3px] bg-brand-orange rounded-full"
-                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                  />
-                )}
+                <span
+                  className={`absolute inset-x-0 -bottom-px h-[3px] rounded-full transition-all duration-200 ${
+                    activeTab === tab ? 'bg-brand-orange scale-x-100' : 'bg-transparent scale-x-0'
+                  }`}
+                />
               </button>
             ))}
           </div>
