@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { logger } from '@/lib/utils/logger'
 import { formatNumber, Modal } from '@ciphera-net/ui'
@@ -87,6 +87,22 @@ function getPositionBadgeClasses(position: number): string {
 export default function SearchPerformance({ siteId, dateRange }: SearchPerformanceProps) {
   const [activeTab, setActiveTab] = useState<Tab>('queries')
   const handleTabKeyDown = useTabListKeyboard()
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({})
+  const [indicator, setIndicator] = useState({ left: 0, width: 0 })
+
+  const updateIndicator = useCallback((tab: Tab) => {
+    const el = tabRefs.current[tab]
+    if (el) {
+      const parent = el.parentElement
+      if (parent) {
+        setIndicator({ left: el.offsetLeft, width: el.offsetWidth })
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    updateIndicator(activeTab)
+  }, [activeTab, updateIndicator])
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalSearch, setModalSearch] = useState('')
   const [fullData, setFullData] = useState<(GSCDataRow | GSCCountryRow | GSCOpportunityRow)[]>([])
@@ -443,10 +459,11 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
       <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 h-full flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-1" role="tablist" aria-label="Search data tabs" onKeyDown={handleTabKeyDown}>
+          <div className="relative flex gap-1 overflow-x-auto scrollbar-hide pb-1" role="tablist" aria-label="Search data tabs" onKeyDown={handleTabKeyDown}>
             {(['queries', 'pages', 'countries', 'devices', 'opportunities'] as Tab[]).map((tab) => (
               <button
                 key={tab}
+                ref={(el) => { tabRefs.current[tab] = el }}
                 onClick={() => setActiveTab(tab)}
                 role="tab"
                 aria-selected={activeTab === tab}
@@ -457,15 +474,13 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
                 }`}
               >
                 {tabLabels[tab]}
-                {activeTab === tab && (
-                  <motion.div
-                    layoutId="searchTab"
-                    className="absolute inset-x-0 -bottom-px h-[3px] bg-brand-orange rounded-full"
-                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                  />
-                )}
               </button>
             ))}
+            <motion.div
+              className="absolute bottom-0 h-[3px] bg-brand-orange rounded-full"
+              animate={{ left: indicator.left, width: indicator.width }}
+              transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+            />
           </div>
           {showViewAll && (
             <button
