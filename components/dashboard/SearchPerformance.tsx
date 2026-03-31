@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { logger } from '@/lib/utils/logger'
 import { formatNumber, Modal } from '@ciphera-net/ui'
-import { MagnifyingGlass, CaretUp, CaretDown, FrameCornersIcon } from '@phosphor-icons/react'
+import { CaretUp, CaretDown, FrameCornersIcon } from '@phosphor-icons/react'
 import { useGSCStatus, useGSCOverview, useGSCTopQueries, useGSCTopPages } from '@/lib/swr/dashboard'
 import { getGSCTopQueries, getGSCTopPages } from '@/lib/api/gsc'
 import type { GSCDataRow } from '@/lib/api/gsc'
@@ -103,19 +103,6 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
       <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 h-full flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <MagnifyingGlass className="w-5 h-5 text-neutral-400 dark:text-neutral-500" weight="bold" />
-            <h3 className="text-lg font-semibold text-white">Search</h3>
-            {showViewAll && (
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-lg"
-                aria-label="View all search data"
-              >
-                <FrameCornersIcon className="w-4 h-4" weight="bold" />
-              </button>
-            )}
-          </div>
           <div className="flex gap-1 overflow-x-auto scrollbar-hide" role="tablist" aria-label="Search data tabs" onKeyDown={handleTabKeyDown}>
             {(['queries', 'pages'] as Tab[]).map((tab) => (
               <button
@@ -133,13 +120,22 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
                 {activeTab === tab && (
                   <motion.div
                     layoutId="searchTab"
-                    className="absolute inset-x-0 -bottom-px h-0.5 bg-brand-orange"
+                    className="absolute inset-x-0 -bottom-px h-[3px] bg-brand-orange rounded-full"
                     transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                   />
                 )}
               </button>
             ))}
           </div>
+          {showViewAll && (
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-lg"
+              aria-label="View all search data"
+            >
+              <FrameCornersIcon className="w-4 h-4" weight="bold" />
+            </button>
+          )}
         </div>
 
         {isLoading ? (
