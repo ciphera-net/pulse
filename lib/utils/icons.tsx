@@ -147,7 +147,7 @@ const REFERRER_REGISTRY: Record<string, ReferrerEntry> = {
   github:      { display: 'GitHub',      icon: () => <SiGithub size={SI.size} color="#fff" /> },
   youtube:     { display: 'YouTube',     icon: () => <SiYoutube size={SI.size} color="#FF0000" />,     aliases: ['yt'] },
   reddit:      { display: 'Reddit',      icon: () => <SiReddit size={SI.size} color="#FF4500" /> },
-  whatsapp:    { display: 'WhatsApp',    icon: () => <SiWhatsapp size={SI.size} color="#25D366" /> },
+  whatsapp:    { display: 'WhatsApp',    icon: () => <SiWhatsapp size={SI.size} color="#25D366" />,    hostnames: ['l.wl.co', 'wa.me'] },
   telegram:    { display: 'Telegram',    icon: () => <SiTelegram size={SI.size} color="#26A5E4" />,    hostnames: ['t.me'] },
   snapchat:    { display: 'Snapchat',    icon: () => <SiSnapchat size={SI.size} color="#FFFC00" /> },
   pinterest:   { display: 'Pinterest',   icon: () => <SiPinterest size={SI.size} color="#BD081C" /> },
