@@ -83,7 +83,9 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
   const groupedData = useMemo(() => {
     const grouped = new Map<string, { visitors: number; pageviews: number }>()
     for (const item of sortedData) {
-      const key = item[activeTab] || '(not set)'
+      const raw = item[activeTab]
+      if (!raw) continue
+      const key = raw
       const existing = grouped.get(key)
       if (existing) {
         existing.visitors += item.visitors
