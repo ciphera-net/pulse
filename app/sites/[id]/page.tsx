@@ -430,7 +430,7 @@ export default function SiteDashboardPage() {
 
   return (
     <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
-      <div className="mb-6">
+      <div className="mb-3">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-4">
             <div>
@@ -524,7 +524,7 @@ export default function SiteDashboardPage() {
       </div>
 
       {/* Advanced Chart with Integrated Stats */}
-      <div className="mb-6">
+      <div className="mb-3">
         <Chart
           data={dailyStats}
           prevData={prevDailyStats}
@@ -546,7 +546,7 @@ export default function SiteDashboardPage() {
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2 mb-6 [&>*]:min-w-0">
+      <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
         <ContentStats
           topPages={dashboard?.top_pages ?? []}
           entryPages={dashboard?.entry_pages ?? []}
@@ -567,7 +567,7 @@ export default function SiteDashboardPage() {
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2 mb-6 [&>*]:min-w-0">
+      <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
         <Audience
           countries={dashboard?.countries ?? []}
           cities={dashboard?.cities ?? []}
@@ -593,11 +593,11 @@ export default function SiteDashboardPage() {
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2 mb-6 [&>*]:min-w-0">
+      <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
         <Campaigns siteId={siteId} dateRange={dateRange} filters={filtersParam || undefined} onFilter={handleAddFilter} />
         <PeakHours siteId={siteId} dateRange={dateRange} />
       </div>
-      <div className="grid gap-6 lg:grid-cols-2 mb-6 [&>*]:min-w-0">
+      <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
         <SearchPerformance siteId={siteId} dateRange={dateRange} />
         <GoalStats
           goalCounts={(dashboard?.goal_counts ?? []).filter(g => !/^scroll_\d+$/.test(g.event_name))}
@@ -607,7 +607,7 @@ export default function SiteDashboardPage() {
 
       {/* Event Properties Breakdown */}
       {selectedEvent && (
-        <div className="mb-8">
+        <div className="mb-3">
           <EventProperties
             siteId={siteId}
             eventName={selectedEvent}
