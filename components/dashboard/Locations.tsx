@@ -14,7 +14,7 @@ import Link from 'next/link'
 import { Modal, GlobeIcon, ArrowRightIcon } from '@ciphera-net/ui'
 import { ListSkeleton } from '@/components/skeletons'
 import VirtualList from './VirtualList'
-import { ShieldCheck, Detective, Broadcast, MapPin, FrameCornersIcon } from '@phosphor-icons/react'
+import { ShieldCheck, Detective, Broadcast, FrameCornersIcon } from '@phosphor-icons/react'
 import { getCountries, getCities, getRegions, getLanguages, getTimezones } from '@/lib/api/stats'
 import { type DimensionFilter } from '@/lib/filters'
 
@@ -367,22 +367,7 @@ export default function Audience({ countries, cities, regions, languages, timezo
     <>
       <div ref={containerRef} className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
-            <MapPin className="w-5 h-5 text-neutral-400 dark:text-neutral-500" weight="bold" />
-            <h3 className="text-lg font-semibold text-white">
-              Audience
-            </h3>
-            {showViewAll && (
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-lg"
-                aria-label="View all audience data"
-              >
-                <FrameCornersIcon className="w-4 h-4" weight="bold" />
-              </button>
-            )}
-          </div>
-          <div className="flex gap-1 overflow-x-auto scrollbar-hide" role="tablist" aria-label="Audience view tabs" onKeyDown={handleTabKeyDown}>
+          <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-1" role="tablist" aria-label="Audience view tabs" onKeyDown={handleTabKeyDown}>
             {(['map', 'countries', 'regions', 'cities', 'languages', 'timezones'] as Tab[]).map((tab) => (
               <button
                 key={tab}
@@ -399,13 +384,22 @@ export default function Audience({ countries, cities, regions, languages, timezo
                 {activeTab === tab && (
                   <motion.div
                     layoutId="audienceTab"
-                    className="absolute inset-x-0 -bottom-px h-0.5 bg-brand-orange"
+                    className="absolute inset-x-0 -bottom-px h-[3px] bg-brand-orange rounded-full"
                     transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                   />
                 )}
               </button>
             ))}
           </div>
+          {showViewAll && (
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-lg"
+              aria-label="View all audience data"
+            >
+              <FrameCornersIcon className="w-4 h-4" weight="bold" />
+            </button>
+          )}
         </div>
 
         <div className="space-y-2 flex-1 min-h-[270px]">
