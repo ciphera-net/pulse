@@ -91,9 +91,9 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
 
   const getTabLabel = (tab: Tab) => {
     switch (tab) {
-      case 'top_pages': return 'Top Pages'
-      case 'entry_pages': return 'Entry'
-      case 'exit_pages': return 'Exit'
+      case 'top_pages': return 'Pages'
+      case 'entry_pages': return 'Entries'
+      case 'exit_pages': return 'Exits'
     }
   }
 
