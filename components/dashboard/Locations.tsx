@@ -367,7 +367,7 @@ export default function Audience({ countries, cities, regions, languages, timezo
     <>
       <div ref={containerRef} className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-6">
-          <div className="flex gap-1 overflow-x-auto scrollbar-hide" role="tablist" aria-label="Audience view tabs" onKeyDown={handleTabKeyDown}>
+          <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-1" role="tablist" aria-label="Audience view tabs" onKeyDown={handleTabKeyDown}>
             {(['map', 'countries', 'regions', 'cities', 'languages', 'timezones'] as Tab[]).map((tab) => (
               <button
                 key={tab}

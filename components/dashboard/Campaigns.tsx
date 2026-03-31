@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import { motion } from 'framer-motion'
 import { logger } from '@/lib/utils/logger'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -21,6 +22,8 @@ interface CampaignsProps {
   onFilter?: (filter: DimensionFilter) => void
 }
 
+type UtmTab = 'source' | 'medium' | 'campaign'
+
 const LIMIT = 7
 
 export default function Campaigns({ siteId, dateRange, filters, onFilter }: CampaignsProps) {
@@ -32,6 +35,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
   const [fullData, setFullData] = useState<CampaignStat[]>([])
   const [isLoadingFull, setIsLoadingFull] = useState(false)
   const [faviconFailed, setFaviconFailed] = useState<Set<string>>(new Set())
+  const [activeTab, setActiveTab] = useState<UtmTab>('source')
 
   useEffect(() => {
     const fetchData = async () => {
@@ -76,10 +80,27 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
     [fullData, data]
   )
 
-  const totalVisitors = sortedData.reduce((sum, c) => sum + c.visitors, 0)
+  const groupedData = useMemo(() => {
+    const grouped = new Map<string, { visitors: number; pageviews: number }>()
+    for (const item of sortedData) {
+      const key = item[activeTab] || '(not set)'
+      const existing = grouped.get(key)
+      if (existing) {
+        existing.visitors += item.visitors
+        existing.pageviews += item.pageviews
+      } else {
+        grouped.set(key, { visitors: item.visitors, pageviews: item.pageviews })
+      }
+    }
+    return [...grouped.entries()]
+      .map(([name, stats]) => ({ name, ...stats }))
+      .sort((a, b) => b.visitors - a.visitors)
+  }, [sortedData, activeTab])
+
+  const totalVisitors = groupedData.reduce((sum, c) => sum + c.visitors, 0)
   const hasData = data.length > 0
-  const displayedData = hasData ? sortedData.slice(0, LIMIT) : []
-  const showViewAll = hasData && data.length > LIMIT
+  const displayedData = hasData ? groupedData.slice(0, LIMIT) : []
+  const showViewAll = hasData && groupedData.length > LIMIT
   const emptySlots = Math.max(0, LIMIT - displayedData.length)
 
   function renderSourceIcon(source: string) {
@@ -126,6 +147,30 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
     <>
       <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-4">
+          <div className="flex gap-1" role="tablist" aria-label="Campaign dimension tabs">
+            {(['source', 'medium', 'campaign'] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                role="tab"
+                aria-selected={activeTab === tab}
+                className={`relative px-2.5 py-1 text-xs font-medium transition-colors capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded cursor-pointer ${
+                  activeTab === tab
+                    ? 'text-white'
+                    : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-300'
+                }`}
+              >
+                {tab}
+                {activeTab === tab && (
+                  <motion.div
+                    layoutId="campaignTab"
+                    className="absolute inset-x-0 -bottom-px h-[3px] bg-brand-orange rounded-full"
+                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                  />
+                )}
+              </button>
+            ))}
+          </div>
           <div className="flex items-center gap-2">
             {showViewAll && (
               <button
@@ -136,13 +181,13 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
                 <FrameCornersIcon className="w-4 h-4" weight="bold" />
               </button>
             )}
+            <button
+              onClick={() => setIsBuilderOpen(true)}
+              className="text-xs font-medium text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange transition-colors cursor-pointer"
+            >
+              Build URL
+            </button>
           </div>
-          <button
-            onClick={() => setIsBuilderOpen(true)}
-            className="text-xs font-medium text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange transition-colors cursor-pointer"
-          >
-            Build URL
-          </button>
         </div>
 
         <div className="space-y-2 flex-1 min-h-[270px]">
@@ -153,10 +198,11 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
               {displayedData.map((item) => {
                 const maxVis = displayedData[0]?.visitors ?? 0
                 const barWidth = maxVis > 0 ? (item.visitors / maxVis) * 75 : 0
+                const filterDimension = activeTab === 'source' ? 'utm_source' : activeTab === 'medium' ? 'utm_medium' : 'utm_campaign'
                 return (
                   <div
-                    key={`${item.source}|${item.medium}|${item.campaign}`}
-                    onClick={() => onFilter?.({ dimension: 'utm_source', operator: 'is', values: [item.source] })}
+                    key={item.name}
+                    onClick={() => onFilter?.({ dimension: filterDimension, operator: 'is', values: [item.name] })}
                     className={`relative flex items-center justify-between py-1.5 group hover:bg-neutral-800/50 rounded-lg px-2 -mx-2 transition-colors${onFilter ? ' cursor-pointer' : ''}`}
                   >
                     <div
@@ -164,15 +210,10 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
                       style={{ width: `${barWidth}%` }}
                     />
                     <div className="relative flex-1 text-white flex items-center gap-3 min-w-0">
-                      {renderSourceIcon(item.source)}
+                      {activeTab === 'source' && renderSourceIcon(item.name)}
                       <div className="min-w-0">
-                        <div className="truncate font-medium text-sm" title={item.source}>
-                          {getReferrerDisplayName(item.source)}
-                        </div>
-                        <div className="flex items-center gap-1.5 text-[11px] text-neutral-400 dark:text-neutral-500">
-                          <span>{item.medium || '—'}</span>
-                          <span>·</span>
-                          <span className="truncate">{item.campaign || '—'}</span>
+                        <div className="truncate font-medium text-sm" title={item.name}>
+                          {activeTab === 'source' ? getReferrerDisplayName(item.name) : item.name}
                         </div>
                       </div>
                     </div>
