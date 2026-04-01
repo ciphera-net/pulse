@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { logger } from '@/lib/utils/logger'
 import { formatNumber, Modal } from '@ciphera-net/ui'
-import { CaretUp, CaretDown, FrameCornersIcon, Monitor, DeviceMobile, DeviceTablet } from '@phosphor-icons/react'
+import { FrameCornersIcon, Monitor, DeviceMobile, DeviceTablet } from '@phosphor-icons/react'
 import { useGSCStatus, useGSCOverview, useGSCTopQueries, useGSCTopPages, useGSCTopCountries, useGSCTopDevices, useGSCOpportunities } from '@/lib/swr/dashboard'
 import { getGSCTopQueries, getGSCTopPages, getGSCTopCountries, getGSCTopDevices, getGSCOpportunities } from '@/lib/api/gsc'
 import type { GSCDataRow, GSCCountryRow, GSCDeviceRow, GSCOpportunityRow } from '@/lib/api/gsc'
@@ -62,18 +62,6 @@ function getDeviceIcon(device: string) {
     case 'TABLET': return DeviceTablet
     default: return Monitor
   }
-}
-
-function ChangeArrow({ current, previous, invert = false }: { current: number; previous: number; invert?: boolean }) {
-  if (!previous || previous === 0) return null
-  const improved = invert ? current < previous : current > previous
-  const same = current === previous
-  if (same) return null
-  return improved ? (
-    <CaretUp className="w-3 h-3 text-emerald-500" weight="fill" />
-  ) : (
-    <CaretDown className="w-3 h-3 text-red-500" weight="fill" />
-  )
 }
 
 function getPositionBadgeClasses(position: number): string {
@@ -187,7 +175,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
         <span className="relative text-sm text-white truncate flex-1 min-w-0" title={label}>
           {label}
         </span>
-        <div className="relative flex items-center gap-3 ml-4 shrink-0">
+        <div className="relative flex items-center gap-2 ml-4 shrink-0">
           <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
             {totalImpressions > 0 ? `${Math.round((row.impressions / totalImpressions) * 100)}%` : ''}
           </span>
@@ -219,7 +207,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
         <span className="relative text-sm text-white truncate flex-1 min-w-0" title={name}>
           {flag ? `${flag} ` : ''}{name}
         </span>
-        <div className="relative flex items-center gap-3 ml-4 shrink-0">
+        <div className="relative flex items-center gap-2 ml-4 shrink-0">
           <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
             {totalClicks > 0 ? `${Math.round((row.clicks / totalClicks) * 100)}%` : ''}
           </span>
@@ -252,7 +240,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
           <Icon className="w-5 h-5 text-neutral-400 shrink-0" />
           {label}
         </span>
-        <div className="relative flex items-center gap-3 ml-4 shrink-0">
+        <div className="relative flex items-center gap-2 ml-4 shrink-0">
           <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
             {totalClicks > 0 ? `${Math.round((row.clicks / totalClicks) * 100)}%` : ''}
           </span>
@@ -282,7 +270,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
         <span className="relative text-sm text-white truncate flex-1 min-w-0" title={row.query}>
           {row.query}
         </span>
-        <div className="relative flex items-center gap-3 ml-4 shrink-0">
+        <div className="relative flex items-center gap-2 ml-4 shrink-0">
           <span className="text-sm font-semibold text-neutral-400">
             {formatNumber(row.clicks)}
           </span>
@@ -353,7 +341,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
           <span className="flex-1 truncate text-sm text-white" title={label}>
             {label}
           </span>
-          <div className="flex items-center gap-3 ml-4">
+          <div className="flex items-center gap-2 ml-4">
             <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
               {totalImpressions > 0 ? `${Math.round((r.impressions / totalImpressions) * 100)}%` : ''}
             </span>
@@ -378,7 +366,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
           <span className="flex-1 truncate text-sm text-white" title={name}>
             {flag ? `${flag} ` : ''}{name}
           </span>
-          <div className="flex items-center gap-3 ml-4">
+          <div className="flex items-center gap-2 ml-4">
             <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
               {totalImpressions > 0 ? `${Math.round((r.clicks / totalImpressions) * 100)}%` : ''}
             </span>
@@ -402,7 +390,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
           <span className="flex-1 truncate text-sm text-white" title={r.query}>
             {r.query}
           </span>
-          <div className="flex items-center gap-3 ml-4">
+          <div className="flex items-center gap-2 ml-4">
             <span className="text-sm font-semibold text-neutral-400">
               {formatNumber(r.clicks)}
             </span>
@@ -476,43 +464,11 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
         </div>
 
         {isLoading ? (
-          <div className="flex-1 space-y-4">
-            <div className="flex items-center gap-6">
-              <div className="h-4 w-20 bg-neutral-800 rounded animate-pulse" />
-              <div className="h-4 w-24 bg-neutral-800 rounded animate-pulse" />
-              <div className="h-4 w-20 bg-neutral-800 rounded animate-pulse" />
-            </div>
-            <div className="space-y-2 mt-4">
-              <ListSkeleton rows={LIMIT} />
-            </div>
+          <div className="space-y-2 flex-1 min-h-[270px]">
+            <ListSkeleton rows={LIMIT} />
           </div>
         ) : (
           <>
-            {/* Inline stats row */}
-            <div className="flex items-center gap-5 mb-4">
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs text-neutral-400">Clicks</span>
-                <span className="text-sm font-semibold text-white">
-                  {formatNumber(overview?.total_clicks ?? 0)}
-                </span>
-                <ChangeArrow current={overview?.total_clicks ?? 0} previous={overview?.prev_clicks ?? 0} />
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs text-neutral-400">Impressions</span>
-                <span className="text-sm font-semibold text-white">
-                  {formatNumber(overview?.total_impressions ?? 0)}
-                </span>
-                <ChangeArrow current={overview?.total_impressions ?? 0} previous={overview?.prev_impressions ?? 0} />
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs text-neutral-400">Avg Position</span>
-                <span className="text-sm font-semibold text-white">
-                  {(overview?.avg_position ?? 0).toFixed(1)}
-                </span>
-                <ChangeArrow current={overview?.avg_position ?? 0} previous={overview?.prev_avg_position ?? 0} invert />
-              </div>
-            </div>
-
             {/* Data list */}
             <div className="space-y-2 flex-1 min-h-[270px]">
               {renderDataList()}
