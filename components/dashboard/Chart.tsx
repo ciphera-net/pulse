@@ -369,17 +369,6 @@ export default function Chart({
                       </span>
                     )}
                   </div>
-                  <div className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">{
-                    period === 'today' ? 'vs yesterday'
-                    : period === 'week' ? 'vs last week'
-                    : period === 'month' ? 'vs last month'
-                    : period === '7' ? 'vs previous 7 days'
-                    : period === '30' ? 'vs previous 30 days'
-                    : (() => {
-                        const days = Math.round((new Date(dateRange.end).getTime() - new Date(dateRange.start).getTime()) / 86400000)
-                        return days === 0 ? 'vs yesterday' : `vs previous ${days} days`
-                      })()
-                  }</div>
                 </div>
                 {metric === m.key && (
                   <motion.div
