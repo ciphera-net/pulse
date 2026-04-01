@@ -73,18 +73,29 @@
 
   var metricsSent = false;
 
+  var visibleStart = 0;
+  var visibleTotal = 0;
+
   function sendMetrics() {
     if (!currentEventId || metricsSent) return;
 
-    // * Calculate time-on-page in seconds
     var durationSec = pageStartTime > 0 ? Math.round((Date.now() - pageStartTime) / 1000) : 0;
-
-    // * Skip if nothing to send (no duration)
     if (durationSec <= 0) return;
+
+    // * Finalize visible duration — add time since last visibility change if still visible
+    if (!document.hidden) visibleTotal += Date.now() - visibleStart;
+    var visibleSec = Math.round(visibleTotal / 1000);
 
     metricsSent = true;
 
-    var data = JSON.stringify({ event_id: currentEventId, duration: durationSec });
+    var payload = { event_id: currentEventId, duration: durationSec, visible_duration: visibleSec };
+
+    // * Include scroll depth if scroll tracking is enabled and user scrolled
+    if (typeof maxScrollPct !== 'undefined' && maxScrollPct > 0) {
+      payload.scroll_depth = maxScrollPct;
+    }
+
+    var data = JSON.stringify(payload);
 
     if (navigator.sendBeacon) {
       navigator.sendBeacon(apiUrl + '/api/v1/metrics', new Blob([data], {type: 'application/json'}));
@@ -94,9 +105,18 @@
         headers: { 'Content-Type': 'application/json' },
         body: data,
         keepalive: true
-      }).catch(() => {});
+      }).catch(function() {});
     }
   }
+
+  // * Accumulate visible time — pause when tab is hidden, resume when visible
+  document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+      visibleTotal += Date.now() - visibleStart;
+    } else {
+      visibleStart = Date.now();
+    }
+  });
 
   // * Send metrics when user leaves or hides the page
   // * visibilitychange is the primary signal, pagehide is the fallback
@@ -190,6 +210,8 @@
       if (data && data.id) {
         currentEventId = data.id;
         pageStartTime = Date.now();
+        visibleStart = Date.now();
+        visibleTotal = 0;
         metricsSent = false;
       }
     }).catch(() => {
@@ -215,7 +237,7 @@
       lastUrl = url;
       trackPageview();
       // * Flush & reset scroll depth tracking for the new page
-      if (trackScroll) { flushScroll(); maxScrollDepth = 0; }
+      if (trackScroll) { maxScrollPct = 0; }
     }
   }
   new MutationObserver(onUrlChange).observe(document, { subtree: true, childList: true });
@@ -230,7 +252,7 @@
     if (url === lastUrl) return;
     lastUrl = url;
     trackPageview();
-    if (trackScroll) { flushScroll(); maxScrollDepth = 0; }
+    if (trackScroll) { maxScrollPct = 0; }
   });
 
   // * Custom events / goals
@@ -260,40 +282,27 @@
   window.pulse.track = trackCustomEvent;
   window.pulse.cleanPath = cleanPath;
 
-  // * Auto-track scroll depth at 25%, 50%, 75%, and 100% (on by default)
-  // * Sends a SINGLE event (max depth reached) on page exit or SPA navigation
+  // * Auto-track exact scroll depth percentage (on by default)
+  // * Scroll depth is sent as part of the metrics payload on page exit
   // * Opt-out: add data-no-scroll to the script tag
   var trackScroll = !hasAttr('no-scroll');
+  var maxScrollPct = 0;
 
   if (trackScroll) {
-    var scrollThresholds = [25, 50, 75, 100];
-    var maxScrollDepth = 0;
     var scrollTicking = false;
 
     function checkScroll() {
       var docHeight = document.documentElement.scrollHeight;
       var viewHeight = window.innerHeight;
-      // * Page fits in viewport — nothing to scroll
-      if (docHeight <= viewHeight) return;
+      if (docHeight <= viewHeight) {
+        maxScrollPct = 100;
+        scrollTicking = false;
+        return;
+      }
       var scrollTop = window.scrollY;
-      var scrollPercent = Math.round((scrollTop + viewHeight) / docHeight * 100);
-
-      for (var i = scrollThresholds.length - 1; i >= 0; i--) {
-        if (scrollPercent >= scrollThresholds[i] && scrollThresholds[i] > maxScrollDepth) {
-          maxScrollDepth = scrollThresholds[i];
-          break;
-        }
-      }
-
+      var pct = Math.min(100, Math.round((scrollTop + viewHeight) / docHeight * 100));
+      if (pct > maxScrollPct) maxScrollPct = pct;
       scrollTicking = false;
-    }
-
-    // * Flush: send a single scroll_N event for the deepest threshold reached
-    function flushScroll() {
-      if (maxScrollDepth > 0) {
-        trackCustomEvent('scroll_' + maxScrollDepth);
-        maxScrollDepth = 0;
-      }
     }
 
     window.addEventListener('scroll', function() {
@@ -302,11 +311,6 @@
         requestAnimationFrame(checkScroll);
       }
     }, { passive: true });
-
-    // * Send scroll depth on page exit
-    document.addEventListener('visibilitychange', function() {
-      if (document.visibilityState === 'hidden') flushScroll();
-    });
   }
 
   // * Auto-track outbound link clicks and file downloads (on by default)
