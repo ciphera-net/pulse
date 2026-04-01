@@ -104,7 +104,7 @@ function Sparkline({ data, dataKey, active }: { data: DailyStat[]; dataKey: Metr
   const fillColor = active ? 'rgba(253,94,15,0.08)' : 'rgba(82,82,82,0.05)'
 
   return (
-    <svg viewBox={`0 0 100 ${h}`} className="absolute bottom-0 left-0 right-0 w-full" style={{ height: h }} preserveAspectRatio="none">
+    <svg viewBox={`0 0 100 ${h}`} className={cn("absolute bottom-0 left-0 right-0 w-full z-0", active ? "opacity-60" : "opacity-30")} style={{ height: h }} preserveAspectRatio="none">
       <polygon points={fillPoints} fill={fillColor} />
       <polyline
         points={points.join(' ')}
@@ -357,28 +357,30 @@ export default function Chart({
                   metric === m.key && 'bg-neutral-50 dark:bg-neutral-800/40',
                 )}
               >
-                <div className={cn('text-[10px] font-semibold uppercase tracking-widest mb-2', metric === m.key ? 'text-brand-orange' : 'text-neutral-400 dark:text-neutral-500')}>{m.label}</div>
-                <div className="flex items-baseline gap-2">
-                  <AnimatedNumber value={m.value} format={m.format} className="text-2xl font-bold text-white" />
-                  {m.change !== null && (
-                    <span className={cn('flex items-center gap-0.5 text-sm font-semibold', m.isPositive ? 'text-[#10B981]' : 'text-[#EF4444]')}>
-                      {m.isPositive ? <ArrowUpRight weight="bold" className="size-3.5" /> : <ArrowDownRight weight="bold" className="size-3.5" />}
-                      {Math.abs(m.change).toFixed(0)}%
-                    </span>
-                  )}
-                </div>
-                <div className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">{
-                  period === 'today' ? 'vs yesterday'
-                  : period === 'week' ? 'vs last week'
-                  : period === 'month' ? 'vs last month'
-                  : period === '7' ? 'vs previous 7 days'
-                  : period === '30' ? 'vs previous 30 days'
-                  : (() => {
-                      const days = Math.round((new Date(dateRange.end).getTime() - new Date(dateRange.start).getTime()) / 86400000)
-                      return days === 0 ? 'vs yesterday' : `vs previous ${days} days`
-                    })()
-                }</div>
                 <Sparkline data={data} dataKey={m.key} active={metric === m.key} />
+                <div className="relative z-10">
+                  <div className={cn('text-[10px] font-semibold uppercase tracking-widest mb-2', metric === m.key ? 'text-brand-orange' : 'text-neutral-400 dark:text-neutral-500')}>{m.label}</div>
+                  <div className="flex items-baseline gap-2">
+                    <AnimatedNumber value={m.value} format={m.format} className="text-2xl font-bold text-white" />
+                    {m.change !== null && (
+                      <span className={cn('flex items-center gap-0.5 text-sm font-semibold', m.isPositive ? 'text-[#10B981]' : 'text-[#EF4444]')}>
+                        {m.isPositive ? <ArrowUpRight weight="bold" className="size-3.5" /> : <ArrowDownRight weight="bold" className="size-3.5" />}
+                        {Math.abs(m.change).toFixed(0)}%
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">{
+                    period === 'today' ? 'vs yesterday'
+                    : period === 'week' ? 'vs last week'
+                    : period === 'month' ? 'vs last month'
+                    : period === '7' ? 'vs previous 7 days'
+                    : period === '30' ? 'vs previous 30 days'
+                    : (() => {
+                        const days = Math.round((new Date(dateRange.end).getTime() - new Date(dateRange.start).getTime()) / 86400000)
+                        return days === 0 ? 'vs yesterday' : `vs previous ${days} days`
+                      })()
+                  }</div>
+                </div>
                 {metric === m.key && (
                   <motion.div
                     layoutId="activeMetric"
