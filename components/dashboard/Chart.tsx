@@ -84,7 +84,7 @@ interface ChartProps {
   onDeleteAnnotation?: (id: string) => Promise<void>
 }
 
-type MetricType = 'pageviews' | 'visitors' | 'bounce_rate' | 'avg_duration' | 'engagement'
+type MetricType = 'pageviews' | 'visitors' | 'pages_per_visit' | 'bounce_rate' | 'avg_duration' | 'engagement'
 
 // ─── Sparkline ───────────────────────────────────────────────────────
 
@@ -110,7 +110,9 @@ function Sparkline({ data, dataKey, active }: { data: DailyStat[]; dataKey: Metr
   const values = data.map((d) =>
     dataKey === 'engagement'
       ? computeEngagement(d)
-      : d[dataKey] as number
+      : dataKey === 'pages_per_visit'
+        ? (d.visitors > 0 ? d.pageviews / d.visitors : 0)
+        : d[dataKey] as number
   )
   const max = Math.max(...values)
   const min = Math.min(...values)
@@ -167,17 +169,19 @@ const METRIC_CONFIGS: {
 }[] = [
   { key: 'visitors', label: 'Unique Visitors', format: (v) => formatNumber(Math.round(v)) },
   { key: 'pageviews', label: 'Total Pageviews', format: (v) => formatNumber(Math.round(v)) },
-  { key: 'engagement', label: 'Engagement', format: (v) => String(Math.round(v ?? 0)) },
+  { key: 'pages_per_visit', label: 'Pages per Visit', format: (v) => (v ?? 0).toFixed(1) },
   { key: 'bounce_rate', label: 'Bounce Rate', format: (v) => `${Math.round(v)}%`, isNegative: true },
   { key: 'avg_duration', label: 'Visit Duration', format: (v) => formatDuration(Math.round(v)) },
+  { key: 'engagement', label: 'Engagement', format: (v) => String(Math.round(v ?? 0)) },
 ]
 
 const CHART_COLORS: Record<MetricType, string> = {
   visitors: '#FD5E0F',
   pageviews: '#FD5E0F',
-  engagement: '#FD5E0F',
+  pages_per_visit: '#FD5E0F',
   bounce_rate: '#FD5E0F',
   avg_duration: '#FD5E0F',
+  engagement: '#FD5E0F',
 }
 
 // ─── Chart Component ─────────────────────────────────────────────────
@@ -272,9 +276,10 @@ export default function Chart({
       originalDate: item.date,
       pageviews: item.pageviews,
       visitors: item.visitors,
-      engagement: computeEngagement(item),
+      pages_per_visit: item.visitors > 0 ? item.pageviews / item.visitors : 0,
       bounce_rate: item.bounce_rate,
       avg_duration: item.avg_duration,
+      engagement: computeEngagement(item),
     }
   }), [data, interval])
 
@@ -357,10 +362,14 @@ export default function Chart({
   const metricsWithTrends = useMemo(() => METRIC_CONFIGS.map((m) => {
     const value = m.key === 'engagement'
       ? computeEngagement(stats)
-      : stats[m.key as keyof Stats]
+      : m.key === 'pages_per_visit'
+        ? (stats.visitors > 0 ? stats.pageviews / stats.visitors : 0)
+        : stats[m.key as keyof Stats]
     const previousValue = m.key === 'engagement'
       ? (prevStats ? computeEngagement(prevStats) : undefined)
-      : prevStats?.[m.key as keyof Stats]
+      : m.key === 'pages_per_visit'
+        ? (prevStats && prevStats.visitors > 0 ? prevStats.pageviews / prevStats.visitors : undefined)
+        : prevStats?.[m.key as keyof Stats]
     const change = previousValue != null && previousValue > 0
       ? ((value - previousValue) / previousValue) * 100
       : null
@@ -379,9 +388,6 @@ export default function Chart({
   const hasAnyNonZero = hasData && chartData.some((d) => (d[metric] as number) > 0
   )
 
-  const visibleMetrics = metricsWithTrends.filter(m =>
-    m.key !== 'engagement' || stats.avg_scroll_depth > 0 || stats.avg_visible_duration > 0
-  )
 
   // ─── Render ────────────────────────────────────────────────────────
 
@@ -390,8 +396,8 @@ export default function Chart({
       <Card className="w-full overflow-hidden rounded-2xl">
         <CardHeader className="p-0 mb-0">
           {/* Metrics Grid - 21st.dev style */}
-          <div className={`grid grid-cols-2 ${visibleMetrics.length === 5 ? 'md:grid-cols-5' : 'md:grid-cols-4'} grow w-full`}>
-            {visibleMetrics.map((m) => (
+          <div className="grid grid-cols-2 md:grid-cols-6 grow w-full">
+            {metricsWithTrends.map((m) => (
               <button
                 key={m.key}
                 onClick={() => setMetric(m.key)}
