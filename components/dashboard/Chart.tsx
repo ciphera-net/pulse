@@ -152,6 +152,7 @@ function formatEU(dateStr: string): string {
 }
 
 function computeEngagement(d: { avg_scroll_depth: number; avg_visible_duration: number; pageviews: number; visitors: number; bounce_rate: number }): number {
+  if (d.visitors === 0 && d.pageviews === 0) return 0
   const scroll = Math.min(100, d.avg_scroll_depth)
   const time = Math.min(100, (d.avg_visible_duration / 120) * 100)
   const depth = Math.min(100, ((d.visitors > 0 ? d.pageviews / d.visitors : 0) / 3) * 100)
