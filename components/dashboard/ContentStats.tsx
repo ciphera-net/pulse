@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
 import { logger } from '@/lib/utils/logger'
 import { formatNumber } from '@ciphera-net/ui'
 import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
@@ -91,16 +90,16 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
 
   const getTabLabel = (tab: Tab) => {
     switch (tab) {
-      case 'top_pages': return 'Top Pages'
-      case 'entry_pages': return 'Entry'
-      case 'exit_pages': return 'Exit'
+      case 'top_pages': return 'Pages'
+      case 'entry_pages': return 'Entries'
+      case 'exit_pages': return 'Exits'
     }
   }
 
   return (
     <>
       <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 h-full flex flex-col">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-1" role="tablist" aria-label="Pages view tabs" onKeyDown={handleTabKeyDown}>
             {(['top_pages', 'entry_pages', 'exit_pages'] as Tab[]).map((tab) => (
               <button
@@ -115,13 +114,11 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
                 }`}
               >
                 {getTabLabel(tab)}
-                {activeTab === tab && (
-                  <motion.div
-                    layoutId="contentStatsTab"
-                    className="absolute inset-x-0 -bottom-px h-[3px] bg-brand-orange rounded-full"
-                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                  />
-                )}
+                <span
+                  className={`absolute inset-x-0 -bottom-px h-[3px] rounded-full transition-all duration-200 ${
+                    activeTab === tab ? 'bg-brand-orange scale-x-100' : 'bg-transparent scale-x-0'
+                  }`}
+                />
               </button>
             ))}
           </div>
