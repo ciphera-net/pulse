@@ -139,7 +139,7 @@ const METRIC_CONFIGS: {
 }[] = [
   { key: 'visitors', label: 'Unique Visitors', format: (v) => formatNumber(Math.round(v)) },
   { key: 'pageviews', label: 'Total Pageviews', format: (v) => formatNumber(Math.round(v)) },
-  { key: 'pages_per_visit', label: 'Pages / Visit', format: (v) => v.toFixed(1) },
+  { key: 'pages_per_visit', label: 'Pages per Visit', format: (v) => (v ?? 0).toFixed(1) },
   { key: 'bounce_rate', label: 'Bounce Rate', format: (v) => `${Math.round(v)}%`, isNegative: true },
   { key: 'avg_duration', label: 'Visit Duration', format: (v) => formatDuration(Math.round(v)) },
 ]
