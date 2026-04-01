@@ -135,8 +135,8 @@ interface ReferrerEntry {
  */
 const REFERRER_REGISTRY: Record<string, ReferrerEntry> = {
   // ── Special ──
-  direct:      { display: 'Direct',      icon: () => <CursorClick className="text-neutral-500" /> },
-  'shared link': { display: 'Shared Link', icon: () => <Link className="text-neutral-500" /> },
+  direct:      { display: 'Direct',      icon: () => <CursorClick className="w-5 h-5 text-neutral-500" /> },
+  'shared link': { display: 'Shared Link', icon: () => <Link className="w-5 h-5 text-neutral-500" /> },
 
   // ── Social / platforms ──
   google:      { display: 'Google',      icon: () => <SiGoogle size={SI.size} color="#4285F4" /> },
@@ -153,8 +153,8 @@ const REFERRER_REGISTRY: Record<string, ReferrerEntry> = {
   pinterest:   { display: 'Pinterest',   icon: () => <SiPinterest size={SI.size} color="#BD081C" /> },
   threads:     { display: 'Threads',     icon: () => <SiThreads size={SI.size} color="#fff" /> },
   discord:     { display: 'Discord',     icon: () => <SiDiscord size={SI.size} color="#5865F2" /> },
-  tumblr:      { display: 'Tumblr',      icon: () => <Globe className="text-neutral-400" /> },
-  quora:       { display: 'Quora',       icon: () => <Globe className="text-neutral-400" /> },
+  tumblr:      { display: 'Tumblr',      icon: () => <Globe className="w-5 h-5 text-neutral-400" /> },
+  quora:       { display: 'Quora',       icon: () => <Globe className="w-5 h-5 text-neutral-400" /> },
 
   // ── Search engines ──
   bing:        { display: 'Bing',        icon: () => <BingIcon /> },
@@ -169,8 +169,8 @@ const REFERRER_REGISTRY: Record<string, ReferrerEntry> = {
   copilot:     { display: 'Copilot',     icon: () => <SiGithubcopilot size={SI.size} color="#fff" />,  hostnames: ['copilot.microsoft.com'] },
   deepseek:    { display: 'DeepSeek',    icon: () => <OpenAIIcon color="#4D6BFE" />,                   hostnames: ['chat.deepseek.com'] },
   grok:        { display: 'Grok',        icon: () => <XIcon />,                                       hostnames: ['grok.x.ai', 'x.ai'] },
-  you:         { display: 'You.com',     icon: () => <Globe className="text-neutral-400" /> },
-  phind:       { display: 'Phind',       icon: () => <Globe className="text-neutral-400" /> },
+  you:         { display: 'You.com',     icon: () => <Globe className="w-5 h-5 text-neutral-400" /> },
+  phind:       { display: 'Phind',       icon: () => <Globe className="w-5 h-5 text-neutral-400" /> },
 
   // ── Browsers as referrers ──
   googlechrome: { display: 'Google Chrome', icon: () => <img src="/icons/browsers/chrome.svg" alt="Chrome" width={20} height={20} className="inline-block" />, hostnames: ['googlechrome.github.io'] },
@@ -278,10 +278,10 @@ function resolveReferrer(referrer: string): ReferrerEntry | null {
 // ── Public API (same signatures as before) ──
 
 export function getReferrerIcon(referrerName: string): ReactNode {
-  if (!referrerName) return <Globe className="text-neutral-400" />
+  if (!referrerName) return <Globe className="w-5 h-5 text-neutral-400" />
   const entry = resolveReferrer(referrerName)
   if (entry) return entry.icon()
-  return <Globe className="text-neutral-400" />
+  return <Globe className="w-5 h-5 text-neutral-400" />
 }
 
 function capitalizeLabel(label: string): string {
