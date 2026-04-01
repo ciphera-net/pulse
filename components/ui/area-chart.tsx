@@ -1366,15 +1366,61 @@ export function XAxis({ numTicks = 5, tickerHalfWidth = 50, formatLabel }: XAxis
 
     const startTime = startDate.getTime();
     const endTime = endDate.getTime();
-    const timeRange = endTime - startTime;
-
+    const rangeMs = endTime - startTime;
     const tickCount = Math.max(2, numTicks);
-    const dates: Date[] = [];
 
-    for (let i = 0; i < tickCount; i++) {
-      const t = i / (tickCount - 1);
-      const time = startTime + t * timeRange;
-      dates.push(new Date(time));
+    // Generate all natural boundary dates, then thin to fit numTicks
+    const allDates: Date[] = [];
+
+    const HOUR = 3_600_000;
+    const DAY = 86_400_000;
+
+    if (rangeMs <= 2 * HOUR) {
+      // Minute-level: snap to 5-minute boundaries
+      const first = new Date(startDate);
+      first.setUTCSeconds(0, 0);
+      first.setUTCMinutes(Math.ceil(first.getUTCMinutes() / 5) * 5);
+      for (let t = first.getTime(); t <= endTime; t += 5 * 60_000) {
+        allDates.push(new Date(t));
+      }
+    } else if (rangeMs <= 3 * DAY) {
+      // Hour-level: snap to top of each hour
+      const first = new Date(startDate);
+      first.setUTCMinutes(0, 0, 0);
+      if (first.getTime() < startTime) first.setUTCHours(first.getUTCHours() + 1);
+      for (let t = first.getTime(); t <= endTime; t += HOUR) {
+        allDates.push(new Date(t));
+      }
+    } else if (rangeMs <= 90 * DAY) {
+      // Day-level: snap to midnight of each day
+      const first = new Date(startDate);
+      first.setUTCHours(0, 0, 0, 0);
+      if (first.getTime() < startTime) first.setUTCDate(first.getUTCDate() + 1);
+      for (let t = first.getTime(); t <= endTime; t += DAY) {
+        allDates.push(new Date(t));
+      }
+    } else {
+      // Month-level: snap to 1st of each month
+      const first = new Date(startDate);
+      first.setUTCDate(1);
+      first.setUTCHours(0, 0, 0, 0);
+      if (first.getTime() < startTime) first.setUTCMonth(first.getUTCMonth() + 1);
+      while (first.getTime() <= endTime) {
+        allDates.push(new Date(first));
+        first.setUTCMonth(first.getUTCMonth() + 1);
+      }
+    }
+
+    // Thin to numTicks by picking evenly spaced indices
+    let dates: Date[];
+    if (allDates.length <= tickCount) {
+      dates = allDates;
+    } else {
+      dates = [];
+      for (let i = 0; i < tickCount; i++) {
+        const idx = Math.round(i * (allDates.length - 1) / (tickCount - 1));
+        dates.push(allDates[idx]);
+      }
     }
 
     const defaultFormat = (d: Date) => d.toLocaleDateString("en-GB", { month: "short", day: "numeric" });
