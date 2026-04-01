@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
 import { logger } from '@/lib/utils/logger'
 import { formatNumber } from '@ciphera-net/ui'
 import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
@@ -132,7 +131,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
   return (
     <>
       <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 h-full flex flex-col">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-1" role="tablist" aria-label="Technology view tabs" onKeyDown={handleTabKeyDown}>
             {(['browsers', 'os', 'devices', 'screens'] as Tab[]).map((tab) => (
               <button
@@ -140,20 +139,18 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
                 onClick={() => setActiveTab(tab)}
                 role="tab"
                 aria-selected={activeTab === tab}
-                className={`relative px-2.5 py-1 text-xs font-medium transition-colors capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded cursor-pointer ${
+                className={`relative px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded cursor-pointer ${
                   activeTab === tab
                     ? 'text-white'
                     : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-300'
                 }`}
               >
-                {tab}
-                {activeTab === tab && (
-                  <motion.div
-                    layoutId="techSpecsTab"
-                    className="absolute inset-x-0 -bottom-px h-[3px] bg-brand-orange rounded-full"
-                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                  />
-                )}
+                {{ browsers: 'Browsers', os: 'OS', devices: 'Devices', screens: 'Screens' }[tab]}
+                <span
+                  className={`absolute inset-x-0 -bottom-px h-[3px] rounded-full transition-all duration-200 ${
+                    activeTab === tab ? 'bg-brand-orange scale-x-100' : 'bg-transparent scale-x-0'
+                  }`}
+                />
               </button>
             ))}
           </div>

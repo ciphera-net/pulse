@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { motion } from 'framer-motion'
 import { logger } from '@/lib/utils/logger'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -83,7 +82,9 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
   const groupedData = useMemo(() => {
     const grouped = new Map<string, { visitors: number; pageviews: number }>()
     for (const item of sortedData) {
-      const key = item[activeTab] || '(not set)'
+      const raw = item[activeTab]
+      if (!raw) continue
+      const key = raw
       const existing = grouped.get(key)
       if (existing) {
         existing.visitors += item.visitors
@@ -119,7 +120,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
         />
       )
     }
-    return <span className="text-lg flex-shrink-0">{getReferrerIcon(source)}</span>
+    return <span className="w-5 h-5 flex-shrink-0 flex items-center justify-center">{getReferrerIcon(source)}</span>
   }
 
   const handleExportCampaigns = () => {
@@ -147,7 +148,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
     <>
       <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-4">
-          <div className="flex gap-1" role="tablist" aria-label="Campaign dimension tabs">
+          <div className="flex gap-1 pb-1" role="tablist" aria-label="Campaign dimension tabs">
             {(['source', 'medium', 'campaign'] as const).map((tab) => (
               <button
                 key={tab}
@@ -161,13 +162,11 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
                 }`}
               >
                 {tab}
-                {activeTab === tab && (
-                  <motion.div
-                    layoutId="campaignTab"
-                    className="absolute inset-x-0 -bottom-px h-[3px] bg-brand-orange rounded-full"
-                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                  />
-                )}
+                <span
+                  className={`absolute inset-x-0 -bottom-px h-[3px] rounded-full transition-all duration-200 ${
+                    activeTab === tab ? 'bg-brand-orange scale-x-100' : 'bg-transparent scale-x-0'
+                  }`}
+                />
               </button>
             ))}
           </div>

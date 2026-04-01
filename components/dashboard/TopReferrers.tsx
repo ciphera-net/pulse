@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
 import { logger } from '@/lib/utils/logger'
 import { formatNumber } from '@ciphera-net/ui'
 import { getReferrerDisplayName, getReferrerFavicon, getReferrerIcon, mergeReferrersByDisplayName } from '@/lib/utils/icons'
@@ -40,20 +39,21 @@ interface TopReferrersProps {
 const LIMIT = 7
 
 function getChannelIcon(channel: string) {
+  const cls = "w-5 h-5 text-neutral-400 dark:text-neutral-500"
   switch (channel) {
-    case 'Direct': return <LinkIcon className="w-5 h-5" />
-    case 'Organic Search': return <MagnifyingGlass className="w-5 h-5" />
-    case 'Organic Social': return <UsersThree className="w-5 h-5" />
-    case 'Paid Search': return <CurrencyCircleDollar className="w-5 h-5" />
-    case 'Paid Social': return <Megaphone className="w-5 h-5" />
-    case 'AI': return <Robot className="w-5 h-5" />
-    case 'Email': return <Envelope className="w-5 h-5" />
-    case 'Referral': return <ArrowSquareOut className="w-5 h-5" />
-    case 'Organic Video': return <PlayCircle className="w-5 h-5" />
-    case 'Display': return <Monitor className="w-5 h-5" />
-    case 'Affiliate': return <Handshake className="w-5 h-5" />
-    case 'SMS': return <ChatCircle className="w-5 h-5" />
-    default: return <Question className="w-5 h-5" />
+    case 'Direct': return <LinkIcon className={cls} />
+    case 'Organic Search': return <MagnifyingGlass className={cls} />
+    case 'Organic Social': return <UsersThree className={cls} />
+    case 'Paid Search': return <CurrencyCircleDollar className={cls} />
+    case 'Paid Social': return <Megaphone className={cls} />
+    case 'AI': return <Robot className={cls} />
+    case 'Email': return <Envelope className={cls} />
+    case 'Referral': return <ArrowSquareOut className={cls} />
+    case 'Organic Video': return <PlayCircle className={cls} />
+    case 'Display': return <Monitor className={cls} />
+    case 'Affiliate': return <Handshake className={cls} />
+    case 'SMS': return <ChatCircle className={cls} />
+    default: return <Question className={cls} />
   }
 }
 
@@ -108,7 +108,7 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
         />
       )
     }
-    return <span className="text-lg flex-shrink-0">{getReferrerIcon(referrer)}</span>
+    return <span className="w-5 h-5 flex-shrink-0 flex items-center justify-center">{getReferrerIcon(referrer)}</span>
   }
 
   useEffect(() => {
@@ -136,9 +136,9 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
 
   return (
     <>
-      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
+      <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-4">
-          <div className="flex gap-1" role="tablist" aria-label="Referrers view tabs">
+          <div className="flex gap-1 pb-1" role="tablist" aria-label="Referrers view tabs">
             {(['referrers', 'channels'] as const).map((tab) => (
               <button
                 key={tab}
@@ -152,13 +152,11 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
                 }`}
               >
                 {tab}
-                {view === tab && (
-                  <motion.div
-                    layoutId="referrersTab"
-                    className="absolute inset-x-0 -bottom-px h-[3px] bg-brand-orange rounded-full"
-                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                  />
-                )}
+                <span
+                  className={`absolute inset-x-0 -bottom-px h-[3px] rounded-full transition-all duration-200 ${
+                    view === tab ? 'bg-brand-orange scale-x-100' : 'bg-transparent scale-x-0'
+                  }`}
+                />
               </button>
             ))}
           </div>
@@ -251,7 +249,7 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
                         style={{ width: `${barWidth}%` }}
                       />
                       <div className="relative flex-1 truncate text-white flex items-center gap-3">
-                        <span className="flex-shrink-0 text-neutral-400 dark:text-neutral-500">{getChannelIcon(ch.channel)}</span>
+                        <span className="flex-shrink-0">{getChannelIcon(ch.channel)}</span>
                         <span className="truncate" title={ch.channel}>{ch.channel}</span>
                       </div>
                       <div className="relative flex items-center gap-2 ml-4">
