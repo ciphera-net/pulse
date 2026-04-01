@@ -249,7 +249,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
           style={{ width: `${barWidth}%` }}
         />
         <span className="relative text-sm text-white truncate flex-1 min-w-0 flex items-center gap-2">
-          <Icon className="w-4 h-4 text-neutral-400 shrink-0" />
+          <Icon className="w-5 h-5 text-neutral-400 shrink-0" />
           {label}
         </span>
         <div className="relative flex items-center gap-3 ml-4 shrink-0">
