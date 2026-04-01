@@ -59,6 +59,8 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
     visitors: true,
     bounce_rate: true,
     avg_duration: true,
+    avg_scroll_depth: true,
+    avg_visible_duration: true,
   })
 
   const handleFieldChange = (field: keyof DailyStat, checked: boolean) => {
