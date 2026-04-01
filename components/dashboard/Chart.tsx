@@ -84,6 +84,23 @@ type MetricType = 'pageviews' | 'visitors' | 'bounce_rate' | 'avg_duration' | 'p
 
 // ─── Sparkline ───────────────────────────────────────────────────────
 
+function smoothPath(coords: { x: number; y: number }[]): string {
+  if (coords.length < 2) return ''
+  let d = `M${coords[0].x},${coords[0].y}`
+  for (let i = 0; i < coords.length - 1; i++) {
+    const p0 = coords[Math.max(0, i - 1)]
+    const p1 = coords[i]
+    const p2 = coords[i + 1]
+    const p3 = coords[Math.min(coords.length - 1, i + 2)]
+    const cp1x = p1.x + (p2.x - p0.x) / 6
+    const cp1y = p1.y + (p2.y - p0.y) / 6
+    const cp2x = p2.x - (p3.x - p1.x) / 6
+    const cp2y = p2.y - (p3.y - p1.y) / 6
+    d += ` C${cp1x},${cp1y} ${cp2x},${cp2y} ${p2.x},${p2.y}`
+  }
+  return d
+}
+
 function Sparkline({ data, dataKey, active }: { data: DailyStat[]; dataKey: MetricType; active: boolean }) {
   if (data.length < 2) return null
   const values = data.map((d) =>
@@ -97,23 +114,21 @@ function Sparkline({ data, dataKey, active }: { data: DailyStat[]; dataKey: Metr
   const h = 52
   const padding = 2
 
-  const points = values.map((v, i) => {
-    const x = (i / (values.length - 1)) * 100
-    const y = h - padding - ((v - min) / range) * (h - padding * 2)
-    return `${x},${y}`
-  })
+  const coords = values.map((v, i) => ({
+    x: (i / (values.length - 1)) * 100,
+    y: h - padding - ((v - min) / range) * (h - padding * 2),
+  }))
 
-  const fillPoints = [`0,${h}`, ...points, `100,${h}`].join(' ')
-  const strokeColor = active ? '#fd5e0f' : '#525252'
-  const fillColor = active ? 'rgba(253,94,15,0.08)' : 'rgba(82,82,82,0.05)'
+  const linePath = smoothPath(coords)
+  const fillPath = linePath + ` L100,${h} L0,${h} Z`
 
   return (
-    <svg viewBox={`0 0 100 ${h}`} className={cn("absolute bottom-0 left-0 right-0 w-full z-0", active ? "opacity-60" : "opacity-30")} style={{ height: h }} preserveAspectRatio="none">
-      <polygon points={fillPoints} fill={fillColor} />
-      <polyline
-        points={points.join(' ')}
+    <svg viewBox={`0 0 100 ${h}`} className="absolute bottom-0 left-0 right-0 w-full z-0 transition-opacity duration-200 opacity-30 group-hover:opacity-60" style={{ height: h }} preserveAspectRatio="none">
+      <path d={fillPath} className={active ? "fill-brand-orange/[0.08]" : "fill-neutral-600/[0.05] group-hover:fill-brand-orange/[0.08]"} />
+      <path
+        d={linePath}
         fill="none"
-        stroke={strokeColor}
+        className={active ? "stroke-brand-orange" : "stroke-neutral-600 group-hover:stroke-brand-orange"}
         strokeWidth={1.5}
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -364,7 +379,7 @@ export default function Chart({
                 key={m.key}
                 onClick={() => setMetric(m.key)}
                 className={cn(
-                  'relative overflow-hidden cursor-pointer flex-1 text-start p-4 border-b md:border-b-0 md:border-r md:last:border-r-0 border-neutral-200 dark:border-neutral-800 transition-all',
+                  'group relative overflow-hidden cursor-pointer flex-1 text-start p-4 border-b md:border-b-0 md:border-r md:last:border-r-0 border-neutral-200 dark:border-neutral-800 transition-all',
                   metric === m.key && 'bg-neutral-50 dark:bg-neutral-800/40',
                 )}
               >
