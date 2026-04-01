@@ -96,10 +96,10 @@ const METRIC_CONFIGS: {
   format: (v: number) => string
   isNegative?: boolean
 }[] = [
-  { key: 'visitors', label: 'Unique Visitors', format: (v) => formatNumber(v) },
-  { key: 'pageviews', label: 'Total Pageviews', format: (v) => formatNumber(v) },
+  { key: 'visitors', label: 'Unique Visitors', format: (v) => formatNumber(Math.round(v)) },
+  { key: 'pageviews', label: 'Total Pageviews', format: (v) => formatNumber(Math.round(v)) },
   { key: 'bounce_rate', label: 'Bounce Rate', format: (v) => `${Math.round(v)}%`, isNegative: true },
-  { key: 'avg_duration', label: 'Visit Duration', format: (v) => formatDuration(v) },
+  { key: 'avg_duration', label: 'Visit Duration', format: (v) => formatDuration(Math.round(v)) },
 ]
 
 const CHART_COLORS: Record<MetricType, string> = {
