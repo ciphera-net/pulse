@@ -90,25 +90,30 @@ function Sparkline({ data, dataKey, active }: { data: DailyStat[]; dataKey: Metr
   const max = Math.max(...values)
   const min = Math.min(...values)
   const range = max - min || 1
-  const w = 100
-  const h = 28
-  const padding = 1
+  const h = 32
+  const padding = 2
 
   const points = values.map((v, i) => {
-    const x = (i / (values.length - 1)) * w
+    const x = (i / (values.length - 1)) * 100
     const y = h - padding - ((v - min) / range) * (h - padding * 2)
     return `${x},${y}`
-  }).join(' ')
+  })
+
+  const fillPoints = [`0,${h}`, ...points, `100,${h}`].join(' ')
+  const strokeColor = active ? '#fd5e0f' : '#525252'
+  const fillColor = active ? 'rgba(253,94,15,0.08)' : 'rgba(82,82,82,0.05)'
 
   return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="mt-1" preserveAspectRatio="none">
+    <svg viewBox={`0 0 100 ${h}`} className="absolute bottom-0 left-0 right-0 w-full" style={{ height: h }} preserveAspectRatio="none">
+      <polygon points={fillPoints} fill={fillColor} />
       <polyline
-        points={points}
+        points={points.join(' ')}
         fill="none"
-        stroke={active ? '#fd5e0f' : '#525252'}
+        stroke={strokeColor}
         strokeWidth={1.5}
         strokeLinecap="round"
         strokeLinejoin="round"
+        vectorEffect="non-scaling-stroke"
       />
     </svg>
   )
@@ -348,7 +353,7 @@ export default function Chart({
                 key={m.key}
                 onClick={() => setMetric(m.key)}
                 className={cn(
-                  'relative cursor-pointer flex-1 text-start p-4 border-b md:border-b-0 md:border-r md:last:border-r-0 border-neutral-200 dark:border-neutral-800 transition-all',
+                  'relative overflow-hidden cursor-pointer flex-1 text-start p-4 border-b md:border-b-0 md:border-r md:last:border-r-0 border-neutral-200 dark:border-neutral-800 transition-all',
                   metric === m.key && 'bg-neutral-50 dark:bg-neutral-800/40',
                 )}
               >
