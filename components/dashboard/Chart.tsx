@@ -90,7 +90,7 @@ function Sparkline({ data, dataKey, active }: { data: DailyStat[]; dataKey: Metr
   const max = Math.max(...values)
   const min = Math.min(...values)
   const range = max - min || 1
-  const h = 32
+  const h = 52
   const padding = 2
 
   const points = values.map((v, i) => {
@@ -359,16 +359,16 @@ export default function Chart({
               >
                 <Sparkline data={data} dataKey={m.key} active={metric === m.key} />
                 <div className="relative z-10">
-                  <div className={cn('text-[10px] font-semibold uppercase tracking-widest mb-2', metric === m.key ? 'text-brand-orange' : 'text-neutral-400 dark:text-neutral-500')}>{m.label}</div>
-                  <div className="flex items-baseline gap-2">
-                    <AnimatedNumber value={m.value} format={m.format} className="text-2xl font-bold text-white" />
+                  <div className="flex items-start justify-between mb-2">
+                    <div className={cn('text-[10px] font-semibold uppercase tracking-widest', metric === m.key ? 'text-brand-orange' : 'text-neutral-400 dark:text-neutral-500')}>{m.label}</div>
                     {m.change !== null && (
-                      <span className={cn('flex items-center gap-0.5 text-sm font-semibold', m.isPositive ? 'text-[#10B981]' : 'text-[#EF4444]')}>
-                        {m.isPositive ? <ArrowUpRight weight="bold" className="size-3.5" /> : <ArrowDownRight weight="bold" className="size-3.5" />}
+                      <span className={cn('flex items-center gap-0.5 text-xs font-semibold', m.isPositive ? 'text-[#10B981]' : 'text-[#EF4444]')}>
+                        {m.isPositive ? <ArrowUpRight weight="bold" className="size-3" /> : <ArrowDownRight weight="bold" className="size-3" />}
                         {Math.abs(m.change).toFixed(0)}%
                       </span>
                     )}
                   </div>
+                  <AnimatedNumber value={m.value} format={m.format} className="text-2xl font-bold text-white" />
                 </div>
                 {metric === m.key && (
                   <motion.div
