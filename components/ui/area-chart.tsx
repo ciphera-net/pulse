@@ -2179,16 +2179,20 @@ function ChartInner({
     });
   }, [innerHeight, data, lines]);
 
-  const dateLabels = useMemo(
-    () =>
-      data.map((d) =>
-        xAccessor(d).toLocaleDateString("en-GB", {
-          month: "short",
-          day: "numeric",
-        })
-      ),
-    [data, xAccessor]
-  );
+  const dateLabels = useMemo(() => {
+    if (data.length < 2) return data.map((d) => xAccessor(d).toLocaleDateString("en-GB", { month: "short", day: "numeric" }));
+    const first = xAccessor(data[0]).getTime();
+    const last = xAccessor(data[data.length - 1]).getTime();
+    const rangeMs = last - first;
+    const isIntraday = rangeMs <= 86_400_000 * 2;
+    return data.map((d) => {
+      const date = xAccessor(d);
+      if (isIntraday) {
+        return `${String(date.getUTCHours()).padStart(2, '0')}:${String(date.getUTCMinutes()).padStart(2, '0')}`;
+      }
+      return date.toLocaleDateString("en-GB", { month: "short", day: "numeric" });
+    });
+  }, [data, xAccessor]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
