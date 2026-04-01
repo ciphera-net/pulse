@@ -80,13 +80,17 @@ interface ChartProps {
   onDeleteAnnotation?: (id: string) => Promise<void>
 }
 
-type MetricType = 'pageviews' | 'visitors' | 'bounce_rate' | 'avg_duration'
+type MetricType = 'pageviews' | 'visitors' | 'bounce_rate' | 'avg_duration' | 'pages_per_visit'
 
 // ─── Sparkline ───────────────────────────────────────────────────────
 
 function Sparkline({ data, dataKey, active }: { data: DailyStat[]; dataKey: MetricType; active: boolean }) {
   if (data.length < 2) return null
-  const values = data.map((d) => d[dataKey] as number)
+  const values = data.map((d) =>
+    dataKey === 'pages_per_visit'
+      ? (d.visitors > 0 ? d.pageviews / d.visitors : 0)
+      : d[dataKey] as number
+  )
   const max = Math.max(...values)
   const min = Math.min(...values)
   const range = max - min || 1
@@ -135,6 +139,7 @@ const METRIC_CONFIGS: {
 }[] = [
   { key: 'visitors', label: 'Unique Visitors', format: (v) => formatNumber(Math.round(v)) },
   { key: 'pageviews', label: 'Total Pageviews', format: (v) => formatNumber(Math.round(v)) },
+  { key: 'pages_per_visit', label: 'Pages / Visit', format: (v) => v.toFixed(1) },
   { key: 'bounce_rate', label: 'Bounce Rate', format: (v) => `${Math.round(v)}%`, isNegative: true },
   { key: 'avg_duration', label: 'Visit Duration', format: (v) => formatDuration(Math.round(v)) },
 ]
@@ -142,6 +147,7 @@ const METRIC_CONFIGS: {
 const CHART_COLORS: Record<MetricType, string> = {
   visitors: '#FD5E0F',
   pageviews: '#FD5E0F',
+  pages_per_visit: '#FD5E0F',
   bounce_rate: '#FD5E0F',
   avg_duration: '#FD5E0F',
 }
@@ -238,6 +244,7 @@ export default function Chart({
       originalDate: item.date,
       pageviews: item.pageviews,
       visitors: item.visitors,
+      pages_per_visit: item.visitors > 0 ? item.pageviews / item.visitors : 0,
       bounce_rate: item.bounce_rate,
       avg_duration: item.avg_duration,
     }
@@ -320,8 +327,12 @@ export default function Chart({
   // ─── Metrics with trends ──────────────────────────────────────────
 
   const metricsWithTrends = useMemo(() => METRIC_CONFIGS.map((m) => {
-    const value = stats[m.key]
-    const previousValue = prevStats?.[m.key]
+    const value = m.key === 'pages_per_visit'
+      ? (stats.visitors > 0 ? stats.pageviews / stats.visitors : 0)
+      : stats[m.key as keyof Stats]
+    const previousValue = m.key === 'pages_per_visit'
+      ? (prevStats && prevStats.visitors > 0 ? prevStats.pageviews / prevStats.visitors : undefined)
+      : prevStats?.[m.key as keyof Stats]
     const change = previousValue != null && previousValue > 0
       ? ((value - previousValue) / previousValue) * 100
       : null
@@ -347,7 +358,7 @@ export default function Chart({
       <Card className="w-full overflow-hidden rounded-2xl">
         <CardHeader className="p-0 mb-0">
           {/* Metrics Grid - 21st.dev style */}
-          <div className="grid grid-cols-2 md:grid-cols-4 grow w-full">
+          <div className="grid grid-cols-2 md:grid-cols-5 grow w-full">
             {metricsWithTrends.map((m) => (
               <button
                 key={m.key}
