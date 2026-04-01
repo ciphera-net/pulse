@@ -1366,15 +1366,62 @@ export function XAxis({ numTicks = 5, tickerHalfWidth = 50, formatLabel }: XAxis
 
     const startTime = startDate.getTime();
     const endTime = endDate.getTime();
-    const timeRange = endTime - startTime;
-
+    const rangeMs = endTime - startTime;
     const tickCount = Math.max(2, numTicks);
-    const dates: Date[] = [];
 
-    for (let i = 0; i < tickCount; i++) {
-      const t = i / (tickCount - 1);
-      const time = startTime + t * timeRange;
-      dates.push(new Date(time));
+    // Generate all natural boundary dates, then thin to fit numTicks
+    const allDates: Date[] = [];
+
+    const HOUR = 3_600_000;
+    const DAY = 86_400_000;
+
+    if (rangeMs <= 2 * HOUR) {
+      // Minute-level: snap to 5-minute boundaries
+      const first = new Date(startDate);
+      first.setUTCSeconds(0, 0);
+      first.setUTCMinutes(Math.ceil(first.getUTCMinutes() / 5) * 5);
+      for (let t = first.getTime(); t <= endTime; t += 5 * 60_000) {
+        allDates.push(new Date(t));
+      }
+    } else if (rangeMs <= 3 * DAY) {
+      // Hour-level: snap to 3-hour boundaries (00:00, 03:00, 06:00, ...)
+      const step = 3;
+      const first = new Date(startDate);
+      first.setUTCMinutes(0, 0, 0);
+      first.setUTCHours(Math.ceil(first.getUTCHours() / step) * step);
+      for (let t = first.getTime(); t <= endTime; t += step * HOUR) {
+        allDates.push(new Date(t));
+      }
+    } else if (rangeMs <= 90 * DAY) {
+      // Day-level: snap to midnight of each day
+      const first = new Date(startDate);
+      first.setUTCHours(0, 0, 0, 0);
+      if (first.getTime() < startTime) first.setUTCDate(first.getUTCDate() + 1);
+      for (let t = first.getTime(); t <= endTime; t += DAY) {
+        allDates.push(new Date(t));
+      }
+    } else {
+      // Month-level: snap to 1st of each month
+      const first = new Date(startDate);
+      first.setUTCDate(1);
+      first.setUTCHours(0, 0, 0, 0);
+      if (first.getTime() < startTime) first.setUTCMonth(first.getUTCMonth() + 1);
+      while (first.getTime() <= endTime) {
+        allDates.push(new Date(first));
+        first.setUTCMonth(first.getUTCMonth() + 1);
+      }
+    }
+
+    // Thin to numTicks by picking evenly spaced indices
+    let dates: Date[];
+    if (allDates.length <= tickCount) {
+      dates = allDates;
+    } else {
+      dates = [];
+      for (let i = 0; i < tickCount; i++) {
+        const idx = Math.round(i * (allDates.length - 1) / (tickCount - 1));
+        dates.push(allDates[idx]);
+      }
     }
 
     const defaultFormat = (d: Date) => d.toLocaleDateString("en-GB", { month: "short", day: "numeric" });
@@ -2132,16 +2179,20 @@ function ChartInner({
     });
   }, [innerHeight, data, lines]);
 
-  const dateLabels = useMemo(
-    () =>
-      data.map((d) =>
-        xAccessor(d).toLocaleDateString("en-GB", {
-          month: "short",
-          day: "numeric",
-        })
-      ),
-    [data, xAccessor]
-  );
+  const dateLabels = useMemo(() => {
+    if (data.length < 2) return data.map((d) => xAccessor(d).toLocaleDateString("en-GB", { month: "short", day: "numeric" }));
+    const first = xAccessor(data[0]).getTime();
+    const last = xAccessor(data[data.length - 1]).getTime();
+    const rangeMs = last - first;
+    const isIntraday = rangeMs <= 86_400_000 * 2;
+    return data.map((d) => {
+      const date = xAccessor(d);
+      if (isIntraday) {
+        return `${String(date.getUTCHours()).padStart(2, '0')}:${String(date.getUTCMinutes()).padStart(2, '0')}`;
+      }
+      return date.toLocaleDateString("en-GB", { month: "short", day: "numeric" });
+    });
+  }, [data, xAccessor]);
 
   useEffect(() => {
     const timer = setTimeout(() => {

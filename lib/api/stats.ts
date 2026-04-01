@@ -8,6 +8,8 @@ export interface Stats {
   visitors: number
   bounce_rate: number
   avg_duration: number
+  avg_scroll_depth: number
+  avg_visible_duration: number
 }
 
 export interface TopPage {
@@ -93,6 +95,8 @@ export interface DailyStat {
   visitors: number
   bounce_rate: number
   avg_duration: number
+  avg_scroll_depth: number
+  avg_visible_duration: number
 }
 
 export interface RealtimeStats {
