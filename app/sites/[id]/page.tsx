@@ -253,7 +253,7 @@ export default function SiteDashboardPage() {
 
   // Derive typed values from single dashboard response
   const site = dashboard?.site ?? null
-  const stats: Stats = dashboard?.stats ?? { pageviews: 0, visitors: 0, bounce_rate: 0, avg_duration: 0 }
+  const stats: Stats = dashboard?.stats ?? { pageviews: 0, visitors: 0, bounce_rate: 0, avg_duration: 0, avg_scroll_depth: 0, avg_visible_duration: 0 }
   const realtime = realtimeData?.visitors ?? dashboard?.realtime_visitors ?? 0
   const dailyStats: DailyStat[] = dashboard?.daily_stats ?? []
 

@@ -50,6 +50,8 @@ export interface DailyStat {
   visitors: number
   bounce_rate: number
   avg_duration: number
+  avg_scroll_depth: number
+  avg_visible_duration: number
 }
 
 interface Stats {
@@ -57,6 +59,8 @@ interface Stats {
   visitors: number
   bounce_rate: number
   avg_duration: number
+  avg_scroll_depth: number
+  avg_visible_duration: number
 }
 
 interface ChartProps {
@@ -80,12 +84,80 @@ interface ChartProps {
   onDeleteAnnotation?: (id: string) => Promise<void>
 }
 
-type MetricType = 'pageviews' | 'visitors' | 'bounce_rate' | 'avg_duration'
+type MetricType = 'pageviews' | 'visitors' | 'pages_per_visit' | 'bounce_rate' | 'avg_duration' | 'engagement'
+
+// ─── Sparkline ───────────────────────────────────────────────────────
+
+function smoothPath(coords: { x: number; y: number }[]): string {
+  if (coords.length < 2) return ''
+  let d = `M${coords[0].x},${coords[0].y}`
+  for (let i = 0; i < coords.length - 1; i++) {
+    const p0 = coords[Math.max(0, i - 1)]
+    const p1 = coords[i]
+    const p2 = coords[i + 1]
+    const p3 = coords[Math.min(coords.length - 1, i + 2)]
+    const cp1x = p1.x + (p2.x - p0.x) / 6
+    const cp1y = p1.y + (p2.y - p0.y) / 6
+    const cp2x = p2.x - (p3.x - p1.x) / 6
+    const cp2y = p2.y - (p3.y - p1.y) / 6
+    d += ` C${cp1x},${cp1y} ${cp2x},${cp2y} ${p2.x},${p2.y}`
+  }
+  return d
+}
+
+function Sparkline({ data, dataKey, active }: { data: DailyStat[]; dataKey: MetricType; active: boolean }) {
+  if (data.length < 2) return null
+  const values = data.map((d) =>
+    dataKey === 'engagement'
+      ? computeEngagement(d)
+      : dataKey === 'pages_per_visit'
+        ? (d.visitors > 0 ? d.pageviews / d.visitors : 0)
+        : d[dataKey] as number
+  )
+  const max = Math.max(...values)
+  const min = Math.min(...values)
+  const range = max - min || 1
+  const h = 52
+  const padBottom = 2
+  const padTop = 16
+
+  const coords = values.map((v, i) => ({
+    x: (i / (values.length - 1)) * 100,
+    y: h - padBottom - ((v - min) / range) * (h - padBottom - padTop),
+  }))
+
+  const linePath = smoothPath(coords)
+  const fillPath = linePath + ` L100,${h} L0,${h} Z`
+
+  return (
+    <svg viewBox={`0 0 100 ${h}`} className="absolute bottom-0 left-0 right-0 w-full z-0 transition-opacity duration-200 opacity-30 group-hover:opacity-60" style={{ height: h }} preserveAspectRatio="none">
+      <path d={fillPath} className={active ? "fill-brand-orange/[0.08]" : "fill-neutral-600/[0.05] group-hover:fill-brand-orange/[0.08]"} />
+      <path
+        d={linePath}
+        fill="none"
+        className={active ? "stroke-brand-orange" : "stroke-neutral-600 group-hover:stroke-brand-orange"}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
+  )
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
 function formatEU(dateStr: string): string {
   return formatDate(new Date(dateStr + 'T00:00:00'))
+}
+
+function computeEngagement(d: { avg_scroll_depth: number; avg_visible_duration: number; pageviews: number; visitors: number; bounce_rate: number }): number {
+  if (d.visitors === 0 && d.pageviews === 0) return 0
+  const scroll = Math.min(100, d.avg_scroll_depth)
+  const time = Math.min(100, (d.avg_visible_duration / 120) * 100)
+  const depth = Math.min(100, ((d.visitors > 0 ? d.pageviews / d.visitors : 0) / 3) * 100)
+  const nonBounce = 100 - d.bounce_rate
+  return Math.round(0.30 * scroll + 0.25 * time + 0.25 * depth + 0.20 * nonBounce)
 }
 
 // ─── Metric configurations ──────────────────────────────────────────
@@ -96,17 +168,21 @@ const METRIC_CONFIGS: {
   format: (v: number) => string
   isNegative?: boolean
 }[] = [
-  { key: 'visitors', label: 'Unique Visitors', format: (v) => formatNumber(v) },
-  { key: 'pageviews', label: 'Total Pageviews', format: (v) => formatNumber(v) },
+  { key: 'visitors', label: 'Unique Visitors', format: (v) => formatNumber(Math.round(v)) },
+  { key: 'pageviews', label: 'Total Pageviews', format: (v) => formatNumber(Math.round(v)) },
+  { key: 'pages_per_visit', label: 'Pages per Visit', format: (v) => (v ?? 0).toFixed(1) },
   { key: 'bounce_rate', label: 'Bounce Rate', format: (v) => `${Math.round(v)}%`, isNegative: true },
-  { key: 'avg_duration', label: 'Visit Duration', format: (v) => formatDuration(v) },
+  { key: 'avg_duration', label: 'Visit Duration', format: (v) => formatDuration(Math.round(v)) },
+  { key: 'engagement', label: 'Engagement', format: (v) => String(Math.round(v ?? 0)) },
 ]
 
 const CHART_COLORS: Record<MetricType, string> = {
   visitors: '#FD5E0F',
   pageviews: '#FD5E0F',
+  pages_per_visit: '#FD5E0F',
   bounce_rate: '#FD5E0F',
   avg_duration: '#FD5E0F',
+  engagement: '#FD5E0F',
 }
 
 // ─── Chart Component ─────────────────────────────────────────────────
@@ -201,8 +277,10 @@ export default function Chart({
       originalDate: item.date,
       pageviews: item.pageviews,
       visitors: item.visitors,
+      pages_per_visit: item.visitors > 0 ? item.pageviews / item.visitors : 0,
       bounce_rate: item.bounce_rate,
       avg_duration: item.avg_duration,
+      engagement: computeEngagement(item),
     }
   }), [data, interval])
 
@@ -283,8 +361,16 @@ export default function Chart({
   // ─── Metrics with trends ──────────────────────────────────────────
 
   const metricsWithTrends = useMemo(() => METRIC_CONFIGS.map((m) => {
-    const value = stats[m.key]
-    const previousValue = prevStats?.[m.key]
+    const value = m.key === 'engagement'
+      ? computeEngagement(stats)
+      : m.key === 'pages_per_visit'
+        ? (stats.visitors > 0 ? stats.pageviews / stats.visitors : 0)
+        : stats[m.key as keyof Stats]
+    const previousValue = m.key === 'engagement'
+      ? (prevStats ? computeEngagement(prevStats) : undefined)
+      : m.key === 'pages_per_visit'
+        ? (prevStats && prevStats.visitors > 0 ? prevStats.pageviews / prevStats.visitors : undefined)
+        : prevStats?.[m.key as keyof Stats]
     const change = previousValue != null && previousValue > 0
       ? ((value - previousValue) / previousValue) * 100
       : null
@@ -303,6 +389,7 @@ export default function Chart({
   const hasAnyNonZero = hasData && chartData.some((d) => (d[metric] as number) > 0
   )
 
+
   // ─── Render ────────────────────────────────────────────────────────
 
   return (
@@ -310,37 +397,29 @@ export default function Chart({
       <Card className="w-full overflow-hidden rounded-2xl">
         <CardHeader className="p-0 mb-0">
           {/* Metrics Grid - 21st.dev style */}
-          <div className="grid grid-cols-2 md:grid-cols-4 grow w-full">
+          <div className="grid grid-cols-2 md:grid-cols-6 grow w-full">
             {metricsWithTrends.map((m) => (
               <button
                 key={m.key}
                 onClick={() => setMetric(m.key)}
                 className={cn(
-                  'relative cursor-pointer flex-1 text-start p-4 border-b md:border-b-0 md:border-r md:last:border-r-0 border-neutral-200 dark:border-neutral-800 transition-all',
+                  'group relative overflow-hidden cursor-pointer flex-1 text-start p-4 border-b md:border-b-0 md:border-r md:last:border-r-0 border-neutral-200 dark:border-neutral-800 transition-all',
                   metric === m.key && 'bg-neutral-50 dark:bg-neutral-800/40',
                 )}
               >
-                <div className={cn('text-[10px] font-semibold uppercase tracking-widest mb-2', metric === m.key ? 'text-brand-orange' : 'text-neutral-400 dark:text-neutral-500')}>{m.label}</div>
-                <div className="flex items-baseline gap-2">
+                <Sparkline data={data} dataKey={m.key} active={metric === m.key} />
+                <div className="relative z-10">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className={cn('text-[10px] font-semibold uppercase tracking-widest', metric === m.key ? 'text-brand-orange' : 'text-neutral-400 dark:text-neutral-500')}>{m.label}</div>
+                    {m.change !== null && (
+                      <span className={cn('flex items-center gap-0.5 text-xs font-semibold', m.isPositive ? 'text-[#10B981]' : 'text-[#EF4444]')}>
+                        {m.isPositive ? <ArrowUpRight weight="bold" className="size-3" /> : <ArrowDownRight weight="bold" className="size-3" />}
+                        {Math.abs(m.change).toFixed(0)}%
+                      </span>
+                    )}
+                  </div>
                   <AnimatedNumber value={m.value} format={m.format} className="text-2xl font-bold text-white" />
-                  {m.change !== null && (
-                    <span className={cn('flex items-center gap-0.5 text-sm font-semibold', m.isPositive ? 'text-[#10B981]' : 'text-[#EF4444]')}>
-                      {m.isPositive ? <ArrowUpRight weight="bold" className="size-3.5" /> : <ArrowDownRight weight="bold" className="size-3.5" />}
-                      {Math.abs(m.change).toFixed(0)}%
-                    </span>
-                  )}
                 </div>
-                <div className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">{
-                  period === 'today' ? 'vs yesterday'
-                  : period === 'week' ? 'vs last week'
-                  : period === 'month' ? 'vs last month'
-                  : period === '7' ? 'vs previous 7 days'
-                  : period === '30' ? 'vs previous 30 days'
-                  : (() => {
-                      const days = Math.round((new Date(dateRange.end).getTime() - new Date(dateRange.start).getTime()) / 86400000)
-                      return days === 0 ? 'vs yesterday' : `vs previous ${days} days`
-                    })()
-                }</div>
                 {metric === m.key && (
                   <motion.div
                     layoutId="activeMetric"
@@ -443,7 +522,7 @@ export default function Chart({
                   gradientToOpacity={0}
                 />
                 <VisxXAxis
-                  numTicks={6}
+                  numTicks={Math.min(data.length, 10)}
                   formatLabel={interval === 'minute' || interval === 'hour'
                     ? (d) => `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`
                     : (d) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })

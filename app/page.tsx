@@ -50,7 +50,7 @@ export default function HomePage() {
     }
     let cancelled = false
     const today = new Date().toISOString().split('T')[0]
-    const emptyStats: Stats = { pageviews: 0, visitors: 0, bounce_rate: 0, avg_duration: 0 }
+    const emptyStats: Stats = { pageviews: 0, visitors: 0, bounce_rate: 0, avg_duration: 0, avg_scroll_depth: 0, avg_visible_duration: 0 }
     const load = async () => {
       const results = await Promise.allSettled(
         sites.map(async (site) => {
