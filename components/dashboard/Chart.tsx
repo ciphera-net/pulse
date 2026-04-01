@@ -50,6 +50,8 @@ export interface DailyStat {
   visitors: number
   bounce_rate: number
   avg_duration: number
+  avg_scroll_depth: number
+  avg_visible_duration: number
 }
 
 interface Stats {
@@ -57,6 +59,8 @@ interface Stats {
   visitors: number
   bounce_rate: number
   avg_duration: number
+  avg_scroll_depth: number
+  avg_visible_duration: number
 }
 
 interface ChartProps {
@@ -80,7 +84,7 @@ interface ChartProps {
   onDeleteAnnotation?: (id: string) => Promise<void>
 }
 
-type MetricType = 'pageviews' | 'visitors' | 'bounce_rate' | 'avg_duration' | 'pages_per_visit'
+type MetricType = 'pageviews' | 'visitors' | 'bounce_rate' | 'avg_duration' | 'engagement'
 
 // ─── Sparkline ───────────────────────────────────────────────────────
 
@@ -104,8 +108,8 @@ function smoothPath(coords: { x: number; y: number }[]): string {
 function Sparkline({ data, dataKey, active }: { data: DailyStat[]; dataKey: MetricType; active: boolean }) {
   if (data.length < 2) return null
   const values = data.map((d) =>
-    dataKey === 'pages_per_visit'
-      ? (d.visitors > 0 ? d.pageviews / d.visitors : 0)
+    dataKey === 'engagement'
+      ? computeEngagement(d)
       : d[dataKey] as number
   )
   const max = Math.max(...values)
@@ -145,6 +149,14 @@ function formatEU(dateStr: string): string {
   return formatDate(new Date(dateStr + 'T00:00:00'))
 }
 
+function computeEngagement(d: { avg_scroll_depth: number; avg_visible_duration: number; pageviews: number; visitors: number; bounce_rate: number }): number {
+  const scroll = Math.min(100, d.avg_scroll_depth)
+  const time = Math.min(100, (d.avg_visible_duration / 120) * 100)
+  const depth = Math.min(100, ((d.visitors > 0 ? d.pageviews / d.visitors : 0) / 3) * 100)
+  const nonBounce = 100 - d.bounce_rate
+  return Math.round(0.30 * scroll + 0.25 * time + 0.25 * depth + 0.20 * nonBounce)
+}
+
 // ─── Metric configurations ──────────────────────────────────────────
 
 const METRIC_CONFIGS: {
@@ -155,7 +167,7 @@ const METRIC_CONFIGS: {
 }[] = [
   { key: 'visitors', label: 'Unique Visitors', format: (v) => formatNumber(Math.round(v)) },
   { key: 'pageviews', label: 'Total Pageviews', format: (v) => formatNumber(Math.round(v)) },
-  { key: 'pages_per_visit', label: 'Pages per Visit', format: (v) => (v ?? 0).toFixed(1) },
+  { key: 'engagement', label: 'Engagement', format: (v) => String(Math.round(v ?? 0)) },
   { key: 'bounce_rate', label: 'Bounce Rate', format: (v) => `${Math.round(v)}%`, isNegative: true },
   { key: 'avg_duration', label: 'Visit Duration', format: (v) => formatDuration(Math.round(v)) },
 ]
@@ -163,7 +175,7 @@ const METRIC_CONFIGS: {
 const CHART_COLORS: Record<MetricType, string> = {
   visitors: '#FD5E0F',
   pageviews: '#FD5E0F',
-  pages_per_visit: '#FD5E0F',
+  engagement: '#FD5E0F',
   bounce_rate: '#FD5E0F',
   avg_duration: '#FD5E0F',
 }
@@ -260,7 +272,7 @@ export default function Chart({
       originalDate: item.date,
       pageviews: item.pageviews,
       visitors: item.visitors,
-      pages_per_visit: item.visitors > 0 ? item.pageviews / item.visitors : 0,
+      engagement: computeEngagement(item),
       bounce_rate: item.bounce_rate,
       avg_duration: item.avg_duration,
     }
@@ -343,11 +355,11 @@ export default function Chart({
   // ─── Metrics with trends ──────────────────────────────────────────
 
   const metricsWithTrends = useMemo(() => METRIC_CONFIGS.map((m) => {
-    const value = m.key === 'pages_per_visit'
-      ? (stats.visitors > 0 ? stats.pageviews / stats.visitors : 0)
+    const value = m.key === 'engagement'
+      ? computeEngagement(stats)
       : stats[m.key as keyof Stats]
-    const previousValue = m.key === 'pages_per_visit'
-      ? (prevStats && prevStats.visitors > 0 ? prevStats.pageviews / prevStats.visitors : undefined)
+    const previousValue = m.key === 'engagement'
+      ? (prevStats ? computeEngagement(prevStats) : undefined)
       : prevStats?.[m.key as keyof Stats]
     const change = previousValue != null && previousValue > 0
       ? ((value - previousValue) / previousValue) * 100
@@ -367,6 +379,10 @@ export default function Chart({
   const hasAnyNonZero = hasData && chartData.some((d) => (d[metric] as number) > 0
   )
 
+  const visibleMetrics = metricsWithTrends.filter(m =>
+    m.key !== 'engagement' || stats.avg_scroll_depth > 0 || stats.avg_visible_duration > 0
+  )
+
   // ─── Render ────────────────────────────────────────────────────────
 
   return (
@@ -374,8 +390,8 @@ export default function Chart({
       <Card className="w-full overflow-hidden rounded-2xl">
         <CardHeader className="p-0 mb-0">
           {/* Metrics Grid - 21st.dev style */}
-          <div className="grid grid-cols-2 md:grid-cols-5 grow w-full">
-            {metricsWithTrends.map((m) => (
+          <div className={`grid grid-cols-2 ${visibleMetrics.length === 5 ? 'md:grid-cols-5' : 'md:grid-cols-4'} grow w-full`}>
+            {visibleMetrics.map((m) => (
               <button
                 key={m.key}
                 onClick={() => setMetric(m.key)}
