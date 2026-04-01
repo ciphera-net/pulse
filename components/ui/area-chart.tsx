@@ -1384,11 +1384,12 @@ export function XAxis({ numTicks = 5, tickerHalfWidth = 50, formatLabel }: XAxis
         allDates.push(new Date(t));
       }
     } else if (rangeMs <= 3 * DAY) {
-      // Hour-level: snap to top of each hour
+      // Hour-level: snap to 3-hour boundaries (00:00, 03:00, 06:00, ...)
+      const step = 3;
       const first = new Date(startDate);
       first.setUTCMinutes(0, 0, 0);
-      if (first.getTime() < startTime) first.setUTCHours(first.getUTCHours() + 1);
-      for (let t = first.getTime(); t <= endTime; t += HOUR) {
+      first.setUTCHours(Math.ceil(first.getUTCHours() / step) * step);
+      for (let t = first.getTime(); t <= endTime; t += step * HOUR) {
         allDates.push(new Date(t));
       }
     } else if (rangeMs <= 90 * DAY) {
