@@ -443,7 +443,7 @@ export default function Chart({
                   gradientToOpacity={0}
                 />
                 <VisxXAxis
-                  numTicks={6}
+                  numTicks={Math.min(data.length, 10)}
                   formatLabel={interval === 'minute' || interval === 'hour'
                     ? (d) => `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`
                     : (d) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
