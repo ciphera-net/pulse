@@ -112,11 +112,12 @@ function Sparkline({ data, dataKey, active }: { data: DailyStat[]; dataKey: Metr
   const min = Math.min(...values)
   const range = max - min || 1
   const h = 52
-  const padding = 2
+  const padBottom = 2
+  const padTop = 16
 
   const coords = values.map((v, i) => ({
     x: (i / (values.length - 1)) * 100,
-    y: h - padding - ((v - min) / range) * (h - padding * 2),
+    y: h - padBottom - ((v - min) / range) * (h - padBottom - padTop),
   }))
 
   const linePath = smoothPath(coords)
