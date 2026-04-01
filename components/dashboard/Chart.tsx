@@ -82,6 +82,38 @@ interface ChartProps {
 
 type MetricType = 'pageviews' | 'visitors' | 'bounce_rate' | 'avg_duration'
 
+// ─── Sparkline ───────────────────────────────────────────────────────
+
+function Sparkline({ data, dataKey, active }: { data: DailyStat[]; dataKey: MetricType; active: boolean }) {
+  if (data.length < 2) return null
+  const values = data.map((d) => d[dataKey] as number)
+  const max = Math.max(...values)
+  const min = Math.min(...values)
+  const range = max - min || 1
+  const w = 100
+  const h = 28
+  const padding = 1
+
+  const points = values.map((v, i) => {
+    const x = (i / (values.length - 1)) * w
+    const y = h - padding - ((v - min) / range) * (h - padding * 2)
+    return `${x},${y}`
+  }).join(' ')
+
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="mt-1" preserveAspectRatio="none">
+      <polyline
+        points={points}
+        fill="none"
+        stroke={active ? '#fd5e0f' : '#525252'}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────
 
 function formatEU(dateStr: string): string {
@@ -341,6 +373,7 @@ export default function Chart({
                       return days === 0 ? 'vs yesterday' : `vs previous ${days} days`
                     })()
                 }</div>
+                <Sparkline data={data} dataKey={m.key} active={metric === m.key} />
                 {metric === m.key && (
                   <motion.div
                     layoutId="activeMetric"
