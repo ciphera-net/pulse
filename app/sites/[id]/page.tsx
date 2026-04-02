@@ -14,8 +14,10 @@ import {
   getOS,
   getDevices,
   getCampaigns,
+  getEngagementPercentiles,
   type Stats,
   type DailyStat,
+  type EngagementPercentilesData,
 } from '@/lib/api/stats'
 import { getDateRange, formatDate, getThisWeekRange, getThisMonthRange } from '@/lib/utils/dateRanges'
 import { toast } from '@ciphera-net/ui'
@@ -110,6 +112,9 @@ export default function SiteDashboardPage() {
     return raw ? parseFiltersFromURL(raw) : []
   })
   const filtersParam = useMemo(() => serializeFilters(filters), [filters])
+
+  // Engagement percentile data
+  const [engagementData, setEngagementData] = useState<EngagementPercentilesData | null>(null)
 
   // Selected event for property breakdown
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null)
@@ -231,6 +236,13 @@ export default function SiteDashboardPage() {
   const { data: prevDailyStats } = useDailyStats(siteId, prevRange.start, prevRange.end, interval)
   const { data: campaigns } = useCampaigns(siteId, dateRange.start, dateRange.end)
   const { data: annotations, mutate: mutateAnnotations } = useAnnotations(siteId, dateRange.start, dateRange.end)
+
+  // Fetch engagement percentiles in parallel with dashboard data
+  useEffect(() => {
+    getEngagementPercentiles(siteId, dateRange.start, dateRange.end)
+      .then(setEngagementData)
+      .catch(() => setEngagementData(null))
+  }, [siteId, dateRange.start, dateRange.end])
 
   // Annotation mutation handlers
   const handleCreateAnnotation = async (data: { date: string; time?: string; text: string; category: string }) => {
@@ -543,6 +555,7 @@ export default function SiteDashboardPage() {
           onCreateAnnotation={handleCreateAnnotation}
           onUpdateAnnotation={handleUpdateAnnotation}
           onDeleteAnnotation={handleDeleteAnnotation}
+          engagementData={engagementData}
         />
       </div>
 
