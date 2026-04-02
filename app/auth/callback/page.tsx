@@ -50,7 +50,7 @@ function AuthCallbackContent() {
       }
     } else {
       const r = result as Record<string, unknown>
-      console.error('[auth-callback] exchange failed:', result.error, 'status:', r.status, 'detail:', r.detail)
+      console.error('[auth-callback] exchange failed:', result.error, 'status:', r.status, 'detail:', r.detail, 'debug:', r.debug)
       if (result.error === 'server') {
         // * Auth code likely expired or was already consumed.
         // * Redirect back to auth hub to get a fresh code automatically.
