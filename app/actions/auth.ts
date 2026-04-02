@@ -51,7 +51,7 @@ export async function exchangeAuthCode(code: string, codeVerifier: string | null
       logger.error('Auth token exchange failed', { status, body, url: `${AUTH_API_URL}/oauth/token` })
       const errorType: AuthExchangeErrorType =
         status === 401 ? 'expired' : status === 403 ? 'invalid' : 'server'
-      return { success: false as const, error: errorType, status }
+      return { success: false as const, error: errorType, status, detail: body }
     }
 
     const data: AuthResponse = await res.json()
