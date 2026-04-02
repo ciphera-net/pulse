@@ -46,121 +46,88 @@ export async function exchangeAuthCode(code: string, codeVerifier: string | null
 
     if (!res.ok) {
       const status = res.status
-      let body = ''
-      try { body = await res.text() } catch {}
-      logger.error('Auth token exchange failed', { status, body, url: `${AUTH_API_URL}/oauth/token`, redirectUri })
       const errorType: AuthExchangeErrorType =
         status === 401 ? 'expired' : status === 403 ? 'invalid' : 'server'
-      return { success: false as const, error: errorType, status, detail: body, debug: { url: `${AUTH_API_URL}/oauth/token`, redirect_uri: redirectUri, code: code.slice(0, 8) + '...' } }
+      return { success: false as const, error: errorType }
     }
 
-    let data: AuthResponse
-    try {
-      data = await res.json()
-    } catch (e) {
-      logger.error('Auth exchange: failed to parse response JSON', e)
-      return { success: false as const, error: 'server' as AuthExchangeErrorType, status: 200, detail: 'json_parse_failed' }
-    }
+    const data: AuthResponse = await res.json()
     if (!data?.access_token || typeof data.access_token !== 'string') {
-      logger.error('Auth exchange: missing access_token in response', { keys: Object.keys(data || {}) })
-      return { success: false as const, error: 'server' as AuthExchangeErrorType, status: 200, detail: 'missing_access_token' }
+      throw new Error('Invalid token response')
     }
     // * Decode payload (without verification, we trust the direct channel to Auth Server)
     const payloadPart = data.access_token.split('.')[1]
     if (!payloadPart) {
-      logger.error('Auth exchange: invalid token format')
-      return { success: false as const, error: 'server' as AuthExchangeErrorType, status: 200, detail: 'invalid_token_format' }
+      throw new Error('Invalid token format')
     }
-    let payload: UserPayload
-    try {
-      payload = JSON.parse(Buffer.from(payloadPart, 'base64').toString())
-    } catch (e) {
-      logger.error('Auth exchange: failed to decode JWT payload', e)
-      return { success: false as const, error: 'server' as AuthExchangeErrorType, status: 200, detail: 'jwt_decode_failed' }
-    }
+    const payload: UserPayload = JSON.parse(Buffer.from(payloadPart, 'base64').toString())
 
     // * Set Cookies
-    let cookieStore: Awaited<ReturnType<typeof cookies>>
-    try {
-      cookieStore = await cookies()
-    } catch (e) {
-      logger.error('Auth exchange: failed to access cookie store', e)
-      return { success: false as const, error: 'server' as AuthExchangeErrorType, status: 200, detail: 'cookie_store_failed' }
-    }
+    const cookieStore = await cookies()
     const cookieDomain = getCookieDomain()
     
-    try {
-      // * Access Token
-      cookieStore.set('access_token', data.access_token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        domain: cookieDomain,
-        maxAge: 60 * 15 // 15 minutes (short lived)
-      })
+    // * Access Token
+    cookieStore.set('access_token', data.access_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      domain: cookieDomain,
+      maxAge: 60 * 15 // 15 minutes (short lived)
+    })
 
-      // * Refresh Token (Long lived)
-      cookieStore.set('refresh_token', data.refresh_token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        domain: cookieDomain,
-        maxAge: 60 * 60 * 24 * 30 // 30 days
-      })
-    } catch (e) {
-      logger.error('Auth exchange: failed to set auth cookies', e)
-      return { success: false as const, error: 'server' as AuthExchangeErrorType, status: 200, detail: 'cookie_set_failed' }
-    }
+    // * Refresh Token (Long lived)
+    cookieStore.set('refresh_token', data.refresh_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      domain: cookieDomain,
+      maxAge: 60 * 60 * 24 * 30 // 30 days
+    })
 
     // * Forward cookies from Auth API response to browser
-    try {
-      const setCookieHeaders = res.headers.getSetCookie()
-      if (setCookieHeaders && setCookieHeaders.length > 0) {
-        for (const cookieStr of setCookieHeaders) {
-          const [nameValue] = cookieStr.split(';')
-          const [name, value] = nameValue.trim().split('=')
+    // * The Auth API sets httpOnly cookies on auth.ciphera.net - we need to mirror them on pulse.ciphera.net
+    const setCookieHeaders = res.headers.getSetCookie()
+    if (setCookieHeaders && setCookieHeaders.length > 0) {
+      for (const cookieStr of setCookieHeaders) {
+        // * Parse Set-Cookie header (format: name=value; attributes...)
+        const [nameValue] = cookieStr.split(';')
+        const [name, value] = nameValue.trim().split('=')
 
-          if (name && value) {
-            const isHttpOnly = cookieStr.toLowerCase().includes('httponly')
-            const sameSiteMatch = cookieStr.match(/samesite=(\w+)/i)
-            const sameSite = (sameSiteMatch?.[1]?.toLowerCase() as 'strict' | 'lax' | 'none') || 'lax'
-            const maxAgeMatch = cookieStr.match(/max-age=(\d+)/i)
-            const maxAge = maxAgeMatch ? parseInt(maxAgeMatch[1], 10) : 60 * 60 * 24 * 30
+        if (name && value) {
+          // * Determine if httpOnly (default true for security)
+          const isHttpOnly = cookieStr.toLowerCase().includes('httponly')
+          // * Determine sameSite (default lax)
+          const sameSiteMatch = cookieStr.match(/samesite=(\w+)/i)
+          const sameSite = (sameSiteMatch?.[1]?.toLowerCase() as 'strict' | 'lax' | 'none') || 'lax'
+          // * Extract max-age if present
+          const maxAgeMatch = cookieStr.match(/max-age=(\d+)/i)
+          const maxAge = maxAgeMatch ? parseInt(maxAgeMatch[1], 10) : 60 * 60 * 24 * 30
 
-            cookieStore.set(name.trim(), decodeURIComponent(value.trim()), {
-              httpOnly: isHttpOnly,
-              secure: process.env.NODE_ENV === 'production',
-              sameSite: sameSite,
-              path: '/',
-              domain: cookieDomain,
-              maxAge: maxAge
-            })
-          }
+          cookieStore.set(name.trim(), decodeURIComponent(value.trim()), {
+            httpOnly: isHttpOnly,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: sameSite,
+            path: '/',
+            domain: cookieDomain,
+            maxAge: maxAge
+          })
         }
       }
-    } catch (e) {
-      logger.error('Auth exchange: failed to forward Set-Cookie headers', e)
-      // * Non-fatal — auth cookies are already set above
     }
 
     // * Also check for CSRF token in response header (fallback)
-    try {
-      const csrfToken = res.headers.get('X-CSRF-Token')
-      if (csrfToken && !cookieStore.get('csrf_token')) {
-        cookieStore.set('csrf_token', csrfToken, {
-          httpOnly: false,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-          path: '/',
-          domain: cookieDomain,
-          maxAge: 60 * 60 * 24 * 30
-        })
-      }
-    } catch (e) {
-      logger.error('Auth exchange: failed to set CSRF cookie', e)
-      // * Non-fatal
+    const csrfToken = res.headers.get('X-CSRF-Token')
+    if (csrfToken && !cookieStore.get('csrf_token')) {
+      cookieStore.set('csrf_token', csrfToken, {
+        httpOnly: false, // * Must be readable by JS for CSRF protection
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        domain: cookieDomain,
+        maxAge: 60 * 60 * 24 * 30
+      })
     }
 
     return {

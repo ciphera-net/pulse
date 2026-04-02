@@ -49,8 +49,6 @@ function AuthCallbackContent() {
         router.push(safe)
       }
     } else {
-      const r = result as Record<string, unknown>
-      console.error('[auth-callback] exchange failed:', result.error, 'status:', r.status, 'detail:', r.detail, 'debug:', r.debug)
       if (result.error === 'server') {
         // * The exchange likely succeeded server-side (code was consumed) but the
         // * server action response failed to reach the browser (cold start, network).
