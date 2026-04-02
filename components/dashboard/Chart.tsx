@@ -421,6 +421,17 @@ export default function Chart({
                     ? <span className="text-xs text-neutral-500">Collecting data…</span>
                     : <AnimatedNumber value={m.value} format={m.format} className="text-2xl font-bold text-white" />
                   }
+                  {m.key === 'engagement' && engagementData && engagementData.data_days >= 7 && (
+                    <div className="flex items-center gap-1.5 mt-1 text-[10px] text-neutral-500">
+                      <span>S P{Math.round(engagementData.summary.scroll_pctl)}</span>
+                      <span>·</span>
+                      <span>T P{Math.round(engagementData.summary.time_pctl)}</span>
+                      <span>·</span>
+                      <span>D P{Math.round(engagementData.summary.depth_pctl)}</span>
+                      <span>·</span>
+                      <span>B P{Math.round(engagementData.summary.bounce_pctl)}</span>
+                    </div>
+                  )}
                 </div>
                 {metric === m.key && (
                   <motion.div
