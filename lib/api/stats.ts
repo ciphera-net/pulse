@@ -395,6 +395,40 @@ export function getPublicDashboardGoals(
   return apiRequest<DashboardGoalsData>(`/public/sites/${siteId}/dashboard/goals${buildQuery({ startDate, endDate, limit }, { password, captcha })}`)
 }
 
+// ─── Engagement Percentiles ──────────────────────────────────────────
+
+export interface EngagementSummary {
+  score: number
+  scroll_pctl: number
+  time_pctl: number
+  depth_pctl: number
+  bounce_pctl: number
+}
+
+export interface DailyEngagement {
+  date: string
+  score: number
+}
+
+export interface EngagementPercentilesData {
+  summary: EngagementSummary
+  daily: DailyEngagement[]
+  data_days: number
+}
+
+export function getEngagementPercentiles(siteId: string, startDate?: string, endDate?: string): Promise<EngagementPercentilesData> {
+  return apiRequest<EngagementPercentilesData>(`/sites/${siteId}/engagement/percentiles${buildQuery({ startDate, endDate })}`)
+    .then(r => r ?? { summary: { score: 0, scroll_pctl: 0, time_pctl: 0, depth_pctl: 0, bounce_pctl: 0 }, daily: [], data_days: 0 })
+}
+
+export function getPublicEngagementPercentiles(
+  siteId: string, startDate?: string, endDate?: string,
+  auth?: AuthParams
+): Promise<EngagementPercentilesData> {
+  return apiRequest<EngagementPercentilesData>(`/public/sites/${siteId}/engagement/percentiles${buildQuery({ startDate, endDate }, auth)}`)
+    .then(r => r ?? { summary: { score: 0, scroll_pctl: 0, time_pctl: 0, depth_pctl: 0, bounce_pctl: 0 }, daily: [], data_days: 0 })
+}
+
 // ─── Event Properties ────────────────────────────────────────────────
 
 export interface EventPropertyKey {
