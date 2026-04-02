@@ -107,11 +107,11 @@ function smoothPath(coords: { x: number; y: number }[]): string {
   return d
 }
 
-function Sparkline({ data, dataKey, active }: { data: DailyStat[]; dataKey: MetricType; active: boolean }) {
+function Sparkline({ data, dataKey, active }: { data: { pageviews: number; visitors: number; bounce_rate: number; avg_duration: number; engagement?: number }[]; dataKey: MetricType; active: boolean }) {
   if (data.length < 2) return null
   const values = data.map((d) =>
     dataKey === 'engagement'
-      ? computeEngagement(d)
+      ? (d.engagement ?? 0)
       : dataKey === 'pages_per_visit'
         ? (d.visitors > 0 ? d.pageviews / d.visitors : 0)
         : d[dataKey] as number
@@ -151,15 +151,6 @@ function Sparkline({ data, dataKey, active }: { data: DailyStat[]; dataKey: Metr
 
 function formatEU(dateStr: string): string {
   return formatDate(new Date(dateStr + 'T00:00:00'))
-}
-
-function computeEngagement(d: { avg_scroll_depth: number; avg_visible_duration: number; pageviews: number; visitors: number; bounce_rate: number }): number {
-  if (d.visitors === 0 && d.pageviews === 0) return 0
-  const scroll = Math.min(100, d.avg_scroll_depth)
-  const time = Math.min(100, (d.avg_visible_duration / 120) * 100)
-  const depth = Math.min(100, ((d.visitors > 0 ? d.pageviews / d.visitors : 0) / 3) * 100)
-  const nonBounce = 100 - d.bounce_rate
-  return Math.round(0.30 * scroll + 0.25 * time + 0.25 * depth + 0.20 * nonBounce)
 }
 
 // ─── Metric configurations ──────────────────────────────────────────
@@ -283,9 +274,14 @@ export default function Chart({
       pages_per_visit: item.visitors > 0 ? item.pageviews / item.visitors : 0,
       bounce_rate: item.bounce_rate,
       avg_duration: item.avg_duration,
-      engagement: computeEngagement(item),
+      engagement: (() => {
+        if (!engagementData?.daily?.length) return 0
+        const dateStr = typeof item.date === 'string' ? item.date.slice(0, 10) : ''
+        const match = engagementData.daily.find(d => d.date === dateStr)
+        return match?.score ?? 0
+      })(),
     }
-  }), [data, interval])
+  }), [data, interval, engagementData])
 
   const annotationMarkers = useMemo(() => {
     if (!annotations?.length) return []
@@ -365,12 +361,12 @@ export default function Chart({
 
   const metricsWithTrends = useMemo(() => METRIC_CONFIGS.map((m) => {
     const value = m.key === 'engagement'
-      ? computeEngagement(stats)
+      ? (engagementData?.summary?.score ?? 0)
       : m.key === 'pages_per_visit'
         ? (stats.visitors > 0 ? stats.pageviews / stats.visitors : 0)
         : stats[m.key as keyof Stats]
     const previousValue = m.key === 'engagement'
-      ? (prevStats ? computeEngagement(prevStats) : undefined)
+      ? undefined
       : m.key === 'pages_per_visit'
         ? (prevStats && prevStats.visitors > 0 ? prevStats.pageviews / prevStats.visitors : undefined)
         : prevStats?.[m.key as keyof Stats]
@@ -386,7 +382,7 @@ export default function Chart({
       change,
       isPositive,
     }
-  }), [stats, prevStats])
+  }), [stats, prevStats, engagementData])
 
   const hasData = data.length > 0
   const hasAnyNonZero = hasData && chartData.some((d) => (d[metric] as number) > 0
@@ -410,7 +406,7 @@ export default function Chart({
                   metric === m.key && 'bg-neutral-50 dark:bg-neutral-800/40',
                 )}
               >
-                <Sparkline data={data} dataKey={m.key} active={metric === m.key} />
+                <Sparkline data={m.key === 'engagement' ? chartData : data} dataKey={m.key} active={metric === m.key} />
                 <div className="relative z-10">
                   <div className="flex items-start justify-between mb-2">
                     <div className={cn('text-[10px] font-semibold uppercase tracking-widest', metric === m.key ? 'text-brand-orange' : 'text-neutral-400 dark:text-neutral-500')}>{m.label}</div>
@@ -421,7 +417,10 @@ export default function Chart({
                       </span>
                     )}
                   </div>
-                  <AnimatedNumber value={m.value} format={m.format} className="text-2xl font-bold text-white" />
+                  {m.key === 'engagement' && (!engagementData || engagementData.data_days < 7)
+                    ? <span className="text-xs text-neutral-500">Collecting data…</span>
+                    : <AnimatedNumber value={m.value} format={m.format} className="text-2xl font-bold text-white" />
+                  }
                 </div>
                 {metric === m.key && (
                   <motion.div
