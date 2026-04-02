@@ -48,10 +48,10 @@ export async function exchangeAuthCode(code: string, codeVerifier: string | null
       const status = res.status
       let body = ''
       try { body = await res.text() } catch {}
-      logger.error('Auth token exchange failed', { status, body, url: `${AUTH_API_URL}/oauth/token` })
+      logger.error('Auth token exchange failed', { status, body, url: `${AUTH_API_URL}/oauth/token`, redirectUri })
       const errorType: AuthExchangeErrorType =
         status === 401 ? 'expired' : status === 403 ? 'invalid' : 'server'
-      return { success: false as const, error: errorType, status, detail: body }
+      return { success: false as const, error: errorType, status, detail: body, debug: { url: `${AUTH_API_URL}/oauth/token`, redirect_uri: redirectUri, code: code.slice(0, 8) + '...' } }
     }
 
     const data: AuthResponse = await res.json()
