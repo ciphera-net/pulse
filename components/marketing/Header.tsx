@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button-website';
 import { cn } from '@/lib/utils';
+import { initiateOAuthFlow, initiateSignupFlow } from '@/lib/api/oauth';
 import { MenuToggleIcon } from '@/components/ui/menu-toggle-icon';
 import { createPortal } from 'react-dom';
 import {
@@ -171,12 +172,8 @@ export function Header() {
                     </NavigationMenu>
                 </div>
                 <div className="hidden items-center gap-2 md:flex">
-                    <Button variant="outline" asChild>
-                        <a href="https://pulse.ciphera.net">Sign In</a>
-                    </Button>
-                    <Button asChild>
-                        <a href="https://pulse.ciphera.net">Get Started</a>
-                    </Button>
+                    <Button variant="outline" onClick={() => initiateOAuthFlow()}>Sign In</Button>
+                    <Button onClick={() => initiateSignupFlow()}>Get Started</Button>
                 </div>
                 <div className="flex items-center gap-2 md:hidden">
                     <Button
@@ -217,16 +214,8 @@ export function Header() {
                     </div>
                 </NavigationMenu>
                 <div className="flex flex-col gap-2">
-                    <Button variant="outline" className="w-full bg-transparent" asChild>
-                        <a href="https://pulse.ciphera.net">
-                            Sign In
-                        </a>
-                    </Button>
-                    <Button className="w-full" asChild>
-                        <a href="https://pulse.ciphera.net">
-                            Get Started
-                        </a>
-                    </Button>
+                    <Button variant="outline" className="w-full bg-transparent" onClick={() => initiateOAuthFlow()}>Sign In</Button>
+                    <Button className="w-full" onClick={() => initiateSignupFlow()}>Get Started</Button>
                 </div>
             </MobileMenu>
         </header>
