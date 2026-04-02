@@ -52,11 +52,13 @@ function AuthCallbackContent() {
       const r = result as Record<string, unknown>
       console.error('[auth-callback] exchange failed:', result.error, 'status:', r.status, 'detail:', r.detail, 'debug:', r.debug)
       if (result.error === 'server') {
-        // * Auth code likely expired or was already consumed.
-        // * Redirect back to auth hub to get a fresh code automatically.
+        // * The exchange likely succeeded server-side (code was consumed) but the
+        // * server action response failed to reach the browser (cold start, network).
+        // * Try navigating to home — if cookies were set, user lands on dashboard.
+        // * If not, the home page redirects to login naturally.
         const returnTo = searchParams.get('returnTo') || '/'
         const safe = (typeof returnTo === 'string' && returnTo.startsWith('/') && !returnTo.startsWith('//')) ? returnTo : '/'
-        window.location.href = `${AUTH_URL}/apps?returnTo=${encodeURIComponent(safe)}`
+        window.location.href = safe
         return
       }
       setError(authMessageFromErrorType(result.error as AuthErrorType))
