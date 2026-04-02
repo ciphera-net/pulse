@@ -48,13 +48,16 @@ function AuthCallbackContent() {
         const safe = (typeof raw === 'string' && raw.startsWith('/') && !raw.startsWith('//')) ? raw : '/'
         router.push(safe)
       }
-    } else if (result.error === 'server') {
-      // * Auth code likely expired (60s TTL) or was already consumed.
-      // * Redirect back to auth hub to get a fresh code automatically.
-      const returnTo = searchParams.get('returnTo') || '/'
-      const safe = (typeof returnTo === 'string' && returnTo.startsWith('/') && !returnTo.startsWith('//')) ? returnTo : '/'
-      window.location.href = `${AUTH_URL}/apps?returnTo=${encodeURIComponent(safe)}`
     } else {
+      console.error('[auth-callback] exchange failed:', result.error, 'status:', (result as Record<string, unknown>).status)
+      if (result.error === 'server') {
+        // * Auth code likely expired or was already consumed.
+        // * Redirect back to auth hub to get a fresh code automatically.
+        const returnTo = searchParams.get('returnTo') || '/'
+        const safe = (typeof returnTo === 'string' && returnTo.startsWith('/') && !returnTo.startsWith('//')) ? returnTo : '/'
+        window.location.href = `${AUTH_URL}/apps?returnTo=${encodeURIComponent(safe)}`
+        return
+      }
       setError(authMessageFromErrorType(result.error as AuthErrorType))
     }
   }, [searchParams, login, router])
