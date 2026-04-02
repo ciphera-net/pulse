@@ -4,6 +4,7 @@ import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useTheme } from '@ciphera-net/ui'
 import { AreaChart as VisxAreaChart, Area as VisxArea, Grid as VisxGrid, XAxis as VisxXAxis, YAxis as VisxYAxis, ChartTooltip as VisxChartTooltip, type TooltipRow } from '@/components/ui/area-chart'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import type { EngagementPercentilesData } from '@/lib/api/stats'
 import { formatNumber, formatDuration, formatUpdatedAgo, DatePicker } from '@ciphera-net/ui'
 import { Select, DownloadIcon, PlusIcon, XIcon } from '@ciphera-net/ui'
 import { Checkbox } from '@ciphera-net/ui'
@@ -82,6 +83,7 @@ interface ChartProps {
   onCreateAnnotation?: (data: { date: string; time?: string; text: string; category: string }) => Promise<void>
   onUpdateAnnotation?: (id: string, data: { date: string; time?: string; text: string; category: string }) => Promise<void>
   onDeleteAnnotation?: (id: string) => Promise<void>
+  engagementData?: EngagementPercentilesData | null
 }
 
 type MetricType = 'pageviews' | 'visitors' | 'pages_per_visit' | 'bounce_rate' | 'avg_duration' | 'engagement'
@@ -206,6 +208,7 @@ export default function Chart({
   onCreateAnnotation,
   onUpdateAnnotation,
   onDeleteAnnotation,
+  engagementData,
 }: ChartProps) {
   const [metric, setMetric] = useState<MetricType>('visitors')
   const chartContainerRef = useRef<HTMLDivElement>(null)
