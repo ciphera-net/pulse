@@ -8,7 +8,7 @@ import { Button, Spinner } from '@ciphera-net/ui'
 import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { useAuth } from '@/lib/auth/context'
 import { useSite } from '@/lib/swr/dashboard'
-import { listSites, type Site } from '@/lib/api/sites'
+import { useSites } from '@/lib/swr/sites'
 
 // Lazy-load tab components — only loaded when the tab is first rendered
 const tabLoader = () => <div className="flex items-center justify-center py-12"><Spinner className="w-6 h-6 text-neutral-500" /></div>
@@ -219,7 +219,7 @@ export default function UnifiedSettingsModal() {
   const [workspaceTabs, setWorkspaceTabs] = useState('general')
   const [accountTabs, setAccountTabs] = useState('profile')
 
-  const [sites, setSites] = useState<Site[]>([])
+  const { sites } = useSites()
   const [activeSiteId, setActiveSiteId] = useState<string | null>(null)
 
   // ─── Dirty state & pending navigation ────────────────────────
@@ -299,7 +299,7 @@ export default function UnifiedSettingsModal() {
     }
   }, [isOpen])
 
-  // Detect site from URL and load sites list when modal opens
+  // Detect site from URL when modal opens
   useEffect(() => {
     if (!isOpen || !user?.org_id) return
 
@@ -317,13 +317,6 @@ export default function UnifiedSettingsModal() {
         setActiveSiteId(null)
         if (!initTab?.context) setContext('workspace')
       }
-    }
-
-    // Only fetch sites if we don't have them yet
-    if (sites.length === 0) {
-      listSites().then(data => {
-        setSites(Array.isArray(data) ? data : [])
-      }).catch(() => {})
     }
   }, [isOpen, user?.org_id])
 

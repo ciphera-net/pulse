@@ -4,8 +4,9 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { listSites, type Site } from '@/lib/api/sites'
+import { type Site } from '@/lib/api/sites'
 import { useAuth } from '@/lib/auth/context'
+import { useSites, FaviconPreloader } from '@/lib/swr/sites'
 import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { useSidebar } from '@/lib/sidebar-context'
 // `,` shortcut handled globally by UnifiedSettingsModal
@@ -443,13 +444,12 @@ export default function Sidebar({
   const pathname = usePathname()
   const router = useRouter()
   const { openUnifiedSettings } = useUnifiedSettings()
-  const [sites, setSites] = useState<Site[]>([])
+  const { sites } = useSites()
   const [orgs, setOrgs] = useState<OrganizationMember[]>([])
   const [pendingHref, setPendingHref] = useState<string | null>(null)
   const [mobileClosing, setMobileClosing] = useState(false)
   const { collapsed, toggle } = useSidebar()
 
-  useEffect(() => { listSites().then(setSites).catch(() => {}) }, [])
   useEffect(() => {
     if (user) {
       getUserOrganizations()
@@ -483,6 +483,7 @@ export default function Sidebar({
 
   return (
     <>
+      <FaviconPreloader sites={sites} />
       {/* Desktop — ssr:false means this only renders on client, no hydration flash */}
       <aside
         className="hidden md:flex flex-col shrink-0 bg-transparent overflow-hidden relative z-10"
