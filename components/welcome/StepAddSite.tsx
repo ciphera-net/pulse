@@ -5,7 +5,6 @@ import { createSite, type Site } from '@/lib/api/sites'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { trackWelcomeSiteAdded, trackWelcomeSiteSkipped } from '@/lib/welcomeAnalytics'
 import { Button, Input, toast } from '@ciphera-net/ui'
-import { ArrowLeftIcon } from '@ciphera-net/ui'
 
 const SITE_DRAFT_KEY = 'pulse_welcome_site_draft'
 
@@ -78,15 +77,6 @@ export default function StepAddSite({ onComplete, onSkip, onBack, onDomainChange
 
   return (
     <>
-      <button
-        type="button"
-        onClick={onBack}
-        className="flex items-center gap-2 text-sm text-neutral-400 hover:text-neutral-300 mb-8 transition-colors"
-      >
-        <ArrowLeftIcon className="h-4 w-4" />
-        Back
-      </button>
-
       <div className="text-center mb-8">
         <h1 className="text-2xl font-bold tracking-tight text-white">
           Add your first site
