@@ -33,16 +33,16 @@ function SiteCardMockup({ siteDomain }: { siteDomain?: string }) {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           {/* Favicon */}
-          <div className="w-10 h-10 rounded-xl bg-neutral-800 overflow-hidden flex items-center justify-center flex-shrink-0">
+          <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0">
             {siteDomain ? (
               /* eslint-disable-next-line @next/next/no-img-element */
               <img
                 src={`https://www.google.com/s2/favicons?domain=${siteDomain}&sz=64`}
                 alt=""
-                className="w-full h-full object-cover"
+                className="w-10 h-10 object-contain"
               />
             ) : (
-              <div className="w-full h-full bg-neutral-800" />
+              <div className="w-full h-full bg-neutral-800 rounded-xl" />
             )}
           </div>
 

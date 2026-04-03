@@ -113,6 +113,12 @@ function WelcomeFlowInner() {
 
   const direction = directionRef.current
 
+  const stepVariants = {
+    enter: (d: number) => ({ opacity: 0, y: d * 16 }),
+    center: { opacity: 1, y: 0 },
+    exit: (d: number) => ({ opacity: 0, y: d * -16 }),
+  }
+
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Left — Step-aware panel (hidden on mobile) */}
@@ -149,9 +155,10 @@ function WelcomeFlowInner() {
                 <motion.div
                   key="step1"
                   custom={direction}
-                  initial={{ opacity: 0, y: direction * 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: direction * -16 }}
+                  variants={stepVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
                   transition={{ duration: 0.2 }}
                 >
                   <StepOrganization onComplete={handleOrgComplete} />
@@ -161,9 +168,10 @@ function WelcomeFlowInner() {
                 <motion.div
                   key="step2"
                   custom={direction}
-                  initial={{ opacity: 0, y: direction * 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: direction * -16 }}
+                  variants={stepVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
                   transition={{ duration: 0.2 }}
                 >
                   <StepAddSite
@@ -178,9 +186,10 @@ function WelcomeFlowInner() {
                 <motion.div
                   key="step3"
                   custom={direction}
-                  initial={{ opacity: 0, y: direction * 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: direction * -16 }}
+                  variants={stepVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
                   transition={{ duration: 0.2 }}
                 >
                   <StepInstall
