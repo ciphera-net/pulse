@@ -10,7 +10,8 @@ import { listSites, type Site } from '@/lib/api/sites'
 import { trackWelcomeStepView } from '@/lib/welcomeAnalytics'
 import { LoadingOverlay } from '@ciphera-net/ui'
 import pulseIcon from '@/public/pulse_icon_no_margins.png'
-import FeatureSlideshow from '@/components/checkout/FeatureSlideshow'
+import WelcomePanel from './WelcomePanel'
+import WelcomeStepper from './WelcomeStepper'
 import StepOrganization from './StepOrganization'
 import StepAddSite from './StepAddSite'
 import StepInstall from './StepInstall'
@@ -111,9 +112,9 @@ function WelcomeFlowInner() {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* Left — Feature slideshow (hidden on mobile) */}
+      {/* Left — Step-aware panel (hidden on mobile) */}
       <div className="hidden lg:flex lg:w-1/2 relative h-full overflow-hidden">
-        <FeatureSlideshow />
+        <WelcomePanel step={step} />
       </div>
 
       {/* Right — Step content (scrollable) */}
@@ -135,26 +136,8 @@ function WelcomeFlowInner() {
 
         {/* Main content */}
         <div className="flex flex-1 flex-col items-center justify-center px-4 pb-12 pt-6 lg:pt-10 sm:px-6 lg:px-10">
-          {/* Progress indicator */}
-          <div
-            className="flex justify-center gap-2 mb-10"
-            role="progressbar"
-            aria-valuenow={step}
-            aria-valuemin={1}
-            aria-valuemax={TOTAL_STEPS}
-            aria-label={`Step ${step} of ${TOTAL_STEPS}`}
-          >
-            {Array.from({ length: TOTAL_STEPS }, (_, i) => (
-              <div
-                key={i}
-                className={`h-1.5 rounded-full transition-all duration-300 ${
-                  i + 1 <= step
-                    ? 'bg-brand-orange w-8'
-                    : 'bg-neutral-700 w-6'
-                }`}
-              />
-            ))}
-          </div>
+          {/* Step indicator */}
+          <WelcomeStepper currentStep={step} />
 
           {/* Step content */}
           <div className="w-full max-w-lg">
