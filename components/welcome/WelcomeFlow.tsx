@@ -3,14 +3,10 @@
 import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
-import Image from 'next/image'
-import Link from 'next/link'
 import { useAuth } from '@/lib/auth/context'
 import { listSites, type Site } from '@/lib/api/sites'
 import { trackWelcomeStepView } from '@/lib/welcomeAnalytics'
 import { LoadingOverlay } from '@ciphera-net/ui'
-import pulseIcon from '@/public/pulse_icon_no_margins.png'
-import WelcomePanel from './WelcomePanel'
 import WelcomeStepper from './WelcomeStepper'
 import StepOrganization from './StepOrganization'
 import StepAddSite from './StepAddSite'
@@ -114,7 +110,7 @@ function WelcomeFlowInner() {
     setStep(3)
   }, [setStep])
 
-  // Only show loading on initial page load, not on auth refreshes mid-flow
+  // Only show loading on initial page load
   if (resolving && (authLoading || !user)) {
     return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" />
   }
@@ -128,87 +124,61 @@ function WelcomeFlowInner() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      {/* Left — Step-aware panel (hidden on mobile) */}
-      <div className="hidden lg:flex lg:w-1/2 relative h-full overflow-hidden">
-        <WelcomePanel step={step} siteDomain={siteDomain} />
-      </div>
+    <div className="flex flex-1 flex-col items-center justify-center px-4 py-12 sm:px-6 lg:px-10">
+      {/* Step indicator */}
+      <WelcomeStepper currentStep={step} onStepClick={setStep} />
 
-      {/* Right — Step content (scrollable) */}
-      <div className="w-full lg:w-1/2 flex flex-col h-full overflow-y-auto">
-        {/* Logo on mobile only */}
-        <div className="px-6 py-5 lg:hidden">
-          <Link href="/" className="flex items-center gap-2 w-fit hover:opacity-80 transition-opacity">
-            <Image
-              src={pulseIcon}
-              alt="Pulse"
-              width={36}
-              height={36}
-              unoptimized
-              className="object-contain w-8 h-8"
-            />
-            <span className="text-xl font-bold text-white tracking-tight">Pulse</span>
-          </Link>
-        </div>
-
-        {/* Main content */}
-        <div className="flex flex-1 flex-col items-center justify-center px-4 pb-12 pt-6 lg:pt-10 sm:px-6 lg:px-10">
-          {/* Step indicator */}
-          <WelcomeStepper currentStep={step} onStepClick={setStep} />
-
-          {/* Step content */}
-          <div className="w-full max-w-lg">
-            <AnimatePresence mode="wait" custom={direction}>
-              {step === 1 && (
-                <motion.div
-                  key="step1"
-                  custom={direction}
-                  variants={stepVariants}
-                  initial="enter"
-                  animate="center"
-                  exit="exit"
-                  transition={{ duration: 0.2 }}
-                >
-                  <StepOrganization onComplete={handleOrgComplete} />
-                </motion.div>
-              )}
-              {step === 2 && (
-                <motion.div
-                  key="step2"
-                  custom={direction}
-                  variants={stepVariants}
-                  initial="enter"
-                  animate="center"
-                  exit="exit"
-                  transition={{ duration: 0.2 }}
-                >
-                  <StepAddSite
-                    onComplete={handleSiteComplete}
-                    onSkip={handleSiteSkip}
-                    onBack={() => setStep(1)}
-                    onDomainChange={setSiteDomain}
-                  />
-                </motion.div>
-              )}
-              {step === 3 && (
-                <motion.div
-                  key="step3"
-                  custom={direction}
-                  variants={stepVariants}
-                  initial="enter"
-                  animate="center"
-                  exit="exit"
-                  transition={{ duration: 0.2 }}
-                >
-                  <StepInstall
-                    site={createdSite}
-                    onBack={() => setStep(2)}
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
+      {/* Step content */}
+      <div className="w-full max-w-lg">
+        <AnimatePresence mode="wait" custom={direction}>
+          {step === 1 && (
+            <motion.div
+              key="step1"
+              custom={direction}
+              variants={stepVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.2 }}
+            >
+              <StepOrganization onComplete={handleOrgComplete} />
+            </motion.div>
+          )}
+          {step === 2 && (
+            <motion.div
+              key="step2"
+              custom={direction}
+              variants={stepVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.2 }}
+            >
+              <StepAddSite
+                onComplete={handleSiteComplete}
+                onSkip={handleSiteSkip}
+                onBack={() => setStep(1)}
+                onDomainChange={setSiteDomain}
+              />
+            </motion.div>
+          )}
+          {step === 3 && (
+            <motion.div
+              key="step3"
+              custom={direction}
+              variants={stepVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.2 }}
+            >
+              <StepInstall
+                site={createdSite}
+                onBack={() => setStep(2)}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   )

@@ -97,17 +97,16 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   // Site pages use DashboardShell with full sidebar — no Header needed
   const isSitePage = pathname.startsWith('/sites/') && pathname !== '/sites/new'
   // Pages that use DashboardShell with home sidebar (no site context)
-  const isDashboardPage = pathname === '/' || pathname.startsWith('/integrations') || pathname === '/pricing'
-  // Checkout and welcome pages have their own minimal layout — no app header/footer
+  const isDashboardPage = pathname === '/' || pathname.startsWith('/integrations') || pathname === '/pricing' || pathname.startsWith('/welcome')
+  // Checkout page has its own minimal layout — no app header/footer
   const isCheckoutPage = pathname.startsWith('/checkout')
-  const isWelcomePage = pathname.startsWith('/welcome')
 
   if (isSwitchingOrg) {
     return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" portal={false} />
   }
 
   // While auth is loading on a site or checkout page, render nothing to prevent flash of public header
-  if (auth.loading && (isSitePage || isCheckoutPage || isWelcomePage || isDashboardPage)) {
+  if (auth.loading && (isSitePage || isCheckoutPage || isDashboardPage)) {
     return null
   }
 
@@ -133,8 +132,8 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
     )
   }
 
-  // Checkout and welcome pages: render children only (have their own layout)
-  if (isAuthenticated && (isCheckoutPage || isWelcomePage)) {
+  // Checkout page: render children only (has its own layout)
+  if (isAuthenticated && isCheckoutPage) {
     return <>{children}</>
   }
 
