@@ -288,7 +288,7 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
         isOpen={isModalOpen}
         onClose={() => { setIsModalOpen(false); setModalSearch('') }}
         title="Referrers"
-        className="max-w-2xl"
+        className="max-w-2xl !bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:!bg-neutral-900/60 !border-white/[0.08]"
       >
         <div>
           <input
