@@ -381,26 +381,25 @@ export default function DashboardShell({
   return (
     <SidebarProvider>
       <LiveIndicatorProvider>
-      <div className="flex h-screen overflow-hidden relative">
-        {/* Background image behind everything */}
-        <div
-          className="absolute inset-0 bg-cover bg-top opacity-[0.25] pointer-events-none"
-          style={{ backgroundImage: 'url(/pulse-showcase-bg.png)' }}
-        />
-        <div className="absolute inset-0 bg-neutral-950/60 pointer-events-none" />
+      <div className="flex h-screen overflow-hidden bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/60">
         <Sidebar
           siteId={siteId}
           mobileOpen={mobileOpen}
           onMobileClose={closeMobile}
           onMobileOpen={openMobile}
         />
-        <div className="relative flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-w-0">
           {/* Glass top bar — above content only, collapse icon reaches back into sidebar column */}
           <GlassTopBar siteId={siteId} />
-          {/* Content panel — glassmorphism */}
-          <div className="flex-1 flex flex-col min-w-0 mr-2 mb-2 rounded-2xl bg-neutral-900/80 backdrop-blur-xl border border-white/[0.08] overflow-hidden">
+          {/* Content panel */}
+          <div className="flex-1 flex flex-col min-w-0 mr-2 mb-2 rounded-2xl bg-neutral-950 border border-white/[0.08] overflow-hidden relative">
+            {/* Background image */}
+            <div
+              className="absolute inset-0 bg-cover bg-top opacity-[0.25] pointer-events-none"
+              style={{ backgroundImage: 'url(/pulse-showcase-bg.png)' }}
+            />
             <ContentHeader onMobileMenuOpen={openMobile} />
-            <main className="flex-1 overflow-y-auto overflow-x-hidden pt-4">
+            <main className="relative flex-1 overflow-y-auto overflow-x-hidden pt-4">
               {children}
             </main>
           </div>
