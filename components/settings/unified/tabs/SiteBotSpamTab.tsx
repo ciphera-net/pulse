@@ -240,9 +240,10 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
                   <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
                     domain.source === 'matomo_seed' || domain.source === 'legacy_blocklist' ? 'bg-blue-900/30 text-blue-400' :
                     domain.source === 'learned' ? 'bg-purple-900/30 text-purple-400' :
+                    domain.source === 'collaborative' ? 'bg-purple-900/30 text-purple-400' :
                     'bg-neutral-800 text-neutral-400'
                   }`}>
-                    {domain.source === 'matomo_seed' ? 'seed' : domain.source}
+                    {domain.source === 'matomo_seed' ? 'seed' : domain.source === 'collaborative' ? 'Collaborative' : domain.source}
                   </span>
                   {domain.override && (
                     <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-900/30 text-amber-400">

@@ -25,6 +25,7 @@ const REASON_COLORS: Record<string, string> = {
   spam_keyword: 'bg-red-900/30 text-red-400',
   reputation: 'bg-orange-900/30 text-orange-400',
   heuristic: 'bg-orange-900/30 text-orange-400',
+  velocity: 'bg-orange-900/30 text-orange-400',
   delayed_eval: 'bg-yellow-900/30 text-yellow-400',
   manual: 'bg-neutral-800 text-neutral-400',
 }
@@ -51,7 +52,16 @@ const ACTION_COLORS: Record<string, string> = {
 const SOURCE_COLORS: Record<string, string> = {
   matomo_seed: 'bg-blue-900/30 text-blue-400',
   learned: 'bg-purple-900/30 text-purple-400',
+  collaborative: 'bg-purple-900/30 text-purple-400',
   manual: 'bg-neutral-800 text-neutral-400',
+}
+
+const REASON_LABELS: Record<string, string> = {
+  velocity: 'Velocity',
+}
+
+const SOURCE_LABELS: Record<string, string> = {
+  collaborative: 'Collaborative',
 }
 
 function Badge({ label, colorClass }: { label: string; colorClass?: string }) {
@@ -110,7 +120,7 @@ function OverviewTab({ stats, loading }: { stats: QuarantineStats | null; loadin
                 .sort(([, a], [, b]) => b - a)
                 .map(([reason, count]) => (
                   <li key={reason} className="flex items-center justify-between">
-                    <Badge label={reason} colorClass={REASON_COLORS[reason]} />
+                    <Badge label={REASON_LABELS[reason] || reason} colorClass={REASON_COLORS[reason]} />
                     <span className="text-sm text-white tabular-nums">{count.toLocaleString()}</span>
                   </li>
                 ))}
@@ -188,7 +198,7 @@ function EventsTab() {
           className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-neutral-600"
         >
           <option value="">All reasons</option>
-          {['bot_ua', 'spam_keyword', 'reputation', 'heuristic', 'delayed_eval', 'manual'].map((r) => (
+          {['bot_ua', 'spam_keyword', 'reputation', 'heuristic', 'velocity', 'delayed_eval', 'manual'].map((r) => (
             <option key={r} value={r}>{r}</option>
           ))}
         </select>
@@ -265,7 +275,7 @@ function EventsTab() {
                       {ev.referrer || '-'}
                     </td>
                     <td className="px-4 py-3">
-                      <Badge label={ev.detection_reason} colorClass={REASON_COLORS[ev.detection_reason]} />
+                      <Badge label={REASON_LABELS[ev.detection_reason] || ev.detection_reason} colorClass={REASON_COLORS[ev.detection_reason]} />
                     </td>
                     <td className="px-4 py-3">
                       <Badge label={ev.detection_method} colorClass={METHOD_COLORS[ev.detection_method]} />
@@ -394,7 +404,7 @@ function ReputationTab() {
           className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-neutral-600"
         >
           <option value="">All sources</option>
-          {['matomo_seed', 'learned', 'manual'].map((s) => (
+          {['matomo_seed', 'learned', 'collaborative', 'manual'].map((s) => (
             <option key={s} value={s}>{s}</option>
           ))}
         </select>
@@ -462,7 +472,7 @@ function ReputationTab() {
                       <Badge label={d.action} colorClass={ACTION_COLORS[d.action]} />
                     </td>
                     <td className="px-4 py-3">
-                      <Badge label={d.source} colorClass={SOURCE_COLORS[d.source]} />
+                      <Badge label={SOURCE_LABELS[d.source] || d.source} colorClass={SOURCE_COLORS[d.source]} />
                     </td>
                     <td className="px-4 py-3 text-xs text-neutral-400 whitespace-nowrap">
                       {formatRelativeTime(d.last_seen)}
