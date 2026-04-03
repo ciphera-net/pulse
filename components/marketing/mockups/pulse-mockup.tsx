@@ -57,7 +57,6 @@ export function PulseMockup() {
                 12%
               </span>
             </div>
-            <p className="text-[8px] text-neutral-500 mt-0.5">vs yesterday</p>
           </div>
 
           {/* Total Pageviews */}
@@ -72,7 +71,6 @@ export function PulseMockup() {
                 23%
               </span>
             </div>
-            <p className="text-[8px] text-neutral-500 mt-0.5">vs yesterday</p>
           </div>
 
           {/* Bounce Rate */}
@@ -87,7 +85,6 @@ export function PulseMockup() {
                 8%
               </span>
             </div>
-            <p className="text-[8px] text-neutral-500 mt-0.5">vs yesterday</p>
           </div>
 
           {/* Visit Duration */}
@@ -102,7 +99,6 @@ export function PulseMockup() {
                 15%
               </span>
             </div>
-            <p className="text-[8px] text-neutral-500 mt-0.5">vs yesterday</p>
           </div>
         </div>
 
@@ -151,15 +147,15 @@ export function PulseMockup() {
               <line x1="0" y1="75" x2="400" y2="75" stroke="rgba(255,255,255,0.04)" />
               <line x1="0" y1="100" x2="400" y2="100" stroke="rgba(255,255,255,0.04)" />
 
-              {/* Area fill — step-style chart */}
+              {/* Area fill — smooth curve */}
               <path
-                d="M0,62 L45,62 L45,62 L90,62 L90,100 L135,100 L135,100 L160,100 L160,62 L180,62 L180,50 L225,50 L225,25 L270,25 L270,25 L290,25 L290,50 L310,50 L310,62 L340,62 L340,62 L370,62 L370,55 L400,55 L400,100 L0,100 Z"
+                d="M0,62 C25,62 45,62 70,68 C95,74 110,85 130,90 C150,95 160,85 180,65 C200,45 210,38 230,32 C250,26 265,25 280,30 C295,35 310,48 330,55 C350,60 375,58 400,55 L400,100 L0,100 Z"
                 fill="url(#pulseMockupGradient)"
               />
 
-              {/* Line — step-style */}
+              {/* Line — smooth curve */}
               <path
-                d="M0,62 L45,62 L45,62 L90,62 L90,100 L135,100 L135,100 L160,100 L160,62 L180,62 L180,50 L225,50 L225,25 L270,25 L270,25 L290,25 L290,50 L310,50 L310,62 L340,62 L340,62 L370,62 L370,55 L400,55"
+                d="M0,62 C25,62 45,62 70,68 C95,74 110,85 130,90 C150,95 160,85 180,65 C200,45 210,38 230,32 C250,26 265,25 280,30 C295,35 310,48 330,55 C350,60 375,58 400,55"
                 fill="none"
                 stroke="#FD5E0F"
                 strokeWidth="2"
