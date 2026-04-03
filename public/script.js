@@ -97,6 +97,13 @@
   function sendMetrics() {
     if (!currentEventId || metricsSent) return;
 
+    // * Cerberus proof-of-engagement: only send metrics if genuine human interaction detected
+    // * Prevents bots from producing non-null metrics that bypass the delayed evaluator
+    var engaged = (typeof maxScrollPct !== 'undefined' && maxScrollPct > 0) ||
+                  (humanSignals & 1) !== 0 ||
+                  visibleTotal >= 5000;
+    if (!engaged) return;
+
     var durationSec = pageStartTime > 0 ? Math.round((Date.now() - pageStartTime) / 1000) : 0;
     if (durationSec <= 0) return;
 
