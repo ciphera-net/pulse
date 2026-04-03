@@ -16,13 +16,13 @@ export default function AdminDashboard() {
         </p>
       </Link>
       <Link
-        href="/admin/filtered-traffic"
+        href="/admin/quarantine"
         className="block transition-transform hover:scale-[1.02] rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 shadow-sm"
       >
-        <h3 className="text-lg font-semibold text-white">Filtered Traffic</h3>
-        <p className="text-sm text-neutral-400 mt-1">Monitor blocked referrer spam</p>
+        <h3 className="text-lg font-semibold text-white">Quarantine & Reputation</h3>
+        <p className="text-sm text-neutral-400 mt-1">Monitor quarantined traffic and domain reputation</p>
         <p className="text-sm text-neutral-400 mt-4">
-          View domains blocked by the spam filter and check for false positives.
+          View quarantined events, manage domain reputation, and review auto-learned spam patterns.
         </p>
       </Link>
     </div>
