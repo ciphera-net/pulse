@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { createSite, type Site } from '@/lib/api/sites'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { trackWelcomeSiteAdded, trackWelcomeSiteSkipped } from '@/lib/welcomeAnalytics'
@@ -122,9 +123,19 @@ export default function StepAddSite({ onComplete, onSkip, onBack, onDomainChange
             Without http:// or https://
           </p>
         </div>
-        {error && (
-          <p className="text-sm text-red-400">{error}</p>
-        )}
+        <AnimatePresence>
+          {error && (
+            <motion.p
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="text-sm text-red-400 overflow-hidden"
+            >
+              {error}
+            </motion.p>
+          )}
+        </AnimatePresence>
         <div className="flex flex-col sm:flex-row gap-3 pt-2">
           <Button
             type="submit"
