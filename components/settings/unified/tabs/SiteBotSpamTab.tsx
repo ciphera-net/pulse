@@ -3,13 +3,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Toggle, toast, Spinner, getDateRange } from '@ciphera-net/ui'
 import { ShieldCheck } from '@phosphor-icons/react'
-import { useSite, useQuarantineStats, useSessions } from '@/lib/swr/dashboard'
+import { useSite, useQuarantineStats, useSessions, useSiteDomainReputation } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
-import { quarantineSessions, restoreSessions } from '@/lib/api/quarantine'
+import { quarantineSessions, restoreSessions, createDomainOverride, deleteDomainOverride } from '@/lib/api/quarantine'
 
 export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }: { siteId: string; onDirtyChange?: (dirty: boolean) => void; onRegisterSave?: (fn: () => Promise<void>) => void }) {
   const { data: site, mutate } = useSite(siteId)
   const { data: botStats, mutate: mutateBotStats } = useQuarantineStats(siteId)
+  const { data: domainReputation, mutate: mutateDomains } = useSiteDomainReputation(siteId)
   const [filterBots, setFilterBots] = useState(false)
   const initialFilterRef = useRef<boolean | null>(null)
 
@@ -18,7 +19,7 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
   const [selectedSessions, setSelectedSessions] = useState<Set<string>>(new Set())
   const [botDateRange] = useState(() => getDateRange(7))
 
-  const { data: sessionsData, mutate: mutateSessions } = useSessions(siteId, botDateRange.start, botDateRange.end, botView === 'review' ? suspiciousOnly : false)
+  const { data: sessionsData, mutate: mutateSessions } = useSessions(siteId, { start_date: botDateRange.start, end_date: botDateRange.end, suspicious: botView === 'review' ? suspiciousOnly : undefined })
   const sessions = sessionsData?.sessions
 
   const hasInitialized = useRef(false)
@@ -101,16 +102,16 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
       {botStats && (
         <div className="grid grid-cols-3 gap-3">
           <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 p-4 text-center">
-            <p className="text-2xl font-bold text-white">{botStats.filtered_sessions ?? 0}</p>
-            <p className="text-xs text-neutral-500 mt-1">Sessions filtered</p>
+            <p className="text-2xl font-bold text-white">{botStats.total_quarantined ?? 0}</p>
+            <p className="text-xs text-neutral-500 mt-1">Quarantined events</p>
           </div>
           <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 p-4 text-center">
-            <p className="text-2xl font-bold text-white">{botStats.filtered_events ?? 0}</p>
-            <p className="text-xs text-neutral-500 mt-1">Events filtered</p>
+            <p className="text-2xl font-bold text-white">{botStats.last_24h ?? 0}</p>
+            <p className="text-xs text-neutral-500 mt-1">Last 24h</p>
           </div>
           <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 p-4 text-center">
-            <p className="text-2xl font-bold text-white">{botStats.auto_blocked_this_month ?? 0}</p>
-            <p className="text-xs text-neutral-500 mt-1">Auto-blocked this month</p>
+            <p className="text-2xl font-bold text-white">{Object.keys(botStats.by_reason || {}).length}</p>
+            <p className="text-xs text-neutral-500 mt-1">Detection types</p>
           </div>
         </div>
       )}
@@ -125,13 +126,13 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
               onClick={() => { setBotView('review'); setSelectedSessions(new Set()) }}
               className={`px-3 py-1.5 text-xs font-medium transition-colors ${botView === 'review' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'}`}
             >
-              Review
+              Suspicious
             </button>
             <button
               onClick={() => { setBotView('blocked'); setSelectedSessions(new Set()) }}
               className={`px-3 py-1.5 text-xs font-medium transition-colors ${botView === 'blocked' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'}`}
             >
-              Blocked
+              Quarantined
             </button>
           </div>
         </div>
@@ -163,7 +164,7 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
         {/* Session cards */}
         <div className="space-y-2 max-h-96 overflow-y-auto">
           {(sessions || [])
-            .filter(s => botView === 'blocked' ? s.bot_filtered : !s.bot_filtered)
+            .filter(s => botView === 'blocked' ? s.quarantined : !s.quarantined)
             .map(session => (
               <div key={session.session_id} className="flex items-center gap-3 p-3 rounded-xl border border-neutral-800 hover:bg-neutral-800/40 hover:border-neutral-700 transition-colors">
                 <input
@@ -210,10 +211,102 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
                 </button>
               </div>
             ))}
-          {(!sessions || sessions.filter(s => botView === 'blocked' ? s.bot_filtered : !s.bot_filtered).length === 0) && (
+          {(!sessions || sessions.filter(s => botView === 'blocked' ? s.quarantined : !s.quarantined).length === 0) && (
             <p className="text-sm text-neutral-500 text-center py-4">
-              {botView === 'blocked' ? 'No blocked sessions' : 'No suspicious sessions found'}
+              {botView === 'blocked' ? 'No quarantined sessions' : 'No suspicious sessions found'}
             </p>
+          )}
+        </div>
+      </div>
+
+      {/* Domain Reputation */}
+      <div className="space-y-3 pt-6 border-t border-neutral-800">
+        <h4 className="text-sm font-medium text-neutral-300">Domain Reputation</h4>
+        <p className="text-xs text-neutral-500">Referrer domains seen on your site and their global reputation. Override to allow or block specific domains.</p>
+
+        <div className="space-y-2 max-h-64 overflow-y-auto">
+          {domainReputation?.domains?.map(domain => (
+            <div key={domain.domain} className="flex items-center justify-between p-3 rounded-xl border border-neutral-800 hover:bg-neutral-800/40 transition-colors">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-mono text-white truncate">{domain.domain}</span>
+                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                    domain.action === 'quarantine' ? 'bg-red-900/30 text-red-400' :
+                    domain.action === 'allow' ? 'bg-green-900/30 text-green-400' :
+                    'bg-neutral-800 text-neutral-400'
+                  }`}>
+                    {domain.action}
+                  </span>
+                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                    domain.source === 'matomo_seed' || domain.source === 'legacy_blocklist' ? 'bg-blue-900/30 text-blue-400' :
+                    domain.source === 'learned' ? 'bg-purple-900/30 text-purple-400' :
+                    'bg-neutral-800 text-neutral-400'
+                  }`}>
+                    {domain.source === 'matomo_seed' ? 'seed' : domain.source}
+                  </span>
+                  {domain.override && (
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-900/30 text-amber-400">
+                      override: {domain.override}
+                    </span>
+                  )}
+                </div>
+                <div className="flex gap-3 text-xs text-neutral-500 mt-0.5">
+                  <span>{domain.total_events} events</span>
+                  <span>{Math.round(domain.bot_ratio * 100)}% bot</span>
+                </div>
+              </div>
+              <div className="flex gap-1.5 shrink-0">
+                <button
+                  onClick={async () => {
+                    try {
+                      await createDomainOverride(siteId, domain.domain, 'allow')
+                      toast.success(`${domain.domain} allowed`)
+                      mutateDomains()
+                    } catch { toast.error('Failed') }
+                  }}
+                  className={`px-2.5 py-1 text-xs rounded-lg border transition-colors ${
+                    domain.override === 'allow'
+                      ? 'bg-green-900/20 text-green-400 border-green-500/30'
+                      : 'text-neutral-400 border-neutral-700 hover:text-green-400 hover:border-green-500/30'
+                  }`}
+                >
+                  Allow
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      await createDomainOverride(siteId, domain.domain, 'quarantine')
+                      toast.success(`${domain.domain} quarantined`)
+                      mutateDomains()
+                    } catch { toast.error('Failed') }
+                  }}
+                  className={`px-2.5 py-1 text-xs rounded-lg border transition-colors ${
+                    domain.override === 'quarantine'
+                      ? 'bg-red-900/20 text-red-400 border-red-500/30'
+                      : 'text-neutral-400 border-neutral-700 hover:text-red-400 hover:border-red-500/30'
+                  }`}
+                >
+                  Block
+                </button>
+                {domain.override && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await deleteDomainOverride(siteId, domain.domain)
+                        toast.success('Override removed')
+                        mutateDomains()
+                      } catch { toast.error('Failed') }
+                    }}
+                    className="px-2.5 py-1 text-xs rounded-lg border border-neutral-700 text-neutral-400 hover:text-white transition-colors"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+          {(!domainReputation?.domains || domainReputation.domains.length === 0) && (
+            <p className="text-sm text-neutral-500 text-center py-4">No domain reputation data yet</p>
           )}
         </div>
       </div>
