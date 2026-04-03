@@ -75,6 +75,7 @@
 
   var visibleStart = 0;
   var visibleTotal = 0;
+  var hasVisibilityAPI = typeof document.hidden !== 'undefined';
 
   function sendMetrics() {
     if (!currentEventId || metricsSent) return;
@@ -83,7 +84,13 @@
     if (durationSec <= 0) return;
 
     // * Finalize visible duration — add time since last visibility change if still visible
-    if (!document.hidden) visibleTotal += Date.now() - visibleStart;
+    // * In WebViews (Facebook/Instagram in-app browsers) where Page Visibility API isn't
+    // * available, fall back to wall-clock duration (all time treated as visible)
+    if (hasVisibilityAPI) {
+      if (!document.hidden) visibleTotal += Date.now() - visibleStart;
+    } else {
+      visibleTotal = Date.now() - pageStartTime;
+    }
     var visibleSec = Math.round(visibleTotal / 1000);
 
     metricsSent = true;
