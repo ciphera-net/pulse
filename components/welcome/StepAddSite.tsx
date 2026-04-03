@@ -13,9 +13,10 @@ interface StepAddSiteProps {
   onComplete: (site: Site) => void
   onSkip: () => void
   onBack: () => void
+  onDomainChange?: (domain: string) => void
 }
 
-export default function StepAddSite({ onComplete, onSkip, onBack }: StepAddSiteProps) {
+export default function StepAddSite({ onComplete, onSkip, onBack, onDomainChange }: StepAddSiteProps) {
   const [siteName, setSiteName] = useState('')
   const [siteDomain, setSiteDomain] = useState('')
   const [loading, setLoading] = useState(false)
@@ -29,7 +30,10 @@ export default function StepAddSite({ onComplete, onSkip, onBack }: StepAddSiteP
       if (raw) {
         const d = JSON.parse(raw) as { name?: string; domain?: string }
         if (d.name) setSiteName(d.name)
-        if (d.domain) setSiteDomain(d.domain)
+        if (d.domain) {
+          setSiteDomain(d.domain)
+          onDomainChange?.(d.domain)
+        }
       }
     } catch { /* ignore */ }
   }, [])
@@ -50,7 +54,6 @@ export default function StepAddSite({ onComplete, onSkip, onBack }: StepAddSiteP
         name: siteName.trim(),
         domain: siteDomain.trim().toLowerCase(),
       })
-      sessionStorage.removeItem(SITE_DRAFT_KEY)
       trackWelcomeSiteAdded()
       toast.success('Site added')
       onComplete(site)
@@ -111,7 +114,11 @@ export default function StepAddSite({ onComplete, onSkip, onBack }: StepAddSiteP
             type="text"
             placeholder="example.com"
             value={siteDomain}
-            onChange={(e) => setSiteDomain(e.target.value.replace(/^https?:\/\//, '').toLowerCase().trim())}
+            onChange={(e) => {
+              const val = e.target.value.replace(/^https?:\/\//, '').toLowerCase().trim()
+              setSiteDomain(val)
+              onDomainChange?.(val)
+            }}
             maxLength={253}
             className="w-full"
           />
