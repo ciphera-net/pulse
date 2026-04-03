@@ -47,7 +47,8 @@ export default function StepOrganization({ onComplete }: StepOrganizationProps) 
   const router = useRouter()
   const { user, login } = useAuth()
 
-  const [mode, setMode] = useState<Mode>('loading')
+  // Skip loading spinner if user already has an org (coming back from step 2)
+  const [mode, setMode] = useState<Mode>(user?.org_id ? 'select' : 'loading')
   const [organizations, setOrganizations] = useState<OrganizationMember[]>([])
 
   // Create form state
