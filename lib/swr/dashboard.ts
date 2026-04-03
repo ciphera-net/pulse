@@ -34,7 +34,17 @@ import { getUptimeStatus, type UptimeStatusResponse } from '@/lib/api/uptime'
 import { getPageSpeedConfig, getPageSpeedLatest, getPageSpeedHistory, type PageSpeedConfig, type PageSpeedCheck } from '@/lib/api/pagespeed'
 import { listGoals, type Goal } from '@/lib/api/goals'
 import { listReportSchedules, listAlertSchedules, type ReportSchedule } from '@/lib/api/report-schedules'
-import { listSessions, getBotFilterStats, type SessionSummary, type BotFilterStats } from '@/lib/api/bot-filter'
+import {
+  getQuarantineStats,
+  getQuarantineEvents,
+  listSessions,
+  getSiteDomainReputation,
+  type QuarantineStats,
+  type QuarantinedEvent,
+  type DomainReputation,
+  type SessionSummary,
+  type QuarantineFilters,
+} from '@/lib/api/quarantine'
 import { getGSCStatus, getGSCOverview, getGSCTopQueries, getGSCTopPages, getGSCDailyTotals, getGSCNewQueries, getGSCTopCountries, getGSCTopDevices, getGSCOpportunities } from '@/lib/api/gsc'
 import type { GSCStatus, GSCOverview, GSCQueryResponse, GSCPageResponse, GSCDailyTotal, GSCNewQueries, GSCCountryResponse, GSCDeviceResponse, GSCOpportunityResponse } from '@/lib/api/gsc'
 import { getBunnyStatus, getBunnyOverview, getBunnyDailyStats, getBunnyTopCountries } from '@/lib/api/bunny'
@@ -572,20 +582,44 @@ export function useSubscription() {
   )
 }
 
-// * Hook for session list (bot review)
-export function useSessions(siteId: string, startDate: string, endDate: string, suspiciousOnly: boolean) {
-  return useSWR<{ sessions: SessionSummary[] }>(
-    siteId && startDate && endDate ? ['sessions', siteId, startDate, endDate, suspiciousOnly] : null,
-    () => listSessions(siteId, startDate, endDate, suspiciousOnly),
+// * Hook for quarantine stats (Cerberus)
+export function useQuarantineStats(siteId: string | undefined) {
+  return useSWR<QuarantineStats>(
+    siteId ? ['quarantineStats', siteId] : null,
+    () => getQuarantineStats(siteId!),
+    { ...dashboardSWRConfig, refreshInterval: 60 * 1000, dedupingInterval: 10 * 1000 }
+  )
+}
+
+// * Hook for quarantine events list (Cerberus)
+export function useQuarantineEvents(siteId: string | undefined, filters?: QuarantineFilters) {
+  const key = siteId
+    ? ['quarantineEvents', siteId, JSON.stringify(filters || {})]
+    : null
+  return useSWR<{ events: QuarantinedEvent[]; total: number }>(
+    key,
+    () => getQuarantineEvents(siteId!, filters),
     { ...dashboardSWRConfig, refreshInterval: 0, dedupingInterval: 10 * 1000 }
   )
 }
 
-// * Hook for bot filter stats
-export function useBotFilterStats(siteId: string) {
-  return useSWR<BotFilterStats>(
-    siteId ? ['botFilterStats', siteId] : null,
-    () => getBotFilterStats(siteId),
+// * Hook for session list (Cerberus)
+export function useSessions(siteId: string | undefined, params?: { start_date?: string; end_date?: string; suspicious?: boolean; limit?: number }) {
+  const key = siteId
+    ? ['sessions', siteId, JSON.stringify(params || {})]
+    : null
+  return useSWR<{ sessions: SessionSummary[] }>(
+    key,
+    () => listSessions(siteId!, params),
+    { ...dashboardSWRConfig, refreshInterval: 0, dedupingInterval: 10 * 1000 }
+  )
+}
+
+// * Hook for per-site domain reputation (Cerberus)
+export function useSiteDomainReputation(siteId: string | undefined) {
+  return useSWR<{ domains: DomainReputation[] }>(
+    siteId ? ['domainReputation', siteId] : null,
+    () => getSiteDomainReputation(siteId!),
     { ...dashboardSWRConfig, refreshInterval: 60 * 1000, dedupingInterval: 10 * 1000 }
   )
 }
