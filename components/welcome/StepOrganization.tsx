@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { AnimatePresence, motion } from 'framer-motion'
 
 import { useAuth } from '@/lib/auth/context'
 import {
@@ -260,9 +261,19 @@ export default function StepOrganization({ onComplete }: StepOrganizationProps) 
             Used in your organization URL.
           </p>
         </div>
-        {orgError && (
-          <p className="text-sm text-red-400">{orgError}</p>
-        )}
+        <AnimatePresence>
+          {orgError && (
+            <motion.p
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="text-sm text-red-400 overflow-hidden"
+            >
+              {orgError}
+            </motion.p>
+          )}
+        </AnimatePresence>
         <Button type="submit" variant="primary" className="w-full" disabled={orgLoading}>
           {orgLoading ? 'Creating...' : 'Continue'}
         </Button>
