@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAuth } from '@/lib/auth/context'
-import { listSites, type Site } from '@/lib/api/sites'
+import { type Site } from '@/lib/api/sites'
+import { useSites } from '@/lib/swr/sites'
 import { trackWelcomeStepView } from '@/lib/welcomeAnalytics'
 import { LoadingOverlay } from '@ciphera-net/ui'
 import WelcomeStepper from './WelcomeStepper'
@@ -18,6 +19,7 @@ function WelcomeFlowInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, loading: authLoading } = useAuth()
+  const { sites, isLoading: sitesLoading } = useSites()
 
   const stepParam = searchParams.get('step')
   const initialStep = stepParam ? Math.min(Math.max(1, parseInt(stepParam, 10)), TOTAL_STEPS) : 1
@@ -48,35 +50,21 @@ function WelcomeFlowInner() {
 
   // Smart entry: skip steps user doesn't need
   useEffect(() => {
-    if (authLoading || !user) return
-    let cancelled = false
+    if (authLoading || !user || sitesLoading) return
 
-    async function resolve() {
-      if (!user!.org_id) {
-        setResolving(false)
-        return
-      }
-
-      try {
-        const sites = await listSites()
-        if (cancelled) return
-        if (sites.length > 0) {
-          router.replace('/')
-          return
-        }
-      } catch {
-        // continue
-      }
-
-      if (!cancelled) {
-        setStepState(2)
-        setResolving(false)
-      }
+    if (!user.org_id) {
+      setResolving(false)
+      return
     }
 
-    resolve()
-    return () => { cancelled = true }
-  }, [authLoading, user, router])
+    if (sites.length > 0) {
+      router.replace('/')
+      return
+    }
+
+    setStepState(2)
+    setResolving(false)
+  }, [authLoading, user, sitesLoading, sites, router])
 
   // Track step views
   useEffect(() => {

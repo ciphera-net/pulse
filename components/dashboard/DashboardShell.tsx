@@ -10,7 +10,8 @@ import { formatUpdatedAgo, PlusIcon, ExternalLinkIcon, type CipheraApp } from '@
 import { CaretDown, CaretRight, SidebarSimple } from '@phosphor-icons/react'
 import { SidebarProvider, useSidebar } from '@/lib/sidebar-context'
 import { LiveIndicatorProvider, useLiveIndicator } from '@/lib/live-indicator-context'
-import { getSite, listSites, type Site } from '@/lib/api/sites'
+import { getSite } from '@/lib/api/sites'
+import { useSites } from '@/lib/swr/sites'
 import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
 import ContentHeader from './ContentHeader'
 
@@ -168,19 +169,13 @@ function BreadcrumbAppSwitcher() {
 function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteId: string; currentSiteName: string }) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
-  const [sites, setSites] = useState<Site[]>([])
+  const { sites } = useSites()
   const ref = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const [fixedPos, setFixedPos] = useState<{ left: number; top: number } | null>(null)
   const pathname = usePathname()
   const router = useRouter()
-
-  useEffect(() => {
-    if (open && sites.length === 0) {
-      listSites().then(setSites).catch(() => {})
-    }
-  }, [open, sites.length])
 
   const updatePosition = useCallback(() => {
     if (buttonRef.current) {

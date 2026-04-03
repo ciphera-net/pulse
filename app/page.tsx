@@ -5,7 +5,8 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
-import { listSites, listDeletedSites, restoreSite, type Site } from '@/lib/api/sites'
+import { listDeletedSites, restoreSite, type Site } from '@/lib/api/sites'
+import { useSites } from '@/lib/swr/sites'
 import { getStats } from '@/lib/api/stats'
 import type { Stats } from '@/lib/api/stats'
 import { getSubscription, type SubscriptionDetails } from '@/lib/api/billing'
@@ -28,8 +29,7 @@ type SiteStatsMap = Record<string, { stats: Stats }>
 
 export default function HomePage() {
   const { user, loading: authLoading } = useAuth()
-  const [sites, setSites] = useState<Site[]>([])
-  const [sitesLoading, setSitesLoading] = useState(true)
+  const { sites, isLoading: sitesLoading, mutate: mutateSitesList } = useSites()
   const [siteStats, setSiteStats] = useState<SiteStatsMap>({})
   const [subscription, setSubscription] = useState<SubscriptionDetails | null>(null)
   const [showFinishSetupBanner, setShowFinishSetupBanner] = useState(true)
@@ -38,7 +38,7 @@ export default function HomePage() {
 
   useEffect(() => {
     if (user?.org_id) {
-      loadSites()
+      loadDeletedSites()
       loadSubscription()
     }
   }, [user])
@@ -90,22 +90,12 @@ export default function HomePage() {
     }
   }, [])
 
-  const loadSites = async () => {
+  const loadDeletedSites = async () => {
     try {
-      setSitesLoading(true)
-      const data = await listSites()
-      setSites(Array.isArray(data) ? data : [])
-      try {
-        const deleted = await listDeletedSites()
-        setDeletedSites(deleted)
-      } catch {
-        setDeletedSites([])
-      }
-    } catch (error: unknown) {
-      toast.error(getAuthErrorMessage(error) || 'Failed to load your sites')
-      setSites([])
-    } finally {
-      setSitesLoading(false)
+      const deleted = await listDeletedSites()
+      setDeletedSites(deleted)
+    } catch {
+      setDeletedSites([])
     }
   }
 
@@ -122,7 +112,8 @@ export default function HomePage() {
     try {
       await restoreSite(id)
       toast.success('Site restored successfully')
-      loadSites()
+      mutateSitesList()
+      loadDeletedSites()
     } catch (error: unknown) {
       toast.error(getAuthErrorMessage(error) || 'Failed to restore site')
     }
@@ -312,7 +303,7 @@ export default function HomePage() {
       <DeleteSiteModal
         open={!!permanentDeleteSiteModal}
         onClose={() => setPermanentDeleteSiteModal(null)}
-        onDeleted={loadSites}
+        onDeleted={() => { mutateSitesList(); loadDeletedSites() }}
         siteName={permanentDeleteSiteModal?.name || ''}
         siteDomain={permanentDeleteSiteModal?.domain || ''}
         siteId={permanentDeleteSiteModal?.id || ''}
