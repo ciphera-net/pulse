@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { formatNumber } from '@ciphera-net/ui'
 import { BookOpenIcon, ArrowRightIcon } from '@ciphera-net/ui'
@@ -128,7 +129,15 @@ export default function GoalStats({ goalCounts, siteId, dateRange }: GoalStatsPr
                 </div>
 
                 {/* Expanded property breakdown */}
+                <AnimatePresence initial={false}>
                 {isExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2, ease: 'easeInOut' }}
+                    className="overflow-hidden"
+                  >
                   <div className="border-l-2 border-brand-orange/20 ml-[7px] pl-4 py-1">
                     {cache?.loading ? (
                       <div className="flex items-center gap-2 py-2">
@@ -171,7 +180,9 @@ export default function GoalStats({ goalCounts, siteId, dateRange }: GoalStatsPr
                       <p className="text-xs text-neutral-500 py-2">No properties recorded</p>
                     ) : null}
                   </div>
+                  </motion.div>
                 )}
+                </AnimatePresence>
               </div>
             )
           })}
