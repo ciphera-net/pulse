@@ -7,7 +7,7 @@ import { verifySite } from '@/lib/api/sites'
 import { getRealtime } from '@/lib/api/stats'
 import { trackWelcomeCompleted } from '@/lib/welcomeAnalytics'
 import { Button, Spinner } from '@ciphera-net/ui'
-import { ArrowLeftIcon, CheckCircleIcon, AlertTriangleIcon } from '@ciphera-net/ui'
+import { CheckCircleIcon, AlertTriangleIcon } from '@ciphera-net/ui'
 import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
 
 const WELCOME_COMPLETED_KEY = 'pulse_welcome_completed'
@@ -19,22 +19,15 @@ interface StepInstallProps {
   onBack: () => void
 }
 
-export default function StepInstall({ site, onBack }: StepInstallProps) {
+export default function StepInstall({ site }: StepInstallProps) {
   const router = useRouter()
   const [verifyState, setVerifyState] = useState<VerificationState>('idle')
   const cancelledRef = useRef(false)
 
-  const goToDashboard = () => {
+  const finish = (path: string) => {
     if (typeof window !== 'undefined') localStorage.setItem(WELCOME_COMPLETED_KEY, 'true')
     trackWelcomeCompleted(!!site)
-    router.push('/')
-  }
-
-  const goToSite = () => {
-    if (!site) return
-    if (typeof window !== 'undefined') localStorage.setItem(WELCOME_COMPLETED_KEY, 'true')
-    trackWelcomeCompleted(true)
-    router.push(`/sites/${site.id}`)
+    router.push(path)
   }
 
   const cancelVerification = useCallback(() => {
@@ -80,15 +73,6 @@ export default function StepInstall({ site, onBack }: StepInstallProps) {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={onBack}
-        className="flex items-center gap-2 text-sm text-neutral-400 hover:text-neutral-300 mb-8 transition-colors"
-      >
-        <ArrowLeftIcon className="h-4 w-4" />
-        Back
-      </button>
-
       <div className="text-center mb-8">
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-400 mb-5">
           <CheckCircleIcon className="h-7 w-7" />
@@ -166,15 +150,14 @@ export default function StepInstall({ site, onBack }: StepInstallProps) {
         </>
       )}
 
-      <div className="flex flex-col sm:flex-row gap-3 justify-center">
-        <Button variant="primary" onClick={goToDashboard} className="min-w-40">
-          Go to dashboard
+      <div className="flex justify-center">
+        <Button
+          variant="primary"
+          onClick={() => finish(site ? `/sites/${site.id}` : '/')}
+          className="min-w-48"
+        >
+          {site ? `View ${site.name}` : 'Go to dashboard'}
         </Button>
-        {site && (
-          <Button variant="secondary" onClick={goToSite} className="min-w-40">
-            View {site.name}
-          </Button>
-        )}
       </div>
     </>
   )
