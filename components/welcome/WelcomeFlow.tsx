@@ -107,7 +107,8 @@ function WelcomeFlowInner() {
     setStep(3)
   }, [setStep])
 
-  if (authLoading || resolving) {
+  // Only show loading on initial page load, not on auth refreshes mid-flow
+  if (resolving && (authLoading || !user)) {
     return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" />
   }
 
