@@ -10,13 +10,13 @@ interface GoalStatsProps {
   onSelectEvent?: (eventName: string) => void
 }
 
-const LIMIT = 10
+const LIMIT = 7
 
 export default function GoalStats({ goalCounts, onSelectEvent }: GoalStatsProps) {
   const list = (goalCounts || []).slice(0, LIMIT)
   const hasData = list.length > 0
   const total = list.reduce((sum, r) => sum + r.count, 0)
-  const emptySlots = Math.max(0, 6 - list.length)
+  const emptySlots = Math.max(0, LIMIT - list.length)
 
   return (
     <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 h-full flex flex-col">
