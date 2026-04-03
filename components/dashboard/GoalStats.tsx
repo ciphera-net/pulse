@@ -30,28 +30,36 @@ export default function GoalStats({ goalCounts, onSelectEvent }: GoalStatsProps)
       </div>
 
       {hasData ? (
-        <div className="flex-1 min-h-[270px]">
-          {list.map((row) => (
-            <div
-              key={row.event_name}
-              onClick={() => onSelectEvent?.(row.event_name)}
-              className={`flex items-center justify-between h-9 group hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors${onSelectEvent ? ' cursor-pointer' : ''}`}
-            >
-              <div className="flex items-center flex-1 min-w-0">
-                <span className="text-sm font-medium text-white truncate">
-                  {row.display_name ?? row.event_name.replace(/_/g, ' ')}
-                </span>
+        <div className="space-y-2 flex-1 min-h-[270px]">
+          {list.map((row) => {
+            const maxCount = list[0]?.count ?? 0
+            const barWidth = maxCount > 0 ? (row.count / maxCount) * 75 : 0
+            return (
+              <div
+                key={row.event_name}
+                onClick={() => onSelectEvent?.(row.event_name)}
+                className={`relative flex items-center justify-between h-9 group hover:bg-neutral-800/50 rounded-lg px-2 -mx-2 transition-colors${onSelectEvent ? ' cursor-pointer' : ''}`}
+              >
+                <div
+                  className="absolute inset-y-0.5 left-0.5 bg-gradient-to-r from-brand-orange/15 via-brand-orange/8 to-transparent border border-brand-orange/20 shadow-[inset_0_1px_0_rgba(253,94,15,0.08)] rounded-md transition-all"
+                  style={{ width: `${barWidth}%` }}
+                />
+                <div className="relative flex items-center flex-1 min-w-0">
+                  <span className="text-sm font-medium text-white truncate">
+                    {row.display_name ?? row.event_name.replace(/_/g, ' ')}
+                  </span>
+                </div>
+                <div className="relative flex items-center gap-2 ml-4">
+                  <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+                    {total > 0 ? `${Math.round((row.count / total) * 100)}%` : ''}
+                  </span>
+                  <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
+                    {formatNumber(row.count)}
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center gap-2 ml-4">
-                <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
-                  {total > 0 ? `${Math.round((row.count / total) * 100)}%` : ''}
-                </span>
-                <span className="text-sm font-semibold text-neutral-400 tabular-nums">
-                  {formatNumber(row.count)}
-                </span>
-              </div>
-            </div>
-          ))}
+            )
+          })}
           {Array.from({ length: emptySlots }).map((_, i) => (
             <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
           ))}
