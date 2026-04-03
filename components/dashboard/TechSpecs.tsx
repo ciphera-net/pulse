@@ -195,7 +195,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
                       <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
                         {totalPageviews > 0 ? `${Math.round((item.pageviews / totalPageviews) * 100)}%` : ''}
                       </span>
-                      <span className="text-sm font-semibold text-neutral-400">
+                      <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
                         {formatNumber(item.pageviews)}
                       </span>
                     </div>
@@ -274,7 +274,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
                         <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
                           {modalTotal > 0 ? `${Math.round((item.pageviews / modalTotal) * 100)}%` : ''}
                         </span>
-                        <span className="text-sm font-semibold text-neutral-400">
+                        <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
                           {formatNumber(item.pageviews)}
                         </span>
                       </div>
