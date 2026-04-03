@@ -58,7 +58,13 @@ export default function StepAddSite({ onComplete, onSkip, onBack, onDomainChange
       toast.success('Site added')
       onComplete(site)
     } catch (err: unknown) {
-      setError(getAuthErrorMessage(err) || (err as Error)?.message || 'Failed to add site')
+      const apiErr = err as { data?: { error?: string }; message?: string; status?: number }
+      const raw = apiErr?.data?.error || apiErr?.message || ''
+      if (/already exists/i.test(raw) || apiErr?.status === 409) {
+        setError('This domain is already being tracked. Try a different one.')
+      } else {
+        setError(getAuthErrorMessage(err) || (err as Error)?.message || 'Failed to add site')
+      }
     } finally {
       setLoading(false)
     }

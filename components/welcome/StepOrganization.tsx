@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
+
 import { useAuth } from '@/lib/auth/context'
 import {
   createOrganization,
@@ -166,14 +166,11 @@ export default function StepOrganization({ onComplete }: StepOrganizationProps) 
             const isCurrent = user?.org_id === org.organization_id
             const initial = (org.organization_name || 'O').charAt(0).toUpperCase()
             return (
-              <motion.button
+              <button
                 key={org.organization_id}
                 type="button"
                 onClick={() => handleSelectOrganization(org)}
                 disabled={!!switchingOrgId}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.04, duration: 0.2 }}
                 className={`w-full flex items-center gap-3 rounded-xl border px-4 py-3.5 text-left transition-all duration-200 disabled:opacity-60 ${
                   isCurrent
                     ? 'border-brand-orange/60 bg-brand-orange/10 shadow-sm'
@@ -194,7 +191,7 @@ export default function StepOrganization({ onComplete }: StepOrganizationProps) 
                   <span className="text-xs font-medium text-brand-orange shrink-0">Current</span>
                 )}
                 <ArrowRightIcon className={`h-4 w-4 shrink-0 ${isCurrent ? 'text-brand-orange' : 'text-neutral-400'}`} />
-              </motion.button>
+              </button>
             )
           })}
         </div>
