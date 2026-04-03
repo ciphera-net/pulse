@@ -30,6 +30,13 @@ function WelcomeFlowInner() {
   const [resolving, setResolving] = useState(true)
   const [siteDomain, setSiteDomain] = useState('')
 
+  // Clear stale site draft on fresh welcome visit
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('pulse_welcome_site_draft')
+    }
+  }, [])
+
   // Track direction for animation (1 = forward, -1 = back)
   const directionRef = useRef(1)
 
