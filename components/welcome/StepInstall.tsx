@@ -1,15 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { type Site } from '@/lib/api/sites'
+import { verifySite } from '@/lib/api/sites'
+import { getRealtime } from '@/lib/api/stats'
 import { trackWelcomeCompleted } from '@/lib/welcomeAnalytics'
-import { Button } from '@ciphera-net/ui'
-import { ArrowLeftIcon, CheckCircleIcon } from '@ciphera-net/ui'
+import { Button, Spinner } from '@ciphera-net/ui'
+import { ArrowLeftIcon, CheckCircleIcon, AlertTriangleIcon } from '@ciphera-net/ui'
 import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
-import VerificationModal from '@/components/sites/VerificationModal'
 
 const WELCOME_COMPLETED_KEY = 'pulse_welcome_completed'
+
+type VerificationState = 'idle' | 'checking' | 'success' | 'timeout'
 
 interface StepInstallProps {
   site: Site | null
@@ -18,7 +21,8 @@ interface StepInstallProps {
 
 export default function StepInstall({ site, onBack }: StepInstallProps) {
   const router = useRouter()
-  const [showVerificationModal, setShowVerificationModal] = useState(false)
+  const [verifyState, setVerifyState] = useState<VerificationState>('idle')
+  const cancelledRef = useRef(false)
 
   const goToDashboard = () => {
     if (typeof window !== 'undefined') localStorage.setItem(WELCOME_COMPLETED_KEY, 'true')
@@ -32,6 +36,47 @@ export default function StepInstall({ site, onBack }: StepInstallProps) {
     trackWelcomeCompleted(true)
     router.push(`/sites/${site.id}`)
   }
+
+  const cancelVerification = useCallback(() => {
+    cancelledRef.current = true
+    setVerifyState('idle')
+  }, [])
+
+  const startVerification = useCallback(async () => {
+    if (!site) return
+
+    cancelledRef.current = false
+    setVerifyState('checking')
+
+    const maxAttempts = 15
+    const interval = 2000
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      if (cancelledRef.current) return
+
+      try {
+        const data = await getRealtime(site.id)
+
+        if (cancelledRef.current) return
+
+        if (data && data.visitors > 0) {
+          await verifySite(site.id)
+          setVerifyState('success')
+          return
+        }
+      } catch {
+        // endpoint threw — no data yet, keep polling
+      }
+
+      if (attempt < maxAttempts - 1) {
+        await new Promise((resolve) => setTimeout(resolve, interval))
+      }
+    }
+
+    if (!cancelledRef.current) {
+      setVerifyState('timeout')
+    }
+  }, [site])
 
   return (
     <>
@@ -68,14 +113,55 @@ export default function StepInstall({ site, onBack }: StepInstallProps) {
           </div>
 
           <div className="flex items-center justify-center gap-2 mb-8">
-            <button
-              type="button"
-              onClick={() => setShowVerificationModal(true)}
-              className="text-sm font-medium text-brand-orange hover:text-brand-orange/80 transition-colors"
-            >
-              Verify installation
-            </button>
-            <span className="text-xs text-neutral-500">— Check if your site is sending data</span>
+            {verifyState === 'idle' && (
+              <>
+                <button
+                  type="button"
+                  onClick={startVerification}
+                  className="text-sm font-medium text-brand-orange hover:text-brand-orange/80 transition-colors"
+                >
+                  Verify installation
+                </button>
+                <span className="text-xs text-neutral-500">— Check if your site is sending data</span>
+              </>
+            )}
+
+            {verifyState === 'checking' && (
+              <div className="flex items-center gap-2.5 animate-in fade-in duration-200">
+                <Spinner size="sm" />
+                <span className="text-sm text-neutral-300">Checking for data...</span>
+                <button
+                  type="button"
+                  onClick={cancelVerification}
+                  className="text-xs text-neutral-500 hover:text-neutral-400 transition-colors ml-1"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+
+            {verifyState === 'success' && (
+              <div className="flex items-center gap-2 animate-in fade-in zoom-in-95 duration-300">
+                <CheckCircleIcon className="h-4.5 w-4.5 text-emerald-400" />
+                <span className="text-sm font-medium text-emerald-400">Your site is sending data!</span>
+              </div>
+            )}
+
+            {verifyState === 'timeout' && (
+              <div className="flex items-center gap-2 animate-in fade-in duration-200">
+                <AlertTriangleIcon className="h-4.5 w-4.5 text-orange-400 flex-shrink-0" />
+                <span className="text-sm text-orange-400">
+                  No data detected yet. Make sure the script is installed and visit your site.
+                </span>
+                <button
+                  type="button"
+                  onClick={startVerification}
+                  className="text-xs font-medium text-brand-orange hover:text-brand-orange/80 transition-colors ml-1 flex-shrink-0"
+                >
+                  Try again
+                </button>
+              </div>
+            )}
           </div>
         </>
       )}
@@ -90,14 +176,6 @@ export default function StepInstall({ site, onBack }: StepInstallProps) {
           </Button>
         )}
       </div>
-
-      {site && (
-        <VerificationModal
-          isOpen={showVerificationModal}
-          onClose={() => setShowVerificationModal(false)}
-          site={site}
-        />
-      )}
     </>
   )
 }

@@ -31,7 +31,7 @@ export default function WelcomeStepper({ currentStep, onStepClick }: WelcomeStep
           const isClickable = isCompleted && onStepClick
 
           const circleClasses = [
-            'w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 transition-all',
+            'w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold shrink-0 transition-all',
             isCompleted || isCurrent
               ? 'bg-brand-orange text-white'
               : 'bg-neutral-800 border border-neutral-700 text-neutral-400',

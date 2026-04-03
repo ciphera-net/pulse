@@ -17,7 +17,7 @@ import {
   trackWelcomeWorkspaceSelected,
   trackWelcomeWorkspaceCreated,
 } from '@/lib/welcomeAnalytics'
-import { Button, Input, toast } from '@ciphera-net/ui'
+import { Button, Input, toast, LoadingOverlay } from '@ciphera-net/ui'
 import {
   ArrowRightIcon,
   BarChartIcon,
@@ -135,6 +135,15 @@ export default function StepOrganization({ onComplete }: StepOrganizationProps) 
     } finally {
       setOrgLoading(false)
     }
+  }
+
+  if (orgLoading || switchingOrgId) {
+    return (
+      <LoadingOverlay
+        logoSrc="/pulse_icon_no_margins.png"
+        title={switchingOrgId ? 'Switching workspace...' : 'Creating your workspace...'}
+      />
+    )
   }
 
   if (mode === 'loading') {
@@ -279,6 +288,17 @@ export default function StepOrganization({ onComplete }: StepOrganizationProps) 
           </button>
         )}
       </form>
+      {organizations.length === 0 && (
+        <div className="mt-6 text-center">
+          <button
+            type="button"
+            onClick={() => router.push('/login')}
+            className="text-xs text-neutral-500 hover:text-neutral-400 transition-colors"
+          >
+            Sign out
+          </button>
+        </div>
+      )}
     </>
   )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, Suspense } from 'react'
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import Image from 'next/image'
@@ -28,14 +28,20 @@ function WelcomeFlowInner() {
   const [step, setStepState] = useState(initialStep)
   const [createdSite, setCreatedSite] = useState<Site | null>(null)
   const [resolving, setResolving] = useState(true)
+  const [siteDomain, setSiteDomain] = useState('')
+
+  // Track direction for animation (1 = forward, -1 = back)
+  const directionRef = useRef(1)
 
   const setStep = useCallback((next: number) => {
     const s = Math.min(Math.max(1, next), TOTAL_STEPS)
+    directionRef.current = s > step ? 1 : -1
     setStepState(s)
     const url = new URL(window.location.href)
     url.searchParams.set('step', String(s))
     window.history.replaceState({}, '', url.pathname + url.search)
-  }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step])
 
   // Smart entry: skip steps user doesn't need
   useEffect(() => {
@@ -43,42 +49,37 @@ function WelcomeFlowInner() {
     let cancelled = false
 
     async function resolve() {
-      // No org context → must start at step 1
       if (!user!.org_id) {
         setResolving(false)
         return
       }
 
-      // Has org — check if they also have sites
       try {
         const sites = await listSites()
         if (cancelled) return
         if (sites.length > 0) {
-          // Has org + sites → skip onboarding entirely
           router.replace('/')
           return
         }
       } catch {
-        // If sites fetch fails, just continue the flow
+        // continue
       }
 
-      // Has org but no sites → start at step 2
       if (!cancelled) {
-        setStep(2)
+        setStepState(2)
         setResolving(false)
       }
     }
 
     resolve()
     return () => { cancelled = true }
-  }, [authLoading, user, router, setStep])
+  }, [authLoading, user, router])
 
   // Track step views
   useEffect(() => {
     if (!resolving) trackWelcomeStepView(step)
   }, [step, resolving])
 
-  // Handle pending checkout redirect (called after org creation/selection)
   const handleOrgComplete = useCallback(() => {
     if (typeof window !== 'undefined') {
       const raw = localStorage.getItem('pulse_pending_checkout')
@@ -110,11 +111,13 @@ function WelcomeFlowInner() {
     return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" />
   }
 
+  const direction = directionRef.current
+
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Left — Step-aware panel (hidden on mobile) */}
       <div className="hidden lg:flex lg:w-1/2 relative h-full overflow-hidden">
-        <WelcomePanel step={step} />
+        <WelcomePanel step={step} siteDomain={siteDomain} />
       </div>
 
       {/* Right — Step content (scrollable) */}
@@ -141,14 +144,15 @@ function WelcomeFlowInner() {
 
           {/* Step content */}
           <div className="w-full max-w-lg">
-            <AnimatePresence mode="wait">
+            <AnimatePresence mode="wait" custom={direction}>
               {step === 1 && (
                 <motion.div
                   key="step1"
-                  initial={{ opacity: 0, y: 12 }}
+                  custom={direction}
+                  initial={{ opacity: 0, y: direction * 16 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -12 }}
-                  transition={{ duration: 0.25 }}
+                  exit={{ opacity: 0, y: direction * -16 }}
+                  transition={{ duration: 0.2 }}
                 >
                   <StepOrganization onComplete={handleOrgComplete} />
                 </motion.div>
@@ -156,25 +160,28 @@ function WelcomeFlowInner() {
               {step === 2 && (
                 <motion.div
                   key="step2"
-                  initial={{ opacity: 0, y: 12 }}
+                  custom={direction}
+                  initial={{ opacity: 0, y: direction * 16 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -12 }}
-                  transition={{ duration: 0.25 }}
+                  exit={{ opacity: 0, y: direction * -16 }}
+                  transition={{ duration: 0.2 }}
                 >
                   <StepAddSite
                     onComplete={handleSiteComplete}
                     onSkip={handleSiteSkip}
                     onBack={() => setStep(1)}
+                    onDomainChange={setSiteDomain}
                   />
                 </motion.div>
               )}
               {step === 3 && (
                 <motion.div
                   key="step3"
-                  initial={{ opacity: 0, y: 12 }}
+                  custom={direction}
+                  initial={{ opacity: 0, y: direction * 16 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -12 }}
-                  transition={{ duration: 0.25 }}
+                  exit={{ opacity: 0, y: direction * -16 }}
+                  transition={{ duration: 0.2 }}
                 >
                   <StepInstall
                     site={createdSite}

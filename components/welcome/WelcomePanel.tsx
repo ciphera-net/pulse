@@ -4,9 +4,11 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { AnimatePresence, motion } from 'framer-motion'
 import pulseIcon from '@/public/pulse_icon_no_margins.png'
+import { PulseMockup } from '@/components/marketing/mockups/pulse-mockup'
 
 interface WelcomePanelProps {
   step: number
+  siteDomain?: string
 }
 
 function MockupCard({ children }: { children: React.ReactNode }) {
@@ -18,128 +20,81 @@ function MockupCard({ children }: { children: React.ReactNode }) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Step 1 — Team Workspace                                           */
+/*  Step 2 — Site Card Mockup                                         */
 /* ------------------------------------------------------------------ */
 
-function TeamWorkspaceMockup() {
-  const avatars = [
-    { initial: 'U', color: 'bg-brand-orange' },
-    { initial: 'A', color: 'bg-blue-500' },
-    { initial: 'M', color: 'bg-emerald-500' },
-    { initial: 'S', color: 'bg-purple-500' },
-  ]
-
-  const sites = [
-    { name: 'acme.com', active: true, visitors: '1,247 visitors' },
-    { name: 'blog.acme.com', active: true, visitors: '438 visitors' },
-    { name: 'docs.acme.com', active: false, visitors: '86 visitors' },
-  ]
+function SiteCardMockup({ siteDomain }: { siteDomain?: string }) {
+  const domain = siteDomain || 'yoursite.com'
+  const siteName = domain.split('.')[0].charAt(0).toUpperCase() + domain.split('.')[0].slice(1)
 
   return (
     <MockupCard>
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-bold text-white">Acme Corp</span>
-        <div className="flex items-center">
-          {avatars.map((a, i) => (
-            <div
-              key={a.initial}
-              className={`${a.color} w-7 h-7 rounded-full border-2 border-neutral-900 flex items-center justify-center text-[10px] font-bold text-white`}
-              style={{ marginLeft: i === 0 ? 0 : -8 }}
-            >
-              {a.initial}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Divider */}
-      <div className="border-t border-white/[0.06] my-3" />
-
-      {/* Site rows */}
-      <div className="flex flex-col gap-2">
-        {sites.map((site) => (
-          <div key={site.name} className="flex items-center gap-2">
-            <div
-              className={`w-1.5 h-1.5 rounded-full ${
-                site.active ? 'bg-green-500' : 'bg-neutral-600'
-              }`}
-            />
-            <span className="text-xs text-white flex-1">{site.name}</span>
-            <span className="text-xs text-neutral-400">{site.visitors}</span>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          {/* Favicon */}
+          <div className="w-10 h-10 rounded-xl bg-neutral-800 overflow-hidden flex items-center justify-center flex-shrink-0">
+            {siteDomain ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={`https://www.google.com/s2/favicons?domain=${siteDomain}&sz=64`}
+                alt=""
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full bg-neutral-800" />
+            )}
           </div>
-        ))}
-      </div>
 
-      {/* Bottom summary */}
-      <div className="mt-3 text-[10px] text-neutral-500">
-        3 sites &middot; 1,771 total visitors &middot; 4 members
-      </div>
-    </MockupCard>
-  )
-}
+          <div>
+            <p className="text-sm font-bold text-white">{siteName}</p>
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-neutral-400">{domain}</span>
+              <svg className="w-3 h-3 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </div>
+          </div>
+        </div>
 
-/* ------------------------------------------------------------------ */
-/*  Step 2 — Site Dashboard Preview                                   */
-/* ------------------------------------------------------------------ */
-
-function SiteDashboardMockup() {
-  const stats = [
-    { label: 'Visitors', value: '1,247', delta: '18%', up: true },
-    { label: 'Pageviews', value: '3,891', delta: '24%', up: true },
-    { label: 'Bounce Rate', value: '42%', delta: '5%', up: false },
-    { label: 'Avg Duration', value: '2m 34s', delta: '12%', up: true },
-  ]
-
-  return (
-    <MockupCard>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-bold text-white">acme.com</span>
+        {/* Active badge */}
         <div className="flex items-center gap-1.5 bg-green-500/10 border border-green-500/20 rounded-full px-2.5 py-0.5">
           <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-          <span className="text-[9px] text-green-400 font-medium">3 visitors</span>
+          <span className="text-[10px] text-green-400 font-medium">Active</span>
         </div>
       </div>
 
-      {/* Mini area chart */}
-      <svg viewBox="0 0 400 80" className="w-full h-20 mb-3" preserveAspectRatio="none">
-        <defs>
-          <linearGradient id="welcome-area-fill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#FD5E0F" stopOpacity={0.25} />
-            <stop offset="100%" stopColor="#FD5E0F" stopOpacity={0.02} />
-          </linearGradient>
-        </defs>
-        <path
-          d="M0,60 L50,55 L100,45 L150,50 L200,30 L250,25 L300,35 L350,20 L400,15 L400,80 L0,80 Z"
-          fill="url(#welcome-area-fill)"
-        />
-        <path
-          d="M0,60 L50,55 L100,45 L150,50 L200,30 L250,25 L300,35 L350,20 L400,15"
-          fill="none"
-          stroke="#FD5E0F"
-          strokeWidth={2}
-        />
-      </svg>
-
-      {/* 2x2 stat grid */}
-      <div className="grid grid-cols-2 gap-2">
-        {stats.map((stat) => (
-          <div
-            key={stat.label}
-            className="rounded-lg border border-neutral-800 bg-neutral-900 p-2.5"
-          >
-            <div className="text-[7px] text-neutral-500 font-semibold uppercase tracking-wider">
-              {stat.label}
-            </div>
-            <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className="text-sm font-bold text-white">{stat.value}</span>
-              <span className="text-[10px] font-medium text-green-400">
-                {stat.up ? '↑' : '↓'} {stat.delta}
-              </span>
-            </div>
+      {/* Stats grid */}
+      <div className="grid grid-cols-2 gap-2 mb-4">
+        <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-2.5">
+          <div className="text-[7px] text-neutral-500 font-semibold uppercase tracking-wider">
+            Visitors (24h)
           </div>
-        ))}
+          <div className="flex items-baseline gap-1.5 mt-0.5">
+            <span className="text-sm font-bold text-white">1,247</span>
+          </div>
+        </div>
+        <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-2.5">
+          <div className="text-[7px] text-neutral-500 font-semibold uppercase tracking-wider">
+            Pageviews
+          </div>
+          <div className="flex items-baseline gap-1.5 mt-0.5">
+            <span className="text-sm font-bold text-white">3,891</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom row: View Dashboard + Settings */}
+      <div className="flex items-center gap-2">
+        <button className="flex-1 bg-brand-orange text-white rounded-xl py-2.5 text-sm font-medium cursor-default">
+          View Dashboard
+        </button>
+        <button className="rounded-xl border border-neutral-700 bg-neutral-800/50 p-2.5 cursor-default">
+          <svg className="w-4 h-4 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </button>
       </div>
     </MockupCard>
   )
@@ -150,10 +105,10 @@ function SiteDashboardMockup() {
 /* ------------------------------------------------------------------ */
 
 const liveEvents = [
-  { path: '/pricing', browser: 'Chrome', flag: '🇨🇭', time: '2s ago' },
-  { path: '/blog/getting-started', browser: 'Safari', flag: '🇩🇪', time: '5s ago' },
-  { path: '/', browser: 'Firefox', flag: '🇺🇸', time: '8s ago' },
-  { path: '/products', browser: 'Edge', flag: '🇬🇧', time: '12s ago' },
+  { path: '/pricing', browser: 'Chrome', flag: '\u{1F1E8}\u{1F1ED}', time: '2s ago' },
+  { path: '/blog/getting-started', browser: 'Safari', flag: '\u{1F1E9}\u{1F1EA}', time: '5s ago' },
+  { path: '/', browser: 'Firefox', flag: '\u{1F1FA}\u{1F1F8}', time: '8s ago' },
+  { path: '/products', browser: 'Edge', flag: '\u{1F1EC}\u{1F1E7}', time: '12s ago' },
 ]
 
 function LiveDataStreamMockup() {
@@ -208,18 +163,25 @@ interface StepContent {
   mockup: React.ReactNode
 }
 
-const steps: Record<number, StepContent> = {
-  1: { headline: 'Analytics for your whole team.', mockup: <TeamWorkspaceMockup /> },
-  2: { headline: "See what's happening on your site.", mockup: <SiteDashboardMockup /> },
-  3: { headline: 'One script tag. Real-time data.', mockup: <LiveDataStreamMockup /> },
+function getStepContent(step: number, siteDomain?: string): StepContent {
+  switch (step) {
+    case 1:
+      return { headline: 'Privacy-first web analytics.', mockup: <PulseMockup /> }
+    case 2:
+      return { headline: "See what's happening on your site.", mockup: <SiteCardMockup siteDomain={siteDomain} /> }
+    case 3:
+      return { headline: 'One script tag. Real-time data.', mockup: <LiveDataStreamMockup /> }
+    default:
+      return { headline: 'Privacy-first web analytics.', mockup: <PulseMockup /> }
+  }
 }
 
 /* ------------------------------------------------------------------ */
 /*  WelcomePanel                                                      */
 /* ------------------------------------------------------------------ */
 
-export default function WelcomePanel({ step }: WelcomePanelProps) {
-  const current = steps[step] ?? steps[1]
+export default function WelcomePanel({ step, siteDomain }: WelcomePanelProps) {
+  const current = getStepContent(step, siteDomain)
 
   return (
     <div className="relative h-full w-full">
