@@ -97,7 +97,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   // Site pages use DashboardShell with full sidebar — no Header needed
   const isSitePage = pathname.startsWith('/sites/') && pathname !== '/sites/new'
   // Pages that use DashboardShell with home sidebar (no site context)
-  const isDashboardPage = pathname === '/' || pathname.startsWith('/integrations') || pathname === '/pricing'
+  const isDashboardPage = pathname === '/' || pathname.startsWith('/integrations') || pathname === '/pricing' || pathname.startsWith('/welcome')
   // Checkout page has its own minimal layout — no app header/footer
   const isCheckoutPage = pathname.startsWith('/checkout')
 

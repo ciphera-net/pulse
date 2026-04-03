@@ -8,8 +8,6 @@ export type WelcomeEventName =
   | 'welcome_step_view'
   | 'welcome_workspace_selected'
   | 'welcome_workspace_created'
-  | 'welcome_plan_continue'
-  | 'welcome_plan_skip'
   | 'welcome_site_added'
   | 'welcome_site_skipped'
   | 'welcome_completed'
@@ -56,14 +54,6 @@ export function trackWelcomeWorkspaceSelected() {
 
 export function trackWelcomeWorkspaceCreated(hadPendingCheckout: boolean) {
   emit('welcome_workspace_created', { had_pending_checkout: hadPendingCheckout })
-}
-
-export function trackWelcomePlanContinue() {
-  emit('welcome_plan_continue')
-}
-
-export function trackWelcomePlanSkip() {
-  emit('welcome_plan_skip')
 }
 
 export function trackWelcomeSiteAdded() {
