@@ -36,7 +36,6 @@ const GoalStats = dynamic(() => import('@/components/dashboard/GoalStats'))
 const Campaigns = dynamic(() => import('@/components/dashboard/Campaigns'))
 const PeakHours = dynamic(() => import('@/components/dashboard/PeakHours'))
 const SearchPerformance = dynamic(() => import('@/components/dashboard/SearchPerformance'))
-const EventProperties = dynamic(() => import('@/components/dashboard/EventProperties'))
 const ExportModal = dynamic(() => import('@/components/dashboard/ExportModal'))
 import { type DimensionFilter, serializeFilters, parseFiltersFromURL } from '@/lib/filters'
 import {
@@ -114,9 +113,6 @@ export default function SiteDashboardPage() {
 
   // Engagement percentile data
   const [engagementData, setEngagementData] = useState<EngagementPercentilesData | null>(null)
-
-  // Selected event for property breakdown
-  const [selectedEvent, setSelectedEvent] = useState<string | null>(null)
 
   const handleAddFilter = useCallback((filter: DimensionFilter) => {
     setFilters(prev => {
@@ -518,21 +514,10 @@ export default function SiteDashboardPage() {
         <SearchPerformance siteId={siteId} dateRange={dateRange} />
         <GoalStats
           goalCounts={(dashboard?.goal_counts ?? []).filter(g => !/^scroll_\d+$/.test(g.event_name))}
-          onSelectEvent={setSelectedEvent}
+          siteId={siteId}
+          dateRange={dateRange}
         />
       </div>
-
-      {/* Event Properties Breakdown */}
-      {selectedEvent && (
-        <div className="mb-3">
-          <EventProperties
-            siteId={siteId}
-            eventName={selectedEvent}
-            dateRange={dateRange}
-            onClose={() => setSelectedEvent(null)}
-          />
-        </div>
-      )}
 
       <DatePicker
         isOpen={isDatePickerOpen}
