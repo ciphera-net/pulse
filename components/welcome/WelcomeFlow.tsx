@@ -137,7 +137,7 @@ function WelcomeFlowInner() {
         {/* Main content */}
         <div className="flex flex-1 flex-col items-center justify-center px-4 pb-12 pt-6 lg:pt-10 sm:px-6 lg:px-10">
           {/* Step indicator */}
-          <WelcomeStepper currentStep={step} />
+          <WelcomeStepper currentStep={step} onStepClick={setStep} />
 
           {/* Step content */}
           <div className="w-full max-w-lg">
