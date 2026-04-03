@@ -77,6 +77,23 @@
   var visibleTotal = 0;
   var hasVisibilityAPI = typeof document.hidden !== 'undefined';
 
+  // * Cerberus: human signal bitmask for bot detection
+  var humanSignals = 0;
+  if (!navigator.webdriver) humanSignals |= 8;
+  if (navigator.plugins && navigator.plugins.length > 0) humanSignals |= 16;
+  if (navigator.languages && navigator.languages.length > 1) humanSignals |= 32;
+  if (!document.hidden) humanSignals |= 4;
+
+  function onHumanInput() {
+    humanSignals |= 1;
+    document.removeEventListener('mousemove', onHumanInput);
+    document.removeEventListener('touchstart', onHumanInput);
+    document.removeEventListener('keydown', onHumanInput);
+  }
+  document.addEventListener('mousemove', onHumanInput, { passive: true });
+  document.addEventListener('touchstart', onHumanInput, { passive: true });
+  document.addEventListener('keydown', onHumanInput, { passive: true });
+
   function sendMetrics() {
     if (!currentEventId || metricsSent) return;
 
@@ -122,6 +139,7 @@
       visibleTotal += Date.now() - visibleStart;
     } else {
       visibleStart = Date.now();
+      humanSignals |= 4;
     }
   });
 
@@ -201,6 +219,7 @@
       screen: screenSize,
       language: navigator.language || '',
       timezone: (function() { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch(e) { return ''; } })(),
+      hs: humanSignals,
     };
 
     // * Send event
@@ -309,6 +328,7 @@
       var scrollTop = window.scrollY;
       var pct = Math.min(100, Math.round((scrollTop + viewHeight) / docHeight * 100));
       if (pct > maxScrollPct) maxScrollPct = pct;
+      humanSignals |= 2;
       scrollTicking = false;
     }
 
