@@ -3,13 +3,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Toggle, toast, Spinner, getDateRange } from '@ciphera-net/ui'
 import { ShieldCheck } from '@phosphor-icons/react'
-import { useSite, useBotFilterStats, useSessions } from '@/lib/swr/dashboard'
+import { useSite, useQuarantineStats, useSessions } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
-import { botFilterSessions, botUnfilterSessions } from '@/lib/api/bot-filter'
+import { quarantineSessions, restoreSessions } from '@/lib/api/quarantine'
 
 export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }: { siteId: string; onDirtyChange?: (dirty: boolean) => void; onRegisterSave?: (fn: () => Promise<void>) => void }) {
   const { data: site, mutate } = useSite(siteId)
-  const { data: botStats, mutate: mutateBotStats } = useBotFilterStats(siteId)
+  const { data: botStats, mutate: mutateBotStats } = useQuarantineStats(siteId)
   const [filterBots, setFilterBots] = useState(false)
   const initialFilterRef = useRef<boolean | null>(null)
 
@@ -54,7 +54,7 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
 
   const handleBotFilter = async (sessionIds: string[]) => {
     try {
-      await botFilterSessions(siteId, sessionIds)
+      await quarantineSessions(siteId, sessionIds)
       toast.success(`${sessionIds.length} session(s) flagged as bot`)
       setSelectedSessions(new Set())
       mutateSessions()
@@ -66,7 +66,7 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
 
   const handleBotUnfilter = async (sessionIds: string[]) => {
     try {
-      await botUnfilterSessions(siteId, sessionIds)
+      await restoreSessions(siteId, sessionIds)
       toast.success(`${sessionIds.length} session(s) unblocked`)
       setSelectedSessions(new Set())
       mutateSessions()
