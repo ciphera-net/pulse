@@ -395,7 +395,7 @@ export default function DashboardShell({
           <div className="flex-1 flex flex-col min-w-0 mr-2 mb-2 rounded-2xl bg-neutral-950 border border-neutral-800/60 overflow-hidden relative">
             {/* Dulled background image */}
             <div
-              className="absolute inset-0 bg-cover bg-center opacity-[0.07] pointer-events-none"
+              className="absolute inset-0 bg-cover bg-center opacity-[0.25] pointer-events-none"
               style={{ backgroundImage: 'url(/pulse-showcase-bg.png)' }}
             />
             <ContentHeader onMobileMenuOpen={openMobile} />
