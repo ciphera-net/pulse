@@ -131,7 +131,7 @@ export function PulseMockup() {
             </div>
           </div>
 
-          {/* SVG Chart — step-style like the real dashboard */}
+          {/* SVG Chart — smooth curve */}
           <div className="relative h-[120px] w-full">
             {/* Y-axis labels */}
             <div className="absolute left-0 top-0 bottom-4 flex flex-col justify-between text-[7px] text-neutral-600 w-5">
@@ -151,15 +151,15 @@ export function PulseMockup() {
               <line x1="0" y1="75" x2="400" y2="75" stroke="rgba(255,255,255,0.04)" />
               <line x1="0" y1="100" x2="400" y2="100" stroke="rgba(255,255,255,0.04)" />
 
-              {/* Area fill — step-style chart */}
+              {/* Area fill — smooth curve */}
               <path
-                d="M0,62 L45,62 L45,62 L90,62 L90,100 L135,100 L135,100 L160,100 L160,62 L180,62 L180,50 L225,50 L225,25 L270,25 L270,25 L290,25 L290,50 L310,50 L310,62 L340,62 L340,62 L370,62 L370,55 L400,55 L400,100 L0,100 Z"
+                d="M0,62 C30,62 40,65 70,75 C100,85 110,92 135,95 C160,98 170,80 190,62 C210,44 220,38 250,30 C275,23 290,25 310,35 C330,45 345,55 370,58 C385,60 395,56 400,55 L400,100 L0,100 Z"
                 fill="url(#pulseMockupGradient)"
               />
 
-              {/* Line — step-style */}
+              {/* Line — smooth curve */}
               <path
-                d="M0,62 L45,62 L45,62 L90,62 L90,100 L135,100 L135,100 L160,100 L160,62 L180,62 L180,50 L225,50 L225,25 L270,25 L270,25 L290,25 L290,50 L310,50 L310,62 L340,62 L340,62 L370,62 L370,55 L400,55"
+                d="M0,62 C30,62 40,65 70,75 C100,85 110,92 135,95 C160,98 170,80 190,62 C210,44 220,38 250,30 C275,23 290,25 310,35 C330,45 345,55 370,58 C385,60 395,56 400,55"
                 fill="none"
                 stroke="#FD5E0F"
                 strokeWidth="2"
