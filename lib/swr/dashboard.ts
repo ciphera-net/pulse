@@ -25,8 +25,6 @@ import {
   type TopPath as JourneyTopPath,
   type EntryPoint,
 } from '@/lib/api/journeys'
-import { listAnnotations } from '@/lib/api/annotations'
-import type { Annotation } from '@/lib/api/annotations'
 import { getSite } from '@/lib/api/sites'
 import type { Site } from '@/lib/api/sites'
 import { listFunnels, type Funnel } from '@/lib/api/funnels'
@@ -80,7 +78,6 @@ const fetchers = {
   realtime: (siteId: string) => getRealtime(siteId),
   campaigns: (siteId: string, start: string, end: string, limit: number) =>
     getCampaigns(siteId, start, end, limit),
-  annotations: (siteId: string, start: string, end: string) => listAnnotations(siteId, start, end),
   behavior: (siteId: string, start: string, end: string) => getBehavior(siteId, start, end),
   journeyTransitions: (siteId: string, start: string, end: string, depth?: number, minSessions?: number, entryPath?: string) =>
     getJourneyTransitions(siteId, start, end, { depth, minSessions, entryPath }),
@@ -306,19 +303,6 @@ export function useCampaigns(siteId: string, start: string, end: string, limit =
   return useSWR<CampaignStat[]>(
     siteId && start && end ? ['campaigns', siteId, start, end, limit] : null,
     () => fetchers.campaigns(siteId, start, end, limit),
-    {
-      ...dashboardSWRConfig,
-      refreshInterval: 60 * 1000,
-      dedupingInterval: 10 * 1000,
-    }
-  )
-}
-
-// * Hook for annotations data
-export function useAnnotations(siteId: string, startDate: string, endDate: string) {
-  return useSWR<Annotation[]>(
-    siteId && startDate && endDate ? ['annotations', siteId, startDate, endDate] : null,
-    () => fetchers.annotations(siteId, startDate, endDate),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,

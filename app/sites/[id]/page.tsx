@@ -25,8 +25,7 @@ import { Button } from '@ciphera-net/ui'
 import { Select, DatePicker, DownloadIcon } from '@ciphera-net/ui'
 import dynamic from 'next/dynamic'
 import { DashboardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
-import FilterBar from '@/components/dashboard/FilterBar'
-import AddFilterDropdown, { type FilterSuggestion, type FilterSuggestions } from '@/components/dashboard/AddFilterDropdown'
+import FilterPanel, { type FilterSuggestion } from '@/components/dashboard/FilterPanel'
 const Chart = dynamic(() => import('@/components/dashboard/Chart'), { ssr: false })
 import ContentStats from '@/components/dashboard/ContentStats'
 import TopReferrers from '@/components/dashboard/TopReferrers'
@@ -37,7 +36,6 @@ const GoalStats = dynamic(() => import('@/components/dashboard/GoalStats'))
 const Campaigns = dynamic(() => import('@/components/dashboard/Campaigns'))
 const PeakHours = dynamic(() => import('@/components/dashboard/PeakHours'))
 const SearchPerformance = dynamic(() => import('@/components/dashboard/SearchPerformance'))
-const EventProperties = dynamic(() => import('@/components/dashboard/EventProperties'))
 const ExportModal = dynamic(() => import('@/components/dashboard/ExportModal'))
 import { type DimensionFilter, serializeFilters, parseFiltersFromURL } from '@/lib/filters'
 import {
@@ -46,10 +44,8 @@ import {
   useStats,
   useDailyStats,
   useCampaigns,
-  useAnnotations,
 } from '@/lib/swr/dashboard'
 import { useLiveIndicator } from '@/lib/live-indicator-context'
-import { createAnnotation, updateAnnotation, deleteAnnotation, type AnnotationCategory } from '@/lib/api/annotations'
 
 function loadSavedSettings(): {
   type?: string
@@ -116,9 +112,6 @@ export default function SiteDashboardPage() {
   // Engagement percentile data
   const [engagementData, setEngagementData] = useState<EngagementPercentilesData | null>(null)
 
-  // Selected event for property breakdown
-  const [selectedEvent, setSelectedEvent] = useState<string | null>(null)
-
   const handleAddFilter = useCallback((filter: DimensionFilter) => {
     setFilters(prev => {
       const isDuplicate = prev.some(
@@ -135,6 +128,10 @@ export default function SiteDashboardPage() {
 
   const handleClearFilters = useCallback(() => {
     setFilters([])
+  }, [])
+
+  const handleApplyFilters = useCallback((newFilters: DimensionFilter[]) => {
+    setFilters(newFilters)
   }, [])
 
   // Fetch full suggestion list (up to 100) when a dimension is selected in the filter dropdown
@@ -235,8 +232,6 @@ export default function SiteDashboardPage() {
   const { data: prevStats } = useStats(siteId, prevRange.start, prevRange.end)
   const { data: prevDailyStats } = useDailyStats(siteId, prevRange.start, prevRange.end, interval)
   const { data: campaigns } = useCampaigns(siteId, dateRange.start, dateRange.end)
-  const { data: annotations, mutate: mutateAnnotations } = useAnnotations(siteId, dateRange.start, dateRange.end)
-
   // Fetch engagement percentiles in parallel with dashboard data
   useEffect(() => {
     getEngagementPercentiles(siteId, dateRange.start, dateRange.end)
@@ -244,130 +239,13 @@ export default function SiteDashboardPage() {
       .catch(() => setEngagementData(null))
   }, [siteId, dateRange.start, dateRange.end])
 
-  // Annotation mutation handlers
-  const handleCreateAnnotation = async (data: { date: string; time?: string; text: string; category: string }) => {
-    await createAnnotation(siteId, { ...data, category: data.category as AnnotationCategory })
-    mutateAnnotations()
-    toast.success('Annotation added')
-  }
-
-  const handleUpdateAnnotation = async (id: string, data: { date: string; time?: string; text: string; category: string }) => {
-    await updateAnnotation(siteId, id, { ...data, category: data.category as AnnotationCategory })
-    mutateAnnotations()
-    toast.success('Annotation updated')
-  }
-
-  const handleDeleteAnnotation = async (id: string) => {
-    await deleteAnnotation(siteId, id)
-    mutateAnnotations()
-    toast.success('Annotation deleted')
-  }
-
   // Derive typed values from single dashboard response
   const site = dashboard?.site ?? null
   const stats: Stats = dashboard?.stats ?? { pageviews: 0, visitors: 0, bounce_rate: 0, avg_duration: 0, avg_scroll_depth: 0, avg_visible_duration: 0 }
   const realtime = realtimeData?.visitors ?? dashboard?.realtime_visitors ?? 0
   const dailyStats: DailyStat[] = dashboard?.daily_stats ?? []
 
-  // Build filter suggestions from current dashboard data
-  const filterSuggestions = useMemo<FilterSuggestions>(() => {
-    const s: FilterSuggestions = {}
 
-    // Pages
-    const topPages = dashboard?.top_pages ?? []
-    if (topPages.length > 0) {
-      s.page = topPages.map(p => ({ value: p.path, label: p.path, count: p.pageviews }))
-    }
-
-    // Referrers
-    const refs = dashboard?.top_referrers ?? []
-    if (refs.length > 0) {
-      s.referrer = refs.filter(r => r.referrer && r.referrer !== '').map(r => ({
-        value: r.referrer,
-        label: r.referrer,
-        count: r.pageviews,
-      }))
-    }
-
-    // Countries
-    const ctrs = dashboard?.countries ?? []
-    if (ctrs.length > 0) {
-      const regionNames = (() => { try { return new Intl.DisplayNames(['en'], { type: 'region' }) } catch { return null } })()
-      s.country = ctrs.filter(c => c.country && c.country !== 'Unknown').map(c => ({
-        value: c.country,
-        label: regionNames?.of(c.country) ?? c.country,
-        count: c.pageviews,
-      }))
-    }
-
-    // Regions
-    const regs = dashboard?.regions ?? []
-    if (regs.length > 0) {
-      s.region = regs.filter(r => r.region && r.region !== 'Unknown').map(r => ({
-        value: r.region,
-        label: r.region,
-        count: r.pageviews,
-      }))
-    }
-
-    // Cities
-    const cts = dashboard?.cities ?? []
-    if (cts.length > 0) {
-      s.city = cts.filter(c => c.city && c.city !== 'Unknown').map(c => ({
-        value: c.city,
-        label: c.city,
-        count: c.pageviews,
-      }))
-    }
-
-    // Browsers
-    const brs = dashboard?.browsers ?? []
-    if (brs.length > 0) {
-      s.browser = brs.filter(b => b.browser && b.browser !== 'Unknown').map(b => ({
-        value: b.browser,
-        label: b.browser,
-        count: b.pageviews,
-      }))
-    }
-
-    // OS
-    const oses = dashboard?.os ?? []
-    if (oses.length > 0) {
-      s.os = oses.filter(o => o.os && o.os !== 'Unknown').map(o => ({
-        value: o.os,
-        label: o.os,
-        count: o.pageviews,
-      }))
-    }
-
-    // Devices
-    const devs = dashboard?.devices ?? []
-    if (devs.length > 0) {
-      s.device = devs.filter(d => d.device && d.device !== 'Unknown').map(d => ({
-        value: d.device,
-        label: d.device,
-        count: d.pageviews,
-      }))
-    }
-
-    // UTM from campaigns
-    const camps = campaigns ?? []
-    if (camps.length > 0) {
-      const sources = new Map<string, number>()
-      const mediums = new Map<string, number>()
-      const campNames = new Map<string, number>()
-      camps.forEach(c => {
-        if (c.source) sources.set(c.source, (sources.get(c.source) ?? 0) + c.pageviews)
-        if (c.medium) mediums.set(c.medium, (mediums.get(c.medium) ?? 0) + c.pageviews)
-        if (c.campaign) campNames.set(c.campaign, (campNames.get(c.campaign) ?? 0) + c.pageviews)
-      })
-      if (sources.size > 0) s.utm_source = [...sources.entries()].map(([v, c]) => ({ value: v, label: v, count: c }))
-      if (mediums.size > 0) s.utm_medium = [...mediums.entries()].map(([v, c]) => ({ value: v, label: v, count: c }))
-      if (campNames.size > 0) s.utm_campaign = [...campNames.entries()].map(([v, c]) => ({ value: v, label: v, count: c }))
-    }
-
-    return s
-  }, [dashboard, campaigns])
 
   // Show error toast on fetch failure
   useEffect(() => {
@@ -531,8 +409,7 @@ export default function SiteDashboardPage() {
 
       {/* Dimension Filters */}
       <div className="flex items-center gap-2 flex-wrap mb-2">
-        <AddFilterDropdown onAdd={handleAddFilter} suggestions={filterSuggestions} onFetchSuggestions={handleFetchSuggestions} />
-        <FilterBar filters={filters} onRemove={handleRemoveFilter} onClear={handleClearFilters} />
+        <FilterPanel filters={filters} onApply={handleApplyFilters} onFetchSuggestions={handleFetchSuggestions} />
       </div>
 
       {/* Advanced Chart with Integrated Stats */}
@@ -550,11 +427,6 @@ export default function SiteDashboardPage() {
           multiDayInterval={multiDayInterval}
           setMultiDayInterval={setMultiDayInterval}
           lastUpdatedAt={lastUpdatedAtRef.current}
-          annotations={annotations}
-          canManageAnnotations={true}
-          onCreateAnnotation={handleCreateAnnotation}
-          onUpdateAnnotation={handleUpdateAnnotation}
-          onDeleteAnnotation={handleDeleteAnnotation}
           engagementData={engagementData}
         />
       </div>
@@ -614,21 +486,10 @@ export default function SiteDashboardPage() {
         <SearchPerformance siteId={siteId} dateRange={dateRange} />
         <GoalStats
           goalCounts={(dashboard?.goal_counts ?? []).filter(g => !/^scroll_\d+$/.test(g.event_name))}
-          onSelectEvent={setSelectedEvent}
+          siteId={siteId}
+          dateRange={dateRange}
         />
       </div>
-
-      {/* Event Properties Breakdown */}
-      {selectedEvent && (
-        <div className="mb-3">
-          <EventProperties
-            siteId={siteId}
-            eventName={selectedEvent}
-            dateRange={dateRange}
-            onClose={() => setSelectedEvent(null)}
-          />
-        </div>
-      )}
 
       <DatePicker
         isOpen={isDatePickerOpen}

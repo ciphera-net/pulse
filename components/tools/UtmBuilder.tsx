@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { logger } from '@/lib/utils/logger'
 import { Copy, Check } from '@phosphor-icons/react'
-import { listSites, Site } from '@/lib/api/sites'
+import { useSites } from '@/lib/swr/sites'
 import { Select, Input, Button } from '@ciphera-net/ui'
 
 interface UtmBuilderProps {
@@ -11,9 +10,9 @@ interface UtmBuilderProps {
 }
 
 export default function UtmBuilder({ initialSiteId }: UtmBuilderProps) {
-  const [sites, setSites] = useState<Site[]>([])
+  const { sites } = useSites()
   const [selectedSiteId, setSelectedSiteId] = useState<string>(initialSiteId || '')
-  
+
   const [values, setValues] = useState({
     url: '',
     source: '',
@@ -23,19 +22,6 @@ export default function UtmBuilder({ initialSiteId }: UtmBuilderProps) {
     content: ''
   })
   const [copied, setCopied] = useState(false)
-
-  // 1. Fetch sites on mount
-  useEffect(() => {
-    async function fetchSites() {
-      try {
-        const data = await listSites()
-        setSites(data)
-      } catch (e) {
-        logger.error('Failed to load sites for UTM builder', e)
-      }
-    }
-    fetchSites()
-  }, [])
 
   // 2. Initialize default selection
   useEffect(() => {
