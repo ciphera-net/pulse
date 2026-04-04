@@ -9,7 +9,7 @@ import { formatNumber, formatDuration, formatUpdatedAgo, DatePicker } from '@cip
 import { Select, DownloadIcon, PlusIcon, XIcon } from '@ciphera-net/ui'
 import { Checkbox } from '@ciphera-net/ui'
 import { ArrowUpRight, ArrowDownRight } from '@phosphor-icons/react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { AnimatedNumber } from '@/components/ui/animated-number'
 import { cn } from '@/lib/utils'
 import { formatTime, formatDateShort, formatDate } from '@/lib/utils/formatDate'
@@ -21,7 +21,22 @@ const ANNOTATION_COLORS: Record<string, string> = {
   other: '#a3a3a3',
 }
 
-const MAX_VISIBLE_ANNOTATIONS = 20
+const CATEGORY_PRIORITY: Record<string, number> = {
+  incident: 3,
+  deploy: 2,
+  campaign: 1,
+  other: 0,
+}
+
+const CHART_MARGINS = { top: 20, right: 20, bottom: 40, left: 50 }
+
+function getMarkerColor(annotations: AnnotationData[]): string {
+  const highest = annotations.reduce((best, a) => {
+    const p = CATEGORY_PRIORITY[a.category] ?? 0
+    return p > (CATEGORY_PRIORITY[best.category] ?? 0) ? a : best
+  }, annotations[0])
+  return ANNOTATION_COLORS[highest.category] || ANNOTATION_COLORS.other
+}
 
 const ANNOTATION_LABELS: Record<string, string> = {
   deploy: 'Deploy',
@@ -221,19 +236,21 @@ export default function Chart({
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; date: string } | null>(null)
+  const [activePopover, setActivePopover] = useState<{ marker: { x: string; annotations: AnnotationData[] }; x: number; y: number } | null>(null)
 
   // Close context menu and annotation form on Escape
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (calendarOpen) { setCalendarOpen(false); return }
+        if (activePopover) { setActivePopover(null); return }
         if (contextMenu) { setContextMenu(null); return }
         if (annotationForm.visible) { setAnnotationForm(f => ({ ...f, visible: false })); return }
       }
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [calendarOpen, contextMenu, annotationForm.visible])
+  }, [calendarOpen, activePopover, contextMenu, annotationForm.visible])
 
   const handleExportChart = useCallback(async () => {
     if (onExportChart) { onExportChart(); return }
@@ -304,9 +321,6 @@ export default function Chart({
     return markers
   }, [annotations, chartData])
 
-  const visibleAnnotationMarkers = annotationMarkers.slice(0, MAX_VISIBLE_ANNOTATIONS)
-  const hiddenAnnotationCount = Math.max(0, annotationMarkers.length - MAX_VISIBLE_ANNOTATIONS)
-
   // ─── Right-click handler ──────────────────────────────────────────
   const handleChartContextMenu = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!canManageAnnotations) return
@@ -356,6 +370,16 @@ export default function Chart({
       setSaving(false)
     }
   }, [annotationForm.editingId, onDeleteAnnotation])
+
+  const handleAnnotationDotClick = useCallback((marker: { x: string; annotations: AnnotationData[] }, e: React.MouseEvent) => {
+    const rect = chartContainerRef.current?.getBoundingClientRect()
+    if (!rect) return
+    setActivePopover({
+      marker,
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    })
+  }, [])
 
   // ─── Metrics with trends ──────────────────────────────────────────
 
@@ -517,7 +541,7 @@ export default function Chart({
               </p>
             </div>
           ) : (
-            <div className="w-full" onContextMenu={handleChartContextMenu}>
+            <div className="relative w-full" onContextMenu={handleChartContextMenu}>
               <VisxAreaChart
                 data={chartData as Record<string, unknown>[]}
                 xDataKey="dateObj"
@@ -573,71 +597,61 @@ export default function Chart({
                   }}
                 />
               </VisxAreaChart>
+
+              {/* Annotation overlay: vertical dashed lines + x-axis dots */}
+              {annotationMarkers.length > 0 && (
+                <div
+                  className="absolute pointer-events-none"
+                  style={{
+                    left: CHART_MARGINS.left,
+                    right: CHART_MARGINS.right,
+                    top: CHART_MARGINS.top,
+                    bottom: CHART_MARGINS.bottom,
+                  }}
+                >
+                  {annotationMarkers.map((marker) => {
+                    const dataIndex = chartData.findIndex(d => d.date === marker.x)
+                    if (dataIndex === -1) return null
+                    const xPercent = chartData.length > 1
+                      ? (dataIndex / (chartData.length - 1)) * 100
+                      : 50
+                    const color = getMarkerColor(marker.annotations)
+                    const count = marker.annotations.length
+
+                    return (
+                      <div key={`ann-line-${marker.x}`} className="absolute top-0 bottom-0" style={{ left: `${xPercent}%` }}>
+                        {/* Vertical dashed line */}
+                        <div
+                          className="absolute top-0 bottom-6 w-px opacity-40 hover:opacity-80 transition-opacity"
+                          style={{ borderLeft: `1px dashed ${color}` }}
+                        />
+                        {/* X-axis dot */}
+                        <div
+                          className="absolute bottom-0 -translate-x-1/2 pointer-events-auto cursor-pointer group"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleAnnotationDotClick(marker, e)
+                          }}
+                        >
+                          <div
+                            className="w-1.5 h-1.5 rounded-full transition-transform group-hover:scale-150"
+                            style={{ backgroundColor: color }}
+                          />
+                          {count > 1 && (
+                            <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[8px] font-bold text-neutral-400 pointer-events-none">
+                              {count}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           )}
         </CardContent>
 
-        {/* Footer: Annotations + Live indicator on same row */}
-        {(annotationMarkers.length > 0 || lastUpdatedAt != null) && (
-          <div className="px-4 sm:px-6 flex items-center justify-between gap-2 flex-wrap py-1.5 border-t border-neutral-100 dark:border-neutral-800">
-            {/* Annotations left */}
-            <div className="flex items-center gap-1 flex-wrap">
-              {annotationMarkers.length > 0 && (
-                <>
-                  <span className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500 mr-1">Annotations:</span>
-                  {visibleAnnotationMarkers.map((marker) => {
-                    const primary = marker.annotations[0]
-                    const color = ANNOTATION_COLORS[primary.category] || ANNOTATION_COLORS.other
-                    const count = marker.annotations.length
-                    return (
-                      <button
-                        key={`ann-btn-${marker.x}`}
-                        type="button"
-                        className="relative group inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
-                        onClick={() => {
-                          if (canManageAnnotations) {
-                            setAnnotationForm({
-                              visible: true,
-                              editingId: primary.id,
-                              date: primary.date,
-                              time: primary.time || '',
-                              text: primary.text,
-                              category: primary.category,
-                            })
-                          }
-                        }}
-                      >
-                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
-                        <span className="max-w-[120px] truncate">{primary.text}</span>
-                        {count > 1 && <span className="text-neutral-400">+{count - 1}</span>}
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-50 pointer-events-none">
-                          <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-lg p-2 min-w-[180px] max-w-[240px]">
-                            {marker.annotations.map((a) => (
-                              <div key={a.id} className="flex items-start gap-1.5 text-[11px] mb-1 last:mb-0">
-                                <span className="w-1.5 h-1.5 rounded-full mt-1 shrink-0" style={{ backgroundColor: ANNOTATION_COLORS[a.category] || ANNOTATION_COLORS.other }} />
-                                <div>
-                                  <span className="font-medium text-neutral-400 dark:text-neutral-500">
-                                    {ANNOTATION_LABELS[a.category] || 'Note'} &middot; {formatEU(a.date)}{a.time ? ` at ${a.time}` : ''}
-                                  </span>
-                                  <p className="text-white">{a.text}</p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </button>
-                    )
-                  })}
-                  {hiddenAnnotationCount > 0 && (
-                    <span className="text-[10px] text-neutral-400 dark:text-neutral-500 ml-1">
-                      +{hiddenAnnotationCount} more
-                    </span>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        )}
       </Card>
 
       {/* ─── Right-click Context Menu ──────────────────────────────── */}
