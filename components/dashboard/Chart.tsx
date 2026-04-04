@@ -648,6 +648,71 @@ export default function Chart({
                   })}
                 </div>
               )}
+
+              {/* Annotation popover */}
+              <AnimatePresence>
+                {activePopover && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setActivePopover(null)} />
+                    <motion.div
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 4 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute z-50 w-[280px]"
+                      style={{
+                        left: Math.min(Math.max(10, activePopover.x - 140), (chartContainerRef.current?.offsetWidth ?? 400) - 290),
+                        top: Math.max(0, activePopover.y - 10),
+                      }}
+                    >
+                      <div className="bg-neutral-900/80 backdrop-blur-xl border border-white/[0.08] rounded-xl shadow-xl p-3 space-y-2">
+                        {activePopover.marker.annotations.map(a => (
+                          <div key={a.id} className="flex items-start gap-2">
+                            <span className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: ANNOTATION_COLORS[a.category] || ANNOTATION_COLORS.other }} />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[10px] font-medium text-neutral-500">
+                                  {ANNOTATION_LABELS[a.category] || 'Note'} &middot; {formatEU(a.date)}{a.time ? ` at ${a.time}` : ''}
+                                </span>
+                              </div>
+                              <p className="text-xs text-white mt-0.5">{a.text}</p>
+                              {canManageAnnotations && (
+                                <div className="flex gap-2 mt-1">
+                                  <button
+                                    className="text-[10px] text-neutral-500 hover:text-brand-orange transition-colors cursor-pointer"
+                                    onClick={() => {
+                                      setAnnotationForm({
+                                        visible: true,
+                                        editingId: a.id,
+                                        date: a.date,
+                                        time: a.time || '',
+                                        text: a.text,
+                                        category: a.category,
+                                      })
+                                      setActivePopover(null)
+                                    }}
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    className="text-[10px] text-neutral-500 hover:text-red-400 transition-colors cursor-pointer"
+                                    onClick={() => {
+                                      if (onDeleteAnnotation) onDeleteAnnotation(a.id)
+                                      setActivePopover(null)
+                                    }}
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
             </div>
           )}
         </CardContent>
