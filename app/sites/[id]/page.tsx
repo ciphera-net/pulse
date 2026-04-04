@@ -44,10 +44,8 @@ import {
   useStats,
   useDailyStats,
   useCampaigns,
-  useAnnotations,
 } from '@/lib/swr/dashboard'
 import { useLiveIndicator } from '@/lib/live-indicator-context'
-import { createAnnotation, updateAnnotation, deleteAnnotation, type AnnotationCategory } from '@/lib/api/annotations'
 
 function loadSavedSettings(): {
   type?: string
@@ -234,33 +232,12 @@ export default function SiteDashboardPage() {
   const { data: prevStats } = useStats(siteId, prevRange.start, prevRange.end)
   const { data: prevDailyStats } = useDailyStats(siteId, prevRange.start, prevRange.end, interval)
   const { data: campaigns } = useCampaigns(siteId, dateRange.start, dateRange.end)
-  const { data: annotations, mutate: mutateAnnotations } = useAnnotations(siteId, dateRange.start, dateRange.end)
-
   // Fetch engagement percentiles in parallel with dashboard data
   useEffect(() => {
     getEngagementPercentiles(siteId, dateRange.start, dateRange.end)
       .then(setEngagementData)
       .catch(() => setEngagementData(null))
   }, [siteId, dateRange.start, dateRange.end])
-
-  // Annotation mutation handlers
-  const handleCreateAnnotation = async (data: { date: string; time?: string; text: string; category: string }) => {
-    await createAnnotation(siteId, { ...data, category: data.category as AnnotationCategory })
-    mutateAnnotations()
-    toast.success('Annotation added')
-  }
-
-  const handleUpdateAnnotation = async (id: string, data: { date: string; time?: string; text: string; category: string }) => {
-    await updateAnnotation(siteId, id, { ...data, category: data.category as AnnotationCategory })
-    mutateAnnotations()
-    toast.success('Annotation updated')
-  }
-
-  const handleDeleteAnnotation = async (id: string) => {
-    await deleteAnnotation(siteId, id)
-    mutateAnnotations()
-    toast.success('Annotation deleted')
-  }
 
   // Derive typed values from single dashboard response
   const site = dashboard?.site ?? null
@@ -450,11 +427,6 @@ export default function SiteDashboardPage() {
           multiDayInterval={multiDayInterval}
           setMultiDayInterval={setMultiDayInterval}
           lastUpdatedAt={lastUpdatedAtRef.current}
-          annotations={annotations}
-          canManageAnnotations={true}
-          onCreateAnnotation={handleCreateAnnotation}
-          onUpdateAnnotation={handleUpdateAnnotation}
-          onDeleteAnnotation={handleDeleteAnnotation}
           engagementData={engagementData}
         />
       </div>
