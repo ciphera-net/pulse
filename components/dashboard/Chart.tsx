@@ -6,7 +6,7 @@ import { AreaChart as VisxAreaChart, Area as VisxArea, Grid as VisxGrid, XAxis a
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import type { EngagementPercentilesData } from '@/lib/api/stats'
 import { formatNumber, formatDuration, formatUpdatedAgo, DatePicker } from '@ciphera-net/ui'
-import { Select, DownloadIcon, PlusIcon, XIcon } from '@ciphera-net/ui'
+import { Select, DownloadIcon, PlusIcon, XIcon, Modal } from '@ciphera-net/ui'
 import { Checkbox } from '@ciphera-net/ui'
 import { ArrowUpRight, ArrowDownRight } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -724,7 +724,7 @@ export default function Chart({
         <>
           <div className="fixed inset-0 z-40" onClick={() => setContextMenu(null)} onContextMenu={(e) => { e.preventDefault(); setContextMenu(null) }} />
           <div
-            className="fixed z-50 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-lg py-1 min-w-[180px]"
+            className="fixed z-50 bg-neutral-900/80 backdrop-blur-xl border border-white/[0.08] rounded-lg shadow-xl py-1 min-w-[180px]"
             style={{ left: contextMenu.x, top: contextMenu.y }}
           >
             <button
@@ -752,108 +752,106 @@ export default function Chart({
       )}
 
       {/* ─── Annotation Form Modal ─────────────────────────────────── */}
-      {annotationForm.visible && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/20 dark:bg-black/40 rounded-2xl">
-          <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl p-5 w-[340px] max-w-[90%]">
-            <h3 className="text-sm font-semibold text-white mb-3">
-              {annotationForm.editingId ? 'Edit annotation' : 'Add annotation'}
-            </h3>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-neutral-400 mb-1">Date</label>
+      <Modal
+        isOpen={annotationForm.visible}
+        onClose={() => setAnnotationForm({ visible: false, date: '', time: '', text: '', category: 'other' })}
+        title={annotationForm.editingId ? 'Edit annotation' : 'Add annotation'}
+        className="max-w-sm !bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:!bg-neutral-900/60 !border-white/[0.08]"
+      >
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-neutral-400 mb-1">Date</label>
+            <button
+              type="button"
+              onClick={() => setCalendarOpen(true)}
+              className="w-full px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-white focus:outline-none focus:ring-2 focus:ring-brand-orange/30 text-left flex items-center justify-between"
+            >
+              <span>{annotationForm.date ? formatEU(annotationForm.date) : 'Select date'}</span>
+              <svg className="w-4 h-4 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </button>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-neutral-400 mb-1">
+              Time <span className="text-neutral-400 dark:text-neutral-500">(optional)</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="time"
+                value={annotationForm.time}
+                onChange={(e) => setAnnotationForm((f) => ({ ...f, time: e.target.value }))}
+                className="flex-1 px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-white focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
+              />
+              {annotationForm.time && (
                 <button
                   type="button"
-                  onClick={() => setCalendarOpen(true)}
-                  className="w-full px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-white focus:outline-none focus:ring-2 focus:ring-brand-orange/30 text-left flex items-center justify-between"
+                  onClick={() => setAnnotationForm((f) => ({ ...f, time: '' }))}
+                  className="p-1.5 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+                  title="Clear time"
                 >
-                  <span>{annotationForm.date ? formatEU(annotationForm.date) : 'Select date'}</span>
-                  <svg className="w-4 h-4 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
+                  <XIcon className="w-3.5 h-3.5" />
                 </button>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-neutral-400 mb-1">
-                  Time <span className="text-neutral-400 dark:text-neutral-500">(optional)</span>
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="time"
-                    value={annotationForm.time}
-                    onChange={(e) => setAnnotationForm((f) => ({ ...f, time: e.target.value }))}
-                    className="flex-1 px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-white focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
-                  />
-                  {annotationForm.time && (
-                    <button
-                      type="button"
-                      onClick={() => setAnnotationForm((f) => ({ ...f, time: '' }))}
-                      className="p-1.5 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
-                      title="Clear time"
-                    >
-                      <XIcon className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-neutral-400 mb-1">Note</label>
-                <input
-                  type="text"
-                  value={annotationForm.text}
-                  onChange={(e) => setAnnotationForm((f) => ({ ...f, text: e.target.value.slice(0, 200) }))}
-                  placeholder="e.g. Launched new homepage"
-                  maxLength={200}
-                  className="w-full px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-white focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
-                  autoFocus
-                />
-                <span className="text-[10px] text-neutral-400 mt-0.5 block text-right">{annotationForm.text.length}/200</span>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-neutral-400 mb-1">Category</label>
-                <Select
-                  value={annotationForm.category}
-                  onChange={(v) => setAnnotationForm((f) => ({ ...f, category: v }))}
-                  options={CATEGORY_OPTIONS}
-                  variant="input"
-                  fullWidth
-                  align="left"
-                />
-              </div>
-            </div>
-            <div className="flex items-center justify-between mt-4">
-              <div>
-                {annotationForm.editingId && (
-                  <button
-                    type="button"
-                    onClick={handleDeleteAnnotation}
-                    disabled={saving}
-                    className="text-xs text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 font-medium cursor-pointer disabled:opacity-50"
-                  >
-                    Delete
-                  </button>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setAnnotationForm({ visible: false, date: '', time: '', text: '', category: 'other' })}
-                  className="px-3 py-1.5 text-xs font-medium text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={!annotationForm.text.trim() || !annotationForm.date || saving}
-                  onClick={handleSaveAnnotation}
-                  className="px-3 py-1.5 text-xs font-medium text-white bg-brand-orange-button hover:bg-brand-orange-button-hover rounded-lg disabled:opacity-50 cursor-pointer"
-                >
-                  {saving ? 'Saving...' : annotationForm.editingId ? 'Save' : 'Add'}
-                </button>
-              </div>
+              )}
             </div>
           </div>
+          <div>
+            <label className="block text-xs font-medium text-neutral-400 mb-1">Note</label>
+            <input
+              type="text"
+              value={annotationForm.text}
+              onChange={(e) => setAnnotationForm((f) => ({ ...f, text: e.target.value.slice(0, 200) }))}
+              placeholder="e.g. Launched new homepage"
+              maxLength={200}
+              className="w-full px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-white focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
+              autoFocus
+            />
+            <span className="text-[10px] text-neutral-400 mt-0.5 block text-right">{annotationForm.text.length}/200</span>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-neutral-400 mb-1">Category</label>
+            <Select
+              value={annotationForm.category}
+              onChange={(v) => setAnnotationForm((f) => ({ ...f, category: v }))}
+              options={CATEGORY_OPTIONS}
+              variant="input"
+              fullWidth
+              align="left"
+            />
+          </div>
         </div>
-      )}
+        <div className="flex items-center justify-between mt-4">
+          <div>
+            {annotationForm.editingId && (
+              <button
+                type="button"
+                onClick={handleDeleteAnnotation}
+                disabled={saving}
+                className="text-xs text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 font-medium cursor-pointer disabled:opacity-50"
+              >
+                Delete
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setAnnotationForm({ visible: false, date: '', time: '', text: '', category: 'other' })}
+              className="px-3 py-1.5 text-xs font-medium text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={!annotationForm.text.trim() || !annotationForm.date || saving}
+              onClick={handleSaveAnnotation}
+              className="px-3 py-1.5 text-xs font-medium text-white bg-brand-orange-button hover:bg-brand-orange-button-hover rounded-lg disabled:opacity-50 cursor-pointer"
+            >
+              {saving ? 'Saving...' : annotationForm.editingId ? 'Save' : 'Add'}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* ─── DatePicker overlay ─────────────────────── */}
       <DatePicker
