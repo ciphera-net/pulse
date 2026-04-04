@@ -179,7 +179,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
           <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
             {totalImpressions > 0 ? `${Math.round((row.impressions / totalImpressions) * 100)}%` : ''}
           </span>
-          <span className="text-sm font-semibold text-neutral-400">
+          <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
             {formatNumber(row.clicks)}
           </span>
           <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${getPositionBadgeClasses(row.position)}`}>
@@ -211,7 +211,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
           <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
             {totalClicks > 0 ? `${Math.round((row.clicks / totalClicks) * 100)}%` : ''}
           </span>
-          <span className="text-sm font-semibold text-neutral-400">
+          <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
             {formatNumber(row.clicks)}
           </span>
           <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${getPositionBadgeClasses(row.position)}`}>
@@ -244,7 +244,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
           <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
             {totalClicks > 0 ? `${Math.round((row.clicks / totalClicks) * 100)}%` : ''}
           </span>
-          <span className="text-sm font-semibold text-neutral-400">
+          <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
             {formatNumber(row.clicks)}
           </span>
           <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${getPositionBadgeClasses(row.position)}`}>
@@ -271,7 +271,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
           {row.query}
         </span>
         <div className="relative flex items-center gap-2 ml-4 shrink-0">
-          <span className="text-sm font-semibold text-neutral-400">
+          <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
             {formatNumber(row.clicks)}
           </span>
           <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${getPositionBadgeClasses(row.position)}`}>
@@ -345,7 +345,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
             <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
               {totalImpressions > 0 ? `${Math.round((r.impressions / totalImpressions) * 100)}%` : ''}
             </span>
-            <span className="text-sm font-semibold text-neutral-400">
+            <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
               {formatNumber(r.clicks)}
             </span>
             <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${getPositionBadgeClasses(r.position)}`}>
@@ -370,7 +370,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
             <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
               {totalImpressions > 0 ? `${Math.round((r.clicks / totalImpressions) * 100)}%` : ''}
             </span>
-            <span className="text-sm font-semibold text-neutral-400">
+            <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
               {formatNumber(r.clicks)}
             </span>
             <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${getPositionBadgeClasses(r.position)}`}>
@@ -391,7 +391,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
             {r.query}
           </span>
           <div className="flex items-center gap-2 ml-4">
-            <span className="text-sm font-semibold text-neutral-400">
+            <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
               {formatNumber(r.clicks)}
             </span>
             <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${getPositionBadgeClasses(r.position)}`}>
@@ -482,7 +482,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
         isOpen={isModalOpen}
         onClose={() => { setIsModalOpen(false); setModalSearch('') }}
         title={`Search ${tabLabels[activeTab]}`}
-        className="max-w-2xl"
+        className="max-w-2xl !bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:!bg-neutral-900/60 !border-white/[0.08]"
       >
         <div>
           <input

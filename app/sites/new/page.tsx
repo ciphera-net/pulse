@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { logger } from '@/lib/utils/logger'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { createSite, listSites, getSite, type Site } from '@/lib/api/sites'
+import { createSite, getSite, type Site } from '@/lib/api/sites'
+import { useSites, mutateSites } from '@/lib/swr/sites'
 import { getSubscription } from '@/lib/api/billing'
 import { getSitesLimitForPlan } from '@/lib/plans'
 import { trackSiteCreatedFromDashboard, trackSiteCreatedScriptCopied } from '@/lib/welcomeAnalytics'
@@ -26,6 +27,7 @@ export default function NewSitePage() {
   })
   const [createdSite, setCreatedSite] = useState<Site | null>(null)
   const [showVerificationModal, setShowVerificationModal] = useState(false)
+  const { sites, isLoading: sitesLoading } = useSites()
   const [atLimit, setAtLimit] = useState(false)
   const [limitsChecked, setLimitsChecked] = useState(false)
 
@@ -50,15 +52,12 @@ export default function NewSitePage() {
     }
   }, [createdSite])
 
-  // * Check for plan limits on mount
+  // * Check for plan limits when sites are loaded
   useEffect(() => {
+    if (sitesLoading) return
     const checkLimits = async () => {
       try {
-        const [sites, subscription] = await Promise.all([
-          listSites(),
-          getSubscription()
-        ])
-
+        const subscription = await getSubscription()
         const siteLimit = subscription?.plan_id ? getSitesLimitForPlan(subscription.plan_id) : null
         if (siteLimit != null && sites.length >= siteLimit) {
           setAtLimit(true)
@@ -73,7 +72,7 @@ export default function NewSitePage() {
     }
 
     checkLimits()
-  }, [router])
+  }, [sitesLoading, sites, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -83,6 +82,7 @@ export default function NewSitePage() {
       const site = await createSite(formData)
       toast.success('Site created successfully')
       setCreatedSite(site)
+      mutateSites()
       trackSiteCreatedFromDashboard()
       if (typeof window !== 'undefined') {
         sessionStorage.setItem(LAST_CREATED_SITE_KEY, JSON.stringify({ id: site.id }))

@@ -202,7 +202,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
                   <div
                     key={item.name}
                     onClick={() => onFilter?.({ dimension: filterDimension, operator: 'is', values: [item.name] })}
-                    className={`relative flex items-center justify-between py-1.5 group hover:bg-neutral-800/50 rounded-lg px-2 -mx-2 transition-colors${onFilter ? ' cursor-pointer' : ''}`}
+                    className={`relative flex items-center justify-between h-9 group hover:bg-neutral-800/50 rounded-lg px-2 -mx-2 transition-colors${onFilter ? ' cursor-pointer' : ''}`}
                   >
                     <div
                       className="absolute inset-y-0.5 left-0.5 bg-gradient-to-r from-brand-orange/15 via-brand-orange/8 to-transparent border border-brand-orange/20 shadow-[inset_0_1px_0_rgba(253,94,15,0.08)] rounded-md transition-all"
@@ -220,7 +220,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
                       <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
                         {totalVisitors > 0 ? `${Math.round((item.visitors / totalVisitors) * 100)}%` : ''}
                       </span>
-                      <span className="text-sm font-semibold text-neutral-400">
+                      <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
                         {formatNumber(item.visitors)}
                       </span>
                     </div>
@@ -258,7 +258,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
         isOpen={isModalOpen}
         onClose={() => { setIsModalOpen(false); setModalSearch('') }}
         title="Campaigns"
-        className="max-w-2xl"
+        className="max-w-2xl !bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:!bg-neutral-900/60 !border-white/[0.08]"
       >
         <div>
           <input

@@ -4,8 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ApiError } from '@/lib/api/client'
 import { getFunnel, getFunnelStats, getFunnelTrends, deleteFunnel, type Funnel, type FunnelStats, type FunnelTrends } from '@/lib/api/funnels'
-import FilterBar from '@/components/dashboard/FilterBar'
-import AddFilterDropdown from '@/components/dashboard/AddFilterDropdown'
+import FilterPanel from '@/components/dashboard/FilterPanel'
 import { type DimensionFilter, serializeFilters } from '@/lib/filters'
 import { toast, Select, DatePicker, ChevronLeftIcon, ArrowRightIcon, TrashIcon, Button } from '@ciphera-net/ui'
 import { PencilSimple } from '@phosphor-icons/react'
@@ -205,13 +204,9 @@ export default function FunnelReportPage() {
 
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-2 mb-6">
-          <AddFilterDropdown
-            onAdd={(f) => setFilters(prev => [...prev, f])}
-          />
-          <FilterBar
+          <FilterPanel
             filters={filters}
-            onRemove={(i) => setFilters(prev => prev.filter((_, idx) => idx !== i))}
-            onClear={() => setFilters([])}
+            onApply={(newFilters) => setFilters(newFilters)}
           />
         </div>
 
