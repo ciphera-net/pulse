@@ -12,7 +12,6 @@ interface FooterProps {
 
 const footerLinks = {
   products: [
-    { name: 'Drop', href: 'https://drop.ciphera.net', external: true },
     { name: 'Pulse', href: 'https://pulse.ciphera.net', external: true },
     { name: 'Ciphera Auth', href: 'https://ciphera.net/products#auth', external: true },
     { name: 'Ciphera Captcha', href: 'https://ciphera.net/products#captcha', external: true },
