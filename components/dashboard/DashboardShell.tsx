@@ -17,7 +17,6 @@ import ContentHeader from './ContentHeader'
 
 const CIPHERA_APPS: CipheraApp[] = [
   { id: 'pulse', name: 'Pulse', description: 'Your current app — Privacy-first analytics', icon: 'https://ciphera.net/pulse_icon_no_margins.png', href: 'https://pulse.ciphera.net', isAvailable: false },
-  { id: 'drop', name: 'Drop', description: 'Secure file sharing', icon: 'https://ciphera.net/drop_icon_no_margins.png', href: 'https://drop.ciphera.net', isAvailable: true },
   { id: 'auth', name: 'Auth', description: 'Your Ciphera account settings', icon: 'https://ciphera.net/auth_icon_no_margins.png', href: 'https://auth.ciphera.net', isAvailable: true },
 ]
 
