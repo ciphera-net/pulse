@@ -31,14 +31,6 @@ const CIPHERA_APPS: CipheraApp[] = [
     isAvailable: false,
   },
   {
-    id: 'drop',
-    name: 'Drop',
-    description: 'Secure file sharing',
-    icon: 'https://ciphera.net/drop_icon_no_margins.png',
-    href: 'https://drop.ciphera.net',
-    isAvailable: true,
-  },
-  {
     id: 'auth',
     name: 'Auth',
     description: 'Your Ciphera account settings',
