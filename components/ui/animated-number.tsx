@@ -12,7 +12,7 @@ interface AnimatedNumberProps {
 export function AnimatedNumber({ value, format, className }: AnimatedNumberProps) {
   const motionValue = useMotionValue(value)
   const spring = useSpring(motionValue, { stiffness: 120, damping: 20, mass: 0.5 })
-  const display = useTransform(spring, (v) => format(Math.round(v)))
+  const display = useTransform(spring, (v) => format(v))
   const isFirst = useRef(true)
 
   useEffect(() => {
