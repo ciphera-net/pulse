@@ -27,6 +27,9 @@ import {
   SiGooglegemini,
   SiGithubcopilot,
   SiDiscord,
+  SiTiktok,
+  SiWechat,
+  SiLine,
 } from '@icons-pack/react-simple-icons'
 
 // Inline SVG icons for brands not in @icons-pack/react-simple-icons
@@ -70,9 +73,25 @@ const BROWSER_ICON_MAP: Record<string, { file: string; ext: 'svg' | 'png' }> = {
   'opera mini':       { file: 'opera-mini',       ext: 'png' },
 }
 
+const BROWSER_COMPONENT_MAP: Record<string, () => ReactNode> = {
+  'facebook browser':  () => <SiFacebook size={18} color="#0866FF" />,
+  'instagram browser': () => <SiInstagram size={18} color="#E4405F" />,
+  'threads browser':   () => <SiThreads size={18} color="#fff" />,
+  'tiktok browser':    () => <SiTiktok size={18} color="#fff" />,
+  'snapchat browser':  () => <SiSnapchat size={18} color="#FFFC00" />,
+  'twitter browser':   () => <XIcon size={18} />,
+  'linkedin browser':  () => <LinkedInIcon size={18} />,
+  'pinterest browser': () => <SiPinterest size={18} color="#BD081C" />,
+  'wechat browser':    () => <SiWechat size={18} color="#07C160" />,
+  'line browser':      () => <SiLine size={18} color="#00C300" />,
+}
+
 export function getBrowserIcon(browserName: string) {
   if (!browserName) return <Globe className="text-neutral-400" />
-  const entry = BROWSER_ICON_MAP[browserName.toLowerCase()]
+  const lower = browserName.toLowerCase()
+  const component = BROWSER_COMPONENT_MAP[lower]
+  if (component) return component()
+  const entry = BROWSER_ICON_MAP[lower]
   if (!entry) return <Globe className="text-neutral-500" />
   const src = `/icons/browsers/${entry.file}.${entry.ext}`
   return <img src={src} alt={browserName} width={18} height={18} className="inline-block" style={{ verticalAlign: '-0.125em' }} />
