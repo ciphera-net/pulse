@@ -31,11 +31,15 @@ function AuthCallbackContent() {
       return
     }
     if (result.success && result.user) {
-      // * Fetch full profile (including display_name) before navigating so header shows correct name on first paint
+      // * Vault PII is read from .ciphera.net cookie by login() in auth context.
+      // * Just fetch full profile and call login — the cookie merge happens automatically.
       try {
         const fullProfile = await apiRequest<{ id: string; email: string; display_name?: string; totp_enabled: boolean; org_id?: string; role?: string }>('/auth/user/me')
-        const merged = { ...fullProfile, org_id: result.user.org_id ?? fullProfile.org_id, role: result.user.role ?? fullProfile.role }
-        login(merged)
+        login({
+          ...fullProfile,
+          org_id: result.user.org_id ?? fullProfile.org_id,
+          role: result.user.role ?? fullProfile.role,
+        })
       } catch {
         login(result.user)
       }
