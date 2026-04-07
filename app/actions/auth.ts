@@ -134,7 +134,7 @@ export async function exchangeAuthCode(code: string, codeVerifier: string | null
       success: true,
       user: {
         id: payload.sub,
-        email: payload.email || 'user@ciphera.net',
+        email: payload.email || '',
         totp_enabled: payload.totp_enabled || false,
         org_id: payload.org_id,
         role: payload.role
@@ -185,7 +185,7 @@ export async function setSessionAction(accessToken: string, refreshToken?: strin
             success: true,
             user: {
                 id: payload.sub,
-                email: payload.email || 'user@ciphera.net',
+                email: payload.email || '',
                 totp_enabled: payload.totp_enabled || false,
                 org_id: payload.org_id,
                 role: payload.role
@@ -225,7 +225,7 @@ export async function getSessionAction() {
         const payload: UserPayload = JSON.parse(Buffer.from(payloadPart, 'base64').toString())
         return {
             id: payload.sub,
-            email: payload.email || 'user@ciphera.net',
+            email: payload.email || '',
             totp_enabled: payload.totp_enabled || false,
             org_id: payload.org_id,
             role: payload.role
