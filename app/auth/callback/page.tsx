@@ -31,20 +31,23 @@ function AuthCallbackContent() {
       return
     }
     if (result.success && result.user) {
-      // * Fetch full profile before navigating so header shows correct name on first paint.
-      // * For ZKE users the server returns empty email/display_name — preserve the values
-      // * from the JWT payload (result.user) which are the best available.
+      // * Read vault-decrypted PII from query params (set by auth-frontend on redirect)
+      const vaultEmail = searchParams.get('ve') ? atob(searchParams.get('ve')!) : ''
+      const vaultName = searchParams.get('vn') ? atob(searchParams.get('vn')!) : ''
+
+      // * Fetch full profile and merge with vault PII
       try {
         const fullProfile = await apiRequest<{ id: string; email: string; display_name?: string; totp_enabled: boolean; org_id?: string; role?: string }>('/auth/user/me')
         const merged = {
           ...fullProfile,
-          email: fullProfile.email || result.user.email,
+          email: fullProfile.email || vaultEmail || result.user.email,
+          display_name: fullProfile.display_name || vaultName || result.user.display_name,
           org_id: result.user.org_id ?? fullProfile.org_id,
           role: result.user.role ?? fullProfile.role,
         }
         login(merged)
       } catch {
-        login(result.user)
+        login({ ...result.user, email: vaultEmail || result.user.email, display_name: vaultName || result.user.display_name })
       }
       localStorage.removeItem('oauth_state')
       localStorage.removeItem('oauth_code_verifier')
