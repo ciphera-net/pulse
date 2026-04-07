@@ -41,13 +41,13 @@ function AuthCallbackContent() {
         const merged = {
           ...fullProfile,
           email: fullProfile.email || vaultEmail || result.user.email,
-          display_name: fullProfile.display_name || vaultName || result.user.display_name,
+          display_name: fullProfile.display_name || vaultName,
           org_id: result.user.org_id ?? fullProfile.org_id,
           role: result.user.role ?? fullProfile.role,
         }
         login(merged)
       } catch {
-        login({ ...result.user, email: vaultEmail || result.user.email, display_name: vaultName || result.user.display_name })
+        login({ ...result.user, email: vaultEmail || result.user.email, display_name: vaultName || undefined })
       }
       localStorage.removeItem('oauth_state')
       localStorage.removeItem('oauth_code_verifier')
