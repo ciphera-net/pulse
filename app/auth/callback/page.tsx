@@ -31,10 +31,17 @@ function AuthCallbackContent() {
       return
     }
     if (result.success && result.user) {
-      // * Fetch full profile (including display_name) before navigating so header shows correct name on first paint
+      // * Fetch full profile before navigating so header shows correct name on first paint.
+      // * For ZKE users the server returns empty email/display_name — preserve the values
+      // * from the JWT payload (result.user) which are the best available.
       try {
         const fullProfile = await apiRequest<{ id: string; email: string; display_name?: string; totp_enabled: boolean; org_id?: string; role?: string }>('/auth/user/me')
-        const merged = { ...fullProfile, org_id: result.user.org_id ?? fullProfile.org_id, role: result.user.role ?? fullProfile.role }
+        const merged = {
+          ...fullProfile,
+          email: fullProfile.email || result.user.email,
+          org_id: result.user.org_id ?? fullProfile.org_id,
+          role: result.user.role ?? fullProfile.role,
+        }
         login(merged)
       } catch {
         login(result.user)

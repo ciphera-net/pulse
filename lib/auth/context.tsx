@@ -75,12 +75,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('ciphera_token_refreshed_at', Date.now().toString())
     setUser(userData)
     router.refresh()
-    // * Fetch full profile (including display_name) so header shows correct name without page refresh
+    // * Fetch full profile so header shows correct name without page refresh.
+    // * For ZKE users the server returns empty email/display_name — preserve
+    // * the client-side values that were passed into login().
     apiRequest<User>('/auth/user/me')
       .then((fullProfile) => {
         setUser((prev) => {
           const merged = {
             ...fullProfile,
+            email: fullProfile.email || prev?.email || userData.email,
+            display_name: fullProfile.display_name || prev?.display_name || userData.display_name,
             org_id: prev?.org_id ?? fullProfile.org_id,
             role: prev?.role ?? fullProfile.role,
           }
@@ -112,9 +116,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const session = await getSessionAction()
       const userData = await apiRequest<User>('/auth/user/me')
-      const merged = { ...userData, org_id: session?.org_id ?? userData.org_id, role: session?.role ?? userData.role }
 
-      setUser(() => {
+      setUser((prev) => {
+        // * For ZKE users the server returns empty email/display_name.
+        // * Preserve the client-side values already in state.
+        const merged = {
+          ...userData,
+          email: userData.email || prev?.email || '',
+          display_name: userData.display_name || prev?.display_name,
+          org_id: session?.org_id ?? userData.org_id,
+          role: session?.role ?? userData.role,
+        }
         localStorage.setItem('user', JSON.stringify(merged))
         return merged
       })
@@ -165,10 +177,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(session)
             localStorage.setItem('user', JSON.stringify(session))
             localStorage.setItem('ciphera_token_refreshed_at', Date.now().toString())
-            // * Fetch full profile (including display_name) from API; preserve org_id/role from session
+            // * Fetch full profile from API; preserve org_id/role from session.
+            // * For ZKE users the server returns empty email/display_name — preserve
+            // * the values from the session (JWT payload / localStorage).
             try {
               const userData = await apiRequest<User>('/auth/user/me')
-              const merged = { ...userData, org_id: session.org_id, role: session.role }
+              // * Check localStorage for previously stored user PII (survives page refresh)
+              let cachedPII: Partial<User> = {}
+              const stored = localStorage.getItem('user')
+              if (stored) { try { cachedPII = JSON.parse(stored) } catch { /* ignore */ } }
+              const merged = {
+                ...userData,
+                email: userData.email || cachedPII.email || session.email,
+                display_name: userData.display_name || cachedPII.display_name,
+                org_id: session.org_id,
+                role: session.role,
+              }
               setUser(merged)
               localStorage.setItem('user', JSON.stringify(merged))
             } catch (e) {
@@ -235,7 +259,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                  if (result.success && result.user) {
                      try {
                        const fullProfile = await apiRequest<{ id: string; email: string; display_name?: string; totp_enabled: boolean; org_id?: string; role?: string }>('/auth/user/me')
-                       const merged = { ...fullProfile, org_id: result.user.org_id ?? fullProfile.org_id, role: result.user.role ?? fullProfile.role }
+                       // * For ZKE users, preserve existing PII when server returns empty values
+                       const merged = {
+                         ...fullProfile,
+                         email: fullProfile.email || user?.email || result.user.email,
+                         display_name: fullProfile.display_name || user?.display_name,
+                         org_id: result.user.org_id ?? fullProfile.org_id,
+                         role: result.user.role ?? fullProfile.role,
+                       }
                        setUser(merged)
                        localStorage.setItem('user', JSON.stringify(merged))
                      } catch {
