@@ -31,23 +31,17 @@ function AuthCallbackContent() {
       return
     }
     if (result.success && result.user) {
-      // * Read vault-decrypted PII from query params (set by auth-frontend on redirect)
-      const vaultEmail = searchParams.get('ve') ? atob(searchParams.get('ve')!) : ''
-      const vaultName = searchParams.get('vn') ? atob(searchParams.get('vn')!) : ''
-
-      // * Fetch full profile and merge with vault PII
+      // * Vault PII is read from .ciphera.net cookie by login() in auth context.
+      // * Just fetch full profile and call login — the cookie merge happens automatically.
       try {
         const fullProfile = await apiRequest<{ id: string; email: string; display_name?: string; totp_enabled: boolean; org_id?: string; role?: string }>('/auth/user/me')
-        const merged = {
+        login({
           ...fullProfile,
-          email: fullProfile.email || vaultEmail || result.user.email,
-          display_name: fullProfile.display_name || vaultName,
           org_id: result.user.org_id ?? fullProfile.org_id,
           role: result.user.role ?? fullProfile.role,
-        }
-        login(merged)
+        })
       } catch {
-        login({ ...result.user, email: vaultEmail || result.user.email, display_name: vaultName || undefined })
+        login(result.user)
       }
       localStorage.removeItem('oauth_state')
       localStorage.removeItem('oauth_code_verifier')
