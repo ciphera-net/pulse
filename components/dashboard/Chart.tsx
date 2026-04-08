@@ -71,14 +71,17 @@ function smoothPath(coords: { x: number; y: number }[]): string {
   return d
 }
 
-function Sparkline({ data, dataKey, active }: { data: { pageviews: number; visitors: number; bounce_rate: number; avg_duration: number; engagement?: number }[]; dataKey: MetricType; active: boolean }) {
-  if (data.length < 2) return null
-  const values = data.map((d) =>
-    dataKey === 'engagement'
-      ? (d.engagement ?? 0)
-      : dataKey === 'pages_per_visit'
-        ? (d.visitors > 0 ? d.pageviews / d.visitors : 0)
-        : d[dataKey] as number
+function Sparkline({ data, dataKey, active, engagementDaily }: { data: { pageviews: number; visitors: number; bounce_rate: number; avg_duration: number; engagement?: number }[]; dataKey: MetricType; active: boolean; engagementDaily?: { date: string; score: number }[] }) {
+  // Engagement sparkline always uses daily data (not hourly-mapped) to show real variation
+  const sourceValues = dataKey === 'engagement' && engagementDaily?.length
+    ? engagementDaily.map(d => d.score)
+    : null
+  if (!sourceValues && data.length < 2) return null
+  if (sourceValues && sourceValues.length < 2) return null
+  const values = sourceValues ?? data.map((d) =>
+    dataKey === 'pages_per_visit'
+      ? (d.visitors > 0 ? d.pageviews / d.visitors : 0)
+      : d[dataKey] as number
   )
   const max = Math.max(...values)
   const min = Math.min(...values)
@@ -248,6 +251,17 @@ export default function Chart({
   const hasAnyNonZero = hasData && chartData.some((d) => (d[metric] as number) > 0
   )
 
+  // Engagement uses daily data for the chart (not hourly-mapped duplicates)
+  const isEngagementHourly = metric === 'engagement' && (interval === 'hour' || interval === 'minute')
+  const engagementChartData = useMemo(() => {
+    if (!engagementData?.daily?.length) return []
+    return engagementData.daily.map(d => ({
+      date: formatDateShort(new Date(d.date + 'T00:00:00')),
+      dateObj: new Date(d.date + 'T00:00:00'),
+      originalDate: d.date,
+      engagement: d.score,
+    }))
+  }, [engagementData])
 
   // ─── Render ────────────────────────────────────────────────────────
 
@@ -266,7 +280,7 @@ export default function Chart({
                   metric === m.key && 'bg-neutral-50 dark:bg-neutral-800/40',
                 )}
               >
-                <Sparkline data={m.key === 'engagement' ? chartData : data} dataKey={m.key} active={metric === m.key} />
+                <Sparkline data={m.key === 'engagement' ? chartData : data} dataKey={m.key} active={metric === m.key} engagementDaily={m.key === 'engagement' ? engagementData?.daily : undefined} />
                 <div className="relative z-10">
                   <div className="flex items-start justify-between mb-2">
                     <div className={cn('text-[10px] font-semibold uppercase tracking-widest', metric === m.key ? 'text-brand-orange' : 'text-neutral-400 dark:text-neutral-500')}>{m.label}</div>
@@ -367,63 +381,98 @@ export default function Chart({
                 {!hasData ? 'No data for this period' : `No ${METRIC_CONFIGS.find((m) => m.key === metric)?.label.toLowerCase()} recorded`}
               </p>
             </div>
+          ) : isEngagementHourly ? (
+            <div className="flex flex-col items-center justify-center gap-6 py-10" style={{ aspectRatio: '2.5 / 1' }}>
+              <div className="text-6xl font-bold text-white tabular-nums">
+                {Math.round(engagementData?.summary?.score ?? 0)}
+              </div>
+              <div className="grid grid-cols-4 gap-6 w-full max-w-md">
+                {[
+                  { label: 'Scroll', key: 'scroll_pctl' as const, color: '#FD5E0F' },
+                  { label: 'Time', key: 'time_pctl' as const, color: '#F59E0B' },
+                  { label: 'Depth', key: 'depth_pctl' as const, color: '#10B981' },
+                  { label: 'Bounce', key: 'bounce_pctl' as const, color: '#6366F1' },
+                ].map(({ label, key, color }) => {
+                  const value = Math.round(engagementData?.summary?.[key] ?? 0)
+                  return (
+                    <div key={key} className="flex flex-col items-center gap-2">
+                      <div className="relative w-14 h-14">
+                        <svg viewBox="0 0 36 36" className="w-14 h-14 -rotate-90">
+                          <circle cx="18" cy="18" r="15.9" fill="none" stroke="currentColor" className="text-neutral-800" strokeWidth="3" />
+                          <circle cx="18" cy="18" r="15.9" fill="none" stroke={color} strokeWidth="3" strokeDasharray={`${value} ${100 - value}`} strokeLinecap="round" />
+                        </svg>
+                        <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-white">{value}</span>
+                      </div>
+                      <span className="text-[10px] uppercase tracking-widest text-neutral-500">{label}</span>
+                    </div>
+                  )
+                })}
+              </div>
+              <p className="text-xs text-neutral-500">Engagement is calculated daily</p>
+            </div>
           ) : (
             <div className="relative w-full">
-              <VisxAreaChart
-                data={chartData as Record<string, unknown>[]}
-                xDataKey="dateObj"
-                aspectRatio="2.5 / 1"
-                margin={{ top: 20, right: 20, bottom: 40, left: 50 }}
-                animationDuration={400}
-              >
-                <VisxGrid horizontal vertical={false} stroke="var(--chart-grid)" strokeDasharray="4,4" />
-                <VisxArea
-                  dataKey={metric}
-                  fill={CHART_COLORS[metric]}
-                  fillOpacity={0.15}
-                  stroke={CHART_COLORS[metric]}
-                  strokeWidth={2}
-                  gradientToOpacity={0}
-                />
-                <VisxXAxis
-                  numTicks={Math.min(data.length, 10)}
-                  formatLabel={interval === 'minute' || interval === 'hour'
-                    ? (d) => `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`
-                    : (d) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
-                  }
-                />
-                <VisxYAxis
-                  numTicks={6}
-                  formatValue={(v) => {
-                    const config = METRIC_CONFIGS.find((m) => m.key === metric)
-                    return config ? config.format(v) : v.toString()
-                  }}
-                />
-                <VisxChartTooltip
-                  content={({ point }) => {
-                    const dateObj = point.dateObj instanceof Date ? point.dateObj : new Date(point.dateObj as string || Date.now())
-                    const config = METRIC_CONFIGS.find((m) => m.key === metric)
-                    const value = point[metric] as number
-                    const title = interval === 'minute' || interval === 'hour'
-                      ? `${String(dateObj.getUTCHours()).padStart(2, '0')}:${String(dateObj.getUTCMinutes()).padStart(2, '0')}`
-                      : dateObj.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
-                    return (
-                      <div className="px-3 py-2.5">
-                        <div className="mb-2 font-medium text-neutral-400 text-xs">{title}</div>
-                        <div className="flex items-center justify-between gap-4">
-                          <div className="flex items-center gap-2">
-                            <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: CHART_COLORS[metric] }} />
-                            <span className="text-neutral-400 text-sm">{config?.label || metric}</span>
+              {(() => {
+                const isEngagementDaily = metric === 'engagement' && engagementChartData.length > 0
+                const activeChartData = isEngagementDaily ? engagementChartData : chartData
+                return (
+                  <VisxAreaChart
+                    data={activeChartData as Record<string, unknown>[]}
+                    xDataKey="dateObj"
+                    aspectRatio="2.5 / 1"
+                    margin={{ top: 20, right: 20, bottom: 40, left: 50 }}
+                    animationDuration={400}
+                  >
+                    <VisxGrid horizontal vertical={false} stroke="var(--chart-grid)" strokeDasharray="4,4" />
+                    <VisxArea
+                      dataKey={metric}
+                      fill={CHART_COLORS[metric]}
+                      fillOpacity={0.15}
+                      stroke={CHART_COLORS[metric]}
+                      strokeWidth={2}
+                      gradientToOpacity={0}
+                    />
+                    <VisxXAxis
+                      numTicks={Math.min(activeChartData.length, 10)}
+                      formatLabel={!isEngagementDaily && (interval === 'minute' || interval === 'hour')
+                        ? (d) => `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`
+                        : (d) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+                      }
+                    />
+                    <VisxYAxis
+                      numTicks={6}
+                      formatValue={(v) => {
+                        const config = METRIC_CONFIGS.find((m) => m.key === metric)
+                        return config ? config.format(v) : v.toString()
+                      }}
+                    />
+                    <VisxChartTooltip
+                      content={({ point }) => {
+                        const dateObj = point.dateObj instanceof Date ? point.dateObj : new Date(point.dateObj as string || Date.now())
+                        const config = METRIC_CONFIGS.find((m) => m.key === metric)
+                        const value = point[metric] as number
+                        const title = !isEngagementDaily && (interval === 'minute' || interval === 'hour')
+                          ? `${String(dateObj.getUTCHours()).padStart(2, '0')}:${String(dateObj.getUTCMinutes()).padStart(2, '0')}`
+                          : dateObj.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+                        return (
+                          <div className="px-3 py-2.5">
+                            <div className="mb-2 font-medium text-neutral-400 text-xs">{title}</div>
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="flex items-center gap-2">
+                                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: CHART_COLORS[metric] }} />
+                                <span className="text-neutral-400 text-sm">{config?.label || metric}</span>
+                              </div>
+                              <span className="font-medium text-white text-sm tabular-nums">
+                                {config ? config.format(value) : value}
+                              </span>
+                            </div>
                           </div>
-                          <span className="font-medium text-white text-sm tabular-nums">
-                            {config ? config.format(value) : value}
-                          </span>
-                        </div>
-                      </div>
-                    )
-                  }}
-                />
-              </VisxAreaChart>
+                        )
+                      }}
+                    />
+                  </VisxAreaChart>
+                )
+              })()}
             </div>
           )}
         </CardContent>
