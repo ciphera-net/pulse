@@ -42,6 +42,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
   const [dataRetention, setDataRetention] = useState(6)
   const [autoGroupDynamic, setAutoGroupDynamic] = useState(true)
   const [pageRules, setPageRules] = useState<PageRule[]>([])
+  const [allowedQueryParams, setAllowedQueryParams] = useState('')
   const [psiFrequency, setPsiFrequency] = useState('weekly')
   const [snippetCopied, setSnippetCopied] = useState(false)
   const initialRef = useRef('')
@@ -60,6 +61,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
     setDataRetention(site.data_retention_months ?? 6)
     setAutoGroupDynamic(site.auto_group_dynamic_paths ?? true)
     setPageRules(site.page_rules || [])
+    setAllowedQueryParams((site.allowed_query_params || []).join(', '))
     initialRef.current = JSON.stringify({
       collectPagePaths: site.collect_page_paths ?? true,
       collectReferrers: site.collect_referrers ?? true,
@@ -71,6 +73,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
       dataRetention: site.data_retention_months ?? 6,
       autoGroupDynamic: site.auto_group_dynamic_paths ?? true,
       pageRules: site.page_rules || [],
+      allowedQueryParams: (site.allowed_query_params || []).join(', '),
       psiFrequency: 'weekly',
     })
     hasInitialized.current = true
@@ -94,9 +97,9 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
   // Track dirty state
   useEffect(() => {
     if (!initialRef.current) return
-    const current = JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, psiFrequency })
+    const current = JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency })
     onDirtyChange?.(current !== initialRef.current)
-  }, [collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, psiFrequency, onDirtyChange])
+  }, [collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency, onDirtyChange])
 
   const handleSave = useCallback(async () => {
     try {
@@ -112,6 +115,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
         data_retention_months: dataRetention,
         page_rules: pageRules,
         auto_group_dynamic_paths: autoGroupDynamic,
+        allowed_query_params: allowedQueryParams.split(',').map(p => p.trim()).filter(Boolean),
       })
       // Save PSI frequency separately if it changed
       if (psiConfig?.enabled && psiFrequency !== (psiConfig.frequency || 'weekly')) {
@@ -119,13 +123,13 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
         mutatePSIConfig()
       }
       await mutate()
-      initialRef.current = JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, psiFrequency })
+      initialRef.current = JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency })
       onDirtyChange?.(false)
       toast.success('Privacy settings updated')
     } catch {
       toast.error('Failed to save')
     }
-  }, [siteId, site?.name, collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, psiFrequency, psiConfig, mutatePSIConfig, mutate, onDirtyChange])
+  }, [siteId, site?.name, collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency, psiConfig, mutatePSIConfig, mutate, onDirtyChange])
 
   // Register save handler with modal
   useEffect(() => {
@@ -307,6 +311,22 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
           <Plus weight="bold" className="w-4 h-4" />
           Add Rule
         </button>
+      </div>
+
+      {/* Allowed Query Parameters */}
+      <div className="space-y-3 pt-6 border-t border-neutral-800">
+        <h4 className="text-sm font-medium text-neutral-300">Query Parameters</h4>
+        <div>
+          <label className="block text-sm font-medium text-neutral-300 mb-1.5">Parameters to keep in page stats</label>
+          <input
+            type="text"
+            value={allowedQueryParams}
+            onChange={e => setAllowedQueryParams(e.target.value)}
+            placeholder="q, category, page"
+            className="w-full px-4 py-3 border border-neutral-800 rounded-lg bg-neutral-800/30 text-white font-mono text-sm focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all"
+          />
+          <p className="text-xs text-neutral-500 mt-1">Comma-separated. All other query parameters are automatically stripped from page paths. Leave empty to strip everything.</p>
+        </div>
       </div>
 
       {/* Exclude My Visits */}
