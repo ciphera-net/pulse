@@ -2,6 +2,12 @@ import apiRequest from './client'
 
 export type GeoDataLevel = 'full' | 'country' | 'none'
 
+export interface PageRule {
+  type: 'exclude' | 'group'
+  pattern: string
+  label?: string
+}
+
 export interface Site {
   id: string
   user_id: string
@@ -11,6 +17,8 @@ export interface Site {
   is_public?: boolean
   has_password?: boolean
   excluded_paths?: string[]
+  page_rules?: PageRule[]
+  auto_group_dynamic_paths?: boolean
   // Data collection settings (privacy controls)
   collect_page_paths?: boolean
   collect_referrers?: boolean
@@ -46,6 +54,8 @@ export interface UpdateSiteRequest {
   password?: string
   clear_password?: boolean
   excluded_paths?: string[]
+  page_rules?: PageRule[]
+  auto_group_dynamic_paths?: boolean
   // Data collection settings (privacy controls)
   collect_page_paths?: boolean
   collect_referrers?: boolean
