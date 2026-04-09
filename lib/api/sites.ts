@@ -19,6 +19,7 @@ export interface Site {
   excluded_paths?: string[]
   page_rules?: PageRule[]
   auto_group_dynamic_paths?: boolean
+  allowed_query_params?: string[]
   // Data collection settings (privacy controls)
   collect_page_paths?: boolean
   collect_referrers?: boolean
@@ -56,6 +57,7 @@ export interface UpdateSiteRequest {
   excluded_paths?: string[]
   page_rules?: PageRule[]
   auto_group_dynamic_paths?: boolean
+  allowed_query_params?: string[]
   // Data collection settings (privacy controls)
   collect_page_paths?: boolean
   collect_referrers?: boolean
