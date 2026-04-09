@@ -13,39 +13,63 @@ import { useSubscription } from '@/lib/swr/dashboard'
 import PricingFAQ from '@/components/marketing/PricingFAQ'
 import CTASection from '@/components/marketing/CTASection'
 
-// 1. Define Plans with IDs and Site Limits
+// 1. Define Plans with IDs, Categories, and Feature Matrix
 const PLANS = [
   {
     id: 'solo',
     name: 'Solo',
+    category: 'PERSONAL',
     description: 'For personal sites and freelancers',
     features: [
-      '1 site',
-      '1 year data retention',
-      'Email reports',
-      '100% Data ownership'
+      { name: '1 site', included: true },
+      { name: 'Up to 5 sites', included: false },
+      { name: 'Up to 10 sites', included: false },
+      { name: 'Custom events', included: true },
+      { name: 'Email reports', included: true },
+      { name: 'Team dashboard', included: false },
+      { name: 'Shared links', included: false },
+      { name: 'Funnels', included: false },
+      { name: 'API access', included: false },
+      { name: 'Uptime monitoring', included: false },
+      { name: 'Priority support', included: false },
     ]
   },
   {
     id: 'team',
     name: 'Team',
+    category: 'TEAM',
     description: 'For startups and growing agencies',
     features: [
-      'Up to 5 sites',
-      '2 year data retention',
-      'Team dashboard',
-      'Shared links'
+      { name: '1 site', included: true },
+      { name: 'Up to 5 sites', included: true },
+      { name: 'Up to 10 sites', included: false },
+      { name: 'Custom events', included: true },
+      { name: 'Email reports', included: true },
+      { name: 'Team dashboard', included: true },
+      { name: 'Shared links', included: true },
+      { name: 'Funnels', included: true },
+      { name: 'API access', included: true },
+      { name: 'Uptime monitoring', included: true },
+      { name: 'Priority support', included: false },
     ]
   },
   {
     id: 'business',
     name: 'Business',
+    category: 'BUSINESS',
     description: 'For large organizations',
     features: [
-      'Up to 10 sites',
-      '3 years data retention',
-      'Priority support',
-      'Custom events'
+      { name: '1 site', included: true },
+      { name: 'Up to 5 sites', included: true },
+      { name: 'Up to 10 sites', included: true },
+      { name: 'Custom events', included: true },
+      { name: 'Email reports', included: true },
+      { name: 'Team dashboard', included: true },
+      { name: 'Shared links', included: true },
+      { name: 'Funnels', included: true },
+      { name: 'API access', included: true },
+      { name: 'Uptime monitoring', included: true },
+      { name: 'Priority support', included: true },
     ]
   }
 ]
@@ -105,18 +129,8 @@ const TRAFFIC_TIERS = [
   },
 ]
 
-const COMPARISON_FEATURES = [
-  { feature: 'Sites', values: ['1', '1', 'Up to 5', 'Up to 10'] },
-  { feature: 'Pageviews', values: ['5k/mo', 'Based on plan', 'Based on plan', 'Based on plan'] },
-  { feature: 'Data retention', values: ['6 months', '1 year', '2 years', '3 years'] },
-  { feature: 'Team members', values: ['1', '1', 'Unlimited', 'Unlimited'] },
-  { feature: 'Custom events', values: [false, true, true, true] },
-  { feature: 'Funnels', values: [false, false, true, true] },
-  { feature: 'Uptime monitoring', values: [false, false, true, true] },
-  { feature: 'API access', values: [false, false, true, true] },
-  { feature: 'Email reports', values: [false, true, true, true] },
-  { feature: 'Priority support', values: [false, false, false, true] },
-]
+// Temporary empty array — comparison table JSX will be removed in a later task
+const COMPARISON_FEATURES: { feature: string; values: (string | boolean)[] }[] = []
 
 export default function PricingSection() {
   const searchParams = useSearchParams()
@@ -369,9 +383,9 @@ export default function PricingSection() {
 
               <ul className="space-y-4 flex-grow">
                 {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-3 text-sm text-neutral-400">
+                  <li key={feature.name} className="flex items-start gap-3 text-sm text-neutral-400">
                     <CheckCircleIcon className={`w-5 h-5 shrink-0 ${isTeam ? 'text-brand-orange' : 'text-neutral-400'}`} />
-                    <span>{feature}</span>
+                    <span>{feature.name}</span>
                   </li>
                 ))}
               </ul>
