@@ -1,3 +1,4 @@
+import Script from 'next/script'
 import { ThemeProvider, Toaster } from '@ciphera-net/ui'
 import { AuthProvider } from '@/lib/auth/context'
 import SWRProvider from '@/components/SWRProvider'
@@ -47,6 +48,16 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${plusJakartaSans.variable} dark`} suppressHydrationWarning>
       <body className="antialiased min-h-screen flex flex-col bg-neutral-950 text-neutral-100">
+        <Script
+          defer
+          data-domain="pulse.ciphera.net"
+          data-api="https://pulse-api.ciphera.net"
+          src="https://pulse.ciphera.net/script.js"
+        />
+        <Script
+          defer
+          src="https://pulse.ciphera.net/script.frustration.js"
+        />
         <SWRProvider>
           <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
             <AuthProvider>
