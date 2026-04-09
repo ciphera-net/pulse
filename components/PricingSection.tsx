@@ -238,21 +238,34 @@ export default function PricingSection() {
       </motion.div>
 
       {/* Slider + Toggle */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
-        className="max-w-4xl mx-auto mb-12"
-      >
-        <div className="flex flex-col md:flex-row items-center justify-between gap-8">
-          <div className="w-full md:w-2/3">
-            <div className="flex justify-between text-sm font-medium text-neutral-400 mb-4">
-              <span>10k</span>
-              <span className="text-brand-orange font-bold text-lg">
-                Up to {currentTraffic.label} monthly pageviews
-              </span>
-              <span>10M+</span>
-            </div>
+      <div className="max-w-4xl mx-auto mb-12">
+        {/* Question label */}
+        <p className="text-neutral-400 font-medium text-sm text-center mb-8">
+          How many monthly pageviews do you expect?
+        </p>
+
+        {/* Desktop: Custom slider with tick marks */}
+        <div className="hidden md:flex flex-col items-center w-full px-8">
+          {/* Tick mark labels */}
+          <div className="relative w-full h-5 mb-4">
+            {TRAFFIC_TIERS.map((tier, i) => (
+              <button
+                key={tier.label}
+                onClick={() => setSliderIndex(i)}
+                className={`absolute text-xs uppercase tracking-wider -translate-x-1/2 transition-colors ${
+                  i === sliderIndex
+                    ? 'text-white font-semibold'
+                    : 'text-neutral-500 hover:text-neutral-300'
+                }`}
+                style={{ left: `${(i / (TRAFFIC_TIERS.length - 1)) * 100}%` }}
+              >
+                {tier.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Custom track */}
+          <div className="relative w-full h-4 flex items-center">
             <input
               type="range"
               min="0"
@@ -262,43 +275,90 @@ export default function PricingSection() {
               onChange={(e) => setSliderIndex(parseInt(e.target.value))}
               aria-label="Monthly pageview limit"
               aria-valuetext={`${currentTraffic.label} pageviews per month`}
-              className="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-brand-orange focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2"
+              className="sr-only"
             />
-          </div>
-
-          <div className="flex flex-col items-end gap-2 shrink-0">
-            <span className="text-xs text-neutral-400 font-medium uppercase tracking-wide">
-              Get 1 month free with yearly
-            </span>
-            <div className="bg-neutral-800 p-1 rounded-lg flex" role="radiogroup" aria-label="Billing interval">
-              <button
-                onClick={() => setIsYearly(false)}
-                role="radio"
-                aria-checked={!isYearly}
-                className={`min-w-[88px] px-4 py-2 rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ${
-                  !isYearly
-                    ? 'bg-neutral-700 text-white shadow-sm'
-                    : 'text-neutral-500 hover:text-white'
-                }`}
-              >
-                Monthly
-              </button>
-              <button
-                onClick={() => setIsYearly(true)}
-                role="radio"
-                aria-checked={isYearly}
-                className={`min-w-[88px] px-4 py-2 rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ${
-                  isYearly
-                    ? 'bg-neutral-700 text-white shadow-sm'
-                    : 'text-neutral-500 hover:text-white'
-                }`}
-              >
-                Yearly
-              </button>
+            {/* Background track */}
+            <div className="absolute w-full h-1.5 bg-neutral-700 rounded-full" />
+            {/* Active fill */}
+            <div
+              className="absolute h-1.5 bg-brand-orange rounded-full pointer-events-none"
+              style={{ width: `${(sliderIndex / (TRAFFIC_TIERS.length - 1)) * 100}%` }}
+            />
+            {/* Drag handle */}
+            <div
+              className="absolute w-8 h-4 bg-brand-orange border border-brand-orange-hover rounded-full cursor-grab active:cursor-grabbing flex items-center justify-center gap-0.5 -translate-x-1/2 shadow-lg"
+              style={{ left: `${(sliderIndex / (TRAFFIC_TIERS.length - 1)) * 100}%` }}
+              onPointerDown={(e) => {
+                const track = e.currentTarget.parentElement!
+                const rect = track.getBoundingClientRect()
+                const move = (ev: PointerEvent) => {
+                  const pct = Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width))
+                  setSliderIndex(Math.round(pct * (TRAFFIC_TIERS.length - 1)))
+                }
+                const up = () => {
+                  document.removeEventListener('pointermove', move)
+                  document.removeEventListener('pointerup', up)
+                }
+                document.addEventListener('pointermove', move)
+                document.addEventListener('pointerup', up)
+                e.preventDefault()
+              }}
+            >
+              <div className="w-0.5 h-1.5 rounded-sm bg-white/50" />
+              <div className="w-0.5 h-1.5 rounded-sm bg-white/50" />
             </div>
           </div>
         </div>
-      </motion.div>
+
+        {/* Mobile: Dropdown select */}
+        <div className="md:hidden px-4">
+          <select
+            value={sliderIndex}
+            onChange={(e) => setSliderIndex(parseInt(e.target.value))}
+            className="w-full py-2.5 px-4 bg-neutral-900/80 border border-white/[0.08] rounded-xl text-white text-sm outline-none focus:ring-2 focus:ring-brand-orange"
+          >
+            {TRAFFIC_TIERS.map((tier, i) => (
+              <option key={tier.label} value={i}>
+                {tier.label} pageviews/month
+                {tier.prices.solo !== null ? ` — from €${tier.prices.solo}/mo` : ' — Custom'}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Billing toggle — centered */}
+        <div className="flex flex-col items-center gap-2 mt-8">
+          <div className="bg-neutral-800/80 backdrop-blur-sm border border-white/[0.08] p-1 rounded-xl flex" role="radiogroup" aria-label="Billing interval">
+            <button
+              onClick={() => setIsYearly(false)}
+              role="radio"
+              aria-checked={!isYearly}
+              className={`min-w-[88px] px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                !isYearly
+                  ? 'bg-neutral-700 text-white shadow-sm'
+                  : 'text-neutral-500 hover:text-white'
+              }`}
+            >
+              Monthly
+            </button>
+            <button
+              onClick={() => setIsYearly(true)}
+              role="radio"
+              aria-checked={isYearly}
+              className={`min-w-[88px] px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                isYearly
+                  ? 'bg-neutral-700 text-white shadow-sm'
+                  : 'text-neutral-500 hover:text-white'
+              }`}
+            >
+              Yearly
+            </button>
+          </div>
+          <span className="text-xs text-neutral-500 font-medium">
+            Get 1 month free with yearly
+          </span>
+        </div>
+      </div>
 
       {/* Hobby nudge */}
       <motion.div
