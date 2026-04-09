@@ -5,7 +5,7 @@ import { logger } from '@/lib/utils/logger'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Button, CheckCircleIcon } from '@ciphera-net/ui'
-import { ArrowsClockwise, Check, Globe, Eye, LockSimple, Code, Scales } from '@phosphor-icons/react'
+import { ArrowsClockwise, Check, Globe, Eye, LockSimple, Code, Scales, X } from '@phosphor-icons/react'
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
 import { toast } from '@ciphera-net/ui'
@@ -384,74 +384,116 @@ export default function PricingSection() {
         </button>
       </motion.div>
 
-      {/* Paid Plans — 3 column grid */}
-      <div className="grid md:grid-cols-3 gap-6 mb-6">
-        {PLANS.map((plan, index) => {
-          const priceDetails = getPriceDetails(plan.id)
-          const isTeam = plan.id === 'team'
-          const isCurrent = currentPlanId === plan.id
+      {/* Unified card block */}
+      <div className="rounded-2xl border border-white/[0.08] bg-neutral-900/80 backdrop-blur-xl overflow-hidden mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3">
+          {PLANS.map((plan, index) => {
+            const priceDetails = getPriceDetails(plan.id)
+            const isTeam = plan.id === 'team'
+            const isCurrent = currentPlanId === plan.id
 
-          return (
-            <motion.div
-              key={plan.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.15 + index * 0.1 }}
-              className={`card-glass p-8 flex flex-col relative overflow-hidden hover:-translate-y-1 hover:shadow-xl transition-all duration-300 ${
-                isTeam ? 'border-brand-orange/20' : ''
-              }`}
-            >
-              {isTeam && (
-                <>
-                  <div className="absolute top-0 left-0 w-full h-1 bg-brand-orange" />
-                  <span className="absolute top-4 right-4 badge-primary">Most Popular</span>
-                </>
-              )}
-
-              <div className="mb-8">
-                <h3 className="text-xl font-bold text-white mb-2">{plan.name}</h3>
-                <p className="text-sm text-neutral-400 min-h-[40px] mb-4">{plan.description}</p>
-
-                {priceDetails ? (
-                  <div>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-bold text-white">
-                        €{isYearly ? priceDetails.effectiveMonthly : priceDetails.baseMonthly}
-                      </span>
-                      <span className="text-neutral-400 font-medium">/mo</span>
-                      <span className="text-xs text-neutral-500 ml-1">excl. VAT</span>
-                    </div>
-                    {isYearly && (
-                      <p className="text-xs text-neutral-500 mt-1">
-                        €{priceDetails.yearlyTotal} billed yearly
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-4xl font-bold text-white">Custom</div>
-                )}
-              </div>
-
-              <Button
-                onClick={() => !isCurrent && handleSubscribe(plan.id)}
-                disabled={isCurrent || loadingPlan === plan.id || !!loadingPlan || !priceDetails}
-                variant={isCurrent ? 'secondary' : isTeam ? 'primary' : 'secondary'}
-                className="w-full mb-8"
+            return (
+              <div
+                key={plan.id}
+                className={`px-6 py-8 flex flex-col gap-8 ${
+                  index < PLANS.length - 1 ? 'lg:border-r border-b lg:border-b-0 border-white/[0.08]' : ''
+                }`}
               >
-                {isCurrent ? 'Current plan' : loadingPlan === plan.id ? 'Loading...' : !priceDetails ? 'Contact us' : 'Subscribe'}
-              </Button>
+                {/* Category label */}
+                <div className="flex items-center justify-between">
+                  <p className={`font-semibold text-sm uppercase tracking-wider ${
+                    isTeam ? 'text-brand-orange' : 'text-neutral-400'
+                  }`}>
+                    {plan.category}
+                  </p>
+                  {isTeam && <span className="badge-primary">Most Popular</span>}
+                </div>
 
-              <ul className="space-y-4 flex-grow">
-                {plan.features.map((feature) => (
-                  <li key={feature.name} className="flex items-start gap-3 text-sm text-neutral-400">
-                    <CheckCircleIcon className={`w-5 h-5 shrink-0 ${isTeam ? 'text-brand-orange' : 'text-neutral-400'}`} />
-                    <span>{feature.name}</span>
-                  </li>
-                ))}
-              </ul>
-            </motion.div>
-          )
-        })}
+                {/* Price block */}
+                <div>
+                  {priceDetails ? (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[40px] leading-tight font-bold text-white">
+                          €{isYearly ? priceDetails.effectiveMonthly : priceDetails.baseMonthly}
+                        </span>
+                        <div>
+                          <p className="text-white font-semibold text-sm uppercase">{plan.name}</p>
+                          <p className="text-neutral-500 text-xs">
+                            {currentTraffic.label} pageviews/mo · billed {isYearly ? 'yearly' : 'monthly'}
+                          </p>
+                        </div>
+                      </div>
+                      {isYearly && (
+                        <p className="text-xs text-neutral-500 mt-1">
+                          €{priceDetails.yearlyTotal} billed yearly · excl. VAT
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[40px] leading-tight font-bold text-white">Custom</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Feature list — check/x */}
+                <div className="flex flex-col gap-3 flex-grow">
+                  {plan.features.map((feature) => (
+                    <div key={feature.name} className="flex items-center gap-2">
+                      {feature.included ? (
+                        <>
+                          <Check className="w-4 h-4 text-brand-orange shrink-0" weight="bold" />
+                          <span className="text-neutral-200 text-sm">{feature.name}</span>
+                        </>
+                      ) : (
+                        <>
+                          <X className="w-4 h-4 text-neutral-700 shrink-0" weight="bold" />
+                          <span className="text-neutral-500 text-sm line-through">{feature.name}</span>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* CTA button */}
+                <button
+                  onClick={() => !isCurrent && handleSubscribe(plan.id)}
+                  disabled={isCurrent || loadingPlan === plan.id || !!loadingPlan || !priceDetails}
+                  className={`w-full h-[44px] rounded-xl flex items-center justify-between px-6 font-semibold text-sm uppercase tracking-wider transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                    isTeam
+                      ? 'bg-brand-orange hover:bg-brand-orange-hover text-white'
+                      : 'bg-neutral-700 hover:bg-neutral-600 text-white'
+                  }`}
+                >
+                  <span>
+                    {isCurrent ? 'Current plan' : loadingPlan === plan.id ? 'Loading...' : !priceDetails ? 'Contact us' : 'Get Started'}
+                  </span>
+                  {!isCurrent && priceDetails && (
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* All Plans Include row */}
+        <div className="border-t border-white/[0.08] px-6 py-6">
+          <p className="text-neutral-400 font-semibold text-sm uppercase tracking-wider text-center mb-4">
+            All plans include
+          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-4 sm:gap-8">
+            {['Cookie-free tracking', 'GDPR compliant', 'Swiss infrastructure', '100% data ownership'].map((item) => (
+              <div key={item} className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-brand-orange shrink-0" weight="bold" />
+                <span className="text-neutral-200 text-sm">{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Enterprise nudge */}
