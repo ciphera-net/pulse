@@ -3,9 +3,7 @@
 import { useState, useEffect } from 'react'
 import { logger } from '@/lib/utils/logger'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
-import { Button, CheckCircleIcon } from '@ciphera-net/ui'
-import { ArrowsClockwise, Check, Globe, Eye, LockSimple, Code, Scales, X } from '@phosphor-icons/react'
+import { Check, X } from '@phosphor-icons/react'
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
 import { toast } from '@ciphera-net/ui'
@@ -129,15 +127,11 @@ const TRAFFIC_TIERS = [
   },
 ]
 
-// Temporary empty array — comparison table JSX will be removed in a later task
-const COMPARISON_FEATURES: { feature: string; values: (string | boolean)[] }[] = []
-
 export default function PricingSection() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [isYearly, setIsYearly] = useState(true)
   const [sliderIndex, setSliderIndex] = useState(0) // Default to 10k (index 0)
-  const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
   const { user } = useAuth()
   const { data: subscription } = useSubscription()
   const currentPlanId = subscription?.plan_id || (user ? 'free' : null)
@@ -223,19 +217,14 @@ export default function PricingSection() {
   return (
     <section className="pb-24 px-4 max-w-6xl mx-auto">
       {/* Hero */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="text-center mb-16"
-      >
+      <div className="text-center mb-16">
         <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-6">
           Transparent Pricing
         </h2>
         <p className="text-xl text-neutral-400 max-w-2xl mx-auto leading-relaxed">
           Scale with your traffic. No hidden fees.
         </p>
-      </motion.div>
+      </div>
 
       {/* Slider + Toggle */}
       <div className="max-w-4xl mx-auto mb-12">
@@ -361,12 +350,7 @@ export default function PricingSection() {
       </div>
 
       {/* Hobby nudge */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.12 }}
-        className="rounded-2xl border border-brand-orange/30 bg-brand-orange/10 px-6 py-4 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
-      >
+      <div className="rounded-2xl border border-brand-orange/30 bg-brand-orange/10 px-6 py-4 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <p className="text-sm text-neutral-300">
           <span className="font-semibold text-white">Just exploring?</span>{' '}
           Start free with the Hobby plan — 1 site, 5k pageviews, no credit card needed.
@@ -382,7 +366,7 @@ export default function PricingSection() {
         >
           {currentPlanId === 'free' ? 'Your current plan' : 'Get started →'}
         </button>
-      </motion.div>
+      </div>
 
       {/* Unified card block */}
       <div className="rounded-2xl border border-white/[0.08] bg-neutral-900/80 backdrop-blur-xl overflow-hidden mb-6">
@@ -459,7 +443,7 @@ export default function PricingSection() {
                 {/* CTA button */}
                 <button
                   onClick={() => !isCurrent && handleSubscribe(plan.id)}
-                  disabled={isCurrent || loadingPlan === plan.id || !!loadingPlan || !priceDetails}
+                  disabled={isCurrent || !priceDetails}
                   className={`w-full h-[44px] rounded-xl flex items-center justify-between px-6 font-semibold text-sm uppercase tracking-wider transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                     isTeam
                       ? 'bg-brand-orange hover:bg-brand-orange-hover text-white'
@@ -467,7 +451,7 @@ export default function PricingSection() {
                   }`}
                 >
                   <span>
-                    {isCurrent ? 'Current plan' : loadingPlan === plan.id ? 'Loading...' : !priceDetails ? 'Contact us' : 'Get Started'}
+                    {isCurrent ? 'Current plan' : !priceDetails ? 'Contact us' : 'Get Started'}
                   </span>
                   {!isCurrent && priceDetails && (
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -497,12 +481,7 @@ export default function PricingSection() {
       </div>
 
       {/* Enterprise nudge */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.5 }}
-        className="card-glass px-6 py-4 mt-2 mb-20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
-      >
+      <div className="card-glass px-6 py-4 mt-2 mb-20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <p className="text-sm text-neutral-300">
           <span className="font-semibold text-white">Need something bigger?</span>{' '}
           We&apos;ll build a custom plan for you — unlimited sites, SLA, managed proxy, raw data export.
@@ -513,89 +492,7 @@ export default function PricingSection() {
         >
           Let&apos;s talk →
         </a>
-      </motion.div>
-
-      {/* Gradient Divider */}
-      <div className="h-px w-full bg-gradient-to-r from-transparent via-neutral-800 to-transparent my-20" />
-
-      {/* Feature Comparison */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.5 }}
-        className="mb-20"
-      >
-        <h2 className="text-2xl font-bold text-white mb-8 text-center">Compare plans</h2>
-        <div className="overflow-x-auto rounded-2xl border border-neutral-800 bg-neutral-900/50 backdrop-blur-sm">
-          <table className="w-full text-left border-collapse min-w-[640px]">
-            <thead>
-              <tr className="border-b border-neutral-800">
-                <th className="p-4 sm:p-6 text-sm font-medium text-neutral-500">Feature</th>
-                {['Hobby', 'Solo', 'Team', 'Business'].map((plan) => (
-                  <th key={plan} className={`p-4 sm:p-6 text-sm font-bold ${plan === 'Team' ? 'text-brand-orange' : 'text-white'}`}>
-                    {plan}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-800">
-              {COMPARISON_FEATURES.map((row) => (
-                <tr key={row.feature} className="hover:bg-neutral-800/50 transition-colors">
-                  <td className="p-4 sm:p-6 text-white font-medium text-sm">{row.feature}</td>
-                  {row.values.map((val, i) => (
-                    <td key={i} className="p-4 sm:p-6 text-sm">
-                      {val === true ? (
-                        <Check className="w-5 h-5 text-green-500" weight="bold" />
-                      ) : val === false ? (
-                        <span className="text-neutral-600">—</span>
-                      ) : (
-                        <span className="text-neutral-400">{val}</span>
-                      )}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </motion.div>
-
-      {/* Trust Signals */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.5 }}
-        className="mb-20"
-      >
-        <h2 className="text-2xl font-bold text-white mb-8 text-center">Built for trust</h2>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-6 max-w-4xl mx-auto">
-          {[
-            { icon: Scales, label: 'GDPR compliant', detail: 'By architecture, not configuration' },
-            { icon: Eye, label: 'No cookies', detail: 'No consent banners needed' },
-            { icon: Globe, label: 'Swiss infrastructure', detail: 'Data processed in Switzerland' },
-            { icon: Code, label: 'Open source', detail: 'Frontend fully on GitHub' },
-            { icon: ArrowsClockwise, label: 'Cancel anytime', detail: 'No lock-in or cancellation fees' },
-            { icon: LockSimple, label: 'No data selling', detail: '100% data ownership, always' },
-          ].map((signal, i) => (
-            <motion.div
-              key={signal.label}
-              initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.3, delay: i * 0.05 }}
-              className="flex items-start gap-3 py-2"
-            >
-              <signal.icon className="w-5 h-5 text-brand-orange shrink-0 mt-0.5" weight="bold" />
-              <div>
-                <span className="font-semibold text-white text-sm">{signal.label}</span>
-                <p className="text-xs text-neutral-400 mt-0.5">{signal.detail}</p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </motion.div>
+      </div>
 
       {/* Gradient Divider */}
       <div className="h-px w-full bg-gradient-to-r from-transparent via-neutral-800 to-transparent" />
