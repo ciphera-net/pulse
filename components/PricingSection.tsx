@@ -275,7 +275,7 @@ export default function PricingSection() {
               onChange={(e) => setSliderIndex(parseInt(e.target.value))}
               aria-label="Monthly pageview limit"
               aria-valuetext={`${currentTraffic.label} pageviews per month`}
-              className="sr-only"
+              className="absolute w-full h-full opacity-0 cursor-pointer z-10"
             />
             {/* Background track */}
             <div className="absolute w-full h-1.5 bg-neutral-700 rounded-full" />
@@ -333,7 +333,7 @@ export default function PricingSection() {
               onClick={() => setIsYearly(false)}
               role="radio"
               aria-checked={!isYearly}
-              className={`min-w-[88px] px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              className={`min-w-[88px] px-4 py-2 rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ${
                 !isYearly
                   ? 'bg-neutral-700 text-white shadow-sm'
                   : 'text-neutral-500 hover:text-white'
@@ -345,7 +345,7 @@ export default function PricingSection() {
               onClick={() => setIsYearly(true)}
               role="radio"
               aria-checked={isYearly}
-              className={`min-w-[88px] px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              className={`min-w-[88px] px-4 py-2 rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ${
                 isYearly
                   ? 'bg-neutral-700 text-white shadow-sm'
                   : 'text-neutral-500 hover:text-white'
