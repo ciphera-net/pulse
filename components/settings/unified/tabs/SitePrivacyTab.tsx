@@ -3,11 +3,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Select, Toggle, toast, Spinner } from '@ciphera-net/ui'
 import { useSite, useSubscription, usePageSpeedConfig } from '@/lib/swr/dashboard'
-import { updateSite } from '@/lib/api/sites'
+import { updateSite, type PageRule } from '@/lib/api/sites'
 import { updatePageSpeedConfig } from '@/lib/api/pagespeed'
 import { getRetentionOptionsForPlan, formatRetentionMonths } from '@/lib/plans'
 import { generatePrivacySnippet } from '@/lib/utils/privacySnippet'
-import { Copy, CheckCircle, EyeSlash } from '@phosphor-icons/react'
+import { Copy, CheckCircle, EyeSlash, Trash, ArrowUp, ArrowDown, Plus } from '@phosphor-icons/react'
 import Link from 'next/link'
 
 const GEO_OPTIONS = [
@@ -40,7 +40,8 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
   const [collectGeoData, setCollectGeoData] = useState('full')
   const [hideUnknownLocations, setHideUnknownLocations] = useState(false)
   const [dataRetention, setDataRetention] = useState(6)
-  const [excludedPaths, setExcludedPaths] = useState('')
+  const [autoGroupDynamic, setAutoGroupDynamic] = useState(true)
+  const [pageRules, setPageRules] = useState<PageRule[]>([])
   const [psiFrequency, setPsiFrequency] = useState('weekly')
   const [snippetCopied, setSnippetCopied] = useState(false)
   const initialRef = useRef('')
@@ -57,7 +58,8 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
     setCollectGeoData(site.collect_geo_data ?? 'full')
     setHideUnknownLocations(site.hide_unknown_locations ?? false)
     setDataRetention(site.data_retention_months ?? 6)
-    setExcludedPaths((site.excluded_paths || []).join('\n'))
+    setAutoGroupDynamic(site.auto_group_dynamic_paths ?? true)
+    setPageRules(site.page_rules || [])
     initialRef.current = JSON.stringify({
       collectPagePaths: site.collect_page_paths ?? true,
       collectReferrers: site.collect_referrers ?? true,
@@ -67,7 +69,8 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
       collectGeoData: site.collect_geo_data ?? 'full',
       hideUnknownLocations: site.hide_unknown_locations ?? false,
       dataRetention: site.data_retention_months ?? 6,
-      excludedPaths: (site.excluded_paths || []).join('\n'),
+      autoGroupDynamic: site.auto_group_dynamic_paths ?? true,
+      pageRules: site.page_rules || [],
       psiFrequency: 'weekly',
     })
     hasInitialized.current = true
@@ -91,9 +94,9 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
   // Track dirty state
   useEffect(() => {
     if (!initialRef.current) return
-    const current = JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, excludedPaths, psiFrequency })
+    const current = JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, psiFrequency })
     onDirtyChange?.(current !== initialRef.current)
-  }, [collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, excludedPaths, psiFrequency, onDirtyChange])
+  }, [collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, psiFrequency, onDirtyChange])
 
   const handleSave = useCallback(async () => {
     try {
@@ -107,7 +110,8 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
         collect_geo_data: collectGeoData as 'full' | 'country' | 'none',
         hide_unknown_locations: hideUnknownLocations,
         data_retention_months: dataRetention,
-        excluded_paths: excludedPaths.split('\n').map(p => p.trim()).filter(Boolean),
+        page_rules: pageRules,
+        auto_group_dynamic_paths: autoGroupDynamic,
       })
       // Save PSI frequency separately if it changed
       if (psiConfig?.enabled && psiFrequency !== (psiConfig.frequency || 'weekly')) {
@@ -115,18 +119,36 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
         mutatePSIConfig()
       }
       await mutate()
-      initialRef.current = JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, excludedPaths, psiFrequency })
+      initialRef.current = JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, psiFrequency })
       onDirtyChange?.(false)
       toast.success('Privacy settings updated')
     } catch {
       toast.error('Failed to save')
     }
-  }, [siteId, site?.name, collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, excludedPaths, psiFrequency, psiConfig, mutatePSIConfig, mutate, onDirtyChange])
+  }, [siteId, site?.name, collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, psiFrequency, psiConfig, mutatePSIConfig, mutate, onDirtyChange])
 
   // Register save handler with modal
   useEffect(() => {
     onRegisterSave?.(handleSave)
   }, [handleSave, onRegisterSave])
+
+  const updateRule = (index: number, updates: Partial<PageRule>) => {
+    setPageRules(rules => rules.map((r, i) => i === index ? { ...r, ...updates } : r))
+  }
+
+  const removeRule = (index: number) => {
+    setPageRules(rules => rules.filter((_, i) => i !== index))
+  }
+
+  const moveRule = (index: number, direction: -1 | 1) => {
+    setPageRules(rules => {
+      const newRules = [...rules]
+      const target = index + direction
+      if (target < 0 || target >= newRules.length) return rules
+      ;[newRules[index], newRules[target]] = [newRules[target], newRules[index]]
+      return newRules
+    })
+  }
 
   if (!site) return <div className="flex items-center justify-center py-12"><Spinner className="w-6 h-6 text-neutral-500" /></div>
 
@@ -200,20 +222,91 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
         </div>
       </div>
 
-      {/* Path Filtering */}
+      {/* Page Rules */}
       <div className="space-y-3 pt-6 border-t border-neutral-800">
-        <h4 className="text-sm font-medium text-neutral-300">Path Filtering</h4>
         <div>
-          <label className="block text-sm font-medium text-neutral-300 mb-1.5">Excluded Paths</label>
-          <textarea
-            value={excludedPaths}
-            onChange={e => setExcludedPaths(e.target.value)}
-            rows={4}
-            placeholder={"/admin/*\n/staging/*"}
-            className="w-full px-4 py-3 border border-neutral-800 rounded-lg bg-neutral-800/30 text-white font-mono text-sm focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all"
-          />
-          <p className="text-xs text-neutral-500 mt-1">Enter paths to exclude from tracking (one per line). Supports wildcards (e.g., /admin/*).</p>
+          <h4 className="text-sm font-medium text-neutral-300">Page Rules</h4>
+          <p className="text-xs text-neutral-500 mt-1">Control how page paths are tracked, grouped, or excluded from analytics.</p>
         </div>
+
+        <PrivacyToggle
+          label="Auto-group dynamic paths"
+          desc="Automatically replace UUIDs, numeric IDs, and tokens with :id in page stats."
+          checked={autoGroupDynamic}
+          onToggle={() => setAutoGroupDynamic(v => !v)}
+        />
+
+        <div className="pt-3">
+          <p className="text-sm font-medium text-neutral-300">Manual Rules</p>
+          <p className="text-xs text-neutral-500 mt-1">Rules are evaluated top-to-bottom. First matching rule wins.</p>
+        </div>
+
+        <div className="space-y-3">
+          {pageRules.map((rule, index) => (
+            <div key={index} className="rounded-xl border border-neutral-800 bg-neutral-800/30 p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex-1 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <select
+                      value={rule.type}
+                      onChange={e => updateRule(index, { type: e.target.value as 'exclude' | 'group' })}
+                      className="px-3 py-2 border border-neutral-800 rounded-lg bg-neutral-800/30 text-white text-sm focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all"
+                    >
+                      <option value="exclude">Exclude</option>
+                      <option value="group">Group</option>
+                    </select>
+                    <input
+                      type="text"
+                      value={rule.pattern}
+                      onChange={e => updateRule(index, { pattern: e.target.value })}
+                      placeholder="/admin/*"
+                      className="flex-1 px-3 py-2 border border-neutral-800 rounded-lg bg-neutral-800/30 text-white font-mono text-sm focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all"
+                    />
+                  </div>
+                  {rule.type === 'group' && (
+                    <input
+                      type="text"
+                      value={rule.label || ''}
+                      onChange={e => updateRule(index, { label: e.target.value })}
+                      placeholder="/sites/:id"
+                      className="w-full px-3 py-2 border border-neutral-800 rounded-lg bg-neutral-800/30 text-white font-mono text-sm focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all"
+                    />
+                  )}
+                </div>
+                <div className="flex items-center gap-1 pt-1">
+                  <button
+                    onClick={() => moveRule(index, -1)}
+                    disabled={index === 0}
+                    className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors disabled:opacity-30 disabled:hover:text-neutral-400 disabled:hover:bg-transparent"
+                  >
+                    <ArrowUp weight="bold" className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => moveRule(index, 1)}
+                    disabled={index === pageRules.length - 1}
+                    className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors disabled:opacity-30 disabled:hover:text-neutral-400 disabled:hover:bg-transparent"
+                  >
+                    <ArrowDown weight="bold" className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => removeRule(index)}
+                    className="p-1.5 rounded-lg text-neutral-400 hover:text-red-400 hover:bg-neutral-700 transition-colors"
+                  >
+                    <Trash weight="bold" className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <button
+          onClick={() => setPageRules([...pageRules, { type: 'exclude', pattern: '' }])}
+          className="flex items-center gap-2 text-sm font-medium text-brand-orange hover:text-brand-orange/80 transition-colors"
+        >
+          <Plus weight="bold" className="w-4 h-4" />
+          Add Rule
+        </button>
       </div>
 
       {/* Exclude My Visits */}
