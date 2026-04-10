@@ -11,6 +11,7 @@ const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ['latin'],
   variable: '--font-plus-jakarta-sans',
   display: 'swap',
+  preload: false,
 })
 
 export const viewport: Viewport = {
