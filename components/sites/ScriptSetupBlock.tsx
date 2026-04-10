@@ -122,7 +122,7 @@ export default function ScriptSetupBlock({
   return (
     <div className={className}>
       {/* ── Script snippet ──────────────────────────────────────────────── */}
-      <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 overflow-hidden">
+      <div className="rounded-2xl border border-white/[0.08] overflow-hidden">
         {/* * Orange accent bar */}
         <div className="h-1 bg-gradient-to-r from-brand-orange via-brand-orange/60 to-transparent" />
         <div className="bg-neutral-950">
@@ -174,7 +174,7 @@ export default function ScriptSetupBlock({
           {FEATURES.map((f) => (
             <div
               key={f.key}
-              className="flex items-center justify-between rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-4 py-3"
+              className="flex items-center justify-between rounded-xl border border-white/[0.08] bg-neutral-900/80 px-4 py-3"
             >
               <div className="min-w-0 mr-3">
                 <span className="text-sm font-medium text-white block">
