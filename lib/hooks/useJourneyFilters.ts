@@ -13,10 +13,12 @@ import {
 
 export const DEPTH_MIN = 2
 export const DEPTH_MAX = 6
+export const DEPTH_STEP = 1
 export const DEPTH_DEFAULT = 4
 
 export const DENSITY_MIN = 5
 export const DENSITY_MAX = 50
+export const DENSITY_STEP = 5
 export const DENSITY_DEFAULT = 20
 
 export type ViewMode = 'columns' | 'flow'
