@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { motion } from 'framer-motion'
 import { Select, DatePicker } from '@ciphera-net/ui'
 import ColumnJourney from '@/components/journeys/ColumnJourney'
 import SankeyJourney from '@/components/journeys/SankeyJourney'
@@ -152,7 +151,7 @@ export default function JourneysPage() {
             </button>
           </div>
 
-          {/* View toggle */}
+          {/* View toggle — matches dashboard tab pattern (CSS scale transition) */}
           <div className="flex gap-1 mt-6 pt-4 border-t border-white/[0.08]" role="tablist" aria-label="Journey view tabs">
             {(['columns', 'flow'] as const).map((mode) => (
               <button
@@ -160,20 +159,18 @@ export default function JourneysPage() {
                 onClick={() => filters.setViewMode(mode)}
                 role="tab"
                 aria-selected={filters.viewMode === mode}
-                className={`relative px-3 py-1 text-xs font-medium transition-colors capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded cursor-pointer ${
+                className={`relative px-2.5 py-1 text-xs font-medium transition-colors capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded cursor-pointer ${
                   filters.viewMode === mode
                     ? 'text-white'
-                    : 'text-neutral-500 hover:text-neutral-300'
+                    : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-300'
                 }`}
               >
                 {mode === 'columns' ? 'Columns' : 'Flow'}
-                {filters.viewMode === mode && (
-                  <motion.div
-                    layoutId="journeyViewTab"
-                    className="absolute inset-x-0 -bottom-px h-0.5 bg-brand-orange"
-                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                  />
-                )}
+                <span
+                  className={`absolute inset-x-0 -bottom-px h-[3px] rounded-full transition-all duration-200 ${
+                    filters.viewMode === mode ? 'bg-brand-orange scale-x-100' : 'bg-transparent scale-x-0'
+                  }`}
+                />
               </button>
             ))}
           </div>
