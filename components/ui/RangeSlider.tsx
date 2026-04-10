@@ -12,6 +12,8 @@ interface RangeSliderProps {
   valueLabel?: string
   ariaValueText?: string
   className?: string
+  ticks?: string[]
+  onTickClick?: (index: number) => void
 }
 
 export default function RangeSlider({
@@ -24,12 +26,15 @@ export default function RangeSlider({
   valueLabel,
   ariaValueText,
   className = '',
+  ticks,
+  onTickClick,
 }: RangeSliderProps) {
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     onChange(parseInt(e.target.value, 10))
   }
 
   const percent = max > min ? ((value - min) / (max - min)) * 100 : 0
+  const hasTicks = !!(ticks && ticks.length > 0)
 
   return (
     <div className={`flex flex-col gap-2 ${className}`}>
@@ -45,6 +50,26 @@ export default function RangeSlider({
               {valueLabel}
             </span>
           )}
+        </div>
+      )}
+
+      {hasTicks && ticks && (
+        <div className="relative w-full h-5 mb-2">
+          {ticks.map((tick, i) => (
+            <button
+              key={`${tick}-${i}`}
+              type="button"
+              onClick={() => onTickClick?.(i)}
+              className={`absolute text-xs uppercase tracking-wider -translate-x-1/2 transition-colors ${
+                i === value
+                  ? 'text-white font-semibold'
+                  : 'text-neutral-500 hover:text-neutral-300'
+              }`}
+              style={{ left: `${(i / (ticks.length - 1)) * 100}%` }}
+            >
+              {tick}
+            </button>
+          ))}
         </div>
       )}
 
