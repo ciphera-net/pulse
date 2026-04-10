@@ -11,8 +11,10 @@ import {
   useJourneyFilters,
   DEPTH_MIN,
   DEPTH_MAX,
+  DEPTH_STEP,
   DENSITY_MIN,
   DENSITY_MAX,
+  DENSITY_STEP,
   type Period,
 } from '@/lib/hooks/useJourneyFilters'
 import {
@@ -112,21 +114,23 @@ export default function JourneysPage() {
               label="Depth"
               min={DEPTH_MIN}
               max={DEPTH_MAX}
-              step={1}
+              step={DEPTH_STEP}
               value={filters.depth}
               onChange={filters.setDepth}
               valueLabel={`${filters.depth} steps`}
               ariaValueText={`${filters.depth} steps deep`}
+              showStops
             />
             <RangeSlider
               label="Paths per step"
               min={DENSITY_MIN}
               max={DENSITY_MAX}
-              step={1}
+              step={DENSITY_STEP}
               value={filters.density}
               onChange={filters.setDensity}
               valueLabel={`${filters.density} paths`}
               ariaValueText={`${filters.density} paths per step`}
+              showStops
             />
           </div>
 

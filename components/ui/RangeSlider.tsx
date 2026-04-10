@@ -14,6 +14,8 @@ interface RangeSliderProps {
   className?: string
   ticks?: string[]
   onTickClick?: (index: number) => void
+  /** Render visual snap/stop dots at each step position along the track. */
+  showStops?: boolean
 }
 
 export default function RangeSlider({
@@ -28,7 +30,15 @@ export default function RangeSlider({
   className = '',
   ticks,
   onTickClick,
+  showStops = false,
 }: RangeSliderProps) {
+  // * Compute evenly-spaced stop positions when showStops is enabled
+  const stops: number[] = []
+  if (showStops && step > 0 && max > min) {
+    for (let v = min; v <= max; v += step) {
+      stops.push(((v - min) / (max - min)) * 100)
+    }
+  }
   const trackRef = useRef<HTMLDivElement>(null)
 
   const percent = max > min ? ((value - min) / (max - min)) * 100 : 0
@@ -150,6 +160,14 @@ export default function RangeSlider({
           className="absolute h-1.5 bg-brand-orange rounded-full pointer-events-none"
           style={{ width: `${percent}%` }}
         />
+        {/* Snap/stop dots */}
+        {showStops && stops.map((pct, i) => (
+          <div
+            key={i}
+            className="absolute w-1 h-1 rounded-full bg-neutral-500 pointer-events-none -translate-x-1/2"
+            style={{ left: `${pct}%` }}
+          />
+        ))}
         {/* Visual handle — pill-shaped, big enough to grab easily */}
         <div
           data-slider-handle="true"
