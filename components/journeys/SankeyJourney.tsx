@@ -42,7 +42,7 @@ const MAX_LINK_HEIGHT = 100
 const LINK_OPACITY = 0.3
 const LINK_HOVER_OPACITY = 0.6
 const MAX_NODES_PER_STEP = 25
-const HEADER_HEIGHT = 28
+const HEADER_HEIGHT = 56
 
 const COLOR_PALETTE = [
   'hsl(160, 45%, 40%)', 'hsl(220, 45%, 50%)', 'hsl(270, 40%, 50%)',
@@ -349,22 +349,77 @@ export default function SankeyJourney({
     svg.attr('width', width).attr('height', height)
     const g = svg.append('g')
 
-    // ── Draw step column headers ──────────────────────────
-    const headerColor = isDark ? '#a3a3a3' : '#525252'
+    // ── Draw step column headers (match ColumnJourney style) ─
+    // Visitors per step: step 0 uses outgoing totals, later steps use incoming
+    const stepVisitors = new Map<number, number>()
+    for (const n of nodes) {
+      const val =
+        n.step === 0
+          ? n.outLinks.reduce((s, l) => s + l.value, 0)
+          : n.inLinks.reduce((s, l) => s + l.value, 0)
+      stepVisitors.set(n.step, (stepVisitors.get(n.step) ?? 0) + val)
+    }
     const stepIndices = Array.from(byStep.keys()).sort((a, b) => a - b)
-    g.selectAll('.step-header')
+
+    // Drop-off % per step vs. previous step
+    const stepDropOff = new Map<number, number>()
+    for (let i = 1; i < stepIndices.length; i++) {
+      const prev = stepVisitors.get(stepIndices[i - 1]) ?? 0
+      const curr = stepVisitors.get(stepIndices[i]) ?? 0
+      if (prev > 0) {
+        stepDropOff.set(stepIndices[i], Math.round(((curr - prev) / prev) * 100))
+      }
+    }
+
+    const headerColor = isDark ? '#737373' : '#737373' // neutral-500
+    const visitorColor = isDark ? '#ffffff' : '#171717'
+
+    const headers = g
+      .selectAll('.step-header')
       .data(stepIndices)
-      .join('text')
+      .join('g')
       .attr('class', 'step-header')
-      .attr('x', (step) => step * stepWidth + NODE_WIDTH / 2)
-      .attr('y', HEADER_HEIGHT - 12)
+      .attr('transform', (step) => `translate(${step * stepWidth + NODE_WIDTH / 2},0)`)
+
+    // Line 1: "STEP N"
+    headers
+      .append('text')
+      .attr('y', 14)
       .attr('fill', headerColor)
       .attr('font-size', '11px')
-      .attr('font-weight', '600')
-      .attr('letter-spacing', '0.05em')
+      .attr('font-weight', '500')
+      .attr('letter-spacing', '1px')
       .attr('text-anchor', 'start')
-      .style('text-transform', 'uppercase')
-      .text((step) => `Step ${step + 1}`)
+      .text((step) => `STEP ${step + 1}`)
+
+    // Line 2: "X visitors" + optional drop-off
+    const visitorText = headers
+      .append('text')
+      .attr('y', 32)
+      .attr('font-size', '13px')
+      .attr('font-weight', '600')
+      .attr('text-anchor', 'start')
+
+    visitorText
+      .append('tspan')
+      .attr('fill', visitorColor)
+      .text((step) => `${(stepVisitors.get(step) ?? 0).toLocaleString()} visitors`)
+
+    visitorText
+      .append('tspan')
+      .attr('dx', 6)
+      .attr('font-size', '11px')
+      .attr('font-weight', '500')
+      .attr('fill', (step) => {
+        const pct = stepDropOff.get(step) ?? 0
+        if (pct === 0) return 'transparent'
+        return pct < 0 ? '#ef4444' : '#10b981'
+      })
+      .text((step) => {
+        const pct = stepDropOff.get(step)
+        if (pct === undefined || pct === 0) return ''
+        return pct > 0 ? `+${pct}%` : `${pct}%`
+      })
 
     // ── Draw links ────────────────────────────────────────
     g.selectAll('.link')
