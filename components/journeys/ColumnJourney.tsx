@@ -1,7 +1,6 @@
 'use client'
 
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { TreeStructure } from '@phosphor-icons/react'
 import type { PathTransition } from '@/lib/api/journeys'
 import { aggregateJourney, type AggregatedStep, type AggregatedPage } from '@/lib/journeys/aggregate'
 
@@ -9,7 +8,6 @@ import { aggregateJourney, type AggregatedStep, type AggregatedPage } from '@/li
 
 interface ColumnJourneyProps {
   transitions: PathTransition[]
-  totalSessions: number
   depth: number
   maxPagesPerStep?: number
 }
@@ -443,7 +441,6 @@ function getExitCount(
 
 export default function ColumnJourney({
   transitions,
-  totalSessions,
   depth,
   maxPagesPerStep = 20,
 }: ColumnJourneyProps) {
