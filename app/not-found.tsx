@@ -17,6 +17,8 @@ export default function NotFound() {
         <img
           src="/illustrations/page-not-found.svg"
           alt="Page not found"
+          loading="lazy"
+          decoding="async"
           className="w-72 h-auto mx-auto mb-8"
         />
         <h2 className="text-2xl font-bold text-white mb-6">
