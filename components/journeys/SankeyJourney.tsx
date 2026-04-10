@@ -42,6 +42,7 @@ const MAX_LINK_HEIGHT = 100
 const LINK_OPACITY = 0.3
 const LINK_HOVER_OPACITY = 0.6
 const MAX_NODES_PER_STEP = 25
+const HEADER_HEIGHT = 28
 
 const COLOR_PALETTE = [
   'hsl(160, 45%, 40%)', 'hsl(220, 45%, 50%)', 'hsl(270, 40%, 50%)',
@@ -77,13 +78,18 @@ function smartLabel(path: string): string {
 
 function buildData(
   transitions: PathTransition[],
+  depth: number,
   filterPath?: string,
 ): { nodes: SNode[]; links: SLink[] } {
   if (transitions.length === 0) return { nodes: [], links: [] }
 
+  // * Only include transitions whose target step stays within `depth` columns.
+  // * Steps are 0..depth-1 so transitions at step_index 0..depth-2 produce targets at step_index+1 < depth.
+  const scoped = transitions.filter((t) => t.step_index + 1 < depth)
+
   // Group transitions by step, count per path per step
   const stepPaths = new Map<number, Map<string, number>>()
-  for (const t of transitions) {
+  for (const t of scoped) {
     if (!stepPaths.has(t.step_index)) stepPaths.set(t.step_index, new Map())
     const fromMap = stepPaths.get(t.step_index)!
     fromMap.set(t.from_path, (fromMap.get(t.from_path) ?? 0) + t.session_count)
@@ -211,8 +217,8 @@ export default function SankeyJourney({
   }, [])
 
   const data = useMemo(
-    () => buildData(transitions, filterPath ?? undefined),
-    [transitions, filterPath],
+    () => buildData(transitions, depth, filterPath ?? undefined),
+    [transitions, depth, filterPath],
   )
 
   // Clear filter on data change
@@ -270,15 +276,15 @@ export default function SankeyJourney({
     const width = containerWidth
     const stepWidth = width / numSteps
 
-    // Calculate chart height from tallest column
+    // Calculate chart height from tallest column (add header + bottom padding)
     const stepHeights = Array.from(byStep.values()).map(
       (ns) => ns.reduce((s, n) => s + n.height, 0) + (ns.length - 1) * NODE_GAP,
     )
-    const height = Math.max(200, Math.max(...stepHeights) + 20)
+    const height = Math.max(200, Math.max(...stepHeights) + HEADER_HEIGHT + 20)
 
-    // Position nodes in columns, aligned from top
+    // Position nodes in columns, aligned from top (below header row)
     byStep.forEach((stepNodes, step) => {
-      let cy = 0
+      let cy = HEADER_HEIGHT
       for (const n of stepNodes) {
         n.x = step * stepWidth
         n.y = cy + n.height / 2
@@ -341,6 +347,23 @@ export default function SankeyJourney({
 
     svg.attr('width', width).attr('height', height)
     const g = svg.append('g')
+
+    // ── Draw step column headers ──────────────────────────
+    const headerColor = isDark ? '#a3a3a3' : '#525252'
+    const stepIndices = Array.from(byStep.keys()).sort((a, b) => a - b)
+    g.selectAll('.step-header')
+      .data(stepIndices)
+      .join('text')
+      .attr('class', 'step-header')
+      .attr('x', (step) => step * stepWidth + NODE_WIDTH / 2)
+      .attr('y', HEADER_HEIGHT - 12)
+      .attr('fill', headerColor)
+      .attr('font-size', '11px')
+      .attr('font-weight', '600')
+      .attr('letter-spacing', '0.05em')
+      .attr('text-anchor', 'start')
+      .style('text-transform', 'uppercase')
+      .text((step) => `Step ${step + 1}`)
 
     // ── Draw links ────────────────────────────────────────
     g.selectAll('.link')

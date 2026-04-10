@@ -19,10 +19,8 @@ import {
 } from '@/lib/api/stats'
 import {
   getJourneyTransitions,
-  getJourneyTopPaths,
   getJourneyEntryPoints,
   type TransitionsResponse,
-  type TopPath as JourneyTopPath,
   type EntryPoint,
 } from '@/lib/api/journeys'
 import { getSite } from '@/lib/api/sites'
@@ -81,8 +79,6 @@ const fetchers = {
   behavior: (siteId: string, start: string, end: string) => getBehavior(siteId, start, end),
   journeyTransitions: (siteId: string, start: string, end: string, depth?: number, minSessions?: number, entryPath?: string) =>
     getJourneyTransitions(siteId, start, end, { depth, minSessions, entryPath }),
-  journeyTopPaths: (siteId: string, start: string, end: string, limit?: number, minSessions?: number, entryPath?: string) =>
-    getJourneyTopPaths(siteId, start, end, { limit, minSessions, entryPath }),
   journeyEntryPoints: (siteId: string, start: string, end: string) =>
     getJourneyEntryPoints(siteId, start, end),
   funnels: (siteId: string) => listFunnels(siteId),
@@ -329,19 +325,6 @@ export function useJourneyTransitions(siteId: string, start: string, end: string
   return useSWR<TransitionsResponse>(
     siteId && start && end ? ['journeyTransitions', siteId, start, end, depth, minSessions, entryPath] : null,
     () => fetchers.journeyTransitions(siteId, start, end, depth, minSessions, entryPath),
-    {
-      ...dashboardSWRConfig,
-      refreshInterval: 60 * 1000,
-      dedupingInterval: 10 * 1000,
-    }
-  )
-}
-
-// * Hook for top journey paths
-export function useJourneyTopPaths(siteId: string, start: string, end: string, limit?: number, minSessions?: number, entryPath?: string) {
-  return useSWR<JourneyTopPath[]>(
-    siteId && start && end ? ['journeyTopPaths', siteId, start, end, limit, minSessions, entryPath] : null,
-    () => fetchers.journeyTopPaths(siteId, start, end, limit, minSessions, entryPath),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,
