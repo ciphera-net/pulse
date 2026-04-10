@@ -121,4 +121,64 @@ describe('useJourneyFilters', () => {
     const { result } = renderHook(() => useJourneyFilters())
     expect(result.current.isDefault).toBe(false)
   })
+
+  it('clamps depth on write when value exceeds max', () => {
+    const { result } = renderHook(() => useJourneyFilters())
+    act(() => {
+      result.current.setDepth(999)
+    })
+    const calledWith = mockReplace.mock.calls[0][0] as string
+    expect(calledWith).toContain('depth=6')
+  })
+
+  it('clamps density on write when value below min', () => {
+    const { result } = renderHook(() => useJourneyFilters())
+    act(() => {
+      result.current.setDensity(-10)
+    })
+    const calledWith = mockReplace.mock.calls[0][0] as string
+    expect(calledWith).toContain('density=5')
+  })
+
+  it('setPeriod with custom range writes start and end to URL', () => {
+    const { result } = renderHook(() => useJourneyFilters())
+    act(() => {
+      result.current.setPeriod('custom', { start: '2026-01-01', end: '2026-01-31' })
+    })
+    const calledWith = mockReplace.mock.calls[0][0] as string
+    expect(calledWith).toContain('period=custom')
+    expect(calledWith).toContain('start=2026-01-01')
+    expect(calledWith).toContain('end=2026-01-31')
+  })
+
+  it('switching away from custom period strips start and end from URL', () => {
+    mockSearchParams = new URLSearchParams('period=custom&start=2026-01-01&end=2026-01-31')
+    const { result } = renderHook(() => useJourneyFilters())
+    act(() => {
+      result.current.setPeriod('7')
+    })
+    const calledWith = mockReplace.mock.calls[0][0] as string
+    expect(calledWith).toContain('period=7')
+    expect(calledWith).not.toContain('start=')
+    expect(calledWith).not.toContain('end=')
+  })
+
+  it('reads custom dateRange from URL when period=custom with valid start/end', () => {
+    mockSearchParams = new URLSearchParams('period=custom&start=2026-01-01&end=2026-01-31')
+    const { result } = renderHook(() => useJourneyFilters())
+    expect(result.current.period).toBe('custom')
+    expect(result.current.dateRange).toEqual({ start: '2026-01-01', end: '2026-01-31' })
+  })
+
+  it('normalizes period=custom to default when start/end missing', () => {
+    mockSearchParams = new URLSearchParams('period=custom')
+    const { result } = renderHook(() => useJourneyFilters())
+    expect(result.current.period).toBe('30')
+  })
+
+  it('normalizes period=custom to default when start/end malformed', () => {
+    mockSearchParams = new URLSearchParams('period=custom&start=nonsense&end=also-bad')
+    const { result } = renderHook(() => useJourneyFilters())
+    expect(result.current.period).toBe('30')
+  })
 })
