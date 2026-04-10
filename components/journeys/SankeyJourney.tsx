@@ -45,8 +45,8 @@ interface SLink {
 
 // ─── Constants ──────────────────────────────────────────────────────
 
-const NODE_WIDTH = 6
-const NODE_HIT_WIDTH = 16
+const NODE_WIDTH = 10
+const NODE_HIT_WIDTH = 20
 const NODE_GAP = 20
 const MIN_NODE_HEIGHT = 3
 const MAX_LINK_HEIGHT = 50
