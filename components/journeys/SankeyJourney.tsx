@@ -107,11 +107,12 @@ function buildData(
     topPaths.set(step, new Set(sorted.slice(0, MAX_NODES_PER_STEP).map(([p]) => p)))
   }
 
-  // Build links
+  // Build links (use scoped transitions so stepPaths lookups never miss)
   const linkMap = new Map<string, number>()
-  for (const t of transitions) {
-    const fromTop = topPaths.get(t.step_index)!
-    const toTop = topPaths.get(t.step_index + 1)!
+  for (const t of scoped) {
+    const fromTop = topPaths.get(t.step_index)
+    const toTop = topPaths.get(t.step_index + 1)
+    if (!fromTop || !toTop) continue
     const fp = fromTop.has(t.from_path) ? t.from_path : '(other)'
     const tp = toTop.has(t.to_path) ? t.to_path : '(other)'
     if (fp === '(other)' && tp === '(other)') continue
