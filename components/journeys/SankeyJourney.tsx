@@ -4,13 +4,23 @@ import * as d3 from 'd3'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { TreeStructure, X } from '@phosphor-icons/react'
 import type { PathTransition } from '@/lib/api/journeys'
+import { aggregateJourney } from '@/lib/journeys/aggregate'
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
 
 // ─── Types ──────────────────────────────────────────────────────────
 
 interface SankeyJourneyProps {
   transitions: PathTransition[]
-  totalSessions: number
   depth: number
+  maxPagesPerStep?: number
 }
 
 interface SNode {
@@ -35,13 +45,16 @@ interface SLink {
 
 // ─── Constants ──────────────────────────────────────────────────────
 
-const NODE_WIDTH = 30
+const NODE_WIDTH = 14
+const NODE_HIT_WIDTH = 24
 const NODE_GAP = 20
-const MIN_NODE_HEIGHT = 2
-const MAX_LINK_HEIGHT = 100
+const MIN_NODE_HEIGHT = 3
+const MAX_LINK_HEIGHT = 50
+const MIN_LINK_HEIGHT = 1
 const LINK_OPACITY = 0.3
 const LINK_HOVER_OPACITY = 0.6
-const MAX_NODES_PER_STEP = 25
+const HEADER_HEIGHT = 56
+const LABEL_OFFSET = 4
 
 const COLOR_PALETTE = [
   'hsl(160, 45%, 40%)', 'hsl(220, 45%, 50%)', 'hsl(270, 40%, 50%)',
@@ -77,37 +90,32 @@ function smartLabel(path: string): string {
 
 function buildData(
   transitions: PathTransition[],
+  depth: number,
+  maxPagesPerStep: number,
   filterPath?: string,
 ): { nodes: SNode[]; links: SLink[] } {
   if (transitions.length === 0) return { nodes: [], links: [] }
 
-  // Group transitions by step, count per path per step
-  const stepPaths = new Map<number, Map<string, number>>()
-  for (const t of transitions) {
-    if (!stepPaths.has(t.step_index)) stepPaths.set(t.step_index, new Map())
-    const fromMap = stepPaths.get(t.step_index)!
-    fromMap.set(t.from_path, (fromMap.get(t.from_path) ?? 0) + t.session_count)
+  const aggregated = aggregateJourney(transitions, { depth, maxPagesPerStep })
+  if (aggregated.length === 0) return { nodes: [], links: [] }
 
-    const nextStep = t.step_index + 1
-    if (!stepPaths.has(nextStep)) stepPaths.set(nextStep, new Map())
-    const toMap = stepPaths.get(nextStep)!
-    toMap.set(t.to_path, (toMap.get(t.to_path) ?? 0) + t.session_count)
+  // * Build set of which paths survived (other) rollup per step
+  const pathsByStep = new Map<number, Set<string>>()
+  for (const step of aggregated) {
+    pathsByStep.set(step.index, new Set(step.pages.map((p) => p.path)))
   }
 
-  // Keep top N per step, rest → (other)
-  const topPaths = new Map<number, Set<string>>()
-  for (const [step, pm] of stepPaths) {
-    const sorted = Array.from(pm.entries()).sort((a, b) => b[1] - a[1])
-    topPaths.set(step, new Set(sorted.slice(0, MAX_NODES_PER_STEP).map(([p]) => p)))
-  }
+  // * Scope transitions to within the requested depth
+  const scoped = transitions.filter((t) => t.step_index + 1 < depth)
 
-  // Build links
+  // * Build links — use (other) as fallback when a path was rolled up
   const linkMap = new Map<string, number>()
-  for (const t of transitions) {
-    const fromTop = topPaths.get(t.step_index)!
-    const toTop = topPaths.get(t.step_index + 1)!
-    const fp = fromTop.has(t.from_path) ? t.from_path : '(other)'
-    const tp = toTop.has(t.to_path) ? t.to_path : '(other)'
+  for (const t of scoped) {
+    const fromPaths = pathsByStep.get(t.step_index)
+    const toPaths = pathsByStep.get(t.step_index + 1)
+    if (!fromPaths || !toPaths) continue
+    const fp = fromPaths.has(t.from_path) ? t.from_path : '(other)'
+    const tp = toPaths.has(t.to_path) ? t.to_path : '(other)'
     if (fp === '(other)' && tp === '(other)') continue
     const src = `${t.step_index}:${fp}`
     const tgt = `${t.step_index + 1}:${tp}`
@@ -120,19 +128,31 @@ function buildData(
     return { source, target, value: v }
   })
 
-  // Collect node IDs
+  // * Build nodes from aggregated step pages + any link endpoints (to catch (other) nodes)
   const nodeIdSet = new Set<string>()
-  for (const l of links) { nodeIdSet.add(l.source); nodeIdSet.add(l.target) }
+  for (const step of aggregated) {
+    for (const page of step.pages) {
+      nodeIdSet.add(`${step.index}:${page.path}`)
+    }
+  }
+  for (const l of links) {
+    nodeIdSet.add(l.source)
+    nodeIdSet.add(l.target)
+  }
 
   let nodes: SNode[] = Array.from(nodeIdSet).map((id) => ({
     id,
     name: pathFromId(id),
     step: stepFromId(id),
-    height: 0, x: 0, y: 0, count: 0,
-    inLinks: [], outLinks: [],
+    height: 0,
+    x: 0,
+    y: 0,
+    count: 0,
+    inLinks: [],
+    outLinks: [],
   }))
 
-  // Filter by path (BFS forward + backward)
+  // * Filter by clicked path (BFS forward + backward) — UNCHANGED from original
   if (filterPath) {
     const matchIds = nodes.filter((n) => n.name === filterPath).map((n) => n.id)
     if (matchIds.length === 0) return { nodes: [], links: [] }
@@ -181,8 +201,8 @@ function buildData(
 
 export default function SankeyJourney({
   transitions,
-  totalSessions,
   depth,
+  maxPagesPerStep = 20,
 }: SankeyJourneyProps) {
   const [filterPath, setFilterPath] = useState<string | null>(null)
   const [isDark, setIsDark] = useState(false)
@@ -211,12 +231,12 @@ export default function SankeyJourney({
   }, [])
 
   const data = useMemo(
-    () => buildData(transitions, filterPath ?? undefined),
-    [transitions, filterPath],
+    () => buildData(transitions, depth, maxPagesPerStep, filterPath ?? undefined),
+    [transitions, depth, maxPagesPerStep, filterPath],
   )
 
   // Clear filter on data change
-  const transKey = transitions.length + '-' + depth
+  const transKey = transitions.length + '-' + depth + '-' + maxPagesPerStep
   const [prevKey, setPrevKey] = useState(transKey)
   if (prevKey !== transKey) {
     setPrevKey(transKey)
@@ -255,7 +275,9 @@ export default function SankeyJourney({
       n.count = n.step === 0 ? outVal : Math.max(inVal, outVal)
     }
 
-    // Calculate node heights (proportional to value)
+    // Calculate node + link heights (proportional to value, shared scale).
+    // MAX_LINK_HEIGHT is intentionally small so nodes stay as Rybbit-style
+    // thin strips rather than tall bars.
     const maxVal = d3.max(links, (l) => l.value) || 1
     const heightScale = d3.scaleLinear().domain([0, maxVal]).range([0, MAX_LINK_HEIGHT])
     for (const n of nodes) {
@@ -270,15 +292,15 @@ export default function SankeyJourney({
     const width = containerWidth
     const stepWidth = width / numSteps
 
-    // Calculate chart height from tallest column
+    // Calculate chart height from tallest column (add header + bottom padding)
     const stepHeights = Array.from(byStep.values()).map(
       (ns) => ns.reduce((s, n) => s + n.height, 0) + (ns.length - 1) * NODE_GAP,
     )
-    const height = Math.max(200, Math.max(...stepHeights) + 20)
+    const height = Math.max(200, Math.max(...stepHeights) + HEADER_HEIGHT + 20)
 
-    // Position nodes in columns, aligned from top
+    // Position nodes in columns, aligned from top (below header row)
     byStep.forEach((stepNodes, step) => {
-      let cy = 0
+      let cy = HEADER_HEIGHT
       for (const n of stepNodes) {
         n.x = step * stepWidth
         n.y = cy + n.height / 2
@@ -342,6 +364,78 @@ export default function SankeyJourney({
     svg.attr('width', width).attr('height', height)
     const g = svg.append('g')
 
+    // ── Draw step column headers (match ColumnJourney style) ─
+    // Visitors per step: step 0 uses outgoing totals, later steps use incoming
+    const stepVisitors = new Map<number, number>()
+    for (const n of nodes) {
+      const val =
+        n.step === 0
+          ? n.outLinks.reduce((s, l) => s + l.value, 0)
+          : n.inLinks.reduce((s, l) => s + l.value, 0)
+      stepVisitors.set(n.step, (stepVisitors.get(n.step) ?? 0) + val)
+    }
+    const stepIndices = Array.from(byStep.keys()).sort((a, b) => a - b)
+
+    // Drop-off % per step vs. previous step
+    const stepDropOff = new Map<number, number>()
+    for (let i = 1; i < stepIndices.length; i++) {
+      const prev = stepVisitors.get(stepIndices[i - 1]) ?? 0
+      const curr = stepVisitors.get(stepIndices[i]) ?? 0
+      if (prev > 0) {
+        stepDropOff.set(stepIndices[i], Math.round(((curr - prev) / prev) * 100))
+      }
+    }
+
+    const headerColor = isDark ? '#737373' : '#737373' // neutral-500
+    const visitorColor = isDark ? '#ffffff' : '#171717'
+
+    const headers = g
+      .selectAll('.step-header')
+      .data(stepIndices)
+      .join('g')
+      .attr('class', 'step-header')
+      .attr('transform', (step) => `translate(${step * stepWidth + NODE_WIDTH / 2},0)`)
+
+    // Line 1: "STEP N"
+    headers
+      .append('text')
+      .attr('y', 14)
+      .attr('fill', headerColor)
+      .attr('font-size', '11px')
+      .attr('font-weight', '500')
+      .attr('letter-spacing', '1px')
+      .attr('text-anchor', 'start')
+      .text((step) => `STEP ${step + 1}`)
+
+    // Line 2: "X visitors" + optional drop-off
+    const visitorText = headers
+      .append('text')
+      .attr('y', 32)
+      .attr('font-size', '13px')
+      .attr('font-weight', '600')
+      .attr('text-anchor', 'start')
+
+    visitorText
+      .append('tspan')
+      .attr('fill', visitorColor)
+      .text((step) => `${(stepVisitors.get(step) ?? 0).toLocaleString()} visitors`)
+
+    visitorText
+      .append('tspan')
+      .attr('dx', 6)
+      .attr('font-size', '11px')
+      .attr('font-weight', '500')
+      .attr('fill', (step) => {
+        const pct = stepDropOff.get(step) ?? 0
+        if (pct === 0) return 'transparent'
+        return pct < 0 ? '#ef4444' : '#10b981'
+      })
+      .text((step) => {
+        const pct = stepDropOff.get(step)
+        if (pct === undefined || pct === 0) return ''
+        return pct > 0 ? `+${pct}%` : `${pct}%`
+      })
+
     // ── Draw links ────────────────────────────────────────
     g.selectAll('.link')
       .data(links)
@@ -350,25 +444,28 @@ export default function SankeyJourney({
       .attr('d', linkPath)
       .attr('fill', 'none')
       .attr('stroke', (d) => linkSourceColor(d))
-      .attr('stroke-width', (d) => heightScale(d.value))
+      .attr('stroke-width', (d) => Math.max(MIN_LINK_HEIGHT, heightScale(d.value)))
       .attr('opacity', LINK_OPACITY)
       .attr('data-source', (d) => d.source)
       .attr('data-target', (d) => d.target)
       .style('pointer-events', 'none')
 
-    // ── Tooltip ───────────────────────────────────────────
+    // ── Tooltip — matches sidebar tooltip styling ─────────
     const tooltip = d3.select('body').append('div')
-      .style('position', 'absolute')
+      .style('position', 'fixed')
       .style('visibility', 'hidden')
-      .style('background', isDark ? '#262626' : '#f5f5f5')
-      .style('border', `1px solid ${isDark ? '#404040' : '#d4d4d4'}`)
-      .style('border-radius', '8px')
-      .style('padding', '8px 12px')
-      .style('font-size', '12px')
-      .style('color', isDark ? '#fff' : '#171717')
+      .style('background-color', '#0a0a0a')                       // bg-neutral-950
+      .style('border', '1px solid rgba(38, 38, 38, 0.6)')         // border-neutral-800/60
+      .style('border-radius', '8px')                              // rounded-lg
+      .style('padding', '8px 12px')                               // px-3 py-2
+      .style('font-size', '14px')                                 // text-sm
+      .style('font-weight', '500')                                // font-medium
+      .style('color', '#ffffff')                                  // text-white
+      .style('white-space', 'nowrap')                             // whitespace-nowrap
       .style('pointer-events', 'none')
-      .style('z-index', '9999')
-      .style('box-shadow', '0 4px 12px rgba(0,0,0,0.15)')
+      .style('z-index', '100')
+      .style('box-shadow', '0 10px 15px -3px rgba(0, 0, 0, 0.2)') // shadow-lg shadow-black/20
+      .style('transform', 'translateY(-50%)')                     // -translate-y-1/2
 
     // ── Draw nodes ────────────────────────────────────────
     const nodeGs = g.selectAll('.node')
@@ -376,6 +473,15 @@ export default function SankeyJourney({
       .join('g')
       .attr('class', 'node')
       .attr('transform', (d) => `translate(${d.x},${d.y - d.height / 2})`)
+      .style('cursor', 'pointer')
+
+    // Node hit area (invisible, wider than visible rect for easier clicking)
+    nodeGs.append('rect')
+      .attr('class', 'node-hit')
+      .attr('x', -(NODE_HIT_WIDTH - NODE_WIDTH) / 2)
+      .attr('width', NODE_HIT_WIDTH)
+      .attr('height', (d) => d.height)
+      .attr('fill', 'transparent')
       .style('cursor', 'pointer')
 
     // Node bars
@@ -390,7 +496,7 @@ export default function SankeyJourney({
     // Node labels
     nodeGs.append('text')
       .attr('class', 'node-text')
-      .attr('x', NODE_WIDTH + 6)
+      .attr('x', NODE_WIDTH + LABEL_OFFSET)
       .attr('y', (d) => d.height / 2 + 4)
       .text((d) => smartLabel(d.name))
       .attr('font-size', '12px')
@@ -453,12 +559,12 @@ export default function SankeyJourney({
     nodeGs
       .on('mouseenter', function (event, d) {
         tooltip.style('visibility', 'visible')
-          .html(`<div style="font-weight:600;margin-bottom:2px">${d.name}</div><div style="opacity:0.7">${d.count.toLocaleString()} sessions</div>`)
+          .html(`<div>${escapeHtml(d.name)}</div><div style="color:#a3a3a3;font-weight:400;margin-top:2px">${d.count.toLocaleString()} sessions</div>`)
           .style('top', `${event.pageY - 10}px`).style('left', `${event.pageX + 12}px`)
         highlightPaths(d.id)
       })
       .on('mousemove', (event) => {
-        tooltip.style('top', `${event.pageY - 10}px`).style('left', `${event.pageX + 12}px`)
+        tooltip.style('top', `${event.clientY}px`).style('left', `${event.clientX + 14}px`)
       })
       .on('mouseleave', resetHighlight)
       .on('click', (_, d) => handleNodeClick(d.name))
@@ -479,7 +585,7 @@ export default function SankeyJourney({
         const src = nodeMap.get(d.source)
         const tgt = nodeMap.get(d.target)
         tooltip.style('visibility', 'visible')
-          .html(`<div style="font-weight:600;margin-bottom:2px">${src?.name ?? '?'} → ${tgt?.name ?? '?'}</div><div style="opacity:0.7">${d.value.toLocaleString()} sessions</div>`)
+          .html(`<div>${escapeHtml(src?.name ?? '?')} → ${escapeHtml(tgt?.name ?? '?')}</div><div style="color:#a3a3a3;font-weight:400;margin-top:2px">${d.value.toLocaleString()} sessions</div>`)
           .style('top', `${event.pageY - 10}px`).style('left', `${event.pageX + 12}px`)
         // Highlight this link's connected paths
         const all = [d, ...findConnected(d, 'fwd'), ...findConnected(d, 'bwd')]
@@ -498,7 +604,7 @@ export default function SankeyJourney({
           .attr('opacity', (nd) => nids.has(nd.id) ? 1 : 0.2)
       })
       .on('mousemove', (event) => {
-        tooltip.style('top', `${event.pageY - 10}px`).style('left', `${event.pageX + 12}px`)
+        tooltip.style('top', `${event.clientY}px`).style('left', `${event.clientX + 14}px`)
       })
       .on('mouseleave', resetHighlight)
 

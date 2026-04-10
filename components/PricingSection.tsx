@@ -10,6 +10,7 @@ import { toast } from '@ciphera-net/ui'
 import { useSubscription } from '@/lib/swr/dashboard'
 import PricingFAQ from '@/components/marketing/PricingFAQ'
 import CTASection from '@/components/marketing/CTASection'
+import RangeSlider from '@/components/ui/RangeSlider'
 
 // 1. Define Plans with IDs, Categories, and Feature Matrix
 const PLANS = [
@@ -234,69 +235,18 @@ export default function PricingSection() {
         </p>
 
         {/* Desktop: Custom slider with tick marks */}
-        <div className="hidden md:flex flex-col items-center w-full px-8">
-          {/* Tick mark labels */}
-          <div className="relative w-full h-5 mb-4">
-            {TRAFFIC_TIERS.map((tier, i) => (
-              <button
-                key={tier.label}
-                onClick={() => setSliderIndex(i)}
-                className={`absolute text-xs uppercase tracking-wider -translate-x-1/2 transition-colors ${
-                  i === sliderIndex
-                    ? 'text-white font-semibold'
-                    : 'text-neutral-500 hover:text-neutral-300'
-                }`}
-                style={{ left: `${(i / (TRAFFIC_TIERS.length - 1)) * 100}%` }}
-              >
-                {tier.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Custom track */}
-          <div className="relative w-full h-4 flex items-center">
-            <input
-              type="range"
-              min="0"
-              max={TRAFFIC_TIERS.length - 1}
-              step="1"
-              value={sliderIndex}
-              onChange={(e) => setSliderIndex(parseInt(e.target.value))}
-              aria-label="Monthly pageview limit"
-              aria-valuetext={`${currentTraffic.label} pageviews per month`}
-              className="absolute w-full h-full opacity-0 cursor-pointer z-10"
-            />
-            {/* Background track */}
-            <div className="absolute w-full h-1.5 bg-neutral-700 rounded-full" />
-            {/* Active fill */}
-            <div
-              className="absolute h-1.5 bg-brand-orange rounded-full pointer-events-none"
-              style={{ width: `${(sliderIndex / (TRAFFIC_TIERS.length - 1)) * 100}%` }}
-            />
-            {/* Drag handle */}
-            <div
-              className="absolute w-8 h-4 bg-brand-orange border border-brand-orange-hover rounded-full cursor-grab active:cursor-grabbing flex items-center justify-center gap-0.5 -translate-x-1/2 shadow-lg"
-              style={{ left: `${(sliderIndex / (TRAFFIC_TIERS.length - 1)) * 100}%` }}
-              onPointerDown={(e) => {
-                const track = e.currentTarget.parentElement!
-                const rect = track.getBoundingClientRect()
-                const move = (ev: PointerEvent) => {
-                  const pct = Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width))
-                  setSliderIndex(Math.round(pct * (TRAFFIC_TIERS.length - 1)))
-                }
-                const up = () => {
-                  document.removeEventListener('pointermove', move)
-                  document.removeEventListener('pointerup', up)
-                }
-                document.addEventListener('pointermove', move)
-                document.addEventListener('pointerup', up)
-                e.preventDefault()
-              }}
-            >
-              <div className="w-0.5 h-1.5 rounded-sm bg-white/50" />
-              <div className="w-0.5 h-1.5 rounded-sm bg-white/50" />
-            </div>
-          </div>
+        <div className="hidden md:block">
+          <RangeSlider
+            label=""
+            min={0}
+            max={TRAFFIC_TIERS.length - 1}
+            step={1}
+            value={sliderIndex}
+            onChange={setSliderIndex}
+            ariaValueText={`${currentTraffic.label} pageviews per month`}
+            ticks={TRAFFIC_TIERS.map((t) => t.label)}
+            onTickClick={setSliderIndex}
+          />
         </div>
 
         {/* Mobile: Dropdown select */}
