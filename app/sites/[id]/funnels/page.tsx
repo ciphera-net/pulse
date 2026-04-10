@@ -56,7 +56,7 @@ export default function FunnelsPage() {
         </div>
 
         {funnels.length === 0 ? (
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-12 text-center flex flex-col items-center">
+          <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-12 text-center flex flex-col items-center">
             <Image
               src="/illustrations/data-trends.svg"
               alt="Create your first funnel"
@@ -86,7 +86,7 @@ export default function FunnelsPage() {
                 href={`/sites/${siteId}/funnels/${funnel.id}`}
                 className="block group"
               >
-                <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 hover:border-brand-orange/50 transition-colors">
+                <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 hover:border-brand-orange/50 transition-colors">
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-xl font-bold text-white group-hover:text-brand-orange transition-colors">

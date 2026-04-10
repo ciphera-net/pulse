@@ -152,16 +152,16 @@ export default function CDNPage() {
           <StatCardSkeleton />
           <StatCardSkeleton />
         </div>
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 mb-6">
+        <div className="bg-neutral-900/80 border border-white/[0.08] rounded-xl p-6 mb-6">
           <SkeletonLine className="h-6 w-40 mb-4" />
           <SkeletonLine className="h-64 w-full rounded-lg" />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6">
+          <div className="bg-neutral-900/80 border border-white/[0.08] rounded-xl p-6">
             <SkeletonLine className="h-6 w-32 mb-4" />
             <SkeletonLine className="h-48 w-full rounded-lg" />
           </div>
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6">
+          <div className="bg-neutral-900/80 border border-white/[0.08] rounded-xl p-6">
             <SkeletonLine className="h-6 w-32 mb-4" />
             <SkeletonLine className="h-48 w-full rounded-lg" />
           </div>
@@ -282,7 +282,7 @@ export default function CDNPage() {
       </div>
 
       {/* Bandwidth chart */}
-      <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 mb-6">
+      <div className="rounded-xl border border-white/[0.08] bg-neutral-900/80 p-6 mb-6">
         <h2 className="text-sm font-semibold text-white mb-4">Bandwidth</h2>
         {daily.length > 0 ? (
           <ResponsiveContainer width="100%" height={280}>
@@ -360,7 +360,7 @@ export default function CDNPage() {
       {/* Requests + Errors charts side by side */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         {/* Requests chart */}
-        <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6">
+        <div className="rounded-xl border border-white/[0.08] bg-neutral-900/80 p-6">
           <h2 className="text-sm font-semibold text-white mb-4">Requests</h2>
           {daily.length > 0 ? (
             <ResponsiveContainer width="100%" height={220}>
@@ -406,7 +406,7 @@ export default function CDNPage() {
         </div>
 
         {/* Errors chart */}
-        <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6">
+        <div className="rounded-xl border border-white/[0.08] bg-neutral-900/80 p-6">
           <h2 className="text-sm font-semibold text-white mb-4">Errors</h2>
           {daily.length > 0 ? (
             <ResponsiveContainer width="100%" height={220}>
@@ -465,7 +465,7 @@ export default function CDNPage() {
       </div>
 
       {/* Traffic Distribution */}
-      <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6">
+      <div className="rounded-xl border border-white/[0.08] bg-neutral-900/80 p-6">
         <h2 className="text-sm font-semibold text-white mb-4">Traffic Distribution</h2>
         {countries.length > 0 ? (
           <>
@@ -531,7 +531,7 @@ function OverviewCard({
   const changeLabel = change ? (change.positive ? '+' : '') + change.value.toFixed(1) + '%' : null
 
   return (
-    <div className="p-4 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900">
+    <div className="p-4 rounded-xl border border-white/[0.08] bg-neutral-900/80">
       <p className="text-xs font-medium text-neutral-400 mb-1">{label}</p>
       <p className="text-2xl font-bold text-white">{value}</p>
       {changeLabel && (

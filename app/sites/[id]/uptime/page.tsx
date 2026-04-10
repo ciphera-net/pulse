@@ -415,7 +415,7 @@ export default function UptimePage() {
         </div>
 
         {/* Empty state */}
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-12 text-center">
+        <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-12 text-center">
           <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
             <svg className="w-8 h-8 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -466,7 +466,7 @@ export default function UptimePage() {
       </div>
 
       {/* Overall status card */}
-      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 mb-6">
+      <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-5 mb-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className={`w-3.5 h-3.5 rounded-full ${getStatusDotColor(overallStatus)}`} />
@@ -494,7 +494,7 @@ export default function UptimePage() {
 
       {/* 90-day uptime bar */}
       {monitor && (
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 mb-6">
+        <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-5 mb-6">
           <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">
             90-Day Availability
           </h3>
@@ -508,7 +508,7 @@ export default function UptimePage() {
 
       {/* Response time chart + Recent checks */}
       {monitor && (
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5">
+        <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-5">
           {/* Monitor details grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
             <div>
