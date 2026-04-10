@@ -61,10 +61,12 @@ function parsePeriod(raw: string | null): Period {
   return DEFAULT_PERIOD
 }
 
-function periodToDateRange(
-  period: Period,
-  customRange?: { start: string; end: string },
-) {
+function isValidDateString(s: string | null): s is string {
+  if (!s) return false
+  return /^\d{4}-\d{2}-\d{2}$/.test(s)
+}
+
+function periodToDateRange(period: Period) {
   switch (period) {
     case 'today': {
       const today = formatDate(new Date())
@@ -79,7 +81,8 @@ function periodToDateRange(
     case 'month':
       return getThisMonthRange()
     case 'custom':
-      return customRange ?? getDateRange(30)
+      // * Fallback only — actual custom range comes from URL read path
+      return getDateRange(30)
   }
 }
 
@@ -123,14 +126,25 @@ export function useJourneyFilters(): JourneyFilters {
   )
   const entryPath = searchParams.get('entry') ?? ''
   const viewMode = parseView(searchParams.get('view'))
-  const period = parsePeriod(searchParams.get('period'))
 
-  const [customRange, setCustomRange] = useState<
-    { start: string; end: string } | undefined
-  >(undefined)
+  // * Raw period value from URL (may be 'custom')
+  const rawPeriod = parsePeriod(searchParams.get('period'))
+  const rawStart = searchParams.get('start')
+  const rawEnd = searchParams.get('end')
+
+  // * If period=custom but dates invalid, normalize to default period
+  const period: Period =
+    rawPeriod === 'custom' &&
+    (!isValidDateString(rawStart) || !isValidDateString(rawEnd))
+      ? DEFAULT_PERIOD
+      : rawPeriod
+
   const dateRange = useMemo(
-    () => periodToDateRange(period, customRange),
-    [period, customRange],
+    () =>
+      period === 'custom' && rawStart && rawEnd
+        ? { start: rawStart, end: rawEnd }
+        : periodToDateRange(period),
+    [period, rawStart, rawEnd],
   )
 
   const [committedDepth, setCommittedDepth] = useState(depth)
@@ -168,11 +182,17 @@ export function useJourneyFilters(): JourneyFilters {
   )
 
   const setDepth = useCallback(
-    (n: number) => updateUrl({ depth: n }),
+    (n: number) => {
+      const clamped = Math.max(DEPTH_MIN, Math.min(DEPTH_MAX, n))
+      updateUrl({ depth: clamped })
+    },
     [updateUrl],
   )
   const setDensity = useCallback(
-    (n: number) => updateUrl({ density: n }),
+    (n: number) => {
+      const clamped = Math.max(DENSITY_MIN, Math.min(DENSITY_MAX, n))
+      updateUrl({ density: clamped })
+    },
     [updateUrl],
   )
   const setEntryPath = useCallback(
@@ -186,9 +206,11 @@ export function useJourneyFilters(): JourneyFilters {
   const setPeriod = useCallback(
     (p: Period, range?: { start: string; end: string }) => {
       if (p === 'custom' && range) {
-        setCustomRange(range)
+        updateUrl({ period: p, start: range.start, end: range.end })
+      } else {
+        // * Non-custom period: strip start/end
+        updateUrl({ period: p, start: null, end: null })
       }
-      updateUrl({ period: p })
     },
     [updateUrl],
   )
@@ -200,8 +222,9 @@ export function useJourneyFilters(): JourneyFilters {
       entry: null,
       view: null,
       period: null,
+      start: null,
+      end: null,
     })
-    setCustomRange(undefined)
   }, [updateUrl])
 
   const isDefault =
