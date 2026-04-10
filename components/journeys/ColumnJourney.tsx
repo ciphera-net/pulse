@@ -3,6 +3,7 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { TreeStructure } from '@phosphor-icons/react'
 import type { PathTransition } from '@/lib/api/journeys'
+import { aggregateJourney, type AggregatedStep, type AggregatedPage } from '@/lib/journeys/aggregate'
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -10,18 +11,7 @@ interface ColumnJourneyProps {
   transitions: PathTransition[]
   totalSessions: number
   depth: number
-}
-
-interface ColumnPage {
-  path: string
-  sessionCount: number
-}
-
-interface Column {
-  index: number
-  totalSessions: number
-  dropOffPercent: number
-  pages: ColumnPage[]
+  maxPagesPerStep?: number
 }
 
 interface LineDef {
@@ -38,7 +28,6 @@ const COLUMN_COLORS = [
   '#FD5E0F', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6',
   '#EC4899', '#06B6D4', '#EF4444', '#84CC16', '#F97316', '#6366F1',
 ]
-const MAX_NODES_PER_COLUMN = 10
 
 function colorForColumn(col: number): string {
   return COLUMN_COLORS[col % COLUMN_COLORS.length]
@@ -81,63 +70,6 @@ function useAnimatedCount(target: number, duration = 400): number {
   return display
 }
 
-// ─── Data transformation ────────────────────────────────────────────
-
-function buildColumns(
-  transitions: PathTransition[],
-  depth: number,
-): Column[] {
-  const numCols = depth
-  const columns: Column[] = []
-
-  for (let col = 0; col < numCols; col++) {
-    const pageMap = new Map<string, number>()
-
-    if (col === 0) {
-      for (const t of transitions) {
-        if (t.step_index === 0) {
-          pageMap.set(t.from_path, (pageMap.get(t.from_path) ?? 0) + t.session_count)
-        }
-      }
-    } else {
-      for (const t of transitions) {
-        if (t.step_index === col - 1) {
-          pageMap.set(t.to_path, (pageMap.get(t.to_path) ?? 0) + t.session_count)
-        }
-      }
-    }
-
-    let pages = Array.from(pageMap.entries())
-      .map(([path, sessionCount]) => ({ path, sessionCount }))
-      .sort((a, b) => b.sessionCount - a.sessionCount)
-
-    if (pages.length > MAX_NODES_PER_COLUMN) {
-      const kept = pages.slice(0, MAX_NODES_PER_COLUMN)
-      const otherCount = pages
-        .slice(MAX_NODES_PER_COLUMN)
-        .reduce((sum, p) => sum + p.sessionCount, 0)
-      kept.push({ path: '(other)', sessionCount: otherCount })
-      pages = kept
-    }
-
-    const totalSessions = pages.reduce((sum, p) => sum + p.sessionCount, 0)
-    const prevTotal = col > 0 ? columns[col - 1].totalSessions : totalSessions
-    const dropOffPercent =
-      col === 0 || prevTotal === 0
-        ? 0
-        : Math.round(((totalSessions - prevTotal) / prevTotal) * 100)
-
-    columns.push({ index: col, totalSessions, dropOffPercent, pages })
-  }
-
-  // Trim empty trailing columns
-  while (columns.length > 1 && columns[columns.length - 1].pages.length === 0) {
-    columns.pop()
-  }
-
-  return columns
-}
-
 // ─── Sub-components ─────────────────────────────────────────────────
 
 function AnimatedDropOff({ percent }: { percent: number }) {
@@ -158,7 +90,7 @@ function AnimatedDropOff({ percent }: { percent: number }) {
 function ColumnHeader({
   column,
 }: {
-  column: Column
+  column: AggregatedStep
 }) {
   return (
     <div className="flex flex-col items-center gap-0.5 mb-4">
@@ -167,7 +99,7 @@ function ColumnHeader({
       </span>
       <div className="flex items-baseline gap-1.5">
         <span className="text-sm font-semibold text-white tabular-nums">
-          {column.totalSessions.toLocaleString()} visitors
+          {column.visitors.toLocaleString()} visitors
         </span>
         {column.dropOffPercent !== 0 && (
           <AnimatedDropOff percent={column.dropOffPercent} />
@@ -188,7 +120,7 @@ function PageRow({
   isMounted,
   onClick,
 }: {
-  page: ColumnPage
+  page: AggregatedPage
   colIndex: number
   rowIndex: number
   columnTotal: number
@@ -269,7 +201,7 @@ function JourneyColumn({
   exitCount,
   onSelect,
 }: {
-  column: Column
+  column: AggregatedStep
   selectedPath: string | undefined
   exitCount: number
   onSelect: (path: string) => void
@@ -314,14 +246,14 @@ function JourneyColumn({
       <ColumnHeader column={column} />
       <div className="space-y-0.5 max-h-[500px] overflow-y-auto">
         {column.pages.map((page, rowIndex) => {
-          const isOther = page.path === '(other)'
+          const isOther = page.isOther
           return (
             <PageRow
               key={page.path}
               page={page}
               colIndex={column.index}
               rowIndex={rowIndex}
-              columnTotal={column.totalSessions}
+              columnTotal={column.visitors}
               maxCount={maxCount}
               isSelected={selectedPath === page.path}
               isOther={isOther}
@@ -370,7 +302,7 @@ function ConnectionLines({
 }: {
   containerRef: React.RefObject<HTMLDivElement | null>
   selections: Map<number, string>
-  columns: Column[]
+  columns: AggregatedStep[]
   transitions: PathTransition[]
 }) {
   const [lines, setLines] = useState<(LineDef & { color: string; length: number })[]>([])
@@ -495,7 +427,7 @@ function ConnectionLines({
 function getExitCount(
   colIdx: number,
   selectedPath: string,
-  columns: Column[],
+  columns: AggregatedStep[],
   transitions: PathTransition[],
 ): number {
   const col = columns[colIdx]
@@ -513,6 +445,7 @@ export default function ColumnJourney({
   transitions,
   totalSessions,
   depth,
+  maxPagesPerStep = 20,
 }: ColumnJourneyProps) {
   const [selections, setSelections] = useState<Map<number, string>>(new Map())
   const containerRef = useRef<HTMLDivElement>(null)
@@ -529,8 +462,8 @@ export default function ColumnJourney({
   }
 
   const columns = useMemo(
-    () => buildColumns(transitions, depth),
-    [transitions, depth]
+    () => aggregateJourney(transitions, { depth, maxPagesPerStep }),
+    [transitions, depth, maxPagesPerStep]
   )
 
 
