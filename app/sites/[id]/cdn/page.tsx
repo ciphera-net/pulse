@@ -318,7 +318,7 @@ export default function CDNPage() {
                 content={({ active, payload, label }) => {
                   if (!active || !payload?.length) return null
                   return (
-                    <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 shadow-lg text-sm">
+                    <div className="rounded-lg border border-white/[0.08] bg-neutral-900/80 px-3 py-2 shadow-lg text-sm">
                       <p className="text-neutral-400 mb-1">{formatDateShort(label)}</p>
                       <p className="text-white font-medium">
                         Total: {formatBytes(payload[0]?.value as number)}
@@ -386,7 +386,7 @@ export default function CDNPage() {
                   content={({ active, payload, label }) => {
                     if (!active || !payload?.length) return null
                     return (
-                      <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 shadow-lg text-sm">
+                      <div className="rounded-lg border border-white/[0.08] bg-neutral-900/80 px-3 py-2 shadow-lg text-sm">
                         <p className="text-neutral-400 mb-1">{formatDateShort(label)}</p>
                         <p className="text-white font-medium">
                           {formatNumber(payload[0]?.value as number)} requests
@@ -440,7 +440,7 @@ export default function CDNPage() {
                   content={({ active, payload, label }) => {
                     if (!active || !payload?.length) return null
                     return (
-                      <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 shadow-lg text-sm">
+                      <div className="rounded-lg border border-white/[0.08] bg-neutral-900/80 px-3 py-2 shadow-lg text-sm">
                         <p className="text-neutral-400 mb-1">{formatDateShort(label)}</p>
                         {payload.map((entry) => (
                           <p key={entry.name} style={{ color: entry.color }} className="font-medium">

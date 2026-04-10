@@ -115,7 +115,7 @@ export default function AdminOrgDetailPage() {
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* Current Status */}
-        <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 shadow-sm">
+        <div className="rounded-2xl border border-white/[0.08] bg-neutral-900/80 p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-white mb-4">Current Status</h3>
           <div className="grid grid-cols-2 gap-2 text-sm">
               <span className="text-neutral-500">Plan:</span>
@@ -144,7 +144,7 @@ export default function AdminOrgDetailPage() {
         </div>
 
         {/* Sites */}
-        <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 shadow-sm">
+        <div className="rounded-2xl border border-white/[0.08] bg-neutral-900/80 p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-white mb-4">Sites ({org.sites.length})</h3>
             <ul className="space-y-2 max-h-60 overflow-y-auto">
               {org.sites.map((site) => (
@@ -159,7 +159,7 @@ export default function AdminOrgDetailPage() {
       </div>
 
       {/* Grant Plan Form */}
-      <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 shadow-sm">
+      <div className="rounded-2xl border border-white/[0.08] bg-neutral-900/80 p-6 shadow-sm">
         <h3 className="text-lg font-semibold text-white mb-4">Grant Plan (Manual Override)</h3>
           <form onSubmit={handleGrantPlan} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -90,7 +90,7 @@ export function WidgetSkeleton() {
 
 export function StatCardSkeleton() {
   return (
-    <div className="p-4 rounded-xl border border-neutral-800 bg-white dark:bg-neutral-900">
+    <div className="p-4 rounded-xl border border-white/[0.08] bg-neutral-900/80">
       <SkeletonLine className="h-4 w-20 mb-2" />
       <SkeletonLine className="h-8 w-28" />
     </div>

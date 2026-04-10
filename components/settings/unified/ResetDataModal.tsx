@@ -148,7 +148,7 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
-            className="w-full max-w-md bg-white dark:bg-neutral-900 p-6 rounded-2xl border border-red-200 dark:border-red-900 shadow-xl pointer-events-auto max-h-[90vh] overflow-y-auto"
+            className="w-full max-w-md bg-neutral-900/80 p-6 rounded-2xl border border-red-200 dark:border-red-900 shadow-xl pointer-events-auto max-h-[90vh] overflow-y-auto"
           >
             {/* Header */}
             <div className="flex justify-between items-center mb-4">

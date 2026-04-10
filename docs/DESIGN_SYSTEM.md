@@ -67,17 +67,20 @@ Using Tailwind's neutral palette (50-950):
 - **Tertiary/disabled:** `text-neutral-400 dark:text-neutral-500`
 - **Links:** `text-brand-orange hover:text-brand-orange-hover`
 
-**Backgrounds:**
-- **Page:** `bg-white dark:bg-neutral-900`
-- **Cards:** `bg-white dark:bg-neutral-900`
-- **Subtle sections:** `bg-neutral-50 dark:bg-neutral-800/50`
-- **Overlays:** `bg-white/80 dark:bg-neutral-900/80` (with backdrop-blur)
+**Backgrounds (Canonical Glass Pattern):**
+- **Page:** `bg-neutral-900/80`
+- **Cards:** `bg-neutral-900/80`
+- **Subtle sections:** `bg-neutral-800/50`
+- **Overlays:** `bg-neutral-900/80` (with optional backdrop-blur)
 
-**Borders:**
-- **Standard:** `border-neutral-200 dark:border-neutral-800`
-- **Subtle:** `border-neutral-200/50 dark:border-neutral-800/50`
+**Borders (Canonical Glass Pattern):**
+- **Standard:** `border-white/[0.08]`
+- **Subtle:** `border-white/[0.04]`
 - **Focus rings:** `ring-brand-orange`
-- **Danger actions:** `border-red-200 dark:border-red-900`
+- **Danger actions:** `border-red-900`
+
+> **Canonical block style:** `bg-neutral-900/80 border border-white/[0.08] rounded-2xl`
+> Use `rounded-xl` for smaller inline cards/pills.
 
 ---
 
@@ -221,8 +224,8 @@ shadow-lg shadow-brand-orange/20
 ### Usage Examples
 
 ```tsx
-// Card at rest
-className="rounded-2xl border border-neutral-200 dark:border-neutral-800 shadow-sm"
+// Card at rest (canonical glass)
+className="rounded-2xl border border-white/[0.08] bg-neutral-900/80 shadow-sm"
 
 // Card hover
 className="hover:shadow-xl hover:-translate-y-1 transition-all"
@@ -572,7 +575,7 @@ className="px-4 sm:px-6"
 ### Standard Card
 
 ```tsx
-<div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6">
+<div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6">
   {content}
 </div>
 ```
@@ -726,7 +729,7 @@ Always test both light and dark modes:
 ### Standard Widget Layout
 
 ```tsx
-<div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
+<div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 h-full flex flex-col">
   {/* Header */}
   <div className="flex items-center justify-between mb-4">
     <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
