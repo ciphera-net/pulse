@@ -4,6 +4,7 @@ import * as d3 from 'd3'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { TreeStructure, X } from '@phosphor-icons/react'
 import type { PathTransition } from '@/lib/api/journeys'
+import { aggregateJourney } from '@/lib/journeys/aggregate'
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -11,6 +12,7 @@ interface SankeyJourneyProps {
   transitions: PathTransition[]
   totalSessions: number
   depth: number
+  maxPagesPerStep?: number
 }
 
 interface SNode {
@@ -41,7 +43,6 @@ const MIN_NODE_HEIGHT = 2
 const MAX_LINK_HEIGHT = 100
 const LINK_OPACITY = 0.3
 const LINK_HOVER_OPACITY = 0.6
-const MAX_NODES_PER_STEP = 25
 const HEADER_HEIGHT = 56
 
 const COLOR_PALETTE = [
@@ -79,42 +80,31 @@ function smartLabel(path: string): string {
 function buildData(
   transitions: PathTransition[],
   depth: number,
+  maxPagesPerStep: number,
   filterPath?: string,
 ): { nodes: SNode[]; links: SLink[] } {
   if (transitions.length === 0) return { nodes: [], links: [] }
 
-  // * Only include transitions whose target step stays within `depth` columns.
-  // * Steps are 0..depth-1 so transitions at step_index 0..depth-2 produce targets at step_index+1 < depth.
+  const aggregated = aggregateJourney(transitions, { depth, maxPagesPerStep })
+  if (aggregated.length === 0) return { nodes: [], links: [] }
+
+  // * Build set of which paths survived (other) rollup per step
+  const pathsByStep = new Map<number, Set<string>>()
+  for (const step of aggregated) {
+    pathsByStep.set(step.index, new Set(step.pages.map((p) => p.path)))
+  }
+
+  // * Scope transitions to within the requested depth
   const scoped = transitions.filter((t) => t.step_index + 1 < depth)
 
-  // Group transitions by step, count per path per step
-  const stepPaths = new Map<number, Map<string, number>>()
-  for (const t of scoped) {
-    if (!stepPaths.has(t.step_index)) stepPaths.set(t.step_index, new Map())
-    const fromMap = stepPaths.get(t.step_index)!
-    fromMap.set(t.from_path, (fromMap.get(t.from_path) ?? 0) + t.session_count)
-
-    const nextStep = t.step_index + 1
-    if (!stepPaths.has(nextStep)) stepPaths.set(nextStep, new Map())
-    const toMap = stepPaths.get(nextStep)!
-    toMap.set(t.to_path, (toMap.get(t.to_path) ?? 0) + t.session_count)
-  }
-
-  // Keep top N per step, rest → (other)
-  const topPaths = new Map<number, Set<string>>()
-  for (const [step, pm] of stepPaths) {
-    const sorted = Array.from(pm.entries()).sort((a, b) => b[1] - a[1])
-    topPaths.set(step, new Set(sorted.slice(0, MAX_NODES_PER_STEP).map(([p]) => p)))
-  }
-
-  // Build links (use scoped transitions so stepPaths lookups never miss)
+  // * Build links — use (other) as fallback when a path was rolled up
   const linkMap = new Map<string, number>()
   for (const t of scoped) {
-    const fromTop = topPaths.get(t.step_index)
-    const toTop = topPaths.get(t.step_index + 1)
-    if (!fromTop || !toTop) continue
-    const fp = fromTop.has(t.from_path) ? t.from_path : '(other)'
-    const tp = toTop.has(t.to_path) ? t.to_path : '(other)'
+    const fromPaths = pathsByStep.get(t.step_index)
+    const toPaths = pathsByStep.get(t.step_index + 1)
+    if (!fromPaths || !toPaths) continue
+    const fp = fromPaths.has(t.from_path) ? t.from_path : '(other)'
+    const tp = toPaths.has(t.to_path) ? t.to_path : '(other)'
     if (fp === '(other)' && tp === '(other)') continue
     const src = `${t.step_index}:${fp}`
     const tgt = `${t.step_index + 1}:${tp}`
@@ -127,19 +117,31 @@ function buildData(
     return { source, target, value: v }
   })
 
-  // Collect node IDs
+  // * Build nodes from aggregated step pages + any link endpoints (to catch (other) nodes)
   const nodeIdSet = new Set<string>()
-  for (const l of links) { nodeIdSet.add(l.source); nodeIdSet.add(l.target) }
+  for (const step of aggregated) {
+    for (const page of step.pages) {
+      nodeIdSet.add(`${step.index}:${page.path}`)
+    }
+  }
+  for (const l of links) {
+    nodeIdSet.add(l.source)
+    nodeIdSet.add(l.target)
+  }
 
   let nodes: SNode[] = Array.from(nodeIdSet).map((id) => ({
     id,
     name: pathFromId(id),
     step: stepFromId(id),
-    height: 0, x: 0, y: 0, count: 0,
-    inLinks: [], outLinks: [],
+    height: 0,
+    x: 0,
+    y: 0,
+    count: 0,
+    inLinks: [],
+    outLinks: [],
   }))
 
-  // Filter by path (BFS forward + backward)
+  // * Filter by clicked path (BFS forward + backward) — UNCHANGED from original
   if (filterPath) {
     const matchIds = nodes.filter((n) => n.name === filterPath).map((n) => n.id)
     if (matchIds.length === 0) return { nodes: [], links: [] }
@@ -190,6 +192,7 @@ export default function SankeyJourney({
   transitions,
   totalSessions,
   depth,
+  maxPagesPerStep = 20,
 }: SankeyJourneyProps) {
   const [filterPath, setFilterPath] = useState<string | null>(null)
   const [isDark, setIsDark] = useState(false)
@@ -218,12 +221,12 @@ export default function SankeyJourney({
   }, [])
 
   const data = useMemo(
-    () => buildData(transitions, depth, filterPath ?? undefined),
-    [transitions, depth, filterPath],
+    () => buildData(transitions, depth, maxPagesPerStep, filterPath ?? undefined),
+    [transitions, depth, maxPagesPerStep, filterPath],
   )
 
   // Clear filter on data change
-  const transKey = transitions.length + '-' + depth
+  const transKey = transitions.length + '-' + depth + '-' + maxPagesPerStep
   const [prevKey, setPrevKey] = useState(transKey)
   if (prevKey !== transKey) {
     setPrevKey(transKey)
