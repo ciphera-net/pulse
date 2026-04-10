@@ -3,49 +3,50 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { getDateRange, formatDate, getThisWeekRange, getThisMonthRange } from '@/lib/utils/dateRanges'
 import { Select, DatePicker } from '@ciphera-net/ui'
 import ColumnJourney from '@/components/journeys/ColumnJourney'
 import SankeyJourney from '@/components/journeys/SankeyJourney'
+import RangeSlider from '@/components/ui/RangeSlider'
 import { JourneysSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
+import {
+  useJourneyFilters,
+  DEPTH_MIN,
+  DEPTH_MAX,
+  DENSITY_MIN,
+  DENSITY_MAX,
+  type Period,
+} from '@/lib/hooks/useJourneyFilters'
 import {
   useDashboard,
   useJourneyTransitions,
   useJourneyEntryPoints,
 } from '@/lib/swr/dashboard'
 
-const DEFAULT_DEPTH = 4
-
 export default function JourneysPage() {
   const params = useParams()
   const siteId = params.id as string
 
-  const [period, setPeriod] = useState('30')
-  const [dateRange, setDateRange] = useState(() => getDateRange(30))
+  const filters = useJourneyFilters()
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
-  const [depth, setDepth] = useState(DEFAULT_DEPTH)
-  const [committedDepth, setCommittedDepth] = useState(DEFAULT_DEPTH)
-  const [entryPath, setEntryPath] = useState('')
-  const [viewMode, setViewMode] = useState<'columns' | 'flow'>('columns')
-
-  useEffect(() => {
-    const t = setTimeout(() => setCommittedDepth(depth), 300)
-    return () => clearTimeout(t)
-  }, [depth])
-
-  const isDefault = depth === DEFAULT_DEPTH && !entryPath
-
-  function resetFilters() {
-    setDepth(DEFAULT_DEPTH)
-    setCommittedDepth(DEFAULT_DEPTH)
-    setEntryPath('')
-  }
 
   const { data: transitionsData, isLoading: transitionsLoading } = useJourneyTransitions(
-    siteId, dateRange.start, dateRange.end, committedDepth, 1, entryPath || undefined
+    siteId,
+    filters.dateRange.start,
+    filters.dateRange.end,
+    filters.committedDepth,
+    1,
+    filters.entryPath || undefined,
   )
-  const { data: entryPoints } = useJourneyEntryPoints(siteId, dateRange.start, dateRange.end)
-  const { data: dashboard } = useDashboard(siteId, dateRange.start, dateRange.end)
+  const { data: entryPoints } = useJourneyEntryPoints(
+    siteId,
+    filters.dateRange.start,
+    filters.dateRange.end,
+  )
+  const { data: dashboard } = useDashboard(
+    siteId,
+    filters.dateRange.start,
+    filters.dateRange.end,
+  )
 
   useEffect(() => {
     const domain = dashboard?.site?.domain
@@ -82,26 +83,12 @@ export default function JourneysPage() {
         <Select
           variant="input"
           className="min-w-[140px]"
-          value={period}
+          value={filters.period}
           onChange={(value) => {
-            if (value === 'today') {
-              const today = formatDate(new Date())
-              setDateRange({ start: today, end: today })
-              setPeriod('today')
-            } else if (value === '7') {
-              setDateRange(getDateRange(7))
-              setPeriod('7')
-            } else if (value === 'week') {
-              setDateRange(getThisWeekRange())
-              setPeriod('week')
-            } else if (value === '30') {
-              setDateRange(getDateRange(30))
-              setPeriod('30')
-            } else if (value === 'month') {
-              setDateRange(getThisMonthRange())
-              setPeriod('month')
-            } else if (value === 'custom') {
+            if (value === 'custom') {
               setIsDatePickerOpen(true)
+            } else {
+              filters.setPeriod(value as Period)
             }
           }}
           options={[
@@ -120,69 +107,67 @@ export default function JourneysPage() {
       {/* Single card: toolbar + chart */}
       <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl overflow-hidden">
         {/* Toolbar */}
-        <div className="p-6 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-6">
-            {/* Depth slider */}
-            <div className="flex-1">
-              <div className="flex justify-between text-sm font-medium text-neutral-400 mb-3">
-                <span>2 steps</span>
-                <span className="text-brand-orange font-bold">
-                  {depth} steps deep
-                </span>
-                <span>6 steps</span>
-              </div>
-              <input
-                type="range"
-                min={2}
-                max={6}
-                step={1}
-                value={depth}
-                onChange={(e) => setDepth(parseInt(e.target.value))}
-                aria-label="Journey depth"
-                aria-valuetext={`${depth} steps deep`}
-                className="w-full h-2 bg-neutral-200 rounded-lg appearance-none cursor-pointer dark:bg-neutral-700 accent-brand-orange focus:outline-none"
-              />
-            </div>
+        <div className="p-6 border-b border-white/[0.08]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <RangeSlider
+              label="Depth"
+              min={DEPTH_MIN}
+              max={DEPTH_MAX}
+              step={1}
+              value={filters.depth}
+              onChange={filters.setDepth}
+              valueLabel={`${filters.depth} steps`}
+              ariaValueText={`${filters.depth} steps deep`}
+            />
+            <RangeSlider
+              label="Paths per step"
+              min={DENSITY_MIN}
+              max={DENSITY_MAX}
+              step={1}
+              value={filters.density}
+              onChange={filters.setDensity}
+              valueLabel={`${filters.density} paths`}
+              ariaValueText={`${filters.density} paths per step`}
+            />
+          </div>
 
-            {/* Entry point + Reset */}
-            <div className="flex items-center gap-3 shrink-0">
-              <Select
-                variant="input"
-                className="min-w-[180px]"
-                value={entryPath}
-                onChange={(value) => setEntryPath(value)}
-                options={entryPointOptions}
-              />
-              <button
-                onClick={resetFilters}
-                disabled={isDefault}
-                className={`text-sm whitespace-nowrap transition-all duration-150 ${
-                  isDefault
-                    ? 'opacity-0 pointer-events-none'
-                    : 'opacity-100 text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
-                }`}
-              >
-                Reset
-              </button>
-            </div>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-6">
+            <Select
+              variant="input"
+              className="flex-1 min-w-[180px]"
+              value={filters.entryPath}
+              onChange={(value) => filters.setEntryPath(value)}
+              options={entryPointOptions}
+            />
+            <button
+              onClick={filters.resetFilters}
+              disabled={filters.isDefault}
+              className={`text-sm whitespace-nowrap transition-all duration-150 px-3 py-2 ${
+                filters.isDefault
+                  ? 'opacity-0 pointer-events-none'
+                  : 'opacity-100 text-neutral-500 hover:text-white'
+              }`}
+            >
+              Reset
+            </button>
           </div>
 
           {/* View toggle */}
-          <div className="flex gap-1 mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-800" role="tablist" aria-label="Journey view tabs">
+          <div className="flex gap-1 mt-6 pt-4 border-t border-white/[0.08]" role="tablist" aria-label="Journey view tabs">
             {(['columns', 'flow'] as const).map((mode) => (
               <button
                 key={mode}
-                onClick={() => setViewMode(mode)}
+                onClick={() => filters.setViewMode(mode)}
                 role="tab"
-                aria-selected={viewMode === mode}
+                aria-selected={filters.viewMode === mode}
                 className={`relative px-3 py-1 text-xs font-medium transition-colors capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded cursor-pointer ${
-                  viewMode === mode
+                  filters.viewMode === mode
                     ? 'text-white'
-                    : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
+                    : 'text-neutral-500 hover:text-neutral-300'
                 }`}
               >
                 {mode === 'columns' ? 'Columns' : 'Flow'}
-                {viewMode === mode && (
+                {filters.viewMode === mode && (
                   <motion.div
                     layoutId="journeyViewTab"
                     className="absolute inset-x-0 -bottom-px h-0.5 bg-brand-orange"
@@ -196,17 +181,19 @@ export default function JourneysPage() {
 
         {/* Journey Chart */}
         <div className="p-6">
-          {viewMode === 'columns' ? (
+          {filters.viewMode === 'columns' ? (
             <ColumnJourney
               transitions={transitionsData?.transitions ?? []}
               totalSessions={totalSessions}
-              depth={committedDepth}
+              depth={filters.committedDepth}
+              maxPagesPerStep={filters.committedDensity}
             />
           ) : (
             <SankeyJourney
               transitions={transitionsData?.transitions ?? []}
               totalSessions={totalSessions}
-              depth={committedDepth}
+              depth={filters.committedDepth}
+              maxPagesPerStep={filters.committedDensity}
             />
           )}
         </div>
@@ -224,11 +211,10 @@ export default function JourneysPage() {
         isOpen={isDatePickerOpen}
         onClose={() => setIsDatePickerOpen(false)}
         onApply={(range) => {
-          setDateRange(range)
-          setPeriod('custom')
+          filters.setPeriod('custom', range)
           setIsDatePickerOpen(false)
         }}
-        initialRange={dateRange}
+        initialRange={filters.dateRange}
       />
     </div>
   )
