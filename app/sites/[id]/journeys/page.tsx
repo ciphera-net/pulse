@@ -7,12 +7,10 @@ import { getDateRange, formatDate, getThisWeekRange, getThisMonthRange } from '@
 import { Select, DatePicker } from '@ciphera-net/ui'
 import ColumnJourney from '@/components/journeys/ColumnJourney'
 import SankeyJourney from '@/components/journeys/SankeyJourney'
-import TopPathsTable from '@/components/journeys/TopPathsTable'
 import { JourneysSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import {
   useDashboard,
   useJourneyTransitions,
-  useJourneyTopPaths,
   useJourneyEntryPoints,
 } from '@/lib/swr/dashboard'
 
@@ -45,9 +43,6 @@ export default function JourneysPage() {
 
   const { data: transitionsData, isLoading: transitionsLoading } = useJourneyTransitions(
     siteId, dateRange.start, dateRange.end, committedDepth, 1, entryPath || undefined
-  )
-  const { data: topPaths, isLoading: topPathsLoading } = useJourneyTopPaths(
-    siteId, dateRange.start, dateRange.end, 20, 1, entryPath || undefined
   )
   const { data: entryPoints } = useJourneyEntryPoints(siteId, dateRange.start, dateRange.end)
   const { data: dashboard } = useDashboard(siteId, dateRange.start, dateRange.end)
@@ -222,11 +217,6 @@ export default function JourneysPage() {
             {totalSessions.toLocaleString()} sessions tracked
           </div>
         )}
-      </div>
-
-      {/* Top Paths */}
-      <div className="mt-6">
-        <TopPathsTable paths={topPaths ?? []} loading={topPathsLoading} />
       </div>
 
       {/* Date Picker Modal */}
