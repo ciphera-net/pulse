@@ -123,7 +123,7 @@ export default function JourneysPage() {
       </div>
 
       {/* Single card: toolbar + chart */}
-      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden">
+      <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl overflow-hidden">
         {/* Toolbar */}
         <div className="p-6 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50">
           <div className="flex flex-col sm:flex-row sm:items-center gap-6">

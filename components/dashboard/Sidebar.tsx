@@ -339,21 +339,21 @@ function SidebarContent({
             </div>
           </div>
 
-          {/* Workspace */}
+          {/* Organization */}
           <div>
             {c ? (
               <div className="mx-3 my-2 border-t border-white/[0.04]" />
             ) : (
               <div className="h-5 flex items-center overflow-hidden">
                 <p className="px-2.5 text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider whitespace-nowrap">
-                  Workspace
+                  Organization
                 </p>
               </div>
             )}
             <div className="space-y-0.5">
               <HomeNavLink href="/integrations" icon={PlugsIcon} label="Integrations" collapsed={c} onClick={isMobile ? onMobileClose : undefined} />
               <HomeNavLink href="/pricing" icon={TagIcon} label="Pricing" collapsed={c} onClick={isMobile ? onMobileClose : undefined} />
-              <SettingsButton item={{ label: 'Workspace Settings', href: () => '', icon: SettingsIcon, matchPrefix: false }} collapsed={c} onClick={isMobile ? onMobileClose : undefined} settingsContext="workspace" />
+              <SettingsButton item={{ label: 'Organization Settings', href: () => '', icon: SettingsIcon, matchPrefix: false }} collapsed={c} onClick={isMobile ? onMobileClose : undefined} settingsContext="workspace" />
             </div>
           </div>
 

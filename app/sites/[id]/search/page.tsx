@@ -140,7 +140,7 @@ export default function SearchConsolePage() {
           <StatCardSkeleton />
           <StatCardSkeleton />
         </div>
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6">
+        <div className="bg-neutral-900/80 border border-white/[0.08] rounded-xl p-6">
           <SkeletonLine className="h-9 w-48 rounded-lg mb-6" />
           {Array.from({ length: 10 }).map((_, i) => (
             <div key={i} className="flex items-center justify-between py-3">
@@ -283,7 +283,7 @@ export default function SearchConsolePage() {
       {topQueries?.queries && topQueries.queries.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-6">
           {topQueries.queries.slice(0, 5).map((q) => (
-            <div key={q.query} className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-3">
+            <div key={q.query} className="rounded-xl border border-white/[0.08] bg-neutral-900/80 p-3">
               <p className="text-xs text-neutral-400 truncate mb-1">{q.query}</p>
               <div className="flex items-baseline gap-1.5">
                 <p className="text-lg font-semibold text-white">{q.position.toFixed(1)}</p>
@@ -331,7 +331,7 @@ export default function SearchConsolePage() {
 
       {/* Queries table */}
       {activeView === 'queries' && (
-        <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 overflow-hidden">
+        <div className="rounded-xl border border-white/[0.08] bg-neutral-900/80 overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-neutral-200 dark:border-neutral-800">
@@ -405,7 +405,7 @@ export default function SearchConsolePage() {
 
       {/* Pages table */}
       {activeView === 'pages' && (
-        <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 overflow-hidden">
+        <div className="rounded-xl border border-white/[0.08] bg-neutral-900/80 overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-neutral-200 dark:border-neutral-800">
@@ -509,7 +509,7 @@ function OverviewCard({
   const isNegative = change ? (invertChange ? change.value > 0 : change.value < 0) : false
 
   return (
-    <div className="p-4 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900">
+    <div className="p-4 rounded-xl border border-white/[0.08] bg-neutral-900/80">
       <p className="text-xs font-medium text-neutral-400 mb-1">{label}</p>
       <p className="text-2xl font-bold text-white">{value}</p>
       {change && (

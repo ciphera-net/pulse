@@ -216,7 +216,7 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
 
       <form onSubmit={handleSubmit}>
         {/* Name & Description */}
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 mb-6">
+        <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 mb-6">
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
@@ -261,7 +261,7 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
             const category = step.category || 'page'
 
             return (
-              <div key={`step-${index}`} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4">
+              <div key={`step-${index}`} className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-4">
                 <div className="flex items-start gap-4">
                   {/* Step number + reorder */}
                   <div className="mt-3 text-neutral-400 flex items-center gap-1.5">
@@ -450,7 +450,7 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
         </div>
 
         {/* Conversion Window */}
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 mb-6">
+        <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 mb-6">
           <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-3">
             Conversion Window
           </h3>

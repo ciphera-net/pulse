@@ -3,9 +3,7 @@
 import { useState, useEffect } from 'react'
 import { logger } from '@/lib/utils/logger'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
-import { Button, CheckCircleIcon } from '@ciphera-net/ui'
-import { ArrowsClockwise, Check, Globe, Eye, LockSimple, Code, Scales } from '@phosphor-icons/react'
+import { Check, X } from '@phosphor-icons/react'
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
 import { toast } from '@ciphera-net/ui'
@@ -13,39 +11,63 @@ import { useSubscription } from '@/lib/swr/dashboard'
 import PricingFAQ from '@/components/marketing/PricingFAQ'
 import CTASection from '@/components/marketing/CTASection'
 
-// 1. Define Plans with IDs and Site Limits
+// 1. Define Plans with IDs, Categories, and Feature Matrix
 const PLANS = [
   {
     id: 'solo',
     name: 'Solo',
+    category: 'PERSONAL',
     description: 'For personal sites and freelancers',
     features: [
-      '1 site',
-      '1 year data retention',
-      'Email reports',
-      '100% Data ownership'
+      { name: '1 site', included: true },
+      { name: 'Up to 5 sites', included: false },
+      { name: 'Up to 10 sites', included: false },
+      { name: 'Custom events', included: true },
+      { name: 'Email reports', included: true },
+      { name: 'Team dashboard', included: false },
+      { name: 'Shared links', included: false },
+      { name: 'Funnels', included: false },
+      { name: 'API access', included: false },
+      { name: 'Uptime monitoring', included: false },
+      { name: 'Priority support', included: false },
     ]
   },
   {
     id: 'team',
     name: 'Team',
+    category: 'TEAM',
     description: 'For startups and growing agencies',
     features: [
-      'Up to 5 sites',
-      '2 year data retention',
-      'Team dashboard',
-      'Shared links'
+      { name: '1 site', included: true },
+      { name: 'Up to 5 sites', included: true },
+      { name: 'Up to 10 sites', included: false },
+      { name: 'Custom events', included: true },
+      { name: 'Email reports', included: true },
+      { name: 'Team dashboard', included: true },
+      { name: 'Shared links', included: true },
+      { name: 'Funnels', included: true },
+      { name: 'API access', included: true },
+      { name: 'Uptime monitoring', included: true },
+      { name: 'Priority support', included: false },
     ]
   },
   {
     id: 'business',
     name: 'Business',
+    category: 'BUSINESS',
     description: 'For large organizations',
     features: [
-      'Up to 10 sites',
-      '3 years data retention',
-      'Priority support',
-      'Custom events'
+      { name: '1 site', included: true },
+      { name: 'Up to 5 sites', included: true },
+      { name: 'Up to 10 sites', included: true },
+      { name: 'Custom events', included: true },
+      { name: 'Email reports', included: true },
+      { name: 'Team dashboard', included: true },
+      { name: 'Shared links', included: true },
+      { name: 'Funnels', included: true },
+      { name: 'API access', included: true },
+      { name: 'Uptime monitoring', included: true },
+      { name: 'Priority support', included: true },
     ]
   }
 ]
@@ -105,25 +127,11 @@ const TRAFFIC_TIERS = [
   },
 ]
 
-const COMPARISON_FEATURES = [
-  { feature: 'Sites', values: ['1', '1', 'Up to 5', 'Up to 10'] },
-  { feature: 'Pageviews', values: ['5k/mo', 'Based on plan', 'Based on plan', 'Based on plan'] },
-  { feature: 'Data retention', values: ['6 months', '1 year', '2 years', '3 years'] },
-  { feature: 'Team members', values: ['1', '1', 'Unlimited', 'Unlimited'] },
-  { feature: 'Custom events', values: [false, true, true, true] },
-  { feature: 'Funnels', values: [false, false, true, true] },
-  { feature: 'Uptime monitoring', values: [false, false, true, true] },
-  { feature: 'API access', values: [false, false, true, true] },
-  { feature: 'Email reports', values: [false, true, true, true] },
-  { feature: 'Priority support', values: [false, false, false, true] },
-]
-
 export default function PricingSection() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [isYearly, setIsYearly] = useState(true)
   const [sliderIndex, setSliderIndex] = useState(0) // Default to 10k (index 0)
-  const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
   const { user } = useAuth()
   const { data: subscription } = useSubscription()
   const currentPlanId = subscription?.plan_id || (user ? 'free' : null)
@@ -209,36 +217,44 @@ export default function PricingSection() {
   return (
     <section className="pb-24 px-4 max-w-6xl mx-auto">
       {/* Hero */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="text-center mb-16"
-      >
+      <div className="text-center mb-16">
         <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-6">
           Transparent Pricing
         </h2>
         <p className="text-xl text-neutral-400 max-w-2xl mx-auto leading-relaxed">
           Scale with your traffic. No hidden fees.
         </p>
-      </motion.div>
+      </div>
 
       {/* Slider + Toggle */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
-        className="max-w-4xl mx-auto mb-12"
-      >
-        <div className="flex flex-col md:flex-row items-center justify-between gap-8">
-          <div className="w-full md:w-2/3">
-            <div className="flex justify-between text-sm font-medium text-neutral-400 mb-4">
-              <span>10k</span>
-              <span className="text-brand-orange font-bold text-lg">
-                Up to {currentTraffic.label} monthly pageviews
-              </span>
-              <span>10M+</span>
-            </div>
+      <div className="max-w-4xl mx-auto mb-12">
+        {/* Question label */}
+        <p className="text-neutral-400 font-medium text-sm text-center mb-8">
+          How many monthly pageviews do you expect?
+        </p>
+
+        {/* Desktop: Custom slider with tick marks */}
+        <div className="hidden md:flex flex-col items-center w-full px-8">
+          {/* Tick mark labels */}
+          <div className="relative w-full h-5 mb-4">
+            {TRAFFIC_TIERS.map((tier, i) => (
+              <button
+                key={tier.label}
+                onClick={() => setSliderIndex(i)}
+                className={`absolute text-xs uppercase tracking-wider -translate-x-1/2 transition-colors ${
+                  i === sliderIndex
+                    ? 'text-white font-semibold'
+                    : 'text-neutral-500 hover:text-neutral-300'
+                }`}
+                style={{ left: `${(i / (TRAFFIC_TIERS.length - 1)) * 100}%` }}
+              >
+                {tier.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Custom track */}
+          <div className="relative w-full h-4 flex items-center">
             <input
               type="range"
               min="0"
@@ -248,51 +264,93 @@ export default function PricingSection() {
               onChange={(e) => setSliderIndex(parseInt(e.target.value))}
               aria-label="Monthly pageview limit"
               aria-valuetext={`${currentTraffic.label} pageviews per month`}
-              className="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-brand-orange focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2"
+              className="absolute w-full h-full opacity-0 cursor-pointer z-10"
             />
-          </div>
-
-          <div className="flex flex-col items-end gap-2 shrink-0">
-            <span className="text-xs text-neutral-400 font-medium uppercase tracking-wide">
-              Get 1 month free with yearly
-            </span>
-            <div className="bg-neutral-800 p-1 rounded-lg flex" role="radiogroup" aria-label="Billing interval">
-              <button
-                onClick={() => setIsYearly(false)}
-                role="radio"
-                aria-checked={!isYearly}
-                className={`min-w-[88px] px-4 py-2 rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ${
-                  !isYearly
-                    ? 'bg-neutral-700 text-white shadow-sm'
-                    : 'text-neutral-500 hover:text-white'
-                }`}
-              >
-                Monthly
-              </button>
-              <button
-                onClick={() => setIsYearly(true)}
-                role="radio"
-                aria-checked={isYearly}
-                className={`min-w-[88px] px-4 py-2 rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ${
-                  isYearly
-                    ? 'bg-neutral-700 text-white shadow-sm'
-                    : 'text-neutral-500 hover:text-white'
-                }`}
-              >
-                Yearly
-              </button>
+            {/* Background track */}
+            <div className="absolute w-full h-1.5 bg-neutral-700 rounded-full" />
+            {/* Active fill */}
+            <div
+              className="absolute h-1.5 bg-brand-orange rounded-full pointer-events-none"
+              style={{ width: `${(sliderIndex / (TRAFFIC_TIERS.length - 1)) * 100}%` }}
+            />
+            {/* Drag handle */}
+            <div
+              className="absolute w-8 h-4 bg-brand-orange border border-brand-orange-hover rounded-full cursor-grab active:cursor-grabbing flex items-center justify-center gap-0.5 -translate-x-1/2 shadow-lg"
+              style={{ left: `${(sliderIndex / (TRAFFIC_TIERS.length - 1)) * 100}%` }}
+              onPointerDown={(e) => {
+                const track = e.currentTarget.parentElement!
+                const rect = track.getBoundingClientRect()
+                const move = (ev: PointerEvent) => {
+                  const pct = Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width))
+                  setSliderIndex(Math.round(pct * (TRAFFIC_TIERS.length - 1)))
+                }
+                const up = () => {
+                  document.removeEventListener('pointermove', move)
+                  document.removeEventListener('pointerup', up)
+                }
+                document.addEventListener('pointermove', move)
+                document.addEventListener('pointerup', up)
+                e.preventDefault()
+              }}
+            >
+              <div className="w-0.5 h-1.5 rounded-sm bg-white/50" />
+              <div className="w-0.5 h-1.5 rounded-sm bg-white/50" />
             </div>
           </div>
         </div>
-      </motion.div>
+
+        {/* Mobile: Dropdown select */}
+        <div className="md:hidden px-4">
+          <select
+            value={sliderIndex}
+            onChange={(e) => setSliderIndex(parseInt(e.target.value))}
+            className="w-full py-2.5 px-4 bg-neutral-900/80 border border-white/[0.08] rounded-xl text-white text-sm outline-none focus:ring-2 focus:ring-brand-orange"
+          >
+            {TRAFFIC_TIERS.map((tier, i) => (
+              <option key={tier.label} value={i}>
+                {tier.label} pageviews/month
+                {tier.prices.solo !== null ? ` — from €${tier.prices.solo}/mo` : ' — Custom'}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Billing toggle — centered */}
+        <div className="flex flex-col items-center gap-2 mt-8">
+          <div className="bg-neutral-800/80 backdrop-blur-sm border border-white/[0.08] p-1 rounded-xl flex" role="radiogroup" aria-label="Billing interval">
+            <button
+              onClick={() => setIsYearly(false)}
+              role="radio"
+              aria-checked={!isYearly}
+              className={`min-w-[88px] px-4 py-2 rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ${
+                !isYearly
+                  ? 'bg-neutral-700 text-white shadow-sm'
+                  : 'text-neutral-500 hover:text-white'
+              }`}
+            >
+              Monthly
+            </button>
+            <button
+              onClick={() => setIsYearly(true)}
+              role="radio"
+              aria-checked={isYearly}
+              className={`min-w-[88px] px-4 py-2 rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ${
+                isYearly
+                  ? 'bg-neutral-700 text-white shadow-sm'
+                  : 'text-neutral-500 hover:text-white'
+              }`}
+            >
+              Yearly
+            </button>
+          </div>
+          <span className="text-xs text-neutral-500 font-medium">
+            Get 1 month free with yearly
+          </span>
+        </div>
+      </div>
 
       {/* Hobby nudge */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.12 }}
-        className="rounded-2xl border border-brand-orange/30 bg-brand-orange/10 px-6 py-4 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
-      >
+      <div className="rounded-2xl border border-brand-orange/30 bg-brand-orange/10 px-6 py-4 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <p className="text-sm text-neutral-300">
           <span className="font-semibold text-white">Just exploring?</span>{' '}
           Start free with the Hobby plan — 1 site, 5k pageviews, no credit card needed.
@@ -308,85 +366,122 @@ export default function PricingSection() {
         >
           {currentPlanId === 'free' ? 'Your current plan' : 'Get started →'}
         </button>
-      </motion.div>
+      </div>
 
-      {/* Paid Plans — 3 column grid */}
-      <div className="grid md:grid-cols-3 gap-6 mb-6">
-        {PLANS.map((plan, index) => {
-          const priceDetails = getPriceDetails(plan.id)
-          const isTeam = plan.id === 'team'
-          const isCurrent = currentPlanId === plan.id
+      {/* Unified card block */}
+      <div className="rounded-2xl border border-white/[0.08] bg-neutral-900/80 backdrop-blur-xl overflow-hidden mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3">
+          {PLANS.map((plan, index) => {
+            const priceDetails = getPriceDetails(plan.id)
+            const isTeam = plan.id === 'team'
+            const isCurrent = currentPlanId === plan.id
 
-          return (
-            <motion.div
-              key={plan.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.15 + index * 0.1 }}
-              className={`card-glass p-8 flex flex-col relative overflow-hidden hover:-translate-y-1 hover:shadow-xl transition-all duration-300 ${
-                isTeam ? 'border-brand-orange/20' : ''
-              }`}
-            >
-              {isTeam && (
-                <>
-                  <div className="absolute top-0 left-0 w-full h-1 bg-brand-orange" />
-                  <span className="absolute top-4 right-4 badge-primary">Most Popular</span>
-                </>
-              )}
-
-              <div className="mb-8">
-                <h3 className="text-xl font-bold text-white mb-2">{plan.name}</h3>
-                <p className="text-sm text-neutral-400 min-h-[40px] mb-4">{plan.description}</p>
-
-                {priceDetails ? (
-                  <div>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-bold text-white">
-                        €{isYearly ? priceDetails.effectiveMonthly : priceDetails.baseMonthly}
-                      </span>
-                      <span className="text-neutral-400 font-medium">/mo</span>
-                      <span className="text-xs text-neutral-500 ml-1">excl. VAT</span>
-                    </div>
-                    {isYearly && (
-                      <p className="text-xs text-neutral-500 mt-1">
-                        €{priceDetails.yearlyTotal} billed yearly
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-4xl font-bold text-white">Custom</div>
-                )}
-              </div>
-
-              <Button
-                onClick={() => !isCurrent && handleSubscribe(plan.id)}
-                disabled={isCurrent || loadingPlan === plan.id || !!loadingPlan || !priceDetails}
-                variant={isCurrent ? 'secondary' : isTeam ? 'primary' : 'secondary'}
-                className="w-full mb-8"
+            return (
+              <div
+                key={plan.id}
+                className={`px-6 py-8 flex flex-col gap-8 ${
+                  index < PLANS.length - 1 ? 'lg:border-r border-b lg:border-b-0 border-white/[0.08]' : ''
+                }`}
               >
-                {isCurrent ? 'Current plan' : loadingPlan === plan.id ? 'Loading...' : !priceDetails ? 'Contact us' : 'Subscribe'}
-              </Button>
+                {/* Category label */}
+                <div className="flex items-center justify-between">
+                  <p className={`font-semibold text-sm uppercase tracking-wider ${
+                    isTeam ? 'text-brand-orange' : 'text-neutral-400'
+                  }`}>
+                    {plan.category}
+                  </p>
+                  {isTeam && <span className="badge-primary">Most Popular</span>}
+                </div>
 
-              <ul className="space-y-4 flex-grow">
-                {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-3 text-sm text-neutral-400">
-                    <CheckCircleIcon className={`w-5 h-5 shrink-0 ${isTeam ? 'text-brand-orange' : 'text-neutral-400'}`} />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-            </motion.div>
-          )
-        })}
+                {/* Price block */}
+                <div>
+                  {priceDetails ? (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[40px] leading-tight font-bold text-white">
+                          €{isYearly ? priceDetails.effectiveMonthly : priceDetails.baseMonthly}
+                        </span>
+                        <div>
+                          <p className="text-white font-semibold text-sm uppercase">{plan.name}</p>
+                          <p className="text-neutral-500 text-xs">
+                            {currentTraffic.label} pageviews/mo · billed {isYearly ? 'yearly' : 'monthly'}
+                          </p>
+                        </div>
+                      </div>
+                      {isYearly && (
+                        <p className="text-xs text-neutral-500 mt-1">
+                          €{priceDetails.yearlyTotal} billed yearly · excl. VAT
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[40px] leading-tight font-bold text-white">Custom</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Feature list — check/x */}
+                <div className="flex flex-col gap-3 flex-grow">
+                  {plan.features.map((feature) => (
+                    <div key={feature.name} className="flex items-center gap-2">
+                      {feature.included ? (
+                        <>
+                          <Check className="w-4 h-4 text-brand-orange shrink-0" weight="bold" />
+                          <span className="text-neutral-200 text-sm">{feature.name}</span>
+                        </>
+                      ) : (
+                        <>
+                          <X className="w-4 h-4 text-neutral-700 shrink-0" weight="bold" />
+                          <span className="text-neutral-500 text-sm line-through">{feature.name}</span>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* CTA button */}
+                <button
+                  onClick={() => !isCurrent && handleSubscribe(plan.id)}
+                  disabled={isCurrent || !priceDetails}
+                  className={`w-full h-[44px] rounded-xl flex items-center justify-between px-6 font-semibold text-sm uppercase tracking-wider transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                    isTeam
+                      ? 'bg-brand-orange hover:bg-brand-orange-hover text-white'
+                      : 'bg-neutral-700 hover:bg-neutral-600 text-white'
+                  }`}
+                >
+                  <span>
+                    {isCurrent ? 'Current plan' : !priceDetails ? 'Contact us' : 'Get Started'}
+                  </span>
+                  {!isCurrent && priceDetails && (
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* All Plans Include row */}
+        <div className="border-t border-white/[0.08] px-6 py-6">
+          <p className="text-neutral-400 font-semibold text-sm uppercase tracking-wider text-center mb-4">
+            All plans include
+          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-4 sm:gap-8">
+            {['Cookie-free tracking', 'GDPR compliant', 'Swiss infrastructure', '100% data ownership'].map((item) => (
+              <div key={item} className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-brand-orange shrink-0" weight="bold" />
+                <span className="text-neutral-200 text-sm">{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Enterprise nudge */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.5 }}
-        className="card-glass px-6 py-4 mt-2 mb-20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
-      >
+      <div className="card-glass px-6 py-4 mt-2 mb-20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <p className="text-sm text-neutral-300">
           <span className="font-semibold text-white">Need something bigger?</span>{' '}
           We&apos;ll build a custom plan for you — unlimited sites, SLA, managed proxy, raw data export.
@@ -397,89 +492,7 @@ export default function PricingSection() {
         >
           Let&apos;s talk →
         </a>
-      </motion.div>
-
-      {/* Gradient Divider */}
-      <div className="h-px w-full bg-gradient-to-r from-transparent via-neutral-800 to-transparent my-20" />
-
-      {/* Feature Comparison */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.5 }}
-        className="mb-20"
-      >
-        <h2 className="text-2xl font-bold text-white mb-8 text-center">Compare plans</h2>
-        <div className="overflow-x-auto rounded-2xl border border-neutral-800 bg-neutral-900/50 backdrop-blur-sm">
-          <table className="w-full text-left border-collapse min-w-[640px]">
-            <thead>
-              <tr className="border-b border-neutral-800">
-                <th className="p-4 sm:p-6 text-sm font-medium text-neutral-500">Feature</th>
-                {['Hobby', 'Solo', 'Team', 'Business'].map((plan) => (
-                  <th key={plan} className={`p-4 sm:p-6 text-sm font-bold ${plan === 'Team' ? 'text-brand-orange' : 'text-white'}`}>
-                    {plan}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-800">
-              {COMPARISON_FEATURES.map((row) => (
-                <tr key={row.feature} className="hover:bg-neutral-800/50 transition-colors">
-                  <td className="p-4 sm:p-6 text-white font-medium text-sm">{row.feature}</td>
-                  {row.values.map((val, i) => (
-                    <td key={i} className="p-4 sm:p-6 text-sm">
-                      {val === true ? (
-                        <Check className="w-5 h-5 text-green-500" weight="bold" />
-                      ) : val === false ? (
-                        <span className="text-neutral-600">—</span>
-                      ) : (
-                        <span className="text-neutral-400">{val}</span>
-                      )}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </motion.div>
-
-      {/* Trust Signals */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.5 }}
-        className="mb-20"
-      >
-        <h2 className="text-2xl font-bold text-white mb-8 text-center">Built for trust</h2>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-6 max-w-4xl mx-auto">
-          {[
-            { icon: Scales, label: 'GDPR compliant', detail: 'By architecture, not configuration' },
-            { icon: Eye, label: 'No cookies', detail: 'No consent banners needed' },
-            { icon: Globe, label: 'Swiss infrastructure', detail: 'Data processed in Switzerland' },
-            { icon: Code, label: 'Open source', detail: 'Frontend fully on GitHub' },
-            { icon: ArrowsClockwise, label: 'Cancel anytime', detail: 'No lock-in or cancellation fees' },
-            { icon: LockSimple, label: 'No data selling', detail: '100% data ownership, always' },
-          ].map((signal, i) => (
-            <motion.div
-              key={signal.label}
-              initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.3, delay: i * 0.05 }}
-              className="flex items-start gap-3 py-2"
-            >
-              <signal.icon className="w-5 h-5 text-brand-orange shrink-0 mt-0.5" weight="bold" />
-              <div>
-                <span className="font-semibold text-white text-sm">{signal.label}</span>
-                <p className="text-xs text-neutral-400 mt-0.5">{signal.detail}</p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </motion.div>
+      </div>
 
       {/* Gradient Divider */}
       <div className="h-px w-full bg-gradient-to-r from-transparent via-neutral-800 to-transparent" />

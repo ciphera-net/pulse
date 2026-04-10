@@ -74,7 +74,7 @@ export default function ClicksImpressionsChart({ siteId, startDate, endDate }: C
   // Loading skeleton
   if (isLoading) {
     return (
-      <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 mb-6">
+      <div className="rounded-xl border border-white/[0.08] bg-neutral-900/80 p-4 mb-6">
         <SkeletonLine className="h-4 w-36 mb-3" />
         <SkeletonLine className="h-64 w-full rounded-lg" />
       </div>
@@ -87,7 +87,7 @@ export default function ClicksImpressionsChart({ siteId, startDate, endDate }: C
   const gridStroke = resolvedTheme === 'dark' ? '#374151' : '#e5e7eb'
 
   return (
-    <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 mb-6">
+    <div className="rounded-xl border border-white/[0.08] bg-neutral-900/80 p-4 mb-6">
       <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-3">
         Clicks &amp; Impressions
       </p>

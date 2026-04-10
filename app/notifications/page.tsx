@@ -139,7 +139,7 @@ export default function NotificationsPage() {
             {error}
           </div>
         ) : notifications.length === 0 ? (
-          <div className="p-6 text-center text-neutral-400 rounded-2xl border border-neutral-200 dark:border-neutral-800">
+          <div className="p-6 text-center text-neutral-400 rounded-2xl border border-white/[0.08]">
             <p>No notifications yet</p>
             <p className="text-sm mt-2">
               Manage which notifications you receive in{' '}
@@ -156,7 +156,7 @@ export default function NotificationsPage() {
                   <Link
                     href={n.link_url}
                     onClick={() => handleNotificationClick(n)}
-                    className={`block p-4 rounded-xl border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors ${!n.read ? 'bg-brand-orange/5 dark:bg-brand-orange/10' : ''}`}
+                    className={`block p-4 rounded-xl border border-white/[0.08] hover:bg-neutral-800/50 transition-colors ${!n.read ? 'bg-brand-orange/10' : ''}`}
                   >
                     <div className="flex gap-3">
                       {getTypeIcon(n.type)}
@@ -179,7 +179,7 @@ export default function NotificationsPage() {
                     tabIndex={0}
                     onClick={() => handleNotificationClick(n)}
                     onKeyDown={(e) => e.key === 'Enter' && handleNotificationClick(n)}
-                    className={`block p-4 rounded-xl border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 cursor-pointer ${!n.read ? 'bg-brand-orange/5 dark:bg-brand-orange/10' : ''}`}
+                    className={`block p-4 rounded-xl border border-white/[0.08] hover:bg-neutral-800/50 cursor-pointer ${!n.read ? 'bg-brand-orange/10' : ''}`}
                   >
                     <div className="flex gap-3">
                       {getTypeIcon(n.type)}
