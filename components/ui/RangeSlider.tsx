@@ -1,6 +1,6 @@
 'use client'
 
-import { type ChangeEvent, type PointerEvent as ReactPointerEvent, useCallback, useRef } from 'react'
+import { type ChangeEvent, type PointerEvent as ReactPointerEvent, type MouseEvent as ReactMouseEvent, useCallback, useRef } from 'react'
 
 interface RangeSliderProps {
   label: string
@@ -31,67 +31,61 @@ export default function RangeSlider({
 }: RangeSliderProps) {
   const trackRef = useRef<HTMLDivElement>(null)
 
-  // * Native input kept for keyboard (arrow keys) and screen reader a11y only.
-  // * Pointer drag is handled directly on the track below for a reliable hit area.
+  const percent = max > min ? ((value - min) / (max - min)) * 100 : 0
+  const hasTicks = !!(ticks && ticks.length > 0)
+
+  // * Native input kept for keyboard arrows + screen readers only.
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     onChange(parseInt(e.target.value, 10))
   }
 
-  const percent = max > min ? ((value - min) / (max - min)) * 100 : 0
-  const hasTicks = !!(ticks && ticks.length > 0)
-
-  // * Convert pointer X to a valid, stepped value
-  const pointerToValue = useCallback(
-    (clientX: number): number => {
-      const track = trackRef.current
-      if (!track) return value
-      const rect = track.getBoundingClientRect()
+  const clientXToValue = useCallback(
+    (clientX: number, rect: DOMRect): number => {
       const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
       const raw = min + pct * (max - min)
       const snapped = Math.round(raw / step) * step
       return Math.max(min, Math.min(max, snapped))
     },
-    [min, max, step, value],
+    [min, max, step],
   )
 
-  const handlePointerDown = useCallback(
+  // * Drag from the visible handle (this is the proven pattern from the old pricing slider)
+  const handleHandlePointerDown = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
-      // * Ignore secondary buttons so right-click / middle-click don't start drag
       if (e.button !== 0) return
-
       e.preventDefault()
-      const target = e.currentTarget
-      try {
-        target.setPointerCapture(e.pointerId)
-      } catch {
-        // * setPointerCapture can throw if the pointer is already captured; safe to ignore
+      const track = trackRef.current
+      if (!track) return
+      const rect = track.getBoundingClientRect()
+
+      const move = (ev: PointerEvent) => {
+        onChange(clientXToValue(ev.clientX, rect))
       }
-
-      // * Jump to the clicked position immediately
-      const initial = pointerToValue(e.clientX)
-      if (initial !== value) onChange(initial)
-
-      const handleMove = (ev: PointerEvent) => {
-        const next = pointerToValue(ev.clientX)
-        onChange(next)
+      const up = () => {
+        document.removeEventListener('pointermove', move)
+        document.removeEventListener('pointerup', up)
+        document.removeEventListener('pointercancel', up)
       }
-
-      const handleUp = (ev: PointerEvent) => {
-        window.removeEventListener('pointermove', handleMove)
-        window.removeEventListener('pointerup', handleUp)
-        window.removeEventListener('pointercancel', handleUp)
-        try {
-          target.releasePointerCapture(ev.pointerId)
-        } catch {
-          // * Ignore if already released
-        }
-      }
-
-      window.addEventListener('pointermove', handleMove)
-      window.addEventListener('pointerup', handleUp)
-      window.addEventListener('pointercancel', handleUp)
+      document.addEventListener('pointermove', move)
+      document.addEventListener('pointerup', up)
+      document.addEventListener('pointercancel', up)
     },
-    [pointerToValue, onChange, value],
+    [clientXToValue, onChange],
+  )
+
+  // * Click anywhere on the track jumps to that position.
+  // * Uses onClick (not onPointerDown) so it doesn't fight with the handle's drag logic.
+  const handleTrackClick = useCallback(
+    (e: ReactMouseEvent<HTMLDivElement>) => {
+      const track = trackRef.current
+      if (!track) return
+      // * If the click came from inside the handle, ignore — handle owns its own pointer events
+      if ((e.target as HTMLElement).dataset.sliderHandle === 'true') return
+      const rect = track.getBoundingClientRect()
+      const next = clientXToValue(e.clientX, rect)
+      if (next !== value) onChange(next)
+    },
+    [clientXToValue, onChange, value],
   )
 
   return (
@@ -131,13 +125,13 @@ export default function RangeSlider({
         </div>
       )}
 
-      {/* * Track — pointer events handled here. Height enlarged to 8 (32px) for a fat hit area while the visible track stays thin. */}
+      {/* Track — clicking jumps to position; the handle owns its own drag. */}
       <div
         ref={trackRef}
-        onPointerDown={handlePointerDown}
-        className="relative w-full h-8 flex items-center cursor-pointer touch-none select-none"
+        onClick={handleTrackClick}
+        className="relative w-full h-6 flex items-center cursor-pointer touch-none select-none"
       >
-        {/* * Screen-reader-only native input for keyboard + a11y */}
+        {/* Screen-reader-only native input for keyboard accessibility */}
         <input
           type="range"
           min={min}
@@ -156,11 +150,16 @@ export default function RangeSlider({
           className="absolute h-1.5 bg-brand-orange rounded-full pointer-events-none"
           style={{ width: `${percent}%` }}
         />
-        {/* Visual handle */}
+        {/* Visual handle — pill-shaped, big enough to grab easily */}
         <div
-          className="absolute w-4 h-4 bg-brand-orange border border-brand-orange-hover rounded-full shadow-lg pointer-events-none -translate-x-1/2"
+          data-slider-handle="true"
+          onPointerDown={handleHandlePointerDown}
+          className="absolute w-8 h-5 bg-brand-orange border border-brand-orange-hover rounded-full shadow-lg cursor-grab active:cursor-grabbing -translate-x-1/2 flex items-center justify-center gap-0.5"
           style={{ left: `${percent}%` }}
-        />
+        >
+          <div className="w-0.5 h-2 rounded-sm bg-white/60 pointer-events-none" />
+          <div className="w-0.5 h-2 rounded-sm bg-white/60 pointer-events-none" />
+        </div>
       </div>
     </div>
   )
