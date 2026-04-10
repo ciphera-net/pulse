@@ -37,13 +37,16 @@ interface SLink {
 
 // ─── Constants ──────────────────────────────────────────────────────
 
-const NODE_WIDTH = 30
+const NODE_WIDTH = 6
+const NODE_HIT_WIDTH = 16
 const NODE_GAP = 20
-const MIN_NODE_HEIGHT = 2
-const MAX_LINK_HEIGHT = 100
+const MIN_NODE_HEIGHT = 3
+const MAX_LINK_HEIGHT = 50
+const MIN_LINK_HEIGHT = 1
 const LINK_OPACITY = 0.3
 const LINK_HOVER_OPACITY = 0.6
 const HEADER_HEIGHT = 56
+const LABEL_OFFSET = 4
 
 const COLOR_PALETTE = [
   'hsl(160, 45%, 40%)', 'hsl(220, 45%, 50%)', 'hsl(270, 40%, 50%)',
@@ -432,7 +435,7 @@ export default function SankeyJourney({
       .attr('d', linkPath)
       .attr('fill', 'none')
       .attr('stroke', (d) => linkSourceColor(d))
-      .attr('stroke-width', (d) => heightScale(d.value))
+      .attr('stroke-width', (d) => Math.max(MIN_LINK_HEIGHT, heightScale(d.value)))
       .attr('opacity', LINK_OPACITY)
       .attr('data-source', (d) => d.source)
       .attr('data-target', (d) => d.target)
@@ -460,6 +463,15 @@ export default function SankeyJourney({
       .attr('transform', (d) => `translate(${d.x},${d.y - d.height / 2})`)
       .style('cursor', 'pointer')
 
+    // Node hit area (invisible, wider than visible rect for easier clicking)
+    nodeGs.append('rect')
+      .attr('class', 'node-hit')
+      .attr('x', -(NODE_HIT_WIDTH - NODE_WIDTH) / 2)
+      .attr('width', NODE_HIT_WIDTH)
+      .attr('height', (d) => d.height)
+      .attr('fill', 'transparent')
+      .style('cursor', 'pointer')
+
     // Node bars
     nodeGs.append('rect')
       .attr('class', 'node-rect')
@@ -472,7 +484,7 @@ export default function SankeyJourney({
     // Node labels
     nodeGs.append('text')
       .attr('class', 'node-text')
-      .attr('x', NODE_WIDTH + 6)
+      .attr('x', NODE_WIDTH + LABEL_OFFSET)
       .attr('y', (d) => d.height / 2 + 4)
       .text((d) => smartLabel(d.name))
       .attr('font-size', '12px')
