@@ -47,9 +47,9 @@ interface SLink {
 
 const NODE_WIDTH = 6
 const NODE_HIT_WIDTH = 16
-const NODE_GAP = 14
-const MIN_NODE_HEIGHT = 2
-const MAX_LINK_HEIGHT = 20
+const NODE_GAP = 20
+const MIN_NODE_HEIGHT = 3
+const MAX_LINK_HEIGHT = 50
 const MIN_LINK_HEIGHT = 1
 const LINK_OPACITY = 0.3
 const LINK_HOVER_OPACITY = 0.6
