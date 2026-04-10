@@ -6,11 +6,19 @@ import { TreeStructure, X } from '@phosphor-icons/react'
 import type { PathTransition } from '@/lib/api/journeys'
 import { aggregateJourney } from '@/lib/journeys/aggregate'
 
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 // ─── Types ──────────────────────────────────────────────────────────
 
 interface SankeyJourneyProps {
   transitions: PathTransition[]
-  totalSessions: number
   depth: number
   maxPagesPerStep?: number
 }
@@ -193,7 +201,6 @@ function buildData(
 
 export default function SankeyJourney({
   transitions,
-  totalSessions,
   depth,
   maxPagesPerStep = 20,
 }: SankeyJourneyProps) {
@@ -547,7 +554,7 @@ export default function SankeyJourney({
     nodeGs
       .on('mouseenter', function (event, d) {
         tooltip.style('visibility', 'visible')
-          .html(`<div style="font-weight:600;margin-bottom:2px">${d.name}</div><div style="opacity:0.7">${d.count.toLocaleString()} sessions</div>`)
+          .html(`<div style="font-weight:600;margin-bottom:2px">${escapeHtml(d.name)}</div><div style="opacity:0.7">${d.count.toLocaleString()} sessions</div>`)
           .style('top', `${event.pageY - 10}px`).style('left', `${event.pageX + 12}px`)
         highlightPaths(d.id)
       })
@@ -573,7 +580,7 @@ export default function SankeyJourney({
         const src = nodeMap.get(d.source)
         const tgt = nodeMap.get(d.target)
         tooltip.style('visibility', 'visible')
-          .html(`<div style="font-weight:600;margin-bottom:2px">${src?.name ?? '?'} → ${tgt?.name ?? '?'}</div><div style="opacity:0.7">${d.value.toLocaleString()} sessions</div>`)
+          .html(`<div style="font-weight:600;margin-bottom:2px">${escapeHtml(src?.name ?? '?')} → ${escapeHtml(tgt?.name ?? '?')}</div><div style="opacity:0.7">${d.value.toLocaleString()} sessions</div>`)
           .style('top', `${event.pageY - 10}px`).style('left', `${event.pageX + 12}px`)
         // Highlight this link's connected paths
         const all = [d, ...findConnected(d, 'fwd'), ...findConnected(d, 'bwd')]

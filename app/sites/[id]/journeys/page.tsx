@@ -184,14 +184,12 @@ export default function JourneysPage() {
           {filters.viewMode === 'columns' ? (
             <ColumnJourney
               transitions={transitionsData?.transitions ?? []}
-              totalSessions={totalSessions}
               depth={filters.committedDepth}
               maxPagesPerStep={filters.committedDensity}
             />
           ) : (
             <SankeyJourney
               transitions={transitionsData?.transitions ?? []}
-              totalSessions={totalSessions}
               depth={filters.committedDepth}
               maxPagesPerStep={filters.committedDensity}
             />
