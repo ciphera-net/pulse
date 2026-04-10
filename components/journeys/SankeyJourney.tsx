@@ -47,9 +47,9 @@ interface SLink {
 
 const NODE_WIDTH = 6
 const NODE_HIT_WIDTH = 16
-const NODE_GAP = 20
-const MIN_NODE_HEIGHT = 3
-const MAX_LINK_HEIGHT = 50
+const NODE_GAP = 14
+const MIN_NODE_HEIGHT = 2
+const MAX_LINK_HEIGHT = 20
 const MIN_LINK_HEIGHT = 1
 const LINK_OPACITY = 0.3
 const LINK_HOVER_OPACITY = 0.6
@@ -275,7 +275,9 @@ export default function SankeyJourney({
       n.count = n.step === 0 ? outVal : Math.max(inVal, outVal)
     }
 
-    // Calculate node heights (proportional to value)
+    // Calculate node + link heights (proportional to value, shared scale).
+    // MAX_LINK_HEIGHT is intentionally small so nodes stay as Rybbit-style
+    // thin strips rather than tall bars.
     const maxVal = d3.max(links, (l) => l.value) || 1
     const heightScale = d3.scaleLinear().domain([0, maxVal]).range([0, MAX_LINK_HEIGHT])
     for (const n of nodes) {
