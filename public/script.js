@@ -218,6 +218,20 @@
       height: window.innerHeight || window.screen.height,
     };
 
+    // * iPadOS 13+ reports a Macintosh user-agent that is byte-identical to
+    // * macOS desktop Safari — there is no way to tell them apart server-side.
+    // * The only reliable client-side discriminator is navigator.maxTouchPoints:
+    // * Macs always report 0 or 1 (there is no touchscreen Mac hardware), iPads
+    // * report 5 or 10. Send an explicit hint so the backend parser can classify
+    // * correctly as iOS+tablet instead of macOS+tablet (which would hit the
+    // * impossible_device Cerberus rule and false-positive legitimate iPad users).
+    var clientOSHint = '';
+    try {
+      if (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) {
+        clientOSHint = 'iPadOS';
+      }
+    } catch (e) {}
+
     const payload = {
       domain: domain,
       url: location.href,
@@ -227,6 +241,7 @@
       language: navigator.language || '',
       timezone: (function() { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch(e) { return ''; } })(),
       hs: humanSignals,
+      client_os_hint: clientOSHint,
     };
 
     // * Send event
