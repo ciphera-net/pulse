@@ -46,7 +46,7 @@ export default function BreakdownDrawer({ siteId, funnelId, stepIndex, stepName,
       {/* Backdrop */}
       <div className="fixed inset-0 z-40 bg-black/20" onClick={onClose} />
 
-      <div className="fixed inset-y-0 right-0 z-50 w-96 max-w-full bg-white dark:bg-neutral-900 border-l border-neutral-200 dark:border-neutral-800 shadow-xl flex flex-col">
+      <div className="fixed inset-y-0 right-0 z-50 w-96 max-w-full bg-neutral-900/80 border-l border-white/[0.08] shadow-xl flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 dark:border-neutral-800">
           <div>

@@ -213,7 +213,7 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className={`bg-white dark:bg-neutral-900/65 border border-neutral-200 dark:border-white/[0.08] rounded-xl shadow-xl dark:shadow-black/20 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:dark:bg-neutral-900/60 overflow-hidden z-[100] ${
+            className={`bg-neutral-900/80 border border-white/[0.08] rounded-xl shadow-xl shadow-black/20 overflow-hidden z-[100] ${
               anchor === 'right'
                 ? `fixed w-96 ${fixedPos?.bottom !== undefined ? 'origin-bottom-left' : 'origin-top-left'}`
                 : 'fixed left-4 right-4 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96'

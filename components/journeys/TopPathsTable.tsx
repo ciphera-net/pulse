@@ -36,7 +36,7 @@ export default function TopPathsTable({ paths, loading }: TopPathsTableProps) {
   const maxCount = hasData ? paths[0].session_count : 0
 
   return (
-    <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6">
+    <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6">
       <div className="mb-1">
         <h3 className="text-lg font-semibold text-white">
           Top Paths

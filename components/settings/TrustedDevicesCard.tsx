@@ -70,7 +70,7 @@ export default function TrustedDevicesCard() {
           <p className="text-red-600 dark:text-red-400">{error}</p>
         </div>
       ) : devices.length === 0 ? (
-        <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-8 text-center">
+        <div className="rounded-2xl border border-white/[0.08] bg-neutral-900/80 p-8 text-center">
           <svg className="w-12 h-12 mx-auto mb-3 text-neutral-300 dark:text-neutral-600" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25A2.25 2.25 0 015.25 3h13.5A2.25 2.25 0 0121 5.25z" />
           </svg>
@@ -81,7 +81,7 @@ export default function TrustedDevicesCard() {
           {devices.map((device) => (
             <div
               key={device.id}
-              className="flex items-center gap-3 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-4 py-3"
+              className="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-neutral-900/80 px-4 py-3"
             >
               <div className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 text-neutral-400">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">

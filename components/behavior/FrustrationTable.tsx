@@ -142,7 +142,7 @@ export default function FrustrationTable({
 
   return (
     <>
-      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
+      <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-2">
             <h3 className="text-lg font-semibold text-white">
