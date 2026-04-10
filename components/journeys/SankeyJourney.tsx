@@ -450,19 +450,22 @@ export default function SankeyJourney({
       .attr('data-target', (d) => d.target)
       .style('pointer-events', 'none')
 
-    // ── Tooltip ───────────────────────────────────────────
+    // ── Tooltip — matches sidebar tooltip styling ─────────
     const tooltip = d3.select('body').append('div')
-      .style('position', 'absolute')
+      .style('position', 'fixed')
       .style('visibility', 'hidden')
-      .style('background', isDark ? '#262626' : '#f5f5f5')
-      .style('border', `1px solid ${isDark ? '#404040' : '#d4d4d4'}`)
-      .style('border-radius', '8px')
-      .style('padding', '8px 12px')
-      .style('font-size', '12px')
-      .style('color', isDark ? '#fff' : '#171717')
+      .style('background-color', '#0a0a0a')                       // bg-neutral-950
+      .style('border', '1px solid rgba(38, 38, 38, 0.6)')         // border-neutral-800/60
+      .style('border-radius', '8px')                              // rounded-lg
+      .style('padding', '8px 12px')                               // px-3 py-2
+      .style('font-size', '14px')                                 // text-sm
+      .style('font-weight', '500')                                // font-medium
+      .style('color', '#ffffff')                                  // text-white
+      .style('white-space', 'nowrap')                             // whitespace-nowrap
       .style('pointer-events', 'none')
-      .style('z-index', '9999')
-      .style('box-shadow', '0 4px 12px rgba(0,0,0,0.15)')
+      .style('z-index', '100')
+      .style('box-shadow', '0 10px 15px -3px rgba(0, 0, 0, 0.2)') // shadow-lg shadow-black/20
+      .style('transform', 'translateY(-50%)')                     // -translate-y-1/2
 
     // ── Draw nodes ────────────────────────────────────────
     const nodeGs = g.selectAll('.node')
@@ -556,12 +559,12 @@ export default function SankeyJourney({
     nodeGs
       .on('mouseenter', function (event, d) {
         tooltip.style('visibility', 'visible')
-          .html(`<div style="font-weight:600;margin-bottom:2px">${escapeHtml(d.name)}</div><div style="opacity:0.7">${d.count.toLocaleString()} sessions</div>`)
+          .html(`<div>${escapeHtml(d.name)}</div><div style="color:#a3a3a3;font-weight:400;margin-top:2px">${d.count.toLocaleString()} sessions</div>`)
           .style('top', `${event.pageY - 10}px`).style('left', `${event.pageX + 12}px`)
         highlightPaths(d.id)
       })
       .on('mousemove', (event) => {
-        tooltip.style('top', `${event.pageY - 10}px`).style('left', `${event.pageX + 12}px`)
+        tooltip.style('top', `${event.clientY}px`).style('left', `${event.clientX + 14}px`)
       })
       .on('mouseleave', resetHighlight)
       .on('click', (_, d) => handleNodeClick(d.name))
@@ -582,7 +585,7 @@ export default function SankeyJourney({
         const src = nodeMap.get(d.source)
         const tgt = nodeMap.get(d.target)
         tooltip.style('visibility', 'visible')
-          .html(`<div style="font-weight:600;margin-bottom:2px">${escapeHtml(src?.name ?? '?')} → ${escapeHtml(tgt?.name ?? '?')}</div><div style="opacity:0.7">${d.value.toLocaleString()} sessions</div>`)
+          .html(`<div>${escapeHtml(src?.name ?? '?')} → ${escapeHtml(tgt?.name ?? '?')}</div><div style="color:#a3a3a3;font-weight:400;margin-top:2px">${d.value.toLocaleString()} sessions</div>`)
           .style('top', `${event.pageY - 10}px`).style('left', `${event.pageX + 12}px`)
         // Highlight this link's connected paths
         const all = [d, ...findConnected(d, 'fwd'), ...findConnected(d, 'bwd')]
@@ -601,7 +604,7 @@ export default function SankeyJourney({
           .attr('opacity', (nd) => nids.has(nd.id) ? 1 : 0.2)
       })
       .on('mousemove', (event) => {
-        tooltip.style('top', `${event.pageY - 10}px`).style('left', `${event.pageX + 12}px`)
+        tooltip.style('top', `${event.clientY}px`).style('left', `${event.clientX + 14}px`)
       })
       .on('mouseleave', resetHighlight)
 
