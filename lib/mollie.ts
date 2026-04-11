@@ -33,7 +33,10 @@ declare global {
 // latter pattern leaves the type as `string | undefined` inside nested
 // function bodies, which fails TypeScript at the window.Mollie(...) call
 // on line ~66 below.
-const MOLLIE_PROFILE_ID = requireEnv('NEXT_PUBLIC_MOLLIE_PROFILE_ID')
+const MOLLIE_PROFILE_ID = requireEnv(
+  'NEXT_PUBLIC_MOLLIE_PROFILE_ID',
+  process.env.NEXT_PUBLIC_MOLLIE_PROFILE_ID,
+)
 
 // Mollie Components card field styles — matches Pulse dark theme
 export const MOLLIE_FIELD_STYLES = {

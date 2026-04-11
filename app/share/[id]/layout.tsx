@@ -3,7 +3,8 @@ import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
 import { requireEnv } from '@/lib/env'
 
 // NEXT_PUBLIC_API_URL is inlined at build time. Required — no fallback.
-const API_URL = requireEnv('NEXT_PUBLIC_API_URL')
+// The literal `process.env.NEXT_PUBLIC_API_URL` here is what webpack replaces.
+const API_URL = requireEnv('NEXT_PUBLIC_API_URL', process.env.NEXT_PUBLIC_API_URL)
 
 interface SharePageParams {
   params: Promise<{ id: string }>

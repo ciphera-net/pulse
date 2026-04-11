@@ -1,26 +1,29 @@
 /**
  * Build-time env validation helpers.
  *
- * NEXT_PUBLIC_* values are inlined into the client bundle by `next build`.
- * At runtime (both server and browser) they're read from `process.env`.
- * If a required var is missing we want a loud failure, not a silent
- * `undefined` that turns into `"undefined"` in template literals or a
- * broken localhost fallback that ships to production.
+ * IMPORTANT: Next.js/webpack inlines `process.env.NEXT_PUBLIC_FOO` at build
+ * time via DefinePlugin, but ONLY when it's a literal property access. A
+ * dynamic/computed access like `process.env[name]` is NOT replaced —
+ * webpack can't statically determine which key is being read. At runtime
+ * in the browser, `process.env` is an empty polyfill, so any computed
+ * access returns `undefined` and you ship broken code to production.
  *
- * Using this helper (instead of `const X = process.env.FOO; if (!X) throw`)
- * ensures the resulting constant is typed as `string` rather than
- * `string | undefined` — TypeScript's control-flow narrowing does NOT
- * carry through module-level guards into nested function bodies when the
- * narrowed constant is used as a strict-typed function argument.
+ * Because of that, this helper takes the VALUE as an argument, not the
+ * name. The caller writes:
  *
- * Do NOT add runtime fallbacks here. A missing var at build time should
- * fail the CI build via scripts/validate-env.mjs; a missing var at test
- * time should be populated by vitest.setup.ts. Production code should
- * never see an empty value.
+ *     const API_URL = requireEnv('NEXT_PUBLIC_API_URL', process.env.NEXT_PUBLIC_API_URL)
+ *
+ * and webpack replaces the second argument with the string literal at
+ * build time. At runtime the helper just validates truthiness and returns
+ * the narrowed `string` type. The first argument is kept only for the
+ * error message so developers know which var is missing.
+ *
+ * Do NOT change this to `requireEnv(name)` with an internal
+ * `process.env[name]` read — that's exactly the trap that broke pulse
+ * sign-in on 11-04-2026.
  */
 
-export function requireEnv(name: string): string {
-  const value = process.env[name]
+export function requireEnv(name: string, value: string | undefined): string {
   if (!value) {
     throw new Error(
       `${name} is not set. This value is required at build time. ` +

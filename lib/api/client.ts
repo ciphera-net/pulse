@@ -15,10 +15,15 @@ const FETCH_TIMEOUT_MS = 30_000
 // and scripts/validate-env.mjs. No runtime fallbacks: if any is missing the
 // build fails loudly rather than silently shipping `localhost:NNNN` to the
 // browser (which was the cause of the 11-04-2026 auth/contact-form outage).
-export const API_URL = requireEnv('NEXT_PUBLIC_API_URL')
-export const AUTH_URL = requireEnv('NEXT_PUBLIC_AUTH_URL')
-export const APP_URL = requireEnv('NEXT_PUBLIC_APP_URL')
-export const AUTH_API_URL = requireEnv('NEXT_PUBLIC_AUTH_API_URL')
+// These literal `process.env.NEXT_PUBLIC_*` accesses at the call site are
+// what webpack's DefinePlugin actually replaces with string literals at
+// build time. If you refactor this to pass the name only (e.g.
+// `requireEnv('NEXT_PUBLIC_API_URL')`), the helper reads `process.env[name]`
+// which webpack CAN'T inline → runtime throw in the browser. See lib/env.ts.
+export const API_URL = requireEnv('NEXT_PUBLIC_API_URL', process.env.NEXT_PUBLIC_API_URL)
+export const AUTH_URL = requireEnv('NEXT_PUBLIC_AUTH_URL', process.env.NEXT_PUBLIC_AUTH_URL)
+export const APP_URL = requireEnv('NEXT_PUBLIC_APP_URL', process.env.NEXT_PUBLIC_APP_URL)
+export const AUTH_API_URL = requireEnv('NEXT_PUBLIC_AUTH_API_URL', process.env.NEXT_PUBLIC_AUTH_API_URL)
 
 export function getLoginUrl(redirectPath = '/auth/callback') {
   const redirectUri = encodeURIComponent(`${APP_URL}${redirectPath}`)
