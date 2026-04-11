@@ -38,6 +38,7 @@ jobs:
           {
             echo "@ciphera-net:registry=https://npm.pkg.github.com/"
             echo "//npm.pkg.github.com/:_authToken=${{ secrets.GH_PACKAGES_READ_TOKEN }}"
+            echo "legacy-peer-deps=true"
           } > /tmp/npmrc
 
       - name: Log in to Ciphera registry
