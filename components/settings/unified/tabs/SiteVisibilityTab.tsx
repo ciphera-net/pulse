@@ -9,7 +9,8 @@ import { updateSite } from '@/lib/api/sites'
 import { requireEnv } from '@/lib/env'
 
 // NEXT_PUBLIC_APP_URL is inlined at build time. Required — no fallback.
-const APP_URL = requireEnv('NEXT_PUBLIC_APP_URL')
+// The literal `process.env.NEXT_PUBLIC_APP_URL` here is what webpack replaces.
+const APP_URL = requireEnv('NEXT_PUBLIC_APP_URL', process.env.NEXT_PUBLIC_APP_URL)
 
 export default function SiteVisibilityTab({ siteId, onDirtyChange, onRegisterSave }: { siteId: string; onDirtyChange?: (dirty: boolean) => void; onRegisterSave?: (fn: () => Promise<void>) => void }) {
   const { data: site, mutate } = useSite(siteId)

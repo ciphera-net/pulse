@@ -7,7 +7,10 @@ import { requireEnv } from '@/lib/env'
 
 // Server-side code — reads the same NEXT_PUBLIC_* the client bundle inlined
 // at build time. Required, no localhost fallback.
-const AUTH_API_URL = requireEnv('NEXT_PUBLIC_AUTH_API_URL')
+const AUTH_API_URL = requireEnv(
+  'NEXT_PUBLIC_AUTH_API_URL',
+  process.env.NEXT_PUBLIC_AUTH_API_URL,
+)
 
 interface AuthResponse {
   access_token: string

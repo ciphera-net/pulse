@@ -7,7 +7,10 @@ import { requireEnv } from '@/lib/env'
 // the client bundle inlined at build time — Next.js makes them available in
 // both phases. No localhost fallback: if the var is missing we want a loud
 // failure, not a silent connection to a dev-only URL.
-const AUTH_API_URL = requireEnv('NEXT_PUBLIC_AUTH_API_URL')
+const AUTH_API_URL = requireEnv(
+  'NEXT_PUBLIC_AUTH_API_URL',
+  process.env.NEXT_PUBLIC_AUTH_API_URL,
+)
 
 export async function POST() {
   const cookieStore = await cookies()
