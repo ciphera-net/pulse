@@ -1,11 +1,9 @@
 import type { Metadata } from 'next'
 import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
+import { requireEnv } from '@/lib/env'
 
 // NEXT_PUBLIC_API_URL is inlined at build time. Required — no fallback.
-const API_URL = process.env.NEXT_PUBLIC_API_URL
-if (!API_URL) {
-  throw new Error('NEXT_PUBLIC_API_URL is not set. See .env.example.')
-}
+const API_URL = requireEnv('NEXT_PUBLIC_API_URL')
 
 interface SharePageParams {
   params: Promise<{ id: string }>

@@ -5,6 +5,7 @@
 
 import { authMessageFromStatus, AUTH_ERROR_MESSAGES } from '@ciphera-net/ui'
 import { generateRequestId, getRequestIdHeader, setLastRequestId } from '@/lib/utils/requestId'
+import { requireEnv } from '@/lib/env'
 
 /** Request timeout in ms; network errors surface as user-facing "Network error, please try again." */
 const FETCH_TIMEOUT_MS = 30_000
@@ -14,17 +15,6 @@ const FETCH_TIMEOUT_MS = 30_000
 // and scripts/validate-env.mjs. No runtime fallbacks: if any is missing the
 // build fails loudly rather than silently shipping `localhost:NNNN` to the
 // browser (which was the cause of the 11-04-2026 auth/contact-form outage).
-const requireEnv = (name: string): string => {
-  const v = process.env[name]
-  if (!v) {
-    throw new Error(
-      `${name} is not set. This value is required at build time. ` +
-      `See .env.example and scripts/validate-env.mjs.`
-    )
-  }
-  return v
-}
-
 export const API_URL = requireEnv('NEXT_PUBLIC_API_URL')
 export const AUTH_URL = requireEnv('NEXT_PUBLIC_AUTH_URL')
 export const APP_URL = requireEnv('NEXT_PUBLIC_APP_URL')
