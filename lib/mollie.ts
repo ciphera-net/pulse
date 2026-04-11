@@ -1,5 +1,7 @@
 'use client'
 
+import { requireEnv } from '@/lib/env'
+
 // Mollie.js types (no official @types package)
 export interface MollieInstance {
   createComponent: (type: string, options?: { styles?: Record<string, unknown> }) => MollieComponent
@@ -26,11 +28,12 @@ declare global {
 // NEXT_PUBLIC_MOLLIE_PROFILE_ID is inlined at build time. Required — no
 // fallback. Previously this silently defaulted to '' which made initMollie()
 // return null and break checkout without any error, which is worse than a
-// loud failure at bundle load.
-const MOLLIE_PROFILE_ID = process.env.NEXT_PUBLIC_MOLLIE_PROFILE_ID
-if (!MOLLIE_PROFILE_ID) {
-  throw new Error('NEXT_PUBLIC_MOLLIE_PROFILE_ID is not set. See .env.example.')
-}
+// loud failure at bundle load. Using `requireEnv` (rather than inline
+// `if (!X) throw`) keeps the resulting constant typed as `string` — the
+// latter pattern leaves the type as `string | undefined` inside nested
+// function bodies, which fails TypeScript at the window.Mollie(...) call
+// on line ~66 below.
+const MOLLIE_PROFILE_ID = requireEnv('NEXT_PUBLIC_MOLLIE_PROFILE_ID')
 
 // Mollie Components card field styles — matches Pulse dark theme
 export const MOLLIE_FIELD_STYLES = {

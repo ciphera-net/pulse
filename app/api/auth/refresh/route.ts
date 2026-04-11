@@ -1,15 +1,13 @@
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { getCookieDomain } from '@/lib/utils/cookies'
+import { requireEnv } from '@/lib/env'
 
 // This runs server-side at runtime. It reads the same NEXT_PUBLIC_* values
 // the client bundle inlined at build time — Next.js makes them available in
 // both phases. No localhost fallback: if the var is missing we want a loud
 // failure, not a silent connection to a dev-only URL.
-const AUTH_API_URL = process.env.NEXT_PUBLIC_AUTH_API_URL
-if (!AUTH_API_URL) {
-  throw new Error('NEXT_PUBLIC_AUTH_API_URL is not set. See .env.example.')
-}
+const AUTH_API_URL = requireEnv('NEXT_PUBLIC_AUTH_API_URL')
 
 export async function POST() {
   const cookieStore = await cookies()
