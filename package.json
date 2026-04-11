@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "generate:integrations": "npx tsx scripts/generate-integrations.ts",
-    "prebuild": "npm run generate:integrations",
+    "validate:env": "node scripts/validate-env.mjs",
+    "prebuild": "npm run validate:env && npm run generate:integrations",
     "build": "next build --webpack",
     "start": "next start",
     "lint": "next lint",

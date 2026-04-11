@@ -7,7 +7,11 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useSite } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3003'
+// NEXT_PUBLIC_APP_URL is inlined at build time. Required — no fallback.
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL
+if (!APP_URL) {
+  throw new Error('NEXT_PUBLIC_APP_URL is not set. See .env.example.')
+}
 
 export default function SiteVisibilityTab({ siteId, onDirtyChange, onRegisterSave }: { siteId: string; onDirtyChange?: (dirty: boolean) => void; onRegisterSave?: (fn: () => Promise<void>) => void }) {
   const { data: site, mutate } = useSite(siteId)

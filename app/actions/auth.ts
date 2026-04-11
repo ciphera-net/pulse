@@ -4,7 +4,12 @@ import { cookies } from 'next/headers'
 import { logger } from '@/lib/utils/logger'
 import { getCookieDomain } from '@/lib/utils/cookies'
 
-const AUTH_API_URL = process.env.NEXT_PUBLIC_AUTH_API_URL || process.env.NEXT_PUBLIC_AUTH_URL || 'http://localhost:8081'
+// Server-side code — reads the same NEXT_PUBLIC_* the client bundle inlined
+// at build time. Required, no localhost fallback.
+const AUTH_API_URL = process.env.NEXT_PUBLIC_AUTH_API_URL
+if (!AUTH_API_URL) {
+  throw new Error('NEXT_PUBLIC_AUTH_API_URL is not set. See .env.example.')
+}
 
 interface AuthResponse {
   access_token: string

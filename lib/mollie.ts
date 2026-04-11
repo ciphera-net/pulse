@@ -23,7 +23,14 @@ declare global {
   }
 }
 
-const MOLLIE_PROFILE_ID = process.env.NEXT_PUBLIC_MOLLIE_PROFILE_ID || ''
+// NEXT_PUBLIC_MOLLIE_PROFILE_ID is inlined at build time. Required — no
+// fallback. Previously this silently defaulted to '' which made initMollie()
+// return null and break checkout without any error, which is worse than a
+// loud failure at bundle load.
+const MOLLIE_PROFILE_ID = process.env.NEXT_PUBLIC_MOLLIE_PROFILE_ID
+if (!MOLLIE_PROFILE_ID) {
+  throw new Error('NEXT_PUBLIC_MOLLIE_PROFILE_ID is not set. See .env.example.')
+}
 
 // Mollie Components card field styles — matches Pulse dark theme
 export const MOLLIE_FIELD_STYLES = {
@@ -52,7 +59,7 @@ let mollieInstance: MollieInstance | null = null
  */
 export function initMollie(): MollieInstance | null {
   if (mollieInstance) return mollieInstance
-  if (typeof window === 'undefined' || !window.Mollie || !MOLLIE_PROFILE_ID) return null
+  if (typeof window === 'undefined' || !window.Mollie) return null
 
   // testmode must match the API key type on the backend (test_ = true, live_ = false)
   const testmode = process.env.NEXT_PUBLIC_MOLLIE_TESTMODE === 'true'
