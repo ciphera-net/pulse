@@ -19,15 +19,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Determine image name and Dokploy app ID
+      - name: Determine image name, Dokploy app ID, and build-time env
         id: target
         run: |
+          # NEXT_PUBLIC_* values differ between prod and staging for three
+          # variables (API URL, APP URL, MOLLIE testmode). The rest are
+          # identical and set as build-args directly below. These values
+          # are inlined into the client JS bundle by `next build` — they
+          # ship to the browser either way, so plaintext in the workflow
+          # is fine and keeps the source of truth in one reviewable place.
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
             echo "image_name=ciphera-net/pulse-frontend" >> "$GITHUB_OUTPUT"
             echo "dokploy_app_id=${{ secrets.DOKPLOY_PULSE_FRONTEND_PROD_APP_ID }}" >> "$GITHUB_OUTPUT"
+            echo "public_api_url=https://pulse-api.ciphera.net" >> "$GITHUB_OUTPUT"
+            echo "public_app_url=https://pulse.ciphera.net" >> "$GITHUB_OUTPUT"
+            echo "public_mollie_testmode=false" >> "$GITHUB_OUTPUT"
           else
             echo "image_name=ciphera-net/pulse-frontend-staging" >> "$GITHUB_OUTPUT"
             echo "dokploy_app_id=${{ secrets.DOKPLOY_PULSE_FRONTEND_STAGING_APP_ID }}" >> "$GITHUB_OUTPUT"
+            echo "public_api_url=https://pulse-api-staging.ciphera.net" >> "$GITHUB_OUTPUT"
+            echo "public_app_url=https://pulse-staging.ciphera.net" >> "$GITHUB_OUTPUT"
+            echo "public_mollie_testmode=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Set up Docker Buildx
@@ -68,6 +80,17 @@ jobs:
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ steps.target.outputs.image_name }}:buildcache,mode=max
           secret-files: |
             npmrc=/tmp/npmrc
+          # Per-branch values come from the `target` step. Shared values are
+          # inlined directly. scripts/validate-env.mjs (prebuild hook) fails
+          # the build loudly if any required var is missing.
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ steps.target.outputs.public_api_url }}
+            NEXT_PUBLIC_APP_URL=${{ steps.target.outputs.public_app_url }}
+            NEXT_PUBLIC_MOLLIE_TESTMODE=${{ steps.target.outputs.public_mollie_testmode }}
+            NEXT_PUBLIC_AUTH_URL=https://auth.ciphera.net
+            NEXT_PUBLIC_AUTH_API_URL=https://auth-api.ciphera.net
+            NEXT_PUBLIC_CAPTCHA_API_URL=https://captcha.ciphera.net/api/v1
+            NEXT_PUBLIC_MOLLIE_PROFILE_ID=pfl_3WTMG2peXk
 
       - name: Trigger Dokploy redeploy
         run: |

@@ -9,10 +9,26 @@ import { generateRequestId, getRequestIdHeader, setLastRequestId } from '@/lib/u
 /** Request timeout in ms; network errors surface as user-facing "Network error, please try again." */
 const FETCH_TIMEOUT_MS = 30_000
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8082'
-export const AUTH_URL = process.env.NEXT_PUBLIC_AUTH_URL || 'http://localhost:3000'
-export const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3003'
-export const AUTH_API_URL = process.env.NEXT_PUBLIC_AUTH_API_URL || 'https://auth-api.ciphera.net'
+// NEXT_PUBLIC_* values are inlined at build time via `next build`. They MUST
+// be set via docker build-args in CI — see .github/workflows/build-and-push.yml
+// and scripts/validate-env.mjs. No runtime fallbacks: if any is missing the
+// build fails loudly rather than silently shipping `localhost:NNNN` to the
+// browser (which was the cause of the 11-04-2026 auth/contact-form outage).
+const requireEnv = (name: string): string => {
+  const v = process.env[name]
+  if (!v) {
+    throw new Error(
+      `${name} is not set. This value is required at build time. ` +
+      `See .env.example and scripts/validate-env.mjs.`
+    )
+  }
+  return v
+}
+
+export const API_URL = requireEnv('NEXT_PUBLIC_API_URL')
+export const AUTH_URL = requireEnv('NEXT_PUBLIC_AUTH_URL')
+export const APP_URL = requireEnv('NEXT_PUBLIC_APP_URL')
+export const AUTH_API_URL = requireEnv('NEXT_PUBLIC_AUTH_API_URL')
 
 export function getLoginUrl(redirectPath = '/auth/callback') {
   const redirectUri = encodeURIComponent(`${APP_URL}${redirectPath}`)

@@ -1,6 +1,10 @@
 import type { Site } from '@/lib/api/sites'
 import { formatRetentionMonths } from '@/lib/plans'
 
+// NEXT_PUBLIC_APP_URL is inlined at build time. This helper keeps a static
+// fallback to prod because privacy-snippet generation runs in both server
+// and client contexts and must never throw — if the snippet generator fails,
+// the entire dashboard page fails to render.
 const DOCS_URL =
   (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_APP_URL)
     ? `${process.env.NEXT_PUBLIC_APP_URL}/faq`

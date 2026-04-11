@@ -15,8 +15,33 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+
+# NEXT_PUBLIC_* values must be present at build time — Next.js inlines them
+# into the client bundle during `next build`. Runtime env vars in Dokploy have
+# no effect on the client bundle, so we pass them as Docker build args here.
+# scripts/validate-env.mjs (wired into package.json prebuild) hard-fails the
+# build if any required var is missing.
+#
+# Prod vs staging differences (API_URL, APP_URL, MOLLIE_TESTMODE) are set by
+# the CI workflow based on github.ref — see .github/workflows/build-and-push.yml.
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_AUTH_URL
+ARG NEXT_PUBLIC_APP_URL
+ARG NEXT_PUBLIC_AUTH_API_URL
+ARG NEXT_PUBLIC_CAPTCHA_API_URL
+ARG NEXT_PUBLIC_MOLLIE_PROFILE_ID
+ARG NEXT_PUBLIC_MOLLIE_TESTMODE
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV NEXT_PUBLIC_AUTH_URL=${NEXT_PUBLIC_AUTH_URL}
+ENV NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
+ENV NEXT_PUBLIC_AUTH_API_URL=${NEXT_PUBLIC_AUTH_API_URL}
+ENV NEXT_PUBLIC_CAPTCHA_API_URL=${NEXT_PUBLIC_CAPTCHA_API_URL}
+ENV NEXT_PUBLIC_MOLLIE_PROFILE_ID=${NEXT_PUBLIC_MOLLIE_PROFILE_ID}
+ENV NEXT_PUBLIC_MOLLIE_TESTMODE=${NEXT_PUBLIC_MOLLIE_TESTMODE}
 ENV NEXT_TELEMETRY_DISABLED=1
-# prebuild runs scripts/generate-integrations.ts via tsx, then next build --webpack
+ENV NODE_ENV=production
+
+# prebuild runs validate:env + generate:integrations, then next build --webpack
 RUN npm run build
 
 # Stage 3: runtime
