@@ -33,6 +33,13 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Write .npmrc for GitHub Packages auth
+        run: |
+          {
+            echo "@ciphera-net:registry=https://npm.pkg.github.com/"
+            echo "//npm.pkg.github.com/:_authToken=${{ secrets.GH_PACKAGES_READ_TOKEN }}"
+          } > /tmp/npmrc
+
       - name: Log in to Ciphera registry
         uses: docker/login-action@v3
         with:
@@ -58,6 +65,8 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ steps.target.outputs.image_name }}:buildcache
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ steps.target.outputs.image_name }}:buildcache,mode=max
+          secret-files: |
+            npmrc=/tmp/npmrc
 
       - name: Trigger Dokploy redeploy
         run: |
