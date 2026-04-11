@@ -1,10 +1,9 @@
 import type { Metadata } from 'next'
 import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
-import { requireEnv } from '@/lib/env'
+import { env } from '@/lib/env'
 
-// NEXT_PUBLIC_API_URL is inlined at build time. Required — no fallback.
-// The literal `process.env.NEXT_PUBLIC_API_URL` here is what webpack replaces.
-const API_URL = requireEnv('NEXT_PUBLIC_API_URL', process.env.NEXT_PUBLIC_API_URL)
+// Zod-validated URL, guaranteed to be a `string` at runtime.
+const API_URL = env.NEXT_PUBLIC_API_URL
 
 interface SharePageParams {
   params: Promise<{ id: string }>
