@@ -5,7 +5,10 @@ FROM node:20-alpine AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm ci --prefer-offline --no-audit --progress=false
+# BuildKit secret mount: /tmp/npmrc is provided via --secret npmrc=...
+# The secret exists only during this RUN layer, never written to the image.
+RUN --mount=type=secret,id=npmrc,target=/root/.npmrc \
+    npm ci --prefer-offline --no-audit --progress=false
 
 # Stage 2: builder
 FROM node:20-alpine AS builder
