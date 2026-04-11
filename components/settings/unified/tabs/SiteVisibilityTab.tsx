@@ -6,11 +6,10 @@ import { Copy, CheckCircle, Lock } from '@phosphor-icons/react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useSite } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
-import { requireEnv } from '@/lib/env'
+import { env } from '@/lib/env'
 
-// NEXT_PUBLIC_APP_URL is inlined at build time. Required — no fallback.
-// The literal `process.env.NEXT_PUBLIC_APP_URL` here is what webpack replaces.
-const APP_URL = requireEnv('NEXT_PUBLIC_APP_URL', process.env.NEXT_PUBLIC_APP_URL)
+// Zod-validated URL, guaranteed to be a `string` at runtime.
+const APP_URL = env.NEXT_PUBLIC_APP_URL
 
 export default function SiteVisibilityTab({ siteId, onDirtyChange, onRegisterSave }: { siteId: string; onDirtyChange?: (dirty: boolean) => void; onRegisterSave?: (fn: () => Promise<void>) => void }) {
   const { data: site, mutate } = useSite(siteId)

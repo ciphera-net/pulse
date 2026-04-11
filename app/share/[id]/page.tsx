@@ -7,6 +7,7 @@ import { getPublicDashboard, getPublicStats, getPublicDailyStats, getPublicRealt
 import { toast } from '@ciphera-net/ui'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { ApiError } from '@/lib/api/client'
+import { env } from '@/lib/env'
 import { LoadingOverlay, Button } from '@ciphera-net/ui'
 import Chart from '@/components/dashboard/Chart'
 import TopPages from '@/components/dashboard/ContentStats'
@@ -221,7 +222,7 @@ export default function PublicDashboardPage() {
                         setCaptchaSolution(solution)
                         setCaptchaToken(token || '')
                     }}
-                    apiUrl={process.env.NEXT_PUBLIC_CAPTCHA_API_URL}
+                    apiUrl={env.NEXT_PUBLIC_CAPTCHA_API_URL}
                     action="share-access"
                 />
             </div>

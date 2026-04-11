@@ -1,14 +1,12 @@
 import type { Site } from '@/lib/api/sites'
 import { formatRetentionMonths } from '@/lib/plans'
+import { env } from '@/lib/env'
 
-// NEXT_PUBLIC_APP_URL is inlined at build time. This helper keeps a static
-// fallback to prod because privacy-snippet generation runs in both server
-// and client contexts and must never throw — if the snippet generator fails,
-// the entire dashboard page fails to render.
-const DOCS_URL =
-  (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_APP_URL)
-    ? `${process.env.NEXT_PUBLIC_APP_URL}/faq`
-    : 'https://pulse.ciphera.net/faq'
+// Zod-validated URL, guaranteed to be a `string`. The schema for
+// NEXT_PUBLIC_APP_URL is `z.string().url()` — if the var is missing
+// or malformed, the app fails to boot, which is what we want (a
+// broken privacy-snippet helper would be a worse failure mode).
+const DOCS_URL = `${env.NEXT_PUBLIC_APP_URL}/faq`
 
 /**
  * Generates a privacy-policy snippet for the site's use of Pulse.

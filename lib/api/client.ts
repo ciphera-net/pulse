@@ -5,25 +5,21 @@
 
 import { authMessageFromStatus, AUTH_ERROR_MESSAGES } from '@ciphera-net/ui'
 import { generateRequestId, getRequestIdHeader, setLastRequestId } from '@/lib/utils/requestId'
-import { requireEnv } from '@/lib/env'
+import { env } from '@/lib/env'
 
 /** Request timeout in ms; network errors surface as user-facing "Network error, please try again." */
 const FETCH_TIMEOUT_MS = 30_000
 
-// NEXT_PUBLIC_* values are inlined at build time via `next build`. They MUST
-// be set via docker build-args in CI — see .github/workflows/build-and-push.yml
-// and scripts/validate-env.mjs. No runtime fallbacks: if any is missing the
-// build fails loudly rather than silently shipping `localhost:NNNN` to the
-// browser (which was the cause of the 11-04-2026 auth/contact-form outage).
-// These literal `process.env.NEXT_PUBLIC_*` accesses at the call site are
-// what webpack's DefinePlugin actually replaces with string literals at
-// build time. If you refactor this to pass the name only (e.g.
-// `requireEnv('NEXT_PUBLIC_API_URL')`), the helper reads `process.env[name]`
-// which webpack CAN'T inline → runtime throw in the browser. See lib/env.ts.
-export const API_URL = requireEnv('NEXT_PUBLIC_API_URL', process.env.NEXT_PUBLIC_API_URL)
-export const AUTH_URL = requireEnv('NEXT_PUBLIC_AUTH_URL', process.env.NEXT_PUBLIC_AUTH_URL)
-export const APP_URL = requireEnv('NEXT_PUBLIC_APP_URL', process.env.NEXT_PUBLIC_APP_URL)
-export const AUTH_API_URL = requireEnv('NEXT_PUBLIC_AUTH_API_URL', process.env.NEXT_PUBLIC_AUTH_API_URL)
+// Sourced from the Zod-validated env schema in lib/env.ts. The schema
+// validates URL format at module load time and throws a structured error
+// listing every problem if anything is missing or malformed. No runtime
+// fallbacks — this replaces the 11-04-2026 outage-causing localhost
+// fallbacks and the subsequent DIY requireEnv helper with the
+// industry-standard @t3-oss/env-nextjs + Zod pattern.
+export const API_URL = env.NEXT_PUBLIC_API_URL
+export const AUTH_URL = env.NEXT_PUBLIC_AUTH_URL
+export const APP_URL = env.NEXT_PUBLIC_APP_URL
+export const AUTH_API_URL = env.NEXT_PUBLIC_AUTH_API_URL
 
 export function getLoginUrl(redirectPath = '/auth/callback') {
   const redirectUri = encodeURIComponent(`${APP_URL}${redirectPath}`)

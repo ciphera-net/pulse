@@ -1,6 +1,6 @@
 'use client'
 
-import { requireEnv } from '@/lib/env'
+import { env } from '@/lib/env'
 
 // Mollie.js types (no official @types package)
 export interface MollieInstance {
@@ -25,18 +25,10 @@ declare global {
   }
 }
 
-// NEXT_PUBLIC_MOLLIE_PROFILE_ID is inlined at build time. Required — no
-// fallback. Previously this silently defaulted to '' which made initMollie()
-// return null and break checkout without any error, which is worse than a
-// loud failure at bundle load. Using `requireEnv` (rather than inline
-// `if (!X) throw`) keeps the resulting constant typed as `string` — the
-// latter pattern leaves the type as `string | undefined` inside nested
-// function bodies, which fails TypeScript at the window.Mollie(...) call
-// on line ~66 below.
-const MOLLIE_PROFILE_ID = requireEnv(
-  'NEXT_PUBLIC_MOLLIE_PROFILE_ID',
-  process.env.NEXT_PUBLIC_MOLLIE_PROFILE_ID,
-)
+// Sourced from the Zod-validated env schema — typed as `string` everywhere
+// (including inside the nested initMollie() function body where it's passed
+// to window.Mollie() as a strict-typed argument).
+const MOLLIE_PROFILE_ID = env.NEXT_PUBLIC_MOLLIE_PROFILE_ID
 
 // Mollie Components card field styles — matches Pulse dark theme
 export const MOLLIE_FIELD_STYLES = {
@@ -67,8 +59,9 @@ export function initMollie(): MollieInstance | null {
   if (mollieInstance) return mollieInstance
   if (typeof window === 'undefined' || !window.Mollie) return null
 
-  // testmode must match the API key type on the backend (test_ = true, live_ = false)
-  const testmode = process.env.NEXT_PUBLIC_MOLLIE_TESTMODE === 'true'
+  // testmode must match the API key type on the backend (test_ = true, live_ = false).
+  // Zod schema validates this is the literal string 'true' or 'false'.
+  const testmode = env.NEXT_PUBLIC_MOLLIE_TESTMODE === 'true'
   mollieInstance = window.Mollie(MOLLIE_PROFILE_ID, {
     locale: 'en_US',
     testmode,
