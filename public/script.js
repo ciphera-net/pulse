@@ -12,6 +12,11 @@
     return;
   }
 
+  // * Respect Global Privacy Control (legally binding under CCPA, recognized by EU regulators)
+  if (navigator.globalPrivacyControl === true) {
+    return;
+  }
+
   // * Skip headless browsers and automated tools (Puppeteer, Playwright, Selenium)
   if (navigator.webdriver) {
     return;
