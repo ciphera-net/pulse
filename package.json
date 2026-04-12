@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "generate:integrations": "npx tsx scripts/generate-integrations.ts",
-    "prebuild": "npm run generate:integrations",
+    "generate:sri": "node scripts/generate-sri.js",
+    "prebuild": "npm run generate:integrations && npm run generate:sri",
     "build": "next build --webpack",
     "start": "next start",
     "lint": "next lint",
