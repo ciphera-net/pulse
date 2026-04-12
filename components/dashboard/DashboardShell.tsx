@@ -326,7 +326,7 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
           className="w-9 h-9 flex items-center justify-center text-neutral-400 hover:text-white rounded-lg hover:bg-white/[0.06] transition-colors"
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
-          <SidebarSimple className="w-[18px] h-[18px]" weight={collapsed ? 'regular' : 'fill'} />
+          <SidebarSimple className="size-5" weight={collapsed ? 'regular' : 'fill'} />
         </button>
         <nav className="flex items-center gap-1 text-sm font-medium">
           <BreadcrumbAppSwitcher />
