@@ -10,6 +10,12 @@ import Link from 'next/link'
 import { API_URL, APP_URL } from '@/lib/api/client'
 import { integrations, getIntegration } from '@/lib/integrations'
 import { toast, Toggle, Select, CheckIcon } from '@ciphera-net/ui'
+import sriHashes from '@/public/script-sri.json'
+
+// * Subresource Integrity hashes for tracking scripts (generated at build time).
+// * Protects customer sites from silent script tampering via CDN/origin compromise.
+const SCRIPT_SRI = (sriHashes as Record<string, string>)['script.js']
+const FRUSTRATION_SRI = (sriHashes as Record<string, string>)['script.frustration.js']
 
 const FRAMEWORKS = integrations.filter((i) => i.category === 'framework').slice(0, 10)
 
@@ -94,9 +100,18 @@ export default function ScriptSetupBlock({
       if (!features[f.key]) attrs.push(f.attr)
     }
     attrs.push(`src="${APP_URL}/script.js"`)
+    if (SCRIPT_SRI) {
+      attrs.push(`integrity="${SCRIPT_SRI}"`)
+      attrs.push('crossorigin="anonymous"')
+    }
     let script = `<script ${attrs.join(' ')}></script>`
     if (features.frustration) {
-      script += `\n<script defer src="${APP_URL}/script.frustration.js"></script>`
+      const frustrationAttrs = ['defer', `src="${APP_URL}/script.frustration.js"`]
+      if (FRUSTRATION_SRI) {
+        frustrationAttrs.push(`integrity="${FRUSTRATION_SRI}"`)
+        frustrationAttrs.push('crossorigin="anonymous"')
+      }
+      script += `\n<script ${frustrationAttrs.join(' ')}></script>`
     }
     return script
   }, [site.domain, features, storage, ttl])
