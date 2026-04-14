@@ -96,7 +96,7 @@ jobs:
       - name: Install Teleport
         uses: teleport-actions/setup@v1
         with:
-          version: auto
+          version: "18.7.2"
           proxy: teleport.ciphera.net:443
 
       - name: Teleport tunnel to Dokploy
@@ -106,7 +106,7 @@ jobs:
           proxy: teleport.ciphera.net:443
           token: ci-deploy
           app: dokploy-pulse
-          port: 9090
+          listen: "127.0.0.1:9090"
 
       - name: Trigger Dokploy redeploy
         run: |
