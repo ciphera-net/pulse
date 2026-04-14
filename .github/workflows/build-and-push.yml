@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -92,10 +93,25 @@ jobs:
             NEXT_PUBLIC_CAPTCHA_API_URL=https://captcha.ciphera.net/api/v1
             NEXT_PUBLIC_MOLLIE_PROFILE_ID=pfl_3WTMG2peXk
 
+      - name: Install Teleport
+        uses: teleport-actions/setup@v1
+        with:
+          version: auto
+          proxy: teleport.ciphera.net:443
+
+      - name: Teleport tunnel to Dokploy
+        id: tunnel
+        uses: teleport-actions/application-tunnel@v1
+        with:
+          proxy: teleport.ciphera.net:443
+          token: ci-deploy
+          app: dokploy-pulse
+          port: 9090
+
       - name: Trigger Dokploy redeploy
         run: |
           curl -fsS -X POST \
             -H "x-api-key: ${{ secrets.DOKPLOY_PULSE_OPS_API_KEY }}" \
             -H "Content-Type: application/json" \
             -d "{\"applicationId\":\"${{ steps.target.outputs.dokploy_app_id }}\"}" \
-            https://pulse.ops.ciphera.net/api/application.deploy
+            http://localhost:9090/api/application.deploy
