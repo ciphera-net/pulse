@@ -61,11 +61,18 @@ const config: Config = {
           foreground: 'rgb(var(--secondary-foreground) / <alpha-value>)',
         },
         border: 'rgb(var(--border) / <alpha-value>)',
+        input: 'rgb(var(--input) / <alpha-value>)',
+        ring: 'rgb(var(--ring) / <alpha-value>)',
+        muted: {
+          DEFAULT: 'rgb(var(--muted) / <alpha-value>)',
+          foreground: 'rgb(var(--muted-foreground) / <alpha-value>)',
+        },
       },
     },
   },
   plugins: [
     require('@tailwindcss/typography'),
+    require('tailwindcss-animate'),
   ],
 }
 export default config
