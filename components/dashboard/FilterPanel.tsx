@@ -111,7 +111,7 @@ function InlineDropdown({ value, options, placeholder, disabled, onChange }: Inl
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 mt-1 z-[60] bg-neutral-900 border border-neutral-700 rounded-lg shadow-xl overflow-hidden min-w-[160px] max-h-60 overflow-y-auto">
+        <div className="absolute top-full left-0 mt-1 z-[60] glass-overlay rounded-lg shadow-xl shadow-black/20 overflow-hidden min-w-[160px] max-h-60 overflow-y-auto">
           {options.map(opt => (
             <button
               key={opt.value}
@@ -245,7 +245,7 @@ function ValueMultiSelect({ dimension, values, disabled, onChange, onFetchSugges
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 mt-1 z-[60] bg-neutral-900 border border-neutral-700 rounded-lg shadow-xl min-w-[240px] w-full">
+        <div className="absolute top-full left-0 mt-1 z-[60] glass-overlay rounded-lg shadow-xl shadow-black/20 min-w-[240px] w-full">
           {/* Search input */}
           <div className="p-2">
             <input
@@ -450,7 +450,7 @@ export default function FilterPanel({ filters, onApply, onFetchSuggestions }: Fi
       <button
         type="button"
         onClick={() => { if (isOpen) handleDiscard(); else handleOpen() }}
-        className={`inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer ${
+        className={`inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg transition-all active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 cursor-pointer ${
           hasActive || isOpen
             ? 'bg-brand-orange/10 text-brand-orange border border-brand-orange/30'
             : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-white border border-transparent'
@@ -470,7 +470,7 @@ export default function FilterPanel({ filters, onApply, onFetchSuggestions }: Fi
 
       {/* Dropdown panel */}
       {isOpen && (
-        <div className="absolute top-full left-0 mt-1.5 z-50 bg-neutral-900 border border-neutral-700/50 rounded-xl shadow-xl p-3 min-w-[600px]">
+        <div className="absolute top-full left-0 mt-1.5 z-50 glass-overlay rounded-xl shadow-xl shadow-black/20 p-3 min-w-[600px]">
           {/* Filter rows */}
           <div className="flex flex-col gap-2">
             {drafts.map((draft, i) => (
@@ -500,7 +500,7 @@ export default function FilterPanel({ filters, onApply, onFetchSuggestions }: Fi
             <button
               type="button"
               onClick={handleSave}
-              className="px-3 py-1.5 text-xs font-medium bg-neutral-800 text-white border border-neutral-700 rounded-lg hover:bg-neutral-700 transition-colors cursor-pointer ease-apple"
+              className="px-3 py-1.5 text-xs font-medium bg-brand-orange text-white rounded-lg hover:bg-brand-orange-hover transition-[color,transform] duration-fast ease-apple active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 cursor-pointer shadow-sm"
             >
               Save Filters
             </button>
