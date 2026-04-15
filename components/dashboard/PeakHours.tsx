@@ -245,19 +245,15 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
                     transform: 'translate(-50%, -100%)',
                   }}
                 >
-                  <div className="bg-neutral-800 border border-neutral-700 text-white text-xs px-3 py-2 rounded-lg shadow-xl whitespace-nowrap">
-                    <div className="font-semibold mb-1">
+                  <div className="bg-neutral-950 border border-neutral-800/60 text-white text-sm font-medium px-3 py-2 rounded-lg shadow-lg shadow-black/20 whitespace-nowrap">
+                    <div className="mb-1">
                       {DAYS[hovered.day]} {formatBucket(hovered.bucket)}
                     </div>
-                    <div className="flex flex-col gap-0.5 text-neutral-300">
+                    <div className="flex flex-col gap-0.5 text-xs text-neutral-400 font-normal">
                       <span>{tooltipData.value.toLocaleString()} pageviews</span>
                       <span>{tooltipData.pct}% of week&apos;s traffic</span>
                     </div>
                   </div>
-                  <div
-                    className="absolute left-1/2 -translate-x-1/2 bottom-0 translate-y-full w-0 h-0"
-                    style={{ borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderTop: '5px solid #404040' }}
-                  />
                 </motion.div>
               )}
             </AnimatePresence>
