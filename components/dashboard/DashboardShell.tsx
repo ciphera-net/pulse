@@ -375,10 +375,7 @@ export default function DashboardShell({
   return (
     <SidebarProvider>
       <LiveIndicatorProvider>
-      <div
-        className="flex h-screen overflow-hidden bg-neutral-950"
-        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E")` }}
-      >
+      <div className="flex h-screen overflow-hidden bg-neutral-950">
         <Sidebar
           siteId={siteId}
           mobileOpen={mobileOpen}
@@ -394,7 +391,13 @@ export default function DashboardShell({
             style={{ backgroundImage: 'linear-gradient(to bottom, rgba(255,255,255,0.02), transparent 240px)' }}
           >
             <ContentHeader onMobileMenuOpen={openMobile} />
-            <main className="relative flex-1 overflow-y-auto overflow-x-hidden pt-4">
+            <main
+              className="relative flex-1 overflow-y-auto overflow-x-hidden pt-4"
+              style={{
+                maskImage: 'linear-gradient(to bottom, transparent 0, black 24px, black calc(100% - 24px), transparent 100%)',
+                WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, black 24px, black calc(100% - 24px), transparent 100%)',
+              }}
+            >
               {children}
             </main>
           </div>

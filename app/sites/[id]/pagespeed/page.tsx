@@ -267,7 +267,7 @@ export default function PageSpeedPage() {
             <select
               value={frequency}
               onChange={(e) => setFrequency(e.target.value)}
-              className="text-sm border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-white rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-neutral-100"
+              className="text-sm border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-white rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-orange"
             >
               <option value="daily">Daily</option>
               <option value="weekly">Weekly</option>
