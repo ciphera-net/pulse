@@ -51,7 +51,7 @@ export default function FAQPage() {
           </p>
           <a
             href="mailto:support@ciphera.net"
-            className="inline-flex items-center justify-center gap-2 bg-neutral-900 border border-neutral-800 text-white px-5 py-2.5 rounded-xl font-medium hover:bg-neutral-800 transition-all duration-200"
+            className="inline-flex items-center justify-center gap-2 bg-neutral-900 border border-neutral-800 text-white px-5 py-2.5 rounded-xl font-medium hover:bg-neutral-800 transition-all duration-base"
           >
             Contact us
           </a>

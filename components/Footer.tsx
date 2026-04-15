@@ -85,9 +85,9 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
                 width={36}
                 height={36}
                 loading="lazy"
-                className="w-9 h-9 object-contain group-hover:scale-105 transition-transform duration-300"
+                className="w-9 h-9 object-contain group-hover:scale-105 transition-transform duration-slow"
               />
-              <span className="text-xl font-bold text-white group-hover:text-brand-orange transition-colors duration-300">
+              <span className="text-xl font-bold text-white group-hover:text-brand-orange transition-colors duration-slow">
                 Pulse
               </span>
             </Link>

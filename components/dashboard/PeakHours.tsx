@@ -173,7 +173,7 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
                       <div
                         key={`${animKey}-${dayIdx}-${bucket}`}
                         className={[
-                          'aspect-square w-full rounded-[4px] border cursor-default transition-transform duration-100',
+                          'aspect-square w-full rounded-[4px] border cursor-default transition-transform duration-fast',
                           'border-neutral-800',
                           isActive ? 'animate-cell-highlight' : '',
                           isHoveredCell ? 'scale-110 z-10 relative' : '',

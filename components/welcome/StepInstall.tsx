@@ -111,7 +111,7 @@ export default function StepInstall({ site }: StepInstallProps) {
             )}
 
             {verifyState === 'checking' && (
-              <div className="flex items-center gap-2.5 animate-in fade-in duration-200">
+              <div className="flex items-center gap-2.5 animate-in fade-in duration-base">
                 <Spinner size="sm" />
                 <span className="text-sm text-neutral-300">Checking for data...</span>
                 <button
@@ -125,14 +125,14 @@ export default function StepInstall({ site }: StepInstallProps) {
             )}
 
             {verifyState === 'success' && (
-              <div className="flex items-center gap-2 animate-in fade-in zoom-in-95 duration-300">
+              <div className="flex items-center gap-2 animate-in fade-in zoom-in-95 duration-slow">
                 <CheckCircleIcon className="h-4.5 w-4.5 text-emerald-400" />
                 <span className="text-sm font-medium text-emerald-400">Your site is sending data!</span>
               </div>
             )}
 
             {verifyState === 'timeout' && (
-              <div className="flex items-center gap-2 animate-in fade-in duration-200">
+              <div className="flex items-center gap-2 animate-in fade-in duration-base">
                 <AlertTriangleIcon className="h-4.5 w-4.5 text-orange-400 flex-shrink-0" />
                 <span className="text-sm text-orange-400">
                   No data detected yet. Make sure the script is installed and visit your site.

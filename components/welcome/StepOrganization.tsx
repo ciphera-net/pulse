@@ -174,7 +174,7 @@ export default function StepOrganization({ onComplete }: StepOrganizationProps) 
                 type="button"
                 onClick={() => handleSelectOrganization(org)}
                 disabled={!!switchingOrgId}
-                className={`w-full flex items-center gap-3 rounded-xl border px-4 py-3.5 text-left transition-all duration-200 disabled:opacity-60 ${
+                className={`w-full flex items-center gap-3 rounded-xl border px-4 py-3.5 text-left transition-all duration-base disabled:opacity-60 ${
                   isCurrent
                     ? 'border-brand-orange/60 bg-brand-orange/10 shadow-sm'
                     : 'border-neutral-700 bg-neutral-800/50 hover:bg-neutral-800 hover:border-neutral-600 hover:shadow-sm'

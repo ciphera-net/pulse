@@ -29,7 +29,7 @@ function SiteCard({ site, stats, statsLoading }: SiteCardProps) {
   const pageviews = stats?.pageviews ?? 0
 
   return (
-    <div className="group relative flex flex-col rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99] dark:border-neutral-800 dark:bg-neutral-900">
+    <div className="group relative flex flex-col rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm transition-all duration-base hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99] dark:border-neutral-800 dark:bg-neutral-900">
       {/* Header: Icon + Name + Live Status */}
       <div className="flex items-start justify-between mb-6">
         <div className="flex items-center gap-4">

@@ -74,7 +74,7 @@ const SETTINGS_ITEM: NavItem = {
 function Label({ children, collapsed }: { children: React.ReactNode; collapsed: boolean }) {
   return (
     <span
-      className="whitespace-nowrap overflow-hidden transition-opacity duration-150"
+      className="whitespace-nowrap overflow-hidden transition-opacity duration-fast"
       style={{ opacity: collapsed ? 0 : 1 }}
     >
       {children}
@@ -139,7 +139,7 @@ function NavLink({
     <Link
       href={href}
       onClick={() => { onNavigate(href); onClick?.() }}
-      className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-150 ${
+      className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-fast ${
         active
           ? 'bg-brand-orange/10 text-brand-orange'
           : 'text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5'
@@ -171,7 +171,7 @@ function SettingsButton({
         openUnifiedSettings({ context: settingsContext, tab: 'general' })
         onClick?.()
       }}
-      className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-150 text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5 w-full cursor-pointer"
+      className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-fast text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5 w-full cursor-pointer"
     >
       <span className="w-7 h-7 flex items-center justify-center shrink-0">
         <item.icon className="w-[18px] h-[18px]" weight="regular" />
@@ -200,7 +200,7 @@ function HomeNavLink({
       href={href}
       onClick={onClick}
       {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-      className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-150 ${
+      className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-fast ${
         active
           ? 'bg-brand-orange/10 text-brand-orange'
           : 'text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5'
@@ -232,7 +232,7 @@ function HomeSiteLink({
     <Link
       href={href}
       onClick={onClick}
-      className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-150 ${
+      className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-fast ${
         active
           ? 'bg-brand-orange/10 text-brand-orange'
           : 'text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5'
@@ -286,9 +286,9 @@ function SidebarContent({
       {/* Logo — fixed layout, text fades */}
       <Link href="/" className="flex items-center gap-3 px-[14px] py-4 shrink-0 group overflow-hidden">
         <span className="w-9 h-9 flex items-center justify-center shrink-0">
-          <img src="/pulse_icon_no_margins.png" alt="Pulse" className="w-9 h-9 shrink-0 object-contain group-hover:scale-105 transition-transform duration-200" />
+          <img src="/pulse_icon_no_margins.png" alt="Pulse" className="w-9 h-9 shrink-0 object-contain group-hover:scale-105 transition-transform duration-base" />
         </span>
-        <span className={`text-xl font-bold text-white tracking-tight group-hover:text-brand-orange whitespace-nowrap transition-opacity duration-150 ${c ? 'opacity-0' : 'opacity-100'}`}>
+        <span className={`text-xl font-bold text-white tracking-tight group-hover:text-brand-orange whitespace-nowrap transition-opacity duration-fast ${c ? 'opacity-0' : 'opacity-100'}`}>
           Pulse
         </span>
       </Link>
@@ -511,7 +511,7 @@ export default function Sidebar({
       {(mobileOpen || mobileClosing) && (
         <>
           <div
-            className={`fixed inset-0 z-40 bg-black/30 md:hidden transition-opacity duration-200 ${
+            className={`fixed inset-0 z-40 bg-black/30 md:hidden transition-opacity duration-base ${
               mobileClosing ? 'opacity-0' : 'opacity-100'
             }`}
             onClick={handleMobileClose}
@@ -519,8 +519,8 @@ export default function Sidebar({
           <aside
             className={`fixed inset-y-0 left-0 z-50 w-72 bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/60 border-r border-white/[0.08] shadow-xl shadow-black/20 md:hidden ${
               mobileClosing
-                ? 'animate-out slide-out-to-left duration-200 fill-mode-forwards'
-                : 'animate-in slide-in-from-left duration-200'
+                ? 'animate-out slide-out-to-left duration-base fill-mode-forwards'
+                : 'animate-in slide-in-from-left duration-base'
             }`}
           >
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">

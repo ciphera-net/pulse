@@ -100,7 +100,7 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
               key={iv}
               type="button"
               onClick={() => handleIntervalToggle(iv)}
-              className={`relative px-3.5 py-1.5 text-sm font-medium rounded-lg transition-colors duration-200 ${
+              className={`relative px-3.5 py-1.5 text-sm font-medium rounded-lg transition-colors duration-base ${
                 currentInterval === iv ? 'text-white' : 'text-neutral-400 hover:text-white'
               }`}
             >
@@ -183,7 +183,7 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
       </div>
 
       {/* Price breakdown */}
-      <div className={`pt-2 border-t border-neutral-800 transition-opacity duration-200 ${vatLoading ? 'opacity-50' : 'opacity-100'}`}>
+      <div className={`pt-2 border-t border-neutral-800 transition-opacity duration-base ${vatLoading ? 'opacity-50' : 'opacity-100'}`}>
         {vatResult ? (
           <div className="space-y-1.5 text-sm">
             <div className="flex justify-between text-neutral-400">

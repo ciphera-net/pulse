@@ -126,7 +126,7 @@ export default function UtmBuilder({ initialSiteId }: UtmBuilderProps) {
         <div>
           <label className="block text-sm font-medium mb-1.5 text-white">Website URL *</label>
           {selectedSite ? (
-            <div className="flex rounded-xl shadow-sm transition-all duration-200 focus-within:ring-4 focus-within:ring-brand-orange/10 focus-within:border-brand-orange hover:border-brand-orange/50 border border-neutral-200 dark:border-neutral-800">
+            <div className="flex rounded-xl shadow-sm transition-all duration-base focus-within:ring-4 focus-within:ring-brand-orange/10 focus-within:border-brand-orange hover:border-brand-orange/50 border border-neutral-200 dark:border-neutral-800">
               <span className="inline-flex items-center px-4 rounded-l-xl border-r border-neutral-200 dark:border-neutral-800 bg-neutral-100 dark:bg-neutral-900 text-neutral-500 text-sm select-none">
                 https://{selectedSite.domain}
               </span>

@@ -107,7 +107,7 @@ export default function GoalStats({ goalCounts, siteId, dateRange }: GoalStatsPr
                   />
                   <div className="relative flex items-center flex-1 min-w-0 gap-2">
                     <svg
-                      className={`w-3.5 h-3.5 text-neutral-500 flex-shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}
+                      className={`w-3.5 h-3.5 text-neutral-500 flex-shrink-0 transition-transform duration-base ${isExpanded ? 'rotate-90' : ''}`}
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -120,7 +120,7 @@ export default function GoalStats({ goalCounts, siteId, dateRange }: GoalStatsPr
                     </span>
                   </div>
                   <div className="relative flex items-center gap-2 ml-4">
-                    <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+                    <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-base">
                       {total > 0 ? `${Math.round((row.count / total) * 100)}%` : ''}
                     </span>
                     <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">

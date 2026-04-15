@@ -176,7 +176,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
           {label}
         </span>
         <div className="relative flex items-center gap-2 ml-4 shrink-0">
-          <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+          <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-base">
             {totalImpressions > 0 ? `${Math.round((row.impressions / totalImpressions) * 100)}%` : ''}
           </span>
           <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
@@ -208,7 +208,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
           {flag ? `${flag} ` : ''}{name}
         </span>
         <div className="relative flex items-center gap-2 ml-4 shrink-0">
-          <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+          <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-base">
             {totalClicks > 0 ? `${Math.round((row.clicks / totalClicks) * 100)}%` : ''}
           </span>
           <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
@@ -241,7 +241,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
           {label}
         </span>
         <div className="relative flex items-center gap-2 ml-4 shrink-0">
-          <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+          <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-base">
             {totalClicks > 0 ? `${Math.round((row.clicks / totalClicks) * 100)}%` : ''}
           </span>
           <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
@@ -342,7 +342,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
             {label}
           </span>
           <div className="flex items-center gap-2 ml-4">
-            <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+            <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-base">
               {totalImpressions > 0 ? `${Math.round((r.impressions / totalImpressions) * 100)}%` : ''}
             </span>
             <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
@@ -367,7 +367,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
             {flag ? `${flag} ` : ''}{name}
           </span>
           <div className="flex items-center gap-2 ml-4">
-            <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+            <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-base">
               {totalImpressions > 0 ? `${Math.round((r.clicks / totalImpressions) * 100)}%` : ''}
             </span>
             <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
@@ -445,7 +445,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
               >
                 {tabLabels[tab]}
                 <span
-                  className={`absolute inset-x-0 -bottom-px h-[3px] rounded-full transition-all duration-200 ${
+                  className={`absolute inset-x-0 -bottom-px h-[3px] rounded-full transition-all duration-base ${
                     activeTab === tab ? 'bg-brand-orange scale-x-100' : 'bg-transparent scale-x-0'
                   }`}
                 />

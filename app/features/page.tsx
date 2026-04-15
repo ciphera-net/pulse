@@ -146,9 +146,9 @@ export default function FeaturesPage() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: i * 0.1 }}
-              className="card-glass p-6 hover:-translate-y-1 hover:shadow-xl transition-all duration-300 group"
+              className="card-glass p-6 hover:-translate-y-1 hover:shadow-xl transition-all duration-slow group"
             >
-              <div className="w-12 h-12 rounded-xl bg-brand-orange/10 flex items-center justify-center mb-6 text-brand-orange group-hover:scale-110 transition-transform duration-300">
+              <div className="w-12 h-12 rounded-xl bg-brand-orange/10 flex items-center justify-center mb-6 text-brand-orange group-hover:scale-110 transition-transform duration-slow">
                 <feature.icon className="w-6 h-6" />
               </div>
               <h3 className="text-xl font-bold text-white mb-3">
