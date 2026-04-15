@@ -375,7 +375,7 @@ function TooltipBox({
 
   return createPortal(
     <motion.div animate={{ opacity: 1 }} className={cn("pointer-events-none absolute z-50", className)} exit={{ opacity: 0 }} initial={{ opacity: 0 }} ref={tooltipRef} style={{ left: animatedLeft, top: finalTop }} transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}>
-      <motion.div animate={{ scale: 1, opacity: 1, x: 0 }} className="min-w-[140px] overflow-hidden rounded-lg bg-neutral-800/90 text-white shadow-lg backdrop-blur-md" initial={{ scale: 0.85, opacity: 0, x: shouldFlipX ? 20 : -20 }} key={flipKey} style={{ transformOrigin }} transition={SPRING}>
+      <motion.div animate={{ scale: 1, opacity: 1, x: 0 }} className="min-w-[140px] overflow-hidden rounded-lg glass-overlay text-white shadow-lg" initial={{ scale: 0.85, opacity: 0, x: shouldFlipX ? 20 : -20 }} key={flipKey} style={{ transformOrigin }} transition={SPRING}>
         {children}
       </motion.div>
     </motion.div>,

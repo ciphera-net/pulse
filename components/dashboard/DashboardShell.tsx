@@ -113,7 +113,7 @@ function BreadcrumbAppSwitcher() {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 10, scale: 0.95 }}
           transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
-          className="fixed z-50 w-72 bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/60 border border-white/[0.08] rounded-xl shadow-xl shadow-black/20 overflow-hidden origin-top-left"
+          className="fixed z-50 w-72 glass-overlay rounded-xl shadow-xl shadow-black/20 overflow-hidden origin-top-left"
           style={fixedPos ? { left: fixedPos.left, top: fixedPos.top } : undefined}
         >
           <div className="p-4">
@@ -230,7 +230,7 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 10, scale: 0.95 }}
           transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
-          className="fixed z-50 w-[240px] bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/60 border border-white/[0.08] rounded-xl shadow-xl shadow-black/20 overflow-hidden origin-top-left"
+          className="fixed z-50 w-[240px] glass-overlay rounded-xl shadow-xl shadow-black/20 overflow-hidden origin-top-left"
           style={fixedPos ? { left: fixedPos.left, top: fixedPos.top } : undefined}
         >
           <div className="p-2">

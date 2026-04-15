@@ -517,7 +517,7 @@ export default function Sidebar({
             onClick={handleMobileClose}
           />
           <aside
-            className={`fixed inset-y-0 left-0 z-50 w-72 bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/60 border-r border-white/[0.08] shadow-xl shadow-black/20 md:hidden ${
+            className={`fixed inset-y-0 left-0 z-50 w-72 glass-overlay border-r shadow-xl shadow-black/20 md:hidden ${
               mobileClosing
                 ? 'animate-out slide-out-to-left duration-base fill-mode-forwards'
                 : 'animate-in slide-in-from-left duration-base'

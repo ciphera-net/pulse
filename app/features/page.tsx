@@ -210,7 +210,7 @@ export default function FeaturesPage() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
-          className="mb-28 p-10 md:p-14 bg-neutral-900/50 backdrop-blur-sm border border-neutral-800 rounded-2xl"
+          className="mb-28 p-10 md:p-14 glass-surface rounded-2xl"
         >
           <div className="grid md:grid-cols-2 gap-10 items-center">
             <div>

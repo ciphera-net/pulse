@@ -16,7 +16,7 @@ function ComparisonTable({ title, competitors }: { title: string, competitors: {
   return (
     <div className="mb-16">
       <h2 className="text-2xl font-bold mb-6 text-white">{title}</h2>
-      <div className="overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-900/50 backdrop-blur-sm">
+      <div className="overflow-hidden rounded-2xl glass-surface">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-neutral-800">

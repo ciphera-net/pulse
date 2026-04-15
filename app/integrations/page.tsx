@@ -143,7 +143,7 @@ export default function IntegrationsPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search integrations..."
-              className="w-full pl-12 pr-16 py-3 bg-neutral-900/70 backdrop-blur-sm border border-white/[0.08] rounded-xl text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-orange/50 focus:border-brand-orange/50 transition-all ease-apple"
+              className="w-full pl-12 pr-16 py-3 glass-surface rounded-xl text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-orange/50 focus:border-brand-orange/50 transition-all ease-apple"
             />
             {query ? (
               <button
@@ -245,7 +245,7 @@ export default function IntegrationsPage() {
                       >
                         <Link
                           href={integration!.dedicatedPage ? `/integrations/${integration!.id}` : '/integrations/script-tag'}
-                          className="group flex items-center gap-3 p-4 bg-neutral-900/50 backdrop-blur-sm border border-neutral-800 rounded-xl hover:border-brand-orange/50 transition-all duration-slow hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.99] h-full ease-apple"
+                          className="group flex items-center gap-3 p-4 glass-surface rounded-xl hover:border-brand-orange/50 transition-all duration-slow hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.99] h-full ease-apple"
                         >
                           <div className="p-2 bg-neutral-800 rounded-lg shrink-0 group-hover:scale-110 transition-transform duration-slow [&_svg]:w-6 [&_svg]:h-6 ease-apple">
                             {integration!.icon}
@@ -284,7 +284,7 @@ export default function IntegrationsPage() {
                       >
                         <Link
                           href={integration.dedicatedPage ? `/integrations/${integration.id}` : '/integrations/script-tag'}
-                          className="group relative p-6 bg-neutral-900/50 backdrop-blur-sm border border-neutral-800 rounded-2xl hover:border-brand-orange/50 transition-all duration-slow hover:-translate-y-1 hover:shadow-xl active:translate-y-0 active:scale-[0.99] block h-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 ease-apple"
+                          className="group relative p-6 glass-surface rounded-2xl hover:border-brand-orange/50 transition-all duration-slow hover:-translate-y-1 hover:shadow-xl active:translate-y-0 active:scale-[0.99] block h-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 ease-apple"
                         >
                           <div className="flex items-start justify-between mb-6">
                             <div className="p-3 bg-neutral-800 rounded-xl group-hover:scale-110 transition-transform duration-slow ease-apple">
