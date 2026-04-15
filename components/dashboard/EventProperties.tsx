@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { formatNumber } from '@ciphera-net/ui'
 import { getEventPropertyKeys, getEventPropertyValues, type EventPropertyKey, type EventPropertyValue } from '@/lib/api/stats'
+import { ListBullets } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 
 interface EventPropertiesProps {
@@ -62,6 +63,7 @@ export default function EventProperties({ siteId, eventName, dateRange, onClose 
         <EmptyState
           title="No properties yet"
           description="Custom properties will appear here as events fire."
+          icon={<ListBullets weight="regular" />}
           className="py-4"
         />
       ) : (

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Toggle, toast, Spinner, getDateRange } from '@ciphera-net/ui'
-import { ShieldCheck } from '@phosphor-icons/react'
+import { ShieldCheck, Shield } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useSite, useQuarantineStats, useSessions, useSiteDomainReputation } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
@@ -215,6 +215,7 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
           {(!sessions || sessions.filter(s => botView === 'blocked' ? s.quarantined : !s.quarantined).length === 0) && (
             <EmptyState
               title={botView === 'blocked' ? 'No quarantined sessions' : 'No suspicious sessions found'}
+              icon={<Shield weight="regular" />}
               className="py-4"
             />
           )}
@@ -312,6 +313,7 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
             <EmptyState
               title="No domain data yet"
               description="Referrer domains will appear here once traffic flows through your site."
+              icon={<Shield weight="regular" />}
               className="py-4"
             />
           )}
