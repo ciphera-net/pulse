@@ -241,7 +241,7 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
                   className="absolute pointer-events-none z-20"
                   style={{
                     left: tooltipPos.x,
-                    top: tooltipPos.y - 12,
+                    top: tooltipPos.y - 20,
                     transform: 'translate(-50%, -100%)',
                   }}
                 >
