@@ -71,6 +71,12 @@
   .glass-overlay {
     @apply bg-neutral-900/60 backdrop-blur-2xl backdrop-saturate-150 border border-white/[0.08];
   }
+
+  /* * Interactive row — shared hover/active/focus treatment for list rows
+   * (Phase 5 — premium UI pass) */
+  .interactive-row {
+    @apply hover:bg-white/[0.03] active:bg-white/[0.05] focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset transition-colors duration-fast ease-apple;
+  }
 }
 
 @layer utilities {

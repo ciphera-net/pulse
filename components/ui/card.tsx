@@ -27,6 +27,7 @@ const cardVariants = cva('flex flex-col items-stretch text-card-foreground round
   variants: {
     variant: {
       default: 'glass-surface shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_2px_12px_rgba(0,0,0,0.5)]',
+      interactive: 'glass-surface shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_2px_12px_rgba(0,0,0,0.5)] transition-all duration-base ease-apple hover:border-white/[0.12] hover:-translate-y-0.5 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_6px_20px_rgba(0,0,0,0.7)] active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none cursor-pointer',
       accent: 'bg-muted shadow-xs p-1',
     },
   },
@@ -89,8 +90,12 @@ function Card({
   variant = 'default',
   ...props
 }: React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof cardVariants>) {
+  // Interactive variant carries hover/press behavior on the outer Card only;
+  // nested Card sub-components use the default styling path.
+  const contextVariant: 'default' | 'accent' =
+    variant === 'accent' ? 'accent' : 'default'
   return (
-    <CardContext.Provider value={{ variant: variant || 'default' }}>
+    <CardContext.Provider value={{ variant: contextVariant }}>
       <div data-slot="card" className={cn(cardVariants({ variant }), className)} {...props} />
     </CardContext.Provider>
   );
