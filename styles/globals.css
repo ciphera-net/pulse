@@ -144,4 +144,20 @@
   .animate-fade-in {
     animation: fadeIn 150ms ease-out;
   }
+
+  /* * Skeleton → content crossfade (Phase 2 — premium UI pass) */
+  @keyframes skeletonFade {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-skeleton-fade {
+    animation: skeletonFade var(--duration-base) var(--ease-apple);
+  }
 }
