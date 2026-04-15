@@ -115,7 +115,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
               >
                 {getTabLabel(tab)}
                 <span
-                  className={`absolute inset-x-0 -bottom-px h-[3px] rounded-full transition-all duration-base ${
+                  className={`absolute inset-x-0 -bottom-px h-[3px] rounded-full transition-[width,background-color] duration-base ${
                     activeTab === tab ? 'bg-brand-orange scale-x-100' : 'bg-transparent scale-x-0'
                   } ease-apple`}
                 />
@@ -150,7 +150,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
                     className={`relative flex items-center justify-between h-9 group hover:bg-neutral-800/50 rounded-lg px-2 -mx-2 transition-colors${onFilter ? ' cursor-pointer' : ''} ease-apple`}
                   >
                     <div
-                      className="absolute inset-y-0.5 left-0.5 bg-gradient-to-r from-brand-orange/15 via-brand-orange/8 to-transparent border border-brand-orange/20 shadow-[inset_0_1px_0_rgba(253,94,15,0.08)] rounded-md transition-all ease-apple"
+                      className="absolute inset-y-0.5 left-0.5 bg-gradient-to-r from-brand-orange/15 via-brand-orange/8 to-transparent border border-brand-orange/20 shadow-[inset_0_1px_0_rgba(253,94,15,0.08)] rounded-md transition-[width,background-color] ease-apple"
                       style={{ width: `${barWidth}%` }}
                     />
                     <div className="relative flex-1 truncate text-white flex items-center">
@@ -166,7 +166,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
                       </a>
                     </div>
                     <div className="relative flex items-center gap-2 ml-4">
-                      <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-base ease-apple">
+                      <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
                         {totalPageviews > 0 ? `${Math.round((page.pageviews / totalPageviews) * 100)}%` : ''}
                       </span>
                       <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
@@ -243,7 +243,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
                         <span className="truncate">{page.path}</span>
                       </div>
                       <div className="flex items-center gap-2 ml-4">
-                        <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-base ease-apple">
+                        <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
                           {modalTotal > 0 ? `${Math.round((page.pageviews / modalTotal) * 100)}%` : ''}
                         </span>
                         <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">

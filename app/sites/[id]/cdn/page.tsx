@@ -490,7 +490,7 @@ export default function CDNPage() {
                     </div>
                     <div className="relative h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
                       <div
-                        className="absolute inset-y-0 left-0 rounded-full bg-brand-orange transition-all ease-apple"
+                        className="absolute inset-y-0 left-0 rounded-full bg-brand-orange transition-[width] ease-apple"
                         style={{ width: `${Math.max(pct, 1)}%` }}
                       />
                     </div>

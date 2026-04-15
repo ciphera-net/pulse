@@ -93,7 +93,7 @@ function Row({
       </div>
       <div className="flex items-center gap-2 ml-4 shrink-0">
         {/* Percentage badge: slides in on hover */}
-        <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-base tabular-nums ease-apple">
+        <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-[opacity,transform] duration-base tabular-nums ease-apple">
           {pct}
         </span>
         <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 tabular-nums">

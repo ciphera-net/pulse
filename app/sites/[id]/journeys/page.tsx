@@ -188,7 +188,7 @@ export default function JourneysPage() {
               >
                 {mode === 'columns' ? 'Columns' : 'Flow'}
                 <span
-                  className={`absolute inset-x-0 -bottom-px h-[3px] rounded-full transition-all duration-base ${
+                  className={`absolute inset-x-0 -bottom-px h-[3px] rounded-full transition-[width,background-color] duration-base ${
                     filters.viewMode === mode ? 'bg-brand-orange scale-x-100' : 'bg-transparent scale-x-0'
                   } ease-apple`}
                 />

@@ -93,7 +93,7 @@ export default function EventProperties({ siteId, eventName, dateRange, onClose 
                   </div>
                   <div className="w-full h-1.5 bg-neutral-800 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-brand-orange/60 rounded-full transition-all ease-apple"
+                      className="h-full bg-brand-orange/60 rounded-full transition-[width] ease-apple"
                       style={{ width: `${(v.count / maxCount) * 100}%` }}
                     />
                   </div>
