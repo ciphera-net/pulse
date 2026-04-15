@@ -267,7 +267,9 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
                 </span>
               </button>
             ))}
-            {filtered.length === 0 && <EmptyState title="No sites match your search" className="py-4" />}
+            {filtered.length === 0 && (
+              <p className="text-sm text-neutral-500 text-center py-4">No sites match your search</p>
+            )}
           </div>
           <div className="border-t border-white/[0.06] p-2">
             <Link href="/sites/new" onClick={() => closePicker()} className="flex items-center gap-2 px-3 py-1.5 text-sm text-brand-orange hover:bg-white/[0.06] rounded-lg">

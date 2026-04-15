@@ -5,7 +5,7 @@ import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useParams } from 'next/navigation'
 import { useSite, usePageSpeedConfig, usePageSpeedLatest, usePageSpeedHistory } from '@/lib/swr/dashboard'
 import { updatePageSpeedConfig, triggerPageSpeedCheck, getPageSpeedLatest, getPageSpeedCheck, type PageSpeedCheck, type AuditSummary } from '@/lib/api/pagespeed'
-import { toast, Button } from '@ciphera-net/ui'
+import { toast, Button, Select } from '@ciphera-net/ui'
 import { motion } from 'framer-motion'
 import ScoreGauge from '@/components/pagespeed/ScoreGauge'
 import { remapLearnUrl } from '@/lib/learn-links'
@@ -263,16 +263,18 @@ export default function PageSpeedPage() {
 
           {/* Frequency selector */}
           <div className="flex items-center justify-center gap-3 mb-6">
-            <label className="text-sm text-neutral-600 dark:text-neutral-400">Check frequency:</label>
-            <select
+            <label className="text-sm text-neutral-400">Check frequency:</label>
+            <Select
+              variant="input"
+              className="min-w-[120px]"
               value={frequency}
-              onChange={(e) => setFrequency(e.target.value)}
-              className="text-sm border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-white rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-orange"
-            >
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-              <option value="monthly">Monthly</option>
-            </select>
+              onChange={(value) => setFrequency(value)}
+              options={[
+                { value: 'daily', label: 'Daily' },
+                { value: 'weekly', label: 'Weekly' },
+                { value: 'monthly', label: 'Monthly' },
+              ]}
+            />
           </div>
 
           {canEdit && (
