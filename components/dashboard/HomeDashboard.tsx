@@ -9,6 +9,8 @@ import { getSubscription, type SubscriptionDetails } from '@/lib/api/billing'
 import SiteList from '@/components/sites/SiteList'
 import DeleteSiteModal from '@/components/sites/DeleteSiteModal'
 import { Button, XIcon, toast, getAuthErrorMessage } from '@ciphera-net/ui'
+import { PlusCircle } from '@phosphor-icons/react'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { getSitesLimitForPlan } from '@/lib/plans'
 import { SitesListSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 
@@ -181,21 +183,13 @@ export default function HomeDashboard() {
       {showSkeleton ? (
         <SitesListSkeleton rows={3} />
       ) : sites.length === 0 ? (
-        <div className="mb-8 rounded-2xl border-2 border-dashed border-brand-orange/30 bg-brand-orange/10 p-8 text-center flex flex-col items-center">
-          <img
-            src="/illustrations/setup-analytics.svg"
-            alt="Set up your first site"
-            className="w-56 h-auto mb-6"
+        <div className="mb-8 rounded-2xl border-2 border-dashed border-brand-orange/30 bg-brand-orange/10">
+          <EmptyState
+            icon={<PlusCircle />}
+            title="No sites yet"
+            description="Connect a domain to start collecting privacy-friendly analytics. You can add more sites later from the dashboard."
+            action={{ label: 'New site', href: '/sites/new' }}
           />
-          <h2 className="text-xl font-bold text-white mb-2">Add your first site</h2>
-          <p className="text-neutral-400 mb-6 max-w-md mx-auto">
-            Connect a domain to start collecting privacy-friendly analytics. You can add more sites later from the dashboard.
-          </p>
-          <Link href="/sites/new">
-            <Button variant="primary" className="min-w-[180px]">
-              Add your first site
-            </Button>
-          </Link>
         </div>
       ) : (
         <SiteList sites={sites} siteStats={siteStats} loading={false} />

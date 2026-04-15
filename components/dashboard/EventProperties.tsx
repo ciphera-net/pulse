@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { formatNumber } from '@ciphera-net/ui'
 import { getEventPropertyKeys, getEventPropertyValues, type EventPropertyKey, type EventPropertyValue } from '@/lib/api/stats'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 interface EventPropertiesProps {
   siteId: string
@@ -58,9 +59,11 @@ export default function EventProperties({ siteId, eventName, dateRange, onClose 
           ))}
         </div>
       ) : keys.length === 0 ? (
-        <p className="text-sm text-neutral-400 py-4 text-center">
-          No properties recorded for this event yet.
-        </p>
+        <EmptyState
+          title="No properties yet"
+          description="Custom properties will appear here as events fire."
+          className="py-4"
+        />
       ) : (
         <>
           <div className="flex gap-2 mb-4 flex-wrap">

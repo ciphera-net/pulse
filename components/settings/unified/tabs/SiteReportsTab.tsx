@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Button, toast, Spinner, Modal, Select } from '@ciphera-net/ui'
 import { Plus, Pencil, Trash, EnvelopeSimple, WebhooksLogo, PaperPlaneTilt } from '@phosphor-icons/react'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { SiDiscord } from '@icons-pack/react-simple-icons'
 import { useReportSchedules, useAlertSchedules } from '@/lib/swr/dashboard'
 import { useSite } from '@/lib/swr/dashboard'
@@ -636,7 +637,11 @@ export default function SiteReportsTab({ siteId }: { siteId: string }) {
         </div>
 
         {reports.length === 0 ? (
-          <p className="text-sm text-neutral-500 text-center py-8">No scheduled reports yet.</p>
+          <EmptyState
+            title="No scheduled reports yet"
+            description="Automated analytics summaries can be sent to your inbox or webhook on a recurring schedule."
+            className="py-8"
+          />
         ) : (
           <div className="space-y-1">
             {reports.map((r) => (
@@ -659,7 +664,11 @@ export default function SiteReportsTab({ siteId }: { siteId: string }) {
         </div>
 
         {alerts.length === 0 ? (
-          <p className="text-sm text-neutral-500 text-center py-8">No alert channels configured.</p>
+          <EmptyState
+            title="No alert channels yet"
+            description="Add a channel to get notified when your uptime monitors detect downtime."
+            className="py-8"
+          />
         ) : (
           <div className="space-y-1">
             {alerts.map((a) => (

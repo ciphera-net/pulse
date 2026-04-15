@@ -8,6 +8,8 @@ import { formatNumber } from '@ciphera-net/ui'
 import { BarChartIcon, SettingsIcon, BookOpenIcon, ExternalLinkIcon, Button } from '@ciphera-net/ui'
 import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
+import { PlusCircle } from '@phosphor-icons/react'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 export type SiteStatsMap = Record<string, { stats: Stats }>
 
@@ -129,22 +131,13 @@ export default function SiteList({ sites, siteStats, loading }: SiteListProps) {
 
   if (sites.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-neutral-300 dark:border-neutral-700 p-12 text-center flex flex-col items-center">
-        <Image
-          src="/illustrations/setup-analytics.svg"
-          alt="Set up your first site"
-          width={280}
-          height={210}
-          className="mb-6"
-          unoptimized
+      <div className="rounded-2xl border border-dashed border-neutral-300 dark:border-neutral-700">
+        <EmptyState
+          icon={<PlusCircle />}
+          title="No sites yet"
+          description="Create your first site to start collecting analytics."
+          action={{ label: 'Add your first site', href: '/sites/new' }}
         />
-        <h3 className="text-lg font-semibold text-white">No sites yet</h3>
-        <p className="mt-2 text-sm text-neutral-400 mb-4">Create your first site to get started.</p>
-        <Link href="/sites/new">
-          <Button variant="primary" className="text-sm">
-            Add your first site
-          </Button>
-        </Link>
       </div>
     )
   }

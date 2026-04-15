@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { getFunnelBreakdown, type FunnelBreakdown } from '@/lib/api/funnels'
 import { DIMENSION_LABELS } from '@/lib/filters'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 const BREAKDOWN_DIMENSIONS = [
   'device', 'country', 'browser', 'os',
@@ -86,7 +87,10 @@ export default function BreakdownDrawer({ siteId, funnelId, stepIndex, stepName,
               ))}
             </div>
           ) : !breakdown || breakdown.entries.length === 0 ? (
-            <p className="text-sm text-neutral-500">No data for this dimension</p>
+            <EmptyState
+              title="No data for this dimension"
+              className="py-6"
+            />
           ) : (
             <div className="space-y-2">
               {breakdown.entries.map(entry => (

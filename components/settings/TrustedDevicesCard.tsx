@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/lib/auth/context'
 import { getUserDevices, removeDevice, type TrustedDevice } from '@/lib/api/devices'
 import { Spinner, toast } from '@ciphera-net/ui'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { formatRelativeTime, formatDateTimeFull } from '@/lib/utils/formatDate'
 
 function getDeviceIcon(hint: string): string {
@@ -70,11 +71,11 @@ export default function TrustedDevicesCard() {
           <p className="text-red-600 dark:text-red-400">{error}</p>
         </div>
       ) : devices.length === 0 ? (
-        <div className="rounded-2xl border border-white/[0.08] bg-neutral-900/80 p-8 text-center">
-          <svg className="w-12 h-12 mx-auto mb-3 text-neutral-300 dark:text-neutral-600" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25A2.25 2.25 0 015.25 3h13.5A2.25 2.25 0 0121 5.25z" />
-          </svg>
-          <p className="text-neutral-400">No trusted devices yet. They appear after you sign in.</p>
+        <div className="rounded-2xl border border-white/[0.08] bg-neutral-900/80">
+          <EmptyState
+            title="No trusted devices yet"
+            description="Devices are added automatically the first time you sign in and verify your session."
+          />
         </div>
       ) : (
         <div className="space-y-2">

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Toggle, toast, Spinner } from '@ciphera-net/ui'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { useAuth } from '@/lib/auth/context'
 import { getNotificationSettings, updateNotificationSettings, type NotificationSettingsResponse } from '@/lib/api/notification-settings'
 
@@ -74,7 +75,11 @@ export default function WorkspaceNotificationsTab({ onDirtyChange, onRegisterSav
         ))}
 
         {(!data?.categories || data.categories.length === 0) && (
-          <p className="text-sm text-neutral-500 text-center py-8">No notification preferences available.</p>
+          <EmptyState
+            title="No preferences available"
+            description="Notification categories will appear here once they are configured for your workspace."
+            className="py-8"
+          />
         )}
       </div>
     </div>

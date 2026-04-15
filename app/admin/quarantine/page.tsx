@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { LoadingOverlay, toast } from '@ciphera-net/ui'
+import { EmptyState } from '@/components/ui/EmptyState'
 import {
   getAdminQuarantineStats,
   getAdminQuarantineEvents,
@@ -113,7 +114,7 @@ function OverviewTab({ stats, loading }: { stats: QuarantineStats | null; loadin
         <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-white mb-4">By Reason</h3>
           {Object.keys(stats.by_reason).length === 0 ? (
-            <p className="text-sm text-neutral-400">No data</p>
+            <EmptyState title="No quarantine reasons yet" className="py-4" />
           ) : (
             <ul className="space-y-2">
               {Object.entries(stats.by_reason)
@@ -132,7 +133,7 @@ function OverviewTab({ stats, loading }: { stats: QuarantineStats | null; loadin
         <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-white mb-4">By Method</h3>
           {Object.keys(stats.by_method).length === 0 ? (
-            <p className="text-sm text-neutral-400">No data</p>
+            <EmptyState title="No detection methods yet" className="py-4" />
           ) : (
             <ul className="space-y-2">
               {Object.entries(stats.by_method)
