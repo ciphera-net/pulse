@@ -26,7 +26,7 @@ const useCardContext = () => {
 const cardVariants = cva('flex flex-col items-stretch text-card-foreground rounded-xl', {
   variants: {
     variant: {
-      default: 'bg-neutral-900/80 border border-white/[0.08] backdrop-blur-sm',
+      default: 'bg-neutral-900/80 border border-white/[0.08] backdrop-blur-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_2px_12px_rgba(0,0,0,0.5)]',
       accent: 'bg-muted shadow-xs p-1',
     },
   },

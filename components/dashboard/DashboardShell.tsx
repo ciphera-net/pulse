@@ -375,7 +375,10 @@ export default function DashboardShell({
   return (
     <SidebarProvider>
       <LiveIndicatorProvider>
-      <div className="flex h-screen overflow-hidden bg-neutral-950">
+      <div
+        className="flex h-screen overflow-hidden bg-neutral-950"
+        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E")` }}
+      >
         <Sidebar
           siteId={siteId}
           mobileOpen={mobileOpen}
@@ -386,7 +389,10 @@ export default function DashboardShell({
           {/* Glass top bar — above content only, collapse icon reaches back into sidebar column */}
           <GlassTopBar siteId={siteId} />
           {/* Content panel — elevated: inset top highlight + outer shadow for perceived depth */}
-          <div className="flex-1 flex flex-col min-w-0 mr-3 mb-3 rounded-2xl bg-neutral-950 border border-white/[0.08] overflow-hidden relative shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_8px_32px_rgba(0,0,0,0.8)]">
+          <div
+            className="flex-1 flex flex-col min-w-0 mr-3 mb-3 rounded-2xl bg-neutral-950 border border-white/[0.08] overflow-hidden relative shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_8px_32px_rgba(0,0,0,0.8)]"
+            style={{ backgroundImage: 'linear-gradient(to bottom, rgba(255,255,255,0.02), transparent 240px)' }}
+          >
             <ContentHeader onMobileMenuOpen={openMobile} />
             <main className="relative flex-1 overflow-y-auto overflow-x-hidden pt-4">
               {children}
