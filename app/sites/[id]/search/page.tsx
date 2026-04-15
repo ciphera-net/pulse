@@ -18,6 +18,9 @@ import { EmptyState } from '@/components/ui/EmptyState'
 const formatPosition = (pos: number) => pos.toFixed(1)
 const formatCTR = (ctr: number) => (ctr * 100).toFixed(1) + '%'
 
+// Strip protocol + trailing slash for cleaner page URL display
+const stripProtocol = (url: string) => url.replace(/^https?:\/\//, '').replace(/\/$/, '')
+
 function formatChange(current: number, previous: number) {
   if (previous === 0) return null
   const change = ((current - previous) / previous) * 100
@@ -580,7 +583,7 @@ function QueryRow({
                 <tbody>
                   {expandedData.map((sub) => (
                     <tr key={sub.page} className="border-t border-neutral-200/50 dark:border-neutral-700/50">
-                      <td className="px-2 py-1.5 text-neutral-700 dark:text-neutral-300 max-w-md truncate" title={sub.page}>{sub.page}</td>
+                      <td className="px-2 py-1.5 text-neutral-700 dark:text-neutral-300 max-w-md truncate" title={stripProtocol(sub.page)}>{stripProtocol(sub.page)}</td>
                       <td className="px-2 py-1.5 text-right text-neutral-600 dark:text-neutral-400 tabular-nums">{sub.clicks.toLocaleString()}</td>
                       <td className="px-2 py-1.5 text-right text-neutral-600 dark:text-neutral-400 tabular-nums">{sub.impressions.toLocaleString()}</td>
                       <td className="px-2 py-1.5 text-right text-neutral-600 dark:text-neutral-400 tabular-nums">{formatCTR(sub.ctr)}</td>
@@ -620,7 +623,7 @@ function PageRow({
         <td className="px-4 py-3 text-neutral-400 dark:text-neutral-500">
           <Caret size={14} />
         </td>
-        <td className="px-4 py-3 text-white font-medium max-w-md truncate" title={row.page}>{row.page}</td>
+        <td className="px-4 py-3 text-white font-medium max-w-md truncate" title={stripProtocol(row.page)}>{stripProtocol(row.page)}</td>
         <td className="px-4 py-3 text-right text-neutral-700 dark:text-neutral-300 tabular-nums">{row.clicks.toLocaleString()}</td>
         <td className="px-4 py-3 text-right text-neutral-700 dark:text-neutral-300 tabular-nums">{row.impressions.toLocaleString()}</td>
         <td className="px-4 py-3 text-right text-neutral-700 dark:text-neutral-300 tabular-nums">{formatCTR(row.ctr)}</td>

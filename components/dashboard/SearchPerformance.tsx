@@ -44,7 +44,7 @@ function countryName(alpha3: string): string {
   try { return regionNames.of(a2) ?? alpha3 } catch { return alpha3 }
 }
 
-function CountryFlag({ alpha3, className = 'w-4 h-4 rounded-sm shadow-sm shrink-0' }: { alpha3: string; className?: string }) {
+function CountryFlag({ alpha3, className = 'w-5 h-5 rounded-sm shadow-sm shrink-0' }: { alpha3: string; className?: string }) {
   const a2 = getAlpha2(alpha3)
   if (!a2) return null
   const FlagComponent = (Flags as Record<string, React.ComponentType<{ className?: string }>>)[a2]

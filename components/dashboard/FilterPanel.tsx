@@ -450,10 +450,10 @@ export default function FilterPanel({ filters, onApply, onFetchSuggestions }: Fi
       <button
         type="button"
         onClick={() => { if (isOpen) handleDiscard(); else handleOpen() }}
-        className={`inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg transition-all active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 cursor-pointer ${
+        className={`inline-flex items-center gap-2 h-10 px-4 text-sm font-medium rounded-lg border shadow-sm transition-[color,background-color,border-color,transform] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 cursor-pointer ${
           hasActive || isOpen
-            ? 'bg-brand-orange/10 text-brand-orange border border-brand-orange/30'
-            : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-white border border-transparent'
+            ? 'bg-brand-orange/10 text-brand-orange border-brand-orange/30'
+            : 'bg-neutral-900/80 text-neutral-300 hover:bg-neutral-800 hover:text-white border-white/[0.08]'
         } ease-apple`}
       >
         {/* Adjustments/sliders icon */}
@@ -470,7 +470,7 @@ export default function FilterPanel({ filters, onApply, onFetchSuggestions }: Fi
 
       {/* Dropdown panel */}
       {isOpen && (
-        <div className="absolute top-full left-0 mt-1.5 z-50 glass-overlay rounded-xl shadow-xl shadow-black/20 p-3 min-w-[600px]">
+        <div className="absolute top-full left-0 mt-2 z-50 glass-overlay rounded-xl shadow-2xl shadow-black/50 p-4 min-w-[720px]">
           {/* Filter rows */}
           <div className="flex flex-col gap-2">
             {drafts.map((draft, i) => (
