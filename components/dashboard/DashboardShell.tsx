@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { formatUpdatedAgo, PlusIcon, ExternalLinkIcon, type CipheraApp } from '@ciphera-net/ui'
 import { CaretDown, CaretRight, SidebarSimple } from '@phosphor-icons/react'
+import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { SidebarProvider, useSidebar } from '@/lib/sidebar-context'
 import { LiveIndicatorProvider, useLiveIndicator } from '@/lib/live-indicator-context'
 import { getSite } from '@/lib/api/sites'
@@ -111,7 +112,7 @@ function BreadcrumbAppSwitcher() {
           initial={{ opacity: 0, y: 10, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 10, scale: 0.95 }}
-          transition={{ duration: 0.15 }}
+          transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
           className="fixed z-50 w-72 bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/60 border border-white/[0.08] rounded-xl shadow-xl shadow-black/20 overflow-hidden origin-top-left"
           style={fixedPos ? { left: fixedPos.left, top: fixedPos.top } : undefined}
         >
@@ -228,7 +229,7 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
           initial={{ opacity: 0, y: 10, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 10, scale: 0.95 }}
-          transition={{ duration: 0.15 }}
+          transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
           className="fixed z-50 w-[240px] bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/60 border border-white/[0.08] rounded-xl shadow-xl shadow-black/20 overflow-hidden origin-top-left"
           style={fixedPos ? { left: fixedPos.left, top: fixedPos.top } : undefined}
         >

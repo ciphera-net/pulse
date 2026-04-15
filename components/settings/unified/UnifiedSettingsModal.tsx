@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { AnimatePresence, motion } from 'framer-motion'
+import { SPRING, DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { X, GearSix, Buildings, User } from '@phosphor-icons/react'
 import { Button, Spinner } from '@ciphera-net/ui'
 import { useUnifiedSettings } from '@/lib/unified-settings-context'
@@ -92,7 +93,7 @@ function ContextSwitcher({
             <motion.div
               layoutId="context-switcher-bg"
               className="absolute inset-0 bg-neutral-700 rounded-lg shadow-sm"
-              transition={{ type: 'spring', bounce: 0.15, duration: 0.35 }}
+              transition={SPRING}
             />
           )}
           <span className="relative z-10 flex items-center gap-2">
@@ -133,7 +134,7 @@ function TabBar({
             <motion.div
               layoutId="settings-tab-indicator"
               className="absolute bottom-0 left-2 right-2 h-0.5 bg-brand-orange rounded-full"
-              transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
+              transition={SPRING}
             />
           )}
         </button>
@@ -397,7 +398,7 @@ export default function UnifiedSettingsModal() {
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.98 }}
-              transition={{ duration: 0.15 }}
+              transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
             >
               {/* Header */}
               <div className="shrink-0 px-6 pt-5 pb-4 border-b border-white/[0.06]">
@@ -438,7 +439,7 @@ export default function UnifiedSettingsModal() {
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.15 }}
+                    transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
                     className="shrink-0 overflow-hidden"
                   >
                     <div className={`px-6 py-3 border-t flex items-center justify-between ${

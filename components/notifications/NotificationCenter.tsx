@@ -7,6 +7,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import Link from 'next/link'
 import { listNotifications, markNotificationRead, markAllNotificationsRead, type Notification } from '@/lib/api/notifications'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
@@ -212,7 +213,7 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            transition={{ duration: 0.15 }}
+            transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
             className={`bg-neutral-900/80 border border-white/[0.08] rounded-xl shadow-xl shadow-black/20 overflow-hidden z-[100] ${
               anchor === 'right'
                 ? `fixed w-96 ${fixedPos?.bottom !== undefined ? 'origin-bottom-left' : 'origin-top-left'}`
