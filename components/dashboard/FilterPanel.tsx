@@ -100,7 +100,7 @@ function InlineDropdown({ value, options, placeholder, disabled, onChange }: Inl
             : open
               ? 'bg-neutral-800 border-brand-orange/40 text-white'
               : 'bg-neutral-800 border-neutral-700 text-white hover:border-neutral-600'
-        }`}
+        } ease-apple`}
       >
         <span className={selectedLabel ? 'text-white' : 'text-neutral-500'}>
           {selectedLabel ?? placeholder}
@@ -121,7 +121,7 @@ function InlineDropdown({ value, options, placeholder, disabled, onChange }: Inl
                 opt.value === value
                   ? 'bg-brand-orange/10 text-brand-orange'
                   : 'text-white hover:bg-neutral-800'
-              }`}
+              } ease-apple`}
             >
               {opt.label}
             </button>
@@ -223,7 +223,7 @@ function ValueMultiSelect({ dimension, values, disabled, onChange, onFetchSugges
             : open
               ? 'bg-neutral-800 border-brand-orange/40 text-white'
               : 'bg-neutral-800 border-neutral-700 text-white hover:border-neutral-600'
-        }`}
+        } ease-apple`}
       >
         {values.length === 0 ? (
           <span className="text-neutral-500 truncate">Select values...</span>
@@ -264,7 +264,7 @@ function ValueMultiSelect({ dimension, values, disabled, onChange, onFetchSugges
                 }
               }}
               placeholder={`Search ${dimLabel.toLowerCase()}...`}
-              className="w-full px-2.5 py-1.5 text-xs bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:ring-1 focus:ring-brand-orange/40 focus:border-brand-orange/40 transition-colors"
+              className="w-full px-2.5 py-1.5 text-xs bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:ring-1 focus:ring-brand-orange/40 focus:border-brand-orange/40 transition-colors ease-apple"
             />
           </div>
 
@@ -282,14 +282,14 @@ function ValueMultiSelect({ dimension, values, disabled, onChange, onFetchSugges
                     key={s.value}
                     type="button"
                     onClick={() => toggle(s.value)}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-left hover:bg-neutral-800 transition-colors cursor-pointer"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-left hover:bg-neutral-800 transition-colors cursor-pointer ease-apple"
                   >
                     {/* Checkbox */}
                     <span className={`flex items-center justify-center w-3.5 h-3.5 rounded border flex-shrink-0 transition-colors ${
                       checked
                         ? 'bg-brand-orange border-brand-orange'
                         : 'border-neutral-600 bg-transparent'
-                    }`}>
+                    } ease-apple`}>
                       {checked && (
                         <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -311,7 +311,7 @@ function ValueMultiSelect({ dimension, values, disabled, onChange, onFetchSugges
               <button
                 type="button"
                 onClick={handleAddCustom}
-                className="w-full px-3 py-1.5 text-xs font-medium bg-neutral-800 text-white rounded-lg hover:bg-neutral-700 transition-colors cursor-pointer border border-neutral-700"
+                className="w-full px-3 py-1.5 text-xs font-medium bg-neutral-800 text-white rounded-lg hover:bg-neutral-700 transition-colors cursor-pointer border border-neutral-700 ease-apple"
               >
                 Filter by &ldquo;{search.trim()}&rdquo;
               </button>
@@ -375,7 +375,7 @@ function FilterRow({ draft, onChange, onRemove, onFetchSuggestions }: FilterRowP
       <button
         type="button"
         onClick={onRemove}
-        className="p-1.5 text-neutral-500 hover:text-red-400 transition-colors cursor-pointer flex-shrink-0 rounded-md hover:bg-neutral-800"
+        className="p-1.5 text-neutral-500 hover:text-red-400 transition-colors cursor-pointer flex-shrink-0 rounded-md hover:bg-neutral-800 ease-apple"
       >
         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
@@ -454,7 +454,7 @@ export default function FilterPanel({ filters, onApply, onFetchSuggestions }: Fi
           hasActive || isOpen
             ? 'bg-brand-orange/10 text-brand-orange border border-brand-orange/30'
             : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-white border border-transparent'
-        }`}
+        } ease-apple`}
       >
         {/* Adjustments/sliders icon */}
         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -489,7 +489,7 @@ export default function FilterPanel({ filters, onApply, onFetchSuggestions }: Fi
             <button
               type="button"
               onClick={addDraft}
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-neutral-400 hover:text-white transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-neutral-400 hover:text-white transition-colors cursor-pointer ease-apple"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -500,7 +500,7 @@ export default function FilterPanel({ filters, onApply, onFetchSuggestions }: Fi
             <button
               type="button"
               onClick={handleSave}
-              className="px-3 py-1.5 text-xs font-medium bg-neutral-800 text-white border border-neutral-700 rounded-lg hover:bg-neutral-700 transition-colors cursor-pointer"
+              className="px-3 py-1.5 text-xs font-medium bg-neutral-800 text-white border border-neutral-700 rounded-lg hover:bg-neutral-700 transition-colors cursor-pointer ease-apple"
             >
               Save Filters
             </button>

@@ -247,7 +247,7 @@ export default function PricingSection() {
                   i === sliderIndex
                     ? 'text-primary font-semibold'
                     : 'text-neutral-500 hover:text-neutral-300'
-                }`}
+                } ease-apple`}
               >
                 {tier.label}
               </button>
@@ -291,7 +291,7 @@ export default function PricingSection() {
                 !isYearly
                   ? 'bg-neutral-700 text-white shadow-sm'
                   : 'text-neutral-500 hover:text-white'
-              }`}
+              } ease-apple`}
             >
               Monthly
             </button>
@@ -303,7 +303,7 @@ export default function PricingSection() {
                 isYearly
                   ? 'bg-neutral-700 text-white shadow-sm'
                   : 'text-neutral-500 hover:text-white'
-              }`}
+              } ease-apple`}
             >
               Yearly
             </button>
@@ -327,7 +327,7 @@ export default function PricingSection() {
             window.location.href = '/'
           }}
           disabled={currentPlanId === 'free'}
-          className="text-sm font-semibold text-brand-orange hover:text-white transition-colors shrink-0 disabled:opacity-50 disabled:cursor-default"
+          className="text-sm font-semibold text-brand-orange hover:text-white transition-colors shrink-0 disabled:opacity-50 disabled:cursor-default ease-apple"
         >
           {currentPlanId === 'free' ? 'Your current plan' : 'Get started →'}
         </button>
@@ -413,7 +413,7 @@ export default function PricingSection() {
                     isTeam
                       ? 'bg-brand-orange hover:bg-brand-orange-hover text-white'
                       : 'bg-neutral-700 hover:bg-neutral-600 text-white'
-                  }`}
+                  } ease-apple`}
                 >
                   <span>
                     {isCurrent ? 'Current plan' : !priceDetails ? 'Contact us' : 'Get Started'}
@@ -453,7 +453,7 @@ export default function PricingSection() {
         </p>
         <a
           href="mailto:business@ciphera.net?subject=Enterprise%20Plan%20Inquiry"
-          className="text-sm font-semibold text-brand-orange hover:text-white transition-colors shrink-0"
+          className="text-sm font-semibold text-brand-orange hover:text-white transition-colors shrink-0 ease-apple"
         >
           Let&apos;s talk →
         </a>

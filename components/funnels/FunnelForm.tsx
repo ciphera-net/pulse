@@ -200,7 +200,7 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
       <div className="mb-8">
         <Link
           href={cancelHref}
-          className="inline-flex items-center gap-2 text-sm text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white mb-6 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 px-2 py-1.5 -ml-2 transition-colors"
+          className="inline-flex items-center gap-2 text-sm text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white mb-6 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 px-2 py-1.5 -ml-2 transition-colors ease-apple"
         >
           <ChevronLeftIcon className="w-4 h-4" />
           Back to Funnels
@@ -273,7 +273,7 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
                         type="button"
                         onClick={() => moveStep(index, -1)}
                         disabled={index === 0}
-                        className="p-0.5 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 disabled:opacity-30 transition-colors"
+                        className="p-0.5 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 disabled:opacity-30 transition-colors ease-apple"
                       >
                         <CaretUp className="w-3.5 h-3.5" />
                       </button>
@@ -281,7 +281,7 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
                         type="button"
                         onClick={() => moveStep(index, 1)}
                         disabled={index === steps.length - 1}
-                        className="p-0.5 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 disabled:opacity-30 transition-colors"
+                        className="p-0.5 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 disabled:opacity-30 transition-colors ease-apple"
                       >
                         <ChevronDownIcon className="w-3.5 h-3.5" />
                       </button>
@@ -298,7 +298,7 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
                           category === 'page'
                             ? 'bg-brand-orange-button text-white'
                             : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'
-                        }`}
+                        } ease-apple`}
                       >
                         Page Visit
                       </button>
@@ -309,7 +309,7 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
                           category === 'event'
                             ? 'bg-brand-orange-button text-white'
                             : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'
-                        }`}
+                        } ease-apple`}
                       >
                         Custom Event
                       </button>
@@ -395,7 +395,7 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
                                 <button
                                   type="button"
                                   onClick={() => removePropertyFilter(index, filterIndex)}
-                                  className="p-1.5 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                  className="p-1.5 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors ease-apple"
                                 >
                                   <TrashIcon className="w-4 h-4" />
                                 </button>
@@ -407,7 +407,7 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
                           <button
                             type="button"
                             onClick={() => addPropertyFilter(index)}
-                            className="text-xs text-neutral-500 hover:text-neutral-900 dark:hover:text-white flex items-center gap-1 transition-colors"
+                            className="text-xs text-neutral-500 hover:text-neutral-900 dark:hover:text-white flex items-center gap-1 transition-colors ease-apple"
                           >
                             <PlusIcon className="w-3.5 h-3.5" />
                             Add property filter
@@ -426,7 +426,7 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
                       steps.length <= 1
                         ? 'text-neutral-300 cursor-not-allowed'
                         : 'text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'
-                    }`}
+                    } ease-apple`}
                   >
                     <TrashIcon className="w-5 h-5" />
                   </button>
@@ -439,7 +439,7 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
             <button
               type="button"
               onClick={handleAddStep}
-              className="w-full py-3 border-2 border-dashed border-neutral-200 dark:border-neutral-800 rounded-xl text-neutral-500 hover:text-neutral-900 dark:hover:text-white hover:border-neutral-300 dark:hover:border-neutral-700 transition-colors flex items-center justify-center gap-2 font-medium"
+              className="w-full py-3 border-2 border-dashed border-neutral-200 dark:border-neutral-800 rounded-xl text-neutral-500 hover:text-neutral-900 dark:hover:text-white hover:border-neutral-300 dark:hover:border-neutral-700 transition-colors flex items-center justify-center gap-2 font-medium ease-apple"
             >
               <PlusIcon className="w-4 h-4" />
               Add Step
@@ -472,7 +472,7 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
                   windowValue === preset.value && windowUnit === preset.unit
                     ? 'bg-brand-orange-button text-white'
                     : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'
-                }`}
+                } ease-apple`}
               >
                 {preset.label}
               </button>

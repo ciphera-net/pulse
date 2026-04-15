@@ -111,7 +111,7 @@ export default function WorkspaceAuditTab() {
       ) : (
         <div className="space-y-1">
           {entries.map(entry => (
-            <div key={entry.id} className="flex items-center justify-between px-4 py-3 rounded-xl hover:bg-neutral-800/40 transition-colors">
+            <div key={entry.id} className="flex items-center justify-between px-4 py-3 rounded-xl hover:bg-neutral-800/40 transition-colors ease-apple">
               <div>
                 <p className="text-sm text-white">
                   <span className="font-medium">{entry.actor_email || 'System'}</span>

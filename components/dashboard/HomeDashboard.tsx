@@ -231,13 +231,13 @@ export default function HomeDashboard() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleRestore(site.id)}
-                      className="px-3 py-1.5 text-xs font-medium text-neutral-300 border border-neutral-700 rounded-lg hover:bg-neutral-800 transition-colors"
+                      className="px-3 py-1.5 text-xs font-medium text-neutral-300 border border-neutral-700 rounded-lg hover:bg-neutral-800 transition-colors ease-apple"
                     >
                       Restore
                     </button>
                     <button
                       onClick={() => handlePermanentDelete(site.id)}
-                      className="px-3 py-1.5 text-xs font-medium text-red-400 border border-red-900 rounded-lg hover:bg-red-900/20 transition-colors"
+                      className="px-3 py-1.5 text-xs font-medium text-red-400 border border-red-900 rounded-lg hover:bg-red-900/20 transition-colors ease-apple"
                     >
                       Delete Now
                     </button>

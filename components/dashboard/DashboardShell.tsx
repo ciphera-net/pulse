@@ -128,7 +128,7 @@ function BreadcrumbAppSwitcher() {
                     onClick={(e) => { if (isCurrent) { e.preventDefault(); setOpen(false) } else setOpen(false) }}
                     className={`group flex flex-col items-center gap-2 p-3 rounded-xl transition-all ${
                       isCurrent ? 'bg-neutral-800/50 cursor-default' : 'hover:bg-neutral-800/50'
-                    }`}
+                    } ease-apple`}
                   >
                     <div className="w-10 h-10 flex items-center justify-center shrink-0">
                       <img src={app.icon} alt={app.name} className="w-8 h-8 object-contain" />
@@ -154,7 +154,7 @@ function BreadcrumbAppSwitcher() {
       <button
         ref={buttonRef}
         onClick={() => setOpen(!open)}
-        className="inline-flex items-center gap-1 text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer"
+        className="inline-flex items-center gap-1 text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer ease-apple"
       >
         <span>Pulse</span>
         <CaretDown className="w-3 h-3 shrink-0 translate-y-px" />
@@ -284,7 +284,7 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
       <button
         ref={buttonRef}
         onClick={() => setOpen(!open)}
-        className="inline-flex items-center gap-1 text-neutral-500 hover:text-neutral-300 transition-colors max-w-[160px] cursor-pointer"
+        className="inline-flex items-center gap-1 text-neutral-500 hover:text-neutral-300 transition-colors max-w-[160px] cursor-pointer ease-apple"
       >
         <span className="truncate">{currentSiteName}</span>
         <CaretDown className="w-3 h-3 shrink-0 translate-y-px" />
@@ -324,7 +324,7 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
       <div className="flex items-center gap-1.5">
         <button
           onClick={toggle}
-          className="w-9 h-9 flex items-center justify-center text-neutral-400 hover:text-white rounded-lg hover:bg-white/[0.06] transition-colors"
+          className="w-9 h-9 flex items-center justify-center text-neutral-400 hover:text-white rounded-lg hover:bg-white/[0.06] transition-colors ease-apple"
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           <SidebarSimple className="size-5" weight={collapsed ? 'regular' : 'fill'} />
@@ -335,7 +335,7 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
           {siteId ? (
             siteName ? (
               <>
-                <Link href="/" className="text-neutral-500 hover:text-neutral-300 transition-colors">Your Sites</Link>
+                <Link href="/" className="text-neutral-500 hover:text-neutral-300 transition-colors ease-apple">Your Sites</Link>
                 <CaretRight className="w-3 h-3 text-neutral-600" />
                 <BreadcrumbSitePicker currentSiteId={siteId} currentSiteName={siteName} />
                 <CaretRight className="w-3 h-3 text-neutral-600" />

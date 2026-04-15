@@ -70,7 +70,7 @@ export default function BreakdownDrawer({ siteId, funnelId, stepIndex, stepName,
                 activeDimension === dim
                   ? 'bg-brand-orange-button text-white'
                   : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 hover:bg-neutral-200 dark:hover:bg-neutral-700'
-              }`}
+              } ease-apple`}
             >
               {DIMENSION_LABELS[dim] || dim}
             </button>

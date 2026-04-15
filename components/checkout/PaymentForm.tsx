@@ -53,7 +53,7 @@ function MethodLogo({ type }: { type: string }) {
 }
 
 const mollieFieldBase =
-  'w-full rounded-lg border border-neutral-700 bg-neutral-800/50 px-3 py-3 h-[48px] transition-all focus-within:ring-1 focus-within:ring-brand-orange focus-within:border-brand-orange'
+  'w-full rounded-lg border border-neutral-700 bg-neutral-800/50 px-3 py-3 h-[48px] transition-all ease-apple focus-within:ring-1 focus-within:ring-brand-orange focus-within:border-brand-orange'
 
 export default function PaymentForm({ plan, interval, limit, country, vatId }: PaymentFormProps) {
   const router = useRouter()
@@ -236,7 +236,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
                   isSelected
                     ? 'border-brand-orange bg-brand-orange/5'
                     : 'border-neutral-700/50 bg-neutral-800/30 hover:border-neutral-600'
-                }`}
+                } ease-apple`}
               >
                 <MethodLogo type={method.id} />
               </button>
@@ -253,7 +253,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
             {/* Cardholder name */}
             <div>
               <label className="block text-sm font-medium text-neutral-300 mb-1.5">Cardholder name</label>
-              <div className="overflow-hidden transition-all duration-slow" style={{ height: mollieReady ? '48px' : '0px' }}>
+              <div className="overflow-hidden transition-all duration-slow ease-apple" style={{ height: mollieReady ? '48px' : '0px' }}>
                 <div id="mollie-card-holder" className={mollieFieldBase} />
               </div>
               {!mollieReady && isCard && <div className={`${mollieFieldBase} bg-neutral-800/30 animate-pulse`} />}
@@ -265,7 +265,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
             {/* Card number */}
             <div>
               <label className="block text-sm font-medium text-neutral-300 mb-1.5">Card number</label>
-              <div className="overflow-hidden transition-all duration-slow" style={{ height: mollieReady ? '48px' : '0px' }}>
+              <div className="overflow-hidden transition-all duration-slow ease-apple" style={{ height: mollieReady ? '48px' : '0px' }}>
                 <div id="mollie-card-number" className={mollieFieldBase} />
               </div>
               {!mollieReady && isCard && <div className={`${mollieFieldBase} bg-neutral-800/30 animate-pulse`} />}
@@ -278,7 +278,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-neutral-300 mb-1.5">Expiry date</label>
-                <div className="overflow-hidden transition-all duration-slow" style={{ height: mollieReady ? '48px' : '0px' }}>
+                <div className="overflow-hidden transition-all duration-slow ease-apple" style={{ height: mollieReady ? '48px' : '0px' }}>
                   <div id="mollie-card-expiry" className={mollieFieldBase} />
                 </div>
                 {!mollieReady && isCard && <div className={`${mollieFieldBase} bg-neutral-800/30 animate-pulse`} />}
@@ -288,7 +288,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
               </div>
               <div>
                 <label className="block text-sm font-medium text-neutral-300 mb-1.5">CVC</label>
-                <div className="overflow-hidden transition-all duration-slow" style={{ height: mollieReady ? '48px' : '0px' }}>
+                <div className="overflow-hidden transition-all duration-slow ease-apple" style={{ height: mollieReady ? '48px' : '0px' }}>
                   <div id="mollie-card-cvc" className={mollieFieldBase} />
                 </div>
                 {!mollieReady && isCard && <div className={`${mollieFieldBase} bg-neutral-800/30 animate-pulse`} />}
@@ -334,7 +334,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
           ref={submitRef}
           type="submit"
           disabled={submitting || !selectedMethod || (isCard && !mollieReady && !mollieError)}
-          className="mt-4 w-full rounded-lg bg-brand-orange-button px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-orange-button-hover disabled:opacity-50 disabled:cursor-not-allowed"
+          className="mt-4 w-full rounded-lg bg-brand-orange-button px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-orange-button-hover disabled:opacity-50 disabled:cursor-not-allowed ease-apple"
         >
           {submitting ? 'Processing...' : 'Subscribe'}
         </button>

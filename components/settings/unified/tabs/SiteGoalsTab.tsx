@@ -141,7 +141,7 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
           {goals.map(goal => (
             <div
               key={goal.id}
-              className="flex items-center justify-between px-4 py-3 rounded-xl hover:bg-neutral-800/40 transition-colors group"
+              className="flex items-center justify-between px-4 py-3 rounded-xl hover:bg-neutral-800/40 transition-colors group ease-apple"
             >
               <div>
                 <p className="text-sm font-medium text-white">{goal.name}</p>
@@ -150,13 +150,13 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => startEdit(goal)}
-                  className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors"
+                  className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors ease-apple"
                 >
                   <Pencil weight="bold" className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => handleDelete(goal.id)}
-                  className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-red-900/20 transition-colors"
+                  className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-red-900/20 transition-colors ease-apple"
                 >
                   <Trash weight="bold" className="w-3.5 h-3.5" />
                 </button>

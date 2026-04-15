@@ -265,7 +265,7 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
                         <Link
                           href={n.link_url}
                           onClick={() => handleNotificationClick(n)}
-                          className={`block px-4 py-3 hover:bg-neutral-50 dark:hover:bg-white/[0.06] transition-colors ${!n.read ? 'bg-brand-orange/5 dark:bg-brand-orange/10' : ''}`}
+                          className={`block px-4 py-3 hover:bg-neutral-50 dark:hover:bg-white/[0.06] transition-colors ${!n.read ? 'bg-brand-orange/5 dark:bg-brand-orange/10' : ''} ease-apple`}
                         >
                           <div className="flex gap-3">
                             {getTypeIcon(n.type)}
@@ -327,7 +327,7 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
                   setOpen(false)
                   openUnifiedSettings({ context: 'workspace', tab: 'notifications' })
                 }}
-                className="flex items-center gap-2 text-sm text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors cursor-pointer"
+                className="flex items-center gap-2 text-sm text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors cursor-pointer ease-apple"
               >
                 <SettingsIcon className="w-4 h-4" aria-hidden="true" />
                 Manage settings

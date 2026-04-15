@@ -47,11 +47,11 @@ export default function FrustrationByPageTable({ pages, loading }: FrustrationBy
               return (
                 <div
                   key={page.page_path}
-                  className="relative flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors"
+                  className="relative flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors ease-apple"
                 >
                   {/* Background bar */}
                   <div
-                    className="absolute inset-y-0 left-0 bg-brand-orange/15 dark:bg-brand-orange/25 rounded-lg transition-all"
+                    className="absolute inset-y-0 left-0 bg-brand-orange/15 dark:bg-brand-orange/25 rounded-lg transition-all ease-apple"
                     style={{ width: `${barWidth}%` }}
                   />
                   <span

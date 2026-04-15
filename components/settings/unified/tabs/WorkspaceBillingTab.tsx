@@ -215,7 +215,7 @@ export default function WorkspaceBillingTab() {
                   </span>
                   <button
                     onClick={() => downloadInvoicePDF(invoice.id).catch(() => toast.error('PDF not available yet'))}
-                    className="p-1.5 rounded-md hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors"
+                    className="p-1.5 rounded-md hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors ease-apple"
                     title="Download PDF"
                   >
                     <DownloadSimple size={16} />

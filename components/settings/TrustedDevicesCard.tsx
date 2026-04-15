@@ -116,7 +116,7 @@ export default function TrustedDevicesCard() {
                   type="button"
                   onClick={() => handleRemove(device)}
                   disabled={removingId === device.id}
-                  className="flex-shrink-0 text-xs font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors disabled:opacity-50"
+                  className="flex-shrink-0 text-xs font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors disabled:opacity-50 ease-apple"
                 >
                   {removingId === device.id ? 'Removing...' : 'Remove'}
                 </button>

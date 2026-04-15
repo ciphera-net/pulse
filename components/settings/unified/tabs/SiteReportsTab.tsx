@@ -124,7 +124,7 @@ function ScheduleRow({
   }
 
   return (
-    <div className="flex items-center justify-between px-4 py-3 rounded-xl hover:bg-neutral-800/40 transition-colors group">
+    <div className="flex items-center justify-between px-4 py-3 rounded-xl hover:bg-neutral-800/40 transition-colors group ease-apple">
       <div className="flex items-center gap-3 min-w-0">
         <div className={`p-1.5 rounded-lg flex-shrink-0 ${schedule.enabled ? 'bg-brand-orange/10 text-brand-orange' : 'bg-neutral-800 text-neutral-500'}`}>
           <ChannelIcon channel={schedule.channel} />
@@ -148,16 +148,16 @@ function ScheduleRow({
         </div>
       </div>
       <div className="flex items-center gap-1 flex-shrink-0">
-        <button onClick={() => onEdit(schedule)} className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors" title="Edit">
+        <button onClick={() => onEdit(schedule)} className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors ease-apple" title="Edit">
           <Pencil weight="bold" className="w-3.5 h-3.5" />
         </button>
-        <button onClick={handleTest} disabled={testing} className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors" title="Send test">
+        <button onClick={handleTest} disabled={testing} className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors ease-apple" title="Send test">
           <PaperPlaneTilt weight="bold" className="w-3.5 h-3.5" />
         </button>
-        <button onClick={handleToggle} className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors">
+        <button onClick={handleToggle} className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors ease-apple">
           {schedule.enabled ? 'Pause' : 'Enable'}
         </button>
-        <button onClick={handleDelete} className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-red-900/20 transition-colors" title="Delete">
+        <button onClick={handleDelete} className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-red-900/20 transition-colors ease-apple" title="Delete">
           <Trash weight="bold" className="w-3.5 h-3.5" />
         </button>
       </div>
@@ -181,7 +181,7 @@ function ChannelPicker({ value, onChange }: { value: string; onChange: (v: strin
             value === ch
               ? 'border-brand-orange bg-brand-orange/10 text-white'
               : 'border-neutral-800 text-neutral-400 hover:border-neutral-700 hover:text-white'
-          }`}
+          } ease-apple`}
         >
           {CHANNEL_ICONS[ch]}
           <span className="text-xs capitalize">{ch}</span>
@@ -205,7 +205,7 @@ function FormInput({ id, type = 'text', value, onChange, placeholder }: { id?: s
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full h-10 px-4 bg-transparent border border-neutral-800 rounded-lg text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 transition-colors"
+      className="w-full h-10 px-4 bg-transparent border border-neutral-800 rounded-lg text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 transition-colors ease-apple"
     />
   )
 }

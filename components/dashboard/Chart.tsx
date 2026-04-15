@@ -100,7 +100,7 @@ function Sparkline({ data, dataKey, active, engagementDaily }: { data: { pagevie
   const fillPath = linePath + ` L100,${h} L0,${h} Z`
 
   return (
-    <svg viewBox={`0 0 100 ${h}`} className="absolute bottom-0 left-0 right-0 w-full z-0 transition-opacity duration-base opacity-30 group-hover:opacity-60" style={{ height: h }} preserveAspectRatio="none">
+    <svg viewBox={`0 0 100 ${h}`} className="absolute bottom-0 left-0 right-0 w-full z-0 transition-opacity duration-base opacity-30 group-hover:opacity-60 ease-apple" style={{ height: h }} preserveAspectRatio="none">
       <path d={fillPath} className={active ? "fill-brand-orange/[0.08]" : "fill-neutral-600/[0.05] group-hover:fill-brand-orange/[0.08]"} />
       <path
         d={linePath}
@@ -277,7 +277,7 @@ export default function Chart({
                 key={m.key}
                 onClick={() => setMetric(m.key)}
                 className={cn(
-                  'group relative overflow-hidden cursor-pointer flex-1 text-start p-4 border-b md:border-b-0 md:border-r md:last:border-r-0 border-neutral-200 dark:border-neutral-800 transition-all',
+                  'group relative overflow-hidden cursor-pointer flex-1 text-start p-4 border-b md:border-b-0 md:border-r md:last:border-r-0 border-neutral-200 dark:border-neutral-800 transition-all ease-apple',
                   metric === m.key && 'bg-neutral-50 dark:bg-neutral-800/40',
                 )}
               >
@@ -362,7 +362,7 @@ export default function Chart({
               <button
                 onClick={handleExportChart}
                 disabled={!hasData}
-                className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors disabled:opacity-30 cursor-pointer"
+                className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors disabled:opacity-30 cursor-pointer ease-apple"
                 title="Export chart as PNG"
               >
                 <DownloadIcon className="w-4 h-4" />
