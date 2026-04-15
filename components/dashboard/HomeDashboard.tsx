@@ -10,6 +10,7 @@ import SiteList from '@/components/sites/SiteList'
 import DeleteSiteModal from '@/components/sites/DeleteSiteModal'
 import { Button, XIcon, toast, getAuthErrorMessage } from '@ciphera-net/ui'
 import { getSitesLimitForPlan } from '@/lib/plans'
+import { SitesListSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 
 type SiteStatsMap = Record<string, { stats: Stats }>
 
@@ -107,8 +108,14 @@ export default function HomeDashboard() {
     if (site) setPermanentDeleteSiteModal(site)
   }
 
+  // * Match the skeleton-with-minimum-display-time pattern used across site
+  // * pages (behavior, journeys, funnels, etc.). useMinimumLoading keeps the
+  // * skeleton visible for >=300ms once shown to prevent flicker on fast loads.
+  const showSkeleton = useMinimumLoading(sitesLoading && sites.length === 0)
+  const fadeClass = useSkeletonFade(showSkeleton)
+
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
+    <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
       {showFinishSetupBanner && (
         <div className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-brand-orange/30 bg-brand-orange/10 px-4 py-3">
           <p className="text-sm text-neutral-300">
@@ -171,7 +178,9 @@ export default function HomeDashboard() {
         )}
       </div>
 
-      {!sitesLoading && sites.length === 0 && (
+      {showSkeleton ? (
+        <SitesListSkeleton rows={3} />
+      ) : sites.length === 0 ? (
         <div className="mb-8 rounded-2xl border-2 border-dashed border-brand-orange/30 bg-brand-orange/10 p-8 text-center flex flex-col items-center">
           <img
             src="/illustrations/setup-analytics.svg"
@@ -188,10 +197,8 @@ export default function HomeDashboard() {
             </Button>
           </Link>
         </div>
-      )}
-
-      {(sitesLoading || sites.length > 0) && (
-        <SiteList sites={sites} siteStats={siteStats} loading={sitesLoading} />
+      ) : (
+        <SiteList sites={sites} siteStats={siteStats} loading={false} />
       )}
 
       <DeleteSiteModal

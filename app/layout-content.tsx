@@ -61,12 +61,15 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   }, [isSwitchingOrg])
 
   useEffect(() => {
+    // * Skip on /auth/callback — the session JWT may be stale during code
+    // * exchange and this fetch would 403 with old credentials.
+    if (pathname?.startsWith('/auth/callback')) return
     if (auth.user) {
       getUserOrganizations()
         .then((organizations) => setOrgs(Array.isArray(organizations) ? organizations : []))
         .catch(err => logger.error('Failed to fetch orgs for header', err))
     }
-  }, [auth.user])
+  }, [auth.user, pathname])
 
   const handleSwitchOrganization = async (orgId: string | null) => {
     if (!orgId) return
@@ -92,9 +95,19 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   const isDashboardPage = pathname === '/' || pathname.startsWith('/integrations') || pathname === '/pricing' || pathname.startsWith('/welcome')
   // Checkout page has its own minimal layout — no app header/footer
   const isCheckoutPage = pathname.startsWith('/checkout')
+  // Auth callback is a transient route that only renders <LoadingOverlay> while
+  // exchanging the OAuth code. The app shell must not mount here — it would
+  // fire layout-level data hooks (NotificationCenter polling, sites via
+  // UnifiedSettingsModal, organizations) using the stale pre-login session,
+  // all of which 403 and create the post-login flicker / slow-load.
+  const isAuthCallback = pathname.startsWith('/auth/callback')
 
   if (isSwitchingOrg) {
     return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" portal={false} />
+  }
+
+  if (isAuthCallback) {
+    return <>{children}</>
   }
 
   // While auth is loading on a site or checkout page, render nothing to prevent flash of public header
