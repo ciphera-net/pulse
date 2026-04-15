@@ -213,7 +213,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
 
       <form
         onSubmit={handleSubmit}
-        className="rounded-2xl border border-neutral-800 bg-neutral-900/50 backdrop-blur-xl p-6"
+        className="rounded-2xl glass-surface p-6"
       >
         <h2 className="text-lg font-semibold text-white mb-4">Payment method</h2>
 

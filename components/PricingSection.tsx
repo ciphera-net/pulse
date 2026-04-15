@@ -334,7 +334,7 @@ export default function PricingSection() {
       </div>
 
       {/* Unified card block */}
-      <div className="rounded-2xl border border-white/[0.08] bg-neutral-900/80 backdrop-blur-xl overflow-hidden mb-6">
+      <div className="rounded-2xl glass-surface overflow-hidden mb-6">
         <div className="grid grid-cols-1 lg:grid-cols-3">
           {PLANS.map((plan, index) => {
             const priceDetails = getPriceDetails(plan.id)
