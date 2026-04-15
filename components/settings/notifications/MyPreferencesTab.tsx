@@ -1,13 +1,17 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
 import { getPrefs, updatePrefs, type Preferences } from '@/lib/api/notifications-preferences'
+import { purgeMine } from '@/lib/api/notifications-v2'
 import DeliveryModesTable from './DeliveryModesTable'
 import QuietHoursSection from './QuietHoursSection'
+import RetentionOverridesTable from './RetentionOverridesTable'
+import PurgeConfirmDialog from '@/app/notifications/PurgeConfirmDialog'
 
 export default function MyPreferencesTab() {
   const [prefs, setPrefs] = useState<Preferences | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [purging, setPurging] = useState(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -71,6 +75,38 @@ export default function MyPreferencesTab() {
       <section>
         <h3 className="font-medium text-white mb-1">Quiet hours</h3>
         <QuietHoursSection prefs={prefs} onChange={debouncedSave} />
+      </section>
+
+      <section>
+        <h3 className="font-medium text-white mb-1">Retention — make Ciphera forget sooner</h3>
+        <p className="text-xs text-neutral-500 mb-3">
+          Tighten how long Ciphera keeps your read notifications. Defaults are listed; you can only go shorter.
+        </p>
+        <RetentionOverridesTable prefs={prefs} onChange={debouncedSave} />
+      </section>
+
+      <section>
+        <h3 className="font-medium text-white mb-1 text-red-400">Danger zone</h3>
+        <p className="text-xs text-neutral-500 mb-3">
+          Permanently delete every notification stored against your account. Other team members' copies are not affected.
+        </p>
+        <button
+          type="button"
+          onClick={() => setPurging(true)}
+          className="px-4 py-2 text-sm rounded border border-red-500/30 text-red-400 hover:bg-red-500/10"
+        >
+          Delete all my notification history
+        </button>
+        {purging && (
+          <PurgeConfirmDialog
+            count={0}
+            onCancel={() => setPurging(false)}
+            onConfirm={async () => {
+              await purgeMine()
+              setPurging(false)
+            }}
+          />
+        )}
       </section>
 
       {(saving || error) && (
