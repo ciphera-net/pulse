@@ -622,6 +622,8 @@ function TooltipDot({
       r={size}
       stroke={strokeColor}
       strokeWidth={strokeWidth}
+      animate={{ scale: visible ? 1.15 : 1 }}
+      transition={SPRING}
     />
   );
 }
@@ -941,10 +943,10 @@ function TooltipBox({
 
   return createPortal(
     <motion.div
-      animate={{ opacity: 1 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
       className={cn("pointer-events-none absolute z-50", className)}
-      exit={{ opacity: 0 }}
-      initial={{ opacity: 0 }}
+      exit={{ opacity: 0, scale: 0.92, y: 4 }}
+      initial={{ opacity: 0, scale: 0.92, y: 4 }}
       ref={tooltipRef}
       style={{ left: finalLeft, top: finalTop }}
       transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
@@ -1074,6 +1076,7 @@ export function ChartTooltip({
           className="pointer-events-none absolute inset-0"
           height="100%"
           width="100%"
+          style={{ filter: 'drop-shadow(0 0 12px rgba(253, 94, 15, 0.4))' }}
         >
           <g transform={`translate(${margin.left},${margin.top})`}>
             <TooltipIndicator
@@ -1568,6 +1571,9 @@ export function Area({
   const pathRef = useRef<SVGPathElement>(null);
   const [pathLength, setPathLength] = useState(0);
   const [clipWidth, setClipWidth] = useState(0);
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => { setHasMounted(true); }, []);
 
   const uniqueId = useId();
   const gradientId = useMemo(
@@ -1808,16 +1814,22 @@ export function Area({
           </g>
 
           {showLine && (
-            <LinePath
-              curve={curve}
-              data={data}
-              innerRef={pathRef}
-              stroke={`url(#${strokeGradientId})`}
-              strokeLinecap="round"
-              strokeWidth={strokeWidth}
-              x={(d) => xScale(xAccessor(d)) ?? 0}
-              y={getY}
-            />
+            <motion.g
+              initial={hasMounted ? false : { pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: 1 }}
+              transition={{ duration: 0.6, ease: EASE_APPLE }}
+            >
+              <LinePath
+                curve={curve}
+                data={data}
+                innerRef={pathRef}
+                stroke={`url(#${strokeGradientId})`}
+                strokeLinecap="round"
+                strokeWidth={strokeWidth}
+                x={(d) => xScale(xAccessor(d)) ?? 0}
+                y={getY}
+              />
+            </motion.g>
           )}
         </motion.g>
       </g>
