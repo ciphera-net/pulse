@@ -102,15 +102,15 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
       {botStats && (
         <div className="grid grid-cols-3 gap-3">
           <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 p-4 text-center">
-            <p className="text-2xl font-bold text-white">{botStats.total_quarantined ?? 0}</p>
+            <p className="text-2xl font-bold tabular-nums text-white">{botStats.total_quarantined ?? 0}</p>
             <p className="text-xs text-neutral-500 mt-1">Quarantined events</p>
           </div>
           <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 p-4 text-center">
-            <p className="text-2xl font-bold text-white">{botStats.last_24h ?? 0}</p>
+            <p className="text-2xl font-bold tabular-nums text-white">{botStats.last_24h ?? 0}</p>
             <p className="text-xs text-neutral-500 mt-1">Last 24h</p>
           </div>
           <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 p-4 text-center">
-            <p className="text-2xl font-bold text-white">{Object.keys(botStats.by_reason || {}).length}</p>
+            <p className="text-2xl font-bold tabular-nums text-white">{Object.keys(botStats.by_reason || {}).length}</p>
             <p className="text-xs text-neutral-500 mt-1">Detection types</p>
           </div>
         </div>
