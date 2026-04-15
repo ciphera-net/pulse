@@ -1,16 +1,6 @@
 import type { Receipt } from '@/lib/notifications/types'
 import type { Rendered, Resolvers } from './index'
-
-function formatDowntime(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`
-  if (seconds < 3600) return `${Math.round(seconds / 60)}m`
-  return `${(seconds / 3600).toFixed(1)}h`
-}
-
-function daysUntil(iso: string): number {
-  const diff = new Date(iso).getTime() - Date.now()
-  return Math.max(0, Math.ceil(diff / (24 * 3600 * 1000)))
-}
+import { formatDowntime, daysUntil } from '../display-utils'
 
 export const uptimeRenderers = {
   uptime_monitor_down: (r: Receipt, resolvers?: Resolvers): Rendered => {
