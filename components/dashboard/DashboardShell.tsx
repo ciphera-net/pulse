@@ -375,7 +375,7 @@ export default function DashboardShell({
   return (
     <SidebarProvider>
       <LiveIndicatorProvider>
-      <div className="flex h-screen overflow-hidden bg-neutral-950">
+      <div className="flex h-screen overflow-hidden bg-neutral-900">
         <Sidebar
           siteId={siteId}
           mobileOpen={mobileOpen}
@@ -386,7 +386,7 @@ export default function DashboardShell({
           {/* Glass top bar — above content only, collapse icon reaches back into sidebar column */}
           <GlassTopBar siteId={siteId} />
           {/* Content panel */}
-          <div className="flex-1 flex flex-col min-w-0 mr-2 mb-2 rounded-2xl bg-neutral-950 border border-white/[0.08] overflow-hidden relative">
+          <div className="flex-1 flex flex-col min-w-0 mr-2 mb-2 rounded-2xl bg-black border border-white/[0.12] overflow-hidden relative">
             {/* Background image */}
             <div
               className="absolute inset-0 bg-cover bg-top opacity-[0.15] pointer-events-none"
