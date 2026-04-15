@@ -162,7 +162,7 @@ export default function JourneysPage() {
             <button
               onClick={filters.resetFilters}
               disabled={filters.isDefault}
-              className={`text-sm whitespace-nowrap transition-all duration-150 px-3 py-2 ${
+              className={`text-sm whitespace-nowrap transition-all duration-fast px-3 py-2 ${
                 filters.isDefault
                   ? 'opacity-0 pointer-events-none'
                   : 'opacity-100 text-neutral-500 hover:text-white'
@@ -188,7 +188,7 @@ export default function JourneysPage() {
               >
                 {mode === 'columns' ? 'Columns' : 'Flow'}
                 <span
-                  className={`absolute inset-x-0 -bottom-px h-[3px] rounded-full transition-all duration-200 ${
+                  className={`absolute inset-x-0 -bottom-px h-[3px] rounded-full transition-all duration-base ${
                     filters.viewMode === mode ? 'bg-brand-orange scale-x-100' : 'bg-transparent scale-x-0'
                   }`}
                 />

@@ -110,7 +110,7 @@ export function IntegrationGuide({ integration, children }: IntegrationGuideProp
                 <Link
                   key={related.id}
                   href={`/integrations/${related.id}`}
-                  className="group flex items-center gap-4 p-4 bg-neutral-900/50 backdrop-blur-sm border border-neutral-800 rounded-xl hover:border-brand-orange/50 transition-all duration-300"
+                  className="group flex items-center gap-4 p-4 bg-neutral-900/50 backdrop-blur-sm border border-neutral-800 rounded-xl hover:border-brand-orange/50 transition-all duration-slow"
                 >
                   <div className="p-2 bg-neutral-800 rounded-lg shrink-0 [&_svg]:w-6 [&_svg]:h-6">
                     {related.icon}

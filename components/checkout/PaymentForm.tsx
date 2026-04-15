@@ -232,7 +232,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
                     setTimeout(() => submitRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 350)
                   }
                 }}
-                className={`flex items-center justify-center rounded-xl border h-[44px] transition-all duration-200 ${
+                className={`flex items-center justify-center rounded-xl border h-[44px] transition-all duration-base ${
                   isSelected
                     ? 'border-brand-orange bg-brand-orange/5'
                     : 'border-neutral-700/50 bg-neutral-800/30 hover:border-neutral-600'
@@ -246,14 +246,14 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
 
         {/* Card form — always rendered for Mollie mount, animated visibility */}
         <div
-          className="overflow-hidden transition-all duration-300 ease-out"
+          className="overflow-hidden transition-all duration-slow ease-out"
           style={{ maxHeight: isCard ? '400px' : '0px', opacity: isCard ? 1 : 0 }}
         >
           <div className="space-y-4 pb-1">
             {/* Cardholder name */}
             <div>
               <label className="block text-sm font-medium text-neutral-300 mb-1.5">Cardholder name</label>
-              <div className="overflow-hidden transition-all duration-300" style={{ height: mollieReady ? '48px' : '0px' }}>
+              <div className="overflow-hidden transition-all duration-slow" style={{ height: mollieReady ? '48px' : '0px' }}>
                 <div id="mollie-card-holder" className={mollieFieldBase} />
               </div>
               {!mollieReady && isCard && <div className={`${mollieFieldBase} bg-neutral-800/30 animate-pulse`} />}
@@ -265,7 +265,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
             {/* Card number */}
             <div>
               <label className="block text-sm font-medium text-neutral-300 mb-1.5">Card number</label>
-              <div className="overflow-hidden transition-all duration-300" style={{ height: mollieReady ? '48px' : '0px' }}>
+              <div className="overflow-hidden transition-all duration-slow" style={{ height: mollieReady ? '48px' : '0px' }}>
                 <div id="mollie-card-number" className={mollieFieldBase} />
               </div>
               {!mollieReady && isCard && <div className={`${mollieFieldBase} bg-neutral-800/30 animate-pulse`} />}
@@ -278,7 +278,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-neutral-300 mb-1.5">Expiry date</label>
-                <div className="overflow-hidden transition-all duration-300" style={{ height: mollieReady ? '48px' : '0px' }}>
+                <div className="overflow-hidden transition-all duration-slow" style={{ height: mollieReady ? '48px' : '0px' }}>
                   <div id="mollie-card-expiry" className={mollieFieldBase} />
                 </div>
                 {!mollieReady && isCard && <div className={`${mollieFieldBase} bg-neutral-800/30 animate-pulse`} />}
@@ -288,7 +288,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
               </div>
               <div>
                 <label className="block text-sm font-medium text-neutral-300 mb-1.5">CVC</label>
-                <div className="overflow-hidden transition-all duration-300" style={{ height: mollieReady ? '48px' : '0px' }}>
+                <div className="overflow-hidden transition-all duration-slow" style={{ height: mollieReady ? '48px' : '0px' }}>
                   <div id="mollie-card-cvc" className={mollieFieldBase} />
                 </div>
                 {!mollieReady && isCard && <div className={`${mollieFieldBase} bg-neutral-800/30 animate-pulse`} />}

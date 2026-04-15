@@ -141,7 +141,7 @@ function PageRow({
       data-path={page.path}
       className={`
         group flex items-center justify-between w-full relative
-        h-9 px-3 rounded-lg text-left transition-all duration-200
+        h-9 px-3 rounded-lg text-left transition-all duration-base
         ${isOther ? 'cursor-default' : 'cursor-pointer'}
         ${isSelected
           ? 'bg-brand-orange/10 dark:bg-brand-orange/10'
@@ -154,7 +154,7 @@ function PageRow({
       {/* Background bar — animates width on mount */}
       {!isOther && barWidth > 0 && (
         <div
-          className="absolute top-0.5 bottom-0.5 left-0.5 rounded-md transition-all duration-500 ease-out"
+          className="absolute top-0.5 bottom-0.5 left-0.5 rounded-md transition-all duration-gentle ease-out"
           style={{
             width: isMounted ? `calc(${barWidth}% - 4px)` : '0%',
             transitionDelay: `${rowIndex * 30}ms`,
@@ -175,7 +175,7 @@ function PageRow({
       </span>
       <div className="relative flex items-center gap-2 ml-2 shrink-0">
         {!isOther && (
-          <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+          <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-base">
             {pct}%
           </span>
         )}

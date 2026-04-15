@@ -85,7 +85,7 @@ function ContextSwitcher({
         <button
           key={item.id}
           onClick={() => onChange(item.id)}
-          className={`relative flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 ${
+          className={`relative flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-base ${
             active === item.id ? 'text-white' : 'text-neutral-400 hover:text-white'
           }`}
         >
@@ -123,7 +123,7 @@ function TabBar({
         <button
           key={tab.id}
           onClick={() => onChange(tab.id)}
-          className={`relative px-3 py-2 text-sm font-medium whitespace-nowrap rounded-lg transition-all duration-200 ${
+          className={`relative px-3 py-2 text-sm font-medium whitespace-nowrap rounded-lg transition-all duration-base ${
             activeTab === tab.id
               ? 'text-brand-orange'
               : 'text-neutral-500 hover:text-neutral-300'
@@ -369,7 +369,7 @@ export default function UnifiedSettingsModal() {
     <>
       {/* Backdrop — fades in/out */}
       <div
-        className={`fixed inset-0 z-[60] bg-black/50 transition-opacity duration-200 ${
+        className={`fixed inset-0 z-[60] bg-black/50 transition-opacity duration-base ${
           isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
         onClick={handleBackdropClick}
@@ -379,9 +379,9 @@ export default function UnifiedSettingsModal() {
       <div
         className={`fixed inset-0 z-[61] flex items-center justify-center p-4 ${
           isOpen
-            ? 'opacity-100 pointer-events-auto transition-opacity duration-150'
+            ? 'opacity-100 pointer-events-auto transition-opacity duration-fast'
             : showGlass
-              ? 'opacity-0 pointer-events-none transition-opacity duration-150'
+              ? 'opacity-0 pointer-events-none transition-opacity duration-fast'
               : 'opacity-0 pointer-events-none invisible'
         }`}
         onClick={handleBackdropClick}

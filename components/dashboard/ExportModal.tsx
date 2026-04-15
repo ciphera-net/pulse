@@ -488,7 +488,7 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
             </div>
             <div className="h-1.5 w-full rounded-full bg-neutral-100 dark:bg-neutral-800 overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all duration-300 ease-out ${exportDone ? 'bg-green-500' : 'bg-brand-orange'}`}
+                className={`h-full rounded-full transition-all duration-slow ease-out ${exportDone ? 'bg-green-500' : 'bg-brand-orange'}`}
                 style={{ width: exportDone ? '100%' : `${(exportProgress.step / exportProgress.total) * 100}%` }}
               />
             </div>

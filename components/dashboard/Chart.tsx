@@ -100,7 +100,7 @@ function Sparkline({ data, dataKey, active, engagementDaily }: { data: { pagevie
   const fillPath = linePath + ` L100,${h} L0,${h} Z`
 
   return (
-    <svg viewBox={`0 0 100 ${h}`} className="absolute bottom-0 left-0 right-0 w-full z-0 transition-opacity duration-200 opacity-30 group-hover:opacity-60" style={{ height: h }} preserveAspectRatio="none">
+    <svg viewBox={`0 0 100 ${h}`} className="absolute bottom-0 left-0 right-0 w-full z-0 transition-opacity duration-base opacity-30 group-hover:opacity-60" style={{ height: h }} preserveAspectRatio="none">
       <path d={fillPath} className={active ? "fill-brand-orange/[0.08]" : "fill-neutral-600/[0.05] group-hover:fill-brand-orange/[0.08]"} />
       <path
         d={linePath}

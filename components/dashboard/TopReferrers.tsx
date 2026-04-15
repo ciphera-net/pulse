@@ -153,7 +153,7 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
               >
                 {tab}
                 <span
-                  className={`absolute inset-x-0 -bottom-px h-[3px] rounded-full transition-all duration-200 ${
+                  className={`absolute inset-x-0 -bottom-px h-[3px] rounded-full transition-all duration-base ${
                     view === tab ? 'bg-brand-orange scale-x-100' : 'bg-transparent scale-x-0'
                   }`}
                 />
@@ -198,7 +198,7 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
                         <span className="truncate" title={ref.referrer}>{getReferrerDisplayName(ref.referrer)}</span>
                       </div>
                       <div className="relative flex items-center gap-2 ml-4">
-                        <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+                        <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-base">
                           {totalPageviews > 0 ? `${Math.round((ref.pageviews / totalPageviews) * 100)}%` : ''}
                         </span>
                         <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
@@ -253,7 +253,7 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
                         <span className="truncate" title={ch.channel}>{ch.channel}</span>
                       </div>
                       <div className="relative flex items-center gap-2 ml-4">
-                        <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+                        <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-base">
                           {channelTotal > 0 ? `${Math.round((ch.pageviews / channelTotal) * 100)}%` : ''}
                         </span>
                         <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
@@ -323,7 +323,7 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
                       <span className="truncate" title={ref.referrer}>{getReferrerDisplayName(ref.referrer)}</span>
                     </div>
                     <div className="flex items-center gap-2 ml-4">
-                      <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+                      <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-base">
                         {modalTotal > 0 ? `${Math.round((ref.pageviews / modalTotal) * 100)}%` : ''}
                       </span>
                       <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
