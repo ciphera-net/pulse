@@ -33,7 +33,13 @@ const SITE_KEY_MAP: Record<string, SitePage> = {
  * Excluded when focus is inside inputs/textareas/contenteditable. Modifier-key
  * combos (⌘/Ctrl/Alt) are reserved for future use (e.g., ⌘K command palette).
  */
-export function ShortcutHandler({ onShowOverlay }: { onShowOverlay: () => void }) {
+export function ShortcutHandler({
+  onShowOverlay,
+  onOpenPalette,
+}: {
+  onShowOverlay: () => void
+  onOpenPalette: () => void
+}) {
   const router = useRouter()
   const params = useParams()
   const { openUnifiedSettings } = useUnifiedSettings()
@@ -43,14 +49,22 @@ export function ShortcutHandler({ onShowOverlay }: { onShowOverlay: () => void }
   useEffect(() => {
     function handler(e: KeyboardEvent) {
       const target = e.target as HTMLElement
-      // Ignore while user is typing
+
+      // ⌘K / Ctrl+K — open command palette (works even in inputs)
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        onOpenPalette()
+        return
+      }
+
+      // Ignore other shortcuts while user is typing
       if (
         target.tagName === 'INPUT' ||
         target.tagName === 'TEXTAREA' ||
         target.tagName === 'SELECT' ||
         target.isContentEditable
       ) return
-      // Reserve modifier combos
+      // Reserve remaining modifier combos
       if (e.metaKey || e.ctrlKey || e.altKey) return
 
       // ? — open shortcuts overlay
@@ -98,7 +112,7 @@ export function ShortcutHandler({ onShowOverlay }: { onShowOverlay: () => void }
 
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [router, siteId, openUnifiedSettings, onShowOverlay])
+  }, [router, siteId, openUnifiedSettings, onShowOverlay, onOpenPalette])
 
   return null
 }
