@@ -2,6 +2,7 @@
 
 import { useCallback } from 'react'
 import { useSites } from '@/lib/swr/sites'
+import { useMembers } from '@/lib/swr/members'
 export { countryName, formatDowntime, daysUntil } from './display-utils'
 
 /**
@@ -27,15 +28,18 @@ export function useResolveSiteName(): (siteId: string) => string {
 /**
  * useResolveUserName — returns a function mapping a user UUID to a display name.
  *
- * Currently a stub — returns 'A team member' for every user ID.
- * TODO(7.x): integrate with the organization members API once a members context
- * or hook is available (the /organizations/:id/members endpoint exists but there
- * is no global client-side members cache yet).
+ * Looks up the user in the current organisation's member list (fetched from the
+ * auth-backend via useMembers / SWR).  Falls back to 'User (removed)' when the
+ * user is no longer a member of the organisation.
  */
 export function useResolveUserName(): (userId: string) => string {
-  return useCallback((_userId: string): string => {
-    // TODO(7.x): replace with real members lookup
-    return 'A team member'
-  }, [])
+  const { members } = useMembers()
+  return useCallback(
+    (userId: string): string => {
+      const m = members.find(x => x.user_id === userId)
+      return m?.user_email ?? 'User (removed)'
+    },
+    [members],
+  )
 }
 
