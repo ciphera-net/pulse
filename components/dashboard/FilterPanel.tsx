@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import {
   DIMENSION_LABELS,
   DIMENSIONS,
@@ -393,6 +394,9 @@ export default function FilterPanel({ filters, onApply, onFetchSuggestions }: Fi
   const [isOpen, setIsOpen] = useState(false)
   const [drafts, setDrafts] = useState<DraftFilter[]>(() => toDrafts(filters))
   const ref = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const [fixedPos, setFixedPos] = useState<{ left: number; top: number } | null>(null)
 
   // Sync drafts from props when panel opens
   const handleOpen = useCallback(() => {
@@ -404,11 +408,39 @@ export default function FilterPanel({ filters, onApply, onFetchSuggestions }: Fi
     setIsOpen(false)
   }, [])
 
-  // Outside click / Escape discards
+  const updatePosition = useCallback(() => {
+    if (!buttonRef.current) return
+    const rect = buttonRef.current.getBoundingClientRect()
+    let top = rect.bottom + 8
+    if (panelRef.current) {
+      const maxTop = window.innerHeight - panelRef.current.offsetHeight - 16
+      top = Math.min(top, Math.max(16, maxTop))
+    }
+    setFixedPos({ left: rect.left, top })
+  }, [])
+
+  // Re-position on open + on resize/scroll while open
+  useEffect(() => {
+    if (!isOpen) return
+    updatePosition()
+    requestAnimationFrame(() => updatePosition())
+    window.addEventListener('resize', updatePosition)
+    window.addEventListener('scroll', updatePosition, true)
+    return () => {
+      window.removeEventListener('resize', updatePosition)
+      window.removeEventListener('scroll', updatePosition, true)
+    }
+  }, [isOpen, updatePosition])
+
+  // Outside click / Escape discards — panel is portal-rendered so we check both refs
   useEffect(() => {
     if (!isOpen) return
     function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) handleDiscard()
+      const target = e.target as Node
+      if (
+        ref.current && !ref.current.contains(target) &&
+        (!panelRef.current || !panelRef.current.contains(target))
+      ) handleDiscard()
     }
     function handleEsc(e: KeyboardEvent) {
       if (e.key === 'Escape') handleDiscard()
@@ -444,10 +476,54 @@ export default function FilterPanel({ filters, onApply, onFetchSuggestions }: Fi
   const activeCount = filters.length
   const hasActive = activeCount > 0
 
+  const panel = isOpen ? (
+    <div
+      ref={panelRef}
+      className="fixed z-[100] glass-overlay rounded-xl shadow-2xl shadow-black/50 p-4 min-w-[720px]"
+      style={fixedPos ? { left: fixedPos.left, top: fixedPos.top } : { opacity: 0 }}
+    >
+      {/* Filter rows */}
+      <div className="flex flex-col gap-2">
+        {drafts.map((draft, i) => (
+          <FilterRow
+            key={i}
+            draft={draft}
+            onChange={updated => updateDraft(i, updated)}
+            onRemove={() => removeDraft(i)}
+            onFetchSuggestions={onFetchSuggestions}
+          />
+        ))}
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/[0.06]">
+        <button
+          type="button"
+          onClick={addDraft}
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-neutral-400 hover:text-white transition-colors cursor-pointer ease-apple"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+          Add Filter
+        </button>
+
+        <button
+          type="button"
+          onClick={handleSave}
+          className="px-3 py-1.5 text-xs font-medium bg-brand-orange text-white rounded-lg hover:bg-brand-orange-hover transition-[color,transform] duration-fast ease-apple active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 cursor-pointer shadow-sm"
+        >
+          Save Filters
+        </button>
+      </div>
+    </div>
+  ) : null
+
   return (
     <div className="relative" ref={ref}>
       {/* Trigger button */}
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => { if (isOpen) handleDiscard(); else handleOpen() }}
         className={`inline-flex items-center gap-2 h-10 px-4 text-sm font-medium rounded-lg border shadow-sm transition-[color,background-color,border-color,transform] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 cursor-pointer ${
@@ -468,45 +544,7 @@ export default function FilterPanel({ filters, onApply, onFetchSuggestions }: Fi
         )}
       </button>
 
-      {/* Dropdown panel */}
-      {isOpen && (
-        <div className="absolute top-full left-0 mt-2 z-50 glass-overlay rounded-xl shadow-2xl shadow-black/50 p-4 min-w-[720px]">
-          {/* Filter rows */}
-          <div className="flex flex-col gap-2">
-            {drafts.map((draft, i) => (
-              <FilterRow
-                key={i}
-                draft={draft}
-                onChange={updated => updateDraft(i, updated)}
-                onRemove={() => removeDraft(i)}
-                onFetchSuggestions={onFetchSuggestions}
-              />
-            ))}
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center justify-between mt-3 pt-3 border-t border-neutral-800">
-            <button
-              type="button"
-              onClick={addDraft}
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-neutral-400 hover:text-white transition-colors cursor-pointer ease-apple"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-              </svg>
-              Add Filter
-            </button>
-
-            <button
-              type="button"
-              onClick={handleSave}
-              className="px-3 py-1.5 text-xs font-medium bg-brand-orange text-white rounded-lg hover:bg-brand-orange-hover transition-[color,transform] duration-fast ease-apple active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 cursor-pointer shadow-sm"
-            >
-              Save Filters
-            </button>
-          </div>
-        </div>
-      )}
+      {typeof document !== 'undefined' && panel ? createPortal(panel, document.body) : panel}
     </div>
   )
 }

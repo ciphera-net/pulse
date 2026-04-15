@@ -44,6 +44,9 @@ function countryName(alpha3: string): string {
   try { return regionNames.of(a2) ?? alpha3 } catch { return alpha3 }
 }
 
+// Strip protocol + trailing slash for cleaner page URL display
+const stripProtocol = (url: string) => url.replace(/^https?:\/\//, '').replace(/\/$/, '')
+
 function CountryFlag({ alpha3, className = 'w-5 h-5 rounded-sm shadow-sm shrink-0' }: { alpha3: string; className?: string }) {
   const a2 = getAlpha2(alpha3)
   if (!a2) return null
@@ -157,7 +160,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
 
   // Render a row for queries/pages
   function renderDataRow(row: GSCDataRow, maxImpressions: number, totalImpressions: number) {
-    const label = activeTab === 'queries' ? row.query : row.page
+    const label = activeTab === 'queries' ? row.query : stripProtocol(row.page)
     const barWidth = maxImpressions > 0 ? (row.impressions / maxImpressions) * 75 : 0
     return (
       <div
@@ -328,7 +331,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
   function renderModalRow(row: GSCDataRow | GSCCountryRow | GSCOpportunityRow, totalImpressions: number) {
     if (activeTab === 'queries' || activeTab === 'pages') {
       const r = row as GSCDataRow
-      const label = activeTab === 'queries' ? r.query : r.page
+      const label = activeTab === 'queries' ? r.query : stripProtocol(r.page)
       return (
         <div
           key={label}
@@ -405,7 +408,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
   // Get modal label for search filtering
   function getModalLabel(row: GSCDataRow | GSCCountryRow | GSCOpportunityRow): string {
     if (activeTab === 'queries') return (row as GSCDataRow).query
-    if (activeTab === 'pages') return (row as GSCDataRow).page
+    if (activeTab === 'pages') return stripProtocol((row as GSCDataRow).page)
     if (activeTab === 'countries') return countryName((row as GSCCountryRow).country)
     return (row as GSCOpportunityRow).query
   }
