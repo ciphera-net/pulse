@@ -441,7 +441,7 @@ export default function Audience({ countries, cities, regions, languages, timezo
                     <div
                       key={itemKey}
                       onClick={() => canFilter && onFilter({ dimension: dim, operator: 'is', values: [filterValue!] })}
-                      className={`relative flex items-center justify-between h-9 group hover:bg-neutral-800/50 rounded-lg px-2 -mx-2 transition-colors${canFilter ? ' cursor-pointer' : ''} ease-apple`}
+                      className={`interactive-row relative flex items-center justify-between h-9 group rounded-lg px-2 -mx-2${canFilter ? ' cursor-pointer' : ''}`}
                     >
                       <div
                         className="absolute inset-y-0.5 left-0.5 bg-gradient-to-r from-brand-orange/15 via-brand-orange/8 to-transparent border border-brand-orange/20 shadow-[inset_0_1px_0_rgba(253,94,15,0.08)] rounded-md transition-[width,background-color] ease-apple"
@@ -529,7 +529,7 @@ export default function Audience({ countries, cities, regions, languages, timezo
                     <div
                       key={itemKey}
                       onClick={() => { if (canFilter) { onFilter({ dimension: dim, operator: 'is', values: [filterValue!] }); setIsModalOpen(false) } }}
-                      className={`flex items-center justify-between h-9 group hover:bg-neutral-800 rounded-lg px-2 transition-colors${canFilter ? ' cursor-pointer' : ''} ease-apple`}
+                      className={`interactive-row flex items-center justify-between h-9 group rounded-lg px-2${canFilter ? ' cursor-pointer' : ''}`}
                     >
                       <div className="flex-1 truncate text-white flex items-center gap-3">
                         {showsFlag && <span className="shrink-0">{getFlagComponent(getItemFlagCode(item, activeTab))}</span>}
