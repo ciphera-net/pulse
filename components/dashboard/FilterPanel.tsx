@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
+import { motion, AnimatePresence } from 'framer-motion'
+import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import {
   DIMENSION_LABELS,
   DIMENSIONS,
@@ -476,12 +478,18 @@ export default function FilterPanel({ filters, onApply, onFetchSuggestions }: Fi
   const activeCount = filters.length
   const hasActive = activeCount > 0
 
-  const panel = isOpen ? (
-    <div
-      ref={panelRef}
-      className="fixed z-[100] glass-overlay rounded-xl shadow-2xl shadow-black/50 p-4 min-w-[720px]"
-      style={fixedPos ? { left: fixedPos.left, top: fixedPos.top } : { opacity: 0 }}
-    >
+  const panel = (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          ref={panelRef}
+          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+          transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
+          className="fixed z-[100] glass-overlay rounded-xl shadow-2xl shadow-black/50 p-4 min-w-[720px] origin-top-left"
+          style={fixedPos ? { left: fixedPos.left, top: fixedPos.top } : { opacity: 0 }}
+        >
       {/* Filter rows */}
       <div className="flex flex-col gap-2">
         {drafts.map((draft, i) => (
@@ -516,8 +524,10 @@ export default function FilterPanel({ filters, onApply, onFetchSuggestions }: Fi
           Save Filters
         </button>
       </div>
-    </div>
-  ) : null
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
 
   return (
     <div className="relative" ref={ref}>
@@ -544,7 +554,7 @@ export default function FilterPanel({ filters, onApply, onFetchSuggestions }: Fi
         )}
       </button>
 
-      {typeof document !== 'undefined' && panel ? createPortal(panel, document.body) : panel}
+      {typeof document !== 'undefined' ? createPortal(panel, document.body) : panel}
     </div>
   )
 }
