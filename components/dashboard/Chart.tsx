@@ -73,7 +73,7 @@ function smoothPath(coords: { x: number; y: number }[]): string {
   return d
 }
 
-function Sparkline({ data, dataKey, active, engagementDaily, hasMounted, index }: { data: { pageviews: number; visitors: number; bounce_rate: number; avg_duration: number; engagement?: number }[]; dataKey: MetricType; active: boolean; engagementDaily?: { date: string; score: number }[]; hasMounted: boolean; index: number }) {
+function Sparkline({ data, dataKey, active, engagementDaily }: { data: { pageviews: number; visitors: number; bounce_rate: number; avg_duration: number; engagement?: number }[]; dataKey: MetricType; active: boolean; engagementDaily?: { date: string; score: number }[] }) {
   // Engagement sparkline always uses daily data (not hourly-mapped) to show real variation
   const sourceValues = dataKey === 'engagement' && engagementDaily?.length
     ? engagementDaily.map(d => d.score)
@@ -103,7 +103,7 @@ function Sparkline({ data, dataKey, active, engagementDaily, hasMounted, index }
   return (
     <svg viewBox={`0 0 100 ${h}`} className="absolute bottom-0 left-0 right-0 w-full z-0 transition-opacity duration-base opacity-30 group-hover:opacity-60 ease-apple" style={{ height: h }} preserveAspectRatio="none">
       <path d={fillPath} className={active ? "fill-brand-orange/[0.08]" : "fill-neutral-600/[0.05] group-hover:fill-brand-orange/[0.08]"} />
-      <motion.path
+      <path
         d={linePath}
         fill="none"
         className={active ? "stroke-brand-orange" : "stroke-neutral-600 group-hover:stroke-brand-orange"}
@@ -111,9 +111,6 @@ function Sparkline({ data, dataKey, active, engagementDaily, hasMounted, index }
         strokeLinecap="round"
         strokeLinejoin="round"
         vectorEffect="non-scaling-stroke"
-        initial={hasMounted ? false : { pathLength: 0, opacity: 0 }}
-        animate={{ pathLength: 1, opacity: 1 }}
-        transition={{ duration: 0.6, ease: EASE_APPLE, delay: index * 0.05 }}
       />
     </svg>
   )
@@ -288,7 +285,7 @@ export default function Chart({
                   metric === m.key && 'bg-neutral-50 dark:bg-neutral-800/40',
                 )}
               >
-                <Sparkline data={m.key === 'engagement' ? chartData : data} dataKey={m.key} active={metric === m.key} engagementDaily={m.key === 'engagement' ? engagementData?.daily : undefined} hasMounted={hasMounted} index={index} />
+                <Sparkline data={m.key === 'engagement' ? chartData : data} dataKey={m.key} active={metric === m.key} engagementDaily={m.key === 'engagement' ? engagementData?.daily : undefined} />
                 <div className="relative z-10">
                   <div className="flex items-start justify-between mb-2">
                     <div className={cn('text-[10px] font-semibold uppercase tracking-widest', metric === m.key ? 'text-brand-orange' : 'text-neutral-400 dark:text-neutral-500')}>{m.label}</div>
