@@ -10,7 +10,6 @@ import {
   CloudArrowUp,
   Heartbeat,
   Gauge,
-  Globe,
   Plus,
   Plugs,
   Tag,
@@ -18,6 +17,7 @@ import {
 } from '@phosphor-icons/react'
 import { useSites } from '@/lib/swr/sites'
 import { useUnifiedSettings } from '@/lib/unified-settings-context'
+import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
 import {
   CommandDialog,
   CommandEmpty,
@@ -98,7 +98,13 @@ export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPal
               value={`site-${site.name}-${site.domain}`}
               onSelect={() => go(`/sites/${site.id}`)}
             >
-              <Globe size={16} weight="regular" className="opacity-60" aria-hidden="true" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`${FAVICON_SERVICE_URL}?domain=${site.domain}&sz=64`}
+                alt=""
+                className="w-4 h-4 rounded-sm object-contain shrink-0"
+                aria-hidden="true"
+              />
               <span className="truncate">{site.name}</span>
               <span className="ms-auto text-xs text-muted-foreground truncate">{site.domain}</span>
             </CommandItem>
