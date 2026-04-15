@@ -99,7 +99,7 @@ export default function MyPreferencesTab() {
         </button>
         {purging && (
           <PurgeConfirmDialog
-            count={0}
+            count={-1}
             onCancel={() => setPurging(false)}
             onConfirm={async () => {
               await purgeMine()
