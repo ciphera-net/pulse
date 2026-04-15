@@ -378,6 +378,7 @@ export default function DashboardShell({
   const [mobileOpen, setMobileOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
+  const pathname = usePathname()
   const closeMobile = useCallback(() => setMobileOpen(false), [])
   const openMobile = useCallback(() => setMobileOpen(true), [])
 
@@ -413,7 +414,13 @@ export default function DashboardShell({
                 WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, black 24px, black calc(100% - 24px), transparent 100%)',
               }}
             >
-              {children}
+              <div
+                key={pathname}
+                className="animate-in fade-in slide-in-from-bottom-4"
+                style={{ animationDuration: '500ms', animationTimingFunction: 'var(--ease-apple)' }}
+              >
+                {children}
+              </div>
             </main>
           </div>
         </div>
