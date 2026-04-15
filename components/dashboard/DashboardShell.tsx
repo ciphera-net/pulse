@@ -225,6 +225,8 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
     (s) => s.name.toLowerCase().includes(search.toLowerCase()) || s.domain.toLowerCase().includes(search.toLowerCase())
   )
 
+  const currentSite = sites.find((s) => s.id === currentSiteId)
+
   const dropdown = (
     <AnimatePresence>
       {open && (
@@ -290,8 +292,17 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
       <button
         ref={buttonRef}
         onClick={() => setOpen(!open)}
-        className="inline-flex items-center gap-1 text-neutral-500 hover:text-neutral-300 transition-colors max-w-[160px] cursor-pointer ease-apple"
+        className="inline-flex items-center gap-2 text-neutral-500 hover:text-neutral-300 transition-colors max-w-[180px] cursor-pointer ease-apple"
       >
+        {currentSite?.domain && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={`${FAVICON_SERVICE_URL}?domain=${currentSite.domain}&sz=64`}
+            alt=""
+            className="w-3.5 h-3.5 rounded-sm object-contain shrink-0"
+            aria-hidden="true"
+          />
+        )}
         <span className="truncate">{currentSiteName}</span>
         <CaretDown className="w-3 h-3 shrink-0 translate-y-px" />
       </button>
