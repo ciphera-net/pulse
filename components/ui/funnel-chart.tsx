@@ -11,6 +11,7 @@ import {
 } from "react";
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { SPRING, EASE_APPLE, DURATION_SLOW } from "@/lib/motion";
 
 // ─── Utils ───────────────────────────────────────────────────────────────────
 
@@ -574,8 +575,8 @@ function SegmentLabel({
         initial={{ opacity: 0 }}
         transition={{
           delay: index * staggerDelay + 0.25,
-          duration: 0.35,
-          ease: "easeOut",
+          duration: DURATION_SLOW,
+          ease: EASE_APPLE,
         }}
       >
         {isHorizontal ? (
@@ -638,8 +639,8 @@ function SegmentLabel({
       }}
       transition={{
         delay: index * staggerDelay + 0.25,
-        duration: 0.35,
-        ease: "easeOut",
+        duration: DURATION_SLOW,
+        ease: EASE_APPLE,
       }}
     >
       <div
@@ -904,7 +905,7 @@ export function FunnelChart({
                 onMouseEnter={() => setHoveredIndex(i)}
                 onMouseLeave={() => setHoveredIndex(null)}
                 style={{ ...posStyle, zIndex: 20 }}
-                transition={{ type: "spring", stiffness: 300, damping: 24 }}
+                transition={SPRING}
               >
                 <SegmentLabel
                   align={labelAlign}

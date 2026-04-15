@@ -35,6 +35,7 @@ import useMeasure from "react-use-measure";
 import { createPortal } from "react-dom";
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { SPRING, TIMING, EASE_APPLE, DURATION_FAST, DURATION_SLOW } from "@/lib/motion";
 
 // ─── Utils ───────────────────────────────────────────────────────────────────
 
@@ -538,7 +539,7 @@ function DateTicker({ currentIndex, labels, visible }: DateTickerProps) {
       className="overflow-hidden rounded-full bg-zinc-100 px-4 py-1 text-zinc-900"
       layout
       transition={{
-        layout: { type: "spring", stiffness: 400, damping: 35 },
+        layout: SPRING,
       }}
     >
       <div className="relative h-6 overflow-hidden">
@@ -787,16 +788,7 @@ function TooltipContent({ title, rows, children }: TooltipContentProps) {
       }
       className="overflow-hidden"
       initial={false}
-      transition={
-        shouldAnimate
-          ? {
-              type: "spring",
-              stiffness: 500,
-              damping: 35,
-              mass: 0.8,
-            }
-          : { duration: 0 }
-      }
+      transition={shouldAnimate ? SPRING : { duration: 0 }}
     >
       <div className="px-3 py-2.5" ref={measureRef}>
         {title && (
@@ -836,7 +828,7 @@ function TooltipContent({ title, rows, children }: TooltipContentProps) {
               exit={{ opacity: 0, filter: "blur(4px)" }}
               initial={{ opacity: 0, filter: "blur(4px)" }}
               key={markerKey}
-              transition={{ duration: 0.2, ease: "easeOut" }}
+              transition={TIMING}
             >
               {children}
             </motion.div>
@@ -955,7 +947,7 @@ function TooltipBox({
       initial={{ opacity: 0 }}
       ref={tooltipRef}
       style={{ left: finalLeft, top: finalTop }}
-      transition={{ duration: 0.1 }}
+      transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
     >
       <motion.div
         animate={{ scale: 1, opacity: 1, x: 0 }}
@@ -963,7 +955,7 @@ function TooltipBox({
         initial={{ scale: 0.85, opacity: 0, x: isFlipped ? 20 : -20 }}
         key={flipKey}
         style={{ transformOrigin }}
-        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+        transition={SPRING}
       >
         {children}
       </motion.div>
@@ -1339,7 +1331,7 @@ function XAxisLabel({
         animate={{ opacity }}
         className="whitespace-nowrap text-neutral-500 text-xs"
         initial={{ opacity: 1 }}
-        transition={{ duration: 0.4, ease: "easeInOut" }}
+        transition={{ duration: DURATION_SLOW, ease: EASE_APPLE }}
       >
         {label}
       </motion.span>
@@ -1802,7 +1794,7 @@ export function Area({
         <motion.g
           animate={{ opacity: isHovering && showHighlight ? 0.6 : 1 }}
           initial={{ opacity: 1 }}
-          transition={{ duration: 0.4, ease: "easeInOut" }}
+          transition={{ duration: DURATION_SLOW, ease: EASE_APPLE }}
         >
           <g mask={fadeEdges ? `url(#${edgeMaskId})` : undefined}>
             <AreaClosed
@@ -1848,7 +1840,7 @@ export function Area({
               strokeDasharray: animatedDasharray,
               strokeDashoffset: offsetSpring,
             }}
-            transition={{ duration: 0.4, ease: "easeInOut" }}
+            transition={{ duration: DURATION_SLOW, ease: EASE_APPLE }}
           />
         )}
     </>
@@ -1876,7 +1868,7 @@ export function SegmentBackground() {
       height={innerHeight}
       initial={{ opacity: 0 }}
       rx={4}
-      transition={{ duration: 0.2 }}
+      transition={TIMING}
       width={width}
       x={x}
       y={0}
@@ -1902,7 +1894,7 @@ export function SegmentLineFrom() {
       stroke={chartCssVars.linePrimary}
       strokeDasharray="4,3"
       strokeWidth={1.5}
-      transition={{ duration: 0.2 }}
+      transition={TIMING}
       x1={x}
       x2={x}
       y1={0}
@@ -1929,7 +1921,7 @@ export function SegmentLineTo() {
       stroke={chartCssVars.linePrimary}
       strokeDasharray="4,3"
       strokeWidth={1.5}
-      transition={{ duration: 0.2 }}
+      transition={TIMING}
       x1={x}
       x2={x}
       y1={0}
