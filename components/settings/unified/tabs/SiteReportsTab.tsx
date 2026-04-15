@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Button, toast, Spinner, Modal, Select } from '@ciphera-net/ui'
-import { Plus, Pencil, Trash, EnvelopeSimple, WebhooksLogo, PaperPlaneTilt } from '@phosphor-icons/react'
+import { Plus, Pencil, Trash, EnvelopeSimple, WebhooksLogo, PaperPlaneTilt, FileText, Bell } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { SiDiscord } from '@icons-pack/react-simple-icons'
 import { useReportSchedules, useAlertSchedules } from '@/lib/swr/dashboard'
@@ -640,6 +640,7 @@ export default function SiteReportsTab({ siteId }: { siteId: string }) {
           <EmptyState
             title="No scheduled reports yet"
             description="Automated analytics summaries can be sent to your inbox or webhook on a recurring schedule."
+            icon={<FileText weight="regular" />}
             className="py-8"
           />
         ) : (
@@ -667,6 +668,7 @@ export default function SiteReportsTab({ siteId }: { siteId: string }) {
           <EmptyState
             title="No alert channels yet"
             description="Add a channel to get notified when your uptime monitors detect downtime."
+            icon={<Bell weight="regular" />}
             className="py-8"
           />
         ) : (

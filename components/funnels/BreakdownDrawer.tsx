@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { getFunnelBreakdown, type FunnelBreakdown } from '@/lib/api/funnels'
 import { DIMENSION_LABELS } from '@/lib/filters'
+import { ChartPieSlice } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 
 const BREAKDOWN_DIMENSIONS = [
@@ -89,6 +90,7 @@ export default function BreakdownDrawer({ siteId, funnelId, stepIndex, stepName,
           ) : !breakdown || breakdown.entries.length === 0 ? (
             <EmptyState
               title="No data for this dimension"
+              icon={<ChartPieSlice weight="regular" />}
               className="py-6"
             />
           ) : (

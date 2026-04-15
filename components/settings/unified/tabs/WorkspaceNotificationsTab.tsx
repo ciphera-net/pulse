@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Toggle, toast, Spinner } from '@ciphera-net/ui'
+import { Bell } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useAuth } from '@/lib/auth/context'
 import { getNotificationSettings, updateNotificationSettings, type NotificationSettingsResponse } from '@/lib/api/notification-settings'
@@ -78,6 +79,7 @@ export default function WorkspaceNotificationsTab({ onDirtyChange, onRegisterSav
           <EmptyState
             title="No preferences available"
             description="Notification categories will appear here once they are configured for your workspace."
+            icon={<Bell weight="regular" />}
             className="py-8"
           />
         )}

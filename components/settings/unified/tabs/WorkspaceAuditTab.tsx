@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Spinner, Input, Button } from '@ciphera-net/ui'
+import { ListChecks } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useAuth } from '@/lib/auth/context'
 import { getAuditLog, type AuditLogEntry } from '@/lib/api/audit'
@@ -111,6 +112,7 @@ export default function WorkspaceAuditTab() {
         <EmptyState
           title="No activity yet"
           description="Workspace actions like site changes and member updates will appear here."
+          icon={<ListChecks weight="regular" />}
           className="py-8"
         />
       ) : (

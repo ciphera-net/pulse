@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { formatNumber, Modal } from '@ciphera-net/ui'
-import { FrameCornersIcon, Copy, Check, CursorClick } from '@phosphor-icons/react'
+import { FrameCornersIcon, Copy, Check, CursorClick, WarningCircle } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { toast } from '@ciphera-net/ui'
 import type { FrustrationElement } from '@/lib/api/stats'
@@ -221,6 +221,7 @@ export default function FrustrationTable({
             <EmptyState
               title="No frustration signals yet"
               description="Rage clicks, dead clicks, and thrashing will appear here as sessions are recorded."
+              icon={<WarningCircle weight="regular" />}
               className="py-8"
             />
           )}

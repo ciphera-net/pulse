@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Button, Input, Select, toast, Spinner } from '@ciphera-net/ui'
-import { Plus, Trash, EnvelopeSimple, Crown, UserCircle } from '@phosphor-icons/react'
+import { Plus, Trash, EnvelopeSimple, Crown, UserCircle, Users } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useAuth } from '@/lib/auth/context'
 import { getOrganizationMembers, removeOrganizationMember, sendInvitation, getInvitations, revokeInvitation, type OrganizationMember, type OrganizationInvitation } from '@/lib/api/organization'
@@ -170,6 +170,7 @@ export default function WorkspaceMembersTab() {
         {members.length === 0 && (
           <EmptyState
             title="No members found"
+            icon={<Users weight="regular" />}
             className="py-8"
           />
         )}

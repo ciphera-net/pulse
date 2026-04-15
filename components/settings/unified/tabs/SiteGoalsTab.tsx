@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Input, Button, toast } from '@ciphera-net/ui'
-import { Plus, Pencil, Trash, X } from '@phosphor-icons/react'
+import { Plus, Pencil, Trash, X, Target } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Spinner } from '@ciphera-net/ui'
 import { useGoals } from '@/lib/swr/dashboard'
@@ -135,6 +135,7 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
           title="No goals yet"
           description="Track custom events like signups, purchases, or clicks."
           action={{ label: 'Add your first goal', onClick: startCreate }}
+          icon={<Target weight="regular" />}
           className="py-8"
         />
       ) : (

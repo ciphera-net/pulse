@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/lib/auth/context'
 import { getUserDevices, removeDevice, type TrustedDevice } from '@/lib/api/devices'
 import { Spinner, toast } from '@ciphera-net/ui'
+import { Laptop } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { formatRelativeTime, formatDateTimeFull } from '@/lib/utils/formatDate'
 
@@ -75,6 +76,7 @@ export default function TrustedDevicesCard() {
           <EmptyState
             title="No trusted devices yet"
             description="Devices are added automatically the first time you sign in and verify your session."
+            icon={<Laptop weight="regular" />}
           />
         </div>
       ) : (
