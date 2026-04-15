@@ -206,10 +206,13 @@ function HRing({
     damping: 24 - ringIndex * 3,
   };
   const scaleY = useSpring(1, ringSpring);
+  const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
     scaleY.set(hovered ? extraScale : 1);
   }, [hovered, scaleY, extraScale]);
+
+  useEffect(() => { setHasMounted(true); }, []);
 
   return (
     <motion.path
@@ -217,6 +220,9 @@ function HRing({
       fill={fill ?? color}
       opacity={opacity}
       style={{ scaleY, transformOrigin: "center center" }}
+      initial={hasMounted ? false : { pathLength: 0, opacity: 0 }}
+      animate={{ pathLength: 1, opacity: opacity }}
+      transition={{ duration: 0.6, ease: EASE_APPLE }}
     />
   );
 }
@@ -244,10 +250,13 @@ function VRing({
     damping: 24 - ringIndex * 3,
   };
   const scaleX = useSpring(1, ringSpring);
+  const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
     scaleX.set(hovered ? extraScale : 1);
   }, [hovered, scaleX, extraScale]);
+
+  useEffect(() => { setHasMounted(true); }, []);
 
   return (
     <motion.path
@@ -255,6 +264,9 @@ function VRing({
       fill={fill ?? color}
       opacity={opacity}
       style={{ scaleX, transformOrigin: "center center" }}
+      initial={hasMounted ? false : { pathLength: 0, opacity: 0 }}
+      animate={{ pathLength: 1, opacity: opacity }}
+      transition={{ duration: 0.6, ease: EASE_APPLE }}
     />
   );
 }
