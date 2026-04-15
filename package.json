@@ -47,6 +47,7 @@
     "framer-motion": "^12.23.26",
     "gray-matter": "^4.0.3",
     "html-to-image": "^1.11.13",
+    "i18n-iso-countries": "^7.14.0",
     "iso-3166-2": "^1.0.0",
     "jspdf": "^4.0.0",
     "jspdf-autotable": "^5.0.7",

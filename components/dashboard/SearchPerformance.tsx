@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { logger } from '@/lib/utils/logger'
 import { formatNumber, Modal } from '@ciphera-net/ui'
 import { FrameCornersIcon, Monitor, DeviceMobile, DeviceTablet } from '@phosphor-icons/react'
+import * as Flags from 'country-flag-icons/react/3x2'
+import countries from 'i18n-iso-countries'
 import { useGSCStatus, useGSCOverview, useGSCTopQueries, useGSCTopPages, useGSCTopCountries, useGSCTopDevices, useGSCOpportunities } from '@/lib/swr/dashboard'
 import { getGSCTopQueries, getGSCTopPages, getGSCTopCountries, getGSCTopDevices, getGSCOpportunities } from '@/lib/api/gsc'
 import type { GSCDataRow, GSCCountryRow, GSCDeviceRow, GSCOpportunityRow } from '@/lib/api/gsc'
@@ -28,31 +30,25 @@ const tabLabels: Record<Tab, string> = {
   opportunities: 'Opportunities',
 }
 
-const alpha3ToAlpha2: Record<string, string> = {
-  USA: 'US', GBR: 'GB', DEU: 'DE', FRA: 'FR', NLD: 'NL', BEL: 'BE',
-  CHE: 'CH', AUT: 'AT', CAN: 'CA', AUS: 'AU', BRA: 'BR', IND: 'IN',
-  JPN: 'JP', KOR: 'KR', CHN: 'CN', ESP: 'ES', ITA: 'IT', PRT: 'PT',
-  SWE: 'SE', NOR: 'NO', DNK: 'DK', FIN: 'FI', POL: 'PL', CZE: 'CZ',
-  ROU: 'RO', HUN: 'HU', BGR: 'BG', HRV: 'HR', SVK: 'SK', SVN: 'SI',
-  LTU: 'LT', LVA: 'LV', EST: 'EE', IRL: 'IE', RUS: 'RU', UKR: 'UA',
-  TUR: 'TR', MEX: 'MX', ARG: 'AR', COL: 'CO', CHL: 'CL', PER: 'PE',
-  ZAF: 'ZA', NGA: 'NG', EGY: 'EG', KEN: 'KE', ISR: 'IL', ARE: 'AE',
-  SAU: 'SA', SGP: 'SG', MYS: 'MY', THA: 'TH', IDN: 'ID', PHL: 'PH',
-  VNM: 'VN', TWN: 'TW', HKG: 'HK', NZL: 'NZ', GRC: 'GR', LUX: 'LU',
-}
+// Full alpha-3 → alpha-2 coverage via i18n-iso-countries (all ISO 3166-1 codes).
+// Names via Intl.DisplayNames (built-in, no locale JSON needed).
+const regionNames = new Intl.DisplayNames(['en'], { type: 'region' })
 
-function countryFlag(alpha3: string): string {
-  const a2 = alpha3ToAlpha2[alpha3.toUpperCase()]
-  if (!a2) return ''
-  return String.fromCodePoint(...[...a2].map(c => 0x1F1E6 + c.charCodeAt(0) - 65))
+function getAlpha2(alpha3: string): string | null {
+  return countries.alpha3ToAlpha2(alpha3.toUpperCase()) ?? null
 }
-
-const countryNames = new Intl.DisplayNames(['en'], { type: 'region' })
 
 function countryName(alpha3: string): string {
-  const a2 = alpha3ToAlpha2[alpha3.toUpperCase()]
+  const a2 = getAlpha2(alpha3)
   if (!a2) return alpha3
-  try { return countryNames.of(a2) ?? alpha3 } catch { return alpha3 }
+  try { return regionNames.of(a2) ?? alpha3 } catch { return alpha3 }
+}
+
+function CountryFlag({ alpha3, className = 'w-4 h-4 rounded-sm shadow-sm shrink-0' }: { alpha3: string; className?: string }) {
+  const a2 = getAlpha2(alpha3)
+  if (!a2) return null
+  const FlagComponent = (Flags as Record<string, React.ComponentType<{ className?: string }>>)[a2]
+  return FlagComponent ? <FlagComponent className={className} /> : null
 }
 
 function getDeviceIcon(device: string) {
@@ -193,7 +189,6 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
   // Render a row for countries
   function renderCountryRow(row: GSCCountryRow, maxClicks: number, totalClicks: number) {
     const barWidth = maxClicks > 0 ? (row.clicks / maxClicks) * 75 : 0
-    const flag = countryFlag(row.country)
     const name = countryName(row.country)
     return (
       <div
@@ -204,8 +199,9 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
           className="absolute inset-y-0.5 left-0.5 bg-gradient-to-r from-brand-orange/15 via-brand-orange/8 to-transparent border border-brand-orange/20 shadow-[inset_0_1px_0_rgba(253,94,15,0.08)] rounded-md transition-[width,background-color] ease-apple"
           style={{ width: `${barWidth}%` }}
         />
-        <span className="relative text-sm text-white truncate flex-1 min-w-0" title={name}>
-          {flag ? `${flag} ` : ''}{name}
+        <span className="relative text-sm text-white truncate flex-1 min-w-0 flex items-center gap-2" title={name}>
+          <CountryFlag alpha3={row.country} />
+          <span className="truncate">{name}</span>
         </span>
         <div className="relative flex items-center gap-2 ml-4 shrink-0">
           <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
@@ -356,15 +352,15 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
       )
     } else if (activeTab === 'countries') {
       const r = row as GSCCountryRow
-      const flag = countryFlag(r.country)
       const name = countryName(r.country)
       return (
         <div
           key={r.country}
           className="interactive-row flex items-center justify-between h-9 group rounded-lg px-2"
         >
-          <span className="flex-1 truncate text-sm text-white" title={name}>
-            {flag ? `${flag} ` : ''}{name}
+          <span className="flex-1 truncate text-sm text-white flex items-center gap-2" title={name}>
+            <CountryFlag alpha3={r.country} />
+            <span className="truncate">{name}</span>
           </span>
           <div className="flex items-center gap-2 ml-4">
             <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
