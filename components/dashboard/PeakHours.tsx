@@ -28,6 +28,37 @@ const HIGHLIGHT_COLORS = [
   '#FD5E0F',
 ]
 
+type Metric = 'pageviews' | 'visitors' | 'avg_duration' | 'bounce_rate'
+
+const METRICS: { key: Metric; label: string }[] = [
+  { key: 'pageviews', label: 'Pageviews' },
+  { key: 'visitors', label: 'Unique Visitors' },
+  { key: 'avg_duration', label: 'Avg Duration' },
+  { key: 'bounce_rate', label: 'Bounce Rate' },
+]
+
+const BEST_TIME_LABELS: Record<Metric, string> = {
+  pageviews: 'Your busiest time is',
+  visitors: 'Your peak visitor time is',
+  avg_duration: 'Your most engaging time is',
+  bounce_rate: 'Your highest bounce time is',
+}
+
+function isSummable(metric: Metric): boolean {
+  return metric === 'pageviews' || metric === 'visitors'
+}
+
+function formatMetricValue(value: number, metric: Metric): string {
+  if (metric === 'pageviews') return `${value.toLocaleString()} pageviews`
+  if (metric === 'visitors') return `${value.toLocaleString()} unique visitors`
+  if (metric === 'avg_duration') {
+    const mins = Math.floor(value / 60)
+    const secs = Math.round(value % 60)
+    return mins > 0 ? `${mins}m ${secs}s avg duration` : `${secs}s avg duration`
+  }
+  return `${Math.round(value)}% bounce rate`
+}
+
 function formatBucket(bucket: number): string {
   const hour = bucket * 2
   const end = hour + 2
@@ -54,6 +85,7 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
   const [animKey, setAnimKey] = useState(0)
   const [hovered, setHovered] = useState<{ day: number; bucket: number } | null>(null)
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null)
+  const [metric, setMetric] = useState<Metric>('pageviews')
   const gridRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -72,23 +104,41 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
     fetchData()
   }, [siteId, dateRange])
 
-  const { grid, max, dayTotals, bucketTotals, weekTotal } = useMemo(() => {
-    // grid[day][bucket] — aggregate 2-hour buckets
+  const { grid, max, weekTotal } = useMemo(() => {
+    // grid[day][bucket] — aggregate 2-hour buckets per selected metric.
+    // Summable metrics (pageviews/visitors) sum. Average metrics
+    // (avg_duration/bounce_rate) weight-average by visitors so busy
+    // hours dominate.
     const grid: number[][] = Array.from({ length: 7 }, () => Array(BUCKETS).fill(0))
+    const weights: number[][] = Array.from({ length: 7 }, () => Array(BUCKETS).fill(0))
     for (const d of data) {
       const date = new Date(d.date)
       const day = date.getDay()
       const hour = date.getHours()
       const adjustedDay = day === 0 ? 6 : day - 1
       const bucket = Math.floor(hour / 2)
-      grid[adjustedDay][bucket] += d.pageviews
+      if (metric === 'pageviews') {
+        grid[adjustedDay][bucket] += d.pageviews
+      } else if (metric === 'visitors') {
+        grid[adjustedDay][bucket] += d.visitors
+      } else {
+        const w = d.visitors
+        const v = metric === 'avg_duration' ? d.avg_duration : d.bounce_rate
+        grid[adjustedDay][bucket] += v * w
+        weights[adjustedDay][bucket] += w
+      }
+    }
+    if (!isSummable(metric)) {
+      for (let d = 0; d < 7; d++) {
+        for (let b = 0; b < BUCKETS; b++) {
+          grid[d][b] = weights[d][b] > 0 ? grid[d][b] / weights[d][b] : 0
+        }
+      }
     }
     const max = Math.max(...grid.flat(), 1)
-    const dayTotals = grid.map(buckets => buckets.reduce((a, b) => a + b, 0))
-    const bucketTotals = Array.from({ length: BUCKETS }, (_, b) => grid.reduce((a, row) => a + row[b], 0))
-    const weekTotal = dayTotals.reduce((a, b) => a + b, 0)
-    return { grid, max, dayTotals, bucketTotals, weekTotal }
-  }, [data])
+    const weekTotal = isSummable(metric) ? grid.flat().reduce((a, b) => a + b, 0) : 0
+    return { grid, max, weekTotal }
+  }, [data, metric])
 
   const hasData = data.some(d => d.pageviews > 0)
 
@@ -112,8 +162,8 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
     const { day, bucket } = hovered
     const value = grid[day][bucket]
     const pct = weekTotal > 0 ? Math.round((value / weekTotal) * 100) : 0
-    return { value, dayTotal: dayTotals[day], bucketTotal: bucketTotals[bucket], pct }
-  }, [hovered, grid, dayTotals, bucketTotals, weekTotal])
+    return { value, pct }
+  }, [hovered, grid, weekTotal])
 
   const handleCellMouseEnter = (
     e: React.MouseEvent<HTMLDivElement>,
@@ -134,11 +184,24 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
   return (
     <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 h-full flex flex-col">
       <div className="flex items-center justify-between mb-4">
-        <div className="flex gap-1">
-          <span className="relative px-2.5 py-1 text-xs font-medium text-white">
-            Peak Hours
-            <span className="absolute inset-x-0 -bottom-px h-[3px] bg-brand-orange rounded-full" />
-          </span>
+        <div className="flex gap-1 flex-wrap">
+          {METRICS.map((m) => (
+            <button
+              key={m.key}
+              type="button"
+              onClick={() => setMetric(m.key)}
+              className={`relative px-2.5 py-1 text-xs font-medium transition-colors duration-fast rounded cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ${
+                metric === m.key ? 'text-white' : 'text-neutral-400 hover:text-neutral-200'
+              } ease-apple`}
+            >
+              {m.label}
+              <span
+                className={`absolute inset-x-0 -bottom-px h-[3px] rounded-full transition-all duration-base ease-apple ${
+                  metric === m.key ? 'bg-brand-orange scale-x-100' : 'bg-transparent scale-x-0'
+                }`}
+              />
+            </button>
+          ))}
         </div>
       </div>
 
@@ -250,8 +313,10 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
                       {DAYS[hovered.day]} {formatBucket(hovered.bucket)}
                     </div>
                     <div className="flex flex-col gap-0.5 text-xs text-neutral-400 font-normal">
-                      <span>{tooltipData.value.toLocaleString()} pageviews</span>
-                      <span>{tooltipData.pct}% of week&apos;s traffic</span>
+                      <span>{formatMetricValue(tooltipData.value, metric)}</span>
+                      {isSummable(metric) && tooltipData.value > 0 && (
+                        <span>{tooltipData.pct}% of week&apos;s {metric === 'visitors' ? 'visitors' : 'traffic'}</span>
+                      )}
                     </div>
                   </div>
                 </motion.div>
@@ -267,7 +332,7 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
               transition={{ duration: DURATION_SLOW, delay: 0.6, ease: EASE_APPLE }}
               className="mt-4 text-xs text-neutral-400 text-center"
             >
-              Your busiest time is{' '}
+              {BEST_TIME_LABELS[metric]}{' '}
               <span className="text-brand-orange font-medium">
                 {DAYS_FULL[bestTime.day]} at {formatHour(bestTime.bucket * 2)}
               </span>
