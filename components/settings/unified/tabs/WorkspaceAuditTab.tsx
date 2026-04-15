@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Spinner, Input, Button } from '@ciphera-net/ui'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { useAuth } from '@/lib/auth/context'
 import { getAuditLog, type AuditLogEntry } from '@/lib/api/audit'
 import { formatDateTimeShort } from '@/lib/utils/formatDate'
@@ -107,7 +108,11 @@ export default function WorkspaceAuditTab() {
       </div>
 
       {entries.length === 0 ? (
-        <p className="text-sm text-neutral-500 text-center py-8">No activity recorded yet.</p>
+        <EmptyState
+          title="No activity yet"
+          description="Workspace actions like site changes and member updates will appear here."
+          className="py-8"
+        />
       ) : (
         <div className="space-y-1">
           {entries.map(entry => (

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { formatNumber, Modal } from '@ciphera-net/ui'
 import { FrameCornersIcon, Copy, Check, CursorClick } from '@phosphor-icons/react'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { toast } from '@ciphera-net/ui'
 import type { FrustrationElement } from '@/lib/api/stats'
 import { ListSkeleton } from '@/components/skeletons'
@@ -217,9 +218,11 @@ export default function FrustrationTable({
               ))}
             </div>
           ) : (
-            <p className="text-sm text-neutral-400 py-8 text-center">
-              No data available
-            </p>
+            <EmptyState
+              title="No frustration signals yet"
+              description="Rage clicks, dead clicks, and thrashing will appear here as sessions are recorded."
+              className="py-8"
+            />
           )}
         </div>
       </Modal>

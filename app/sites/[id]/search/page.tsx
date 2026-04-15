@@ -11,6 +11,7 @@ import { getGSCQueryPages, getGSCPageQueries } from '@/lib/api/gsc'
 import type { GSCDataRow } from '@/lib/api/gsc'
 import { SkeletonLine, StatCardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import ClicksImpressionsChart from '@/components/search/ClicksImpressionsChart'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 // ─── Helpers ────────────────────────────────────────────────────
 
@@ -357,8 +358,8 @@ export default function SearchConsolePage() {
                 ))
               ) : queries.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-neutral-400">
-                    No query data available for this period.
+                  <td colSpan={6} className="px-4 py-6">
+                    <EmptyState title="No queries in this window" description="Try a wider date range or check back once your Search Console data has synced." className="py-6" />
                   </td>
                 </tr>
               ) : (
@@ -431,8 +432,8 @@ export default function SearchConsolePage() {
                 ))
               ) : pages.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-neutral-400">
-                    No page data available for this period.
+                  <td colSpan={6} className="px-4 py-6">
+                    <EmptyState title="No pages in this window" description="Try a wider date range or check back once your Search Console data has synced." className="py-6" />
                   </td>
                 </tr>
               ) : (
@@ -564,7 +565,7 @@ function QueryRow({
                 ))}
               </div>
             ) : expandedData.length === 0 ? (
-              <p className="text-sm text-neutral-400 py-1">No pages found for this query.</p>
+              <EmptyState title="No pages for this query" className="py-3" />
             ) : (
               <table className="w-full text-sm">
                 <thead>
@@ -635,7 +636,7 @@ function PageRow({
                 ))}
               </div>
             ) : expandedData.length === 0 ? (
-              <p className="text-sm text-neutral-400 py-1">No queries found for this page.</p>
+              <EmptyState title="No queries for this page" className="py-3" />
             ) : (
               <table className="w-full text-sm">
                 <thead>

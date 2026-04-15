@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Toggle, toast, Spinner, getDateRange } from '@ciphera-net/ui'
 import { ShieldCheck } from '@phosphor-icons/react'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { useSite, useQuarantineStats, useSessions, useSiteDomainReputation } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
 import { quarantineSessions, restoreSessions, createDomainOverride, deleteDomainOverride } from '@/lib/api/quarantine'
@@ -212,9 +213,10 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
               </div>
             ))}
           {(!sessions || sessions.filter(s => botView === 'blocked' ? s.quarantined : !s.quarantined).length === 0) && (
-            <p className="text-sm text-neutral-500 text-center py-4">
-              {botView === 'blocked' ? 'No quarantined sessions' : 'No suspicious sessions found'}
-            </p>
+            <EmptyState
+              title={botView === 'blocked' ? 'No quarantined sessions' : 'No suspicious sessions found'}
+              className="py-4"
+            />
           )}
         </div>
       </div>
@@ -307,7 +309,11 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
             </div>
           ))}
           {(!domainReputation?.domains || domainReputation.domains.length === 0) && (
-            <p className="text-sm text-neutral-500 text-center py-4">No domain reputation data yet</p>
+            <EmptyState
+              title="No domain data yet"
+              description="Referrer domains will appear here once traffic flows through your site."
+              className="py-4"
+            />
           )}
         </div>
       </div>

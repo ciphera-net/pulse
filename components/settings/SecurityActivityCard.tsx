@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/lib/auth/context'
 import { getUserActivity, type AuditLogEntry } from '@/lib/api/activity'
 import { Spinner } from '@ciphera-net/ui'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { formatRelativeTime, formatDateTimeFull } from '@/lib/utils/formatDate'
 
 const PAGE_SIZE = 20
@@ -134,11 +135,11 @@ export default function SecurityActivityCard() {
           <p className="text-red-600 dark:text-red-400">{error}</p>
         </div>
       ) : entries.length === 0 ? (
-        <div className="rounded-2xl border border-white/[0.08] bg-neutral-900/80 p-8 text-center">
-          <svg className="w-12 h-12 mx-auto mb-3 text-neutral-300 dark:text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-          </svg>
-          <p className="text-neutral-400">No activity recorded yet.</p>
+        <div className="rounded-2xl border border-white/[0.08] bg-neutral-900/80">
+          <EmptyState
+            title="No security activity yet"
+            description="Sign-ins, password changes, and device events will appear here."
+          />
         </div>
       ) : (
         <div className="space-y-2">

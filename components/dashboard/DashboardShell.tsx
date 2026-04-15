@@ -9,6 +9,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { formatUpdatedAgo, PlusIcon, ExternalLinkIcon, type CipheraApp } from '@ciphera-net/ui'
 import { CaretDown, CaretRight, SidebarSimple } from '@phosphor-icons/react'
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { SidebarProvider, useSidebar } from '@/lib/sidebar-context'
 import { LiveIndicatorProvider, useLiveIndicator } from '@/lib/live-indicator-context'
 import { getSite } from '@/lib/api/sites'
@@ -266,7 +267,7 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
                 </span>
               </button>
             ))}
-            {filtered.length === 0 && <p className="px-4 py-3 text-sm text-neutral-400">No sites found</p>}
+            {filtered.length === 0 && <EmptyState title="No sites match your search" className="py-4" />}
           </div>
           <div className="border-t border-white/[0.06] p-2">
             <Link href="/sites/new" onClick={() => closePicker()} className="flex items-center gap-2 px-3 py-1.5 text-sm text-brand-orange hover:bg-white/[0.06] rounded-lg">

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Input, Button, toast } from '@ciphera-net/ui'
 import { Plus, Pencil, Trash, X } from '@phosphor-icons/react'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { Spinner } from '@ciphera-net/ui'
 import { useGoals } from '@/lib/swr/dashboard'
 import { createGoal, updateGoal, deleteGoal } from '@/lib/api/goals'
@@ -130,12 +131,12 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
 
       {/* Goals list */}
       {goals.length === 0 && !creating ? (
-        <div className="text-center py-8">
-          <p className="text-sm text-neutral-500 mb-3">No goals yet. Add a goal to track custom events.</p>
-          <Button onClick={startCreate} variant="primary" className="text-sm gap-1.5">
-            <Plus weight="bold" className="w-3.5 h-3.5" /> Add your first goal
-          </Button>
-        </div>
+        <EmptyState
+          title="No goals yet"
+          description="Track custom events like signups, purchases, or clicks."
+          action={{ label: 'Add your first goal', onClick: startCreate }}
+          className="py-8"
+        />
       ) : (
         <div className="space-y-1">
           {goals.map(goal => (

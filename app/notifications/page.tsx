@@ -16,6 +16,8 @@ import {
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { formatTimeAgo, getTypeIcon } from '@/lib/utils/notifications'
 import { Button, ArrowLeftIcon } from '@ciphera-net/ui'
+import { Bell } from '@phosphor-icons/react'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { NotificationsListSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import { toast } from '@ciphera-net/ui'
@@ -139,14 +141,12 @@ export default function NotificationsPage() {
             {error}
           </div>
         ) : notifications.length === 0 ? (
-          <div className="p-6 text-center text-neutral-400 rounded-2xl border border-white/[0.08]">
-            <p>No notifications yet</p>
-            <p className="text-sm mt-2">
-              Manage which notifications you receive in{' '}
-              <button onClick={() => openUnifiedSettings({ context: 'workspace', tab: 'notifications' })} className="text-brand-orange hover:underline cursor-pointer">
-                Organization Settings → Notifications
-              </button>
-            </p>
+          <div className="rounded-2xl border border-white/[0.08]">
+            <EmptyState
+              icon={<Bell />}
+              title="You're all caught up"
+              description="We'll let you know when something needs your attention."
+            />
           </div>
         ) : (
           <div className="space-y-2">
