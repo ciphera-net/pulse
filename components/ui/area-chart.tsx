@@ -1705,7 +1705,7 @@ export function Area({
   );
 
   const isHovering = tooltipData !== null || selection?.active === true;
-  const easing = "cubic-bezier(0.85, 0, 0.15, 1)";
+  const easing = "var(--ease-apple)";
 
   return (
     <>
@@ -2272,7 +2272,7 @@ function ChartInner({
               style={{
                 transition: isLoaded
                   ? "none"
-                  : `width ${animationDuration}ms cubic-bezier(0.85, 0, 0.15, 1)`,
+                  : `width ${animationDuration}ms var(--ease-apple)`,
               }}
               width={isLoaded ? innerWidth : 0}
               x={0}
