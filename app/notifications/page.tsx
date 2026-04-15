@@ -1,5 +1,6 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useNotifications } from '@/lib/hooks/useNotifications'
 import TransparencyBanner from './TransparencyBanner'
@@ -9,6 +10,14 @@ import NotificationRow from './NotificationRow'
 import { groupByRecency } from './sections'
 
 export default function NotificationsPage() {
+  return (
+    <Suspense fallback={<div className="max-w-4xl mx-auto py-6 px-4 text-neutral-500 text-sm">Loading…</div>}>
+      <NotificationsContent />
+    </Suspense>
+  )
+}
+
+function NotificationsContent() {
   const params = useSearchParams()
   const state = params.get('state') ?? 'all'
   const categories = (params.get('category') ?? '').split(',').filter(Boolean)
