@@ -154,7 +154,7 @@ function PageRow({
       {/* Background bar — animates width on mount */}
       {!isOther && barWidth > 0 && (
         <div
-          className="absolute top-0.5 bottom-0.5 left-0.5 rounded-md transition-all duration-gentle ease-out"
+          className="absolute top-0.5 bottom-0.5 left-0.5 rounded-md transition-[width] duration-gentle ease-out"
           style={{
             width: isMounted ? `calc(${barWidth}% - 4px)` : '0%',
             transitionDelay: `${rowIndex * 30}ms`,
@@ -175,7 +175,7 @@ function PageRow({
       </span>
       <div className="relative flex items-center gap-2 ml-2 shrink-0">
         {!isOther && (
-          <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-base ease-apple">
+          <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
             {pct}%
           </span>
         )}
