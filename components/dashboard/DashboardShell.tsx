@@ -16,6 +16,8 @@ import { getSite } from '@/lib/api/sites'
 import { useSites } from '@/lib/swr/sites'
 import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
 import ContentHeader from './ContentHeader'
+import { ShortcutHandler } from '@/components/keyboard/ShortcutHandler'
+import { ShortcutsOverlay } from '@/components/keyboard/ShortcutsOverlay'
 
 const CIPHERA_APPS: CipheraApp[] = [
   { id: 'pulse', name: 'Pulse', description: 'Your current app — Privacy-first analytics', icon: 'https://ciphera.net/pulse_icon_no_margins.png', href: 'https://pulse.ciphera.net', isAvailable: false },
@@ -373,12 +375,15 @@ export default function DashboardShell({
   children: React.ReactNode
 }) {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const closeMobile = useCallback(() => setMobileOpen(false), [])
   const openMobile = useCallback(() => setMobileOpen(true), [])
 
   return (
     <SidebarProvider>
       <LiveIndicatorProvider>
+      <ShortcutHandler onShowOverlay={() => setShortcutsOpen(true)} />
+      <ShortcutsOverlay open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       <div className="flex h-screen overflow-hidden bg-neutral-950">
         <Sidebar
           siteId={siteId}
