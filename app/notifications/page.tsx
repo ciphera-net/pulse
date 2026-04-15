@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation'
 import { useNotifications } from '@/lib/hooks/useNotifications'
 import TransparencyBanner from './TransparencyBanner'
 import FilterChips from './FilterChips'
+import BulkActionBar from './BulkActionBar'
 import NotificationRow from './NotificationRow'
 import { groupByRecency } from './sections'
 
@@ -27,6 +28,9 @@ export default function NotificationsPage() {
       </header>
       <TransparencyBanner />
       <FilterChips unreadCount={unreadCount} totalCount={receipts.length} />
+      {!loading && !error && (
+        <BulkActionBar totalCount={receipts.length} unreadCount={unreadCount} onChange={refresh} />
+      )}
 
       {loading && <div className="text-neutral-500 text-sm py-12 text-center">Loading…</div>}
       {error && <div className="text-red-400 text-sm py-12 text-center">Failed to load notifications.</div>}
