@@ -195,7 +195,7 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
                       />
                       <div className="relative flex-1 truncate text-white flex items-center gap-3">
                         {renderReferrerIcon(ref.referrer)}
-                        <span className="truncate" title={ref.referrer}>{getReferrerDisplayName(ref.referrer)}</span>
+                        <span className="truncate" title={getReferrerDisplayName(ref.referrer)}>{getReferrerDisplayName(ref.referrer)}</span>
                       </div>
                       <div className="relative flex items-center gap-2 ml-4">
                         <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
@@ -320,7 +320,7 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
                   >
                     <div className="flex-1 truncate text-white flex items-center gap-3">
                       {renderReferrerIcon(ref.referrer)}
-                      <span className="truncate" title={ref.referrer}>{getReferrerDisplayName(ref.referrer)}</span>
+                      <span className="truncate" title={getReferrerDisplayName(ref.referrer)}>{getReferrerDisplayName(ref.referrer)}</span>
                     </div>
                     <div className="flex items-center gap-2 ml-4">
                       <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
