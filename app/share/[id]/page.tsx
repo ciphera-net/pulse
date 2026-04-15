@@ -366,10 +366,9 @@ export default function PublicDashboardPage() {
 
         {/* Chart */}
         <div className="mb-8">
-          <Chart 
-            data={safeDailyStats} 
-            prevData={prevDailyStats} 
-            stats={safeStats} 
+          <Chart
+            data={safeDailyStats}
+            stats={safeStats}
             prevStats={prevStats}
             interval={dateRange.start === dateRange.end ? todayInterval : multiDayInterval}
             dateRange={dateRange}

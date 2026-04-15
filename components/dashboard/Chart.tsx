@@ -6,8 +6,7 @@ import { AreaChart as VisxAreaChart, Area as VisxArea, Grid as VisxGrid, XAxis a
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import type { EngagementPercentilesData } from '@/lib/api/stats'
 import { formatNumber, formatDuration } from '@ciphera-net/ui'
-import { Select, DownloadIcon } from '@ciphera-net/ui'
-import { Checkbox } from '@ciphera-net/ui'
+import { Select } from '@ciphera-net/ui'
 import { ArrowUpRight, ArrowDownRight } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { SPRING, EASE_APPLE } from '@/lib/motion'
@@ -37,7 +36,6 @@ interface Stats {
 
 interface ChartProps {
   data: DailyStat[]
-  prevData?: DailyStat[]
   stats: Stats
   prevStats?: Stats
   interval: 'minute' | 'hour' | 'day' | 'month'
@@ -47,7 +45,6 @@ interface ChartProps {
   setTodayInterval: (interval: 'minute' | 'hour') => void
   multiDayInterval: 'hour' | 'day'
   setMultiDayInterval: (interval: 'hour' | 'day') => void
-  onExportChart?: () => void
   lastUpdatedAt?: number | null
   engagementData?: EngagementPercentilesData | null
 }
@@ -147,7 +144,6 @@ const CHART_COLORS: Record<MetricType, string> = {
 
 export default function Chart({
   data,
-  prevData,
   stats,
   prevStats,
   interval,
@@ -157,14 +153,11 @@ export default function Chart({
   setTodayInterval,
   multiDayInterval,
   setMultiDayInterval,
-  onExportChart,
   lastUpdatedAt,
   engagementData,
 }: ChartProps) {
   const [metric, setMetric] = useState<MetricType>('visitors')
   const chartContainerRef = useRef<HTMLDivElement>(null)
-  const { resolvedTheme } = useTheme()
-  const [showComparison, setShowComparison] = useState(false)
   const [hasMounted, setHasMounted] = useState(false)
 
   useEffect(() => { setHasMounted(true) }, [])
@@ -177,22 +170,6 @@ export default function Chart({
     return () => clearInterval(timer)
   }, [lastUpdatedAt])
 
-  const handleExportChart = useCallback(async () => {
-    if (onExportChart) { onExportChart(); return }
-    if (!chartContainerRef.current) return
-    try {
-      const { toPng } = await import('html-to-image')
-      const bg = getComputedStyle(chartContainerRef.current).backgroundColor || (resolvedTheme === 'dark' ? '#171717' : '#ffffff')
-      const dataUrl = await toPng(chartContainerRef.current, {
-        cacheBust: true,
-        backgroundColor: bg,
-      })
-      const link = document.createElement('a')
-      link.download = `chart-${dateRange.start}-${dateRange.end}.png`
-      link.href = dataUrl
-      link.click()
-    } catch { /* noop */ }
-  }, [onExportChart, dateRange, resolvedTheme])
 
   // ─── Data ──────────────────────────────────────────────────────────
 
@@ -335,43 +312,25 @@ export default function Chart({
             <div className="flex items-center gap-2">
               {dateRange.start === dateRange.end ? (
                 <Select
+                  variant="input"
                   value={todayInterval}
                   onChange={(value) => setTodayInterval(value as 'minute' | 'hour')}
                   options={[
                     { value: 'minute', label: '1 min' },
                     { value: 'hour', label: '1 hour' },
                   ]}
-                  className="min-w-[90px]"
                 />
               ) : (
                 <Select
+                  variant="input"
                   value={multiDayInterval}
                   onChange={(value) => setMultiDayInterval(value as 'hour' | 'day')}
                   options={[
                     { value: 'hour', label: '1 hour' },
                     { value: 'day', label: '1 day' },
                   ]}
-                  className="min-w-[90px]"
                 />
               )}
-
-              {prevData?.length ? (
-                <Checkbox
-                  checked={showComparison}
-                  onCheckedChange={setShowComparison}
-                  label="Compare"
-                />
-              ) : null}
-
-              <button
-                onClick={handleExportChart}
-                disabled={!hasData}
-                className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors disabled:opacity-30 cursor-pointer ease-apple"
-                title="Export chart as PNG"
-              >
-                <DownloadIcon className="w-4 h-4" />
-              </button>
-
             </div>
           </div>
 
@@ -425,7 +384,7 @@ export default function Chart({
                     margin={{ top: 20, right: 20, bottom: 40, left: 50 }}
                     animationDuration={400}
                   >
-                    <VisxGrid horizontal vertical={false} stroke="var(--chart-grid)" strokeDasharray="4,4" />
+                    <VisxGrid horizontal vertical={false} stroke="var(--chart-grid)" numTicksRows={6} />
                     <VisxArea
                       dataKey={metric}
                       fill={CHART_COLORS[metric]}

@@ -416,7 +416,6 @@ export default function SiteDashboardPage() {
       <div className="mb-3">
         <Chart
           data={dailyStats}
-          prevData={prevDailyStats}
           stats={stats}
           prevStats={prevStats}
           interval={dateRange.start === dateRange.end ? todayInterval : multiDayInterval}
