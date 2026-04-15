@@ -482,7 +482,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
         isOpen={isModalOpen}
         onClose={() => { setIsModalOpen(false); setModalSearch('') }}
         title={`Search ${tabLabels[activeTab]}`}
-        className="max-w-2xl !bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:!bg-neutral-900/60 !border-white/[0.08]"
+        className="max-w-2xl max-h-[90vh] flex flex-col !bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:!bg-neutral-900/60 !border-white/[0.08]"
       >
         <div>
           <input
@@ -493,7 +493,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
             className="w-full px-3 py-2 mb-3 text-sm bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
           />
         </div>
-        <div className="max-h-[80vh]">
+        <div className="flex-1 overflow-y-auto min-h-0">
           {isLoadingFull ? (
             <div className="py-4">
               <ListSkeleton rows={10} />
@@ -511,7 +511,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
               <VirtualList
                 items={modalData}
                 estimateSize={36}
-                className="max-h-[80vh] overflow-y-auto pr-2"
+                className="pr-2"
                 renderItem={(row) => renderModalRow(row, modalTotal)}
               />
             )
