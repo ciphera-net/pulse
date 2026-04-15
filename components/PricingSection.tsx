@@ -259,8 +259,6 @@ export default function PricingSection() {
             min={0}
             max={TRAFFIC_TIERS.length - 1}
             step={1}
-            showTooltip
-            tooltipContent={(v) => `${TRAFFIC_TIERS[v]?.label ?? ''} pageviews/mo`}
             aria-label={`${currentTraffic.label} pageviews per month`}
             className="[&_[role=slider]]:h-6 [&_[role=slider]]:w-2.5 [&_[role=slider]]:border-[3px] [&_[role=slider]]:border-background [&_[role=slider]]:bg-primary [&_[role=slider]]:ring-offset-0"
           />

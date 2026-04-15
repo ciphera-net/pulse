@@ -126,8 +126,6 @@ export default function JourneysPage() {
                 min={DEPTH_MIN}
                 max={DEPTH_MAX}
                 step={DEPTH_STEP}
-                showTooltip
-                tooltipContent={(v) => `${v} steps`}
                 aria-label={`${filters.depth} steps deep`}
                 className="[&_[role=slider]]:h-6 [&_[role=slider]]:w-2.5 [&_[role=slider]]:border-[3px] [&_[role=slider]]:border-background [&_[role=slider]]:bg-primary [&_[role=slider]]:ring-offset-0"
               />
@@ -147,8 +145,6 @@ export default function JourneysPage() {
                 min={DENSITY_MIN}
                 max={DENSITY_MAX}
                 step={DENSITY_STEP}
-                showTooltip
-                tooltipContent={(v) => `${v} paths`}
                 aria-label={`${filters.density} paths per step`}
                 className="[&_[role=slider]]:h-6 [&_[role=slider]]:w-2.5 [&_[role=slider]]:border-[3px] [&_[role=slider]]:border-background [&_[role=slider]]:bg-primary [&_[role=slider]]:ring-offset-0"
               />
