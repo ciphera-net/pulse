@@ -23,7 +23,10 @@ export default function PurgeConfirmDialog({ count, onConfirm, onCancel }: Purge
       >
         <h3 className="text-lg font-semibold text-white mb-2">Delete all my notification history</h3>
         <p className="text-sm text-neutral-300 mb-4">
-          This permanently deletes all {count} notification{count === 1 ? '' : 's'} from your account.
+          {count < 0
+            ? "This permanently deletes all of your notification history from this account."
+            : `This permanently deletes all ${count} notification${count === 1 ? '' : 's'} from your account.`
+          }{' '}
           Other team members' copies are not affected. This cannot be undone.
         </p>
         <p className="text-xs text-neutral-400 mb-2">
