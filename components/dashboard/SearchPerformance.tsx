@@ -166,7 +166,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
     return (
       <div
         key={label}
-        className="relative flex items-center justify-between h-9 group hover:bg-neutral-800/50 rounded-lg px-2 -mx-2 transition-colors ease-apple"
+        className="interactive-row relative flex items-center justify-between h-9 group rounded-lg px-2 -mx-2"
       >
         <div
           className="absolute inset-y-0.5 left-0.5 bg-gradient-to-r from-brand-orange/15 via-brand-orange/8 to-transparent border border-brand-orange/20 shadow-[inset_0_1px_0_rgba(253,94,15,0.08)] rounded-md transition-[width,background-color] ease-apple"
@@ -198,7 +198,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
     return (
       <div
         key={row.country}
-        className="relative flex items-center justify-between h-9 group hover:bg-neutral-800/50 rounded-lg px-2 -mx-2 transition-colors ease-apple"
+        className="interactive-row relative flex items-center justify-between h-9 group rounded-lg px-2 -mx-2"
       >
         <div
           className="absolute inset-y-0.5 left-0.5 bg-gradient-to-r from-brand-orange/15 via-brand-orange/8 to-transparent border border-brand-orange/20 shadow-[inset_0_1px_0_rgba(253,94,15,0.08)] rounded-md transition-[width,background-color] ease-apple"
@@ -230,7 +230,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
     return (
       <div
         key={row.device}
-        className="relative flex items-center justify-between h-9 group hover:bg-neutral-800/50 rounded-lg px-2 -mx-2 transition-colors ease-apple"
+        className="interactive-row relative flex items-center justify-between h-9 group rounded-lg px-2 -mx-2"
       >
         <div
           className="absolute inset-y-0.5 left-0.5 bg-gradient-to-r from-brand-orange/15 via-brand-orange/8 to-transparent border border-brand-orange/20 shadow-[inset_0_1px_0_rgba(253,94,15,0.08)] rounded-md transition-[width,background-color] ease-apple"
@@ -261,7 +261,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
     return (
       <div
         key={row.query}
-        className="relative flex items-center justify-between h-9 group hover:bg-neutral-800/50 rounded-lg px-2 -mx-2 transition-colors ease-apple"
+        className="interactive-row relative flex items-center justify-between h-9 group rounded-lg px-2 -mx-2"
       >
         <div
           className="absolute inset-y-0.5 left-0.5 bg-gradient-to-r from-brand-orange/15 via-brand-orange/8 to-transparent border border-brand-orange/20 shadow-[inset_0_1px_0_rgba(253,94,15,0.08)] rounded-md transition-[width,background-color] ease-apple"
@@ -336,7 +336,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
       return (
         <div
           key={label}
-          className="flex items-center justify-between h-9 group hover:bg-neutral-800 rounded-lg px-2 transition-colors ease-apple"
+          className="interactive-row flex items-center justify-between h-9 group rounded-lg px-2"
         >
           <span className="flex-1 truncate text-sm text-white" title={label}>
             {label}
@@ -361,7 +361,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
       return (
         <div
           key={r.country}
-          className="flex items-center justify-between h-9 group hover:bg-neutral-800 rounded-lg px-2 transition-colors ease-apple"
+          className="interactive-row flex items-center justify-between h-9 group rounded-lg px-2"
         >
           <span className="flex-1 truncate text-sm text-white" title={name}>
             {flag ? `${flag} ` : ''}{name}
@@ -385,7 +385,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
       return (
         <div
           key={r.query}
-          className="flex items-center justify-between h-9 group hover:bg-neutral-800 rounded-lg px-2 transition-colors ease-apple"
+          className="interactive-row flex items-center justify-between h-9 group rounded-lg px-2"
         >
           <span className="flex-1 truncate text-sm text-white" title={r.query}>
             {r.query}
