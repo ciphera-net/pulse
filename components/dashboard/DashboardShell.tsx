@@ -386,7 +386,7 @@ export default function DashboardShell({
           {/* Glass top bar — above content only, collapse icon reaches back into sidebar column */}
           <GlassTopBar siteId={siteId} />
           {/* Content panel — elevated: inset top highlight + outer shadow for perceived depth */}
-          <div className="flex-1 flex flex-col min-w-0 mr-2 mb-2 rounded-2xl bg-neutral-950 border border-white/[0.08] overflow-hidden relative shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_4px_24px_rgba(0,0,0,0.6)]">
+          <div className="flex-1 flex flex-col min-w-0 mr-3 mb-3 rounded-2xl bg-neutral-950 border border-white/[0.08] overflow-hidden relative shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_8px_32px_rgba(0,0,0,0.8)]">
             <ContentHeader onMobileMenuOpen={openMobile} />
             <main className="relative flex-1 overflow-y-auto overflow-x-hidden pt-4">
               {children}
