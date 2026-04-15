@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
+import { TIMING } from '@/lib/motion'
 import { useAuth } from '@/lib/auth/context'
 import { type Site } from '@/lib/api/sites'
 import { useSites } from '@/lib/swr/sites'
@@ -127,7 +128,7 @@ function WelcomeFlowInner() {
               initial="enter"
               animate="center"
               exit="exit"
-              transition={{ duration: 0.2 }}
+              transition={TIMING}
             >
               <StepOrganization onComplete={handleOrgComplete} />
             </motion.div>
@@ -140,7 +141,7 @@ function WelcomeFlowInner() {
               initial="enter"
               animate="center"
               exit="exit"
-              transition={{ duration: 0.2 }}
+              transition={TIMING}
             >
               <StepAddSite
                 onComplete={handleSiteComplete}
@@ -158,7 +159,7 @@ function WelcomeFlowInner() {
               initial="enter"
               animate="center"
               exit="exit"
-              transition={{ duration: 0.2 }}
+              transition={TIMING}
             >
               <StepInstall
                 site={createdSite}

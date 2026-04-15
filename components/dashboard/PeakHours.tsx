@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useRef, type CSSProperties } from 'react'
 import { Clock } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { DURATION_FAST, DURATION_SLOW, EASE_APPLE } from '@/lib/motion'
 import { logger } from '@/lib/utils/logger'
 import { getDailyStats } from '@/lib/api/stats'
 import type { DailyStat } from '@/lib/api/stats'
@@ -236,7 +237,7 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
                   initial={{ opacity: 0, y: 4, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 4, scale: 0.95 }}
-                  transition={{ duration: 0.12 }}
+                  transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
                   className="absolute pointer-events-none z-20"
                   style={{
                     left: tooltipPos.x,
@@ -267,7 +268,7 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
             <motion.p
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.6 }}
+              transition={{ duration: DURATION_SLOW, delay: 0.6, ease: EASE_APPLE }}
               className="mt-4 text-xs text-neutral-400 text-center"
             >
               Your busiest time is{' '}

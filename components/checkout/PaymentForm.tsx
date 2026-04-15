@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Script from 'next/script'
 import { motion, AnimatePresence } from 'framer-motion'
+import { TIMING } from '@/lib/motion'
 import { Lock, ShieldCheck } from '@phosphor-icons/react'
 import { initMollie, getMollie, MOLLIE_FIELD_STYLES, type MollieComponent } from '@/lib/mollie'
 import { createEmbeddedCheckout, createCheckoutSession } from '@/lib/api/billing'
@@ -306,7 +307,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.2 }}
+              transition={TIMING}
               className="text-sm text-neutral-400 mb-4 overflow-hidden"
             >
               You&apos;ll be redirected to complete payment securely via {PAYMENT_METHODS.find((m) => m.id === selectedMethod)?.label}.

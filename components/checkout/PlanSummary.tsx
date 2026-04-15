@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
+import { SPRING, TIMING } from '@/lib/motion'
 import { Select } from '@ciphera-net/ui'
 import { TRAFFIC_TIERS, PLAN_PRICES } from '@/lib/plans'
 import { COUNTRY_OPTIONS } from '@/lib/countries'
@@ -107,7 +108,7 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
                 <motion.div
                   layoutId="checkout-interval-bg"
                   className="absolute inset-0 bg-neutral-700 rounded-lg shadow-sm"
-                  transition={{ type: 'spring', bounce: 0.15, duration: 0.35 }}
+                  transition={SPRING}
                 />
               )}
               <span className="relative z-10">{iv === 'month' ? 'Monthly' : 'Yearly'}</span>
@@ -156,7 +157,7 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.25, ease: 'easeOut' }}
+              transition={TIMING}
               className="overflow-hidden"
             >
               <div className="mt-2 rounded-lg bg-green-500/5 border border-green-500/20 px-3 py-2 text-xs text-neutral-400">
@@ -172,7 +173,7 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
+              transition={TIMING}
               className="mt-1.5 text-xs text-yellow-400"
             >
               VAT ID could not be verified. 21% VAT will apply.

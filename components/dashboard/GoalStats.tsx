@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { TIMING } from '@/lib/motion'
 import Link from 'next/link'
 import { formatNumber } from '@ciphera-net/ui'
 import { BookOpenIcon, ArrowRightIcon } from '@ciphera-net/ui'
@@ -135,7 +136,7 @@ export default function GoalStats({ goalCounts, siteId, dateRange }: GoalStatsPr
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2, ease: 'easeInOut' }}
+                    transition={TIMING}
                     className="overflow-hidden"
                   >
                   <div className="border-l-2 border-brand-orange/20 ml-[7px] pl-4 py-1">

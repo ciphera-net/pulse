@@ -10,6 +10,7 @@ import { Select, DownloadIcon } from '@ciphera-net/ui'
 import { Checkbox } from '@ciphera-net/ui'
 import { ArrowUpRight, ArrowDownRight } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
+import { SPRING } from '@/lib/motion'
 import { AnimatedNumber } from '@/components/ui/animated-number'
 import { cn } from '@/lib/utils'
 import { formatTime, formatDateShort } from '@/lib/utils/formatDate'
@@ -311,7 +312,7 @@ export default function Chart({
                   <motion.div
                     layoutId="activeMetric"
                     className="absolute bottom-0 left-0 right-0 h-[3px] bg-brand-orange rounded-full"
-                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                    transition={SPRING}
                   />
                 )}
               </button>

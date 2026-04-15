@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
+import { TIMING } from '@/lib/motion'
 
 import { useAuth } from '@/lib/auth/context'
 import {
@@ -268,7 +269,7 @@ export default function StepOrganization({ onComplete }: StepOrganizationProps) 
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.2 }}
+              transition={TIMING}
               className="text-sm text-red-400 overflow-hidden"
             >
               {orgError}
