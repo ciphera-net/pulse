@@ -23,7 +23,7 @@ const SiteIntegrationsTab = dynamic(() => import('./tabs/SiteIntegrationsTab'), 
 const WorkspaceGeneralTab = dynamic(() => import('./tabs/WorkspaceGeneralTab'), { loading: tabLoader })
 const WorkspaceBillingTab = dynamic(() => import('./tabs/WorkspaceBillingTab'), { loading: tabLoader })
 const WorkspaceMembersTab = dynamic(() => import('./tabs/WorkspaceMembersTab'), { loading: tabLoader })
-const WorkspaceNotificationsTab = dynamic(() => import('./tabs/WorkspaceNotificationsTab'), { loading: tabLoader })
+const NotificationsTab = dynamic(() => import('./tabs/NotificationsTab'), { loading: tabLoader })
 const WorkspaceAuditTab = dynamic(() => import('./tabs/WorkspaceAuditTab'), { loading: tabLoader })
 const AccountProfileTab = dynamic(() => import('./tabs/AccountProfileTab'), { loading: tabLoader })
 const AccountSecurityTab = dynamic(() => import('./tabs/AccountSecurityTab'), { loading: tabLoader })
@@ -192,7 +192,7 @@ function TabContent({
       case 'general': return <WorkspaceGeneralTab {...dirtyProps} />
       case 'billing': return <WorkspaceBillingTab />
       case 'members': return <WorkspaceMembersTab />
-      case 'notifications': return <WorkspaceNotificationsTab {...dirtyProps} />
+      case 'notifications': return <NotificationsTab />
       case 'audit': return <WorkspaceAuditTab />
     }
   }
