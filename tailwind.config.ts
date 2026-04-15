@@ -77,6 +77,16 @@ const config: Config = {
         slow: '400ms',
         gentle: '600ms',
       },
+      fontSize: {
+        'display-lg': ['48px', { lineHeight: '1.05', letterSpacing: '-0.02em' }],
+        display: ['36px', { lineHeight: '1.1', letterSpacing: '-0.015em' }],
+        'title-1': ['24px', { lineHeight: '1.2', letterSpacing: '-0.01em' }],
+        'title-2': ['18px', { lineHeight: '1.3', letterSpacing: '-0.005em' }],
+        'title-3': ['14px', { lineHeight: '1.4' }],
+        body: ['14px', { lineHeight: '1.5' }],
+        caption: ['12px', { lineHeight: '1.4' }],
+        'micro-label': ['11px', { lineHeight: '1', letterSpacing: '0.06em' }],
+      },
     },
   },
   plugins: [
