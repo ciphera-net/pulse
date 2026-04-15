@@ -63,6 +63,16 @@
   }
 }
 
+@layer components {
+  /* * Glass tiers (Phase 2 — premium UI pass) */
+  .glass-surface {
+    @apply bg-neutral-900/80 backdrop-blur-sm border border-white/[0.08];
+  }
+  .glass-overlay {
+    @apply bg-neutral-900/60 backdrop-blur-2xl backdrop-saturate-150 border border-white/[0.08];
+  }
+}
+
 @layer utilities {
   /* * 3D Transform Utilities - Pulse-specific */
   .perspective-1000 {
