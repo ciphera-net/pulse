@@ -644,7 +644,7 @@ export default function SankeyJourney({
           <button
             type="button"
             onClick={() => setFilterPath(null)}
-            className="ml-auto flex items-center gap-1 text-xs font-medium text-brand-orange hover:text-brand-orange/80 transition-colors"
+            className="ml-auto flex items-center gap-1 text-xs font-medium text-brand-orange hover:text-brand-orange/80 transition-colors ease-apple"
           >
             <X weight="bold" className="w-3.5 h-3.5" />
             Reset

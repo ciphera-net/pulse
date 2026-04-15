@@ -156,7 +156,7 @@ export default function ScriptSetupBlock({
             <button
               type="button"
               onClick={copyScript}
-              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-all cursor-pointer bg-brand-orange/10 hover:bg-brand-orange/20 text-brand-orange border border-brand-orange/20"
+              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-all cursor-pointer bg-brand-orange/10 hover:bg-brand-orange/20 text-brand-orange border border-brand-orange/20 ease-apple"
             >
               {copied ? (
                 <>
@@ -264,7 +264,7 @@ export default function ScriptSetupBlock({
               href="/integrations"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs font-medium text-neutral-400 hover:text-brand-orange transition-colors"
+              className="text-xs font-medium text-neutral-400 hover:text-brand-orange transition-colors ease-apple"
             >
               All integrations →
             </Link>
@@ -279,7 +279,7 @@ export default function ScriptSetupBlock({
                   framework === fw.id
                     ? 'border-brand-orange bg-brand-orange/10 text-brand-orange'
                     : 'border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 hover:border-neutral-300 dark:hover:border-neutral-700 hover:text-neutral-900 dark:hover:text-white'
-                }`}
+                } ease-apple`}
               >
                 <span className="[&_svg]:h-4 [&_svg]:w-4 shrink-0 flex items-center">
                   {fw.icon}
@@ -293,7 +293,7 @@ export default function ScriptSetupBlock({
               href={`/integrations/${framework}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 mt-3 text-sm font-medium text-brand-orange hover:text-brand-orange/80 transition-colors"
+              className="inline-flex items-center gap-1 mt-3 text-sm font-medium text-brand-orange hover:text-brand-orange/80 transition-colors ease-apple"
             >
               See full {selectedIntegration.name} guide →
             </Link>

@@ -175,7 +175,7 @@ export default function SearchConsolePage() {
           </p>
           <button
             onClick={() => openUnifiedSettings({ context: 'site', tab: 'integrations' })}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-brand-orange-button hover:bg-brand-orange-button-hover text-white text-sm font-medium transition-colors cursor-pointer"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-brand-orange-button hover:bg-brand-orange-button-hover text-white text-sm font-medium transition-colors cursor-pointer ease-apple"
           >
             Connect in Settings
             <ArrowSquareOut size={16} weight="bold" />
@@ -312,7 +312,7 @@ export default function SearchConsolePage() {
               activeView === 'queries'
                 ? 'bg-white dark:bg-neutral-700 text-white shadow-sm'
                 : 'text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300'
-            }`}
+            } ease-apple`}
           >
             Top Queries
           </button>
@@ -322,7 +322,7 @@ export default function SearchConsolePage() {
               activeView === 'pages'
                 ? 'bg-white dark:bg-neutral-700 text-white shadow-sm'
                 : 'text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300'
-            }`}
+            } ease-apple`}
           >
             Top Pages
           </button>
@@ -386,14 +386,14 @@ export default function SearchConsolePage() {
                 <button
                   disabled={queryPage === 0}
                   onClick={() => { setQueryPage((p) => p - 1); setExpandedQuery(null); setExpandedData([]) }}
-                  className="px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  className="px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer ease-apple"
                 >
                   Previous
                 </button>
                 <button
                   disabled={(queryPage + 1) * PAGE_SIZE >= queriesTotal}
                   onClick={() => { setQueryPage((p) => p + 1); setExpandedQuery(null); setExpandedData([]) }}
-                  className="px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  className="px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer ease-apple"
                 >
                   Next
                 </button>
@@ -460,14 +460,14 @@ export default function SearchConsolePage() {
                 <button
                   disabled={pagePage === 0}
                   onClick={() => { setPagePage((p) => p - 1); setExpandedPage(null); setExpandedData([]) }}
-                  className="px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  className="px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer ease-apple"
                 >
                   Previous
                 </button>
                 <button
                   disabled={(pagePage + 1) * PAGE_SIZE >= pagesTotal}
                   onClick={() => { setPagePage((p) => p + 1); setExpandedPage(null); setExpandedData([]) }}
-                  className="px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  className="px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer ease-apple"
                 >
                   Next
                 </button>
@@ -543,7 +543,7 @@ function QueryRow({
     <>
       <tr
         onClick={onToggle}
-        className="border-b border-neutral-100 dark:border-neutral-800/50 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 cursor-pointer transition-colors"
+        className="border-b border-neutral-100 dark:border-neutral-800/50 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 cursor-pointer transition-colors ease-apple"
       >
         <td className="px-4 py-3 text-neutral-400 dark:text-neutral-500">
           <Caret size={14} />
@@ -614,7 +614,7 @@ function PageRow({
     <>
       <tr
         onClick={onToggle}
-        className="border-b border-neutral-100 dark:border-neutral-800/50 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 cursor-pointer transition-colors"
+        className="border-b border-neutral-100 dark:border-neutral-800/50 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 cursor-pointer transition-colors ease-apple"
       >
         <td className="px-4 py-3 text-neutral-400 dark:text-neutral-500">
           <Caret size={14} />

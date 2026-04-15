@@ -76,7 +76,7 @@ export default function Globe({ data, className }: GlobeProps) {
     <div className={`relative w-full h-full overflow-hidden ${className ?? ''}`}>
       <div className="absolute left-1/2 -translate-x-1/2 top-0 aspect-square w-[130%]">
         <canvas
-          className="size-full opacity-0 transition-opacity duration-gentle"
+          className="size-full opacity-0 transition-opacity duration-gentle ease-apple"
           style={{ contain: 'layout paint size' }}
           ref={canvasRef}
           onPointerDown={(e) => {

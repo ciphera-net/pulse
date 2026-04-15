@@ -102,7 +102,7 @@ export default function StepInstall({ site }: StepInstallProps) {
                 <button
                   type="button"
                   onClick={startVerification}
-                  className="text-sm font-medium text-brand-orange hover:text-brand-orange/80 transition-colors"
+                  className="text-sm font-medium text-brand-orange hover:text-brand-orange/80 transition-colors ease-apple"
                 >
                   Verify installation
                 </button>
@@ -117,7 +117,7 @@ export default function StepInstall({ site }: StepInstallProps) {
                 <button
                   type="button"
                   onClick={cancelVerification}
-                  className="text-xs text-neutral-500 hover:text-neutral-400 transition-colors ml-1"
+                  className="text-xs text-neutral-500 hover:text-neutral-400 transition-colors ml-1 ease-apple"
                 >
                   Cancel
                 </button>
@@ -140,7 +140,7 @@ export default function StepInstall({ site }: StepInstallProps) {
                 <button
                   type="button"
                   onClick={startVerification}
-                  className="text-xs font-medium text-brand-orange hover:text-brand-orange/80 transition-colors ml-1 flex-shrink-0"
+                  className="text-xs font-medium text-brand-orange hover:text-brand-orange/80 transition-colors ml-1 flex-shrink-0 ease-apple"
                 >
                   Try again
                 </button>

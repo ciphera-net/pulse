@@ -20,7 +20,7 @@ interface PlanSummaryProps {
 }
 
 const inputClass =
-  'w-full rounded-lg border border-neutral-700 bg-neutral-800/50 px-3 py-2.5 text-sm text-white placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-brand-orange focus:border-brand-orange transition-colors'
+  'w-full rounded-lg border border-neutral-700 bg-neutral-800/50 px-3 py-2.5 text-sm text-white placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-brand-orange focus:border-brand-orange transition-colors ease-apple'
 
 /** Convert VIES ALL-CAPS text to title case (e.g. "SA SODIMAS" → "Sa Sodimas") */
 function toTitleCase(s: string) {
@@ -102,7 +102,7 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
               onClick={() => handleIntervalToggle(iv)}
               className={`relative px-3.5 py-1.5 text-sm font-medium rounded-lg transition-colors duration-base ${
                 currentInterval === iv ? 'text-white' : 'text-neutral-400 hover:text-white'
-              }`}
+              } ease-apple`}
             >
               {currentInterval === iv && (
                 <motion.div
@@ -145,7 +145,7 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
             type="button"
             onClick={handleVerifyVatId}
             disabled={!vatId || !country || vatLoading || isVatValid}
-            className="shrink-0 rounded-lg bg-neutral-700 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-neutral-600 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="shrink-0 rounded-lg bg-neutral-700 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-neutral-600 disabled:opacity-40 disabled:cursor-not-allowed ease-apple"
           >
             {vatLoading && vatId ? 'Verifying...' : isVatValid ? 'Verified' : 'Verify'}
           </button>
@@ -183,7 +183,7 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
       </div>
 
       {/* Price breakdown */}
-      <div className={`pt-2 border-t border-neutral-800 transition-opacity duration-base ${vatLoading ? 'opacity-50' : 'opacity-100'}`}>
+      <div className={`pt-2 border-t border-neutral-800 transition-opacity duration-base ${vatLoading ? 'opacity-50' : 'opacity-100'} ease-apple`}>
         {vatResult ? (
           <div className="space-y-1.5 text-sm">
             <div className="flex justify-between text-neutral-400">

@@ -166,7 +166,7 @@ export default function JourneysPage() {
                 filters.isDefault
                   ? 'opacity-0 pointer-events-none'
                   : 'opacity-100 text-neutral-500 hover:text-white'
-              }`}
+              } ease-apple`}
             >
               Reset
             </button>
@@ -184,13 +184,13 @@ export default function JourneysPage() {
                   filters.viewMode === mode
                     ? 'text-white'
                     : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-300'
-                }`}
+                } ease-apple`}
               >
                 {mode === 'columns' ? 'Columns' : 'Flow'}
                 <span
                   className={`absolute inset-x-0 -bottom-px h-[3px] rounded-full transition-all duration-base ${
                     filters.viewMode === mode ? 'bg-brand-orange scale-x-100' : 'bg-transparent scale-x-0'
-                  }`}
+                  } ease-apple`}
                 />
               </button>
             ))}

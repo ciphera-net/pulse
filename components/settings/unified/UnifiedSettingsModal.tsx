@@ -87,7 +87,7 @@ function ContextSwitcher({
           onClick={() => onChange(item.id)}
           className={`relative flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-base ${
             active === item.id ? 'text-white' : 'text-neutral-400 hover:text-white'
-          }`}
+          } ease-apple`}
         >
           {active === item.id && (
             <motion.div
@@ -127,7 +127,7 @@ function TabBar({
             activeTab === tab.id
               ? 'text-brand-orange'
               : 'text-neutral-500 hover:text-neutral-300'
-          }`}
+          } ease-apple`}
         >
           {tab.label}
           {activeTab === tab.id && (
@@ -371,7 +371,7 @@ export default function UnifiedSettingsModal() {
       <div
         className={`fixed inset-0 z-[60] bg-black/50 transition-opacity duration-base ${
           isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        }`}
+        } ease-apple`}
         onClick={handleBackdropClick}
       />
 
@@ -406,7 +406,7 @@ export default function UnifiedSettingsModal() {
                   <h2 className="text-lg font-semibold text-white">Settings</h2>
                   <button
                     onClick={handleClose}
-                    className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors"
+                    className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors ease-apple"
                   >
                     <X weight="bold" className="w-4 h-4" />
                   </button>

@@ -97,7 +97,7 @@ function CheckoutSuccess() {
             </p>
             <Link
               href="/"
-              className="mt-4 inline-block text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors"
+              className="mt-4 inline-block text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors ease-apple"
             >
               Go to dashboard
             </Link>
@@ -184,7 +184,7 @@ function CheckoutContent() {
       <div className="w-full lg:w-1/2 flex flex-col h-full overflow-y-auto">
         {/* Logo on mobile only (desktop logo is on the left panel) */}
         <div className="px-6 py-5 lg:hidden">
-          <Link href="/pricing" className="flex items-center gap-2 w-fit hover:opacity-80 transition-opacity">
+          <Link href="/pricing" className="flex items-center gap-2 w-fit hover:opacity-80 transition-opacity ease-apple">
             <Image
               src={pulseIcon}
               alt="Pulse"

@@ -178,7 +178,7 @@ export default function StepOrganization({ onComplete }: StepOrganizationProps) 
                   isCurrent
                     ? 'border-brand-orange/60 bg-brand-orange/10 shadow-sm'
                     : 'border-neutral-700 bg-neutral-800/50 hover:bg-neutral-800 hover:border-neutral-600 hover:shadow-sm'
-                }`}
+                } ease-apple`}
               >
                 <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-semibold ${
                   isCurrent
@@ -283,7 +283,7 @@ export default function StepOrganization({ onComplete }: StepOrganizationProps) 
           <button
             type="button"
             onClick={() => setMode('select')}
-            className="w-full text-sm text-neutral-400 hover:text-neutral-300 transition-colors py-1"
+            className="w-full text-sm text-neutral-400 hover:text-neutral-300 transition-colors py-1 ease-apple"
           >
             Back to workspace list
           </button>
@@ -294,7 +294,7 @@ export default function StepOrganization({ onComplete }: StepOrganizationProps) 
           <button
             type="button"
             onClick={() => router.push('/login')}
-            className="text-xs text-neutral-500 hover:text-neutral-400 transition-colors"
+            className="text-xs text-neutral-500 hover:text-neutral-400 transition-colors ease-apple"
           >
             Sign out
           </button>

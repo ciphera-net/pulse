@@ -76,7 +76,7 @@ export default function FeatureSlideshow() {
 
       {/* Logo */}
       <div className="absolute top-0 left-0 z-20 px-6 py-5">
-        <Link href="/pricing" className="flex items-center gap-2 w-fit hover:opacity-80 transition-opacity">
+        <Link href="/pricing" className="flex items-center gap-2 w-fit hover:opacity-80 transition-opacity ease-apple">
           <Image
             src={pulseIcon}
             alt="Pulse"

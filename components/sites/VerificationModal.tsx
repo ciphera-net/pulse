@@ -110,7 +110,7 @@ export default function VerificationModal({ isOpen, onClose, site, onVerified }:
                 </h3>
                 <button
                   onClick={onClose}
-                  className="p-1 rounded-lg text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                  className="p-1 rounded-lg text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors ease-apple"
                 >
                   <XIcon className="w-5 h-5" />
                 </button>

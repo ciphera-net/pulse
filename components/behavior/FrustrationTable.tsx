@@ -56,7 +56,7 @@ function SelectorCell({ selector }: { selector: string }) {
       <span className="text-sm font-mono text-white truncate">
         {selector}
       </span>
-      <span className="opacity-0 group-hover/copy:opacity-100 transition-opacity shrink-0">
+      <span className="opacity-0 group-hover/copy:opacity-100 transition-opacity shrink-0 ease-apple">
         {copied ? (
           <Check className="w-3 h-3 text-green-500" />
         ) : (
@@ -79,7 +79,7 @@ function Row({
   const pct = totalSignals > 0 ? `${Math.round((item.count / totalSignals) * 100)}%` : ''
 
   return (
-    <div className="flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors">
+    <div className="flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors ease-apple">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 min-w-0 overflow-hidden">
           <SelectorCell selector={item.selector} />
@@ -93,7 +93,7 @@ function Row({
       </div>
       <div className="flex items-center gap-2 ml-4 shrink-0">
         {/* Percentage badge: slides in on hover */}
-        <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-base tabular-nums">
+        <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-base tabular-nums ease-apple">
           {pct}
         </span>
         <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 tabular-nums">
@@ -151,7 +151,7 @@ export default function FrustrationTable({
             {showViewAll && (
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all cursor-pointer rounded-lg"
+                className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all cursor-pointer rounded-lg ease-apple"
                 aria-label={`View all ${title.toLowerCase()}`}
               >
                 <FrameCornersIcon className="w-4 h-4" weight="bold" />

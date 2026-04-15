@@ -231,7 +231,7 @@ function EventsTab() {
                 days === d
                   ? 'bg-white text-neutral-900'
                   : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
-              }`}
+              } ease-apple`}
             >
               {d}d
             </button>
@@ -299,14 +299,14 @@ function EventsTab() {
             <button
               onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
               disabled={offset === 0}
-              className="px-3 py-1.5 rounded-lg bg-neutral-800 text-neutral-400 hover:bg-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-3 py-1.5 rounded-lg bg-neutral-800 text-neutral-400 hover:bg-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors ease-apple"
             >
               Prev
             </button>
             <button
               onClick={() => setOffset(offset + PAGE_SIZE)}
               disabled={offset + PAGE_SIZE >= total}
-              className="px-3 py-1.5 rounded-lg bg-neutral-800 text-neutral-400 hover:bg-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-3 py-1.5 rounded-lg bg-neutral-800 text-neutral-400 hover:bg-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors ease-apple"
             >
               Next
             </button>
@@ -422,7 +422,7 @@ function ReputationTab() {
                 sort === s.key
                   ? 'bg-white text-neutral-900'
                   : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
-              }`}
+              } ease-apple`}
             >
               {s.label}
             </button>
@@ -483,7 +483,7 @@ function ReputationTab() {
                           <button
                             onClick={() => handleOverride(d.domain, 'allow')}
                             disabled={overrideLoading === d.domain}
-                            className="px-2 py-1 text-xs rounded-md bg-green-900/30 text-green-400 hover:bg-green-900/50 disabled:opacity-40 transition-colors"
+                            className="px-2 py-1 text-xs rounded-md bg-green-900/30 text-green-400 hover:bg-green-900/50 disabled:opacity-40 transition-colors ease-apple"
                           >
                             Allow
                           </button>
@@ -492,7 +492,7 @@ function ReputationTab() {
                           <button
                             onClick={() => handleOverride(d.domain, 'quarantine')}
                             disabled={overrideLoading === d.domain}
-                            className="px-2 py-1 text-xs rounded-md bg-red-900/30 text-red-400 hover:bg-red-900/50 disabled:opacity-40 transition-colors"
+                            className="px-2 py-1 text-xs rounded-md bg-red-900/30 text-red-400 hover:bg-red-900/50 disabled:opacity-40 transition-colors ease-apple"
                           >
                             Quarantine
                           </button>
@@ -515,14 +515,14 @@ function ReputationTab() {
             <button
               onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
               disabled={offset === 0}
-              className="px-3 py-1.5 rounded-lg bg-neutral-800 text-neutral-400 hover:bg-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-3 py-1.5 rounded-lg bg-neutral-800 text-neutral-400 hover:bg-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors ease-apple"
             >
               Prev
             </button>
             <button
               onClick={() => setOffset(offset + PAGE_SIZE)}
               disabled={offset + PAGE_SIZE >= total}
-              className="px-3 py-1.5 rounded-lg bg-neutral-800 text-neutral-400 hover:bg-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-3 py-1.5 rounded-lg bg-neutral-800 text-neutral-400 hover:bg-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors ease-apple"
             >
               Next
             </button>
@@ -567,7 +567,7 @@ export default function AdminQuarantinePage() {
               tab === t.key
                 ? 'border-white text-white'
                 : 'border-transparent text-neutral-400 hover:text-neutral-200'
-            }`}
+            } ease-apple`}
           >
             {t.label}
           </button>

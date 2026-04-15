@@ -112,7 +112,7 @@ export default function NotificationsPage() {
         <div className="flex items-center justify-between mb-6">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors"
+            className="inline-flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors ease-apple"
           >
             <ArrowLeftIcon className="w-4 h-4" />
             Back
@@ -156,7 +156,7 @@ export default function NotificationsPage() {
                   <Link
                     href={n.link_url}
                     onClick={() => handleNotificationClick(n)}
-                    className={`block p-4 rounded-xl border border-white/[0.08] hover:bg-neutral-800/50 transition-colors ${!n.read ? 'bg-brand-orange/10' : ''}`}
+                    className={`block p-4 rounded-xl border border-white/[0.08] hover:bg-neutral-800/50 transition-colors ${!n.read ? 'bg-brand-orange/10' : ''} ease-apple`}
                   >
                     <div className="flex gap-3">
                       {getTypeIcon(n.type)}

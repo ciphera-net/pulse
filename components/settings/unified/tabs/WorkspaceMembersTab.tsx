@@ -158,7 +158,7 @@ export default function WorkspaceMembersTab() {
               {canManage && member.role !== 'owner' && member.user_id !== user?.id && (
                 <button
                   onClick={() => handleRemove(member.user_id, member.user_email || member.user_id)}
-                  className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-red-900/20 transition-colors opacity-0 group-hover:opacity-100"
+                  className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-red-900/20 transition-colors opacity-0 group-hover:opacity-100 ease-apple"
                 >
                   <Trash weight="bold" className="w-3.5 h-3.5" />
                 </button>

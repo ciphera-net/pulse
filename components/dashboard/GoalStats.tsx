@@ -99,15 +99,15 @@ export default function GoalStats({ goalCounts, siteId, dateRange }: GoalStatsPr
                 {/* Event row */}
                 <div
                   onClick={() => toggleExpand(row.event_name)}
-                  className="relative flex items-center justify-between h-9 group hover:bg-neutral-800/50 rounded-lg px-2 -mx-2 transition-colors cursor-pointer"
+                  className="relative flex items-center justify-between h-9 group hover:bg-neutral-800/50 rounded-lg px-2 -mx-2 transition-colors cursor-pointer ease-apple"
                 >
                   <div
-                    className="absolute inset-y-0.5 left-0.5 bg-gradient-to-r from-brand-orange/15 via-brand-orange/8 to-transparent border border-brand-orange/20 shadow-[inset_0_1px_0_rgba(253,94,15,0.08)] rounded-md transition-all"
+                    className="absolute inset-y-0.5 left-0.5 bg-gradient-to-r from-brand-orange/15 via-brand-orange/8 to-transparent border border-brand-orange/20 shadow-[inset_0_1px_0_rgba(253,94,15,0.08)] rounded-md transition-all ease-apple"
                     style={{ width: `${barWidth}%` }}
                   />
                   <div className="relative flex items-center flex-1 min-w-0 gap-2">
                     <svg
-                      className={`w-3.5 h-3.5 text-neutral-500 flex-shrink-0 transition-transform duration-base ${isExpanded ? 'rotate-90' : ''}`}
+                      className={`w-3.5 h-3.5 text-neutral-500 flex-shrink-0 transition-transform duration-base ${isExpanded ? 'rotate-90' : ''} ease-apple`}
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -120,7 +120,7 @@ export default function GoalStats({ goalCounts, siteId, dateRange }: GoalStatsPr
                     </span>
                   </div>
                   <div className="relative flex items-center gap-2 ml-4">
-                    <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-base">
+                    <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-base ease-apple">
                       {total > 0 ? `${Math.round((row.count / total) * 100)}%` : ''}
                     </span>
                     <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
@@ -162,7 +162,7 @@ export default function GoalStats({ goalCounts, siteId, dateRange }: GoalStatsPr
                                   className="relative flex items-center justify-between h-7 rounded-md px-2 -mx-2"
                                 >
                                   <div
-                                    className="absolute inset-y-0.5 left-0.5 bg-gradient-to-r from-brand-orange/15 via-brand-orange/8 to-transparent border border-brand-orange/20 shadow-[inset_0_1px_0_rgba(253,94,15,0.08)] rounded-md transition-all"
+                                    className="absolute inset-y-0.5 left-0.5 bg-gradient-to-r from-brand-orange/15 via-brand-orange/8 to-transparent border border-brand-orange/20 shadow-[inset_0_1px_0_rgba(253,94,15,0.08)] rounded-md transition-all ease-apple"
                                     style={{ width: `${valBarWidth}%` }}
                                   />
                                   <span className="relative text-xs font-medium text-white truncate">

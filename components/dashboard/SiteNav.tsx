@@ -45,7 +45,7 @@ export default function SiteNav({ siteId }: SiteNavProps) {
               isActive(tab.href)
                 ? 'text-white'
                 : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
-            }`}
+            } ease-apple`}
           >
             {tab.label}
             {isActive(tab.href) && (

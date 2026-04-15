@@ -29,7 +29,7 @@ function SiteCard({ site, stats, statsLoading }: SiteCardProps) {
   const pageviews = stats?.pageviews ?? 0
 
   return (
-    <div className="group relative flex flex-col rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm transition-all duration-base hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99] dark:border-neutral-800 dark:bg-neutral-900">
+    <div className="group relative flex flex-col rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm transition-all duration-base hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99] dark:border-neutral-800 dark:bg-neutral-900 ease-apple">
       {/* Header: Icon + Name + Live Status */}
       <div className="flex items-start justify-between mb-6">
         <div className="flex items-center gap-4">
@@ -105,7 +105,7 @@ function SiteCard({ site, stats, statsLoading }: SiteCardProps) {
         <button
           type="button"
           onClick={() => openUnifiedSettings({ context: 'site', tab: 'general', siteId: site.id })}
-          className="flex items-center justify-center rounded-lg border border-neutral-200 px-3 hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800 text-neutral-500 hover:text-neutral-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 cursor-pointer"
+          className="flex items-center justify-center rounded-lg border border-neutral-200 px-3 hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800 text-neutral-500 hover:text-neutral-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 cursor-pointer ease-apple"
           title="Site Settings"
         >
           <SettingsIcon className="h-4 w-4" />

@@ -74,7 +74,7 @@ const SETTINGS_ITEM: NavItem = {
 function Label({ children, collapsed }: { children: React.ReactNode; collapsed: boolean }) {
   return (
     <span
-      className="whitespace-nowrap overflow-hidden transition-opacity duration-fast"
+      className="whitespace-nowrap overflow-hidden transition-opacity duration-fast ease-apple"
       style={{ opacity: collapsed ? 0 : 1 }}
     >
       {children}
@@ -143,7 +143,7 @@ function NavLink({
         active
           ? 'bg-brand-orange/10 text-brand-orange'
           : 'text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5'
-      }`}
+      } ease-apple`}
     >
       <span className="w-7 h-7 flex items-center justify-center shrink-0">
         <item.icon className="w-[18px] h-[18px]" weight={active ? 'fill' : 'regular'} />
@@ -171,7 +171,7 @@ function SettingsButton({
         openUnifiedSettings({ context: settingsContext, tab: 'general' })
         onClick?.()
       }}
-      className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-fast text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5 w-full cursor-pointer"
+      className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-fast text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5 w-full cursor-pointer ease-apple"
     >
       <span className="w-7 h-7 flex items-center justify-center shrink-0">
         <item.icon className="w-[18px] h-[18px]" weight="regular" />
@@ -204,7 +204,7 @@ function HomeNavLink({
         active
           ? 'bg-brand-orange/10 text-brand-orange'
           : 'text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5'
-      }`}
+      } ease-apple`}
     >
       <span className="w-7 h-7 flex items-center justify-center shrink-0">
         <Icon className="w-[18px] h-[18px]" weight={active ? 'fill' : 'regular'} />
@@ -236,7 +236,7 @@ function HomeSiteLink({
         active
           ? 'bg-brand-orange/10 text-brand-orange'
           : 'text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5'
-      }`}
+      } ease-apple`}
     >
       <span className="w-7 h-7 rounded-md bg-white/[0.04] flex items-center justify-center shrink-0 overflow-hidden">
         <img
@@ -286,9 +286,9 @@ function SidebarContent({
       {/* Logo — fixed layout, text fades */}
       <Link href="/" className="flex items-center gap-3 px-[14px] py-4 shrink-0 group overflow-hidden">
         <span className="w-9 h-9 flex items-center justify-center shrink-0">
-          <img src="/pulse_icon_no_margins.png" alt="Pulse" className="w-9 h-9 shrink-0 object-contain group-hover:scale-105 transition-transform duration-base" />
+          <img src="/pulse_icon_no_margins.png" alt="Pulse" className="w-9 h-9 shrink-0 object-contain group-hover:scale-105 transition-transform duration-base ease-apple" />
         </span>
-        <span className={`text-xl font-bold text-white tracking-tight group-hover:text-brand-orange whitespace-nowrap transition-opacity duration-fast ${c ? 'opacity-0' : 'opacity-100'}`}>
+        <span className={`text-xl font-bold text-white tracking-tight group-hover:text-brand-orange whitespace-nowrap transition-opacity duration-fast ${c ? 'opacity-0' : 'opacity-100'} ease-apple`}>
           Pulse
         </span>
       </Link>
@@ -513,7 +513,7 @@ export default function Sidebar({
           <div
             className={`fixed inset-0 z-40 bg-black/30 md:hidden transition-opacity duration-base ${
               mobileClosing ? 'opacity-0' : 'opacity-100'
-            }`}
+            } ease-apple`}
             onClick={handleMobileClose}
           />
           <aside

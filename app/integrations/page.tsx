@@ -143,12 +143,12 @@ export default function IntegrationsPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search integrations..."
-              className="w-full pl-12 pr-16 py-3 bg-neutral-900/70 backdrop-blur-sm border border-white/[0.08] rounded-xl text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-orange/50 focus:border-brand-orange/50 transition-all"
+              className="w-full pl-12 pr-16 py-3 bg-neutral-900/70 backdrop-blur-sm border border-white/[0.08] rounded-xl text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-orange/50 focus:border-brand-orange/50 transition-all ease-apple"
             />
             {query ? (
               <button
                 onClick={() => setQuery('')}
-                className="absolute inset-y-0 right-0 flex items-center pr-4 text-neutral-400 hover:text-neutral-600 hover:text-neutral-300 transition-colors"
+                className="absolute inset-y-0 right-0 flex items-center pr-4 text-neutral-400 hover:text-neutral-600 hover:text-neutral-300 transition-colors ease-apple"
                 aria-label="Clear search"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -190,7 +190,7 @@ export default function IntegrationsPage() {
               activeCategory === 'all'
                 ? 'bg-brand-orange-button text-white shadow-sm'
                 : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
-            }`}
+            } ease-apple`}
           >
             All
           </button>
@@ -202,7 +202,7 @@ export default function IntegrationsPage() {
                 activeCategory === cat
                   ? 'bg-brand-orange-button text-white shadow-sm'
                   : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
-              }`}
+              } ease-apple`}
             >
               {categoryLabels[cat]}
             </button>
@@ -245,9 +245,9 @@ export default function IntegrationsPage() {
                       >
                         <Link
                           href={integration!.dedicatedPage ? `/integrations/${integration!.id}` : '/integrations/script-tag'}
-                          className="group flex items-center gap-3 p-4 bg-neutral-900/50 backdrop-blur-sm border border-neutral-800 rounded-xl hover:border-brand-orange/50 transition-all duration-slow hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.99] h-full"
+                          className="group flex items-center gap-3 p-4 bg-neutral-900/50 backdrop-blur-sm border border-neutral-800 rounded-xl hover:border-brand-orange/50 transition-all duration-slow hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.99] h-full ease-apple"
                         >
-                          <div className="p-2 bg-neutral-800 rounded-lg shrink-0 group-hover:scale-110 transition-transform duration-slow [&_svg]:w-6 [&_svg]:h-6">
+                          <div className="p-2 bg-neutral-800 rounded-lg shrink-0 group-hover:scale-110 transition-transform duration-slow [&_svg]:w-6 [&_svg]:h-6 ease-apple">
                             {integration!.icon}
                           </div>
                           <span className="font-semibold text-white text-sm">
@@ -284,13 +284,13 @@ export default function IntegrationsPage() {
                       >
                         <Link
                           href={integration.dedicatedPage ? `/integrations/${integration.id}` : '/integrations/script-tag'}
-                          className="group relative p-6 bg-neutral-900/50 backdrop-blur-sm border border-neutral-800 rounded-2xl hover:border-brand-orange/50 transition-all duration-slow hover:-translate-y-1 hover:shadow-xl active:translate-y-0 active:scale-[0.99] block h-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2"
+                          className="group relative p-6 bg-neutral-900/50 backdrop-blur-sm border border-neutral-800 rounded-2xl hover:border-brand-orange/50 transition-all duration-slow hover:-translate-y-1 hover:shadow-xl active:translate-y-0 active:scale-[0.99] block h-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 ease-apple"
                         >
                           <div className="flex items-start justify-between mb-6">
-                            <div className="p-3 bg-neutral-800 rounded-xl group-hover:scale-110 transition-transform duration-slow">
+                            <div className="p-3 bg-neutral-800 rounded-xl group-hover:scale-110 transition-transform duration-slow ease-apple">
                               {integration.icon}
                             </div>
-                            <ArrowRightIcon className="w-5 h-5 text-neutral-400 group-hover:text-brand-orange transition-colors" />
+                            <ArrowRightIcon className="w-5 h-5 text-neutral-400 group-hover:text-brand-orange transition-colors ease-apple" />
                           </div>
 
                           <h3 className="text-xl font-bold text-white mb-3">
@@ -299,7 +299,7 @@ export default function IntegrationsPage() {
                           <p className="text-neutral-400 leading-relaxed mb-4">
                             {integration.description}
                           </p>
-                          <span className="text-sm font-medium text-brand-orange opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                          <span className="text-sm font-medium text-brand-orange opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 ease-apple">
                             View Guide <span aria-hidden="true">&rarr;</span>
                           </span>
                         </Link>
