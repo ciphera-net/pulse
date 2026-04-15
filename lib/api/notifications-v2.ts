@@ -77,3 +77,13 @@ export const purgeMine = () =>
     body: JSON.stringify({ confirm: 'DELETE_ALL_MY_NOTIFICATIONS' }),
     headers: { 'Content-Type': 'application/json' },
   })
+
+export interface Delivery {
+  id: string
+  channel: string   // 'in_app' | 'email' | 'email_digest' | 'webhook'
+  status: string    // 'queued' | 'sent' | 'failed' | 'skipped_quiet_hours' | 'skipped_off'
+  sent_at: string
+}
+
+export const listDeliveries = (eventId: string) =>
+  apiRequest<{ deliveries: Delivery[] }>(`/notifications/${eventId}/deliveries`)
