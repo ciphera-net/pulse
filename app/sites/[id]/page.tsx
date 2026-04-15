@@ -19,7 +19,7 @@ import {
   type DailyStat,
   type EngagementPercentilesData,
 } from '@/lib/api/stats'
-import { getDateRange, formatDate, getThisWeekRange, getThisMonthRange } from '@/lib/utils/dateRanges'
+import { getDateRange, formatDate, getThisWeekRange, getThisMonthRange, getYesterdayRange, getLast24HoursRange, getLast1HourRange, getThisYearRange, getAllTimeRange } from '@/lib/utils/dateRanges'
 import { toast } from '@ciphera-net/ui'
 import { Button } from '@ciphera-net/ui'
 import { Select, DatePicker, DownloadIcon } from '@ciphera-net/ui'
@@ -358,6 +358,22 @@ export default function SiteDashboardPage() {
                       setDateRange(range)
                       setPeriod('today')
                       saveSettings('today', range)
+                    } else if (value === 'yesterday') {
+                      const range = getYesterdayRange()
+                      setDateRange(range)
+                      setPeriod('yesterday')
+                      saveSettings('yesterday', range)
+                    } else if (value === '1h') {
+                      const range = getLast1HourRange()
+                      setDateRange(range)
+                      setTodayInterval('minute')
+                      setPeriod('1h')
+                      saveSettings('1h', range)
+                    } else if (value === '24h') {
+                      const range = getLast24HoursRange()
+                      setDateRange(range)
+                      setPeriod('24h')
+                      saveSettings('24h', range)
                     } else if (value === '7') {
                       const range = getDateRange(7)
                       setDateRange(range)
@@ -378,17 +394,33 @@ export default function SiteDashboardPage() {
                       setDateRange(range)
                       setPeriod('month')
                       saveSettings('month', range)
+                    } else if (value === 'year') {
+                      const range = getThisYearRange()
+                      setDateRange(range)
+                      setPeriod('year')
+                      saveSettings('year', range)
+                    } else if (value === 'alltime') {
+                      const range = getAllTimeRange()
+                      setDateRange(range)
+                      setPeriod('alltime')
+                      saveSettings('alltime', range)
                     } else if (value === 'custom') {
                       setIsDatePickerOpen(true)
                     }
                   }}
                   options={[
+                    { value: '1h', label: 'Last 1 hour' },
+                    { value: '24h', label: 'Last 24 hours' },
+                    { value: 'divider-0', label: '', divider: true },
                     { value: 'today', label: 'Today' },
+                    { value: 'yesterday', label: 'Yesterday' },
                     { value: '7', label: 'Last 7 days' },
                     { value: '30', label: 'Last 30 days' },
                     { value: 'divider-1', label: '', divider: true },
                     { value: 'week', label: 'This week' },
                     { value: 'month', label: 'This month' },
+                    { value: 'year', label: 'This year' },
+                    { value: 'alltime', label: 'All time' },
                     { value: 'divider-2', label: '', divider: true },
                     { value: 'custom', label: 'Custom' },
                   ]}
