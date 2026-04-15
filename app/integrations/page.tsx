@@ -245,7 +245,7 @@ export default function IntegrationsPage() {
                       >
                         <Link
                           href={integration!.dedicatedPage ? `/integrations/${integration!.id}` : '/integrations/script-tag'}
-                          className="group flex items-center gap-3 p-4 bg-neutral-900/50 backdrop-blur-sm border border-neutral-800 rounded-xl hover:border-brand-orange/50 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg h-full"
+                          className="group flex items-center gap-3 p-4 bg-neutral-900/50 backdrop-blur-sm border border-neutral-800 rounded-xl hover:border-brand-orange/50 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.99] h-full"
                         >
                           <div className="p-2 bg-neutral-800 rounded-lg shrink-0 group-hover:scale-110 transition-transform duration-300 [&_svg]:w-6 [&_svg]:h-6">
                             {integration!.icon}
@@ -284,7 +284,7 @@ export default function IntegrationsPage() {
                       >
                         <Link
                           href={integration.dedicatedPage ? `/integrations/${integration.id}` : '/integrations/script-tag'}
-                          className="group relative p-6 bg-neutral-900/50 backdrop-blur-sm border border-neutral-800 rounded-2xl hover:border-brand-orange/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl block h-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2"
+                          className="group relative p-6 bg-neutral-900/50 backdrop-blur-sm border border-neutral-800 rounded-2xl hover:border-brand-orange/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl active:translate-y-0 active:scale-[0.99] block h-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2"
                         >
                           <div className="flex items-start justify-between mb-6">
                             <div className="p-3 bg-neutral-800 rounded-xl group-hover:scale-110 transition-transform duration-300">
@@ -335,7 +335,7 @@ export default function IntegrationsPage() {
               </p>
               <a
                 href="mailto:support@ciphera.net"
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-brand-orange-button text-white font-medium rounded-lg hover:bg-brand-orange/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-brand-orange-button text-white font-medium rounded-lg hover:bg-brand-orange/90 transition-[color,transform] duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2"
               >
                 Request Integration
               </a>
