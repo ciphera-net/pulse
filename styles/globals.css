@@ -49,6 +49,13 @@
     --border: 38 38 38;
     --input: 38 38 38;
     --ring: 253 94 15;
+
+    /* * Motion tokens (Phase 1 — premium UI pass) */
+    --ease-apple: cubic-bezier(0.32, 0.72, 0, 1);
+    --duration-fast: 150ms;
+    --duration-base: 250ms;
+    --duration-slow: 400ms;
+    --duration-gentle: 600ms;
   }
 
   body {

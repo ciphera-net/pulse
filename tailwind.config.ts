@@ -68,6 +68,15 @@ const config: Config = {
           foreground: 'rgb(var(--muted-foreground) / <alpha-value>)',
         },
       },
+      transitionTimingFunction: {
+        apple: 'var(--ease-apple)',
+      },
+      transitionDuration: {
+        fast: '150ms',
+        base: '250ms',
+        slow: '400ms',
+        gentle: '600ms',
+      },
     },
   },
   plugins: [
