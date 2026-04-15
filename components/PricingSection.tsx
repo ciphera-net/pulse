@@ -10,7 +10,7 @@ import { toast } from '@ciphera-net/ui'
 import { useSubscription } from '@/lib/swr/dashboard'
 import PricingFAQ from '@/components/marketing/PricingFAQ'
 import CTASection from '@/components/marketing/CTASection'
-import RangeSlider from '@/components/ui/RangeSlider'
+import { Slider } from '@/components/ui/slider'
 
 // 1. Define Plans with IDs, Categories, and Feature Matrix
 const PLANS = [
@@ -234,18 +234,35 @@ export default function PricingSection() {
           How many monthly pageviews do you expect?
         </p>
 
-        {/* Desktop: Custom slider with tick marks */}
+        {/* Desktop: tier labels on top, Radix slider below */}
         <div className="hidden md:block">
-          <RangeSlider
-            label=""
+          <div className="flex items-end justify-between mb-3 px-0.5">
+            {TRAFFIC_TIERS.map((tier, i) => (
+              <button
+                key={tier.label}
+                type="button"
+                onClick={() => setSliderIndex(i)}
+                aria-label={`Select ${tier.label} pageviews per month`}
+                className={`text-xs font-medium tabular-nums whitespace-nowrap transition-colors rounded px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                  i === sliderIndex
+                    ? 'text-primary font-semibold'
+                    : 'text-neutral-500 hover:text-neutral-300'
+                }`}
+              >
+                {tier.label}
+              </button>
+            ))}
+          </div>
+          <Slider
+            value={[sliderIndex]}
+            onValueChange={([v]) => setSliderIndex(v)}
             min={0}
             max={TRAFFIC_TIERS.length - 1}
             step={1}
-            value={sliderIndex}
-            onChange={setSliderIndex}
-            ariaValueText={`${currentTraffic.label} pageviews per month`}
-            ticks={TRAFFIC_TIERS.map((t) => t.label)}
-            onTickClick={setSliderIndex}
+            showTooltip
+            tooltipContent={(v) => `${TRAFFIC_TIERS[v]?.label ?? ''} pageviews/mo`}
+            aria-label={`${currentTraffic.label} pageviews per month`}
+            className="[&_[role=slider]]:h-6 [&_[role=slider]]:w-2.5 [&_[role=slider]]:border-[3px] [&_[role=slider]]:border-background [&_[role=slider]]:bg-primary [&_[role=slider]]:ring-offset-0"
           />
         </div>
 
