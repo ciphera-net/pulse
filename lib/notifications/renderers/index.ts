@@ -12,7 +12,18 @@ export interface Rendered {
   linkLabel: string | null
 }
 
-type Renderer = (r: Receipt) => Rendered
+/**
+ * Resolver functions supplied by the React component layer.
+ * When present, renderers replace bare UUIDs with human-readable names.
+ * When absent (e.g. server-side digest, tests) renderers fall back to
+ * `'site <id>'` / `'user <id>'` strings.
+ */
+export interface Resolvers {
+  resolveSiteName: (id: string) => string
+  resolveUserName: (id: string) => string
+}
+
+type Renderer = (r: Receipt, resolvers?: Resolvers) => Rendered
 
 const registry: Partial<Record<NotificationType, Renderer>> = {
   ...billingRenderers,
@@ -23,10 +34,10 @@ const registry: Partial<Record<NotificationType, Renderer>> = {
   ...systemRenderers,
 }
 
-export function renderNotification(r: Receipt): Rendered {
+export function renderNotification(r: Receipt, resolvers?: Resolvers): Rendered {
   const renderer = registry[r.event.type]
   if (!renderer) {
     return { title: r.event.type, body: '', linkLabel: null }
   }
-  return renderer(r)
+  return renderer(r, resolvers)
 }

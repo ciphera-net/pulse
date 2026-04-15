@@ -1,8 +1,8 @@
 import type { Receipt } from '@/lib/notifications/types'
-import type { Rendered } from './index'
+import type { Rendered, Resolvers } from './index'
 
 export const systemRenderers = {
-  system_announcement: (r: Receipt): Rendered => {
+  system_announcement: (r: Receipt, _resolvers?: Resolvers): Rendered => {
     const p = r.event.payload as { announcement_id: string }
     return {
       title: 'Announcement',
@@ -10,7 +10,7 @@ export const systemRenderers = {
       linkLabel: 'See release notes',
     }
   },
-  system_maintenance: (r: Receipt): Rendered => {
+  system_maintenance: (r: Receipt, _resolvers?: Resolvers): Rendered => {
     const p = r.event.payload as { starts_at: string; ends_at: string }
     const fmt = (iso: string) =>
       new Date(iso).toLocaleString('en', {

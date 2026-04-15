@@ -1,5 +1,5 @@
 import type { Receipt } from '@/lib/notifications/types'
-import type { Rendered } from './index'
+import type { Rendered, Resolvers } from './index'
 
 function formatDowntime(seconds: number): string {
   if (seconds < 60) return `${seconds}s`
@@ -13,31 +13,31 @@ function daysUntil(iso: string): number {
 }
 
 export const uptimeRenderers = {
-  uptime_monitor_down: (r: Receipt): Rendered => {
+  uptime_monitor_down: (r: Receipt, resolvers?: Resolvers): Rendered => {
     const p = r.event.payload as { monitor_id: string; site_id: string; status_code: number }
+    const siteName = resolvers ? resolvers.resolveSiteName(p.site_id) : `site ${p.site_id}`
     return {
-      // TODO(3.4): use resolveSiteName(p.site_id) instead of bare ID
-      title: `Monitor down — site ${p.site_id}`,
+      title: `Monitor down — ${siteName}`,
       body: `Status code ${p.status_code}.`,
       linkLabel: 'View monitor',
     }
   },
-  uptime_monitor_recovered: (r: Receipt): Rendered => {
+  uptime_monitor_recovered: (r: Receipt, resolvers?: Resolvers): Rendered => {
     const p = r.event.payload as { monitor_id: string; site_id: string; downtime_seconds: number }
+    const siteName = resolvers ? resolvers.resolveSiteName(p.site_id) : `site ${p.site_id}`
     return {
-      // TODO(3.4): use resolveSiteName(p.site_id)
-      title: `Monitor recovered — site ${p.site_id}`,
+      title: `Monitor recovered — ${siteName}`,
       body: `Back online after ${formatDowntime(p.downtime_seconds)}.`,
       linkLabel: 'View monitor',
     }
   },
-  uptime_ssl_expiring: (r: Receipt): Rendered => {
+  uptime_ssl_expiring: (r: Receipt, resolvers?: Resolvers): Rendered => {
     const p = r.event.payload as { monitor_id: string; site_id: string; expires_at: string }
     const days = daysUntil(p.expires_at)
+    const siteName = resolvers ? resolvers.resolveSiteName(p.site_id) : `site ${p.site_id}`
     return {
-      // TODO(3.4): use resolveSiteName(p.site_id)
       title: `SSL expiring in ${days} days`,
-      body: `Renew the certificate for site ${p.site_id}.`,
+      body: `Renew the certificate for ${siteName}.`,
       linkLabel: 'View monitor',
     }
   },
