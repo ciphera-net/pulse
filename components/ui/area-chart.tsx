@@ -1186,12 +1186,23 @@ export function Grid({
   stroke = chartCssVars.grid,
   strokeOpacity = 1,
   strokeWidth = 1,
-  strokeDasharray = "4,4",
+  strokeDasharray,
   fadeHorizontal = true,
   fadeVertical = false,
 }: GridProps) {
   const { xScale, yScale, innerWidth, innerHeight, orientation, barScale } =
     useChart();
+
+  // Compute evenly-distributed row tick values so Grid aligns with YAxis
+  // (YAxis uses the same `min + step * i` logic by default).
+  const computedRowTicks = useMemo(() => {
+    if (rowTickValues) return rowTickValues;
+    const domain = yScale.domain() as [number, number];
+    const min = domain[0];
+    const max = domain[1];
+    const step = (max - min) / (numTicksRows - 1);
+    return Array.from({ length: numTicksRows }, (_, i) => min + step * i);
+  }, [yScale, numTicksRows, rowTickValues]);
 
   const isHorizontalBarChart = orientation === "horizontal" && barScale;
   const columnScale = isHorizontalBarChart ? yScale : xScale;
@@ -1253,13 +1264,12 @@ export function Grid({
       {horizontal && (
         <g mask={fadeHorizontal ? `url(#${hMaskId})` : undefined}>
           <GridRows
-            numTicks={rowTickValues ? undefined : numTicksRows}
             scale={yScale}
             stroke={stroke}
             strokeDasharray={strokeDasharray}
             strokeOpacity={strokeOpacity}
             strokeWidth={strokeWidth}
-            tickValues={rowTickValues}
+            tickValues={computedRowTicks}
             width={innerWidth}
           />
         </g>
