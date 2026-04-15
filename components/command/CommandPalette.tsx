@@ -26,17 +26,18 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
+  CommandShortcut,
 } from '@/components/ui/command'
 
 const SITE_PAGES = [
-  { label: 'Dashboard', path: '', icon: SquaresFour },
-  { label: 'Journeys', path: '/journeys', icon: Path },
-  { label: 'Funnels', path: '/funnels', icon: Funnel },
-  { label: 'Behavior', path: '/behavior', icon: CursorClick },
-  { label: 'Search', path: '/search', icon: MagnifyingGlass },
-  { label: 'CDN', path: '/cdn', icon: CloudArrowUp },
-  { label: 'Uptime', path: '/uptime', icon: Heartbeat },
-  { label: 'PageSpeed', path: '/pagespeed', icon: Gauge },
+  { label: 'Dashboard', path: '', icon: SquaresFour, shortcut: 'g d' },
+  { label: 'Journeys', path: '/journeys', icon: Path, shortcut: 'g j' },
+  { label: 'Funnels', path: '/funnels', icon: Funnel, shortcut: 'g f' },
+  { label: 'Behavior', path: '/behavior', icon: CursorClick, shortcut: 'g b' },
+  { label: 'Search', path: '/search', icon: MagnifyingGlass, shortcut: 'g s' },
+  { label: 'CDN', path: '/cdn', icon: CloudArrowUp, shortcut: 'g c' },
+  { label: 'Uptime', path: '/uptime', icon: Heartbeat, shortcut: 'g u' },
+  { label: 'PageSpeed', path: '/pagespeed', icon: Gauge, shortcut: 'g p' },
 ] as const
 
 interface CommandPaletteProps {
@@ -83,6 +84,7 @@ export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPal
                   >
                     <Icon size={16} weight="regular" className="opacity-60" aria-hidden="true" />
                     <span>{page.label}</span>
+                    <CommandShortcut>{page.shortcut}</CommandShortcut>
                   </CommandItem>
                 )
               })}
