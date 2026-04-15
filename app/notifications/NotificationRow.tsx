@@ -1,12 +1,22 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import type { Receipt } from '@/lib/notifications/types'
 import { renderNotification } from '@/lib/notifications/renderers'
 import { useResolveSiteName, useResolveUserName } from '@/lib/notifications/resolvers'
 import { formatTimeAgo } from '@/lib/utils/notifications'
-import { markRead, markUnread, dismiss } from '@/lib/api/notifications-v2'
+import { markRead, markUnread, dismiss, listDeliveries, type Delivery } from '@/lib/api/notifications-v2'
+
+function formatChannel(c: string): string {
+  switch (c) {
+    case 'in_app': return 'in-app'
+    case 'email': return 'email'
+    case 'email_digest': return 'email digest'
+    case 'webhook': return 'webhook'
+    default: return c
+  }
+}
 
 interface NotificationRowProps {
   receipt: Receipt
@@ -17,6 +27,15 @@ export default function NotificationRow({ receipt, onChange }: NotificationRowPr
   const [expanded, setExpanded] = useState(false)
   const [payloadOpen, setPayloadOpen] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [deliveries, setDeliveries] = useState<Delivery[] | null>(null)
+
+  useEffect(() => {
+    if (expanded && deliveries === null) {
+      listDeliveries(receipt.event_id)
+        .then(r => setDeliveries(r.deliveries ?? []))
+        .catch(() => setDeliveries([]))
+    }
+  }, [expanded, deliveries, receipt.event_id])
 
   const resolveSiteName = useResolveSiteName()
   const resolveUserName = useResolveUserName()
@@ -102,6 +121,26 @@ export default function NotificationRow({ receipt, onChange }: NotificationRowPr
                 {receipt.read_at && (
                   <div><span className="text-neutral-500">Read:</span> {new Date(receipt.read_at).toLocaleString()}</div>
                 )}
+                <div>
+                  <span className="text-neutral-500">Delivered via:</span>{' '}
+                  {deliveries === null && <span className="text-neutral-500">Loading…</span>}
+                  {deliveries !== null && deliveries.length === 0 && (
+                    <span className="text-neutral-500">In-app only</span>
+                  )}
+                  {deliveries !== null && deliveries.length > 0 && (
+                    <span>
+                      {deliveries.map((d, i) => (
+                        <span key={d.id}>
+                          {i > 0 && ', '}
+                          {formatChannel(d.channel)}
+                          {d.status !== 'sent' && <span className="text-neutral-500"> ({d.status})</span>}
+                          {' at '}
+                          {new Date(d.sent_at).toLocaleTimeString()}
+                        </span>
+                      ))}
+                    </span>
+                  )}
+                </div>
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); setPayloadOpen(o => !o) }}
