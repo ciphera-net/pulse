@@ -10,6 +10,7 @@ import {
   CloudArrowUp,
   Heartbeat,
   Gauge,
+  Bell,
   Plus,
   Plugs,
   Tag,
@@ -88,6 +89,11 @@ export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPal
                   </CommandItem>
                 )
               })}
+              <CommandItem value="page-notifications" onSelect={() => go('/notifications')}>
+                <Bell size={16} weight="regular" className="opacity-60" aria-hidden="true" />
+                <span>Notifications</span>
+                <CommandShortcut>g n</CommandShortcut>
+              </CommandItem>
             </CommandGroup>
             <CommandSeparator />
           </>
