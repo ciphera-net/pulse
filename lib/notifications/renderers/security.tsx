@@ -1,14 +1,6 @@
 import type { Receipt } from '@/lib/notifications/types'
 import type { Rendered, Resolvers } from './index'
-
-function countryName(alpha2: string): string {
-  try {
-    const dn = new Intl.DisplayNames(['en'], { type: 'region' })
-    return dn.of(alpha2) ?? alpha2
-  } catch {
-    return alpha2
-  }
-}
+import { countryName } from '../display-utils'
 
 export const securityRenderers = {
   security_new_device_login: (r: Receipt, _resolvers?: Resolvers): Rendered => {
