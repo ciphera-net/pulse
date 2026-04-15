@@ -487,7 +487,7 @@ export default function Sidebar({
       {/* Desktop — ssr:false means this only renders on client, no hydration flash */}
       <aside
         className="hidden md:flex flex-col shrink-0 bg-transparent overflow-hidden relative z-10"
-        style={{ width: collapsed ? COLLAPSED : EXPANDED, transition: 'width 200ms cubic-bezier(0.4, 0, 0.2, 1)' }}
+        style={{ width: collapsed ? COLLAPSED : EXPANDED, transition: 'width var(--duration-base) var(--ease-apple)' }}
       >
         <SidebarContent
           isMobile={false}
