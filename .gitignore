@@ -43,3 +43,6 @@ public/sw.js
 public/sw 2.js
 public/workbox-*.js
 public/swe-worker-*.js
+
+# Local brainstorm mockups — never tracked
+.superpowers/

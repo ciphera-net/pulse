@@ -19,7 +19,7 @@ import {
   type DailyStat,
   type EngagementPercentilesData,
 } from '@/lib/api/stats'
-import { getDateRange, formatDate, getThisWeekRange, getThisMonthRange } from '@/lib/utils/dateRanges'
+import { getDateRange, formatDate, getThisWeekRange, getThisMonthRange, getYesterdayRange, getLast24HoursRange, getLast1HourRange, getThisYearRange, getAllTimeRange } from '@/lib/utils/dateRanges'
 import { toast } from '@ciphera-net/ui'
 import { Button } from '@ciphera-net/ui'
 import { Select, DatePicker, DownloadIcon } from '@ciphera-net/ui'
@@ -321,26 +321,17 @@ export default function SiteDashboardPage() {
   return (
     <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
       <div className="mb-3">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-4">
-            <div>
-              <h1 className="text-lg font-semibold text-neutral-200 mb-1">
-                {site.name}
-              </h1>
-              <p className="text-neutral-600 dark:text-neutral-400">
-                {site.domain}
-              </p>
-            </div>
+        <div className="flex items-center justify-between mb-3 gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <FilterPanel filters={filters} onApply={handleApplyFilters} onFetchSuggestions={handleFetchSuggestions} />
 
             {/* Realtime Indicator */}
-            <div
-              className="flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded-full border border-green-500/20"
-            >
+            <div className="flex items-center gap-2">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
               </span>
-              <span className="text-sm font-medium text-green-700 dark:text-green-400">
+              <span className="text-sm text-neutral-400 tabular-nums">
                 {realtime} current visitors
               </span>
             </div>
@@ -367,6 +358,22 @@ export default function SiteDashboardPage() {
                       setDateRange(range)
                       setPeriod('today')
                       saveSettings('today', range)
+                    } else if (value === 'yesterday') {
+                      const range = getYesterdayRange()
+                      setDateRange(range)
+                      setPeriod('yesterday')
+                      saveSettings('yesterday', range)
+                    } else if (value === '1h') {
+                      const range = getLast1HourRange()
+                      setDateRange(range)
+                      setTodayInterval('minute')
+                      setPeriod('1h')
+                      saveSettings('1h', range)
+                    } else if (value === '24h') {
+                      const range = getLast24HoursRange()
+                      setDateRange(range)
+                      setPeriod('24h')
+                      saveSettings('24h', range)
                     } else if (value === '7') {
                       const range = getDateRange(7)
                       setDateRange(range)
@@ -387,17 +394,33 @@ export default function SiteDashboardPage() {
                       setDateRange(range)
                       setPeriod('month')
                       saveSettings('month', range)
+                    } else if (value === 'year') {
+                      const range = getThisYearRange()
+                      setDateRange(range)
+                      setPeriod('year')
+                      saveSettings('year', range)
+                    } else if (value === 'alltime') {
+                      const range = getAllTimeRange()
+                      setDateRange(range)
+                      setPeriod('alltime')
+                      saveSettings('alltime', range)
                     } else if (value === 'custom') {
                       setIsDatePickerOpen(true)
                     }
                   }}
                   options={[
+                    { value: '1h', label: 'Last 1 hour' },
+                    { value: '24h', label: 'Last 24 hours' },
+                    { value: 'divider-0', label: '', divider: true },
                     { value: 'today', label: 'Today' },
+                    { value: 'yesterday', label: 'Yesterday' },
                     { value: '7', label: 'Last 7 days' },
                     { value: '30', label: 'Last 30 days' },
                     { value: 'divider-1', label: '', divider: true },
                     { value: 'week', label: 'This week' },
                     { value: 'month', label: 'This month' },
+                    { value: 'year', label: 'This year' },
+                    { value: 'alltime', label: 'All time' },
                     { value: 'divider-2', label: '', divider: true },
                     { value: 'custom', label: 'Custom' },
                   ]}
@@ -407,16 +430,10 @@ export default function SiteDashboardPage() {
         </div>
       </div>
 
-      {/* Dimension Filters */}
-      <div className="flex items-center gap-2 flex-wrap mb-2">
-        <FilterPanel filters={filters} onApply={handleApplyFilters} onFetchSuggestions={handleFetchSuggestions} />
-      </div>
-
       {/* Advanced Chart with Integrated Stats */}
       <div className="mb-3">
         <Chart
           data={dailyStats}
-          prevData={prevDailyStats}
           stats={stats}
           prevStats={prevStats}
           interval={dateRange.start === dateRange.end ? todayInterval : multiDayInterval}

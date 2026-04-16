@@ -10,7 +10,7 @@ import { toast } from '@ciphera-net/ui'
 import { useSubscription } from '@/lib/swr/dashboard'
 import PricingFAQ from '@/components/marketing/PricingFAQ'
 import CTASection from '@/components/marketing/CTASection'
-import RangeSlider from '@/components/ui/RangeSlider'
+import { Slider } from '@/components/ui/slider'
 
 // 1. Define Plans with IDs, Categories, and Feature Matrix
 const PLANS = [
@@ -234,18 +234,33 @@ export default function PricingSection() {
           How many monthly pageviews do you expect?
         </p>
 
-        {/* Desktop: Custom slider with tick marks */}
+        {/* Desktop: tier labels on top, Radix slider below */}
         <div className="hidden md:block">
-          <RangeSlider
-            label=""
+          <div className="flex items-end justify-between mb-3 px-0.5">
+            {TRAFFIC_TIERS.map((tier, i) => (
+              <button
+                key={tier.label}
+                type="button"
+                onClick={() => setSliderIndex(i)}
+                aria-label={`Select ${tier.label} pageviews per month`}
+                className={`text-xs font-medium tabular-nums whitespace-nowrap transition-colors rounded px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                  i === sliderIndex
+                    ? 'text-primary font-semibold'
+                    : 'text-neutral-500 hover:text-neutral-300'
+                } ease-apple`}
+              >
+                {tier.label}
+              </button>
+            ))}
+          </div>
+          <Slider
+            value={[sliderIndex]}
+            onValueChange={([v]) => setSliderIndex(v)}
             min={0}
             max={TRAFFIC_TIERS.length - 1}
             step={1}
-            value={sliderIndex}
-            onChange={setSliderIndex}
-            ariaValueText={`${currentTraffic.label} pageviews per month`}
-            ticks={TRAFFIC_TIERS.map((t) => t.label)}
-            onTickClick={setSliderIndex}
+            aria-label={`${currentTraffic.label} pageviews per month`}
+            className="[&_[role=slider]]:h-6 [&_[role=slider]]:w-2.5 [&_[role=slider]]:border-[3px] [&_[role=slider]]:border-background [&_[role=slider]]:bg-primary [&_[role=slider]]:ring-offset-0"
           />
         </div>
 
@@ -276,7 +291,7 @@ export default function PricingSection() {
                 !isYearly
                   ? 'bg-neutral-700 text-white shadow-sm'
                   : 'text-neutral-500 hover:text-white'
-              }`}
+              } ease-apple`}
             >
               Monthly
             </button>
@@ -288,7 +303,7 @@ export default function PricingSection() {
                 isYearly
                   ? 'bg-neutral-700 text-white shadow-sm'
                   : 'text-neutral-500 hover:text-white'
-              }`}
+              } ease-apple`}
             >
               Yearly
             </button>
@@ -312,14 +327,14 @@ export default function PricingSection() {
             window.location.href = '/'
           }}
           disabled={currentPlanId === 'free'}
-          className="text-sm font-semibold text-brand-orange hover:text-white transition-colors shrink-0 disabled:opacity-50 disabled:cursor-default"
+          className="text-sm font-semibold text-brand-orange hover:text-white transition-colors shrink-0 disabled:opacity-50 disabled:cursor-default ease-apple"
         >
           {currentPlanId === 'free' ? 'Your current plan' : 'Get started →'}
         </button>
       </div>
 
       {/* Unified card block */}
-      <div className="rounded-2xl border border-white/[0.08] bg-neutral-900/80 backdrop-blur-xl overflow-hidden mb-6">
+      <div className="rounded-2xl glass-surface overflow-hidden mb-6">
         <div className="grid grid-cols-1 lg:grid-cols-3">
           {PLANS.map((plan, index) => {
             const priceDetails = getPriceDetails(plan.id)
@@ -398,7 +413,7 @@ export default function PricingSection() {
                     isTeam
                       ? 'bg-brand-orange hover:bg-brand-orange-hover text-white'
                       : 'bg-neutral-700 hover:bg-neutral-600 text-white'
-                  }`}
+                  } ease-apple`}
                 >
                   <span>
                     {isCurrent ? 'Current plan' : !priceDetails ? 'Contact us' : 'Get Started'}
@@ -438,7 +453,7 @@ export default function PricingSection() {
         </p>
         <a
           href="mailto:business@ciphera.net?subject=Enterprise%20Plan%20Inquiry"
-          className="text-sm font-semibold text-brand-orange hover:text-white transition-colors shrink-0"
+          className="text-sm font-semibold text-brand-orange hover:text-white transition-colors shrink-0 ease-apple"
         >
           Let&apos;s talk →
         </a>

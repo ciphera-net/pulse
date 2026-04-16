@@ -46,5 +46,5 @@ export function useSkeletonFade(showSkeleton: boolean): string {
     wasEverLoading.current = true
   }
 
-  return !showSkeleton && wasEverLoading.current ? 'animate-fade-in' : ''
+  return !showSkeleton && wasEverLoading.current ? 'animate-skeleton-fade' : ''
 }

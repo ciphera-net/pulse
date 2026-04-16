@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Toggle, toast, Spinner, getDateRange } from '@ciphera-net/ui'
-import { ShieldCheck } from '@phosphor-icons/react'
+import { ShieldCheck, Shield } from '@phosphor-icons/react'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { useSite, useQuarantineStats, useSessions, useSiteDomainReputation } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
 import { quarantineSessions, restoreSessions, createDomainOverride, deleteDomainOverride } from '@/lib/api/quarantine'
@@ -102,15 +103,15 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
       {botStats && (
         <div className="grid grid-cols-3 gap-3">
           <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 p-4 text-center">
-            <p className="text-2xl font-bold text-white">{botStats.total_quarantined ?? 0}</p>
+            <p className="text-2xl font-bold tabular-nums text-white">{botStats.total_quarantined ?? 0}</p>
             <p className="text-xs text-neutral-500 mt-1">Quarantined events</p>
           </div>
           <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 p-4 text-center">
-            <p className="text-2xl font-bold text-white">{botStats.last_24h ?? 0}</p>
+            <p className="text-2xl font-bold tabular-nums text-white">{botStats.last_24h ?? 0}</p>
             <p className="text-xs text-neutral-500 mt-1">Last 24h</p>
           </div>
           <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 p-4 text-center">
-            <p className="text-2xl font-bold text-white">{Object.keys(botStats.by_reason || {}).length}</p>
+            <p className="text-2xl font-bold tabular-nums text-white">{Object.keys(botStats.by_reason || {}).length}</p>
             <p className="text-xs text-neutral-500 mt-1">Detection types</p>
           </div>
         </div>
@@ -124,13 +125,13 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
           <div className="flex items-center rounded-lg border border-neutral-700 overflow-hidden text-sm">
             <button
               onClick={() => { setBotView('review'); setSelectedSessions(new Set()) }}
-              className={`px-3 py-1.5 text-xs font-medium transition-colors ${botView === 'review' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'}`}
+              className={`px-3 py-1.5 text-xs font-medium transition-colors ${botView === 'review' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'} ease-apple`}
             >
               Suspicious
             </button>
             <button
               onClick={() => { setBotView('blocked'); setSelectedSessions(new Set()) }}
-              className={`px-3 py-1.5 text-xs font-medium transition-colors ${botView === 'blocked' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'}`}
+              className={`px-3 py-1.5 text-xs font-medium transition-colors ${botView === 'blocked' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'} ease-apple`}
             >
               Quarantined
             </button>
@@ -166,7 +167,7 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
           {(sessions || [])
             .filter(s => botView === 'blocked' ? s.quarantined : !s.quarantined)
             .map(session => (
-              <div key={session.session_id} className="flex items-center gap-3 p-3 rounded-xl border border-neutral-800 hover:bg-neutral-800/40 hover:border-neutral-700 transition-colors">
+              <div key={session.session_id} className="flex items-center gap-3 p-3 rounded-xl border border-neutral-800 hover:bg-neutral-800/40 hover:border-neutral-700 transition-colors ease-apple">
                 <input
                   type="checkbox"
                   checked={selectedSessions.has(session.session_id)}
@@ -205,16 +206,18 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
                     botView === 'review'
                       ? 'text-red-400 border-red-500/20 hover:bg-red-900/20'
                       : 'text-green-400 border-green-500/20 hover:bg-green-900/20'
-                  }`}
+                  } ease-apple`}
                 >
                   {botView === 'review' ? 'Flag as bot' : 'Unblock'}
                 </button>
               </div>
             ))}
           {(!sessions || sessions.filter(s => botView === 'blocked' ? s.quarantined : !s.quarantined).length === 0) && (
-            <p className="text-sm text-neutral-500 text-center py-4">
-              {botView === 'blocked' ? 'No quarantined sessions' : 'No suspicious sessions found'}
-            </p>
+            <EmptyState
+              title={botView === 'blocked' ? 'No quarantined sessions' : 'No suspicious sessions found'}
+              icon={<Shield weight="regular" />}
+              className="py-4"
+            />
           )}
         </div>
       </div>
@@ -226,7 +229,7 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
 
         <div className="space-y-2 max-h-64 overflow-y-auto">
           {domainReputation?.domains?.map(domain => (
-            <div key={domain.domain} className="flex items-center justify-between p-3 rounded-xl border border-neutral-800 hover:bg-neutral-800/40 transition-colors">
+            <div key={domain.domain} className="flex items-center justify-between p-3 rounded-xl border border-neutral-800 hover:bg-neutral-800/40 transition-colors ease-apple">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-mono text-white truncate">{domain.domain}</span>
@@ -269,7 +272,7 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
                     domain.override === 'allow'
                       ? 'bg-green-900/20 text-green-400 border-green-500/30'
                       : 'text-neutral-400 border-neutral-700 hover:text-green-400 hover:border-green-500/30'
-                  }`}
+                  } ease-apple`}
                 >
                   Allow
                 </button>
@@ -285,7 +288,7 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
                     domain.override === 'quarantine'
                       ? 'bg-red-900/20 text-red-400 border-red-500/30'
                       : 'text-neutral-400 border-neutral-700 hover:text-red-400 hover:border-red-500/30'
-                  }`}
+                  } ease-apple`}
                 >
                   Block
                 </button>
@@ -298,7 +301,7 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
                         mutateDomains()
                       } catch { toast.error('Failed') }
                     }}
-                    className="px-2.5 py-1 text-xs rounded-lg border border-neutral-700 text-neutral-400 hover:text-white transition-colors"
+                    className="px-2.5 py-1 text-xs rounded-lg border border-neutral-700 text-neutral-400 hover:text-white transition-colors ease-apple"
                   >
                     Reset
                   </button>
@@ -307,7 +310,12 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
             </div>
           ))}
           {(!domainReputation?.domains || domainReputation.domains.length === 0) && (
-            <p className="text-sm text-neutral-500 text-center py-4">No domain reputation data yet</p>
+            <EmptyState
+              title="No domain data yet"
+              description="Referrer domains will appear here once traffic flows through your site."
+              icon={<Shield weight="regular" />}
+              className="py-4"
+            />
           )}
         </div>
       </div>

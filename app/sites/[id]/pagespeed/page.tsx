@@ -5,7 +5,7 @@ import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useParams } from 'next/navigation'
 import { useSite, usePageSpeedConfig, usePageSpeedLatest, usePageSpeedHistory } from '@/lib/swr/dashboard'
 import { updatePageSpeedConfig, triggerPageSpeedCheck, getPageSpeedLatest, getPageSpeedCheck, type PageSpeedCheck, type AuditSummary } from '@/lib/api/pagespeed'
-import { toast, Button } from '@ciphera-net/ui'
+import { toast, Button, Select } from '@ciphera-net/ui'
 import { motion } from 'framer-motion'
 import ScoreGauge from '@/components/pagespeed/ScoreGauge'
 import { remapLearnUrl } from '@/lib/learn-links'
@@ -263,16 +263,18 @@ export default function PageSpeedPage() {
 
           {/* Frequency selector */}
           <div className="flex items-center justify-center gap-3 mb-6">
-            <label className="text-sm text-neutral-600 dark:text-neutral-400">Check frequency:</label>
-            <select
+            <label className="text-sm text-neutral-400">Check frequency:</label>
+            <Select
+              variant="input"
+              className="min-w-[120px]"
               value={frequency}
-              onChange={(e) => setFrequency(e.target.value)}
-              className="text-sm border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-white rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-neutral-100"
-            >
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-              <option value="monthly">Monthly</option>
-            </select>
+              onChange={(value) => setFrequency(value)}
+              options={[
+                { value: 'daily', label: 'Daily' },
+                { value: 'weekly', label: 'Weekly' },
+                { value: 'monthly', label: 'Monthly' },
+              ]}
+            />
           </div>
 
           {canEdit && (
@@ -382,7 +384,7 @@ export default function PageSpeedPage() {
                   strategy === tab
                     ? 'text-white'
                     : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-300'
-                }`}
+                } ease-apple`}
               >
                 {tab === 'mobile' ? 'Mobile' : 'Desktop'}
                 {strategy === tab && (
@@ -426,7 +428,7 @@ export default function PageSpeedPage() {
               <button
                 key={key}
                 onClick={() => document.getElementById(`diag-${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                className="cursor-pointer hover:opacity-80 transition-opacity"
+                className="cursor-pointer hover:opacity-80 transition-opacity ease-apple"
               >
                 <ScoreGauge score={score} label={label} size={90} />
               </button>
@@ -453,7 +455,7 @@ export default function PageSpeedPage() {
               <button
                 onClick={handlePrevCheck}
                 disabled={!canGoPrev}
-                className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors ease-apple"
                 aria-label="Previous check"
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -473,7 +475,7 @@ export default function PageSpeedPage() {
               <button
                 onClick={handleNextCheck}
                 disabled={!canGoNext}
-                className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors ease-apple"
                 aria-label="Next check"
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -619,7 +621,7 @@ export default function PageSpeedPage() {
 
                 {groupManual.length > 0 && (
                   <details className="mt-4">
-                    <summary className="cursor-pointer text-sm font-medium text-neutral-400 select-none hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors">
+                    <summary className="cursor-pointer text-sm font-medium text-neutral-400 select-none hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors ease-apple">
                       <span className="ml-1">Additional items to manually check ({groupManual.length})</span>
                     </summary>
                     <div className="mt-2 divide-y divide-neutral-100 dark:divide-neutral-800">
@@ -630,7 +632,7 @@ export default function PageSpeedPage() {
 
                 {groupPassed.length > 0 && (
                   <details className="mt-4">
-                    <summary className="cursor-pointer text-sm font-medium text-neutral-400 select-none hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors">
+                    <summary className="cursor-pointer text-sm font-medium text-neutral-400 select-none hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors ease-apple">
                       <span className="ml-1">{groupPassed.length} passed audit{groupPassed.length !== 1 ? 's' : ''}</span>
                     </summary>
                     <div className="mt-2 divide-y divide-neutral-100 dark:divide-neutral-800">
@@ -751,7 +753,7 @@ function AuditRow({ audit }: { audit: AuditSummary }) {
             {audit.savings_ms < 1000 ? `${Math.round(audit.savings_ms)}ms` : `${(audit.savings_ms / 1000).toFixed(1)}s`}
           </span>
         )}
-        <svg className="w-4 h-4 text-neutral-400 transition-transform group-open:rotate-180 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <svg className="w-4 h-4 text-neutral-400 transition-transform group-open:rotate-180 flex-shrink-0 ease-apple" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
       </summary>

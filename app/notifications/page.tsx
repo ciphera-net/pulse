@@ -1,214 +1,65 @@
 'use client'
 
-/**
- * @file Full notifications list page (View all).
- */
-
-import { useEffect, useState } from 'react'
-import Link from 'next/link'
-import { useAuth } from '@/lib/auth/context'
-import {
-  listNotifications,
-  markNotificationRead,
-  markAllNotificationsRead,
-  type Notification,
-} from '@/lib/api/notifications'
-import { getAuthErrorMessage } from '@ciphera-net/ui'
-import { formatTimeAgo, getTypeIcon } from '@/lib/utils/notifications'
-import { Button, ArrowLeftIcon } from '@ciphera-net/ui'
-import { useUnifiedSettings } from '@/lib/unified-settings-context'
-import { NotificationsListSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
-import { toast } from '@ciphera-net/ui'
-
-const PAGE_SIZE = 50
+import { Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { useNotifications } from '@/lib/hooks/useNotifications'
+import TransparencyBanner from './TransparencyBanner'
+import FilterChips from './FilterChips'
+import BulkActionBar from './BulkActionBar'
+import NotificationRow from './NotificationRow'
+import { groupByRecency } from './sections'
 
 export default function NotificationsPage() {
-  const { user } = useAuth()
-  const { openUnifiedSettings } = useUnifiedSettings()
-  const [notifications, setNotifications] = useState<Notification[]>([])
-  const [unreadCount, setUnreadCount] = useState(0)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [offset, setOffset] = useState(0)
-  const [hasMore, setHasMore] = useState(true)
-  const [loadingMore, setLoadingMore] = useState(false)
-  const showSkeleton = useMinimumLoading(loading)
-  const fadeClass = useSkeletonFade(showSkeleton)
+  return (
+    <Suspense fallback={<div className="max-w-4xl mx-auto py-6 px-4 text-neutral-500 text-sm">Loading…</div>}>
+      <NotificationsContent />
+    </Suspense>
+  )
+}
 
-  const fetchPage = async (pageOffset: number, append: boolean) => {
-    if (append) setLoadingMore(true)
-    else setLoading(true)
-    setError(null)
-    try {
-      const res = await listNotifications({ limit: PAGE_SIZE, offset: pageOffset })
-      const list = Array.isArray(res?.notifications) ? res.notifications : []
-      setNotifications((prev) => (append ? [...prev, ...list] : list))
-      setUnreadCount(typeof res?.unread_count === 'number' ? res.unread_count : 0)
-      setHasMore(list.length === PAGE_SIZE)
-    } catch (err) {
-      setError(getAuthErrorMessage(err as Error) || 'Failed to load notifications')
-      setNotifications((prev) => (append ? prev : []))
-    } finally {
-      setLoading(false)
-      setLoadingMore(false)
-    }
-  }
+function NotificationsContent() {
+  const params = useSearchParams()
+  const state = params.get('state') ?? 'all'
+  const categories = (params.get('category') ?? '').split(',').filter(Boolean)
 
-  useEffect(() => {
-    if (!user?.org_id) {
-      setLoading(false)
-      return
-    }
-    fetchPage(0, false)
-  }, [user?.org_id])
+  const { receipts, unreadCount, loading, error, refresh } = useNotifications({
+    unread: state === 'unread',
+    category: categories.length ? categories : undefined,
+    limit: 100,
+  })
 
-  const handleLoadMore = () => {
-    const next = offset + PAGE_SIZE
-    setOffset(next)
-    fetchPage(next, true)
-  }
-
-  const handleMarkRead = async (id: string) => {
-    try {
-      await markNotificationRead(id)
-      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)))
-      setUnreadCount((c) => Math.max(0, c - 1))
-    } catch {
-      // Ignore
-    }
-  }
-
-  const handleMarkAllRead = async () => {
-    try {
-      await markAllNotificationsRead()
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
-      setUnreadCount(0)
-      toast.success('All notifications marked as read')
-    } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to mark all as read')
-    }
-  }
-
-  const handleNotificationClick = (n: Notification) => {
-    if (!n.read) handleMarkRead(n.id)
-  }
-
-  if (!user?.org_id) {
-    return (
-      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
-        <div className="max-w-2xl mx-auto text-center py-12">
-          <p className="text-neutral-500">Switch to an organization to view notifications.</p>
-          <Link href="/welcome" className="text-brand-orange hover:underline mt-4 inline-block">
-            Go to workspace
-          </Link>
-        </div>
-      </div>
-    )
-  }
+  const sections = groupByRecency(receipts)
 
   return (
-    <div className={`w-full max-w-6xl mx-auto px-4 sm:px-6 py-8 ${fadeClass}`}>
-      <div className="max-w-2xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors"
-          >
-            <ArrowLeftIcon className="w-4 h-4" />
-            Back
-          </Link>
-          {unreadCount > 0 && (
-            <Button variant="ghost" onClick={handleMarkAllRead}>
-              Mark all read
-            </Button>
-          )}
+    <div className="max-w-4xl mx-auto py-6 px-4">
+      <header className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-semibold text-white">Notifications</h1>
+      </header>
+      <TransparencyBanner />
+      <FilterChips unreadCount={unreadCount} totalCount={receipts.length} />
+      {!loading && !error && (
+        <BulkActionBar totalCount={receipts.length} unreadCount={unreadCount} onChange={refresh} />
+      )}
+
+      {loading && <div className="text-neutral-500 text-sm py-12 text-center">Loading…</div>}
+      {error && <div className="text-red-400 text-sm py-12 text-center">Failed to load notifications.</div>}
+      {!loading && !error && receipts.length === 0 && (
+        <div className="text-neutral-500 text-sm py-12 text-center">No notifications match.</div>
+      )}
+      {!loading && !error && receipts.length > 0 && (
+        <div className="space-y-6">
+          {sections.map(section => (
+            <section key={section.label}>
+              <h2 className="text-[10px] uppercase tracking-wider text-neutral-500 mb-2 px-1">{section.label}</h2>
+              <ul className="space-y-1">
+                {section.items.map(r => (
+                  <NotificationRow key={r.event_id} receipt={r} onChange={refresh} />
+                ))}
+              </ul>
+            </section>
+          ))}
         </div>
-
-        <h1 className="text-2xl font-bold text-white mb-2">Notifications</h1>
-        <p className="text-sm text-neutral-400 mb-6">
-          Manage which notifications you receive in{' '}
-          <button onClick={() => openUnifiedSettings({ context: 'workspace', tab: 'notifications' })} className="text-brand-orange hover:underline cursor-pointer">
-            Organization Settings → Notifications
-          </button>
-        </p>
-
-        {showSkeleton ? (
-          <NotificationsListSkeleton />
-        ) : error ? (
-          <div className="p-6 text-center text-red-500 bg-red-50 dark:bg-red-900/10 rounded-2xl border border-red-200 dark:border-red-800">
-            {error}
-          </div>
-        ) : notifications.length === 0 ? (
-          <div className="p-6 text-center text-neutral-400 rounded-2xl border border-white/[0.08]">
-            <p>No notifications yet</p>
-            <p className="text-sm mt-2">
-              Manage which notifications you receive in{' '}
-              <button onClick={() => openUnifiedSettings({ context: 'workspace', tab: 'notifications' })} className="text-brand-orange hover:underline cursor-pointer">
-                Organization Settings → Notifications
-              </button>
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {notifications.map((n) => (
-              <div key={n.id}>
-                {n.link_url ? (
-                  <Link
-                    href={n.link_url}
-                    onClick={() => handleNotificationClick(n)}
-                    className={`block p-4 rounded-xl border border-white/[0.08] hover:bg-neutral-800/50 transition-colors ${!n.read ? 'bg-brand-orange/10' : ''}`}
-                  >
-                    <div className="flex gap-3">
-                      {getTypeIcon(n.type)}
-                      <div className="min-w-0 flex-1">
-                        <p className={`text-sm ${!n.read ? 'font-medium' : ''} text-white`}>
-                          {n.title}
-                        </p>
-                        {n.body && (
-                          <p className="text-xs text-neutral-400 mt-0.5">{n.body}</p>
-                        )}
-                        <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
-                          {formatTimeAgo(n.created_at)}
-                        </p>
-                      </div>
-                    </div>
-                  </Link>
-                ) : (
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => handleNotificationClick(n)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleNotificationClick(n)}
-                    className={`block p-4 rounded-xl border border-white/[0.08] hover:bg-neutral-800/50 cursor-pointer ${!n.read ? 'bg-brand-orange/10' : ''}`}
-                  >
-                    <div className="flex gap-3">
-                      {getTypeIcon(n.type)}
-                      <div className="min-w-0 flex-1">
-                        <p className={`text-sm ${!n.read ? 'font-medium' : ''} text-white`}>
-                          {n.title}
-                        </p>
-                        {n.body && (
-                          <p className="text-xs text-neutral-400 mt-0.5">{n.body}</p>
-                        )}
-                        <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
-                          {formatTimeAgo(n.created_at)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-            {hasMore && (
-              <div className="pt-4 text-center">
-                <Button variant="ghost" onClick={handleLoadMore} isLoading={loadingMore}>
-                  Load more
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      )}
     </div>
   )
 }

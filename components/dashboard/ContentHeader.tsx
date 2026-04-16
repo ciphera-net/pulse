@@ -8,6 +8,7 @@ export default function ContentHeader({
   onMobileMenuOpen: () => void
 }) {
   return (
+    // Phase 2 glass audit: bg-neutral-900/90 kept intentionally — /90 opacity needed for sticky-bar legibility over scrolling content
     <div className="shrink-0 flex items-center border-b border-neutral-800/60 bg-neutral-900/90 backdrop-blur-xl px-4 py-3.5 md:hidden">
       <button
         onClick={onMobileMenuOpen}

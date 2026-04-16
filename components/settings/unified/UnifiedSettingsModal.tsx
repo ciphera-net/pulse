@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { AnimatePresence, motion } from 'framer-motion'
+import { SPRING, DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { X, GearSix, Buildings, User } from '@phosphor-icons/react'
 import { Button, Spinner } from '@ciphera-net/ui'
 import { useUnifiedSettings } from '@/lib/unified-settings-context'
@@ -22,7 +23,7 @@ const SiteIntegrationsTab = dynamic(() => import('./tabs/SiteIntegrationsTab'), 
 const WorkspaceGeneralTab = dynamic(() => import('./tabs/WorkspaceGeneralTab'), { loading: tabLoader })
 const WorkspaceBillingTab = dynamic(() => import('./tabs/WorkspaceBillingTab'), { loading: tabLoader })
 const WorkspaceMembersTab = dynamic(() => import('./tabs/WorkspaceMembersTab'), { loading: tabLoader })
-const WorkspaceNotificationsTab = dynamic(() => import('./tabs/WorkspaceNotificationsTab'), { loading: tabLoader })
+const NotificationsTab = dynamic(() => import('./tabs/NotificationsTab'), { loading: tabLoader })
 const WorkspaceAuditTab = dynamic(() => import('./tabs/WorkspaceAuditTab'), { loading: tabLoader })
 const AccountProfileTab = dynamic(() => import('./tabs/AccountProfileTab'), { loading: tabLoader })
 const AccountSecurityTab = dynamic(() => import('./tabs/AccountSecurityTab'), { loading: tabLoader })
@@ -84,15 +85,15 @@ function ContextSwitcher({
         <button
           key={item.id}
           onClick={() => onChange(item.id)}
-          className={`relative flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 ${
+          className={`relative flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-base ${
             active === item.id ? 'text-white' : 'text-neutral-400 hover:text-white'
-          }`}
+          } ease-apple`}
         >
           {active === item.id && (
             <motion.div
               layoutId="context-switcher-bg"
               className="absolute inset-0 bg-neutral-700 rounded-lg shadow-sm"
-              transition={{ type: 'spring', bounce: 0.15, duration: 0.35 }}
+              transition={SPRING}
             />
           )}
           <span className="relative z-10 flex items-center gap-2">
@@ -122,18 +123,18 @@ function TabBar({
         <button
           key={tab.id}
           onClick={() => onChange(tab.id)}
-          className={`relative px-3 py-2 text-sm font-medium whitespace-nowrap rounded-lg transition-all duration-200 ${
+          className={`relative px-3 py-2 text-sm font-medium whitespace-nowrap rounded-lg transition-all duration-base ${
             activeTab === tab.id
               ? 'text-brand-orange'
               : 'text-neutral-500 hover:text-neutral-300'
-          }`}
+          } ease-apple`}
         >
           {tab.label}
           {activeTab === tab.id && (
             <motion.div
               layoutId="settings-tab-indicator"
               className="absolute bottom-0 left-2 right-2 h-0.5 bg-brand-orange rounded-full"
-              transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
+              transition={SPRING}
             />
           )}
         </button>
@@ -191,7 +192,7 @@ function TabContent({
       case 'general': return <WorkspaceGeneralTab {...dirtyProps} />
       case 'billing': return <WorkspaceBillingTab />
       case 'members': return <WorkspaceMembersTab />
-      case 'notifications': return <WorkspaceNotificationsTab {...dirtyProps} />
+      case 'notifications': return <NotificationsTab />
       case 'audit': return <WorkspaceAuditTab />
     }
   }
@@ -368,9 +369,9 @@ export default function UnifiedSettingsModal() {
     <>
       {/* Backdrop — fades in/out */}
       <div
-        className={`fixed inset-0 z-[60] bg-black/50 transition-opacity duration-200 ${
+        className={`fixed inset-0 z-[60] bg-black/50 transition-opacity duration-base ${
           isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        }`}
+        } ease-apple`}
         onClick={handleBackdropClick}
       />
 
@@ -378,15 +379,15 @@ export default function UnifiedSettingsModal() {
       <div
         className={`fixed inset-0 z-[61] flex items-center justify-center p-4 ${
           isOpen
-            ? 'opacity-100 pointer-events-auto transition-opacity duration-150'
+            ? 'opacity-100 pointer-events-auto transition-opacity duration-fast'
             : showGlass
-              ? 'opacity-0 pointer-events-none transition-opacity duration-150'
+              ? 'opacity-0 pointer-events-none transition-opacity duration-fast'
               : 'opacity-0 pointer-events-none invisible'
         }`}
         onClick={handleBackdropClick}
       >
         <div
-          className="relative w-full max-w-4xl h-[90vh] bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/60 border border-white/[0.08] rounded-2xl shadow-xl shadow-black/20 flex flex-col overflow-hidden"
+          className="relative w-full max-w-4xl h-[90vh] glass-overlay rounded-2xl shadow-xl shadow-black/20 flex flex-col overflow-hidden"
           onClick={e => e.stopPropagation()}
         >
           {/* Content animates in/out */}
@@ -397,7 +398,7 @@ export default function UnifiedSettingsModal() {
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.98 }}
-              transition={{ duration: 0.15 }}
+              transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
             >
               {/* Header */}
               <div className="shrink-0 px-6 pt-5 pb-4 border-b border-white/[0.06]">
@@ -405,7 +406,7 @@ export default function UnifiedSettingsModal() {
                   <h2 className="text-lg font-semibold text-white">Settings</h2>
                   <button
                     onClick={handleClose}
-                    className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors"
+                    className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors ease-apple"
                   >
                     <X weight="bold" className="w-4 h-4" />
                   </button>
@@ -438,7 +439,7 @@ export default function UnifiedSettingsModal() {
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.15 }}
+                    transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
                     className="shrink-0 overflow-hidden"
                   >
                     <div className={`px-6 py-3 border-t flex items-center justify-between ${

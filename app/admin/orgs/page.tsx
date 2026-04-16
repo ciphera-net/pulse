@@ -18,7 +18,7 @@ function CopyableOrgId({ id }: { id: string }) {
     <button
       type="button"
       onClick={copy}
-      className="font-mono text-xs text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange cursor-pointer transition-colors text-left"
+      className="font-mono text-xs text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange cursor-pointer transition-colors text-left ease-apple"
       title="Click to copy"
     >
       {copied ? 'Copied!' : `${id.substring(0, 8)}...`}

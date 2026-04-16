@@ -5,6 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import pulseIcon from '@/public/pulse_icon_no_margins.png'
 import { AnimatePresence, motion } from 'framer-motion'
+import { DURATION_SLOW, EASE_APPLE } from '@/lib/motion'
 import { PulseMockup } from '@/components/marketing/mockups/pulse-mockup'
 import { PagesCard, ReferrersCard, LocationsCard, TechnologyCard, PeakHoursCard } from '@/components/marketing/mockups/pulse-features-carousel'
 
@@ -75,7 +76,7 @@ export default function FeatureSlideshow() {
 
       {/* Logo */}
       <div className="absolute top-0 left-0 z-20 px-6 py-5">
-        <Link href="/pricing" className="flex items-center gap-2 w-fit hover:opacity-80 transition-opacity">
+        <Link href="/pricing" className="flex items-center gap-2 w-fit hover:opacity-80 transition-opacity ease-apple">
           <Image
             src={pulseIcon}
             alt="Pulse"
@@ -96,7 +97,7 @@ export default function FeatureSlideshow() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.45 }}
+            transition={{ duration: DURATION_SLOW, ease: EASE_APPLE }}
             className="flex flex-col items-center gap-6 w-full max-w-lg"
           >
             {/* Headline — centered */}

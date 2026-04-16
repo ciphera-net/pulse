@@ -32,6 +32,7 @@ import useMeasure from "react-use-measure";
 import { createPortal } from "react-dom";
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { SPRING, TIMING, EASE_APPLE, DURATION_FAST, DURATION_SLOW } from "@/lib/motion";
 
 // ─── Utils ───────────────────────────────────────────────────────────────────
 
@@ -284,7 +285,7 @@ function TooltipContent({ title, rows, children }: TooltipContentProps) {
       animate={committedHeight !== null ? { height: committedHeight } : undefined}
       className="overflow-hidden"
       initial={false}
-      transition={shouldAnimate ? { type: "spring", stiffness: 500, damping: 35, mass: 0.8 } : { duration: 0 }}
+      transition={shouldAnimate ? SPRING : { duration: 0 }}
     >
       <div className="px-3 py-2.5" ref={measureRef}>
         {title && <div className="mb-2 font-medium text-neutral-400 text-xs">{title}</div>}
@@ -303,7 +304,7 @@ function TooltipContent({ title, rows, children }: TooltipContentProps) {
         </div>
         <AnimatePresence mode="wait">
           {children && (
-            <motion.div animate={{ opacity: 1, filter: "blur(0px)" }} className="mt-2" exit={{ opacity: 0, filter: "blur(4px)" }} initial={{ opacity: 0, filter: "blur(4px)" }} key={markerKey} transition={{ duration: 0.2, ease: "easeOut" }}>
+            <motion.div animate={{ opacity: 1, filter: "blur(0px)" }} className="mt-2" exit={{ opacity: 0, filter: "blur(4px)" }} initial={{ opacity: 0, filter: "blur(4px)" }} key={markerKey} transition={TIMING}>
               {children}
             </motion.div>
           )}
@@ -373,8 +374,8 @@ function TooltipBox({
   if (!visible) return null;
 
   return createPortal(
-    <motion.div animate={{ opacity: 1 }} className={cn("pointer-events-none absolute z-50", className)} exit={{ opacity: 0 }} initial={{ opacity: 0 }} ref={tooltipRef} style={{ left: animatedLeft, top: finalTop }} transition={{ duration: 0.1 }}>
-      <motion.div animate={{ scale: 1, opacity: 1, x: 0 }} className="min-w-[140px] overflow-hidden rounded-lg bg-neutral-800/90 text-white shadow-lg backdrop-blur-md" initial={{ scale: 0.85, opacity: 0, x: shouldFlipX ? 20 : -20 }} key={flipKey} style={{ transformOrigin }} transition={{ type: "spring", stiffness: 300, damping: 25 }}>
+    <motion.div animate={{ opacity: 1, scale: 1, y: 0 }} className={cn("pointer-events-none absolute z-50", className)} exit={{ opacity: 0, scale: 0.92, y: 4 }} initial={{ opacity: 0, scale: 0.92, y: 4 }} ref={tooltipRef} style={{ left: animatedLeft, top: finalTop }} transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}>
+      <motion.div animate={{ scale: 1, opacity: 1, x: 0 }} className="min-w-[140px] overflow-hidden rounded-lg glass-overlay text-white shadow-lg" initial={{ scale: 0.85, opacity: 0, x: shouldFlipX ? 20 : -20 }} key={flipKey} style={{ transformOrigin }} transition={SPRING}>
         {children}
       </motion.div>
     </motion.div>,
@@ -570,7 +571,7 @@ export function BarXAxis({ tickerHalfWidth = 50, showAllLabels = false, maxLabel
         }
         return (
           <div className="absolute" key={item.label} style={{ left: item.x, bottom: 12, width: 0, display: "flex", justifyContent: "center" }}>
-            <motion.span animate={{ opacity }} className="whitespace-nowrap text-neutral-500 text-xs" initial={{ opacity: 1 }} transition={{ duration: 0.4, ease: "easeInOut" }}>
+            <motion.span animate={{ opacity }} className="whitespace-nowrap text-neutral-500 text-xs" initial={{ opacity: 1 }} transition={{ duration: DURATION_SLOW, ease: EASE_APPLE }}>
               {item.label}
             </motion.span>
           </div>
@@ -713,7 +714,7 @@ export function Bar({
         const growAnimate = isHorizontal ? { scaleX: 1, opacity: barOpacity } : { scaleY: 1, opacity: barOpacity };
         const growTransition = {
           [isHorizontal ? "scaleX" : "scaleY"]: { duration: animationDuration / 1000, ease: [0.85, 0, 0.15, 1] as [number, number, number, number], delay },
-          opacity: { duration: 0.3, ease: "easeInOut" as const },
+          opacity: TIMING,
         };
 
         return (
@@ -724,7 +725,7 @@ export function Bar({
             style={{ transformOrigin: `${originX}px ${originY}px` }}
             initial={shouldAnimateEntry && animationType === "grow" ? growInitial : shouldAnimateEntry && animationType === "fade" ? { opacity: 0, filter: "blur(4px)" } : { opacity: barOpacity }}
             animate={shouldAnimateEntry && animationType === "grow" ? growAnimate : shouldAnimateEntry && animationType === "fade" ? { opacity: barOpacity, filter: "blur(0px)" } : { opacity: barOpacity }}
-            transition={shouldAnimateEntry && animationType === "grow" ? growTransition : shouldAnimateEntry && animationType === "fade" ? { duration: 0.5, delay, ease: "easeOut" } : { opacity: { duration: 0.3, ease: "easeInOut" } }}
+            transition={shouldAnimateEntry && animationType === "grow" ? growTransition : shouldAnimateEntry && animationType === "fade" ? { duration: DURATION_SLOW, delay, ease: EASE_APPLE } : { opacity: TIMING }}
           />
         );
       })}

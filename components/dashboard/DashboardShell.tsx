@@ -8,12 +8,17 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { formatUpdatedAgo, PlusIcon, ExternalLinkIcon, type CipheraApp } from '@ciphera-net/ui'
 import { CaretDown, CaretRight, SidebarSimple } from '@phosphor-icons/react'
+import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { SidebarProvider, useSidebar } from '@/lib/sidebar-context'
 import { LiveIndicatorProvider, useLiveIndicator } from '@/lib/live-indicator-context'
 import { getSite } from '@/lib/api/sites'
 import { useSites } from '@/lib/swr/sites'
 import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
 import ContentHeader from './ContentHeader'
+import { ShortcutHandler } from '@/components/keyboard/ShortcutHandler'
+import { ShortcutsOverlay } from '@/components/keyboard/ShortcutsOverlay'
+import { CommandPalette } from '@/components/command/CommandPalette'
 
 const CIPHERA_APPS: CipheraApp[] = [
   { id: 'pulse', name: 'Pulse', description: 'Your current app — Privacy-first analytics', icon: 'https://ciphera.net/pulse_icon_no_margins.png', href: 'https://pulse.ciphera.net', isAvailable: false },
@@ -111,8 +116,8 @@ function BreadcrumbAppSwitcher() {
           initial={{ opacity: 0, y: 10, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 10, scale: 0.95 }}
-          transition={{ duration: 0.15 }}
-          className="fixed z-50 w-72 bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/60 border border-white/[0.08] rounded-xl shadow-xl shadow-black/20 overflow-hidden origin-top-left"
+          transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
+          className="fixed z-50 w-72 glass-overlay rounded-xl shadow-xl shadow-black/20 overflow-hidden origin-top-left"
           style={fixedPos ? { left: fixedPos.left, top: fixedPos.top } : undefined}
         >
           <div className="p-4">
@@ -127,7 +132,7 @@ function BreadcrumbAppSwitcher() {
                     onClick={(e) => { if (isCurrent) { e.preventDefault(); setOpen(false) } else setOpen(false) }}
                     className={`group flex flex-col items-center gap-2 p-3 rounded-xl transition-all ${
                       isCurrent ? 'bg-neutral-800/50 cursor-default' : 'hover:bg-neutral-800/50'
-                    }`}
+                    } ease-apple`}
                   >
                     <div className="w-10 h-10 flex items-center justify-center shrink-0">
                       <img src={app.icon} alt={app.name} className="w-8 h-8 object-contain" />
@@ -153,7 +158,7 @@ function BreadcrumbAppSwitcher() {
       <button
         ref={buttonRef}
         onClick={() => setOpen(!open)}
-        className="inline-flex items-center gap-1 text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer"
+        className="inline-flex items-center gap-1 text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer ease-apple"
       >
         <span>Pulse</span>
         <CaretDown className="w-3 h-3 shrink-0 translate-y-px" />
@@ -220,6 +225,8 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
     (s) => s.name.toLowerCase().includes(search.toLowerCase()) || s.domain.toLowerCase().includes(search.toLowerCase())
   )
 
+  const currentSite = sites.find((s) => s.id === currentSiteId)
+
   const dropdown = (
     <AnimatePresence>
       {open && (
@@ -228,8 +235,8 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
           initial={{ opacity: 0, y: 10, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 10, scale: 0.95 }}
-          transition={{ duration: 0.15 }}
-          className="fixed z-50 w-[240px] bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/60 border border-white/[0.08] rounded-xl shadow-xl shadow-black/20 overflow-hidden origin-top-left"
+          transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
+          className="fixed z-50 w-[240px] glass-overlay rounded-xl shadow-xl shadow-black/20 overflow-hidden origin-top-left"
           style={fixedPos ? { left: fixedPos.left, top: fixedPos.top } : undefined}
         >
           <div className="p-2">
@@ -265,7 +272,9 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
                 </span>
               </button>
             ))}
-            {filtered.length === 0 && <p className="px-4 py-3 text-sm text-neutral-400">No sites found</p>}
+            {filtered.length === 0 && (
+              <p className="text-sm text-neutral-500 text-center py-4">No sites match your search</p>
+            )}
           </div>
           <div className="border-t border-white/[0.06] p-2">
             <Link href="/sites/new" onClick={() => closePicker()} className="flex items-center gap-2 px-3 py-1.5 text-sm text-brand-orange hover:bg-white/[0.06] rounded-lg">
@@ -283,8 +292,17 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
       <button
         ref={buttonRef}
         onClick={() => setOpen(!open)}
-        className="inline-flex items-center gap-1 text-neutral-500 hover:text-neutral-300 transition-colors max-w-[160px] cursor-pointer"
+        className="inline-flex items-center gap-2 text-neutral-500 hover:text-neutral-300 transition-colors max-w-[180px] cursor-pointer ease-apple"
       >
+        {currentSite?.domain && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={`${FAVICON_SERVICE_URL}?domain=${currentSite.domain}&sz=64`}
+            alt=""
+            className="w-3.5 h-3.5 rounded-sm object-contain shrink-0"
+            aria-hidden="true"
+          />
+        )}
         <span className="truncate">{currentSiteName}</span>
         <CaretDown className="w-3 h-3 shrink-0 translate-y-px" />
       </button>
@@ -323,7 +341,7 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
       <div className="flex items-center gap-1.5">
         <button
           onClick={toggle}
-          className="w-9 h-9 flex items-center justify-center text-neutral-400 hover:text-white rounded-lg hover:bg-white/[0.06] transition-colors"
+          className="w-9 h-9 flex items-center justify-center text-neutral-400 hover:text-white rounded-lg hover:bg-white/[0.06] transition-colors ease-apple"
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           <SidebarSimple className="size-5" weight={collapsed ? 'regular' : 'fill'} />
@@ -334,7 +352,7 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
           {siteId ? (
             siteName ? (
               <>
-                <Link href="/" className="text-neutral-500 hover:text-neutral-300 transition-colors">Your Sites</Link>
+                <Link href="/" className="text-neutral-500 hover:text-neutral-300 transition-colors ease-apple">Your Sites</Link>
                 <CaretRight className="w-3 h-3 text-neutral-600" />
                 <BreadcrumbSitePicker currentSiteId={siteId} currentSiteName={siteName} />
                 <CaretRight className="w-3 h-3 text-neutral-600" />
@@ -369,12 +387,21 @@ export default function DashboardShell({
   children: React.ReactNode
 }) {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [paletteOpen, setPaletteOpen] = useState(false)
+  const pathname = usePathname()
   const closeMobile = useCallback(() => setMobileOpen(false), [])
   const openMobile = useCallback(() => setMobileOpen(true), [])
 
   return (
     <SidebarProvider>
       <LiveIndicatorProvider>
+      <ShortcutHandler
+        onShowOverlay={() => setShortcutsOpen(true)}
+        onOpenPalette={() => setPaletteOpen(true)}
+      />
+      <ShortcutsOverlay open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} currentSiteId={siteId ?? undefined} />
       <div className="flex h-screen overflow-hidden bg-neutral-950">
         <Sidebar
           siteId={siteId}
@@ -385,16 +412,26 @@ export default function DashboardShell({
         <div className="flex-1 flex flex-col min-w-0">
           {/* Glass top bar — above content only, collapse icon reaches back into sidebar column */}
           <GlassTopBar siteId={siteId} />
-          {/* Content panel */}
-          <div className="flex-1 flex flex-col min-w-0 mr-2 mb-2 rounded-2xl bg-neutral-950 border border-white/[0.08] overflow-hidden relative">
-            {/* Background image */}
-            <div
-              className="absolute inset-0 bg-cover bg-top opacity-[0.15] pointer-events-none"
-              style={{ backgroundImage: 'url(/pulse-showcase-bg.png)' }}
-            />
+          {/* Content panel — elevated: inset top highlight + outer shadow for perceived depth */}
+          <div
+            className="flex-1 flex flex-col min-w-0 mr-3 mb-3 rounded-2xl bg-neutral-950 border border-white/[0.08] overflow-hidden relative shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_8px_32px_rgba(0,0,0,0.8)]"
+            style={{ backgroundImage: 'linear-gradient(to bottom, rgba(255,255,255,0.02), transparent 240px)' }}
+          >
             <ContentHeader onMobileMenuOpen={openMobile} />
-            <main className="relative flex-1 overflow-y-auto overflow-x-hidden pt-4">
-              {children}
+            <main
+              className="relative flex-1 overflow-y-auto overflow-x-hidden pt-4"
+              style={{
+                maskImage: 'linear-gradient(to bottom, transparent 0, black 24px, black calc(100% - 24px), transparent 100%)',
+                WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, black 24px, black calc(100% - 24px), transparent 100%)',
+              }}
+            >
+              <div
+                key={pathname}
+                className="animate-in fade-in slide-in-from-bottom-4"
+                style={{ animationDuration: '500ms', animationTimingFunction: 'var(--ease-apple)' }}
+              >
+                {children}
+              </div>
             </main>
           </div>
         </div>

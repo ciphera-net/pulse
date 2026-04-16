@@ -191,7 +191,7 @@ export default function PublicDashboardPage() {
   if (isPasswordProtected && !data) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="max-w-md w-full bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 shadow-lg transition-shadow duration-300">
+        <div className="max-w-md w-full bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 shadow-lg transition-shadow duration-slow ease-apple">
           <div className="text-center mb-6">
              <div className="w-12 h-12 bg-brand-orange/10 rounded-xl flex items-center justify-center mx-auto mb-4 text-brand-orange">
               <ZapIcon className="w-6 h-6" />
@@ -305,7 +305,7 @@ export default function PublicDashboardPage() {
             <div className="flex gap-2">
               <button
                 onClick={() => setIsExportModalOpen(true)}
-                className="hidden md:flex items-center gap-2 px-3 py-2 bg-neutral-900/80 border border-white/[0.08] rounded-lg text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors"
+                className="hidden md:flex items-center gap-2 px-3 py-2 bg-neutral-900/80 border border-white/[0.08] rounded-lg text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors ease-apple"
               >
                 <DownloadIcon className="w-4 h-4" />
                 <span>Export</span>
@@ -344,7 +344,7 @@ export default function PublicDashboardPage() {
                 href="https://ciphera.net" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="hidden md:flex items-center gap-2 px-3 py-2 bg-neutral-900/80 border border-white/[0.08] rounded-lg text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors"
+                className="hidden md:flex items-center gap-2 px-3 py-2 bg-neutral-900/80 border border-white/[0.08] rounded-lg text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors ease-apple"
               >
                 <ZapIcon className="w-4 h-4" />
                 <span>Powered by Ciphera</span>
@@ -366,10 +366,9 @@ export default function PublicDashboardPage() {
 
         {/* Chart */}
         <div className="mb-8">
-          <Chart 
-            data={safeDailyStats} 
-            prevData={prevDailyStats} 
-            stats={safeStats} 
+          <Chart
+            data={safeDailyStats}
+            stats={safeStats}
             prevStats={prevStats}
             interval={dateRange.start === dateRange.end ? todayInterval : multiDayInterval}
             dateRange={dateRange}

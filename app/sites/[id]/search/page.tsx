@@ -11,11 +11,15 @@ import { getGSCQueryPages, getGSCPageQueries } from '@/lib/api/gsc'
 import type { GSCDataRow } from '@/lib/api/gsc'
 import { SkeletonLine, StatCardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import ClicksImpressionsChart from '@/components/search/ClicksImpressionsChart'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 // ─── Helpers ────────────────────────────────────────────────────
 
 const formatPosition = (pos: number) => pos.toFixed(1)
 const formatCTR = (ctr: number) => (ctr * 100).toFixed(1) + '%'
+
+// Strip protocol + trailing slash for cleaner page URL display
+const stripProtocol = (url: string) => url.replace(/^https?:\/\//, '').replace(/\/$/, '')
 
 function formatChange(current: number, previous: number) {
   if (previous === 0) return null
@@ -175,7 +179,7 @@ export default function SearchConsolePage() {
           </p>
           <button
             onClick={() => openUnifiedSettings({ context: 'site', tab: 'integrations' })}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-brand-orange-button hover:bg-brand-orange-button-hover text-white text-sm font-medium transition-colors cursor-pointer"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-brand-orange-button hover:bg-brand-orange-button-hover text-white text-sm font-medium transition-colors cursor-pointer ease-apple"
           >
             Connect in Settings
             <ArrowSquareOut size={16} weight="bold" />
@@ -312,7 +316,7 @@ export default function SearchConsolePage() {
               activeView === 'queries'
                 ? 'bg-white dark:bg-neutral-700 text-white shadow-sm'
                 : 'text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300'
-            }`}
+            } ease-apple`}
           >
             Top Queries
           </button>
@@ -322,7 +326,7 @@ export default function SearchConsolePage() {
               activeView === 'pages'
                 ? 'bg-white dark:bg-neutral-700 text-white shadow-sm'
                 : 'text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300'
-            }`}
+            } ease-apple`}
           >
             Top Pages
           </button>
@@ -357,8 +361,8 @@ export default function SearchConsolePage() {
                 ))
               ) : queries.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-neutral-400">
-                    No query data available for this period.
+                  <td colSpan={6} className="px-4 py-6">
+                    <EmptyState title="No queries in this window" description="Try a wider date range or check back once your Search Console data has synced." className="py-6" />
                   </td>
                 </tr>
               ) : (
@@ -386,14 +390,14 @@ export default function SearchConsolePage() {
                 <button
                   disabled={queryPage === 0}
                   onClick={() => { setQueryPage((p) => p - 1); setExpandedQuery(null); setExpandedData([]) }}
-                  className="px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  className="px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer ease-apple"
                 >
                   Previous
                 </button>
                 <button
                   disabled={(queryPage + 1) * PAGE_SIZE >= queriesTotal}
                   onClick={() => { setQueryPage((p) => p + 1); setExpandedQuery(null); setExpandedData([]) }}
-                  className="px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  className="px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer ease-apple"
                 >
                   Next
                 </button>
@@ -431,8 +435,8 @@ export default function SearchConsolePage() {
                 ))
               ) : pages.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-neutral-400">
-                    No page data available for this period.
+                  <td colSpan={6} className="px-4 py-6">
+                    <EmptyState title="No pages in this window" description="Try a wider date range or check back once your Search Console data has synced." className="py-6" />
                   </td>
                 </tr>
               ) : (
@@ -460,14 +464,14 @@ export default function SearchConsolePage() {
                 <button
                   disabled={pagePage === 0}
                   onClick={() => { setPagePage((p) => p - 1); setExpandedPage(null); setExpandedData([]) }}
-                  className="px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  className="px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer ease-apple"
                 >
                   Previous
                 </button>
                 <button
                   disabled={(pagePage + 1) * PAGE_SIZE >= pagesTotal}
                   onClick={() => { setPagePage((p) => p + 1); setExpandedPage(null); setExpandedData([]) }}
-                  className="px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  className="px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer ease-apple"
                 >
                   Next
                 </button>
@@ -511,7 +515,7 @@ function OverviewCard({
   return (
     <div className="p-4 rounded-xl border border-white/[0.08] bg-neutral-900/80">
       <p className="text-xs font-medium text-neutral-400 mb-1">{label}</p>
-      <p className="text-2xl font-bold text-white">{value}</p>
+      <p className="text-2xl font-bold tabular-nums text-white">{value}</p>
       {change && (
         <p className={`text-xs mt-1 font-medium ${
           isPositive ? 'text-green-600 dark:text-green-400' :
@@ -543,7 +547,7 @@ function QueryRow({
     <>
       <tr
         onClick={onToggle}
-        className="border-b border-neutral-100 dark:border-neutral-800/50 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 cursor-pointer transition-colors"
+        className="border-b border-neutral-100 dark:border-neutral-800/50 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 cursor-pointer transition-colors ease-apple"
       >
         <td className="px-4 py-3 text-neutral-400 dark:text-neutral-500">
           <Caret size={14} />
@@ -564,7 +568,7 @@ function QueryRow({
                 ))}
               </div>
             ) : expandedData.length === 0 ? (
-              <p className="text-sm text-neutral-400 py-1">No pages found for this query.</p>
+              <EmptyState title="No pages for this query" className="py-3" />
             ) : (
               <table className="w-full text-sm">
                 <thead>
@@ -579,7 +583,7 @@ function QueryRow({
                 <tbody>
                   {expandedData.map((sub) => (
                     <tr key={sub.page} className="border-t border-neutral-200/50 dark:border-neutral-700/50">
-                      <td className="px-2 py-1.5 text-neutral-700 dark:text-neutral-300 max-w-md truncate" title={sub.page}>{sub.page}</td>
+                      <td className="px-2 py-1.5 text-neutral-700 dark:text-neutral-300 max-w-md truncate" title={stripProtocol(sub.page)}>{stripProtocol(sub.page)}</td>
                       <td className="px-2 py-1.5 text-right text-neutral-600 dark:text-neutral-400 tabular-nums">{sub.clicks.toLocaleString()}</td>
                       <td className="px-2 py-1.5 text-right text-neutral-600 dark:text-neutral-400 tabular-nums">{sub.impressions.toLocaleString()}</td>
                       <td className="px-2 py-1.5 text-right text-neutral-600 dark:text-neutral-400 tabular-nums">{formatCTR(sub.ctr)}</td>
@@ -614,12 +618,12 @@ function PageRow({
     <>
       <tr
         onClick={onToggle}
-        className="border-b border-neutral-100 dark:border-neutral-800/50 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 cursor-pointer transition-colors"
+        className="border-b border-neutral-100 dark:border-neutral-800/50 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 cursor-pointer transition-colors ease-apple"
       >
         <td className="px-4 py-3 text-neutral-400 dark:text-neutral-500">
           <Caret size={14} />
         </td>
-        <td className="px-4 py-3 text-white font-medium max-w-md truncate" title={row.page}>{row.page}</td>
+        <td className="px-4 py-3 text-white font-medium max-w-md truncate" title={stripProtocol(row.page)}>{stripProtocol(row.page)}</td>
         <td className="px-4 py-3 text-right text-neutral-700 dark:text-neutral-300 tabular-nums">{row.clicks.toLocaleString()}</td>
         <td className="px-4 py-3 text-right text-neutral-700 dark:text-neutral-300 tabular-nums">{row.impressions.toLocaleString()}</td>
         <td className="px-4 py-3 text-right text-neutral-700 dark:text-neutral-300 tabular-nums">{formatCTR(row.ctr)}</td>
@@ -635,7 +639,7 @@ function PageRow({
                 ))}
               </div>
             ) : expandedData.length === 0 ? (
-              <p className="text-sm text-neutral-400 py-1">No queries found for this page.</p>
+              <EmptyState title="No queries for this page" className="py-3" />
             ) : (
               <table className="w-full text-sm">
                 <thead>

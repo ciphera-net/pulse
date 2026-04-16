@@ -254,7 +254,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
                     <select
                       value={rule.type}
                       onChange={e => updateRule(index, { type: e.target.value as 'exclude' | 'group' })}
-                      className="px-3 py-2 border border-neutral-800 rounded-lg bg-neutral-800/30 text-white text-sm focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all"
+                      className="px-3 py-2 border border-neutral-800 rounded-lg bg-neutral-800/30 text-white text-sm focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all ease-apple"
                     >
                       <option value="exclude">Exclude</option>
                       <option value="group">Group</option>
@@ -264,7 +264,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
                       value={rule.pattern}
                       onChange={e => updateRule(index, { pattern: e.target.value })}
                       placeholder="/admin/*"
-                      className="flex-1 px-3 py-2 border border-neutral-800 rounded-lg bg-neutral-800/30 text-white font-mono text-sm focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all"
+                      className="flex-1 px-3 py-2 border border-neutral-800 rounded-lg bg-neutral-800/30 text-white font-mono text-sm focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all ease-apple"
                     />
                   </div>
                   {rule.type === 'group' && (
@@ -273,7 +273,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
                       value={rule.label || ''}
                       onChange={e => updateRule(index, { label: e.target.value })}
                       placeholder="/sites/:id"
-                      className="w-full px-3 py-2 border border-neutral-800 rounded-lg bg-neutral-800/30 text-white font-mono text-sm focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all"
+                      className="w-full px-3 py-2 border border-neutral-800 rounded-lg bg-neutral-800/30 text-white font-mono text-sm focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all ease-apple"
                     />
                   )}
                 </div>
@@ -281,20 +281,20 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
                   <button
                     onClick={() => moveRule(index, -1)}
                     disabled={index === 0}
-                    className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors disabled:opacity-30 disabled:hover:text-neutral-400 disabled:hover:bg-transparent"
+                    className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors disabled:opacity-30 disabled:hover:text-neutral-400 disabled:hover:bg-transparent ease-apple"
                   >
                     <ArrowUp weight="bold" className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => moveRule(index, 1)}
                     disabled={index === pageRules.length - 1}
-                    className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors disabled:opacity-30 disabled:hover:text-neutral-400 disabled:hover:bg-transparent"
+                    className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors disabled:opacity-30 disabled:hover:text-neutral-400 disabled:hover:bg-transparent ease-apple"
                   >
                     <ArrowDown weight="bold" className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => removeRule(index)}
-                    className="p-1.5 rounded-lg text-neutral-400 hover:text-red-400 hover:bg-neutral-700 transition-colors"
+                    className="p-1.5 rounded-lg text-neutral-400 hover:text-red-400 hover:bg-neutral-700 transition-colors ease-apple"
                   >
                     <Trash weight="bold" className="w-4 h-4" />
                   </button>
@@ -306,7 +306,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
 
         <button
           onClick={() => setPageRules([...pageRules, { type: 'exclude', pattern: '' }])}
-          className="flex items-center gap-2 text-sm font-medium text-brand-orange hover:text-brand-orange/80 transition-colors"
+          className="flex items-center gap-2 text-sm font-medium text-brand-orange hover:text-brand-orange/80 transition-colors ease-apple"
         >
           <Plus weight="bold" className="w-4 h-4" />
           Add Rule
@@ -323,7 +323,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
             value={allowedQueryParams}
             onChange={e => setAllowedQueryParams(e.target.value)}
             placeholder="q, category, page"
-            className="w-full px-4 py-3 border border-neutral-800 rounded-lg bg-neutral-800/30 text-white font-mono text-sm focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all"
+            className="w-full px-4 py-3 border border-neutral-800 rounded-lg bg-neutral-800/30 text-white font-mono text-sm focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all ease-apple"
           />
           <p className="text-xs text-neutral-500 mt-1">Comma-separated. All other query parameters are automatically stripped from page paths. Leave empty to strip everything.</p>
         </div>
@@ -346,7 +346,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
                 href={`https://${site.domain}?pulse-ignore`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 mt-3 text-sm font-medium text-brand-orange hover:text-brand-orange/80 transition-colors"
+                className="inline-flex items-center gap-1.5 mt-3 text-sm font-medium text-brand-orange hover:text-brand-orange/80 transition-colors ease-apple"
               >
                 <EyeSlash weight="bold" className="w-4 h-4" />
                 Toggle exclusion on {site.domain}
@@ -405,7 +405,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
               toast.success('Privacy snippet copied')
               setTimeout(() => setSnippetCopied(false), 2000)
             }}
-            className="absolute top-3 right-3 p-2 rounded-lg bg-neutral-700 hover:bg-neutral-600 text-neutral-300 transition-colors"
+            className="absolute top-3 right-3 p-2 rounded-lg bg-neutral-700 hover:bg-neutral-600 text-neutral-300 transition-colors ease-apple"
           >
             {snippetCopied ? <CheckCircle weight="bold" className="w-4 h-4" /> : <Copy weight="bold" className="w-4 h-4" />}
           </button>

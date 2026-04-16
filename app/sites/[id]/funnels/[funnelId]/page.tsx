@@ -148,7 +148,7 @@ export default function FunnelReportPage() {
           <div className="flex items-center gap-4">
             <Link 
               href={`/sites/${siteId}/funnels`}
-              className="p-2 -ml-2 text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+              className="p-2 -ml-2 text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors ease-apple"
             >
               <ChevronLeftIcon className="w-5 h-5" />
             </Link>
@@ -187,14 +187,14 @@ export default function FunnelReportPage() {
             
             <Link
               href={`/sites/${siteId}/funnels/${funnelId}/edit`}
-              className="p-2 text-neutral-400 hover:text-brand-orange hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-xl transition-colors"
+              className="p-2 text-neutral-400 hover:text-brand-orange hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-xl transition-colors ease-apple"
               aria-label="Edit funnel"
             >
               <PencilSimple className="w-5 h-5" />
             </Link>
             <button
               onClick={handleDelete}
-              className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"
+              className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors ease-apple"
               aria-label="Delete funnel"
             >
               <TrashIcon className="w-5 h-5" />
@@ -251,7 +251,7 @@ export default function FunnelReportPage() {
                       visibleSteps.has(String(i))
                         ? 'bg-brand-orange/10 text-brand-orange border border-brand-orange/30'
                         : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 border border-transparent'
-                    }`}
+                    } ease-apple`}
                   >
                     {s.step.name}
                   </button>
@@ -326,7 +326,7 @@ export default function FunnelReportPage() {
               <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
                 {stats.steps.map((step, i) => (
                   <React.Fragment key={step.step.name}>
-                    <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-800/30 transition-colors cursor-pointer" onClick={() => setBreakdownStep(i)}>
+                    <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-800/30 transition-colors cursor-pointer ease-apple" onClick={() => setBreakdownStep(i)}>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <span className="w-6 h-6 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-xs font-medium text-neutral-600 dark:text-neutral-400">

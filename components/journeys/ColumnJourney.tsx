@@ -141,7 +141,7 @@ function PageRow({
       data-path={page.path}
       className={`
         group flex items-center justify-between w-full relative
-        h-9 px-3 rounded-lg text-left transition-all duration-200
+        h-9 px-3 rounded-lg text-left transition-all duration-base
         ${isOther ? 'cursor-default' : 'cursor-pointer'}
         ${isSelected
           ? 'bg-brand-orange/10 dark:bg-brand-orange/10'
@@ -149,12 +149,12 @@ function PageRow({
             ? ''
             : 'hover:bg-neutral-50 dark:hover:bg-neutral-800/50 hover:-translate-y-px hover:shadow-sm'
         }
-      `}
+       ease-apple`}
     >
       {/* Background bar — animates width on mount */}
       {!isOther && barWidth > 0 && (
         <div
-          className="absolute top-0.5 bottom-0.5 left-0.5 rounded-md transition-all duration-500 ease-out"
+          className="absolute top-0.5 bottom-0.5 left-0.5 rounded-md transition-[width] duration-gentle ease-out"
           style={{
             width: isMounted ? `calc(${barWidth}% - 4px)` : '0%',
             transitionDelay: `${rowIndex * 30}ms`,
@@ -175,7 +175,7 @@ function PageRow({
       </span>
       <div className="relative flex items-center gap-2 ml-2 shrink-0">
         {!isOther && (
-          <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+          <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
             {pct}%
           </span>
         )}
@@ -219,7 +219,7 @@ function JourneyColumn({
       <div
         className="w-56 shrink-0"
         style={{
-          animation: `col-enter 300ms ease-out ${column.index * 50}ms backwards`,
+          animation: `col-enter 300ms cubic-bezier(0.32, 0.72, 0, 1) ${column.index * 50}ms backwards`,
         }}
       >
         <ColumnHeader column={column} />
@@ -238,7 +238,7 @@ function JourneyColumn({
     <div
       className="w-56 shrink-0 px-3"
       style={{
-        animation: `col-enter 300ms ease-out ${column.index * 50}ms backwards`,
+        animation: `col-enter 300ms cubic-bezier(0.32, 0.72, 0, 1) ${column.index * 50}ms backwards`,
       }}
     >
       <ColumnHeader column={column} />
@@ -268,7 +268,7 @@ function JourneyColumn({
             data-col={column.index}
             data-path="(exit)"
             className="flex items-center justify-between w-full relative h-9 px-3 rounded-lg bg-red-500/15 dark:bg-red-500/15"
-            style={{ animation: 'exit-reveal 300ms ease-out backwards' }}
+            style={{ animation: 'exit-reveal 300ms cubic-bezier(0.32, 0.72, 0, 1) backwards' }}
           >
             <div
               className="absolute top-0.5 bottom-0.5 left-0.5 rounded-md"
@@ -406,7 +406,7 @@ function ConnectionLines({
             strokeDasharray={line.length}
             strokeDashoffset={line.length}
             style={{
-              animation: `draw-line 400ms ease-out ${i * 50}ms forwards`,
+              animation: `draw-line 400ms cubic-bezier(0.32, 0.72, 0, 1) ${i * 50}ms forwards`,
             }}
           />
         )

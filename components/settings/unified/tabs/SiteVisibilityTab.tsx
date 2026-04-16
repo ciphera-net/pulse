@@ -133,7 +133,7 @@ export default function SiteVisibilityTab({ siteId, onDirtyChange, onRegisterSav
                     <button
                       type="button"
                       onClick={() => { setPasswordEnabled(false); setPassword('') }}
-                      className="mt-2 text-xs font-medium text-red-400 hover:text-red-300 transition-colors"
+                      className="mt-2 text-xs font-medium text-red-400 hover:text-red-300 transition-colors ease-apple"
                     >
                       Remove password protection
                     </button>

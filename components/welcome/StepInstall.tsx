@@ -102,7 +102,7 @@ export default function StepInstall({ site }: StepInstallProps) {
                 <button
                   type="button"
                   onClick={startVerification}
-                  className="text-sm font-medium text-brand-orange hover:text-brand-orange/80 transition-colors"
+                  className="text-sm font-medium text-brand-orange hover:text-brand-orange/80 transition-colors ease-apple"
                 >
                   Verify installation
                 </button>
@@ -111,13 +111,13 @@ export default function StepInstall({ site }: StepInstallProps) {
             )}
 
             {verifyState === 'checking' && (
-              <div className="flex items-center gap-2.5 animate-in fade-in duration-200">
+              <div className="flex items-center gap-2.5 animate-in fade-in duration-base">
                 <Spinner size="sm" />
                 <span className="text-sm text-neutral-300">Checking for data...</span>
                 <button
                   type="button"
                   onClick={cancelVerification}
-                  className="text-xs text-neutral-500 hover:text-neutral-400 transition-colors ml-1"
+                  className="text-xs text-neutral-500 hover:text-neutral-400 transition-colors ml-1 ease-apple"
                 >
                   Cancel
                 </button>
@@ -125,14 +125,14 @@ export default function StepInstall({ site }: StepInstallProps) {
             )}
 
             {verifyState === 'success' && (
-              <div className="flex items-center gap-2 animate-in fade-in zoom-in-95 duration-300">
+              <div className="flex items-center gap-2 animate-in fade-in zoom-in-95 duration-slow">
                 <CheckCircleIcon className="h-4.5 w-4.5 text-emerald-400" />
                 <span className="text-sm font-medium text-emerald-400">Your site is sending data!</span>
               </div>
             )}
 
             {verifyState === 'timeout' && (
-              <div className="flex items-center gap-2 animate-in fade-in duration-200">
+              <div className="flex items-center gap-2 animate-in fade-in duration-base">
                 <AlertTriangleIcon className="h-4.5 w-4.5 text-orange-400 flex-shrink-0" />
                 <span className="text-sm text-orange-400">
                   No data detected yet. Make sure the script is installed and visit your site.
@@ -140,7 +140,7 @@ export default function StepInstall({ site }: StepInstallProps) {
                 <button
                   type="button"
                   onClick={startVerification}
-                  className="text-xs font-medium text-brand-orange hover:text-brand-orange/80 transition-colors ml-1 flex-shrink-0"
+                  className="text-xs font-medium text-brand-orange hover:text-brand-orange/80 transition-colors ml-1 flex-shrink-0 ease-apple"
                 >
                   Try again
                 </button>

@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { getAdminOrg, grantPlan, type AdminOrgDetail } from '@/lib/api/admin'
 import { Button, LoadingOverlay, Select, toast } from '@ciphera-net/ui'
+import { Globe } from '@phosphor-icons/react'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { formatDate, formatDateTime } from '@/lib/utils/formatDate'
 function addMonths(d: Date, months: number) {
   const out = new Date(d)
@@ -153,7 +155,7 @@ export default function AdminOrgDetailPage() {
                   <span className="text-neutral-500 text-xs">{formatDate(new Date(site.created_at))}</span>
                 </li>
               ))}
-              {org.sites.length === 0 && <li className="text-neutral-500 text-sm">No sites found</li>}
+              {org.sites.length === 0 && <li><EmptyState title="No sites found" icon={<Globe weight="regular" />} className="py-4" /></li>}
           </ul>
         </div>
       </div>

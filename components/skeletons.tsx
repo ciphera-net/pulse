@@ -323,6 +323,43 @@ export function FunnelDetailSkeleton() {
   )
 }
 
+// ─── Sites list skeleton (home dashboard) ───────────────────
+
+export function SitesListSkeleton({ rows = 3 }: { rows?: number }) {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {Array.from({ length: rows }).map((_, i) => (
+        <div
+          key={i}
+          className="flex flex-col rounded-2xl border border-neutral-800 bg-neutral-900 p-6"
+        >
+          <div className="flex items-start justify-between mb-6">
+            <div className="flex items-center gap-4">
+              <SkeletonCard className="h-12 w-12" />
+              <div className="space-y-2">
+                <SkeletonLine className="h-4 w-28" />
+                <SkeletonLine className="h-3 w-36" />
+              </div>
+            </div>
+            <SkeletonLine className="h-6 w-16 rounded-full" />
+          </div>
+          <div className="mb-6 grid grid-cols-2 gap-4 rounded-lg bg-neutral-800/50 p-3">
+            <div className="space-y-2">
+              <SkeletonLine className="h-3 w-20" />
+              <SkeletonLine className="h-5 w-16" />
+            </div>
+            <div className="space-y-2">
+              <SkeletonLine className="h-3 w-20" />
+              <SkeletonLine className="h-5 w-16" />
+            </div>
+          </div>
+          <SkeletonLine className="h-9 w-full rounded-lg mt-auto" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ─── Notifications list skeleton ─────────────────────────────
 
 export function NotificationsListSkeleton() {

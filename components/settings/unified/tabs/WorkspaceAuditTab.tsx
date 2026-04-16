@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { Spinner, Input, Button } from '@ciphera-net/ui'
+import { ListChecks } from '@phosphor-icons/react'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { useAuth } from '@/lib/auth/context'
 import { getAuditLog, type AuditLogEntry } from '@/lib/api/audit'
 import { formatDateTimeShort } from '@/lib/utils/formatDate'
@@ -107,11 +109,16 @@ export default function WorkspaceAuditTab() {
       </div>
 
       {entries.length === 0 ? (
-        <p className="text-sm text-neutral-500 text-center py-8">No activity recorded yet.</p>
+        <EmptyState
+          title="No activity yet"
+          description="Workspace actions like site changes and member updates will appear here."
+          icon={<ListChecks weight="regular" />}
+          className="py-8"
+        />
       ) : (
         <div className="space-y-1">
           {entries.map(entry => (
-            <div key={entry.id} className="flex items-center justify-between px-4 py-3 rounded-xl hover:bg-neutral-800/40 transition-colors">
+            <div key={entry.id} className="flex items-center justify-between px-4 py-3 rounded-xl hover:bg-neutral-800/40 transition-colors ease-apple">
               <div>
                 <p className="text-sm text-white">
                   <span className="font-medium">{entry.actor_email || 'System'}</span>

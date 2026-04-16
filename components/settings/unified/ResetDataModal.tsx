@@ -171,7 +171,7 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
               type="button"
               onClick={toggleAll}
               disabled={isResetting}
-              className="w-full text-left mb-3 text-xs font-medium text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
+              className="w-full text-left mb-3 text-xs font-medium text-neutral-400 hover:text-white transition-colors disabled:opacity-50 ease-apple"
             >
               {allSelected ? 'Deselect all' : 'Select all'}
             </button>
@@ -191,13 +191,13 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
                       checked
                         ? 'border-red-500/50 bg-red-900/15'
                         : 'border-neutral-800 bg-neutral-800/30 hover:border-neutral-700'
-                    }`}
+                    } ease-apple`}
                   >
                     <div className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
                       checked
                         ? 'border-red-500 bg-red-500'
                         : 'border-neutral-600'
-                    }`}>
+                    } ease-apple`}>
                       {checked && (
                         <svg viewBox="0 0 12 12" className="h-3 w-3 text-white" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M2 6l3 3 5-5" />
@@ -246,14 +246,14 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
                     type="button"
                     onClick={handleClose}
                     disabled={isResetting}
-                    className="flex-1 px-4 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition-colors disabled:opacity-50"
+                    className="flex-1 px-4 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition-colors disabled:opacity-50 ease-apple"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleReset}
                     disabled={!isConfirmed || isResetting}
-                    className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ease-apple"
                   >
                     {isResetting ? (
                       <>
