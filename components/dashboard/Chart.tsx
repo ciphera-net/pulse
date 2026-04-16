@@ -6,13 +6,14 @@ import { AreaChart as VisxAreaChart, Area as VisxArea, Grid as VisxGrid, XAxis a
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import type { EngagementPercentilesData } from '@/lib/api/stats'
 import { formatNumber, formatDuration } from '@ciphera-net/ui'
-import { Select, DownloadIcon } from '@ciphera-net/ui'
-import { Checkbox } from '@ciphera-net/ui'
+import { Select } from '@ciphera-net/ui'
 import { ArrowUpRight, ArrowDownRight } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
+import { SPRING, EASE_APPLE } from '@/lib/motion'
 import { AnimatedNumber } from '@/components/ui/animated-number'
 import { cn } from '@/lib/utils'
 import { formatTime, formatDateShort } from '@/lib/utils/formatDate'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 export interface DailyStat {
   date: string
@@ -35,7 +36,6 @@ interface Stats {
 
 interface ChartProps {
   data: DailyStat[]
-  prevData?: DailyStat[]
   stats: Stats
   prevStats?: Stats
   interval: 'minute' | 'hour' | 'day' | 'month'
@@ -45,7 +45,6 @@ interface ChartProps {
   setTodayInterval: (interval: 'minute' | 'hour') => void
   multiDayInterval: 'hour' | 'day'
   setMultiDayInterval: (interval: 'hour' | 'day') => void
-  onExportChart?: () => void
   lastUpdatedAt?: number | null
   engagementData?: EngagementPercentilesData | null
 }
@@ -99,7 +98,7 @@ function Sparkline({ data, dataKey, active, engagementDaily }: { data: { pagevie
   const fillPath = linePath + ` L100,${h} L0,${h} Z`
 
   return (
-    <svg viewBox={`0 0 100 ${h}`} className="absolute bottom-0 left-0 right-0 w-full z-0 transition-opacity duration-200 opacity-30 group-hover:opacity-60" style={{ height: h }} preserveAspectRatio="none">
+    <svg viewBox={`0 0 100 ${h}`} className="absolute bottom-0 left-0 right-0 w-full z-0 transition-opacity duration-base opacity-30 group-hover:opacity-60 ease-apple" style={{ height: h }} preserveAspectRatio="none">
       <path d={fillPath} className={active ? "fill-brand-orange/[0.08]" : "fill-neutral-600/[0.05] group-hover:fill-brand-orange/[0.08]"} />
       <path
         d={linePath}
@@ -145,7 +144,6 @@ const CHART_COLORS: Record<MetricType, string> = {
 
 export default function Chart({
   data,
-  prevData,
   stats,
   prevStats,
   interval,
@@ -155,14 +153,14 @@ export default function Chart({
   setTodayInterval,
   multiDayInterval,
   setMultiDayInterval,
-  onExportChart,
   lastUpdatedAt,
   engagementData,
 }: ChartProps) {
   const [metric, setMetric] = useState<MetricType>('visitors')
   const chartContainerRef = useRef<HTMLDivElement>(null)
-  const { resolvedTheme } = useTheme()
-  const [showComparison, setShowComparison] = useState(false)
+  const [hasMounted, setHasMounted] = useState(false)
+
+  useEffect(() => { setHasMounted(true) }, [])
 
   // Tick every 1s so "Live · Xs ago" counts in real time (scoped to Chart only)
   const [, setTick] = useState(0)
@@ -172,22 +170,6 @@ export default function Chart({
     return () => clearInterval(timer)
   }, [lastUpdatedAt])
 
-  const handleExportChart = useCallback(async () => {
-    if (onExportChart) { onExportChart(); return }
-    if (!chartContainerRef.current) return
-    try {
-      const { toPng } = await import('html-to-image')
-      const bg = getComputedStyle(chartContainerRef.current).backgroundColor || (resolvedTheme === 'dark' ? '#171717' : '#ffffff')
-      const dataUrl = await toPng(chartContainerRef.current, {
-        cacheBust: true,
-        backgroundColor: bg,
-      })
-      const link = document.createElement('a')
-      link.download = `chart-${dateRange.start}-${dateRange.end}.png`
-      link.href = dataUrl
-      link.click()
-    } catch { /* noop */ }
-  }, [onExportChart, dateRange, resolvedTheme])
 
   // ─── Data ──────────────────────────────────────────────────────────
 
@@ -271,12 +253,12 @@ export default function Chart({
         <CardHeader className="p-0 mb-0">
           {/* Metrics Grid - 21st.dev style */}
           <div className="grid grid-cols-2 md:grid-cols-6 grow w-full">
-            {metricsWithTrends.map((m) => (
+            {metricsWithTrends.map((m, index) => (
               <button
                 key={m.key}
                 onClick={() => setMetric(m.key)}
                 className={cn(
-                  'group relative overflow-hidden cursor-pointer flex-1 text-start p-4 border-b md:border-b-0 md:border-r md:last:border-r-0 border-neutral-200 dark:border-neutral-800 transition-all',
+                  'group relative overflow-hidden cursor-pointer flex-1 text-start p-4 border-b md:border-b-0 md:border-r md:last:border-r-0 border-neutral-200 dark:border-neutral-800 transition-all ease-apple',
                   metric === m.key && 'bg-neutral-50 dark:bg-neutral-800/40',
                 )}
               >
@@ -311,7 +293,7 @@ export default function Chart({
                   <motion.div
                     layoutId="activeMetric"
                     className="absolute bottom-0 left-0 right-0 h-[3px] bg-brand-orange rounded-full"
-                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                    transition={SPRING}
                   />
                 )}
               </button>
@@ -330,56 +312,35 @@ export default function Chart({
             <div className="flex items-center gap-2">
               {dateRange.start === dateRange.end ? (
                 <Select
+                  variant="input"
                   value={todayInterval}
                   onChange={(value) => setTodayInterval(value as 'minute' | 'hour')}
                   options={[
                     { value: 'minute', label: '1 min' },
                     { value: 'hour', label: '1 hour' },
                   ]}
-                  className="min-w-[90px]"
                 />
               ) : (
                 <Select
+                  variant="input"
                   value={multiDayInterval}
                   onChange={(value) => setMultiDayInterval(value as 'hour' | 'day')}
                   options={[
                     { value: 'hour', label: '1 hour' },
                     { value: 'day', label: '1 day' },
                   ]}
-                  className="min-w-[90px]"
                 />
               )}
-
-              {prevData?.length ? (
-                <Checkbox
-                  checked={showComparison}
-                  onCheckedChange={setShowComparison}
-                  label="Compare"
-                />
-              ) : null}
-
-              <button
-                onClick={handleExportChart}
-                disabled={!hasData}
-                className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors disabled:opacity-30 cursor-pointer"
-                title="Export chart as PNG"
-              >
-                <DownloadIcon className="w-4 h-4" />
-              </button>
-
             </div>
           </div>
 
           {!hasData || !hasAnyNonZero ? (
-            <div className="flex h-96 flex-col items-center justify-center gap-3">
-              <img
-                src="/illustrations/no-data.svg"
-                alt="No data available"
-                className="w-48 h-auto mb-2"
+            <div className="flex h-96 flex-col items-center justify-center">
+              <EmptyState
+                title={!hasData ? 'No data in this window' : `No ${METRIC_CONFIGS.find((m) => m.key === metric)?.label.toLowerCase()} recorded`}
+                description="Try expanding the time range or checking back later."
+                className="py-0"
               />
-              <p className="text-sm text-neutral-400 dark:text-neutral-500">
-                {!hasData ? 'No data for this period' : `No ${METRIC_CONFIGS.find((m) => m.key === metric)?.label.toLowerCase()} recorded`}
-              </p>
             </div>
           ) : isEngagementHourly ? (
             <div className="flex flex-col items-center justify-center gap-6 py-10" style={{ aspectRatio: '2.5 / 1' }}>
@@ -423,7 +384,7 @@ export default function Chart({
                     margin={{ top: 20, right: 20, bottom: 40, left: 50 }}
                     animationDuration={400}
                   >
-                    <VisxGrid horizontal vertical={false} stroke="var(--chart-grid)" strokeDasharray="4,4" />
+                    <VisxGrid horizontal vertical={false} stroke="var(--chart-grid)" numTicksRows={6} />
                     <VisxArea
                       dataKey={metric}
                       fill={CHART_COLORS[metric]}

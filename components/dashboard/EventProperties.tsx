@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import { formatNumber } from '@ciphera-net/ui'
 import { getEventPropertyKeys, getEventPropertyValues, type EventPropertyKey, type EventPropertyValue } from '@/lib/api/stats'
+import { ListBullets } from '@phosphor-icons/react'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 interface EventPropertiesProps {
   siteId: string
@@ -43,7 +45,7 @@ export default function EventProperties({ siteId, eventName, dateRange, onClose 
         </h3>
         <button
           onClick={onClose}
-          className="text-neutral-400 hover:text-neutral-300 transition-colors cursor-pointer"
+          className="text-neutral-400 hover:text-neutral-300 transition-colors cursor-pointer ease-apple"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -58,9 +60,12 @@ export default function EventProperties({ siteId, eventName, dateRange, onClose 
           ))}
         </div>
       ) : keys.length === 0 ? (
-        <p className="text-sm text-neutral-400 py-4 text-center">
-          No properties recorded for this event yet.
-        </p>
+        <EmptyState
+          title="No properties yet"
+          description="Custom properties will appear here as events fire."
+          icon={<ListBullets weight="regular" />}
+          className="py-4"
+        />
       ) : (
         <>
           <div className="flex gap-2 mb-4 flex-wrap">
@@ -72,7 +77,7 @@ export default function EventProperties({ siteId, eventName, dateRange, onClose 
                   selectedKey === k.key
                     ? 'bg-brand-orange-button text-white'
                     : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
-                }`}
+                } ease-apple`}
               >
                 {k.key}
               </button>
@@ -93,7 +98,7 @@ export default function EventProperties({ siteId, eventName, dateRange, onClose 
                   </div>
                   <div className="w-full h-1.5 bg-neutral-800 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-brand-orange/60 rounded-full transition-all"
+                      className="h-full bg-brand-orange/60 rounded-full transition-[width] ease-apple"
                       style={{ width: `${(v.count / maxCount) * 100}%` }}
                     />
                   </div>

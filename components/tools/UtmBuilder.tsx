@@ -126,13 +126,13 @@ export default function UtmBuilder({ initialSiteId }: UtmBuilderProps) {
         <div>
           <label className="block text-sm font-medium mb-1.5 text-white">Website URL *</label>
           {selectedSite ? (
-            <div className="flex rounded-xl shadow-sm transition-all duration-200 focus-within:ring-4 focus-within:ring-brand-orange/10 focus-within:border-brand-orange hover:border-brand-orange/50 border border-neutral-200 dark:border-neutral-800">
+            <div className="flex rounded-xl shadow-sm transition-all duration-base focus-within:ring-4 focus-within:ring-brand-orange/10 focus-within:border-brand-orange hover:border-brand-orange/50 border border-neutral-200 dark:border-neutral-800 ease-apple">
               <span className="inline-flex items-center px-4 rounded-l-xl border-r border-neutral-200 dark:border-neutral-800 bg-neutral-100 dark:bg-neutral-900 text-neutral-500 text-sm select-none">
                 https://{selectedSite.domain}
               </span>
               <input
                 type="text"
-                className="flex-1 min-w-0 block w-full px-4 py-3 rounded-none rounded-r-xl bg-neutral-50/50 dark:bg-neutral-900/50 outline-none transition-all text-white text-sm placeholder:text-neutral-400"
+                className="flex-1 min-w-0 block w-full px-4 py-3 rounded-none rounded-r-xl bg-neutral-50/50 dark:bg-neutral-900/50 outline-none transition-all text-white text-sm placeholder:text-neutral-400 ease-apple"
                 placeholder="/blog/post-1"
                 value={getCurrentPath()}
                 onChange={handlePathChange}

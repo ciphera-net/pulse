@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { logger } from '@/lib/utils/logger'
 import { formatNumber, Modal } from '@ciphera-net/ui'
 import { FrameCornersIcon, Monitor, DeviceMobile, DeviceTablet } from '@phosphor-icons/react'
+import * as Flags from 'country-flag-icons/react/3x2'
+import countries from 'i18n-iso-countries'
 import { useGSCStatus, useGSCOverview, useGSCTopQueries, useGSCTopPages, useGSCTopCountries, useGSCTopDevices, useGSCOpportunities } from '@/lib/swr/dashboard'
 import { getGSCTopQueries, getGSCTopPages, getGSCTopCountries, getGSCTopDevices, getGSCOpportunities } from '@/lib/api/gsc'
 import type { GSCDataRow, GSCCountryRow, GSCDeviceRow, GSCOpportunityRow } from '@/lib/api/gsc'
@@ -28,31 +30,28 @@ const tabLabels: Record<Tab, string> = {
   opportunities: 'Opportunities',
 }
 
-const alpha3ToAlpha2: Record<string, string> = {
-  USA: 'US', GBR: 'GB', DEU: 'DE', FRA: 'FR', NLD: 'NL', BEL: 'BE',
-  CHE: 'CH', AUT: 'AT', CAN: 'CA', AUS: 'AU', BRA: 'BR', IND: 'IN',
-  JPN: 'JP', KOR: 'KR', CHN: 'CN', ESP: 'ES', ITA: 'IT', PRT: 'PT',
-  SWE: 'SE', NOR: 'NO', DNK: 'DK', FIN: 'FI', POL: 'PL', CZE: 'CZ',
-  ROU: 'RO', HUN: 'HU', BGR: 'BG', HRV: 'HR', SVK: 'SK', SVN: 'SI',
-  LTU: 'LT', LVA: 'LV', EST: 'EE', IRL: 'IE', RUS: 'RU', UKR: 'UA',
-  TUR: 'TR', MEX: 'MX', ARG: 'AR', COL: 'CO', CHL: 'CL', PER: 'PE',
-  ZAF: 'ZA', NGA: 'NG', EGY: 'EG', KEN: 'KE', ISR: 'IL', ARE: 'AE',
-  SAU: 'SA', SGP: 'SG', MYS: 'MY', THA: 'TH', IDN: 'ID', PHL: 'PH',
-  VNM: 'VN', TWN: 'TW', HKG: 'HK', NZL: 'NZ', GRC: 'GR', LUX: 'LU',
-}
+// Full alpha-3 → alpha-2 coverage via i18n-iso-countries (all ISO 3166-1 codes).
+// Names via Intl.DisplayNames (built-in, no locale JSON needed).
+const regionNames = new Intl.DisplayNames(['en'], { type: 'region' })
 
-function countryFlag(alpha3: string): string {
-  const a2 = alpha3ToAlpha2[alpha3.toUpperCase()]
-  if (!a2) return ''
-  return String.fromCodePoint(...[...a2].map(c => 0x1F1E6 + c.charCodeAt(0) - 65))
+function getAlpha2(alpha3: string): string | null {
+  return countries.alpha3ToAlpha2(alpha3.toUpperCase()) ?? null
 }
-
-const countryNames = new Intl.DisplayNames(['en'], { type: 'region' })
 
 function countryName(alpha3: string): string {
-  const a2 = alpha3ToAlpha2[alpha3.toUpperCase()]
+  const a2 = getAlpha2(alpha3)
   if (!a2) return alpha3
-  try { return countryNames.of(a2) ?? alpha3 } catch { return alpha3 }
+  try { return regionNames.of(a2) ?? alpha3 } catch { return alpha3 }
+}
+
+// Strip protocol + trailing slash for cleaner page URL display
+const stripProtocol = (url: string) => url.replace(/^https?:\/\//, '').replace(/\/$/, '')
+
+function CountryFlag({ alpha3, className = 'w-5 h-5 rounded-sm shadow-sm shrink-0' }: { alpha3: string; className?: string }) {
+  const a2 = getAlpha2(alpha3)
+  if (!a2) return null
+  const FlagComponent = (Flags as Record<string, React.ComponentType<{ className?: string }>>)[a2]
+  return FlagComponent ? <FlagComponent className={className} /> : null
 }
 
 function getDeviceIcon(device: string) {
@@ -161,22 +160,22 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
 
   // Render a row for queries/pages
   function renderDataRow(row: GSCDataRow, maxImpressions: number, totalImpressions: number) {
-    const label = activeTab === 'queries' ? row.query : row.page
+    const label = activeTab === 'queries' ? row.query : stripProtocol(row.page)
     const barWidth = maxImpressions > 0 ? (row.impressions / maxImpressions) * 75 : 0
     return (
       <div
         key={label}
-        className="relative flex items-center justify-between h-9 group hover:bg-neutral-800/50 rounded-lg px-2 -mx-2 transition-colors"
+        className="interactive-row relative flex items-center justify-between h-9 group rounded-lg px-2 -mx-2"
       >
         <div
-          className="absolute inset-y-0.5 left-0.5 bg-gradient-to-r from-brand-orange/15 via-brand-orange/8 to-transparent border border-brand-orange/20 shadow-[inset_0_1px_0_rgba(253,94,15,0.08)] rounded-md transition-all"
+          className="absolute inset-y-0.5 left-0.5 bg-gradient-to-r from-brand-orange/15 via-brand-orange/8 to-transparent border border-brand-orange/20 shadow-[inset_0_1px_0_rgba(253,94,15,0.08)] rounded-md transition-[width,background-color] ease-apple"
           style={{ width: `${barWidth}%` }}
         />
         <span className="relative text-sm text-white truncate flex-1 min-w-0" title={label}>
           {label}
         </span>
         <div className="relative flex items-center gap-2 ml-4 shrink-0">
-          <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+          <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
             {totalImpressions > 0 ? `${Math.round((row.impressions / totalImpressions) * 100)}%` : ''}
           </span>
           <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
@@ -193,22 +192,22 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
   // Render a row for countries
   function renderCountryRow(row: GSCCountryRow, maxClicks: number, totalClicks: number) {
     const barWidth = maxClicks > 0 ? (row.clicks / maxClicks) * 75 : 0
-    const flag = countryFlag(row.country)
     const name = countryName(row.country)
     return (
       <div
         key={row.country}
-        className="relative flex items-center justify-between h-9 group hover:bg-neutral-800/50 rounded-lg px-2 -mx-2 transition-colors"
+        className="interactive-row relative flex items-center justify-between h-9 group rounded-lg px-2 -mx-2"
       >
         <div
-          className="absolute inset-y-0.5 left-0.5 bg-gradient-to-r from-brand-orange/15 via-brand-orange/8 to-transparent border border-brand-orange/20 shadow-[inset_0_1px_0_rgba(253,94,15,0.08)] rounded-md transition-all"
+          className="absolute inset-y-0.5 left-0.5 bg-gradient-to-r from-brand-orange/15 via-brand-orange/8 to-transparent border border-brand-orange/20 shadow-[inset_0_1px_0_rgba(253,94,15,0.08)] rounded-md transition-[width,background-color] ease-apple"
           style={{ width: `${barWidth}%` }}
         />
-        <span className="relative text-sm text-white truncate flex-1 min-w-0" title={name}>
-          {flag ? `${flag} ` : ''}{name}
+        <span className="relative text-sm text-white truncate flex-1 min-w-0 flex items-center gap-2" title={name}>
+          <CountryFlag alpha3={row.country} />
+          <span className="truncate">{name}</span>
         </span>
         <div className="relative flex items-center gap-2 ml-4 shrink-0">
-          <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+          <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
             {totalClicks > 0 ? `${Math.round((row.clicks / totalClicks) * 100)}%` : ''}
           </span>
           <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
@@ -230,10 +229,10 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
     return (
       <div
         key={row.device}
-        className="relative flex items-center justify-between h-9 group hover:bg-neutral-800/50 rounded-lg px-2 -mx-2 transition-colors"
+        className="interactive-row relative flex items-center justify-between h-9 group rounded-lg px-2 -mx-2"
       >
         <div
-          className="absolute inset-y-0.5 left-0.5 bg-gradient-to-r from-brand-orange/15 via-brand-orange/8 to-transparent border border-brand-orange/20 shadow-[inset_0_1px_0_rgba(253,94,15,0.08)] rounded-md transition-all"
+          className="absolute inset-y-0.5 left-0.5 bg-gradient-to-r from-brand-orange/15 via-brand-orange/8 to-transparent border border-brand-orange/20 shadow-[inset_0_1px_0_rgba(253,94,15,0.08)] rounded-md transition-[width,background-color] ease-apple"
           style={{ width: `${barWidth}%` }}
         />
         <span className="relative text-sm text-white truncate flex-1 min-w-0 flex items-center gap-2">
@@ -241,7 +240,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
           {label}
         </span>
         <div className="relative flex items-center gap-2 ml-4 shrink-0">
-          <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+          <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
             {totalClicks > 0 ? `${Math.round((row.clicks / totalClicks) * 100)}%` : ''}
           </span>
           <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
@@ -261,10 +260,10 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
     return (
       <div
         key={row.query}
-        className="relative flex items-center justify-between h-9 group hover:bg-neutral-800/50 rounded-lg px-2 -mx-2 transition-colors"
+        className="interactive-row relative flex items-center justify-between h-9 group rounded-lg px-2 -mx-2"
       >
         <div
-          className="absolute inset-y-0.5 left-0.5 bg-gradient-to-r from-brand-orange/15 via-brand-orange/8 to-transparent border border-brand-orange/20 shadow-[inset_0_1px_0_rgba(253,94,15,0.08)] rounded-md transition-all"
+          className="absolute inset-y-0.5 left-0.5 bg-gradient-to-r from-brand-orange/15 via-brand-orange/8 to-transparent border border-brand-orange/20 shadow-[inset_0_1px_0_rgba(253,94,15,0.08)] rounded-md transition-[width,background-color] ease-apple"
           style={{ width: `${barWidth}%` }}
         />
         <span className="relative text-sm text-white truncate flex-1 min-w-0" title={row.query}>
@@ -332,17 +331,17 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
   function renderModalRow(row: GSCDataRow | GSCCountryRow | GSCOpportunityRow, totalImpressions: number) {
     if (activeTab === 'queries' || activeTab === 'pages') {
       const r = row as GSCDataRow
-      const label = activeTab === 'queries' ? r.query : r.page
+      const label = activeTab === 'queries' ? r.query : stripProtocol(r.page)
       return (
         <div
           key={label}
-          className="flex items-center justify-between h-9 group hover:bg-neutral-800 rounded-lg px-2 transition-colors"
+          className="interactive-row flex items-center justify-between h-9 group rounded-lg px-2"
         >
           <span className="flex-1 truncate text-sm text-white" title={label}>
             {label}
           </span>
           <div className="flex items-center gap-2 ml-4">
-            <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+            <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
               {totalImpressions > 0 ? `${Math.round((r.impressions / totalImpressions) * 100)}%` : ''}
             </span>
             <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
@@ -356,18 +355,18 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
       )
     } else if (activeTab === 'countries') {
       const r = row as GSCCountryRow
-      const flag = countryFlag(r.country)
       const name = countryName(r.country)
       return (
         <div
           key={r.country}
-          className="flex items-center justify-between h-9 group hover:bg-neutral-800 rounded-lg px-2 transition-colors"
+          className="interactive-row flex items-center justify-between h-9 group rounded-lg px-2"
         >
-          <span className="flex-1 truncate text-sm text-white" title={name}>
-            {flag ? `${flag} ` : ''}{name}
+          <span className="flex-1 truncate text-sm text-white flex items-center gap-2" title={name}>
+            <CountryFlag alpha3={r.country} />
+            <span className="truncate">{name}</span>
           </span>
           <div className="flex items-center gap-2 ml-4">
-            <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+            <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
               {totalImpressions > 0 ? `${Math.round((r.clicks / totalImpressions) * 100)}%` : ''}
             </span>
             <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
@@ -385,7 +384,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
       return (
         <div
           key={r.query}
-          className="flex items-center justify-between h-9 group hover:bg-neutral-800 rounded-lg px-2 transition-colors"
+          className="interactive-row flex items-center justify-between h-9 group rounded-lg px-2"
         >
           <span className="flex-1 truncate text-sm text-white" title={r.query}>
             {r.query}
@@ -409,7 +408,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
   // Get modal label for search filtering
   function getModalLabel(row: GSCDataRow | GSCCountryRow | GSCOpportunityRow): string {
     if (activeTab === 'queries') return (row as GSCDataRow).query
-    if (activeTab === 'pages') return (row as GSCDataRow).page
+    if (activeTab === 'pages') return stripProtocol((row as GSCDataRow).page)
     if (activeTab === 'countries') return countryName((row as GSCCountryRow).country)
     return (row as GSCOpportunityRow).query
   }
@@ -441,13 +440,13 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
                   activeTab === tab
                     ? 'text-white'
                     : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-300'
-                }`}
+                } ease-apple`}
               >
                 {tabLabels[tab]}
                 <span
-                  className={`absolute inset-x-0 -bottom-px h-[3px] rounded-full transition-all duration-200 ${
+                  className={`absolute inset-x-0 -bottom-px h-[3px] rounded-full transition-[width,background-color] duration-base ${
                     activeTab === tab ? 'bg-brand-orange scale-x-100' : 'bg-transparent scale-x-0'
-                  }`}
+                  } ease-apple`}
                 />
               </button>
             ))}
@@ -455,7 +454,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
           {showViewAll && (
             <button
               onClick={() => setIsModalOpen(true)}
-              className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-lg"
+              className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-lg ease-apple"
               aria-label="View all search data"
             >
               <FrameCornersIcon className="w-4 h-4" weight="bold" />
@@ -482,7 +481,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
         isOpen={isModalOpen}
         onClose={() => { setIsModalOpen(false); setModalSearch('') }}
         title={`Search ${tabLabels[activeTab]}`}
-        className="max-w-2xl !bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:!bg-neutral-900/60 !border-white/[0.08]"
+        className="max-w-2xl max-h-[90vh] flex flex-col !bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:!bg-neutral-900/60 !border-white/[0.08]"
       >
         <div>
           <input
@@ -493,7 +492,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
             className="w-full px-3 py-2 mb-3 text-sm bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
           />
         </div>
-        <div className="max-h-[80vh]">
+        <div className="flex-1 overflow-y-auto min-h-0">
           {isLoadingFull ? (
             <div className="py-4">
               <ListSkeleton rows={10} />
@@ -511,7 +510,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
               <VirtualList
                 items={modalData}
                 estimateSize={36}
-                className="max-h-[80vh] overflow-y-auto pr-2"
+                className="pr-2"
                 renderItem={(row) => renderModalRow(row, modalTotal)}
               />
             )

@@ -17,7 +17,7 @@ export default function RealtimeVisitors({ count }: RealtimeVisitorsProps) {
         </div>
         <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
       </div>
-      <div className="text-3xl font-bold text-white">
+      <div className="text-3xl font-bold tabular-nums text-white">
         <AnimatedNumber value={count} format={(v) => v.toLocaleString()} />
       </div>
     </div>

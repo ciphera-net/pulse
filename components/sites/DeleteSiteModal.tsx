@@ -133,7 +133,7 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
                     <button
                       type="button"
                       onClick={handleClose}
-                      className="flex-1 px-4 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition-colors"
+                      className="flex-1 px-4 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition-colors ease-apple"
                       disabled={isDeleting}
                     >
                       Cancel
@@ -141,7 +141,7 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
                     <button
                       onClick={handleSoftDelete}
                       disabled={deleteConfirm !== 'DELETE' || isDeleting}
-                      className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed ease-apple"
                     >
                       {isDeleting ? 'Deleting...' : 'Schedule Deletion'}
                     </button>
@@ -150,7 +150,7 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
                   <button
                     type="button"
                     onClick={() => setShowPermanent(true)}
-                    className="w-full text-center text-xs text-neutral-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                    className="w-full text-center text-xs text-neutral-400 hover:text-red-500 dark:hover:text-red-400 transition-colors ease-apple"
                   >
                     Permanently delete now (cannot be undone)
                   </button>
@@ -203,7 +203,7 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
                           setPermanentConfirm('')
                         }
                       }}
-                      className="flex-1 px-4 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition-colors"
+                      className="flex-1 px-4 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition-colors ease-apple"
                       disabled={isPermanentDeleting}
                     >
                       {permanentOnly ? 'Cancel' : 'Back'}
@@ -211,7 +211,7 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
                     <button
                       onClick={handlePermanentDelete}
                       disabled={permanentConfirm !== siteDomain || isPermanentDeleting}
-                      className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed ease-apple"
                     >
                       {isPermanentDeleting ? 'Deleting...' : 'Delete Forever'}
                     </button>

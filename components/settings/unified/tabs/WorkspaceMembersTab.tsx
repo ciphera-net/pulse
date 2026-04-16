@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { Button, Input, Select, toast, Spinner } from '@ciphera-net/ui'
-import { Plus, Trash, EnvelopeSimple, Crown, UserCircle } from '@phosphor-icons/react'
+import { Plus, Trash, EnvelopeSimple, Crown, UserCircle, Users } from '@phosphor-icons/react'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { useAuth } from '@/lib/auth/context'
 import { getOrganizationMembers, removeOrganizationMember, sendInvitation, getInvitations, revokeInvitation, type OrganizationMember, type OrganizationInvitation } from '@/lib/api/organization'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
@@ -158,7 +159,7 @@ export default function WorkspaceMembersTab() {
               {canManage && member.role !== 'owner' && member.user_id !== user?.id && (
                 <button
                   onClick={() => handleRemove(member.user_id, member.user_email || member.user_id)}
-                  className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-red-900/20 transition-colors opacity-0 group-hover:opacity-100"
+                  className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-red-900/20 transition-colors opacity-0 group-hover:opacity-100 ease-apple"
                 >
                   <Trash weight="bold" className="w-3.5 h-3.5" />
                 </button>
@@ -167,7 +168,11 @@ export default function WorkspaceMembersTab() {
           </div>
         ))}
         {members.length === 0 && (
-          <p className="text-sm text-neutral-500 text-center py-8">No members found.</p>
+          <EmptyState
+            title="No members found"
+            icon={<Users weight="regular" />}
+            className="py-8"
+          />
         )}
       </div>
 

@@ -187,7 +187,7 @@ export default function CDNPage() {
           </p>
           <button
             onClick={() => openUnifiedSettings({ context: 'site', tab: 'integrations' })}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-brand-orange-button hover:bg-brand-orange-button-hover text-white text-sm font-medium transition-colors cursor-pointer"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-brand-orange-button hover:bg-brand-orange-button-hover text-white text-sm font-medium transition-colors cursor-pointer ease-apple"
           >
             Connect in Settings
             <ArrowSquareOut size={16} weight="bold" />
@@ -490,11 +490,11 @@ export default function CDNPage() {
                     </div>
                     <div className="relative h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
                       <div
-                        className="absolute inset-y-0 left-0 rounded-full bg-brand-orange transition-all"
+                        className="absolute inset-y-0 left-0 rounded-full bg-brand-orange transition-[width] ease-apple"
                         style={{ width: `${Math.max(pct, 1)}%` }}
                       />
                     </div>
-                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-neutral-900 dark:bg-neutral-700 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-neutral-900 dark:bg-neutral-700 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 ease-apple">
                       {pct.toFixed(1)}% of total traffic
                     </div>
                   </div>
@@ -533,7 +533,7 @@ function OverviewCard({
   return (
     <div className="p-4 rounded-xl border border-white/[0.08] bg-neutral-900/80">
       <p className="text-xs font-medium text-neutral-400 mb-1">{label}</p>
-      <p className="text-2xl font-bold text-white">{value}</p>
+      <p className="text-2xl font-bold tabular-nums text-white">{value}</p>
       {changeLabel && (
         <p className={`text-xs mt-1 font-medium ${
           isGood ? 'text-green-600 dark:text-green-400' :

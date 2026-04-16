@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
+import { TIMING } from '@/lib/motion'
 
 import { useAuth } from '@/lib/auth/context'
 import {
@@ -173,11 +174,11 @@ export default function StepOrganization({ onComplete }: StepOrganizationProps) 
                 type="button"
                 onClick={() => handleSelectOrganization(org)}
                 disabled={!!switchingOrgId}
-                className={`w-full flex items-center gap-3 rounded-xl border px-4 py-3.5 text-left transition-all duration-200 disabled:opacity-60 ${
+                className={`w-full flex items-center gap-3 rounded-xl border px-4 py-3.5 text-left transition-all duration-base disabled:opacity-60 ${
                   isCurrent
                     ? 'border-brand-orange/60 bg-brand-orange/10 shadow-sm'
                     : 'border-neutral-700 bg-neutral-800/50 hover:bg-neutral-800 hover:border-neutral-600 hover:shadow-sm'
-                }`}
+                } ease-apple`}
               >
                 <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-semibold ${
                   isCurrent
@@ -268,7 +269,7 @@ export default function StepOrganization({ onComplete }: StepOrganizationProps) 
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.2 }}
+              transition={TIMING}
               className="text-sm text-red-400 overflow-hidden"
             >
               {orgError}
@@ -282,7 +283,7 @@ export default function StepOrganization({ onComplete }: StepOrganizationProps) 
           <button
             type="button"
             onClick={() => setMode('select')}
-            className="w-full text-sm text-neutral-400 hover:text-neutral-300 transition-colors py-1"
+            className="w-full text-sm text-neutral-400 hover:text-neutral-300 transition-colors py-1 ease-apple"
           >
             Back to workspace list
           </button>
@@ -293,7 +294,7 @@ export default function StepOrganization({ onComplete }: StepOrganizationProps) 
           <button
             type="button"
             onClick={() => router.push('/login')}
-            className="text-xs text-neutral-500 hover:text-neutral-400 transition-colors"
+            className="text-xs text-neutral-500 hover:text-neutral-400 transition-colors ease-apple"
           >
             Sign out
           </button>

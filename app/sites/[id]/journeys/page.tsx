@@ -5,7 +5,8 @@ import { useParams } from 'next/navigation'
 import { Select, DatePicker } from '@ciphera-net/ui'
 import ColumnJourney from '@/components/journeys/ColumnJourney'
 import SankeyJourney from '@/components/journeys/SankeyJourney'
-import RangeSlider from '@/components/ui/RangeSlider'
+import { Slider } from '@/components/ui/slider'
+import { Label } from '@/components/ui/label'
 import { JourneysSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import {
   useJourneyFilters,
@@ -110,28 +111,44 @@ export default function JourneysPage() {
         {/* Toolbar */}
         <div className="p-6 border-b border-white/[0.08]">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <RangeSlider
-              label="Depth"
-              min={DEPTH_MIN}
-              max={DEPTH_MAX}
-              step={DEPTH_STEP}
-              value={filters.depth}
-              onChange={filters.setDepth}
-              valueLabel={`${filters.depth} steps`}
-              ariaValueText={`${filters.depth} steps deep`}
-              showStops
-            />
-            <RangeSlider
-              label="Paths per step"
-              min={DENSITY_MIN}
-              max={DENSITY_MAX}
-              step={DENSITY_STEP}
-              value={filters.density}
-              onChange={filters.setDensity}
-              valueLabel={`${filters.density} paths`}
-              ariaValueText={`${filters.density} paths per step`}
-              showStops
-            />
+            <div className="flex flex-col gap-3">
+              <div className="flex items-baseline justify-between">
+                <Label className="text-xs font-medium text-neutral-400 uppercase tracking-wider">
+                  Depth
+                </Label>
+                <span className="text-sm font-semibold text-primary tabular-nums">
+                  {filters.depth} steps
+                </span>
+              </div>
+              <Slider
+                value={[filters.depth]}
+                onValueChange={([v]) => filters.setDepth(v)}
+                min={DEPTH_MIN}
+                max={DEPTH_MAX}
+                step={DEPTH_STEP}
+                aria-label={`${filters.depth} steps deep`}
+                className="[&_[role=slider]]:h-6 [&_[role=slider]]:w-2.5 [&_[role=slider]]:border-[3px] [&_[role=slider]]:border-background [&_[role=slider]]:bg-primary [&_[role=slider]]:ring-offset-0"
+              />
+            </div>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-baseline justify-between">
+                <Label className="text-xs font-medium text-neutral-400 uppercase tracking-wider">
+                  Paths per step
+                </Label>
+                <span className="text-sm font-semibold text-primary tabular-nums">
+                  {filters.density} paths
+                </span>
+              </div>
+              <Slider
+                value={[filters.density]}
+                onValueChange={([v]) => filters.setDensity(v)}
+                min={DENSITY_MIN}
+                max={DENSITY_MAX}
+                step={DENSITY_STEP}
+                aria-label={`${filters.density} paths per step`}
+                className="[&_[role=slider]]:h-6 [&_[role=slider]]:w-2.5 [&_[role=slider]]:border-[3px] [&_[role=slider]]:border-background [&_[role=slider]]:bg-primary [&_[role=slider]]:ring-offset-0"
+              />
+            </div>
           </div>
 
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-6">
@@ -145,11 +162,11 @@ export default function JourneysPage() {
             <button
               onClick={filters.resetFilters}
               disabled={filters.isDefault}
-              className={`text-sm whitespace-nowrap transition-all duration-150 px-3 py-2 ${
+              className={`text-sm whitespace-nowrap transition-all duration-fast px-3 py-2 ${
                 filters.isDefault
                   ? 'opacity-0 pointer-events-none'
                   : 'opacity-100 text-neutral-500 hover:text-white'
-              }`}
+              } ease-apple`}
             >
               Reset
             </button>
@@ -167,13 +184,13 @@ export default function JourneysPage() {
                   filters.viewMode === mode
                     ? 'text-white'
                     : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-300'
-                }`}
+                } ease-apple`}
               >
                 {mode === 'columns' ? 'Columns' : 'Flow'}
                 <span
-                  className={`absolute inset-x-0 -bottom-px h-[3px] rounded-full transition-all duration-200 ${
+                  className={`absolute inset-x-0 -bottom-px h-[3px] rounded-full transition-[width,background-color] duration-base ${
                     filters.viewMode === mode ? 'bg-brand-orange scale-x-100' : 'bg-transparent scale-x-0'
-                  }`}
+                  } ease-apple`}
                 />
               </button>
             ))}

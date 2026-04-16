@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
+import { SPRING, TIMING } from '@/lib/motion'
 import { Select } from '@ciphera-net/ui'
 import { TRAFFIC_TIERS, PLAN_PRICES } from '@/lib/plans'
 import { COUNTRY_OPTIONS } from '@/lib/countries'
@@ -19,7 +20,7 @@ interface PlanSummaryProps {
 }
 
 const inputClass =
-  'w-full rounded-lg border border-neutral-700 bg-neutral-800/50 px-3 py-2.5 text-sm text-white placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-brand-orange focus:border-brand-orange transition-colors'
+  'w-full rounded-lg border border-neutral-700 bg-neutral-800/50 px-3 py-2.5 text-sm text-white placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-brand-orange focus:border-brand-orange transition-colors ease-apple'
 
 /** Convert VIES ALL-CAPS text to title case (e.g. "SA SODIMAS" → "Sa Sodimas") */
 function toTitleCase(s: string) {
@@ -87,7 +88,7 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
   const isVatValid = isVatChecked && !!vatResult?.company_name
 
   return (
-    <div className="rounded-2xl border border-neutral-800 bg-neutral-900/50 backdrop-blur-xl p-5 space-y-4">
+    <div className="rounded-2xl glass-surface p-5 space-y-4">
       {/* Plan name + interval toggle */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-4">
         <div className="flex items-center gap-3">
@@ -99,15 +100,15 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
               key={iv}
               type="button"
               onClick={() => handleIntervalToggle(iv)}
-              className={`relative px-3.5 py-1.5 text-sm font-medium rounded-lg transition-colors duration-200 ${
+              className={`relative px-3.5 py-1.5 text-sm font-medium rounded-lg transition-colors duration-base ${
                 currentInterval === iv ? 'text-white' : 'text-neutral-400 hover:text-white'
-              }`}
+              } ease-apple`}
             >
               {currentInterval === iv && (
                 <motion.div
                   layoutId="checkout-interval-bg"
                   className="absolute inset-0 bg-neutral-700 rounded-lg shadow-sm"
-                  transition={{ type: 'spring', bounce: 0.15, duration: 0.35 }}
+                  transition={SPRING}
                 />
               )}
               <span className="relative z-10">{iv === 'month' ? 'Monthly' : 'Yearly'}</span>
@@ -144,7 +145,7 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
             type="button"
             onClick={handleVerifyVatId}
             disabled={!vatId || !country || vatLoading || isVatValid}
-            className="shrink-0 rounded-lg bg-neutral-700 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-neutral-600 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="shrink-0 rounded-lg bg-neutral-700 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-neutral-600 disabled:opacity-40 disabled:cursor-not-allowed ease-apple"
           >
             {vatLoading && vatId ? 'Verifying...' : isVatValid ? 'Verified' : 'Verify'}
           </button>
@@ -156,7 +157,7 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.25, ease: 'easeOut' }}
+              transition={TIMING}
               className="overflow-hidden"
             >
               <div className="mt-2 rounded-lg bg-green-500/5 border border-green-500/20 px-3 py-2 text-xs text-neutral-400">
@@ -172,7 +173,7 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
+              transition={TIMING}
               className="mt-1.5 text-xs text-yellow-400"
             >
               VAT ID could not be verified. 21% VAT will apply.
@@ -182,7 +183,7 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
       </div>
 
       {/* Price breakdown */}
-      <div className={`pt-2 border-t border-neutral-800 transition-opacity duration-200 ${vatLoading ? 'opacity-50' : 'opacity-100'}`}>
+      <div className={`pt-2 border-t border-neutral-800 transition-opacity duration-base ${vatLoading ? 'opacity-50' : 'opacity-100'} ease-apple`}>
         {vatResult ? (
           <div className="space-y-1.5 text-sm">
             <div className="flex justify-between text-neutral-400">

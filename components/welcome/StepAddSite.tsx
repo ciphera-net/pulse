@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import { TIMING } from '@/lib/motion'
 import { createSite, type Site } from '@/lib/api/sites'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { trackWelcomeSiteAdded, trackWelcomeSiteSkipped } from '@/lib/welcomeAnalytics'
@@ -129,7 +130,7 @@ export default function StepAddSite({ onComplete, onSkip, onBack, onDomainChange
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.2 }}
+              transition={TIMING}
               className="text-sm text-red-400 overflow-hidden"
             >
               {error}

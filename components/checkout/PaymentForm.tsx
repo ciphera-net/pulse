@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Script from 'next/script'
 import { motion, AnimatePresence } from 'framer-motion'
+import { TIMING } from '@/lib/motion'
 import { Lock, ShieldCheck } from '@phosphor-icons/react'
 import { initMollie, getMollie, MOLLIE_FIELD_STYLES, type MollieComponent } from '@/lib/mollie'
 import { createEmbeddedCheckout, createCheckoutSession } from '@/lib/api/billing'
@@ -52,7 +53,7 @@ function MethodLogo({ type }: { type: string }) {
 }
 
 const mollieFieldBase =
-  'w-full rounded-lg border border-neutral-700 bg-neutral-800/50 px-3 py-3 h-[48px] transition-all focus-within:ring-1 focus-within:ring-brand-orange focus-within:border-brand-orange'
+  'w-full rounded-lg border border-neutral-700 bg-neutral-800/50 px-3 py-3 h-[48px] transition-all ease-apple focus-within:ring-1 focus-within:ring-brand-orange focus-within:border-brand-orange'
 
 export default function PaymentForm({ plan, interval, limit, country, vatId }: PaymentFormProps) {
   const router = useRouter()
@@ -212,7 +213,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
 
       <form
         onSubmit={handleSubmit}
-        className="rounded-2xl border border-neutral-800 bg-neutral-900/50 backdrop-blur-xl p-6"
+        className="rounded-2xl glass-surface p-6"
       >
         <h2 className="text-lg font-semibold text-white mb-4">Payment method</h2>
 
@@ -231,11 +232,11 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
                     setTimeout(() => submitRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 350)
                   }
                 }}
-                className={`flex items-center justify-center rounded-xl border h-[44px] transition-all duration-200 ${
+                className={`flex items-center justify-center rounded-xl border h-[44px] transition-all duration-base ${
                   isSelected
                     ? 'border-brand-orange bg-brand-orange/5'
                     : 'border-neutral-700/50 bg-neutral-800/30 hover:border-neutral-600'
-                }`}
+                } ease-apple`}
               >
                 <MethodLogo type={method.id} />
               </button>
@@ -245,14 +246,14 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
 
         {/* Card form — always rendered for Mollie mount, animated visibility */}
         <div
-          className="overflow-hidden transition-all duration-300 ease-out"
+          className="overflow-hidden transition-all duration-slow ease-out"
           style={{ maxHeight: isCard ? '400px' : '0px', opacity: isCard ? 1 : 0 }}
         >
           <div className="space-y-4 pb-1">
             {/* Cardholder name */}
             <div>
               <label className="block text-sm font-medium text-neutral-300 mb-1.5">Cardholder name</label>
-              <div className="overflow-hidden transition-all duration-300" style={{ height: mollieReady ? '48px' : '0px' }}>
+              <div className="overflow-hidden transition-all duration-slow ease-apple" style={{ height: mollieReady ? '48px' : '0px' }}>
                 <div id="mollie-card-holder" className={mollieFieldBase} />
               </div>
               {!mollieReady && isCard && <div className={`${mollieFieldBase} bg-neutral-800/30 animate-pulse`} />}
@@ -264,7 +265,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
             {/* Card number */}
             <div>
               <label className="block text-sm font-medium text-neutral-300 mb-1.5">Card number</label>
-              <div className="overflow-hidden transition-all duration-300" style={{ height: mollieReady ? '48px' : '0px' }}>
+              <div className="overflow-hidden transition-all duration-slow ease-apple" style={{ height: mollieReady ? '48px' : '0px' }}>
                 <div id="mollie-card-number" className={mollieFieldBase} />
               </div>
               {!mollieReady && isCard && <div className={`${mollieFieldBase} bg-neutral-800/30 animate-pulse`} />}
@@ -277,7 +278,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-neutral-300 mb-1.5">Expiry date</label>
-                <div className="overflow-hidden transition-all duration-300" style={{ height: mollieReady ? '48px' : '0px' }}>
+                <div className="overflow-hidden transition-all duration-slow ease-apple" style={{ height: mollieReady ? '48px' : '0px' }}>
                   <div id="mollie-card-expiry" className={mollieFieldBase} />
                 </div>
                 {!mollieReady && isCard && <div className={`${mollieFieldBase} bg-neutral-800/30 animate-pulse`} />}
@@ -287,7 +288,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
               </div>
               <div>
                 <label className="block text-sm font-medium text-neutral-300 mb-1.5">CVC</label>
-                <div className="overflow-hidden transition-all duration-300" style={{ height: mollieReady ? '48px' : '0px' }}>
+                <div className="overflow-hidden transition-all duration-slow ease-apple" style={{ height: mollieReady ? '48px' : '0px' }}>
                   <div id="mollie-card-cvc" className={mollieFieldBase} />
                 </div>
                 {!mollieReady && isCard && <div className={`${mollieFieldBase} bg-neutral-800/30 animate-pulse`} />}
@@ -306,7 +307,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.2 }}
+              transition={TIMING}
               className="text-sm text-neutral-400 mb-4 overflow-hidden"
             >
               You&apos;ll be redirected to complete payment securely via {PAYMENT_METHODS.find((m) => m.id === selectedMethod)?.label}.
@@ -333,7 +334,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
           ref={submitRef}
           type="submit"
           disabled={submitting || !selectedMethod || (isCard && !mollieReady && !mollieError)}
-          className="mt-4 w-full rounded-lg bg-brand-orange-button px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-orange-button-hover disabled:opacity-50 disabled:cursor-not-allowed"
+          className="mt-4 w-full rounded-lg bg-brand-orange-button px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-orange-button-hover disabled:opacity-50 disabled:cursor-not-allowed ease-apple"
         >
           {submitting ? 'Processing...' : 'Subscribe'}
         </button>

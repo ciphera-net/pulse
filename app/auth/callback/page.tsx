@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense, useRef, useCallback } from 'react'
 import { logger } from '@/lib/utils/logger'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth/context'
 import { AUTH_URL, default as apiRequest } from '@/lib/api/client'
 import { exchangeAuthCode } from '@/app/actions/auth'
@@ -10,7 +10,6 @@ import { authMessageFromErrorType, type AuthErrorType } from '@ciphera-net/ui'
 import { LoadingOverlay } from '@ciphera-net/ui'
 
 function AuthCallbackContent() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const { login } = useAuth()
   const [error, setError] = useState<string | null>(null)
@@ -45,12 +44,16 @@ function AuthCallbackContent() {
       }
       localStorage.removeItem('oauth_state')
       localStorage.removeItem('oauth_code_verifier')
+      // * Use full-page navigation (not router.push) so the access_token cookie set
+      // * by exchangeAuthCode is guaranteed committed before AuthProvider re-initializes
+      // * on the destination route. Eliminates the post-login SWR race where useSites()
+      // * fires before cookies are observable and caches an empty/401 result for 30s.
       if (localStorage.getItem('pulse_pending_checkout')) {
-        router.push('/welcome')
+        window.location.assign('/welcome')
       } else {
         const raw = searchParams.get('returnTo') || '/'
         const safe = (typeof raw === 'string' && raw.startsWith('/') && !raw.startsWith('//')) ? raw : '/'
-        router.push(safe)
+        window.location.assign(safe)
       }
     } else {
       if (result.error === 'server') {
@@ -65,7 +68,7 @@ function AuthCallbackContent() {
       }
       setError(authMessageFromErrorType(result.error as AuthErrorType))
     }
-  }, [searchParams, login, router])
+  }, [searchParams, login])
 
   useEffect(() => {
     if (processedRef.current && !isRetrying) return
@@ -95,7 +98,7 @@ function AuthCallbackContent() {
     processedRef.current = true
     if (isRetrying) setIsRetrying(false)
     runCodeExchange()
-  }, [searchParams, login, router, isRetrying, runCodeExchange])
+  }, [searchParams, login, isRetrying, runCodeExchange])
 
   const handleRetry = () => {
     setError(null)

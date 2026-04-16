@@ -61,11 +61,37 @@ const config: Config = {
           foreground: 'rgb(var(--secondary-foreground) / <alpha-value>)',
         },
         border: 'rgb(var(--border) / <alpha-value>)',
+        input: 'rgb(var(--input) / <alpha-value>)',
+        ring: 'rgb(var(--ring) / <alpha-value>)',
+        muted: {
+          DEFAULT: 'rgb(var(--muted) / <alpha-value>)',
+          foreground: 'rgb(var(--muted-foreground) / <alpha-value>)',
+        },
+      },
+      transitionTimingFunction: {
+        apple: 'var(--ease-apple)',
+      },
+      transitionDuration: {
+        fast: '150ms',
+        base: '250ms',
+        slow: '400ms',
+        gentle: '600ms',
+      },
+      fontSize: {
+        'display-lg': ['48px', { lineHeight: '1.05', letterSpacing: '-0.02em' }],
+        display: ['36px', { lineHeight: '1.1', letterSpacing: '-0.015em' }],
+        'title-1': ['24px', { lineHeight: '1.2', letterSpacing: '-0.01em' }],
+        'title-2': ['18px', { lineHeight: '1.3', letterSpacing: '-0.005em' }],
+        'title-3': ['14px', { lineHeight: '1.4' }],
+        body: ['14px', { lineHeight: '1.5' }],
+        caption: ['12px', { lineHeight: '1.4' }],
+        'micro-label': ['11px', { lineHeight: '1', letterSpacing: '0.06em' }],
       },
     },
   },
   plugins: [
     require('@tailwindcss/typography'),
+    require('tailwindcss-animate'),
   ],
 }
 export default config

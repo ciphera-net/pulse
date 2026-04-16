@@ -7,8 +7,12 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import Link from 'next/link'
-import { listNotifications, markNotificationRead, markAllNotificationsRead, type Notification } from '@/lib/api/notifications'
+import { listNotifications, markRead, markAllRead, dismiss } from '@/lib/api/notifications-v2'
+import type { Receipt } from '@/lib/notifications/types'
+import { renderNotification } from '@/lib/notifications/renderers'
+import { useResolveSiteName, useResolveUserName } from '@/lib/notifications/resolvers'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { formatTimeAgo, getTypeIcon } from '@/lib/utils/notifications'
 import { SettingsIcon } from '@ciphera-net/ui'
@@ -51,7 +55,7 @@ interface NotificationCenterProps {
 
 export default function NotificationCenter({ anchor = 'bottom', variant = 'default', children }: NotificationCenterProps) {
   const [open, setOpen] = useState(false)
-  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [receipts, setReceipts] = useState<Receipt[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -60,6 +64,9 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
   const buttonRef = useRef<HTMLButtonElement>(null)
   const [fixedPos, setFixedPos] = useState<{ left: number; top?: number; bottom?: number } | null>(null)
   const { openUnifiedSettings } = useUnifiedSettings()
+
+  const resolveSiteName = useResolveSiteName()
+  const resolveUserName = useResolveUserName()
 
   const updatePosition = useCallback(() => {
     if (anchor === 'right' && buttonRef.current) {
@@ -86,12 +93,12 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
     setError(null)
     const loadingTimer = setTimeout(() => setLoading(true), LOADING_DELAY_MS)
     try {
-      const res = await listNotifications({})
-      setNotifications(Array.isArray(res?.notifications) ? res.notifications : [])
+      const res = await listNotifications({ limit: 10 })
+      setReceipts(Array.isArray(res?.receipts) ? res.receipts : [])
       setUnreadCount(typeof res?.unread_count === 'number' ? res.unread_count : 0)
     } catch (err) {
       setError(getAuthErrorMessage(err as Error) || 'Failed to load notifications')
-      setNotifications([])
+      setReceipts([])
       setUnreadCount(0)
     } finally {
       clearTimeout(loadingTimer)
@@ -136,30 +143,38 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
     }
   }, [open])
 
-  const handleMarkRead = async (id: string) => {
+  const handleMarkRead = async (eventID: string) => {
     try {
-      await markNotificationRead(id)
-      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)))
+      await markRead(eventID)
+      setReceipts((prev) => prev.map((r) => (r.event_id === eventID ? { ...r, read_at: new Date().toISOString() } : r)))
       setUnreadCount((c) => Math.max(0, c - 1))
     } catch {
       // Ignore; user can retry
     }
   }
 
+  const handleDismiss = async (eventID: string) => {
+    try {
+      await dismiss(eventID)
+      setReceipts((prev) => prev.filter((x) => x.event_id !== eventID))
+      setUnreadCount((c) => Math.max(0, c - 1))
+    } catch {
+      // Ignore — user can retry
+    }
+  }
+
   const handleMarkAllRead = async () => {
     try {
-      await markAllNotificationsRead()
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
+      await markAllRead()
+      setReceipts((prev) => prev.map((r) => ({ ...r, read_at: r.read_at ?? new Date().toISOString() })))
       setUnreadCount(0)
     } catch {
       // Ignore
     }
   }
 
-  const handleNotificationClick = (n: Notification) => {
-    if (!n.read) {
-      handleMarkRead(n.id)
-    }
+  const handleNotificationClick = (r: Receipt) => {
+    if (!r.read_at) handleMarkRead(r.event_id)
     setOpen(false)
   }
 
@@ -212,8 +227,8 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            transition={{ duration: 0.15 }}
-            className={`bg-neutral-900/80 border border-white/[0.08] rounded-xl shadow-xl shadow-black/20 overflow-hidden z-[100] ${
+            transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
+            className={`glass-overlay rounded-xl shadow-xl shadow-black/20 overflow-hidden z-[100] ${
               anchor === 'right'
                 ? `fixed w-96 ${fixedPos?.bottom !== undefined ? 'origin-bottom-left' : 'origin-top-left'}`
                 : 'fixed left-4 right-4 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96'
@@ -251,64 +266,83 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
               {error && (
                 <div className="p-6 text-center text-red-500 text-sm">{error}</div>
               )}
-              {!loading && !error && (notifications?.length ?? 0) === 0 && (
+              {!loading && !error && (receipts?.length ?? 0) === 0 && (
                 <div className="p-6 text-center text-neutral-400 text-sm">
                   No notifications yet
                 </div>
               )}
-              {!loading && !error && (notifications?.length ?? 0) > 0 && (
+              {!loading && !error && (receipts?.length ?? 0) > 0 && (
                 <ul className="divide-y divide-neutral-200 dark:divide-white/[0.06]">
-                  {(notifications ?? []).map((n) => (
-                    <li key={n.id}>
-                      {n.link_url ? (
-                        <Link
-                          href={n.link_url}
-                          onClick={() => handleNotificationClick(n)}
-                          className={`block px-4 py-3 hover:bg-neutral-50 dark:hover:bg-white/[0.06] transition-colors ${!n.read ? 'bg-brand-orange/5 dark:bg-brand-orange/10' : ''}`}
-                        >
-                          <div className="flex gap-3">
-                            {getTypeIcon(n.type)}
-                            <div className="min-w-0 flex-1">
-                              <p className={`text-sm ${!n.read ? 'font-medium' : ''} text-white`}>
-                                {n.title}
-                              </p>
-                              {n.body && (
-                                <p className="text-xs text-neutral-400 mt-0.5 line-clamp-2">
-                                  {n.body}
+                  {(receipts ?? []).map((r) => {
+                    const { title, body } = renderNotification(r, { resolveSiteName, resolveUserName })
+                    const isUnread = !r.read_at
+                    return (
+                      <li key={r.event_id} className="group relative">
+                        {r.event.link_url ? (
+                          <Link
+                            href={r.event.link_url}
+                            onClick={() => handleNotificationClick(r)}
+                            className={`block px-4 py-3 hover:bg-neutral-50 dark:hover:bg-white/[0.06] transition-colors ${isUnread ? 'bg-brand-orange/5 dark:bg-brand-orange/10' : ''} ease-apple`}
+                          >
+                            <div className="flex gap-3">
+                              {getTypeIcon(r.event.type)}
+                              <div className="min-w-0 flex-1">
+                                <p className={`text-sm ${isUnread ? 'font-medium' : ''} text-white`}>
+                                  {title}
                                 </p>
-                              )}
-                              <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
-                                {formatTimeAgo(n.created_at)}
-                              </p>
+                                {body && (
+                                  <p className="text-xs text-neutral-400 mt-0.5 line-clamp-2">
+                                    {body}
+                                  </p>
+                                )}
+                                <p
+                                  className="text-xs text-neutral-400 dark:text-neutral-500 mt-1"
+                                  title={new Date(r.event.created_at).toISOString()}
+                                >
+                                  {formatTimeAgo(r.event.created_at)}
+                                </p>
+                              </div>
                             </div>
-                          </div>
-                        </Link>
-                      ) : (
+                          </Link>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleNotificationClick(r)}
+                            className={`w-full text-left block px-4 py-3 hover:bg-neutral-50 dark:hover:bg-white/[0.06] cursor-pointer ${isUnread ? 'bg-brand-orange/5 dark:bg-brand-orange/10' : ''}`}
+                          >
+                            <div className="flex gap-3">
+                              {getTypeIcon(r.event.type)}
+                              <div className="min-w-0 flex-1">
+                                <p className={`text-sm ${isUnread ? 'font-medium' : ''} text-white`}>
+                                  {title}
+                                </p>
+                                {body && (
+                                  <p className="text-xs text-neutral-400 mt-0.5 line-clamp-2">
+                                    {body}
+                                  </p>
+                                )}
+                                <p
+                                  className="text-xs text-neutral-400 dark:text-neutral-500 mt-1"
+                                  title={new Date(r.event.created_at).toISOString()}
+                                >
+                                  {formatTimeAgo(r.event.created_at)}
+                                </p>
+                              </div>
+                            </div>
+                          </button>
+                        )}
                         <button
                           type="button"
-                          onClick={() => handleNotificationClick(n)}
-                          className={`w-full text-left block px-4 py-3 hover:bg-neutral-50 dark:hover:bg-white/[0.06] cursor-pointer ${!n.read ? 'bg-brand-orange/5 dark:bg-brand-orange/10' : ''}`}
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDismiss(r.event_id) }}
+                          aria-label="Delete my copy of this notification"
+                          title="Delete my copy"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 top-3 text-neutral-500 hover:text-red-400 px-2 py-1 text-xs"
                         >
-                          <div className="flex gap-3">
-                            {getTypeIcon(n.type)}
-                            <div className="min-w-0 flex-1">
-                              <p className={`text-sm ${!n.read ? 'font-medium' : ''} text-white`}>
-                                {n.title}
-                              </p>
-                              {n.body && (
-                                <p className="text-xs text-neutral-400 mt-0.5 line-clamp-2">
-                                  {n.body}
-                                </p>
-                              )}
-                              <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
-                                {formatTimeAgo(n.created_at)}
-                              </p>
-                            </div>
-                          </div>
+                          ×
                         </button>
-                      )}
-                    </li>
-                  ))}
+                      </li>
+                    )
+                  })}
                 </ul>
               )}
             </div>
@@ -326,7 +360,7 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
                   setOpen(false)
                   openUnifiedSettings({ context: 'workspace', tab: 'notifications' })
                 }}
-                className="flex items-center gap-2 text-sm text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors cursor-pointer"
+                className="flex items-center gap-2 text-sm text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors cursor-pointer ease-apple"
               >
                 <SettingsIcon className="w-4 h-4" aria-hidden="true" />
                 Manage settings

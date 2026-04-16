@@ -86,10 +86,10 @@ export default function FunnelsPage() {
                 href={`/sites/${siteId}/funnels/${funnel.id}`}
                 className="block group"
               >
-                <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 hover:border-brand-orange/50 transition-colors">
+                <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 hover:border-brand-orange/50 transition-colors ease-apple">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-xl font-bold text-white group-hover:text-brand-orange transition-colors">
+                      <h3 className="text-xl font-bold text-white group-hover:text-brand-orange transition-colors ease-apple">
                         {funnel.name}
                       </h3>
                       {funnel.description && (
@@ -113,7 +113,7 @@ export default function FunnelsPage() {
                     <div className="flex items-center gap-4">
                       <button
                         onClick={(e) => handleDelete(e, funnel.id)}
-                        className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"
+                        className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors ease-apple"
                         aria-label="Delete funnel"
                       >
                         <TrashIcon className="w-5 h-5" />

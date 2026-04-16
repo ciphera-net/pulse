@@ -16,7 +16,7 @@ function ComparisonTable({ title, competitors }: { title: string, competitors: {
   return (
     <div className="mb-16">
       <h2 className="text-2xl font-bold mb-6 text-white">{title}</h2>
-      <div className="overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-900/50 backdrop-blur-sm">
+      <div className="overflow-hidden rounded-2xl glass-surface">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-neutral-800">
@@ -30,7 +30,7 @@ function ComparisonTable({ title, competitors }: { title: string, competitors: {
           </thead>
           <tbody className="divide-y divide-neutral-800">
             {allFeatures.map((feature) => (
-              <tr key={feature} className="hover:bg-neutral-800/50 transition-colors">
+              <tr key={feature} className="hover:bg-neutral-800/50 transition-colors ease-apple">
                 <td className="p-4 sm:p-6 text-white font-medium text-sm sm:text-base">{feature}</td>
                 {competitors.map((comp) => {
                   const val = comp.features[feature]

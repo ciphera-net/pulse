@@ -53,7 +53,7 @@ export function IntegrationGuide({ integration, children }: IntegrationGuideProp
         {/* * --- Back link --- */}
         <Link
           href="/integrations"
-          className="inline-flex items-center text-sm text-neutral-500 hover:text-brand-orange mb-8 transition-colors"
+          className="inline-flex items-center text-sm text-neutral-500 hover:text-brand-orange mb-8 transition-colors ease-apple"
         >
           <ArrowLeftIcon className="w-4 h-4 mr-2" />
           Back to Integrations
@@ -110,7 +110,7 @@ export function IntegrationGuide({ integration, children }: IntegrationGuideProp
                 <Link
                   key={related.id}
                   href={`/integrations/${related.id}`}
-                  className="group flex items-center gap-4 p-4 bg-neutral-900/50 backdrop-blur-sm border border-neutral-800 rounded-xl hover:border-brand-orange/50 transition-all duration-300"
+                  className="group flex items-center gap-4 p-4 glass-surface rounded-xl hover:border-brand-orange/50 transition-all duration-slow ease-apple"
                 >
                   <div className="p-2 bg-neutral-800 rounded-lg shrink-0 [&_svg]:w-6 [&_svg]:h-6">
                     {related.icon}
@@ -123,7 +123,7 @@ export function IntegrationGuide({ integration, children }: IntegrationGuideProp
                       {related.description}
                     </span>
                   </div>
-                  <ArrowRightIcon className="w-4 h-4 text-neutral-400 group-hover:text-brand-orange shrink-0 transition-colors" />
+                  <ArrowRightIcon className="w-4 h-4 text-neutral-400 group-hover:text-brand-orange shrink-0 transition-colors ease-apple" />
                 </Link>
               ))}
             </div>

@@ -111,13 +111,13 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
                   activeTab === tab
                     ? 'text-white'
                     : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-300'
-                }`}
+                } ease-apple`}
               >
                 {getTabLabel(tab)}
                 <span
-                  className={`absolute inset-x-0 -bottom-px h-[3px] rounded-full transition-all duration-200 ${
+                  className={`absolute inset-x-0 -bottom-px h-[3px] rounded-full transition-[width,background-color] duration-base ${
                     activeTab === tab ? 'bg-brand-orange scale-x-100' : 'bg-transparent scale-x-0'
-                  }`}
+                  } ease-apple`}
                 />
               </button>
             ))}
@@ -125,7 +125,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
           {showViewAll && (
             <button
               onClick={() => setIsModalOpen(true)}
-              className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-lg"
+              className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-lg ease-apple"
               aria-label="View all pages"
             >
               <FrameCornersIcon className="w-4 h-4" weight="bold" />
@@ -147,10 +147,10 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
                   <div
                     key={page.path}
                     onClick={() => onFilter?.({ dimension: 'page', operator: 'is', values: [page.path] })}
-                    className={`relative flex items-center justify-between h-9 group hover:bg-neutral-800/50 rounded-lg px-2 -mx-2 transition-colors${onFilter ? ' cursor-pointer' : ''}`}
+                    className={`interactive-row relative flex items-center justify-between h-9 group rounded-lg px-2 -mx-2${onFilter ? ' cursor-pointer' : ''}`}
                   >
                     <div
-                      className="absolute inset-y-0.5 left-0.5 bg-gradient-to-r from-brand-orange/15 via-brand-orange/8 to-transparent border border-brand-orange/20 shadow-[inset_0_1px_0_rgba(253,94,15,0.08)] rounded-md transition-all"
+                      className="absolute inset-y-0.5 left-0.5 bg-gradient-to-r from-brand-orange/15 via-brand-orange/8 to-transparent border border-brand-orange/20 shadow-[inset_0_1px_0_rgba(253,94,15,0.08)] rounded-md transition-[width,background-color] ease-apple"
                       style={{ width: `${barWidth}%` }}
                     />
                     <div className="relative flex-1 truncate text-white flex items-center">
@@ -162,11 +162,11 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
                         onClick={e => e.stopPropagation()}
                         className="ml-2 flex-shrink-0"
                       >
-                        <ArrowUpRightIcon className="w-3 h-3 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-brand-orange" />
+                        <ArrowUpRightIcon className="w-3 h-3 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-brand-orange ease-apple" />
                       </a>
                     </div>
                     <div className="relative flex items-center gap-2 ml-4">
-                      <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+                      <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
                         {totalPageviews > 0 ? `${Math.round((page.pageviews / totalPageviews) * 100)}%` : ''}
                       </span>
                       <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
@@ -207,7 +207,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
         isOpen={isModalOpen}
         onClose={() => { setIsModalOpen(false); setModalSearch('') }}
         title={getTabLabel(activeTab)}
-        className="max-w-2xl !bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:!bg-neutral-900/60 !border-white/[0.08]"
+        className="max-w-2xl max-h-[90vh] flex flex-col !bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:!bg-neutral-900/60 !border-white/[0.08]"
       >
         <div>
           <input
@@ -218,7 +218,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
             className="w-full px-3 py-2 mb-3 text-sm bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
           />
         </div>
-        <div className="max-h-[80vh]">
+        <div className="flex-1 overflow-y-auto min-h-0">
           {isLoadingFull ? (
             <div className="py-4">
               <ListSkeleton rows={10} />
@@ -230,20 +230,20 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
               <VirtualList
                 items={modalData}
                 estimateSize={36}
-                className="max-h-[80vh] overflow-y-auto pr-2"
+                className="pr-2"
                 renderItem={(page) => {
                   const canFilter = onFilter && page.path
                   return (
                     <div
                       key={page.path}
                       onClick={() => { if (canFilter) { onFilter({ dimension: 'page', operator: 'is', values: [page.path] }); setIsModalOpen(false) } }}
-                      className={`flex items-center justify-between h-9 group hover:bg-neutral-800 rounded-lg px-2 transition-colors${canFilter ? ' cursor-pointer' : ''}`}
+                      className={`interactive-row flex items-center justify-between h-9 group rounded-lg px-2${canFilter ? ' cursor-pointer' : ''}`}
                     >
                       <div className="flex-1 truncate text-white flex items-center">
                         <span className="truncate">{page.path}</span>
                       </div>
                       <div className="flex items-center gap-2 ml-4">
-                        <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+                        <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
                           {modalTotal > 0 ? `${Math.round((page.pageviews / modalTotal) * 100)}%` : ''}
                         </span>
                         <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">

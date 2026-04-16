@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
+import { SPRING } from '@/lib/motion'
 import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
 
 interface SiteNavProps {
@@ -44,14 +45,14 @@ export default function SiteNav({ siteId }: SiteNavProps) {
               isActive(tab.href)
                 ? 'text-white'
                 : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
-            }`}
+            } ease-apple`}
           >
             {tab.label}
             {isActive(tab.href) && (
               <motion.div
                 layoutId="activeTab"
                 className="absolute inset-x-0 -bottom-px h-[3px] bg-brand-orange rounded-full"
-                transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                transition={SPRING}
               />
             )}
           </Link>

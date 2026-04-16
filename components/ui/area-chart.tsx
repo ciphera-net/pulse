@@ -35,6 +35,7 @@ import useMeasure from "react-use-measure";
 import { createPortal } from "react-dom";
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { SPRING, TIMING, EASE_APPLE, DURATION_FAST, DURATION_SLOW } from "@/lib/motion";
 
 // ─── Utils ───────────────────────────────────────────────────────────────────
 
@@ -538,7 +539,7 @@ function DateTicker({ currentIndex, labels, visible }: DateTickerProps) {
       className="overflow-hidden rounded-full bg-zinc-100 px-4 py-1 text-zinc-900"
       layout
       transition={{
-        layout: { type: "spring", stiffness: 400, damping: 35 },
+        layout: SPRING,
       }}
     >
       <div className="relative h-6 overflow-hidden">
@@ -621,6 +622,8 @@ function TooltipDot({
       r={size}
       stroke={strokeColor}
       strokeWidth={strokeWidth}
+      animate={{ scale: visible ? 1.15 : 1 }}
+      transition={SPRING}
     />
   );
 }
@@ -787,16 +790,7 @@ function TooltipContent({ title, rows, children }: TooltipContentProps) {
       }
       className="overflow-hidden"
       initial={false}
-      transition={
-        shouldAnimate
-          ? {
-              type: "spring",
-              stiffness: 500,
-              damping: 35,
-              mass: 0.8,
-            }
-          : { duration: 0 }
-      }
+      transition={shouldAnimate ? SPRING : { duration: 0 }}
     >
       <div className="px-3 py-2.5" ref={measureRef}>
         {title && (
@@ -836,7 +830,7 @@ function TooltipContent({ title, rows, children }: TooltipContentProps) {
               exit={{ opacity: 0, filter: "blur(4px)" }}
               initial={{ opacity: 0, filter: "blur(4px)" }}
               key={markerKey}
-              transition={{ duration: 0.2, ease: "easeOut" }}
+              transition={TIMING}
             >
               {children}
             </motion.div>
@@ -949,21 +943,21 @@ function TooltipBox({
 
   return createPortal(
     <motion.div
-      animate={{ opacity: 1 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
       className={cn("pointer-events-none absolute z-50", className)}
-      exit={{ opacity: 0 }}
-      initial={{ opacity: 0 }}
+      exit={{ opacity: 0, scale: 0.92, y: 4 }}
+      initial={{ opacity: 0, scale: 0.92, y: 4 }}
       ref={tooltipRef}
       style={{ left: finalLeft, top: finalTop }}
-      transition={{ duration: 0.1 }}
+      transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
     >
       <motion.div
         animate={{ scale: 1, opacity: 1, x: 0 }}
-        className="min-w-[140px] overflow-hidden rounded-lg bg-neutral-800/90 text-white shadow-lg backdrop-blur-md"
+        className="min-w-[140px] overflow-hidden rounded-lg glass-overlay text-white shadow-lg"
         initial={{ scale: 0.85, opacity: 0, x: isFlipped ? 20 : -20 }}
         key={flipKey}
         style={{ transformOrigin }}
-        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+        transition={SPRING}
       >
         {children}
       </motion.div>
@@ -1082,6 +1076,7 @@ export function ChartTooltip({
           className="pointer-events-none absolute inset-0"
           height="100%"
           width="100%"
+          style={{ filter: 'drop-shadow(0 0 12px rgba(253, 94, 15, 0.4))' }}
         >
           <g transform={`translate(${margin.left},${margin.top})`}>
             <TooltipIndicator
@@ -1191,12 +1186,23 @@ export function Grid({
   stroke = chartCssVars.grid,
   strokeOpacity = 1,
   strokeWidth = 1,
-  strokeDasharray = "4,4",
+  strokeDasharray,
   fadeHorizontal = true,
   fadeVertical = false,
 }: GridProps) {
   const { xScale, yScale, innerWidth, innerHeight, orientation, barScale } =
     useChart();
+
+  // Compute evenly-distributed row tick values so Grid aligns with YAxis
+  // (YAxis uses the same `min + step * i` logic by default).
+  const computedRowTicks = useMemo(() => {
+    if (rowTickValues) return rowTickValues;
+    const domain = yScale.domain() as [number, number];
+    const min = domain[0];
+    const max = domain[1];
+    const step = (max - min) / (numTicksRows - 1);
+    return Array.from({ length: numTicksRows }, (_, i) => min + step * i);
+  }, [yScale, numTicksRows, rowTickValues]);
 
   const isHorizontalBarChart = orientation === "horizontal" && barScale;
   const columnScale = isHorizontalBarChart ? yScale : xScale;
@@ -1258,13 +1264,12 @@ export function Grid({
       {horizontal && (
         <g mask={fadeHorizontal ? `url(#${hMaskId})` : undefined}>
           <GridRows
-            numTicks={rowTickValues ? undefined : numTicksRows}
             scale={yScale}
             stroke={stroke}
             strokeDasharray={strokeDasharray}
             strokeOpacity={strokeOpacity}
             strokeWidth={strokeWidth}
-            tickValues={rowTickValues}
+            tickValues={computedRowTicks}
             width={innerWidth}
           />
         </g>
@@ -1339,7 +1344,7 @@ function XAxisLabel({
         animate={{ opacity }}
         className="whitespace-nowrap text-neutral-500 text-xs"
         initial={{ opacity: 1 }}
-        transition={{ duration: 0.4, ease: "easeInOut" }}
+        transition={{ duration: DURATION_SLOW, ease: EASE_APPLE }}
       >
         {label}
       </motion.span>
@@ -1576,6 +1581,9 @@ export function Area({
   const pathRef = useRef<SVGPathElement>(null);
   const [pathLength, setPathLength] = useState(0);
   const [clipWidth, setClipWidth] = useState(0);
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => { setHasMounted(true); }, []);
 
   const uniqueId = useId();
   const gradientId = useMemo(
@@ -1705,7 +1713,7 @@ export function Area({
   );
 
   const isHovering = tooltipData !== null || selection?.active === true;
-  const easing = "cubic-bezier(0.85, 0, 0.15, 1)";
+  const easing = "var(--ease-apple)";
 
   return (
     <>
@@ -1802,7 +1810,7 @@ export function Area({
         <motion.g
           animate={{ opacity: isHovering && showHighlight ? 0.6 : 1 }}
           initial={{ opacity: 1 }}
-          transition={{ duration: 0.4, ease: "easeInOut" }}
+          transition={{ duration: DURATION_SLOW, ease: EASE_APPLE }}
         >
           <g mask={fadeEdges ? `url(#${edgeMaskId})` : undefined}>
             <AreaClosed
@@ -1816,16 +1824,22 @@ export function Area({
           </g>
 
           {showLine && (
-            <LinePath
-              curve={curve}
-              data={data}
-              innerRef={pathRef}
-              stroke={`url(#${strokeGradientId})`}
-              strokeLinecap="round"
-              strokeWidth={strokeWidth}
-              x={(d) => xScale(xAccessor(d)) ?? 0}
-              y={getY}
-            />
+            <motion.g
+              initial={hasMounted ? false : { pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: 1 }}
+              transition={{ duration: 0.6, ease: EASE_APPLE }}
+            >
+              <LinePath
+                curve={curve}
+                data={data}
+                innerRef={pathRef}
+                stroke={`url(#${strokeGradientId})`}
+                strokeLinecap="round"
+                strokeWidth={strokeWidth}
+                x={(d) => xScale(xAccessor(d)) ?? 0}
+                y={getY}
+              />
+            </motion.g>
           )}
         </motion.g>
       </g>
@@ -1848,7 +1862,7 @@ export function Area({
               strokeDasharray: animatedDasharray,
               strokeDashoffset: offsetSpring,
             }}
-            transition={{ duration: 0.4, ease: "easeInOut" }}
+            transition={{ duration: DURATION_SLOW, ease: EASE_APPLE }}
           />
         )}
     </>
@@ -1876,7 +1890,7 @@ export function SegmentBackground() {
       height={innerHeight}
       initial={{ opacity: 0 }}
       rx={4}
-      transition={{ duration: 0.2 }}
+      transition={TIMING}
       width={width}
       x={x}
       y={0}
@@ -1902,7 +1916,7 @@ export function SegmentLineFrom() {
       stroke={chartCssVars.linePrimary}
       strokeDasharray="4,3"
       strokeWidth={1.5}
-      transition={{ duration: 0.2 }}
+      transition={TIMING}
       x1={x}
       x2={x}
       y1={0}
@@ -1929,7 +1943,7 @@ export function SegmentLineTo() {
       stroke={chartCssVars.linePrimary}
       strokeDasharray="4,3"
       strokeWidth={1.5}
-      transition={{ duration: 0.2 }}
+      transition={TIMING}
       x1={x}
       x2={x}
       y1={0}
@@ -2272,7 +2286,7 @@ function ChartInner({
               style={{
                 transition: isLoaded
                   ? "none"
-                  : `width ${animationDuration}ms cubic-bezier(0.85, 0, 0.15, 1)`,
+                  : `width ${animationDuration}ms var(--ease-apple)`,
               }}
               width={isLoaded ? innerWidth : 0}
               x={0}

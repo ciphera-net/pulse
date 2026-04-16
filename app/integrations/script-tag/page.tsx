@@ -64,7 +64,7 @@ export default function ScriptTagPage() {
         <div className="flex-grow w-full max-w-4xl mx-auto px-4 pt-20 pb-10 z-10">
           <Link
             href="/integrations"
-            className="inline-flex items-center text-sm text-neutral-500 hover:text-brand-orange mb-8 transition-colors"
+            className="inline-flex items-center text-sm text-neutral-500 hover:text-brand-orange mb-8 transition-colors ease-apple"
           >
             <ArrowLeftIcon className="w-4 h-4 mr-2" />
             Back to Integrations

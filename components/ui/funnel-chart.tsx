@@ -11,6 +11,7 @@ import {
 } from "react";
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { SPRING, EASE_APPLE, DURATION_SLOW } from "@/lib/motion";
 
 // ─── Utils ───────────────────────────────────────────────────────────────────
 
@@ -205,10 +206,13 @@ function HRing({
     damping: 24 - ringIndex * 3,
   };
   const scaleY = useSpring(1, ringSpring);
+  const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
     scaleY.set(hovered ? extraScale : 1);
   }, [hovered, scaleY, extraScale]);
+
+  useEffect(() => { setHasMounted(true); }, []);
 
   return (
     <motion.path
@@ -216,6 +220,9 @@ function HRing({
       fill={fill ?? color}
       opacity={opacity}
       style={{ scaleY, transformOrigin: "center center" }}
+      initial={hasMounted ? false : { pathLength: 0, opacity: 0 }}
+      animate={{ pathLength: 1, opacity: opacity }}
+      transition={{ duration: 0.6, ease: EASE_APPLE }}
     />
   );
 }
@@ -243,10 +250,13 @@ function VRing({
     damping: 24 - ringIndex * 3,
   };
   const scaleX = useSpring(1, ringSpring);
+  const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
     scaleX.set(hovered ? extraScale : 1);
   }, [hovered, scaleX, extraScale]);
+
+  useEffect(() => { setHasMounted(true); }, []);
 
   return (
     <motion.path
@@ -254,6 +264,9 @@ function VRing({
       fill={fill ?? color}
       opacity={opacity}
       style={{ scaleX, transformOrigin: "center center" }}
+      initial={hasMounted ? false : { pathLength: 0, opacity: 0 }}
+      animate={{ pathLength: 1, opacity: opacity }}
+      transition={{ duration: 0.6, ease: EASE_APPLE }}
     />
   );
 }
@@ -574,8 +587,8 @@ function SegmentLabel({
         initial={{ opacity: 0 }}
         transition={{
           delay: index * staggerDelay + 0.25,
-          duration: 0.35,
-          ease: "easeOut",
+          duration: DURATION_SLOW,
+          ease: EASE_APPLE,
         }}
       >
         {isHorizontal ? (
@@ -638,8 +651,8 @@ function SegmentLabel({
       }}
       transition={{
         delay: index * staggerDelay + 0.25,
-        duration: 0.35,
-        ease: "easeOut",
+        duration: DURATION_SLOW,
+        ease: EASE_APPLE,
       }}
     >
       <div
@@ -904,7 +917,7 @@ export function FunnelChart({
                 onMouseEnter={() => setHoveredIndex(i)}
                 onMouseLeave={() => setHoveredIndex(null)}
                 style={{ ...posStyle, zIndex: 20 }}
-                transition={{ type: "spring", stiffness: 300, damping: 24 }}
+                transition={SPRING}
               >
                 <SegmentLabel
                   align={labelAlign}

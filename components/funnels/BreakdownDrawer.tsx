@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { getFunnelBreakdown, type FunnelBreakdown } from '@/lib/api/funnels'
 import { DIMENSION_LABELS } from '@/lib/filters'
+import { ChartPieSlice } from '@phosphor-icons/react'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 const BREAKDOWN_DIMENSIONS = [
   'device', 'country', 'browser', 'os',
@@ -70,7 +72,7 @@ export default function BreakdownDrawer({ siteId, funnelId, stepIndex, stepName,
                 activeDimension === dim
                   ? 'bg-brand-orange-button text-white'
                   : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 hover:bg-neutral-200 dark:hover:bg-neutral-700'
-              }`}
+              } ease-apple`}
             >
               {DIMENSION_LABELS[dim] || dim}
             </button>
@@ -86,7 +88,11 @@ export default function BreakdownDrawer({ siteId, funnelId, stepIndex, stepName,
               ))}
             </div>
           ) : !breakdown || breakdown.entries.length === 0 ? (
-            <p className="text-sm text-neutral-500">No data for this dimension</p>
+            <EmptyState
+              title="No data for this dimension"
+              icon={<ChartPieSlice weight="regular" />}
+              className="py-6"
+            />
           ) : (
             <div className="space-y-2">
               {breakdown.entries.map(entry => (
