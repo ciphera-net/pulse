@@ -45,10 +45,5 @@ export function getThisYearRange(): { start: string; end: string } {
   return { start: formatDate(jan1), end: formatDate(today) }
 }
 
-/** All-time range — fixed 2020-01-01 floor (before Pulse existed) to today */
-export function getAllTimeRange(): { start: string; end: string } {
-  return { start: '2020-01-01', end: formatDate(new Date()) }
-}
-
 // Re-export for convenience
 export { getDateRange, formatDate }
