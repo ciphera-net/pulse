@@ -9,17 +9,9 @@ import * as Flags from 'country-flag-icons/react/3x2'
 const DottedMap = dynamic(() => import('@/components/dashboard/DottedMap'), { ssr: false })
 import { getDateRange, formatDate, Select } from '@ciphera-net/ui'
 import { ArrowSquareOut, CloudArrowUp } from '@phosphor-icons/react'
-import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-} from 'recharts'
+import { AreaChart, Area, Grid, XAxis, YAxis, ChartTooltip } from '@/components/ui/area-chart'
+import { BarChart, Bar, Grid as BarGrid, BarXAxis, BarValueAxis, ChartTooltip as BarTooltip } from '@/components/ui/bar-chart'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { useDashboard, useBunnyStatus, useBunnyOverview, useBunnyDailyStats, useBunnyTopCountries } from '@/lib/swr/dashboard'
 import { SkeletonLine, StatCardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 
@@ -285,75 +277,47 @@ export default function CDNPage() {
       <div className="glass-surface rounded-2xl p-6 mb-6">
         <h2 className="text-sm font-semibold text-white mb-4">Bandwidth</h2>
         {daily.length > 0 ? (
-          <ResponsiveContainer width="100%" height={280}>
-            <AreaChart data={daily} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-              <defs>
-                <linearGradient id="bandwidthGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#FD5E0F" stopOpacity={0.2} />
-                  <stop offset="100%" stopColor="#FD5E0F" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="cachedGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#22C55E" stopOpacity={0.15} />
-                  <stop offset="100%" stopColor="#22C55E" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-neutral-800" />
-              <XAxis
-                dataKey="date"
-                tickFormatter={formatDateShort}
-                tick={{ fontSize: 12, fill: 'currentColor' }}
-                className="text-neutral-500"
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                tickFormatter={(v) => formatBytes(v)}
-                tick={{ fontSize: 12, fill: 'currentColor' }}
-                className="text-neutral-500"
-                axisLine={false}
-                tickLine={false}
-                width={60}
-              />
-              <Tooltip
-                content={({ active, payload, label }) => {
-                  if (!active || !payload?.length) return null
-                  return (
-                    <div className="rounded-lg border border-white/[0.08] bg-neutral-900/80 px-3 py-2 shadow-lg text-sm">
-                      <p className="text-neutral-400 mb-1">{formatDateShort(label)}</p>
-                      <p className="text-white font-medium">
-                        Total: {formatBytes(payload[0]?.value as number)}
-                      </p>
-                      {payload[1] && (
-                        <p className="text-green-400">
-                          Cached: {formatBytes(payload[1]?.value as number)}
-                        </p>
-                      )}
-                    </div>
-                  )
-                }}
-              />
-              <Area
-                type="monotone"
-                dataKey="bandwidth_used"
-                stroke="#FD5E0F"
-                strokeWidth={2}
-                fill="url(#bandwidthGrad)"
-                name="Total"
-              />
-              <Area
-                type="monotone"
-                dataKey="bandwidth_cached"
-                stroke="#22C55E"
-                strokeWidth={2}
-                fill="url(#cachedGrad)"
-                name="Cached"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+          <AreaChart
+            data={daily as unknown as Record<string, unknown>[]}
+            xDataKey="date"
+            aspectRatio="auto"
+            className="h-[280px]"
+            margin={{ top: 16, right: 16, bottom: 40, left: 64 }}
+          >
+            <Grid />
+            <XAxis />
+            <YAxis formatValue={(v) => formatBytes(v)} />
+            <Area
+              dataKey="bandwidth_used"
+              fill="var(--chart-1)"
+              stroke="var(--chart-1)"
+            />
+            <Area
+              dataKey="bandwidth_cached"
+              fill="var(--chart-3)"
+              stroke="var(--chart-3)"
+            />
+            <ChartTooltip
+              rows={(point) => [
+                {
+                  color: 'var(--chart-1)',
+                  label: 'Total',
+                  value: formatBytes((point.bandwidth_used as number) ?? 0),
+                },
+                {
+                  color: 'var(--chart-3)',
+                  label: 'Cached',
+                  value: formatBytes((point.bandwidth_cached as number) ?? 0),
+                },
+              ]}
+            />
+          </AreaChart>
         ) : (
-          <div className="h-[280px] flex items-center justify-center text-neutral-500 text-sm">
-            No bandwidth data for this period.
-          </div>
+          <EmptyState
+            title="No bandwidth data"
+            description="Data will appear here once your CDN starts serving traffic."
+            className="h-[280px]"
+          />
         )}
       </div>
 
@@ -363,45 +327,33 @@ export default function CDNPage() {
         <div className="glass-surface rounded-2xl p-6">
           <h2 className="text-sm font-semibold text-white mb-4">Requests</h2>
           {daily.length > 0 ? (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={daily} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-neutral-800" />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={formatDateShort}
-                  tick={{ fontSize: 11, fill: 'currentColor' }}
-                  className="text-neutral-500"
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tickFormatter={(v) => formatNumber(v)}
-                  tick={{ fontSize: 11, fill: 'currentColor' }}
-                  className="text-neutral-500"
-                  axisLine={false}
-                  tickLine={false}
-                  width={50}
-                />
-                <Tooltip
-                  content={({ active, payload, label }) => {
-                    if (!active || !payload?.length) return null
-                    return (
-                      <div className="rounded-lg border border-white/[0.08] bg-neutral-900/80 px-3 py-2 shadow-lg text-sm">
-                        <p className="text-neutral-400 mb-1">{formatDateShort(label)}</p>
-                        <p className="text-white font-medium">
-                          {formatNumber(payload[0]?.value as number)} requests
-                        </p>
-                      </div>
-                    )
-                  }}
-                />
-                <Bar dataKey="requests_served" fill="#FD5E0F" radius={[3, 3, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <BarChart
+              data={daily as unknown as Record<string, unknown>[]}
+              xDataKey="date"
+              aspectRatio="auto"
+              className="h-[220px]"
+              margin={{ top: 16, right: 16, bottom: 40, left: 56 }}
+            >
+              <BarGrid />
+              <BarXAxis />
+              <BarValueAxis formatValue={(v) => formatNumber(v)} />
+              <Bar dataKey="requests_served" fill="var(--chart-1)" />
+              <BarTooltip
+                rows={(point) => [
+                  {
+                    color: 'var(--chart-1)',
+                    label: 'Requests',
+                    value: formatNumber((point.requests_served as number) ?? 0),
+                  },
+                ]}
+              />
+            </BarChart>
           ) : (
-            <div className="h-[220px] flex items-center justify-center text-neutral-500 text-sm">
-              No request data for this period.
-            </div>
+            <EmptyState
+              title="No request data"
+              description="Data will appear here once your CDN starts serving traffic."
+              className="h-[220px]"
+            />
           )}
         </div>
 
@@ -409,57 +361,50 @@ export default function CDNPage() {
         <div className="glass-surface rounded-2xl p-6">
           <h2 className="text-sm font-semibold text-white mb-4">Errors</h2>
           {daily.length > 0 ? (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart
-                data={daily.map((d) => ({
-                  date: d.date,
-                  '3xx': d.error_3xx,
-                  '4xx': d.error_4xx,
-                  '5xx': d.error_5xx,
-                }))}
-                margin={{ top: 4, right: 4, bottom: 0, left: 0 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-neutral-800" />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={formatDateShort}
-                  tick={{ fontSize: 11, fill: 'currentColor' }}
-                  className="text-neutral-500"
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tickFormatter={(v) => formatNumber(v)}
-                  tick={{ fontSize: 11, fill: 'currentColor' }}
-                  className="text-neutral-500"
-                  axisLine={false}
-                  tickLine={false}
-                  width={50}
-                />
-                <Tooltip
-                  content={({ active, payload, label }) => {
-                    if (!active || !payload?.length) return null
-                    return (
-                      <div className="rounded-lg border border-white/[0.08] bg-neutral-900/80 px-3 py-2 shadow-lg text-sm">
-                        <p className="text-neutral-400 mb-1">{formatDateShort(label)}</p>
-                        {payload.map((entry) => (
-                          <p key={entry.name} style={{ color: entry.color }} className="font-medium">
-                            {entry.name}: {formatNumber(entry.value as number)}
-                          </p>
-                        ))}
-                      </div>
-                    )
-                  }}
-                />
-                <Bar dataKey="3xx" stackId="errors" fill="#FACC15" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="4xx" stackId="errors" fill="#F97316" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="5xx" stackId="errors" fill="#EF4444" radius={[3, 3, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <BarChart
+              data={daily.map((d) => ({
+                date: d.date,
+                '3xx': d.error_3xx,
+                '4xx': d.error_4xx,
+                '5xx': d.error_5xx,
+              }))}
+              xDataKey="date"
+              aspectRatio="auto"
+              className="h-[220px]"
+              margin={{ top: 16, right: 16, bottom: 40, left: 56 }}
+            >
+              <BarGrid />
+              <BarXAxis />
+              <BarValueAxis formatValue={(v) => formatNumber(v)} />
+              <Bar dataKey="3xx" stackId="errors" fill="var(--chart-5)" radius={0} />
+              <Bar dataKey="4xx" stackId="errors" fill="var(--chart-1)" radius={0} />
+              <Bar dataKey="5xx" stackId="errors" fill="var(--color-error)" radius={3} />
+              <BarTooltip
+                rows={(point) => [
+                  {
+                    color: 'var(--chart-5)',
+                    label: '3xx',
+                    value: formatNumber((point['3xx'] as number) ?? 0),
+                  },
+                  {
+                    color: 'var(--chart-1)',
+                    label: '4xx',
+                    value: formatNumber((point['4xx'] as number) ?? 0),
+                  },
+                  {
+                    color: 'var(--color-error)',
+                    label: '5xx',
+                    value: formatNumber((point['5xx'] as number) ?? 0),
+                  },
+                ]}
+              />
+            </BarChart>
           ) : (
-            <div className="h-[220px] flex items-center justify-center text-neutral-500 text-sm">
-              No error data for this period.
-            </div>
+            <EmptyState
+              title="No error data"
+              description="Data will appear here once your CDN starts serving traffic."
+              className="h-[220px]"
+            />
           )}
         </div>
       </div>
