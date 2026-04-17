@@ -1,12 +1,8 @@
 'use client'
 
 import { TrendUp } from '@phosphor-icons/react'
-import { Pie, PieChart, Tooltip } from 'recharts'
 
-import {
-  ChartContainer,
-  type ChartConfig,
-} from '@/components/charts'
+import { DonutChart } from '@/components/ui/donut-chart'
 import type { FrustrationSummary } from '@/lib/api/stats'
 import { WidgetSkeleton } from '@/components/skeletons'
 
@@ -29,33 +25,6 @@ const COLORS = {
   prev_dead_clicks: 'rgba(180, 83, 9, 0.35)',
 } as const
 
-const chartConfig = {
-  count: { label: 'Count' },
-  rage_clicks: { label: 'Rage Clicks', color: COLORS.rage_clicks },
-  dead_clicks: { label: 'Dead Clicks', color: COLORS.dead_clicks },
-  prev_rage_clicks: { label: 'Prev Rage Clicks', color: COLORS.prev_rage_clicks },
-  prev_dead_clicks: { label: 'Prev Dead Clicks', color: COLORS.prev_dead_clicks },
-} satisfies ChartConfig
-
-function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: { type: string; count: number; fill: string } }> }) {
-  if (!active || !payload?.length) return null
-  const item = payload[0].payload
-  return (
-    <div className="flex items-center gap-2 rounded-lg border border-neutral-700 bg-neutral-800 px-2.5 py-1.5 text-xs shadow-xl">
-      <div
-        className="h-2.5 w-2.5 shrink-0 rounded-full"
-        style={{ backgroundColor: item.fill }}
-      />
-      <span className="text-neutral-400">
-        {LABELS[item.type] ?? item.type}
-      </span>
-      <span className="font-mono font-medium tabular-nums text-neutral-50">
-        {item.count.toLocaleString()}
-      </span>
-    </div>
-  )
-}
-
 export default function FrustrationTrend({ summary, loading }: FrustrationTrendProps) {
   if (loading || !summary) return <WidgetSkeleton />
 
@@ -70,11 +39,11 @@ export default function FrustrationTrend({ summary, loading }: FrustrationTrendP
   const hasPrevious = totalPrevious > 0
 
   const chartData = [
-    { type: 'rage_clicks', count: summary.rage_clicks, fill: COLORS.rage_clicks },
-    { type: 'dead_clicks', count: summary.dead_clicks, fill: COLORS.dead_clicks },
-    { type: 'prev_rage_clicks', count: summary.prev_rage_clicks, fill: COLORS.prev_rage_clicks },
-    { type: 'prev_dead_clicks', count: summary.prev_dead_clicks, fill: COLORS.prev_dead_clicks },
-  ].filter(d => d.count > 0)
+    { label: LABELS.rage_clicks, value: summary.rage_clicks, fill: COLORS.rage_clicks },
+    { label: LABELS.dead_clicks, value: summary.dead_clicks, fill: COLORS.dead_clicks },
+    { label: LABELS.prev_rage_clicks, value: summary.prev_rage_clicks, fill: COLORS.prev_rage_clicks },
+    { label: LABELS.prev_dead_clicks, value: summary.prev_dead_clicks, fill: COLORS.prev_dead_clicks },
+  ].filter(d => d.value > 0)
 
   if (!hasData) {
     return (
@@ -115,24 +84,18 @@ export default function FrustrationTrend({ summary, loading }: FrustrationTrendP
           : 'Rage vs. dead click breakdown'}
       </p>
 
-      <div className="flex-1">
-        <ChartContainer
-          config={chartConfig}
-          className="mx-auto aspect-square max-h-[250px]"
-        >
-          <PieChart>
-            <Tooltip
-              cursor={false}
-              content={<CustomTooltip />}
-            />
-            <Pie
-              data={chartData}
-              dataKey="count"
-              nameKey="type"
-              stroke="0"
-            />
-          </PieChart>
-        </ChartContainer>
+      <div className="flex-1 flex items-center justify-center">
+        <DonutChart
+          data={chartData}
+          innerRadius={0.6}
+          size={220}
+          centerLabel={
+            <div className="text-center">
+              <p className="text-lg font-semibold text-white">{totalCurrent.toLocaleString()}</p>
+              <p className="text-xs text-neutral-400">total</p>
+            </div>
+          }
+        />
       </div>
 
       <div className="flex items-center justify-center gap-2 text-sm font-medium pt-2">
