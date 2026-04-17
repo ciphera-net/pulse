@@ -1,6 +1,8 @@
 'use client'
 
 import React, { useCallback, useEffect, useState } from 'react'
+import { motion } from 'framer-motion'
+import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { useParams, useRouter } from 'next/navigation'
 import { ApiError } from '@/lib/api/client'
@@ -212,7 +214,12 @@ export default function FunnelReportPage() {
         </div>
 
         {/* Chart */}
-        <div className="glass-surface rounded-2xl overflow-hidden shadow-sm p-6 mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0 }}
+          className="glass-surface rounded-2xl overflow-hidden shadow-sm p-6 mb-8"
+        >
           <h3 className="text-lg font-semibold text-white mb-6">
             Funnel Visualization
           </h3>
@@ -226,11 +233,16 @@ export default function FunnelReportPage() {
             labelOrientation="vertical"
             style={{ aspectRatio: '4 / 1' }}
           />
-        </div>
+        </motion.div>
 
         {/* Conversion Trends */}
         {trends && trends.dates.length > 1 && (
-          <div className="glass-surface rounded-2xl overflow-hidden shadow-sm p-6 mb-8">
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0.05 }}
+            className="glass-surface rounded-2xl overflow-hidden shadow-sm p-6 mb-8"
+          >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-white">
                 Conversion Trends
@@ -298,11 +310,16 @@ export default function FunnelReportPage() {
                 }}
               />
             </LineChart>
-          </div>
+          </motion.div>
         )}
 
         {/* Detailed Stats Table */}
-        <div className="glass-surface rounded-2xl overflow-hidden">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0.1 }}
+          className="glass-surface rounded-2xl overflow-hidden"
+        >
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="bg-neutral-800/50 border-b border-neutral-800">
@@ -385,7 +402,7 @@ export default function FunnelReportPage() {
               </tbody>
             </table>
           </div>
-        </div>
+        </motion.div>
       </div>
 
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

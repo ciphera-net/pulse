@@ -245,7 +245,12 @@ export default function CDNPage() {
       </div>
 
       {/* Overview cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0 }}
+        className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8"
+      >
         <OverviewCard
           label="Bandwidth"
           value={overview ? formatBytes(overview.total_bandwidth) : '-'}
@@ -273,10 +278,15 @@ export default function CDNPage() {
           change={errorsChange}
           invertColor
         />
-      </div>
+      </motion.div>
 
       {/* Bandwidth chart */}
-      <div className="glass-surface rounded-2xl p-6 mb-6">
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0.05 }}
+        className="glass-surface rounded-2xl p-6 mb-6"
+      >
         <h2 className="text-sm font-semibold text-white mb-4">Bandwidth</h2>
         {daily.length > 0 ? (
           <AreaChart
@@ -321,10 +331,15 @@ export default function CDNPage() {
             className="h-[280px]"
           />
         )}
-      </div>
+      </motion.div>
 
       {/* Requests + Errors charts side by side */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0.1 }}
+        className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6"
+      >
         {/* Requests chart */}
         <div className="glass-surface rounded-2xl p-6">
           <h2 className="text-sm font-semibold text-white mb-4">Requests</h2>
@@ -409,10 +424,15 @@ export default function CDNPage() {
             />
           )}
         </div>
-      </div>
+      </motion.div>
 
       {/* Traffic Distribution */}
-      <div className="glass-surface rounded-2xl p-6">
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0.15 }}
+        className="glass-surface rounded-2xl p-6"
+      >
         <h2 className="text-sm font-semibold text-white mb-4">Traffic Distribution</h2>
         {countries.length > 0 ? (
           <>
@@ -464,7 +484,7 @@ export default function CDNPage() {
             No geographic data for this period.
           </div>
         )}
-      </div>
+      </motion.div>
     </div>
   )
 }

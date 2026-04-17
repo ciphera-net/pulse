@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import { motion } from 'framer-motion'
+import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 import { deleteFunnel, type Funnel } from '@/lib/api/funnels'
 import { useFunnels } from '@/lib/swr/dashboard'
 import { toast, PlusIcon, ArrowRightIcon, ChevronLeftIcon, TrashIcon, Button } from '@ciphera-net/ui'
@@ -83,9 +85,14 @@ export default function FunnelsPage() {
           </div>
         ) : (
           <div className="grid gap-4">
-            {funnels.map((funnel) => (
-              <Link
+            {funnels.map((funnel, index) => (
+              <motion.div
                 key={funnel.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: index * 0.05 }}
+              >
+              <Link
                 href={`/sites/${siteId}/funnels/${funnel.id}`}
                 className="block group"
               >
@@ -126,6 +133,7 @@ export default function FunnelsPage() {
                   </div>
                 </div>
               </Link>
+              </motion.div>
             ))}
           </div>
         )}
