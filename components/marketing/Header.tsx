@@ -15,21 +15,21 @@ import {
     NavigationMenuList,
     NavigationMenuTrigger,
 } from '@/components/ui/navigation-menu';
-import { LucideIcon } from 'lucide-react';
+import type { Icon } from '@phosphor-icons/react';
 import {
-    BarChart3,
+    ChartBar,
     Eye,
     Funnel,
-    Send,
+    PaperPlaneTilt,
     FileText,
-    Puzzle,
-    HelpCircle,
-} from 'lucide-react';
+    PuzzlePiece,
+    Question,
+} from '@phosphor-icons/react';
 
 type LinkItem = {
     title: string;
     href: string;
-    icon?: LucideIcon;
+    icon?: Icon;
     description?: string;
 };
 
@@ -37,7 +37,7 @@ const featureLinks: LinkItem[] = [
     {
         title: 'Dashboard',
         href: '/features#dashboard',
-        icon: BarChart3,
+        icon: ChartBar,
         description: 'Real-time traffic overview',
     },
     {
@@ -55,7 +55,7 @@ const featureLinks: LinkItem[] = [
     {
         title: 'Email Reports',
         href: '/features#reports',
-        icon: Send,
+        icon: PaperPlaneTilt,
         description: 'Scheduled inbox summaries',
     },
 ];
@@ -70,13 +70,13 @@ const resourceLinks: LinkItem[] = [
     {
         title: 'Integrations',
         href: '/integrations',
-        icon: Puzzle,
+        icon: PuzzlePiece,
         description: '75+ framework guides',
     },
     {
         title: 'FAQ',
         href: '/faq',
-        icon: HelpCircle,
+        icon: Question,
         description: 'Common questions answered',
     },
 ];
@@ -102,7 +102,7 @@ export function Header() {
                 'border-white/[0.06]': scrolled,
             })}
         >
-            <div className={cn("absolute inset-0 -z-10 transition-opacity duration-300", scrolled ? "opacity-100 backdrop-blur-xl bg-neutral-950/60 supports-[backdrop-filter]:bg-neutral-950/50" : "opacity-0")} />
+            <div className={cn("absolute inset-0 -z-10 transition-opacity duration-base", scrolled ? "opacity-100 backdrop-blur-xl bg-neutral-950/60 supports-[backdrop-filter]:bg-neutral-950/50" : "opacity-0")} />
             <nav className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6 my-3">
                 <div className="flex items-center gap-5">
                     <Link href="/" className="hover:bg-accent rounded-md p-2 flex items-center gap-2">
@@ -204,7 +204,7 @@ export function Header() {
                             className="flex flex-row gap-x-2 rounded-sm p-2 transition-colors hover:bg-white/[0.06]"
                         >
                             <div className="flex aspect-square size-12 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.05] shadow-sm p-2">
-                                <BarChart3 className="text-foreground size-5" />
+                                <ChartBar className="text-foreground size-5" />
                             </div>
                             <div className="flex flex-col items-start justify-center">
                                 <span className="text-sm font-medium">Pricing</span>
@@ -240,7 +240,7 @@ function MobileMenu({ open, children, className, ...props }: MobileMenuProps) {
             <div
                 data-slot={open ? 'open' : 'closed'}
                 className={cn(
-                    'data-[slot=open]:animate-in data-[slot=open]:zoom-in-95 ease-out',
+                    'data-[slot=open]:animate-in data-[slot=open]:zoom-in-95 ease-apple',
                     'size-full p-4',
                     className,
                 )}
