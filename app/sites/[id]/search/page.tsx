@@ -1,6 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
+import { cn } from '@/lib/utils'
 import { useParams } from 'next/navigation'
 import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { Select, DatePicker } from '@ciphera-net/ui'
@@ -308,29 +311,30 @@ export default function SearchConsolePage() {
       )}
 
       {/* View toggle */}
-      <div className="mb-6">
-        <div className="inline-flex bg-neutral-800 rounded-lg p-1">
+      <div className="flex gap-1 mb-6">
+        {(['queries', 'pages'] as const).map((tab) => (
           <button
-            onClick={() => { setActiveView('queries'); setExpandedQuery(null); setExpandedData([]) }}
-            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all cursor-pointer ${
-              activeView === 'queries'
-                ? 'bg-neutral-700 text-white shadow-sm'
-                : 'text-neutral-400 hover:text-neutral-300'
-            } ease-apple`}
+            key={tab}
+            onClick={() => {
+              setActiveView(tab)
+              if (tab === 'queries') { setExpandedQuery(null); setExpandedData([]) }
+              else { setExpandedPage(null); setExpandedData([]) }
+            }}
+            className={cn(
+              'relative px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-fast ease-apple cursor-pointer',
+              activeView === tab ? 'text-white' : 'text-neutral-400 hover:text-white'
+            )}
           >
-            Top Queries
+            {tab === 'queries' ? 'Top Queries' : 'Top Pages'}
+            {activeView === tab && (
+              <motion.div
+                layoutId="search-tab-indicator"
+                className="absolute inset-0 glass-surface rounded-lg -z-10"
+                transition={{ type: 'spring', stiffness: 400, damping: 35 }}
+              />
+            )}
           </button>
-          <button
-            onClick={() => { setActiveView('pages'); setExpandedPage(null); setExpandedData([]) }}
-            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all cursor-pointer ${
-              activeView === 'pages'
-                ? 'bg-neutral-700 text-white shadow-sm'
-                : 'text-neutral-400 hover:text-neutral-300'
-            } ease-apple`}
-          >
-            Top Pages
-          </button>
-        </div>
+        ))}
       </div>
 
       {/* Queries table */}
@@ -513,7 +517,7 @@ function OverviewCard({
   const isNegative = change ? (invertChange ? change.value > 0 : change.value < 0) : false
 
   return (
-    <div className="glass-surface p-4 rounded-2xl">
+    <div className="glass-surface p-6 rounded-2xl">
       <p className="text-xs font-medium text-neutral-400 mb-1">{label}</p>
       <p className="text-2xl font-semibold tabular-nums text-white">{value}</p>
       {change && (
@@ -558,44 +562,54 @@ function QueryRow({
         <td className="px-4 py-3 text-right text-neutral-300 tabular-nums">{formatCTR(row.ctr)}</td>
         <td className="px-4 py-3 text-right text-neutral-300 tabular-nums">{formatPosition(row.position)}</td>
       </tr>
-      {isExpanded && (
-        <tr className="bg-neutral-800/30">
-          <td colSpan={6} className="px-4 py-3">
-            {expandedLoading ? (
-              <div className="space-y-2 py-1">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <SkeletonLine key={i} className="h-4 w-full" />
-                ))}
-              </div>
-            ) : expandedData.length === 0 ? (
-              <EmptyState title="No pages for this query" className="py-3" />
-            ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr>
-                    <th className="text-left px-2 py-1.5 text-xs font-medium text-neutral-500">Page</th>
-                    <th className="text-right px-2 py-1.5 text-xs font-medium text-neutral-500">Clicks</th>
-                    <th className="text-right px-2 py-1.5 text-xs font-medium text-neutral-500">Impressions</th>
-                    <th className="text-right px-2 py-1.5 text-xs font-medium text-neutral-500">CTR</th>
-                    <th className="text-right px-2 py-1.5 text-xs font-medium text-neutral-500">Position</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {expandedData.map((sub) => (
-                    <tr key={sub.page} className="border-t border-neutral-700/50">
-                      <td className="px-2 py-1.5 text-neutral-300 max-w-md truncate" title={stripProtocol(sub.page)}>{stripProtocol(sub.page)}</td>
-                      <td className="px-2 py-1.5 text-right text-neutral-400 tabular-nums">{sub.clicks.toLocaleString()}</td>
-                      <td className="px-2 py-1.5 text-right text-neutral-400 tabular-nums">{sub.impressions.toLocaleString()}</td>
-                      <td className="px-2 py-1.5 text-right text-neutral-400 tabular-nums">{formatCTR(sub.ctr)}</td>
-                      <td className="px-2 py-1.5 text-right text-neutral-400 tabular-nums">{formatPosition(sub.position)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </td>
-        </tr>
-      )}
+      <AnimatePresence>
+        {isExpanded && (
+          <tr className="bg-neutral-800/30">
+            <td colSpan={6} className="px-4 py-0 overflow-hidden">
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: DURATION_FAST, ease: EASE_APPLE as [number, number, number, number] }}
+                className="py-3"
+              >
+                {expandedLoading ? (
+                  <div className="space-y-2 py-1">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <SkeletonLine key={i} className="h-4 w-full" />
+                    ))}
+                  </div>
+                ) : expandedData.length === 0 ? (
+                  <EmptyState title="No pages for this query" className="py-3" />
+                ) : (
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr>
+                        <th className="text-left px-2 py-1.5 text-xs font-medium text-neutral-500">Page</th>
+                        <th className="text-right px-2 py-1.5 text-xs font-medium text-neutral-500">Clicks</th>
+                        <th className="text-right px-2 py-1.5 text-xs font-medium text-neutral-500">Impressions</th>
+                        <th className="text-right px-2 py-1.5 text-xs font-medium text-neutral-500">CTR</th>
+                        <th className="text-right px-2 py-1.5 text-xs font-medium text-neutral-500">Position</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {expandedData.map((sub) => (
+                        <tr key={sub.page} className="border-t border-neutral-700/50">
+                          <td className="px-2 py-1.5 text-neutral-300 max-w-md truncate" title={stripProtocol(sub.page)}>{stripProtocol(sub.page)}</td>
+                          <td className="px-2 py-1.5 text-right text-neutral-400 tabular-nums">{sub.clicks.toLocaleString()}</td>
+                          <td className="px-2 py-1.5 text-right text-neutral-400 tabular-nums">{sub.impressions.toLocaleString()}</td>
+                          <td className="px-2 py-1.5 text-right text-neutral-400 tabular-nums">{formatCTR(sub.ctr)}</td>
+                          <td className="px-2 py-1.5 text-right text-neutral-400 tabular-nums">{formatPosition(sub.position)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </motion.div>
+            </td>
+          </tr>
+        )}
+      </AnimatePresence>
     </>
   )
 }
@@ -629,44 +643,54 @@ function PageRow({
         <td className="px-4 py-3 text-right text-neutral-300 tabular-nums">{formatCTR(row.ctr)}</td>
         <td className="px-4 py-3 text-right text-neutral-300 tabular-nums">{formatPosition(row.position)}</td>
       </tr>
-      {isExpanded && (
-        <tr className="bg-neutral-800/30">
-          <td colSpan={6} className="px-4 py-3">
-            {expandedLoading ? (
-              <div className="space-y-2 py-1">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <SkeletonLine key={i} className="h-4 w-full" />
-                ))}
-              </div>
-            ) : expandedData.length === 0 ? (
-              <EmptyState title="No queries for this page" className="py-3" />
-            ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr>
-                    <th className="text-left px-2 py-1.5 text-xs font-medium text-neutral-500">Query</th>
-                    <th className="text-right px-2 py-1.5 text-xs font-medium text-neutral-500">Clicks</th>
-                    <th className="text-right px-2 py-1.5 text-xs font-medium text-neutral-500">Impressions</th>
-                    <th className="text-right px-2 py-1.5 text-xs font-medium text-neutral-500">CTR</th>
-                    <th className="text-right px-2 py-1.5 text-xs font-medium text-neutral-500">Position</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {expandedData.map((sub) => (
-                    <tr key={sub.query} className="border-t border-neutral-700/50">
-                      <td className="px-2 py-1.5 text-neutral-300">{sub.query}</td>
-                      <td className="px-2 py-1.5 text-right text-neutral-400 tabular-nums">{sub.clicks.toLocaleString()}</td>
-                      <td className="px-2 py-1.5 text-right text-neutral-400 tabular-nums">{sub.impressions.toLocaleString()}</td>
-                      <td className="px-2 py-1.5 text-right text-neutral-400 tabular-nums">{formatCTR(sub.ctr)}</td>
-                      <td className="px-2 py-1.5 text-right text-neutral-400 tabular-nums">{formatPosition(sub.position)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </td>
-        </tr>
-      )}
+      <AnimatePresence>
+        {isExpanded && (
+          <tr className="bg-neutral-800/30">
+            <td colSpan={6} className="px-4 py-0 overflow-hidden">
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: DURATION_FAST, ease: EASE_APPLE as [number, number, number, number] }}
+                className="py-3"
+              >
+                {expandedLoading ? (
+                  <div className="space-y-2 py-1">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <SkeletonLine key={i} className="h-4 w-full" />
+                    ))}
+                  </div>
+                ) : expandedData.length === 0 ? (
+                  <EmptyState title="No queries for this page" className="py-3" />
+                ) : (
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr>
+                        <th className="text-left px-2 py-1.5 text-xs font-medium text-neutral-500">Query</th>
+                        <th className="text-right px-2 py-1.5 text-xs font-medium text-neutral-500">Clicks</th>
+                        <th className="text-right px-2 py-1.5 text-xs font-medium text-neutral-500">Impressions</th>
+                        <th className="text-right px-2 py-1.5 text-xs font-medium text-neutral-500">CTR</th>
+                        <th className="text-right px-2 py-1.5 text-xs font-medium text-neutral-500">Position</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {expandedData.map((sub) => (
+                        <tr key={sub.query} className="border-t border-neutral-700/50">
+                          <td className="px-2 py-1.5 text-neutral-300">{sub.query}</td>
+                          <td className="px-2 py-1.5 text-right text-neutral-400 tabular-nums">{sub.clicks.toLocaleString()}</td>
+                          <td className="px-2 py-1.5 text-right text-neutral-400 tabular-nums">{sub.impressions.toLocaleString()}</td>
+                          <td className="px-2 py-1.5 text-right text-neutral-400 tabular-nums">{formatCTR(sub.ctr)}</td>
+                          <td className="px-2 py-1.5 text-right text-neutral-400 tabular-nums">{formatPosition(sub.position)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </motion.div>
+            </td>
+          </tr>
+        )}
+      </AnimatePresence>
     </>
   )
 }
