@@ -206,7 +206,7 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
           Back to Funnels
         </Link>
 
-        <h1 className="text-2xl font-bold text-white mb-2">
+        <h1 className="text-2xl font-semibold text-white mb-2">
           {initialData ? 'Edit Funnel' : 'Create New Funnel'}
         </h1>
         <p className="text-neutral-600 dark:text-neutral-400">

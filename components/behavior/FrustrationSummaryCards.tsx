@@ -64,7 +64,7 @@ export default function FrustrationSummaryCards({ data, loading }: FrustrationSu
           Rage Clicks
         </p>
         <div className="flex items-baseline gap-2">
-          <span className="text-2xl font-bold text-white tabular-nums">
+          <span className="text-2xl font-semibold text-white tabular-nums">
             {data.rage_clicks.toLocaleString()}
           </span>
           <ChangeIndicator change={rageChange} />
@@ -80,7 +80,7 @@ export default function FrustrationSummaryCards({ data, loading }: FrustrationSu
           Dead Clicks
         </p>
         <div className="flex items-baseline gap-2">
-          <span className="text-2xl font-bold text-white tabular-nums">
+          <span className="text-2xl font-semibold text-white tabular-nums">
             {data.dead_clicks.toLocaleString()}
           </span>
           <ChangeIndicator change={deadChange} />
@@ -95,7 +95,7 @@ export default function FrustrationSummaryCards({ data, loading }: FrustrationSu
         <p className="text-sm font-medium text-neutral-400 mb-1">
           Total Signals
         </p>
-        <span className="text-2xl font-bold text-white tabular-nums">
+        <span className="text-2xl font-semibold text-white tabular-nums">
           {totalSignals.toLocaleString()}
         </span>
         {topPage ? (
