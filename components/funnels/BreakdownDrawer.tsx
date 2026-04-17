@@ -50,7 +50,7 @@ export default function BreakdownDrawer({ siteId, funnelId, stepIndex, stepName,
 
       <div className="fixed inset-y-0 right-0 z-50 w-96 max-w-full bg-neutral-900/80 border-l border-white/[0.08] shadow-xl flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-800">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.08]">
           <div>
             <h3 className="font-semibold text-white">Step Breakdown</h3>
             <p className="text-sm text-neutral-500">{stepName}</p>
@@ -63,7 +63,7 @@ export default function BreakdownDrawer({ siteId, funnelId, stepIndex, stepName,
         </div>
 
         {/* Dimension tabs */}
-        <div className="flex overflow-x-auto gap-1 px-6 py-3 border-b border-neutral-800">
+        <div className="flex overflow-x-auto gap-1 px-6 py-3 border-b border-white/[0.08]">
           {BREAKDOWN_DIMENSIONS.map(dim => (
             <button
               key={dim}

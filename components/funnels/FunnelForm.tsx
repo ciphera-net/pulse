@@ -261,7 +261,7 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
             const category = step.category || 'page'
 
             return (
-              <div key={`step-${index}`} className="glass-surface rounded-2xl p-4">
+              <div key={`step-${index}`} className="glass-surface rounded-2xl p-6">
                 <div className="flex items-start gap-4">
                   {/* Step number + reorder */}
                   <div className="mt-3 text-neutral-400 flex items-center gap-1.5">
@@ -439,7 +439,7 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
             <button
               type="button"
               onClick={handleAddStep}
-              className="w-full py-3 border-2 border-dashed border-neutral-800 rounded-xl text-neutral-500 hover:text-white hover:border-neutral-700 transition-colors flex items-center justify-center gap-2 font-medium ease-apple"
+              className="w-full py-3 glass-surface rounded-2xl text-neutral-500 hover:text-white hover:border-white/[0.15] transition-colors duration-fast ease-apple flex items-center justify-center gap-2 font-medium"
             >
               <PlusIcon className="w-4 h-4" />
               Add Step
