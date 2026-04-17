@@ -38,7 +38,7 @@ export default function EventProperties({ siteId, eventName, dateRange, onClose 
   const maxCount = values.length > 0 ? values[0].count : 1
 
   return (
-    <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6">
+    <div className="glass-surface rounded-2xl p-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-white">
           Properties: <span className="text-brand-orange">{eventName.replace(/_/g, ' ')}</span>

@@ -7,7 +7,7 @@ export default function AdminDashboard() {
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
       <Link
         href="/admin/orgs"
-        className="block transition-transform hover:scale-[1.02] rounded-2xl border border-white/[0.08] bg-neutral-900/80 p-6 shadow-sm ease-apple"
+        className="block glass-surface transition-transform hover:scale-[1.02] rounded-2xl p-6 shadow-sm ease-apple"
       >
         <h3 className="text-lg font-semibold text-white">Organizations</h3>
         <p className="text-sm text-neutral-400 mt-1">Manage organization plans and limits</p>
@@ -17,7 +17,7 @@ export default function AdminDashboard() {
       </Link>
       <Link
         href="/admin/quarantine"
-        className="block transition-transform hover:scale-[1.02] rounded-2xl border border-white/[0.08] bg-neutral-900/80 p-6 shadow-sm ease-apple"
+        className="block glass-surface transition-transform hover:scale-[1.02] rounded-2xl p-6 shadow-sm ease-apple"
       >
         <h3 className="text-lg font-semibold text-white">Quarantine & Reputation</h3>
         <p className="text-sm text-neutral-400 mt-1">Monitor quarantined traffic and domain reputation</p>

@@ -248,7 +248,7 @@ export default function PageSpeedPage() {
         </div>
 
         {/* Empty state */}
-        <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-12 text-center">
+        <div className="glass-surface rounded-2xl p-12 text-center">
           <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
             <svg className="w-8 h-8 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -420,7 +420,7 @@ export default function PageSpeedPage() {
       </div>
 
       {/* Section 1 — Score Overview: 4 equal gauges + screenshot */}
-      <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 sm:p-8 mb-6">
+      <div className="glass-surface rounded-2xl p-6 sm:p-8 mb-6">
         <div className="flex flex-col lg:flex-row items-center gap-8">
           {/* 4 equal gauges — click to scroll to diagnostics */}
           <div className="flex-1 flex items-center justify-center gap-6 sm:gap-8 flex-wrap">
@@ -502,7 +502,7 @@ export default function PageSpeedPage() {
 
       {/* Filmstrip — page load progression */}
       {currentCheck?.filmstrip && currentCheck.filmstrip.length > 0 && (
-        <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 sm:p-8 mb-6 relative">
+        <div className="glass-surface rounded-2xl p-6 sm:p-8 mb-6 relative">
           <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-4">
             Page Load Timeline
           </h3>
@@ -526,7 +526,7 @@ export default function PageSpeedPage() {
       )}
 
       {/* Section 2 — Metrics Card */}
-      <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 sm:p-8 mb-6">
+      <div className="glass-surface rounded-2xl p-6 sm:p-8 mb-6">
         <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-5">
           Metrics
         </h3>
@@ -549,7 +549,7 @@ export default function PageSpeedPage() {
 
       {/* Section 3 — Score Trend Chart (visx) */}
       {chartData.length >= 2 && (
-        <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 sm:p-8 mb-6 overflow-hidden">
+        <div className="glass-surface rounded-2xl p-6 sm:p-8 mb-6 overflow-hidden">
           <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-4">
             Performance Score Trend
           </h3>
@@ -598,7 +598,7 @@ export default function PageSpeedPage() {
             const groupManual = manualByGroup[group.key] ?? []
             if (groupAudits.length === 0 && groupPassed.length === 0 && groupManual.length === 0) return null
             return (
-              <div key={group.key} id={`diag-${group.key}`} className="scroll-mt-6 bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 sm:p-8">
+              <div key={group.key} id={`diag-${group.key}`} className="glass-surface scroll-mt-6 rounded-2xl p-6 sm:p-8">
                 {/* Category header with gauge */}
                 <div className="flex items-center gap-5 mb-6">
                   <ScoreGauge score={scoreByGroup[group.key]} label="" size={56} />

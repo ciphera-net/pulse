@@ -426,7 +426,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
 
   return (
     <>
-      <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 h-full flex flex-col">
+      <div className="glass-surface rounded-2xl p-6 h-full flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-1" role="tablist" aria-label="Search data tabs" onKeyDown={handleTabKeyDown}>

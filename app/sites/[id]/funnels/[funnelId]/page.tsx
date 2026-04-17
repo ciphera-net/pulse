@@ -211,7 +211,7 @@ export default function FunnelReportPage() {
         </div>
 
         {/* Chart */}
-        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden shadow-sm p-6 mb-8">
+        <div className="glass-surface rounded-2xl overflow-hidden shadow-sm p-6 mb-8">
           <h3 className="text-lg font-semibold text-white mb-6">
             Funnel Visualization
           </h3>
@@ -229,7 +229,7 @@ export default function FunnelReportPage() {
 
         {/* Conversion Trends */}
         {trends && trends.dates.length > 1 && (
-          <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl overflow-hidden shadow-sm p-6 mb-8">
+          <div className="glass-surface rounded-2xl overflow-hidden shadow-sm p-6 mb-8">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-white">
                 Conversion Trends
@@ -312,7 +312,7 @@ export default function FunnelReportPage() {
         )}
 
         {/* Detailed Stats Table */}
-        <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl overflow-hidden">
+        <div className="glass-surface rounded-2xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="bg-neutral-50 dark:bg-neutral-800/50 border-b border-neutral-200 dark:border-neutral-800">

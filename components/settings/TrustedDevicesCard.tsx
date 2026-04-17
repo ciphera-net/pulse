@@ -72,7 +72,7 @@ export default function TrustedDevicesCard() {
           <p className="text-red-600 dark:text-red-400">{error}</p>
         </div>
       ) : devices.length === 0 ? (
-        <div className="rounded-2xl border border-white/[0.08] bg-neutral-900/80">
+        <div className="glass-surface rounded-2xl">
           <EmptyState
             title="No trusted devices yet"
             description="Devices are added automatically the first time you sign in and verify your session."
@@ -84,7 +84,7 @@ export default function TrustedDevicesCard() {
           {devices.map((device) => (
             <div
               key={device.id}
-              className="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-neutral-900/80 px-4 py-3"
+              className="glass-surface flex items-center gap-3 rounded-xl px-4 py-3"
             >
               <div className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 text-neutral-400">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">

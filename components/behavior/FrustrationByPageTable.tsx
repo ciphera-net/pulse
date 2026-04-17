@@ -15,7 +15,7 @@ export default function FrustrationByPageTable({ pages, loading }: FrustrationBy
   const maxTotal = Math.max(...pages.map(p => p.total), 1)
 
   return (
-    <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 mb-8">
+    <div className="glass-surface rounded-2xl p-6 mb-8">
       <div className="flex items-center justify-between mb-1">
         <h3 className="text-lg font-semibold text-white">
           Frustration by Page
