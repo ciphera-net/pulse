@@ -32,11 +32,11 @@ const CIPHERA_APPS: CipheraApp[] = [
     isAvailable: false,
   },
   {
-    id: 'auth',
-    name: 'Auth',
+    id: 'id',
+    name: 'ID',
     description: 'Your Ciphera account settings',
-    icon: 'https://ciphera.net/auth_icon_no_margins.png',
-    href: 'https://auth.ciphera.net',
+    icon: 'https://ciphera.net/id_icon_no_margins.png',
+    href: 'https://id.ciphera.net',
     isAvailable: true,
   },
 ]

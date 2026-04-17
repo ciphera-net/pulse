@@ -1,7 +1,7 @@
 import apiRequest from './client'
 
 export async function deleteAccount(password: string): Promise<void> {
-  // This goes to ciphera-auth
+  // This goes to ciphera-id
   return apiRequest<void>('/auth/user', {
     method: 'DELETE',
     body: JSON.stringify({ password }),

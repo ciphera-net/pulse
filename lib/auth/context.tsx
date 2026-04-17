@@ -10,7 +10,7 @@ import { getUserOrganizations, switchContext } from '@/lib/api/organization'
 import { logger } from '@/lib/utils/logger'
 import { cleanupStaleStorage } from '@/lib/utils/storage-cleanup'
 
-/** Read vault PII from the cross-subdomain cookie set by auth-frontend. */
+/** Read vault PII from the cross-subdomain cookie set by id-frontend. */
 function getVaultPII(): { email?: string; display_name?: string } {
   if (typeof document === 'undefined') return {}
   const match = document.cookie.match(/(?:^|;\s*)ciphera_pii=([^;]+)/)
@@ -78,7 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const login = (userData: User) => {
-    // * Merge vault PII from cross-subdomain cookie (set by auth-frontend)
+    // * Merge vault PII from cross-subdomain cookie (set by id-frontend)
     const pii = getVaultPII()
     const enriched = {
       ...userData,

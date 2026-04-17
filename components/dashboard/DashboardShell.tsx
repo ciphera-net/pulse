@@ -22,7 +22,7 @@ import { CommandPalette } from '@/components/command/CommandPalette'
 
 const CIPHERA_APPS: CipheraApp[] = [
   { id: 'pulse', name: 'Pulse', description: 'Your current app — Privacy-first analytics', icon: 'https://ciphera.net/pulse_icon_no_margins.png', href: 'https://pulse.ciphera.net', isAvailable: false },
-  { id: 'auth', name: 'Auth', description: 'Your Ciphera account settings', icon: 'https://ciphera.net/auth_icon_no_margins.png', href: 'https://auth.ciphera.net', isAvailable: true },
+  { id: 'id', name: 'ID', description: 'Your Ciphera account settings', icon: 'https://ciphera.net/id_icon_no_margins.png', href: 'https://id.ciphera.net', isAvailable: true },
 ]
 
 const PAGE_TITLES: Record<string, string> = {

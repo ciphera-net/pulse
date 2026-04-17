@@ -82,7 +82,7 @@ export default function AccountProfileTab({ onDirtyChange, onRegisterSave }: { o
         <div>
           <label className="block text-sm font-medium text-neutral-300 mb-1.5">Email Address</label>
           <Input value={user.email} disabled className="opacity-60" />
-          <p className="text-xs text-neutral-500 mt-1">Email changes require password verification. Use <a href="https://auth.ciphera.net/settings" target="_blank" rel="noopener noreferrer" className="text-brand-orange hover:underline">Ciphera Auth</a> to change your email.</p>
+          <p className="text-xs text-neutral-500 mt-1">Email changes require password verification. Use <a href="https://id.ciphera.net/settings" target="_blank" rel="noopener noreferrer" className="text-brand-orange hover:underline">Ciphera ID</a> to change your email.</p>
         </div>
       </div>
 
