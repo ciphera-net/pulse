@@ -191,7 +191,7 @@ export default function PublicDashboardPage() {
   if (isPasswordProtected && !data) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="max-w-md w-full bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 shadow-lg transition-shadow duration-slow ease-apple">
+        <div className="glass-surface max-w-md w-full rounded-2xl p-6 shadow-lg transition-shadow duration-slow ease-apple">
           <div className="text-center mb-6">
              <div className="w-12 h-12 bg-brand-orange/10 rounded-xl flex items-center justify-center mx-auto mb-4 text-brand-orange">
               <ZapIcon className="w-6 h-6" />
@@ -199,7 +199,7 @@ export default function PublicDashboardPage() {
             <h1 className="text-2xl font-bold text-white mb-2">
               Protected Dashboard
             </h1>
-            <p className="text-neutral-600 dark:text-neutral-400">
+            <p className="text-neutral-400">
               This dashboard is password protected. Please enter the password to view stats.
             </p>
           </div>
@@ -211,7 +211,7 @@ export default function PublicDashboardPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter password"
-                className="w-full px-4 py-2 border border-neutral-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-white focus:ring-2 focus:ring-brand-orange focus:border-transparent"
+                className="w-full px-4 py-2 border border-neutral-700 rounded-lg bg-neutral-800 text-white focus:ring-2 focus:ring-brand-orange focus:border-transparent"
                 autoFocus
               />
             </div>
@@ -295,7 +295,7 @@ export default function PublicDashboardPage() {
                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
                      <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                    </span>
-                   <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                   <span className="text-sm font-medium text-green-400">
                      {realtime_visitors} current visitors
                    </span>
                  </div>
@@ -305,7 +305,7 @@ export default function PublicDashboardPage() {
             <div className="flex gap-2">
               <button
                 onClick={() => setIsExportModalOpen(true)}
-                className="hidden md:flex items-center gap-2 px-3 py-2 bg-neutral-900/80 border border-white/[0.08] rounded-lg text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors ease-apple"
+                className="hidden md:flex items-center gap-2 px-3 py-2 bg-neutral-900/80 border border-white/[0.08] rounded-lg text-sm text-neutral-400 hover:text-brand-orange transition-colors ease-apple"
               >
                 <DownloadIcon className="w-4 h-4" />
                 <span>Export</span>
@@ -344,7 +344,7 @@ export default function PublicDashboardPage() {
                 href="https://ciphera.net" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="hidden md:flex items-center gap-2 px-3 py-2 bg-neutral-900/80 border border-white/[0.08] rounded-lg text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors ease-apple"
+                className="hidden md:flex items-center gap-2 px-3 py-2 bg-neutral-900/80 border border-white/[0.08] rounded-lg text-sm text-neutral-400 hover:text-brand-orange transition-colors ease-apple"
               >
                 <ZapIcon className="w-4 h-4" />
                 <span>Powered by Ciphera</span>
@@ -358,7 +358,7 @@ export default function PublicDashboardPage() {
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                 </span>
-                <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                <span className="text-sm font-medium text-green-400">
                     {realtime_visitors} current visitors
                 </span>
             </div>

@@ -25,12 +25,12 @@ function SkeletonRows() {
   return (
     <div className="space-y-2">
       {Array.from({ length: DISPLAY_LIMIT }).map((_, i) => (
-        <div key={i} className="animate-pulse flex items-center justify-between h-9 px-2">
+        <div key={i} className="animate-skeleton-fade flex items-center justify-between h-9 px-2">
           <div className="flex items-center gap-3 flex-1">
-            <div className="h-4 w-32 bg-neutral-200 dark:bg-neutral-700 rounded" />
-            <div className="h-3 w-20 bg-neutral-200 dark:bg-neutral-700 rounded" />
+            <div className="h-4 w-32 bg-neutral-700 rounded" />
+            <div className="h-3 w-20 bg-neutral-700 rounded" />
           </div>
-          <div className="h-4 w-10 bg-neutral-200 dark:bg-neutral-700 rounded" />
+          <div className="h-4 w-10 bg-neutral-700 rounded" />
         </div>
       ))}
     </div>
@@ -80,12 +80,12 @@ function Row({
   const pct = totalSignals > 0 ? `${Math.round((item.count / totalSignals) * 100)}%` : ''
 
   return (
-    <div className="flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors ease-apple">
+    <div className="flex items-center justify-between h-9 group hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors ease-apple">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 min-w-0 overflow-hidden">
           <SelectorCell selector={item.selector} />
           <span
-            className="text-xs text-neutral-400 dark:text-neutral-500 truncate shrink-0"
+            className="text-xs text-neutral-500 truncate shrink-0"
             title={item.page_path}
           >
             {item.page_path}
@@ -97,7 +97,7 @@ function Row({
         <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-[opacity,transform] duration-base tabular-nums ease-apple">
           {pct}
         </span>
-        <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 tabular-nums">
+        <span className="text-sm font-semibold text-neutral-400 tabular-nums">
           {formatNumber(item.count)}
         </span>
       </div>
@@ -143,7 +143,7 @@ export default function FrustrationTable({
 
   return (
     <>
-      <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 h-full flex flex-col">
+      <div className="glass-surface rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-2">
             <h3 className="text-lg font-semibold text-white">
@@ -152,7 +152,7 @@ export default function FrustrationTable({
             {showViewAll && (
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all cursor-pointer rounded-lg ease-apple"
+                className="p-1.5 text-neutral-500 hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-lg ease-apple"
                 aria-label={`View all ${title.toLowerCase()}`}
               >
                 <FrameCornersIcon className="w-4 h-4" weight="bold" />
@@ -189,7 +189,7 @@ export default function FrustrationTable({
               <p className="text-sm text-neutral-400 max-w-md">
                 Frustration tracking requires the add-on script. Add it after your core Pulse script:
               </p>
-              <code className="text-xs bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 px-3 py-2 rounded-lg font-mono break-all">
+              <code className="text-xs bg-neutral-800 text-neutral-300 px-3 py-2 rounded-lg font-mono break-all">
                 {'<script defer src="https://pulse.ciphera.net/script.frustration.js"></script>'}
               </code>
               <a href="/installation" target="_blank" rel="noopener noreferrer" className="mt-1 text-sm font-medium text-brand-orange hover:underline">

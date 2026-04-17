@@ -19,7 +19,7 @@ import {
   type DailyStat,
   type EngagementPercentilesData,
 } from '@/lib/api/stats'
-import { getDateRange, formatDate, getThisWeekRange, getThisMonthRange, getYesterdayRange, getLast24HoursRange, getLast1HourRange, getThisYearRange, getAllTimeRange } from '@/lib/utils/dateRanges'
+import { getDateRange, formatDate, getThisWeekRange, getThisMonthRange, getYesterdayRange, getLast24HoursRange, getLast1HourRange, getThisYearRange } from '@/lib/utils/dateRanges'
 import { toast } from '@ciphera-net/ui'
 import { Button } from '@ciphera-net/ui'
 import { Select, DatePicker, DownloadIcon } from '@ciphera-net/ui'
@@ -69,15 +69,23 @@ function getInitialDateRange(): { start: string; end: string } {
     const today = formatDate(new Date())
     return { start: today, end: today }
   }
+  if (settings?.type === 'yesterday') return getYesterdayRange()
+  if (settings?.type === '1h') return getLast1HourRange()
+  if (settings?.type === '24h') return getLast24HoursRange()
   if (settings?.type === '7') return getDateRange(7)
+  if (settings?.type === '30') return getDateRange(30)
   if (settings?.type === 'week') return getThisWeekRange()
   if (settings?.type === 'month') return getThisMonthRange()
+  if (settings?.type === 'year') return getThisYearRange()
   if (settings?.type === 'custom' && settings.dateRange) return settings.dateRange
   return getDateRange(30)
 }
 
 function getInitialPeriod(): string {
-  return loadSavedSettings()?.type || '30'
+  const saved = loadSavedSettings()?.type
+  // Migrate removed 'alltime' option → default 30 days (backend caps queries at 366 days)
+  if (saved === 'alltime') return '30'
+  return saved || '30'
 }
 
 export default function SiteDashboardPage() {
@@ -210,17 +218,29 @@ export default function SiteDashboardPage() {
 
   const interval = dateRange.start === dateRange.end ? todayInterval : multiDayInterval
 
-  // Previous period date range for comparison
-  const prevRange = useMemo(() => {
+  // Previous period date range for comparison.
+  // Returns null when the previous range would be invalid for the backend:
+  //   - current duration exceeds the backend's 366-day query cap
+  //   - previous start would fall before Pulse's data-collection floor (2020-01-01)
+  // Hooks below gate on prevRange via empty-string fallthrough so SWR skips the fetch.
+  const prevRange = useMemo((): { start: string; end: string } | null => {
     const startDate = new Date(dateRange.start)
     const endDate = new Date(dateRange.end)
     const duration = endDate.getTime() - startDate.getTime()
+    const DAY_MS = 24 * 60 * 60 * 1000
+    const MAX_DURATION_MS = 366 * DAY_MS
+    const DATA_FLOOR = new Date('2020-01-01').getTime()
+
     if (duration === 0) {
-      const prevEnd = new Date(startDate.getTime() - 24 * 60 * 60 * 1000)
-      return { start: prevEnd.toISOString().split('T')[0], end: prevEnd.toISOString().split('T')[0] }
+      const prevEnd = new Date(startDate.getTime() - DAY_MS)
+      if (prevEnd.getTime() < DATA_FLOOR) return null
+      const d = prevEnd.toISOString().split('T')[0]
+      return { start: d, end: d }
     }
-    const prevEnd = new Date(startDate.getTime() - 24 * 60 * 60 * 1000)
+    if (duration > MAX_DURATION_MS) return null
+    const prevEnd = new Date(startDate.getTime() - DAY_MS)
     const prevStart = new Date(prevEnd.getTime() - duration)
+    if (prevStart.getTime() < DATA_FLOOR) return null
     return { start: prevStart.toISOString().split('T')[0], end: prevEnd.toISOString().split('T')[0] }
   }, [dateRange])
 
@@ -229,8 +249,8 @@ export default function SiteDashboardPage() {
   // and caches the result in Redis for efficient data loading.
   const { data: dashboard, isLoading: dashboardLoading, error: dashboardError } = useDashboard(siteId, dateRange.start, dateRange.end, interval, filtersParam || undefined)
   const { data: realtimeData } = useRealtime(siteId, 15_000)
-  const { data: prevStats } = useStats(siteId, prevRange.start, prevRange.end)
-  const { data: prevDailyStats } = useDailyStats(siteId, prevRange.start, prevRange.end, interval)
+  const { data: prevStats } = useStats(siteId, prevRange?.start ?? '', prevRange?.end ?? '')
+  const { data: prevDailyStats } = useDailyStats(siteId, prevRange?.start ?? '', prevRange?.end ?? '', interval)
   const { data: campaigns } = useCampaigns(siteId, dateRange.start, dateRange.end)
   // Fetch engagement percentiles in parallel with dashboard data
   useEffect(() => {
@@ -313,7 +333,7 @@ export default function SiteDashboardPage() {
   if (!site) {
     return (
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
-        <p className="text-neutral-600 dark:text-neutral-400">Site not found</p>
+        <p className="text-neutral-400">Site not found</p>
       </div>
     )
   }
@@ -399,11 +419,6 @@ export default function SiteDashboardPage() {
                       setDateRange(range)
                       setPeriod('year')
                       saveSettings('year', range)
-                    } else if (value === 'alltime') {
-                      const range = getAllTimeRange()
-                      setDateRange(range)
-                      setPeriod('alltime')
-                      saveSettings('alltime', range)
                     } else if (value === 'custom') {
                       setIsDatePickerOpen(true)
                     }
@@ -420,7 +435,6 @@ export default function SiteDashboardPage() {
                     { value: 'week', label: 'This week' },
                     { value: 'month', label: 'This month' },
                     { value: 'year', label: 'This year' },
-                    { value: 'alltime', label: 'All time' },
                     { value: 'divider-2', label: '', divider: true },
                     { value: 'custom', label: 'Custom' },
                   ]}

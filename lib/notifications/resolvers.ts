@@ -29,7 +29,7 @@ export function useResolveSiteName(): (siteId: string) => string {
  * useResolveUserName — returns a function mapping a user UUID to a display name.
  *
  * Looks up the user in the current organisation's member list (fetched from the
- * auth-backend via useMembers / SWR).  Falls back to 'User (removed)' when the
+ * id-backend via useMembers / SWR).  Falls back to 'User (removed)' when the
  * user is no longer a member of the organisation.
  */
 export function useResolveUserName(): (userId: string) => string {

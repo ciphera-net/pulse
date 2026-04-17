@@ -145,12 +145,12 @@ const ChartTooltipContent = React.forwardRef<
       <div
         ref={ref}
         className={cn(
-          'grid min-w-[8rem] items-start gap-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-2.5 py-1.5 text-xs shadow-xl',
+          'grid min-w-[8rem] items-start gap-1.5 rounded-lg border border-neutral-700 bg-neutral-800 px-2.5 py-1.5 text-xs shadow-xl',
           className,
         )}
       >
         {!nestLabel ? tooltipLabel ? (
-          <div className="font-medium text-neutral-900 dark:text-neutral-50">
+          <div className="font-medium text-neutral-50">
             {tooltipLabel}
           </div>
         ) : null : null}
@@ -205,7 +205,7 @@ const ChartTooltipContent = React.forwardRef<
                     </span>
                   </div>
                   {item.value != null && (
-                    <span className="font-mono font-medium tabular-nums text-neutral-900 dark:text-neutral-50">
+                    <span className="font-mono font-medium tabular-nums text-neutral-50">
                       {typeof item.value === 'number'
                         ? item.value.toLocaleString()
                         : item.value}

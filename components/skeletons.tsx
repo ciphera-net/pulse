@@ -4,7 +4,7 @@
  *   animate-pulse + bg-neutral-800 + rounded
  */
 
-const SK = 'animate-pulse bg-neutral-800'
+const SK = 'animate-skeleton-fade bg-neutral-800'
 
 export { useMinimumLoading, useSkeletonFade } from './useMinimumLoading'
 
@@ -90,7 +90,7 @@ export function WidgetSkeleton() {
 
 export function StatCardSkeleton() {
   return (
-    <div className="p-4 rounded-xl border border-white/[0.08] bg-neutral-900/80">
+    <div className="glass-surface p-4 rounded-xl">
       <SkeletonLine className="h-4 w-20 mb-2" />
       <SkeletonLine className="h-8 w-28" />
     </div>

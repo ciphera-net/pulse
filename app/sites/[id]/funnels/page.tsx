@@ -1,12 +1,16 @@
 'use client'
 
+import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import { motion } from 'framer-motion'
+import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 import { deleteFunnel, type Funnel } from '@/lib/api/funnels'
 import { useFunnels } from '@/lib/swr/dashboard'
 import { toast, PlusIcon, ArrowRightIcon, ChevronLeftIcon, TrashIcon, Button } from '@ciphera-net/ui'
 import { FunnelsListSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import Link from 'next/link'
 import Image from 'next/image'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 
 export default function FunnelsPage() {
   const params = useParams()
@@ -14,14 +18,15 @@ export default function FunnelsPage() {
   const siteId = params.id as string
 
   const { data: funnels = [], isLoading, mutate } = useFunnels(siteId)
+  const [deletingFunnel, setDeletingFunnel] = useState<{ id: string; name: string } | null>(null)
 
-  const handleDelete = async (e: React.MouseEvent, funnelId: string) => {
-    e.preventDefault() // Prevent navigation
-    if (!confirm('Are you sure you want to delete this funnel?')) return
+  const handleDelete = async () => {
+    if (!deletingFunnel) return
 
     try {
-      await deleteFunnel(siteId, funnelId)
+      await deleteFunnel(siteId, deletingFunnel.id)
       toast.success('Funnel deleted')
+      setDeletingFunnel(null)
       mutate()
     } catch (error) {
       toast.error('Failed to delete funnel')
@@ -43,7 +48,7 @@ export default function FunnelsPage() {
             <h1 className="text-lg font-semibold text-neutral-200">
               Funnels
             </h1>
-            <p className="text-neutral-600 dark:text-neutral-400">
+            <p className="text-neutral-400">
               Track user journeys and identify drop-off points
             </p>
           </div>
@@ -56,7 +61,7 @@ export default function FunnelsPage() {
         </div>
 
         {funnels.length === 0 ? (
-          <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-12 text-center flex flex-col items-center">
+          <div className="glass-surface rounded-2xl p-12 text-center flex flex-col items-center">
             <Image
               src="/illustrations/data-trends.svg"
               alt="Create your first funnel"
@@ -68,7 +73,7 @@ export default function FunnelsPage() {
             <h3 className="text-lg font-semibold text-white mb-2">
               No funnels yet
             </h3>
-            <p className="text-neutral-600 dark:text-neutral-400 mb-6 max-w-md mx-auto">
+            <p className="text-neutral-400 mb-6 max-w-md mx-auto">
               Create a funnel to track how users move through your site and where they drop off.
             </p>
             <Link href={`/sites/${siteId}/funnels/new`}>
@@ -80,27 +85,32 @@ export default function FunnelsPage() {
           </div>
         ) : (
           <div className="grid gap-4">
-            {funnels.map((funnel) => (
-              <Link
+            {funnels.map((funnel, index) => (
+              <motion.div
                 key={funnel.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: index * 0.05 }}
+              >
+              <Link
                 href={`/sites/${siteId}/funnels/${funnel.id}`}
                 className="block group"
               >
-                <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 hover:border-brand-orange/50 transition-colors ease-apple">
+                <div className="glass-surface rounded-2xl p-6 hover:border-brand-orange/50 transition-colors ease-apple">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-xl font-bold text-white group-hover:text-brand-orange transition-colors ease-apple">
+                      <h3 className="text-xl font-semibold text-white group-hover:text-brand-orange transition-colors ease-apple">
                         {funnel.name}
                       </h3>
                       {funnel.description && (
-                        <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
+                        <p className="text-sm text-neutral-400 mt-1">
                           {funnel.description}
                         </p>
                       )}
                       <div className="flex items-center gap-2 mt-4">
                         {funnel.steps.map((step, i) => (
                           <div key={step.name} className="flex items-center text-sm text-neutral-500">
-                            <span className="px-2 py-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg text-neutral-700 dark:text-neutral-300">
+                            <span className="px-2 py-1 bg-neutral-800 rounded-lg text-neutral-300">
                               {step.name}
                             </span>
                             {i < funnel.steps.length - 1 && (
@@ -112,8 +122,8 @@ export default function FunnelsPage() {
                     </div>
                     <div className="flex items-center gap-4">
                       <button
-                        onClick={(e) => handleDelete(e, funnel.id)}
-                        className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors ease-apple"
+                        onClick={(e) => { e.preventDefault(); setDeletingFunnel({ id: funnel.id, name: funnel.name }) }}
+                        className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-900/20 rounded-xl transition-colors ease-apple"
                         aria-label="Delete funnel"
                       >
                         <TrashIcon className="w-5 h-5" />
@@ -123,10 +133,30 @@ export default function FunnelsPage() {
                   </div>
                 </div>
               </Link>
+              </motion.div>
             ))}
           </div>
         )}
       </div>
+
+      <Dialog open={!!deletingFunnel} onOpenChange={() => setDeletingFunnel(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete funnel</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete &ldquo;{deletingFunnel?.name}&rdquo;? This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <button onClick={() => setDeletingFunnel(null)} className="glass-surface rounded-lg px-4 py-2 text-sm font-medium text-neutral-300 hover:text-white transition-colors ease-apple">
+              Cancel
+            </button>
+            <button onClick={handleDelete} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-500 transition-colors ease-apple">
+              Delete
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

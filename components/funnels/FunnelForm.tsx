@@ -193,33 +193,33 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
     })
   }
 
-  const selectClass = 'px-2 py-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg text-sm focus:ring-2 focus:ring-brand-orange/20 focus:border-brand-orange outline-none'
+  const selectClass = 'px-2 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-sm focus:ring-2 focus:ring-brand-orange/20 focus:border-brand-orange outline-none'
 
   return (
     <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 pb-8">
       <div className="mb-8">
         <Link
           href={cancelHref}
-          className="inline-flex items-center gap-2 text-sm text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white mb-6 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 px-2 py-1.5 -ml-2 transition-colors ease-apple"
+          className="inline-flex items-center gap-2 text-sm text-neutral-400 hover:text-white mb-6 rounded-xl hover:bg-neutral-800 px-2 py-1.5 -ml-2 transition-colors ease-apple"
         >
           <ChevronLeftIcon className="w-4 h-4" />
           Back to Funnels
         </Link>
 
-        <h1 className="text-2xl font-bold text-white mb-2">
+        <h1 className="text-2xl font-semibold text-white mb-2">
           {initialData ? 'Edit Funnel' : 'Create New Funnel'}
         </h1>
-        <p className="text-neutral-600 dark:text-neutral-400">
+        <p className="text-neutral-400">
           Define the steps users take to complete a goal.
         </p>
       </div>
 
       <form onSubmit={handleSubmit}>
         {/* Name & Description */}
-        <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 mb-6">
+        <div className="glass-surface rounded-2xl p-6 mb-6">
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+              <label className="block text-sm font-medium text-neutral-300 mb-1">
                 Funnel Name
               </label>
               <Input
@@ -237,7 +237,7 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+              <label className="block text-sm font-medium text-neutral-300 mb-1">
                 Description (Optional)
               </label>
               <Input
@@ -261,11 +261,11 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
             const category = step.category || 'page'
 
             return (
-              <div key={`step-${index}`} className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-4">
+              <div key={`step-${index}`} className="glass-surface rounded-2xl p-6">
                 <div className="flex items-start gap-4">
                   {/* Step number + reorder */}
                   <div className="mt-3 text-neutral-400 flex items-center gap-1.5">
-                    <div className="w-6 h-6 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-sm font-medium text-neutral-600 dark:text-neutral-400">
+                    <div className="w-6 h-6 rounded-full bg-neutral-800 flex items-center justify-center text-sm font-medium text-neutral-400">
                       {index + 1}
                     </div>
                     <div className="flex flex-col gap-0.5">
@@ -273,7 +273,7 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
                         type="button"
                         onClick={() => moveStep(index, -1)}
                         disabled={index === 0}
-                        className="p-0.5 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 disabled:opacity-30 transition-colors ease-apple"
+                        className="p-0.5 text-neutral-400 hover:text-neutral-300 disabled:opacity-30 transition-colors ease-apple"
                       >
                         <CaretUp className="w-3.5 h-3.5" />
                       </button>
@@ -281,7 +281,7 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
                         type="button"
                         onClick={() => moveStep(index, 1)}
                         disabled={index === steps.length - 1}
-                        className="p-0.5 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 disabled:opacity-30 transition-colors ease-apple"
+                        className="p-0.5 text-neutral-400 hover:text-neutral-300 disabled:opacity-30 transition-colors ease-apple"
                       >
                         <ChevronDownIcon className="w-3.5 h-3.5" />
                       </button>
@@ -297,7 +297,7 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
                         className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
                           category === 'page'
                             ? 'bg-brand-orange-button text-white'
-                            : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'
+                            : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
                         } ease-apple`}
                       >
                         Page Visit
@@ -308,7 +308,7 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
                         className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
                           category === 'event'
                             ? 'bg-brand-orange-button text-white'
-                            : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'
+                            : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
                         } ease-apple`}
                       >
                         Custom Event
@@ -395,7 +395,7 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
                                 <button
                                   type="button"
                                   onClick={() => removePropertyFilter(index, filterIndex)}
-                                  className="p-1.5 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors ease-apple"
+                                  className="p-1.5 text-neutral-400 hover:text-red-500 hover:bg-red-900/20 rounded-lg transition-colors ease-apple"
                                 >
                                   <TrashIcon className="w-4 h-4" />
                                 </button>
@@ -407,7 +407,7 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
                           <button
                             type="button"
                             onClick={() => addPropertyFilter(index)}
-                            className="text-xs text-neutral-500 hover:text-neutral-900 dark:hover:text-white flex items-center gap-1 transition-colors ease-apple"
+                            className="text-xs text-neutral-500 hover:text-white flex items-center gap-1 transition-colors ease-apple"
                           >
                             <PlusIcon className="w-3.5 h-3.5" />
                             Add property filter
@@ -425,7 +425,7 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
                     className={`mt-3 p-2 rounded-xl transition-colors ${
                       steps.length <= 1
                         ? 'text-neutral-300 cursor-not-allowed'
-                        : 'text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'
+                        : 'text-neutral-400 hover:text-red-500 hover:bg-red-900/20'
                     } ease-apple`}
                   >
                     <TrashIcon className="w-5 h-5" />
@@ -439,7 +439,7 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
             <button
               type="button"
               onClick={handleAddStep}
-              className="w-full py-3 border-2 border-dashed border-neutral-200 dark:border-neutral-800 rounded-xl text-neutral-500 hover:text-neutral-900 dark:hover:text-white hover:border-neutral-300 dark:hover:border-neutral-700 transition-colors flex items-center justify-center gap-2 font-medium ease-apple"
+              className="w-full py-3 glass-surface rounded-2xl text-neutral-500 hover:text-white hover:border-white/[0.15] transition-colors duration-fast ease-apple flex items-center justify-center gap-2 font-medium"
             >
               <PlusIcon className="w-4 h-4" />
               Add Step
@@ -450,8 +450,8 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
         </div>
 
         {/* Conversion Window */}
-        <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 mb-6">
-          <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-3">
+        <div className="glass-surface rounded-2xl p-6 mb-6">
+          <h3 className="text-sm font-medium text-neutral-300 mb-3">
             Conversion Window
           </h3>
           <p className="text-xs text-neutral-500 mb-4">
@@ -471,7 +471,7 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
                 className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
                   windowValue === preset.value && windowUnit === preset.unit
                     ? 'bg-brand-orange-button text-white'
-                    : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'
+                    : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
                 } ease-apple`}
               >
                 {preset.label}

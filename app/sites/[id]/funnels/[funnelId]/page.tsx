@@ -1,6 +1,9 @@
 'use client'
 
 import React, { useCallback, useEffect, useState } from 'react'
+import { motion } from 'framer-motion'
+import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { useParams, useRouter } from 'next/navigation'
 import { ApiError } from '@/lib/api/client'
 import { getFunnel, getFunnelStats, getFunnelTrends, deleteFunnel, type Funnel, type FunnelStats, type FunnelTrends } from '@/lib/api/funnels'
@@ -13,7 +16,7 @@ import Link from 'next/link'
 import { FunnelChart } from '@/components/ui/funnel-chart'
 import { getDateRange } from '@ciphera-net/ui'
 import BreakdownDrawer from '@/components/funnels/BreakdownDrawer'
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
+import { LineChart, Line, Grid, XAxis, YAxis, ChartTooltip } from '@/components/ui/line-chart'
 
 export default function FunnelReportPage() {
   const params = useParams()
@@ -33,6 +36,7 @@ export default function FunnelReportPage() {
   const [trends, setTrends] = useState<FunnelTrends | null>(null)
   const [visibleSteps, setVisibleSteps] = useState<Set<string>>(new Set())
   const [breakdownStep, setBreakdownStep] = useState<number | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
   const loadData = useCallback(async () => {
     setLoadError(null)
@@ -63,11 +67,10 @@ export default function FunnelReportPage() {
   }, [loadData])
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this funnel?')) return
-
     try {
       await deleteFunnel(siteId, funnelId)
       toast.success('Funnel deleted')
+      setDeleteDialogOpen(false)
       router.push(`/sites/${siteId}/funnels`)
     } catch (error) {
       toast.error('Failed to delete funnel')
@@ -84,7 +87,7 @@ export default function FunnelReportPage() {
   if (loadError === 'not_found' || (!funnel && !stats && !loadError)) {
     return (
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
-        <p className="text-neutral-600 dark:text-neutral-400">Funnel not found</p>
+        <p className="text-neutral-400">Funnel not found</p>
       </div>
     )
   }
@@ -92,7 +95,7 @@ export default function FunnelReportPage() {
   if (loadError === 'forbidden') {
     return (
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
-        <p className="text-neutral-600 dark:text-neutral-400">Access denied</p>
+        <p className="text-neutral-400">Access denied</p>
         <Link href={`/sites/${siteId}/funnels`}>
           <Button variant="primary" className="mt-4">
             Back to Funnels
@@ -105,7 +108,7 @@ export default function FunnelReportPage() {
   if (loadError === 'error') {
     return (
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
-        <p className="text-neutral-600 dark:text-neutral-400 mb-4">Unable to load funnel</p>
+        <p className="text-neutral-400 mb-4">Unable to load funnel</p>
         <Button type="button" onClick={() => loadData()} variant="primary">
           Try again
         </Button>
@@ -116,7 +119,7 @@ export default function FunnelReportPage() {
   if (!funnel || !stats) {
     return (
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
-        <p className="text-neutral-600 dark:text-neutral-400">Funnel not found</p>
+        <p className="text-neutral-400">Funnel not found</p>
       </div>
     )
   }
@@ -148,7 +151,7 @@ export default function FunnelReportPage() {
           <div className="flex items-center gap-4">
             <Link 
               href={`/sites/${siteId}/funnels`}
-              className="p-2 -ml-2 text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors ease-apple"
+              className="p-2 -ml-2 text-neutral-400 hover:text-white rounded-xl hover:bg-neutral-800 transition-colors ease-apple"
             >
               <ChevronLeftIcon className="w-5 h-5" />
             </Link>
@@ -157,7 +160,7 @@ export default function FunnelReportPage() {
                 {funnel.name}
               </h1>
               {funnel.description && (
-                <p className="text-neutral-600 dark:text-neutral-400">
+                <p className="text-neutral-400">
                   {funnel.description}
                 </p>
               )}
@@ -187,14 +190,14 @@ export default function FunnelReportPage() {
             
             <Link
               href={`/sites/${siteId}/funnels/${funnelId}/edit`}
-              className="p-2 text-neutral-400 hover:text-brand-orange hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-xl transition-colors ease-apple"
+              className="p-2 text-neutral-400 hover:text-brand-orange hover:bg-orange-900/20 rounded-xl transition-colors ease-apple"
               aria-label="Edit funnel"
             >
               <PencilSimple className="w-5 h-5" />
             </Link>
             <button
-              onClick={handleDelete}
-              className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors ease-apple"
+              onClick={() => setDeleteDialogOpen(true)}
+              className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-900/20 rounded-xl transition-colors ease-apple"
               aria-label="Delete funnel"
             >
               <TrashIcon className="w-5 h-5" />
@@ -211,7 +214,12 @@ export default function FunnelReportPage() {
         </div>
 
         {/* Chart */}
-        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden shadow-sm p-6 mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0 }}
+          className="glass-surface rounded-2xl overflow-hidden shadow-sm p-6 mb-8"
+        >
           <h3 className="text-lg font-semibold text-white mb-6">
             Funnel Visualization
           </h3>
@@ -225,11 +233,16 @@ export default function FunnelReportPage() {
             labelOrientation="vertical"
             style={{ aspectRatio: '4 / 1' }}
           />
-        </div>
+        </motion.div>
 
         {/* Conversion Trends */}
         {trends && trends.dates.length > 1 && (
-          <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl overflow-hidden shadow-sm p-6 mb-8">
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0.05 }}
+            className="glass-surface rounded-2xl overflow-hidden shadow-sm p-6 mb-8"
+          >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-white">
                 Conversion Trends
@@ -250,7 +263,7 @@ export default function FunnelReportPage() {
                     className={`px-2 py-1 text-xs rounded-md transition-colors ${
                       visibleSteps.has(String(i))
                         ? 'bg-brand-orange/10 text-brand-orange border border-brand-orange/30'
-                        : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 border border-transparent'
+                        : 'bg-neutral-800 text-neutral-500 border border-transparent'
                     } ease-apple`}
                   >
                     {s.step.name}
@@ -259,63 +272,57 @@ export default function FunnelReportPage() {
               </div>
             </div>
 
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={trendsChartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-neutral-200 dark:text-neutral-700" />
-                  <XAxis
-                    dataKey="date"
-                    tick={{ fontSize: 12 }}
-                    className="text-neutral-500"
-                  />
-                  <YAxis
-                    domain={[0, 100]}
-                    tickFormatter={(v) => `${v}%`}
-                    tick={{ fontSize: 12 }}
-                    className="text-neutral-500"
-                  />
-                  <Tooltip
-                    formatter={(value: number) => [`${value}%`]}
-                    contentStyle={{
-                      backgroundColor: 'var(--color-neutral-900, #171717)',
-                      border: '1px solid var(--color-neutral-700, #404040)',
-                      borderRadius: '8px',
-                      color: '#fff',
-                      fontSize: '12px',
-                    }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="overall"
-                    name="Overall"
-                    stroke="#F97316"
-                    strokeWidth={2}
-                    dot={false}
-                    activeDot={{ r: 4 }}
-                  />
-                  {Array.from(visibleSteps).map((stepKey) => (
-                    <Line
-                      key={stepKey}
-                      type="monotone"
-                      dataKey={`step_${stepKey}`}
-                      name={stats?.steps[Number(stepKey)]?.step.name || `Step ${stepKey}`}
-                      stroke={STEP_COLORS[Number(stepKey) % STEP_COLORS.length]}
-                      strokeWidth={2}
-                      dot={false}
-                      activeDot={{ r: 4 }}
-                    />
-                  ))}
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+            <LineChart
+              data={trendsChartData}
+              xDataKey="date"
+              aspectRatio="4 / 1"
+            >
+              <Grid />
+              <XAxis />
+              <YAxis
+                numTicks={5}
+                formatValue={(v) => `${Math.round(v)}%`}
+              />
+              <Line dataKey="overall" stroke="#F97316" />
+              {Array.from(visibleSteps).map((stepKey) => (
+                <Line
+                  key={stepKey}
+                  dataKey={`step_${stepKey}`}
+                  stroke={STEP_COLORS[Number(stepKey) % STEP_COLORS.length]}
+                />
+              ))}
+              <ChartTooltip
+                rows={(point) => {
+                  const rows: { color: string; label: string; value: string | number }[] = [
+                    { color: '#F97316', label: 'Overall', value: `${point.overall ?? 0}%` },
+                  ]
+                  for (const stepKey of Array.from(visibleSteps)) {
+                    const key = `step_${stepKey}`
+                    if (point[key] !== undefined) {
+                      rows.push({
+                        color: STEP_COLORS[Number(stepKey) % STEP_COLORS.length]!,
+                        label: stats?.steps[Number(stepKey)]?.step.name || `Step ${stepKey}`,
+                        value: `${point[key]}%`,
+                      })
+                    }
+                  }
+                  return rows
+                }}
+              />
+            </LineChart>
+          </motion.div>
         )}
 
         {/* Detailed Stats Table */}
-        <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl overflow-hidden">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0.1 }}
+          className="glass-surface rounded-2xl overflow-hidden"
+        >
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="bg-neutral-50 dark:bg-neutral-800/50 border-b border-neutral-200 dark:border-neutral-800">
+              <thead className="bg-neutral-800/50 border-b border-neutral-800">
                 <tr>
                   <th className="px-6 py-4 font-medium text-neutral-400 uppercase tracking-wider">Step</th>
                   <th className="px-6 py-4 font-medium text-neutral-400 uppercase tracking-wider text-right">Visitors</th>
@@ -323,13 +330,13 @@ export default function FunnelReportPage() {
                   <th className="px-6 py-4 font-medium text-neutral-400 uppercase tracking-wider text-right">Conversion</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
+              <tbody className="divide-y divide-neutral-800">
                 {stats.steps.map((step, i) => (
                   <React.Fragment key={step.step.name}>
-                    <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-800/30 transition-colors cursor-pointer ease-apple" onClick={() => setBreakdownStep(i)}>
+                    <tr className="hover:bg-neutral-800/30 transition-colors cursor-pointer ease-apple" onClick={() => setBreakdownStep(i)}>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <span className="w-6 h-6 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-xs font-medium text-neutral-600 dark:text-neutral-400">
+                          <span className="w-6 h-6 rounded-full bg-neutral-800 flex items-center justify-center text-xs font-medium text-neutral-400">
                             {i + 1}
                           </span>
                           <div>
@@ -347,8 +354,8 @@ export default function FunnelReportPage() {
                         {i > 0 ? (
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                             step.dropoff > 50
-                              ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-                              : 'bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-300'
+                              ? 'bg-red-900/30 text-red-400'
+                              : 'bg-neutral-800 text-neutral-300'
                           }`}>
                             {Math.round(step.dropoff)}%
                           </span>
@@ -357,13 +364,13 @@ export default function FunnelReportPage() {
                         )}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <span className="text-green-600 dark:text-green-400 font-medium">
+                        <span className="text-green-400 font-medium">
                           {Math.round(step.conversion)}%
                         </span>
                       </td>
                     </tr>
                     {step.exit_pages && step.exit_pages.length > 0 && (
-                      <tr className="bg-neutral-50/50 dark:bg-neutral-800/20">
+                      <tr className="bg-neutral-800/20">
                         <td colSpan={4} className="px-6 py-3">
                           <div className="ml-9">
                             <p className="text-xs font-medium text-neutral-500 mb-2">
@@ -371,8 +378,8 @@ export default function FunnelReportPage() {
                             </p>
                             <div className="flex flex-wrap gap-2">
                               {(expandedExitStep === i ? step.exit_pages : step.exit_pages.slice(0, 3)).map(ep => (
-                                <span key={ep.path} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-xs">
-                                  <span className="font-mono text-neutral-600 dark:text-neutral-300">{ep.path}</span>
+                                <span key={ep.path} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-neutral-800 border border-neutral-700 rounded-lg text-xs">
+                                  <span className="font-mono text-neutral-300">{ep.path}</span>
                                   <span className="text-neutral-400">{ep.visitors}</span>
                                 </span>
                               ))}
@@ -395,8 +402,27 @@ export default function FunnelReportPage() {
               </tbody>
             </table>
           </div>
-        </div>
+        </motion.div>
       </div>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete funnel</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete &ldquo;{funnel.name}&rdquo;? This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <button onClick={() => setDeleteDialogOpen(false)} className="glass-surface rounded-lg px-4 py-2 text-sm font-medium text-neutral-300 hover:text-white transition-colors ease-apple">
+              Cancel
+            </button>
+            <button onClick={handleDelete} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-500 transition-colors ease-apple">
+              Delete
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {breakdownStep !== null && stats && (
         <BreakdownDrawer

@@ -126,13 +126,13 @@ export default function UtmBuilder({ initialSiteId }: UtmBuilderProps) {
         <div>
           <label className="block text-sm font-medium mb-1.5 text-white">Website URL *</label>
           {selectedSite ? (
-            <div className="flex rounded-xl shadow-sm transition-all duration-base focus-within:ring-4 focus-within:ring-brand-orange/10 focus-within:border-brand-orange hover:border-brand-orange/50 border border-neutral-200 dark:border-neutral-800 ease-apple">
-              <span className="inline-flex items-center px-4 rounded-l-xl border-r border-neutral-200 dark:border-neutral-800 bg-neutral-100 dark:bg-neutral-900 text-neutral-500 text-sm select-none">
+            <div className="flex rounded-xl shadow-sm transition-all duration-base focus-within:ring-4 focus-within:ring-brand-orange/10 focus-within:border-brand-orange hover:border-brand-orange/50 border border-neutral-800 ease-apple">
+              <span className="inline-flex items-center px-4 rounded-l-xl border-r border-neutral-800 bg-neutral-900 text-neutral-500 text-sm select-none">
                 https://{selectedSite.domain}
               </span>
               <input
                 type="text"
-                className="flex-1 min-w-0 block w-full px-4 py-3 rounded-none rounded-r-xl bg-neutral-50/50 dark:bg-neutral-900/50 outline-none transition-all text-white text-sm placeholder:text-neutral-400 ease-apple"
+                className="flex-1 min-w-0 block w-full px-4 py-3 rounded-none rounded-r-xl bg-neutral-900/50 outline-none transition-all text-white text-sm placeholder:text-neutral-400 ease-apple"
                 placeholder="/blog/post-1"
                 value={getCurrentPath()}
                 onChange={handlePathChange}
@@ -183,7 +183,7 @@ export default function UtmBuilder({ initialSiteId }: UtmBuilderProps) {
       </div>
 
       {generatedUrl && (
-        <div className="mt-6 p-4 bg-neutral-900/80 rounded-2xl border border-white/[0.08] flex items-center justify-between group">
+        <div className="glass-surface mt-6 p-4 rounded-2xl flex items-center justify-between group">
           <code className="text-sm break-all text-brand-orange font-mono">{generatedUrl}</code>
           <Button
             variant="secondary"

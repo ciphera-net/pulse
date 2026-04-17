@@ -50,7 +50,7 @@ function NotificationsContent() {
         <div className="space-y-6">
           {sections.map(section => (
             <section key={section.label}>
-              <h2 className="text-[10px] uppercase tracking-wider text-neutral-500 mb-2 px-1">{section.label}</h2>
+              <h2 className="text-micro-label uppercase tracking-wider text-neutral-500 mb-2 px-1">{section.label}</h2>
               <ul className="space-y-1">
                 {section.items.map(r => (
                   <NotificationRow key={r.event_id} receipt={r} onChange={refresh} />

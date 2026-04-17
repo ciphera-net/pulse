@@ -21,7 +21,7 @@ export default function ChangelogPage() {
       <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-2">
         Changelog
       </h1>
-      <p className="text-neutral-600 dark:text-neutral-400 mb-8 text-sm">
+      <p className="text-neutral-400 mb-8 text-sm">
         Release history and notable changes. We use{' '}
         <a
           href="https://keepachangelog.com/en/1.1.0/"
@@ -34,7 +34,7 @@ export default function ChangelogPage() {
         and <strong>0.x.y</strong> versioning while in initial development.
       </p>
       <article
-        className="prose prose-neutral dark:prose-invert max-w-none
+        className="prose prose-invert max-w-none
           prose-headings:font-semibold prose-headings:tracking-tight
           prose-a:text-brand-orange prose-a:no-underline hover:prose-a:underline
           prose-ul:my-4 prose-li:my-0.5"

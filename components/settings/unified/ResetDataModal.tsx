@@ -142,27 +142,27 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[70] flex items-center justify-center bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm p-4 pointer-events-none"
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-neutral-900/80 backdrop-blur-sm p-4 pointer-events-none"
         >
           <motion.div
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
-            className="w-full max-w-md bg-neutral-900/80 p-6 rounded-2xl border border-red-200 dark:border-red-900 shadow-xl pointer-events-auto max-h-[90vh] overflow-y-auto"
+            className="w-full max-w-md bg-neutral-900/80 p-6 rounded-2xl border border-red-900 shadow-xl pointer-events-auto max-h-[90vh] overflow-y-auto"
           >
             {/* Header */}
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-red-600 dark:text-red-500">Reset Data</h3>
+              <h3 className="text-lg font-semibold text-red-500">Reset Data</h3>
               <button
                 onClick={handleClose}
                 disabled={isResetting}
-                className="text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-white disabled:opacity-50"
+                className="text-neutral-400 hover:text-white disabled:opacity-50"
               >
                 <XIcon className="w-5 h-5" />
               </button>
             </div>
 
-            <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
+            <p className="text-sm text-neutral-400 mb-4">
               Select which data modules to permanently delete for <span className="font-medium text-white">{siteDomain}</span>. Configuration and integrations are preserved.
             </p>
 
@@ -217,9 +217,9 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
             {/* Confirmation */}
             {selected.size > 0 && (
               <div className="space-y-4">
-                <div className="flex items-center gap-3 p-3 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 rounded-lg">
+                <div className="flex items-center gap-3 p-3 bg-red-900/10 border border-red-900/20 rounded-lg">
                   <AlertTriangleIcon className="h-4 w-4 text-red-500 shrink-0" />
-                  <span className="text-xs font-medium text-red-700 dark:text-red-300">
+                  <span className="text-xs font-medium text-red-300">
                     {selected.size === RESET_MODULES.length
                       ? 'All data modules will be permanently deleted.'
                       : `${selected.size} module${selected.size > 1 ? 's' : ''} will be permanently deleted.`}
@@ -227,8 +227,8 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                    Type <span className="font-mono font-bold text-red-600 dark:text-red-400">{allSelected ? siteDomain : 'RESET'}</span> to confirm
+                  <label className="block text-xs font-medium text-neutral-300 mb-1">
+                    Type <span className="font-mono font-bold text-red-400">{allSelected ? siteDomain : 'RESET'}</span> to confirm
                   </label>
                   <input
                     type="text"
@@ -236,7 +236,7 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
                     onChange={(e) => setConfirmInput(e.target.value)}
                     autoComplete="off"
                     disabled={isResetting}
-                    className="w-full px-3 py-2 text-sm border border-neutral-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-red-500 dark:focus:ring-red-400 disabled:opacity-50"
+                    className="w-full px-3 py-2 text-sm border border-neutral-700 rounded-lg bg-neutral-800 text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-red-400 disabled:opacity-50"
                     placeholder={allSelected ? siteDomain : 'RESET'}
                   />
                 </div>
@@ -246,14 +246,14 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
                     type="button"
                     onClick={handleClose}
                     disabled={isResetting}
-                    className="flex-1 px-4 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition-colors disabled:opacity-50 ease-apple"
+                    className="flex-1 px-4 py-2 text-sm font-medium text-neutral-300 hover:bg-neutral-800 rounded-xl transition-colors disabled:opacity-50 ease-apple"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleReset}
                     disabled={!isConfirmed || isResetting}
-                    className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ease-apple"
+                    className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ease-apple"
                   >
                     {isResetting ? (
                       <>

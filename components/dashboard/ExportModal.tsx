@@ -404,7 +404,7 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
         {/* Filename & Format */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <label htmlFor="filename" className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+            <label htmlFor="filename" className="text-sm font-medium text-neutral-300">
               Filename
             </label>
             <Input
@@ -415,7 +415,7 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
             />
           </div>
           <div className="space-y-2">
-            <label htmlFor="format" className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+            <label htmlFor="format" className="text-sm font-medium text-neutral-300">
               Format
             </label>
             <Select
@@ -436,7 +436,7 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
 
         {/* Fields Selection */}
         <div className="space-y-3">
-          <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+          <label className="text-sm font-medium text-neutral-300">
             Include Fields
           </label>
           <div className="grid grid-cols-2 gap-3">
@@ -470,7 +470,7 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
 
         {/* Additional Options */}
         {format === 'csv' && (
-          <div className="pt-2 border-t border-neutral-100 dark:border-neutral-800">
+          <div className="pt-2 border-t border-neutral-800">
              <Checkbox
               checked={includeHeader}
               onCheckedChange={setIncludeHeader}
@@ -486,9 +486,9 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
               <span>{exportDone ? 'Export complete' : exportProgress.label}</span>
               <span>{exportDone ? '100%' : `${Math.round((exportProgress.step / exportProgress.total) * 100)}%`}</span>
             </div>
-            <div className="h-1.5 w-full rounded-full bg-neutral-100 dark:bg-neutral-800 overflow-hidden">
+            <div className="h-1.5 w-full rounded-full bg-neutral-800 overflow-hidden">
               <div
-                className={`h-full rounded-full transition-[width] duration-slow ease-out ${exportDone ? 'bg-green-500' : 'bg-brand-orange'}`}
+                className={`h-full rounded-full transition-[width] duration-slow ease-apple ${exportDone ? 'bg-green-500' : 'bg-brand-orange'}`}
                 style={{ width: exportDone ? '100%' : `${(exportProgress.step / exportProgress.total) * 100}%` }}
               />
             </div>

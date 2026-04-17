@@ -15,7 +15,7 @@ export default function FrustrationByPageTable({ pages, loading }: FrustrationBy
   const maxTotal = Math.max(...pages.map(p => p.total), 1)
 
   return (
-    <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 mb-8">
+    <div className="glass-surface rounded-2xl p-6 mb-8">
       <div className="flex items-center justify-between mb-1">
         <h3 className="text-lg font-semibold text-white">
           Frustration by Page
@@ -30,7 +30,7 @@ export default function FrustrationByPageTable({ pages, loading }: FrustrationBy
       ) : hasData ? (
         <div className="overflow-x-auto -mx-6 px-6">
           {/* Header */}
-          <div className="flex items-center justify-between px-2 -mx-2 mb-2 text-xs font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
+          <div className="flex items-center justify-between px-2 -mx-2 mb-2 text-xs font-medium text-neutral-500 uppercase tracking-wider">
             <span>Page</span>
             <div className="flex items-center gap-6">
               <span className="w-12 text-right">Rage</span>
@@ -47,11 +47,11 @@ export default function FrustrationByPageTable({ pages, loading }: FrustrationBy
               return (
                 <div
                   key={page.page_path}
-                  className="relative flex items-center justify-between h-9 group hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors ease-apple"
+                  className="relative flex items-center justify-between h-9 group hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors ease-apple"
                 >
                   {/* Background bar */}
                   <div
-                    className="absolute inset-y-0 left-0 bg-brand-orange/15 dark:bg-brand-orange/25 rounded-lg transition-[width] ease-apple"
+                    className="absolute inset-y-0 left-0 bg-brand-orange/25 rounded-lg transition-[width] ease-apple"
                     style={{ width: `${barWidth}%` }}
                   />
                   <span
@@ -61,16 +61,16 @@ export default function FrustrationByPageTable({ pages, loading }: FrustrationBy
                     {page.page_path}
                   </span>
                   <div className="relative flex items-center gap-6">
-                    <span className="w-12 text-right text-sm tabular-nums text-neutral-600 dark:text-neutral-400">
+                    <span className="w-12 text-right text-sm tabular-nums text-neutral-400">
                       {formatNumber(page.rage_clicks)}
                     </span>
-                    <span className="w-12 text-right text-sm tabular-nums text-neutral-600 dark:text-neutral-400">
+                    <span className="w-12 text-right text-sm tabular-nums text-neutral-400">
                       {formatNumber(page.dead_clicks)}
                     </span>
                     <span className="w-12 text-right text-sm font-semibold tabular-nums text-white">
                       {formatNumber(page.total)}
                     </span>
-                    <span className="w-16 text-right text-sm tabular-nums text-neutral-600 dark:text-neutral-400">
+                    <span className="w-16 text-right text-sm tabular-nums text-neutral-400">
                       {page.unique_elements}
                     </span>
                   </div>
@@ -81,7 +81,7 @@ export default function FrustrationByPageTable({ pages, loading }: FrustrationBy
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center text-center px-6 py-8 gap-4 min-h-[200px]">
-          <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
+          <div className="rounded-full bg-neutral-800 p-4">
             <Files className="w-8 h-8 text-neutral-400" />
           </div>
           <h4 className="font-semibold text-white">

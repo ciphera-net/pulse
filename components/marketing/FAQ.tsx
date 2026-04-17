@@ -66,7 +66,7 @@ const FAQTabs = ({ categories, selected, setSelected }: { categories: Record<str
         key={key}
         onClick={() => setSelected(key)}
         className={cn(
-          "relative overflow-hidden whitespace-nowrap rounded-md border px-3 py-1.5 text-sm font-medium transition-colors duration-500",
+          "relative overflow-hidden whitespace-nowrap rounded-md border px-3 py-1.5 text-sm font-medium transition-colors duration-gentle",
           selected === key
             ? "border-primary text-background"
             : "border-border bg-transparent text-muted-foreground hover:text-foreground"
@@ -122,7 +122,7 @@ const FAQItemComponent = ({ question, answer }: FAQItem) => {
     <motion.div
       animate={isOpen ? "open" : "closed"}
       className={cn(
-        "rounded-xl border transition-colors",
+        "rounded-2xl border transition-colors",
         isOpen ? "bg-muted/50" : "bg-card"
       )}
     >

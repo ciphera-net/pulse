@@ -615,7 +615,7 @@ export default function SankeyJourney({
   if (!transitions.length || data.nodes.length === 0) {
     return (
       <div className="h-[400px] flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
-        <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
+        <div className="rounded-full bg-neutral-800 p-4">
           <TreeStructure className="w-8 h-8 text-neutral-400" />
         </div>
         <h4 className="font-semibold text-white">
@@ -635,7 +635,7 @@ export default function SankeyJourney({
     <div>
       {filterPath && (
         <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-lg bg-brand-orange/10 text-sm">
-          <span className="text-neutral-700 dark:text-neutral-300">
+          <span className="text-neutral-300">
             Showing flows through{' '}
             <span className="font-medium text-white">
               {filterPath}

@@ -13,7 +13,7 @@ interface FooterProps {
 const footerLinks = {
   products: [
     { name: 'Pulse', href: 'https://pulse.ciphera.net', external: true },
-    { name: 'Ciphera Auth', href: 'https://ciphera.net/products#auth', external: true },
+    { name: 'Ciphera ID', href: 'https://ciphera.net/products#id', external: true },
     { name: 'Ciphera Captcha', href: 'https://ciphera.net/products#captcha', external: true },
     { name: 'Ciphera Relay', href: 'https://ciphera.net/products#relay', external: true },
   ],
@@ -44,13 +44,13 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
   // * Simple footer for authenticated users
   if (isAuthenticated) {
     return (
-      <footer className="w-full py-8 mt-auto border-t border-neutral-100 dark:border-neutral-800 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-sm">
+      <footer className="w-full py-8 mt-auto border-t border-neutral-800 bg-neutral-900/50 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="text-sm text-neutral-400">
               © 2024-{year} Ciphera. All rights reserved.
             </div>
-            <div className="flex gap-6 text-sm font-medium text-neutral-600 dark:text-neutral-300">
+            <div className="flex gap-6 text-sm font-medium text-neutral-300">
               <Component href="/about" className="hover:text-brand-orange transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus:rounded ease-apple">
                 Why {appName}
               </Component>
@@ -72,7 +72,7 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
 
   // * Comprehensive footer for unauthenticated users
   return (
-    <footer className="w-full mt-auto border-t border-neutral-100 dark:border-neutral-800 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-sm">
+    <footer className="w-full mt-auto border-t border-neutral-800 bg-neutral-900/50 backdrop-blur-sm">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12 lg:py-16">
         {/* * Main footer content */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6 sm:gap-8 lg:gap-12">
@@ -91,11 +91,11 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
                 Pulse
               </span>
             </Link>
-            <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4 leading-relaxed">
+            <p className="text-sm text-neutral-400 mb-4 leading-relaxed">
               Simple analytics for privacy-conscious apps.
             </p>
-            <div className="inline-flex items-center gap-3 text-sm text-neutral-600 dark:text-neutral-400 mb-4">
-              <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-neutral-100 dark:bg-neutral-800 shrink-0 overflow-hidden ring-1 ring-neutral-200 dark:ring-neutral-700" aria-hidden>
+            <div className="inline-flex items-center gap-3 text-sm text-neutral-400 mb-4">
+              <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-neutral-800 shrink-0 overflow-hidden ring-1 ring-neutral-700" aria-hidden>
                 <SwissFlagIcon className="w-5 h-5" />
               </span>
               <span>Swiss infrastructure</span>
@@ -105,7 +105,7 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
                 href="https://github.com/ciphera-net"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-9 h-9 rounded-lg bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ease-apple"
+                className="w-9 h-9 rounded-lg bg-neutral-800 flex items-center justify-center text-neutral-400 hover:text-brand-orange hover:bg-neutral-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ease-apple"
                 aria-label="GitHub"
               >
                 <GithubIcon className="w-5 h-5" />
@@ -114,7 +114,7 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
                 href="https://x.com/cipheranet"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-9 h-9 rounded-lg bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ease-apple"
+                className="w-9 h-9 rounded-lg bg-neutral-800 flex items-center justify-center text-neutral-400 hover:text-brand-orange hover:bg-neutral-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ease-apple"
                 aria-label="X (Twitter)"
               >
                 <TwitterIcon className="w-5 h-5" />
@@ -133,14 +133,14 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
                       href={link.href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus:rounded ease-apple"
+                      className="text-sm text-neutral-400 hover:text-brand-orange transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus:rounded ease-apple"
                     >
                       {link.name}
                     </a>
                   ) : (
                     <Component
                       href={link.href}
-                      className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus:rounded ease-apple"
+                      className="text-sm text-neutral-400 hover:text-brand-orange transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus:rounded ease-apple"
                     >
                       {link.name}
                     </Component>
@@ -161,14 +161,14 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
                       href={link.href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus:rounded ease-apple"
+                      className="text-sm text-neutral-400 hover:text-brand-orange transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus:rounded ease-apple"
                     >
                       {link.name}
                     </a>
                   ) : (
                     <Component
                       href={link.href}
-                      className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus:rounded ease-apple"
+                      className="text-sm text-neutral-400 hover:text-brand-orange transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus:rounded ease-apple"
                     >
                       {link.name}
                     </Component>
@@ -189,14 +189,14 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
                       href={link.href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus:rounded ease-apple"
+                      className="text-sm text-neutral-400 hover:text-brand-orange transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus:rounded ease-apple"
                     >
                       {link.name}
                     </a>
                   ) : (
                     <Component
                       href={link.href}
-                      className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus:rounded ease-apple"
+                      className="text-sm text-neutral-400 hover:text-brand-orange transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus:rounded ease-apple"
                     >
                       {link.name}
                     </Component>
@@ -216,7 +216,7 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
                     href={link.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors ease-apple"
+                    className="text-sm text-neutral-400 hover:text-brand-orange transition-colors ease-apple"
                   >
                     {link.name}
                   </a>
@@ -227,7 +227,7 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
         </div>
 
         {/* * Divider */}
-        <div className="h-px w-full bg-gradient-to-r from-transparent via-neutral-200 dark:via-neutral-800 to-transparent my-8" />
+        <div className="h-px w-full bg-gradient-to-r from-transparent via-neutral-800 to-transparent my-8" />
 
         {/* * Bottom bar */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
