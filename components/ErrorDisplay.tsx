@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { Button } from '@ciphera-net/ui'
 
 interface ErrorDisplayProps {
@@ -7,6 +8,7 @@ interface ErrorDisplayProps {
   message?: string
   onRetry?: () => void
   onGoHome?: boolean
+  error?: Error
 }
 
 /**
@@ -18,7 +20,22 @@ export default function ErrorDisplay({
   message = 'An unexpected error occurred. Please try again or go back to the dashboard.',
   onRetry,
   onGoHome = true,
+  error,
 }: ErrorDisplayProps) {
+  useEffect(() => {
+    if (error && typeof window !== "undefined") {
+      navigator.sendBeacon?.(
+        "/api/client-errors",
+        new Blob([JSON.stringify({
+          message: error.message,
+          stack: error.stack?.slice(0, 500),
+          url: window.location.href,
+          timestamp: new Date().toISOString(),
+        })], { type: "application/json" })
+      );
+    }
+  }, [error]);
+
   return (
     <div className="relative min-h-[80vh] flex flex-col items-center justify-center overflow-hidden">
       <div className="absolute inset-0 -z-10 pointer-events-none">
