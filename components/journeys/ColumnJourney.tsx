@@ -154,7 +154,7 @@ function PageRow({
       {/* Background bar — animates width on mount */}
       {!isOther && barWidth > 0 && (
         <div
-          className="absolute top-0.5 bottom-0.5 left-0.5 rounded-md transition-[width] duration-gentle ease-out"
+          className="absolute top-0.5 bottom-0.5 left-0.5 rounded-md transition-[width] duration-gentle ease-apple"
           style={{
             width: isMounted ? `calc(${barWidth}% - 4px)` : '0%',
             transitionDelay: `${rowIndex * 30}ms`,
@@ -219,7 +219,7 @@ function JourneyColumn({
       <div
         className="w-56 shrink-0"
         style={{
-          animation: `col-enter 300ms cubic-bezier(0.32, 0.72, 0, 1) ${column.index * 50}ms backwards`,
+          animation: `col-enter 300ms var(--ease-apple) ${column.index * 50}ms backwards`,
         }}
       >
         <ColumnHeader column={column} />
@@ -238,7 +238,7 @@ function JourneyColumn({
     <div
       className="w-56 shrink-0 px-3"
       style={{
-        animation: `col-enter 300ms cubic-bezier(0.32, 0.72, 0, 1) ${column.index * 50}ms backwards`,
+        animation: `col-enter 300ms var(--ease-apple) ${column.index * 50}ms backwards`,
       }}
     >
       <ColumnHeader column={column} />
@@ -268,7 +268,7 @@ function JourneyColumn({
             data-col={column.index}
             data-path="(exit)"
             className="flex items-center justify-between w-full relative h-9 px-3 rounded-lg bg-red-500/15"
-            style={{ animation: 'exit-reveal 300ms cubic-bezier(0.32, 0.72, 0, 1) backwards' }}
+            style={{ animation: 'exit-reveal 300ms var(--ease-apple) backwards' }}
           >
             <div
               className="absolute top-0.5 bottom-0.5 left-0.5 rounded-md"
@@ -406,7 +406,7 @@ function ConnectionLines({
             strokeDasharray={line.length}
             strokeDashoffset={line.length}
             style={{
-              animation: `draw-line 400ms cubic-bezier(0.32, 0.72, 0, 1) ${i * 50}ms forwards`,
+              animation: `draw-line 400ms var(--ease-apple) ${i * 50}ms forwards`,
             }}
           />
         )
