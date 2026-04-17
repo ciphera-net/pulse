@@ -13,7 +13,7 @@ import Link from 'next/link'
 import { FunnelChart } from '@/components/ui/funnel-chart'
 import { getDateRange } from '@ciphera-net/ui'
 import BreakdownDrawer from '@/components/funnels/BreakdownDrawer'
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
+import { LineChart, Line, Grid, XAxis, YAxis, ChartTooltip } from '@/components/ui/line-chart'
 
 export default function FunnelReportPage() {
   const params = useParams()
@@ -259,55 +259,44 @@ export default function FunnelReportPage() {
               </div>
             </div>
 
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={trendsChartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-neutral-700" />
-                  <XAxis
-                    dataKey="date"
-                    tick={{ fontSize: 12 }}
-                    className="text-neutral-500"
-                  />
-                  <YAxis
-                    domain={[0, 100]}
-                    tickFormatter={(v) => `${v}%`}
-                    tick={{ fontSize: 12 }}
-                    className="text-neutral-500"
-                  />
-                  <Tooltip
-                    formatter={(value: number) => [`${value}%`]}
-                    contentStyle={{
-                      backgroundColor: 'var(--color-neutral-900, #171717)',
-                      border: '1px solid var(--color-neutral-700, #404040)',
-                      borderRadius: '8px',
-                      color: '#fff',
-                      fontSize: '12px',
-                    }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="overall"
-                    name="Overall"
-                    stroke="#F97316"
-                    strokeWidth={2}
-                    dot={false}
-                    activeDot={{ r: 4 }}
-                  />
-                  {Array.from(visibleSteps).map((stepKey) => (
-                    <Line
-                      key={stepKey}
-                      type="monotone"
-                      dataKey={`step_${stepKey}`}
-                      name={stats?.steps[Number(stepKey)]?.step.name || `Step ${stepKey}`}
-                      stroke={STEP_COLORS[Number(stepKey) % STEP_COLORS.length]}
-                      strokeWidth={2}
-                      dot={false}
-                      activeDot={{ r: 4 }}
-                    />
-                  ))}
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            <LineChart
+              data={trendsChartData}
+              xDataKey="date"
+              aspectRatio="4 / 1"
+            >
+              <Grid />
+              <XAxis />
+              <YAxis
+                numTicks={5}
+                formatValue={(v) => `${Math.round(v)}%`}
+              />
+              <Line dataKey="overall" stroke="#F97316" />
+              {Array.from(visibleSteps).map((stepKey) => (
+                <Line
+                  key={stepKey}
+                  dataKey={`step_${stepKey}`}
+                  stroke={STEP_COLORS[Number(stepKey) % STEP_COLORS.length]}
+                />
+              ))}
+              <ChartTooltip
+                rows={(point) => {
+                  const rows: { color: string; label: string; value: string | number }[] = [
+                    { color: '#F97316', label: 'Overall', value: `${point.overall ?? 0}%` },
+                  ]
+                  for (const stepKey of Array.from(visibleSteps)) {
+                    const key = `step_${stepKey}`
+                    if (point[key] !== undefined) {
+                      rows.push({
+                        color: STEP_COLORS[Number(stepKey) % STEP_COLORS.length]!,
+                        label: stats?.steps[Number(stepKey)]?.step.name || `Step ${stepKey}`,
+                        value: `${point[key]}%`,
+                      })
+                    }
+                  }
+                  return rows
+                }}
+              />
+            </LineChart>
           </div>
         )}
 
