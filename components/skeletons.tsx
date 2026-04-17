@@ -4,7 +4,7 @@
  *   animate-pulse + bg-neutral-800 + rounded
  */
 
-const SK = 'animate-pulse bg-neutral-800'
+const SK = 'animate-skeleton-fade bg-neutral-800'
 
 export { useMinimumLoading, useSkeletonFade } from './useMinimumLoading'
 

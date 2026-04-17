@@ -209,8 +209,8 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
         <div className="flex-1 min-h-[270px] flex flex-col justify-center gap-1.5">
           {Array.from({ length: 7 }).map((_, i) => (
             <div key={i} className="flex items-center gap-1">
-              <div className="w-7 h-3 rounded bg-neutral-800 animate-pulse" />
-              <div className="flex-1 h-5 rounded bg-neutral-800 animate-pulse" />
+              <div className="w-7 h-3 rounded bg-neutral-800 animate-skeleton-fade" />
+              <div className="flex-1 h-5 rounded bg-neutral-800 animate-skeleton-fade" />
             </div>
           ))}
         </div>

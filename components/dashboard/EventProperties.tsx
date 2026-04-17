@@ -54,7 +54,7 @@ export default function EventProperties({ siteId, eventName, dateRange, onClose 
       </div>
 
       {loading ? (
-        <div className="animate-pulse space-y-3">
+        <div className="animate-skeleton-fade space-y-3">
           {[1, 2, 3].map(i => (
             <div key={i} className="h-8 bg-neutral-800 rounded-lg" />
           ))}

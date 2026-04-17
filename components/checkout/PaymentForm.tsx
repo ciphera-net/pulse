@@ -256,7 +256,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
               <div className="overflow-hidden transition-all duration-slow ease-apple" style={{ height: mollieReady ? '48px' : '0px' }}>
                 <div id="mollie-card-holder" className={mollieFieldBase} />
               </div>
-              {!mollieReady && isCard && <div className={`${mollieFieldBase} bg-neutral-800/30 animate-pulse`} />}
+              {!mollieReady && isCard && <div className={`${mollieFieldBase} bg-neutral-800/30 animate-skeleton-fade`} />}
               {submitted && cardErrors.cardHolder && (
                 <p className="mt-1 text-xs text-red-400">{cardErrors.cardHolder}</p>
               )}
@@ -268,7 +268,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
               <div className="overflow-hidden transition-all duration-slow ease-apple" style={{ height: mollieReady ? '48px' : '0px' }}>
                 <div id="mollie-card-number" className={mollieFieldBase} />
               </div>
-              {!mollieReady && isCard && <div className={`${mollieFieldBase} bg-neutral-800/30 animate-pulse`} />}
+              {!mollieReady && isCard && <div className={`${mollieFieldBase} bg-neutral-800/30 animate-skeleton-fade`} />}
               {submitted && cardErrors.cardNumber && (
                 <p className="mt-1 text-xs text-red-400">{cardErrors.cardNumber}</p>
               )}
@@ -281,7 +281,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
                 <div className="overflow-hidden transition-all duration-slow ease-apple" style={{ height: mollieReady ? '48px' : '0px' }}>
                   <div id="mollie-card-expiry" className={mollieFieldBase} />
                 </div>
-                {!mollieReady && isCard && <div className={`${mollieFieldBase} bg-neutral-800/30 animate-pulse`} />}
+                {!mollieReady && isCard && <div className={`${mollieFieldBase} bg-neutral-800/30 animate-skeleton-fade`} />}
                 {submitted && cardErrors.expiryDate && (
                   <p className="mt-1 text-xs text-red-400">{cardErrors.expiryDate}</p>
                 )}
@@ -291,7 +291,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
                 <div className="overflow-hidden transition-all duration-slow ease-apple" style={{ height: mollieReady ? '48px' : '0px' }}>
                   <div id="mollie-card-cvc" className={mollieFieldBase} />
                 </div>
-                {!mollieReady && isCard && <div className={`${mollieFieldBase} bg-neutral-800/30 animate-pulse`} />}
+                {!mollieReady && isCard && <div className={`${mollieFieldBase} bg-neutral-800/30 animate-skeleton-fade`} />}
                 {submitted && cardErrors.verificationCode && (
                   <p className="mt-1 text-xs text-red-400">{cardErrors.verificationCode}</p>
                 )}
