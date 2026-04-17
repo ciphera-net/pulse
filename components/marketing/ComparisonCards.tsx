@@ -54,7 +54,7 @@ export default function ComparisonCards() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="rounded-xl border border-brand-orange/20 bg-neutral-900/80 p-8 relative overflow-hidden"
+            className="glass-surface rounded-2xl border-brand-orange/20 p-8 relative overflow-hidden"
           >
             <div className="absolute top-0 left-0 right-0 h-[3px] bg-brand-orange" />
             <div className="flex items-center gap-3 mb-6">
@@ -80,7 +80,7 @@ export default function ComparisonCards() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="rounded-xl border border-white/[0.08] bg-neutral-900/80 p-8"
+            className="glass-surface rounded-2xl p-8"
           >
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-lg bg-neutral-800 flex items-center justify-center text-lg">

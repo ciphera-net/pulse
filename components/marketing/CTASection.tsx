@@ -23,7 +23,7 @@ export default function CTASection({
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
-          className="relative overflow-hidden rounded-xl border border-white/[0.06] bg-neutral-900/80 px-6 py-20 sm:px-10 sm:py-24 max-w-6xl mx-auto"
+          className="glass-surface relative overflow-hidden rounded-2xl px-6 py-20 sm:px-10 sm:py-24 max-w-6xl mx-auto"
         >
           {/* Atmosphere inside card */}
           <div className="absolute inset-0 -z-10 pointer-events-none">

@@ -122,7 +122,7 @@ const FAQItemComponent = ({ question, answer }: FAQItem) => {
     <motion.div
       animate={isOpen ? "open" : "closed"}
       className={cn(
-        "rounded-xl border transition-colors",
+        "rounded-2xl border transition-colors",
         isOpen ? "bg-muted/50" : "bg-card"
       )}
     >
