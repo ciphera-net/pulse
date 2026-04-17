@@ -26,7 +26,7 @@ Pulse is available as a commercial product. Hosted in Switzerland, it gives you 
 - **Framework**: Next.js 16+ (App Router)
 - **Styling**: Tailwind CSS with Ciphera design tokens
 - **Charts**: Recharts for data visualization
-- **Authentication**: OAuth flow with ciphera-auth
+- **Authentication**: OAuth flow with ciphera-id
 - **UI Components**: @ciphera-net/ui for shared components
 - **Hosting**: Swiss infrastructure
 

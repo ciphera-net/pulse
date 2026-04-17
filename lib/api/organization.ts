@@ -30,7 +30,7 @@ export interface OrganizationInvitation {
 
 // Create a new organization
 export async function createOrganization(name: string, slug: string): Promise<Organization> {
-  // Use authFetch (Authenticated via Ciphera Auth)
+  // Use authFetch (Authenticated via Ciphera ID)
   // * Note: authFetch returns the parsed JSON body, not the Response object
   return await authFetch<Organization>('/auth/organizations', {
     method: 'POST',

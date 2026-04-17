@@ -88,8 +88,8 @@ jobs:
             NEXT_PUBLIC_API_URL=${{ steps.target.outputs.public_api_url }}
             NEXT_PUBLIC_APP_URL=${{ steps.target.outputs.public_app_url }}
             NEXT_PUBLIC_MOLLIE_TESTMODE=${{ steps.target.outputs.public_mollie_testmode }}
-            NEXT_PUBLIC_AUTH_URL=https://auth.ciphera.net
-            NEXT_PUBLIC_AUTH_API_URL=https://auth-api.ciphera.net
+            NEXT_PUBLIC_AUTH_URL=https://id.ciphera.net
+            NEXT_PUBLIC_AUTH_API_URL=https://api.id.ciphera.net
             NEXT_PUBLIC_CAPTCHA_API_URL=https://captcha.ciphera.net/api/v1
             NEXT_PUBLIC_MOLLIE_PROFILE_ID=pfl_3WTMG2peXk
 

@@ -253,7 +253,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Fixed
 
 - **Shopify and embedded site tracking.** The Pulse tracking script now loads correctly when embedded on third-party sites like Shopify stores, WooCommerce, or custom storefronts. Previously, tracking failed because the script was redirected to the login page instead of loading.
-- **Opening Pulse from the Ciphera hub.** Clicking Pulse on the auth apps page (auth.ciphera.net/apps) now signs you in correctly instead of showing "Invalid state". Previously, leftover OAuth data from a past login attempt could block the session flow; the callback now detects redirects from the hub (no `state` in the URL), clears stale PKCE storage, and completes token exchange.
+- **Opening Pulse from the Ciphera hub.** Clicking Pulse on the ID apps page (id.ciphera.net/apps) now signs you in correctly instead of showing "Invalid state". Previously, leftover OAuth data from a past login attempt could block the session flow; the callback now detects redirects from the hub (no `state` in the URL), clears stale PKCE storage, and completes token exchange.
 - **Admin organizations list.** Organizations that created a site but never subscribed now appear in the admin list. Previously only orgs with a billing row were shown.
 - **Sign in after inactivity.** Clicking "Sign in" after a period of inactivity no longer does nothing. Previously, stale refresh cookies caused the middleware to redirect away from the login page; now only a valid access token triggers that redirect, so you can complete OAuth sign-in when your session has expired.
 - **Frequent re-login.** You no longer have to sign in multiple times a day. When the access token expires after 15 minutes of inactivity, the app now automatically refreshes it using your refresh token on the next page load, so you stay logged in for up to 30 days.
@@ -300,7 +300,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Fixed
 
 - **Landing page dashboard preview.** The homepage now shows a realistic preview of the Pulse dashboard instead of an empty placeholder.
-- **Logout redirect loop.** Signing out no longer bounces you straight to Ciphera Auth. You now land on the Pulse homepage where you can choose to sign back in.
+- **Logout redirect loop.** Signing out no longer bounces you straight to Ciphera ID. You now land on the Pulse homepage where you can choose to sign back in.
 - **No more loading flicker.** Fast-loading pages no longer flash a loading state for a split second before showing content.
 - **Organization context switch.** Switching away from a deleted organization now stores the session correctly instead of using an insecure fallback.
 - **Dark mode uptime chart.** The response time chart on the uptime page now correctly follows your dark mode preference instead of always showing a white tooltip background.
@@ -308,7 +308,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Audit log reliability.** Failed audit log writes are now logged to the server instead of being silently ignored, so gaps in the audit trail are detectable.
 - **Safer error messages.** Server errors no longer expose internal details (database errors, stack traces) to the browser. You see a clear message like "Failed to create site" while the full error is logged server-side for debugging.
 - **Content Security Policy.** The backend CSP header was being overwritten by a duplicate, and the captcha service was incorrectly whitelisted under image sources instead of connection sources. Both are now fixed.
-- **Logout redirect loop.** Signing out no longer bounces you straight to Ciphera Auth. You now land on the Pulse homepage where you can choose to sign back in.
+- **Logout redirect loop.** Signing out no longer bounces you straight to Ciphera ID. You now land on the Pulse homepage where you can choose to sign back in.
 - **Date range edge case.** The maximum date range check could be off by a day due to an internal time adjustment. It now compares calendar days accurately.
 
 ## [0.10.0-alpha] - 2026-02-21
