@@ -246,7 +246,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
 
         {/* Card form — always rendered for Mollie mount, animated visibility */}
         <div
-          className="overflow-hidden transition-all duration-slow ease-out"
+          className="overflow-hidden transition-all duration-slow ease-apple"
           style={{ maxHeight: isCard ? '400px' : '0px', opacity: isCard ? 1 : 0 }}
         >
           <div className="space-y-4 pb-1">
