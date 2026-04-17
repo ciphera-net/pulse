@@ -136,7 +136,7 @@ export default function SecurityActivityCard() {
           <p className="text-red-600 dark:text-red-400">{error}</p>
         </div>
       ) : entries.length === 0 ? (
-        <div className="rounded-2xl border border-white/[0.08] bg-neutral-900/80">
+        <div className="glass-surface rounded-2xl">
           <EmptyState
             title="No security activity yet"
             description="Sign-ins, password changes, and device events will appear here."
@@ -158,7 +158,7 @@ export default function SecurityActivityCard() {
             return (
               <div
                 key={entry.id}
-                className="flex items-start gap-3 rounded-xl border border-white/[0.08] bg-neutral-900/80 px-4 py-3"
+                className="glass-surface flex items-start gap-3 rounded-xl px-4 py-3"
               >
                 <div className={`flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center mt-0.5 ${color}`}>
                   <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">

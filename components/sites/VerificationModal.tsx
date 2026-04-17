@@ -101,7 +101,7 @@ export default function VerificationModal({ isOpen, onClose, site, onVerified }:
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="w-full max-w-md bg-neutral-900/80 rounded-2xl shadow-xl border border-white/[0.08] pointer-events-auto overflow-hidden"
+              className="glass-surface w-full max-w-md rounded-2xl shadow-xl pointer-events-auto overflow-hidden"
             >
               {/* Header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">

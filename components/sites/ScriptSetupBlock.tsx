@@ -189,7 +189,7 @@ export default function ScriptSetupBlock({
           {FEATURES.map((f) => (
             <div
               key={f.key}
-              className="flex items-center justify-between rounded-xl border border-white/[0.08] bg-neutral-900/80 px-4 py-3"
+              className="glass-surface flex items-center justify-between rounded-xl px-4 py-3"
             >
               <div className="min-w-0 mr-3">
                 <span className="text-sm font-medium text-white block">

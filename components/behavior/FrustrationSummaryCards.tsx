@@ -59,7 +59,7 @@ export default function FrustrationSummaryCards({ data, loading }: FrustrationSu
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
       {/* Rage Clicks */}
-      <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6">
+      <div className="glass-surface rounded-2xl p-6">
         <p className="text-sm font-medium text-neutral-400 mb-1">
           Rage Clicks
         </p>
@@ -75,7 +75,7 @@ export default function FrustrationSummaryCards({ data, loading }: FrustrationSu
       </div>
 
       {/* Dead Clicks */}
-      <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6">
+      <div className="glass-surface rounded-2xl p-6">
         <p className="text-sm font-medium text-neutral-400 mb-1">
           Dead Clicks
         </p>
@@ -91,7 +91,7 @@ export default function FrustrationSummaryCards({ data, loading }: FrustrationSu
       </div>
 
       {/* Total Frustration Signals */}
-      <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6">
+      <div className="glass-surface rounded-2xl p-6">
         <p className="text-sm font-medium text-neutral-400 mb-1">
           Total Signals
         </p>

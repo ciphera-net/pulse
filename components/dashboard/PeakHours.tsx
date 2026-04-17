@@ -182,7 +182,7 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
   }
 
   return (
-    <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 h-full flex flex-col">
+    <div className="glass-surface rounded-2xl p-6 h-full flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <div className="flex gap-1 flex-wrap">
           {METRICS.map((m) => (
