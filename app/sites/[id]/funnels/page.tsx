@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { deleteFunnel, type Funnel } from '@/lib/api/funnels'
 import { useFunnels } from '@/lib/swr/dashboard'
@@ -7,6 +8,7 @@ import { toast, PlusIcon, ArrowRightIcon, ChevronLeftIcon, TrashIcon, Button } f
 import { FunnelsListSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import Link from 'next/link'
 import Image from 'next/image'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 
 export default function FunnelsPage() {
   const params = useParams()
@@ -14,14 +16,15 @@ export default function FunnelsPage() {
   const siteId = params.id as string
 
   const { data: funnels = [], isLoading, mutate } = useFunnels(siteId)
+  const [deletingFunnel, setDeletingFunnel] = useState<{ id: string; name: string } | null>(null)
 
-  const handleDelete = async (e: React.MouseEvent, funnelId: string) => {
-    e.preventDefault() // Prevent navigation
-    if (!confirm('Are you sure you want to delete this funnel?')) return
+  const handleDelete = async () => {
+    if (!deletingFunnel) return
 
     try {
-      await deleteFunnel(siteId, funnelId)
+      await deleteFunnel(siteId, deletingFunnel.id)
       toast.success('Funnel deleted')
+      setDeletingFunnel(null)
       mutate()
     } catch (error) {
       toast.error('Failed to delete funnel')
@@ -112,7 +115,7 @@ export default function FunnelsPage() {
                     </div>
                     <div className="flex items-center gap-4">
                       <button
-                        onClick={(e) => handleDelete(e, funnel.id)}
+                        onClick={(e) => { e.preventDefault(); setDeletingFunnel({ id: funnel.id, name: funnel.name }) }}
                         className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-900/20 rounded-xl transition-colors ease-apple"
                         aria-label="Delete funnel"
                       >
@@ -127,6 +130,25 @@ export default function FunnelsPage() {
           </div>
         )}
       </div>
+
+      <Dialog open={!!deletingFunnel} onOpenChange={() => setDeletingFunnel(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete funnel</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete &ldquo;{deletingFunnel?.name}&rdquo;? This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <button onClick={() => setDeletingFunnel(null)} className="glass-surface rounded-lg px-4 py-2 text-sm font-medium text-neutral-300 hover:text-white transition-colors ease-apple">
+              Cancel
+            </button>
+            <button onClick={handleDelete} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-500 transition-colors ease-apple">
+              Delete
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

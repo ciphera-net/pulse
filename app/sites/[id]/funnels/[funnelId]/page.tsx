@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useCallback, useEffect, useState } from 'react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { useParams, useRouter } from 'next/navigation'
 import { ApiError } from '@/lib/api/client'
 import { getFunnel, getFunnelStats, getFunnelTrends, deleteFunnel, type Funnel, type FunnelStats, type FunnelTrends } from '@/lib/api/funnels'
@@ -33,6 +34,7 @@ export default function FunnelReportPage() {
   const [trends, setTrends] = useState<FunnelTrends | null>(null)
   const [visibleSteps, setVisibleSteps] = useState<Set<string>>(new Set())
   const [breakdownStep, setBreakdownStep] = useState<number | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
   const loadData = useCallback(async () => {
     setLoadError(null)
@@ -63,11 +65,10 @@ export default function FunnelReportPage() {
   }, [loadData])
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this funnel?')) return
-
     try {
       await deleteFunnel(siteId, funnelId)
       toast.success('Funnel deleted')
+      setDeleteDialogOpen(false)
       router.push(`/sites/${siteId}/funnels`)
     } catch (error) {
       toast.error('Failed to delete funnel')
@@ -193,7 +194,7 @@ export default function FunnelReportPage() {
               <PencilSimple className="w-5 h-5" />
             </Link>
             <button
-              onClick={handleDelete}
+              onClick={() => setDeleteDialogOpen(true)}
               className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-900/20 rounded-xl transition-colors ease-apple"
               aria-label="Delete funnel"
             >
@@ -386,6 +387,25 @@ export default function FunnelReportPage() {
           </div>
         </div>
       </div>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete funnel</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete &ldquo;{funnel.name}&rdquo;? This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <button onClick={() => setDeleteDialogOpen(false)} className="glass-surface rounded-lg px-4 py-2 text-sm font-medium text-neutral-300 hover:text-white transition-colors ease-apple">
+              Cancel
+            </button>
+            <button onClick={handleDelete} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-500 transition-colors ease-apple">
+              Delete
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {breakdownStep !== null && stats && (
         <BreakdownDrawer
