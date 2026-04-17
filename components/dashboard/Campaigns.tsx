@@ -306,7 +306,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
                           <div className="text-white font-medium truncate text-sm" title={item.source}>
                             {getReferrerDisplayName(item.source)}
                           </div>
-                          <div className="flex items-center gap-1.5 text-[11px] text-neutral-400 dark:text-neutral-500">
+                          <div className="flex items-center gap-1.5 text-caption text-neutral-400 dark:text-neutral-500">
                             <span>{item.medium || '—'}</span>
                             <span>·</span>
                             <span className="truncate">{item.campaign || '—'}</span>

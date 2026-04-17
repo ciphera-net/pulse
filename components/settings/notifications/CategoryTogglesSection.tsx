@@ -53,7 +53,7 @@ export default function CategoryTogglesSection() {
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-white flex items-center gap-2">
                   {c.label}
-                  {critical && <span className="text-[10px] uppercase tracking-wider text-brand-orange border border-brand-orange/30 rounded px-1.5 py-0.5">Always on</span>}
+                  {critical && <span className="text-micro-label uppercase tracking-wider text-brand-orange border border-brand-orange/30 rounded px-1.5 py-0.5">Always on</span>}
                 </p>
                 <p className="text-xs text-neutral-500 mt-0.5">{c.description}</p>
               </div>

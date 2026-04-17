@@ -363,7 +363,7 @@ export default function PricingSection() {
                   {priceDetails ? (
                     <>
                       <div className="flex items-center gap-2">
-                        <span className="text-[40px] leading-tight font-bold text-white">
+                        <span className="text-display font-bold text-white">
                           €{isYearly ? priceDetails.effectiveMonthly : priceDetails.baseMonthly}
                         </span>
                         <div>
@@ -381,7 +381,7 @@ export default function PricingSection() {
                     </>
                   ) : (
                     <div className="flex items-center gap-2">
-                      <span className="text-[40px] leading-tight font-bold text-white">Custom</span>
+                      <span className="text-display font-bold text-white">Custom</span>
                     </div>
                   )}
                 </div>

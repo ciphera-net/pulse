@@ -22,7 +22,7 @@ export default function ScoreGauge({ score, label, size = 120 }: ScoreGaugeProps
   const color = hasScore ? getColor(score) : '#6b7280'
 
   const fontSize = size >= 160 ? 'text-4xl' : size >= 100 ? 'text-2xl' : size >= 80 ? 'text-lg' : 'text-xs'
-  const labelSize = size >= 100 ? 'text-sm' : 'text-[10px]'
+  const labelSize = size >= 100 ? 'text-sm' : 'text-micro-label'
   const strokeWidth = size >= 100 ? 8 : 6
   const gap = size >= 100 ? 'gap-2' : 'gap-1'
 

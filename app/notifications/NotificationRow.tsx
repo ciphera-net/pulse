@@ -144,12 +144,12 @@ export default function NotificationRow({ receipt, onChange }: NotificationRowPr
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); setPayloadOpen(o => !o) }}
-                  className="text-brand-orange hover:underline mt-1 text-[11px]"
+                  className="text-brand-orange hover:underline mt-1 text-caption"
                 >
                   {payloadOpen ? '▾' : '▸'} View raw payload
                 </button>
                 {payloadOpen && (
-                  <pre className="mt-2 p-2 bg-black/30 rounded text-[11px] text-neutral-300 overflow-auto">
+                  <pre className="mt-2 p-2 bg-black/30 rounded text-caption text-neutral-300 overflow-auto">
                     {JSON.stringify(receipt.event.payload, null, 2)}
                   </pre>
                 )}

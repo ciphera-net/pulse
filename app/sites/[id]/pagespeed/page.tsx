@@ -492,7 +492,7 @@ export default function PageSpeedPage() {
               <span className="text-xs text-neutral-400 animate-pulse">Loading...</span>
             )}
           </div>
-          <div className="flex items-center gap-x-3 text-[11px] text-neutral-400 dark:text-neutral-500 ml-auto">
+          <div className="flex items-center gap-x-3 text-caption text-neutral-400 dark:text-neutral-500 ml-auto">
             <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-red-500" />0&ndash;49</span>
             <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-amber-500" />50&ndash;89</span>
             <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />90&ndash;100</span>
@@ -514,7 +514,7 @@ export default function PageSpeedPage() {
                   alt={`${frame.timing}ms`}
                   className="h-24 rounded border border-neutral-200 dark:border-neutral-700 object-contain bg-neutral-50 dark:bg-neutral-800"
                 />
-                <span className="text-[10px] text-neutral-400 mt-1 block">
+                <span className="text-micro-label text-neutral-400 mt-1 block">
                   {frame.timing < 1000 ? `${frame.timing}ms` : `${(frame.timing / 1000).toFixed(1)}s`}
                 </span>
               </div>
@@ -710,7 +710,7 @@ function AuditsBySubGroup({ audits }: { audits: AuditSummary[] }) {
         return (
           <div key={key}>
             {title && (
-              <h4 className="text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-2">
+              <h4 className="text-caption font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-2">
                 {title}
               </h4>
             )}

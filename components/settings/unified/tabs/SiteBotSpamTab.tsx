@@ -183,7 +183,7 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-white truncate">{session.first_page || '/'}</span>
                     {session.suspicion_score != null && (
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                      <span className={`px-1.5 py-0.5 rounded text-micro-label font-medium ${
                         session.suspicion_score >= 5 ? 'bg-red-900/30 text-red-400' :
                         session.suspicion_score >= 3 ? 'bg-yellow-900/30 text-yellow-400' :
                         'bg-neutral-800 text-neutral-400'
@@ -233,14 +233,14 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-mono text-white truncate">{domain.domain}</span>
-                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                  <span className={`px-1.5 py-0.5 rounded text-micro-label font-medium ${
                     domain.action === 'quarantine' ? 'bg-red-900/30 text-red-400' :
                     domain.action === 'allow' ? 'bg-green-900/30 text-green-400' :
                     'bg-neutral-800 text-neutral-400'
                   }`}>
                     {domain.action}
                   </span>
-                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                  <span className={`px-1.5 py-0.5 rounded text-micro-label font-medium ${
                     domain.source === 'matomo_seed' || domain.source === 'legacy_blocklist' ? 'bg-blue-900/30 text-blue-400' :
                     domain.source === 'learned' ? 'bg-purple-900/30 text-purple-400' :
                     domain.source === 'collaborative' ? 'bg-purple-900/30 text-purple-400' :
@@ -249,7 +249,7 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
                     {domain.source === 'matomo_seed' ? 'seed' : domain.source === 'collaborative' ? 'Collaborative' : domain.source}
                   </span>
                   {domain.override && (
-                    <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-900/30 text-amber-400">
+                    <span className="px-1.5 py-0.5 rounded text-micro-label font-medium bg-amber-900/30 text-amber-400">
                       override: {domain.override}
                     </span>
                   )}

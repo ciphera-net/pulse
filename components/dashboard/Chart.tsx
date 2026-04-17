@@ -265,7 +265,7 @@ export default function Chart({
                 <Sparkline data={m.key === 'engagement' ? chartData : data} dataKey={m.key} active={metric === m.key} engagementDaily={m.key === 'engagement' ? engagementData?.daily : undefined} />
                 <div className="relative z-10">
                   <div className="flex items-start justify-between mb-2">
-                    <div className={cn('text-[10px] font-semibold uppercase tracking-widest', metric === m.key ? 'text-brand-orange' : 'text-neutral-400 dark:text-neutral-500')}>{m.label}</div>
+                    <div className={cn('text-micro-label font-semibold uppercase tracking-widest', metric === m.key ? 'text-brand-orange' : 'text-neutral-400 dark:text-neutral-500')}>{m.label}</div>
                     {m.change !== null && (
                       <span className={cn('flex items-center gap-0.5 text-xs font-semibold', m.isPositive ? 'text-[#10B981]' : 'text-[#EF4444]')}>
                         {m.isPositive ? <ArrowUpRight weight="bold" className="size-3" /> : <ArrowDownRight weight="bold" className="size-3" />}
@@ -278,7 +278,7 @@ export default function Chart({
                     : <AnimatedNumber value={m.value} format={m.format} className="text-2xl font-bold text-white" />
                   }
                   {m.key === 'engagement' && engagementData && engagementData.data_days >= 7 && (
-                    <div className="flex items-center gap-1.5 mt-1 text-[10px] text-neutral-500">
+                    <div className="flex items-center gap-1.5 mt-1 text-micro-label text-neutral-500">
                       <span>S P{Math.round(engagementData.summary.scroll_pctl)}</span>
                       <span>·</span>
                       <span>T P{Math.round(engagementData.summary.time_pctl)}</span>
@@ -364,7 +364,7 @@ export default function Chart({
                         </svg>
                         <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-white">{value}</span>
                       </div>
-                      <span className="text-[10px] uppercase tracking-widest text-neutral-500">{label}</span>
+                      <span className="text-micro-label uppercase tracking-widest text-neutral-500">{label}</span>
                     </div>
                   )
                 })}
