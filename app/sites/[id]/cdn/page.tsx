@@ -533,7 +533,7 @@ function OverviewCard({
   return (
     <div className="glass-surface p-4 rounded-2xl">
       <p className="text-xs font-medium text-neutral-400 mb-1">{label}</p>
-      <p className="text-2xl font-bold tabular-nums text-white">{value}</p>
+      <p className="text-2xl font-semibold tabular-nums text-white">{value}</p>
       {changeLabel && (
         <p className={`text-xs mt-1 font-medium ${
           isGood ? 'text-green-600 dark:text-green-400' :
