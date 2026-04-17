@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { useParams } from 'next/navigation'
+import { motion } from 'framer-motion'
+import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import * as Flags from 'country-flag-icons/react/3x2'
 
@@ -418,12 +420,22 @@ export default function CDNPage() {
               <DottedMap data={mapToCountryCentroids(countries)} formatValue={formatBytes} />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-5">
-              {countries.map((row) => {
+              {countries.map((row, index) => {
                 const pct = totalBandwidth > 0 ? (row.bandwidth / totalBandwidth) * 100 : 0
                 const cc = extractCountryCode(row.country_code)
                 const city = extractCity(row.country_code)
                 return (
-                  <div key={row.country_code} className="group relative">
+                  <motion.div
+                    key={row.country_code}
+                    initial={{ opacity: 0, x: -12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{
+                      duration: DURATION_BASE,
+                      ease: EASE_APPLE,
+                      delay: index * 0.03,
+                    }}
+                    className="group relative"
+                  >
                     <div className="flex items-center gap-2.5 mb-2">
                       {cc && getFlagIcon(cc)}
                       <div className="flex-1 min-w-0">
@@ -442,7 +454,7 @@ export default function CDNPage() {
                     <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-neutral-700 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 ease-apple">
                       {pct.toFixed(1)}% of total traffic
                     </div>
-                  </div>
+                  </motion.div>
                 )
               })}
             </div>
@@ -476,7 +488,7 @@ function OverviewCard({
   const changeLabel = change ? (change.positive ? '+' : '') + change.value.toFixed(1) + '%' : null
 
   return (
-    <div className="glass-surface p-4 rounded-2xl">
+    <div className="glass-surface p-6 rounded-2xl">
       <p className="text-xs font-medium text-neutral-400 mb-1">{label}</p>
       <p className="text-2xl font-semibold tabular-nums text-white">{value}</p>
       {changeLabel && (
