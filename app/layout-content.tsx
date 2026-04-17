@@ -18,6 +18,7 @@ import { useRouter } from 'next/navigation'
 import { UnifiedSettingsProvider, useUnifiedSettings } from '@/lib/unified-settings-context'
 import UnifiedSettingsModal from '@/components/settings/unified/UnifiedSettingsModal'
 import DashboardShell from '@/components/dashboard/DashboardShell'
+import { ErrorBoundary } from '@/components/error-boundary'
 
 const ORG_SWITCH_KEY = 'pulse_switching_org'
 
@@ -31,11 +32,11 @@ const CIPHERA_APPS: CipheraApp[] = [
     isAvailable: false,
   },
   {
-    id: 'auth',
-    name: 'Auth',
+    id: 'id',
+    name: 'ID',
     description: 'Your Ciphera account settings',
-    icon: 'https://ciphera.net/auth_icon_no_margins.png',
-    href: 'https://auth.ciphera.net',
+    icon: 'https://ciphera.net/id_icon_no_margins.png',
+    href: 'https://id.ciphera.net',
     isAvailable: true,
   },
 ]
@@ -193,7 +194,9 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
 export default function LayoutContent({ children }: { children: React.ReactNode }) {
   return (
     <UnifiedSettingsProvider>
-      <LayoutInner>{children}</LayoutInner>
+      <ErrorBoundary>
+        <LayoutInner>{children}</LayoutInner>
+      </ErrorBoundary>
     </UnifiedSettingsProvider>
   )
 }

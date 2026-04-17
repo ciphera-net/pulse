@@ -130,7 +130,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
 
   return (
     <>
-      <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 h-full flex flex-col">
+      <div className="glass-surface rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-4">
           <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-1" role="tablist" aria-label="Technology view tabs" onKeyDown={handleTabKeyDown}>
             {(['browsers', 'os', 'devices', 'screens'] as Tab[]).map((tab) => (
@@ -142,7 +142,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
                 className={`relative px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded cursor-pointer ${
                   activeTab === tab
                     ? 'text-white'
-                    : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-300'
+                    : 'text-neutral-500 hover:text-neutral-300'
                 } ease-apple`}
               >
                 {{ browsers: 'Browsers', os: 'OS', devices: 'Devices', screens: 'Screens' }[tab]}
@@ -157,7 +157,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
           {showViewAll && (
             <button
               onClick={() => setIsModalOpen(true)}
-              className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-lg ease-apple"
+              className="p-1.5 text-neutral-500 hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-lg ease-apple"
               aria-label="View all technology"
             >
               <FrameCornersIcon className="w-4 h-4" weight="bold" />
@@ -195,7 +195,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
                       <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
                         {totalPageviews > 0 ? `${Math.round((item.pageviews / totalPageviews) * 100)}%` : ''}
                       </span>
-                      <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
+                      <span className="text-sm font-semibold text-neutral-400">
                         {formatNumber(item.pageviews)}
                       </span>
                     </div>
@@ -274,7 +274,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
                         <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
                           {modalTotal > 0 ? `${Math.round((item.pageviews / modalTotal) * 100)}%` : ''}
                         </span>
-                        <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
+                        <span className="text-sm font-semibold text-neutral-400">
                           {formatNumber(item.pageviews)}
                         </span>
                       </div>

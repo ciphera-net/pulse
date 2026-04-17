@@ -99,7 +99,7 @@ export default function DottedMap({ data, className, formatValue = formatNumber 
     <div className="relative w-full h-full flex items-center justify-center">
       <svg
         viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`}
-        className={cn('text-neutral-400 dark:text-neutral-500', className)}
+        className={cn('text-neutral-500', className)}
         style={{ width: '100%', height: '100%' }}
       >
         <defs>

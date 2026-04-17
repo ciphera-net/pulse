@@ -39,7 +39,7 @@ interface TopReferrersProps {
 const LIMIT = 7
 
 function getChannelIcon(channel: string) {
-  const cls = "w-5 h-5 text-neutral-400 dark:text-neutral-500"
+  const cls = "w-5 h-5 text-neutral-500"
   switch (channel) {
     case 'Direct': return <LinkIcon className={cls} />
     case 'Organic Search': return <MagnifyingGlass className={cls} />
@@ -136,7 +136,7 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
 
   return (
     <>
-      <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 h-full flex flex-col">
+      <div className="glass-surface rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-4">
           <div className="flex gap-1 pb-1" role="tablist" aria-label="Referrers view tabs">
             {(['referrers', 'channels'] as const).map((tab) => (
@@ -148,7 +148,7 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
                 className={`relative px-2.5 py-1 text-xs font-medium transition-colors capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded cursor-pointer ${
                   view === tab
                     ? 'text-white'
-                    : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-300'
+                    : 'text-neutral-500 hover:text-neutral-300'
                 } ease-apple`}
               >
                 {tab}
@@ -163,7 +163,7 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
           {view === 'referrers' && showViewAll && (
             <button
               onClick={() => setIsModalOpen(true)}
-              className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all cursor-pointer rounded-lg ease-apple"
+              className="p-1.5 text-neutral-500 hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-lg ease-apple"
               aria-label="View all referrers"
             >
               <FrameCornersIcon className="w-4 h-4" weight="bold" />
@@ -201,7 +201,7 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
                         <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
                           {totalPageviews > 0 ? `${Math.round((ref.pageviews / totalPageviews) * 100)}%` : ''}
                         </span>
-                        <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
+                        <span className="text-sm font-semibold text-neutral-400">
                           {formatNumber(ref.pageviews)}
                         </span>
                       </div>
@@ -214,7 +214,7 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
               </>
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
-                <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
+                <div className="rounded-full bg-neutral-800 p-4">
                   <GlobeIcon className="w-8 h-8 text-neutral-400" />
                 </div>
                 <h4 className="font-semibold text-white">
@@ -256,7 +256,7 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
                         <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
                           {channelTotal > 0 ? `${Math.round((ch.pageviews / channelTotal) * 100)}%` : ''}
                         </span>
-                        <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
+                        <span className="text-sm font-semibold text-neutral-400">
                           {formatNumber(ch.pageviews)}
                         </span>
                       </div>
@@ -269,7 +269,7 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
               </>
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
-                <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
+                <div className="rounded-full bg-neutral-800 p-4">
                   <GlobeIcon className="w-8 h-8 text-neutral-400" />
                 </div>
                 <h4 className="font-semibold text-white">
@@ -296,7 +296,7 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
             value={modalSearch}
             onChange={(e) => setModalSearch(e.target.value)}
             placeholder="Search referrers..."
-            className="w-full px-3 py-2 mb-3 text-sm bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
+            className="w-full px-3 py-2 mb-3 text-sm bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
           />
         </div>
         <div className="flex-1 overflow-y-auto min-h-0">
@@ -326,7 +326,7 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
                       <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
                         {modalTotal > 0 ? `${Math.round((ref.pageviews / modalTotal) * 100)}%` : ''}
                       </span>
-                      <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
+                      <span className="text-sm font-semibold text-neutral-400">
                         {formatNumber(ref.pageviews)}
                       </span>
                     </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { useMotionValue, useSpring, useTransform, motion } from 'framer-motion'
+import { SPRING } from '@/lib/motion'
 
 interface AnimatedNumberProps {
   value: number
@@ -11,7 +12,7 @@ interface AnimatedNumberProps {
 
 export function AnimatedNumber({ value, format, className }: AnimatedNumberProps) {
   const motionValue = useMotionValue(value)
-  const spring = useSpring(motionValue, { stiffness: 120, damping: 20, mass: 0.5 })
+  const spring = useSpring(motionValue, SPRING)
   const display = useTransform(spring, (v) => format(v))
   const isFirst = useRef(true)
 

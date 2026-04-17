@@ -146,7 +146,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
 
   return (
     <>
-      <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6 h-full flex flex-col">
+      <div className="glass-surface rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-4">
           <div className="flex gap-1 pb-1" role="tablist" aria-label="Campaign dimension tabs">
             {(['source', 'medium', 'campaign'] as const).map((tab) => (
@@ -158,7 +158,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
                 className={`relative px-2.5 py-1 text-xs font-medium transition-colors capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded cursor-pointer ${
                   activeTab === tab
                     ? 'text-white'
-                    : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-300'
+                    : 'text-neutral-500 hover:text-neutral-300'
                 } ease-apple`}
               >
                 {tab}
@@ -174,7 +174,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
             {showViewAll && (
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-lg ease-apple"
+                className="p-1.5 text-neutral-500 hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-lg ease-apple"
                 aria-label="View all campaigns"
               >
                 <FrameCornersIcon className="w-4 h-4" weight="bold" />
@@ -182,7 +182,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
             )}
             <button
               onClick={() => setIsBuilderOpen(true)}
-              className="text-xs font-medium text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange transition-colors cursor-pointer ease-apple"
+              className="text-xs font-medium text-neutral-500 hover:text-brand-orange transition-colors cursor-pointer ease-apple"
             >
               Build URL
             </button>
@@ -220,7 +220,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
                       <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
                         {totalVisitors > 0 ? `${Math.round((item.visitors / totalVisitors) * 100)}%` : ''}
                       </span>
-                      <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
+                      <span className="text-sm font-semibold text-neutral-400">
                         {formatNumber(item.visitors)}
                       </span>
                     </div>
@@ -306,7 +306,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
                           <div className="text-white font-medium truncate text-sm" title={item.source}>
                             {getReferrerDisplayName(item.source)}
                           </div>
-                          <div className="flex items-center gap-1.5 text-[11px] text-neutral-400 dark:text-neutral-500">
+                          <div className="flex items-center gap-1.5 text-caption text-neutral-500">
                             <span>{item.medium || '—'}</span>
                             <span>·</span>
                             <span className="truncate">{item.campaign || '—'}</span>
@@ -320,7 +320,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
                         <span className="font-semibold text-white">
                           {formatNumber(item.visitors)}
                         </span>
-                        <span className="text-neutral-400 dark:text-neutral-500 w-16 text-right">
+                        <span className="text-neutral-500 w-16 text-right">
                           {formatNumber(item.pageviews)} pv
                         </span>
                       </div>

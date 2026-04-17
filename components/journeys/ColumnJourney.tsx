@@ -92,7 +92,7 @@ function ColumnHeader({
 }) {
   return (
     <div className="flex flex-col items-center gap-0.5 mb-4">
-      <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
+      <span className="text-xs font-medium text-neutral-500 uppercase tracking-wider">
         Step {column.index + 1}
       </span>
       <div className="flex items-baseline gap-1.5">
@@ -144,17 +144,17 @@ function PageRow({
         h-9 px-3 rounded-lg text-left transition-all duration-base
         ${isOther ? 'cursor-default' : 'cursor-pointer'}
         ${isSelected
-          ? 'bg-brand-orange/10 dark:bg-brand-orange/10'
+          ? 'bg-brand-orange/10'
           : isOther
             ? ''
-            : 'hover:bg-neutral-50 dark:hover:bg-neutral-800/50 hover:-translate-y-px hover:shadow-sm'
+            : 'hover:bg-neutral-800/50 hover:-translate-y-px hover:shadow-sm'
         }
        ease-apple`}
     >
       {/* Background bar — animates width on mount */}
       {!isOther && barWidth > 0 && (
         <div
-          className="absolute top-0.5 bottom-0.5 left-0.5 rounded-md transition-[width] duration-gentle ease-out"
+          className="absolute top-0.5 bottom-0.5 left-0.5 rounded-md transition-[width] duration-gentle ease-apple"
           style={{
             width: isMounted ? `calc(${barWidth}% - 4px)` : '0%',
             transitionDelay: `${rowIndex * 30}ms`,
@@ -167,7 +167,7 @@ function PageRow({
           isSelected
             ? 'text-white font-medium'
             : isOther
-              ? 'italic text-neutral-400 dark:text-neutral-500'
+              ? 'italic text-neutral-500'
               : 'text-white'
         }`}
       >
@@ -182,8 +182,8 @@ function PageRow({
         <span
           className={`text-sm tabular-nums font-semibold ${
             isOther
-              ? 'text-neutral-400 dark:text-neutral-500'
-              : 'text-neutral-600 dark:text-neutral-400'
+              ? 'text-neutral-500'
+              : 'text-neutral-400'
           }`}
         >
           {page.sessionCount.toLocaleString()}
@@ -219,12 +219,12 @@ function JourneyColumn({
       <div
         className="w-56 shrink-0"
         style={{
-          animation: `col-enter 300ms cubic-bezier(0.32, 0.72, 0, 1) ${column.index * 50}ms backwards`,
+          animation: `col-enter 300ms var(--ease-apple) ${column.index * 50}ms backwards`,
         }}
       >
         <ColumnHeader column={column} />
         <div className="flex items-center justify-center h-16 px-2">
-          <span className="text-xs text-neutral-400 dark:text-neutral-500">
+          <span className="text-xs text-neutral-500">
             No onward traffic
           </span>
         </div>
@@ -238,7 +238,7 @@ function JourneyColumn({
     <div
       className="w-56 shrink-0 px-3"
       style={{
-        animation: `col-enter 300ms cubic-bezier(0.32, 0.72, 0, 1) ${column.index * 50}ms backwards`,
+        animation: `col-enter 300ms var(--ease-apple) ${column.index * 50}ms backwards`,
       }}
     >
       <ColumnHeader column={column} />
@@ -267,8 +267,8 @@ function JourneyColumn({
           <div
             data-col={column.index}
             data-path="(exit)"
-            className="flex items-center justify-between w-full relative h-9 px-3 rounded-lg bg-red-500/15 dark:bg-red-500/15"
-            style={{ animation: 'exit-reveal 300ms cubic-bezier(0.32, 0.72, 0, 1) backwards' }}
+            className="flex items-center justify-between w-full relative h-9 px-3 rounded-lg bg-red-500/15"
+            style={{ animation: 'exit-reveal 300ms var(--ease-apple) backwards' }}
           >
             <div
               className="absolute top-0.5 bottom-0.5 left-0.5 rounded-md"
@@ -277,10 +277,10 @@ function JourneyColumn({
                 backgroundColor: 'rgba(239, 68, 68, 0.15)',
               }}
             />
-            <span className="relative text-sm text-red-500 dark:text-red-400 font-medium">
+            <span className="relative text-sm text-red-400 font-medium">
               (exit)
             </span>
-            <span className="relative text-sm tabular-nums font-semibold text-red-500 dark:text-red-400">
+            <span className="relative text-sm tabular-nums font-semibold text-red-400">
               {exitCount.toLocaleString()}
             </span>
           </div>
@@ -406,7 +406,7 @@ function ConnectionLines({
             strokeDasharray={line.length}
             strokeDashoffset={line.length}
             style={{
-              animation: `draw-line 400ms cubic-bezier(0.32, 0.72, 0, 1) ${i * 50}ms forwards`,
+              animation: `draw-line 400ms var(--ease-apple) ${i * 50}ms forwards`,
             }}
           />
         )
@@ -530,7 +530,7 @@ export default function ColumnJourney({
             return (
               <Fragment key={col.index}>
                 {i > 0 && (
-                  <div className="w-px shrink-0 mx-3 bg-neutral-100 dark:bg-neutral-800" />
+                  <div className="w-px shrink-0 mx-3 bg-neutral-800" />
                 )}
                 <JourneyColumn
                   column={col}

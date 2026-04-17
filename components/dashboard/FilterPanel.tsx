@@ -233,12 +233,12 @@ function ValueMultiSelect({ dimension, values, disabled, onChange, onFetchSugges
         ) : (
           <span className="flex items-center gap-1 flex-wrap min-w-0">
             {values.slice(0, 3).map(v => (
-              <span key={v} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-brand-orange/15 text-brand-orange max-w-[120px] truncate">
+              <span key={v} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-micro-label font-medium bg-brand-orange/15 text-brand-orange max-w-[120px] truncate">
                 {v}
               </span>
             ))}
             {values.length > 3 && (
-              <span className="text-[10px] text-neutral-400">+{values.length - 3}</span>
+              <span className="text-micro-label text-neutral-400">+{values.length - 3}</span>
             )}
           </span>
         )}
@@ -301,7 +301,7 @@ function ValueMultiSelect({ dimension, values, disabled, onChange, onFetchSugges
                     </span>
                     <span className="truncate text-white flex-1 min-w-0">{s.label}</span>
                     {s.count !== undefined && (
-                      <span className="text-[10px] text-neutral-500 tabular-nums flex-shrink-0">
+                      <span className="text-micro-label text-neutral-500 tabular-nums flex-shrink-0">
                         {s.count.toLocaleString()}
                       </span>
                     )}
@@ -548,7 +548,7 @@ export default function FilterPanel({ filters, onApply, onFetchSuggestions }: Fi
         </svg>
         Filter
         {hasActive && (
-          <span className="inline-flex items-center justify-center w-4 h-4 text-[10px] font-bold rounded-full bg-brand-orange text-white leading-none">
+          <span className="inline-flex items-center justify-center w-4 h-4 text-micro-label font-bold rounded-full bg-brand-orange text-white leading-none">
             {activeCount}
           </span>
         )}

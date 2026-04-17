@@ -107,7 +107,7 @@ export default function JourneysPage() {
       </div>
 
       {/* Single card: toolbar + chart */}
-      <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl overflow-hidden">
+      <div className="glass-surface rounded-2xl overflow-hidden">
         {/* Toolbar */}
         <div className="p-6 border-b border-white/[0.08]">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -183,7 +183,7 @@ export default function JourneysPage() {
                 className={`relative px-2.5 py-1 text-xs font-medium transition-colors capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded cursor-pointer ${
                   filters.viewMode === mode
                     ? 'text-white'
-                    : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-300'
+                    : 'text-neutral-500 hover:text-neutral-300'
                 } ease-apple`}
               >
                 {mode === 'columns' ? 'Columns' : 'Flow'}

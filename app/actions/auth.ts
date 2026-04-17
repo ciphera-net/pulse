@@ -89,7 +89,7 @@ export async function exchangeAuthCode(code: string, codeVerifier: string | null
     })
 
     // * Forward cookies from Auth API response to browser
-    // * The Auth API sets httpOnly cookies on auth.ciphera.net - we need to mirror them on pulse.ciphera.net
+    // * The Auth API sets httpOnly cookies on id.ciphera.net - we need to mirror them on pulse.ciphera.net
     const setCookieHeaders = res.headers.getSetCookie()
     if (setCookieHeaders && setCookieHeaders.length > 0) {
       for (const cookieStr of setCookieHeaders) {
@@ -202,16 +202,30 @@ export async function setSessionAction(accessToken: string, refreshToken?: strin
 export async function logoutAction() {
   const cookieStore = await cookies()
   const cookieDomain = getCookieDomain()
-  
-  cookieStore.set('access_token', '', { 
-    maxAge: 0, 
-    path: '/', 
-    domain: cookieDomain 
+  const refreshToken = cookieStore.get('refresh_token')?.value
+
+  // Revoke the refresh token server-side before clearing local cookies.
+  if (refreshToken) {
+    try {
+      await fetch(`${AUTH_API_URL}/api/v1/auth/logout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      })
+    } catch {
+      // Best-effort — token expires naturally after 30 days.
+    }
+  }
+
+  cookieStore.set('access_token', '', {
+    maxAge: 0,
+    path: '/',
+    domain: cookieDomain
   })
-  cookieStore.set('refresh_token', '', { 
-    maxAge: 0, 
-    path: '/', 
-    domain: cookieDomain 
+  cookieStore.set('refresh_token', '', {
+    maxAge: 0,
+    path: '/',
+    domain: cookieDomain
   })
   return { success: true }
 }

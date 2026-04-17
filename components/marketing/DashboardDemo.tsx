@@ -201,7 +201,7 @@ export default function DashboardDemo() {
                 <span className="text-sm font-medium text-green-400">12 current visitors</span>
               </div>
             </div>
-            <div className="px-4 py-2 rounded-lg bg-neutral-900/80 border border-white/[0.08] text-sm text-neutral-300">
+            <div className="glass-surface px-4 py-2 rounded-lg text-sm text-neutral-300">
               Today
             </div>
           </div>

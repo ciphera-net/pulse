@@ -47,13 +47,13 @@ export const env = createEnv({
     /** pulse-backend API base URL (differs between prod and staging). */
     NEXT_PUBLIC_API_URL: z.string().url(),
 
-    /** auth-frontend public URL used for OAuth redirects from pulse → auth. */
+    /** id-frontend public URL used for OAuth redirects from pulse → id. */
     NEXT_PUBLIC_AUTH_URL: z.string().url(),
 
     /** pulse-frontend's own public URL (self-links, OAuth callback, share URLs). */
     NEXT_PUBLIC_APP_URL: z.string().url(),
 
-    /** auth-backend API base URL (used by token refresh and server actions). */
+    /** id-backend API base URL (used by token refresh and server actions). */
     NEXT_PUBLIC_AUTH_API_URL: z.string().url(),
 
     /** Captcha service base URL, includes `/api/v1` suffix. */

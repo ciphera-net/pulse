@@ -389,7 +389,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
       <div className="space-y-3 pt-6 border-t border-neutral-800">
         <h4 className="text-sm font-medium text-neutral-300">For your privacy policy</h4>
         <p className="text-xs text-neutral-500">Copy the text below into your Privacy Policy. It updates automatically based on your saved settings.</p>
-        <p className="text-xs text-amber-600 dark:text-amber-500">This is provided for convenience and is not legal advice. Consult a lawyer for compliance requirements.</p>
+        <p className="text-xs text-amber-500">This is provided for convenience and is not legal advice. Consult a lawyer for compliance requirements.</p>
         <div className="relative">
           <textarea
             readOnly

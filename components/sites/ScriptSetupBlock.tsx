@@ -189,7 +189,7 @@ export default function ScriptSetupBlock({
           {FEATURES.map((f) => (
             <div
               key={f.key}
-              className="flex items-center justify-between rounded-xl border border-white/[0.08] bg-neutral-900/80 px-4 py-3"
+              className="glass-surface flex items-center justify-between rounded-xl px-4 py-3"
             >
               <div className="min-w-0 mr-3">
                 <span className="text-sm font-medium text-white block">
@@ -204,7 +204,7 @@ export default function ScriptSetupBlock({
           ))}
         </div>
         {/* * Frustration — full-width, visually distinct as add-on */}
-        <div className="mt-3 flex items-center justify-between rounded-xl border border-dashed border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900/50 px-4 py-3">
+        <div className="mt-3 flex items-center justify-between rounded-xl border border-dashed border-neutral-700 bg-neutral-900/50 px-4 py-3">
           <div className="min-w-0 mr-3">
             <span className="text-sm font-medium text-white block">
               Frustration tracking
@@ -278,7 +278,7 @@ export default function ScriptSetupBlock({
                 className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-all cursor-pointer ${
                   framework === fw.id
                     ? 'border-brand-orange bg-brand-orange/10 text-brand-orange'
-                    : 'border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 hover:border-neutral-300 dark:hover:border-neutral-700 hover:text-neutral-900 dark:hover:text-white'
+                    : 'border-neutral-800 bg-neutral-900 text-neutral-400 hover:border-neutral-700 hover:text-white'
                 } ease-apple`}
               >
                 <span className="[&_svg]:h-4 [&_svg]:w-4 shrink-0 flex items-center">

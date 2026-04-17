@@ -2,6 +2,7 @@
 
 import type { FrustrationSummary } from '@/lib/api/stats'
 import { StatCardSkeleton } from '@/components/skeletons'
+import { AnimatedNumber } from '@/components/ui/animated-number'
 
 interface FrustrationSummaryCardsProps {
   data: FrustrationSummary | null
@@ -29,9 +30,9 @@ function ChangeIndicator({ change }: { change: ReturnType<typeof pctChange> }) {
     <span
       className={`text-xs font-medium ${
         isUp
-          ? 'text-red-600 dark:text-red-400'
+          ? 'text-red-400'
           : isDown
-            ? 'text-green-600 dark:text-green-400'
+            ? 'text-green-400'
             : 'text-neutral-400'
       }`}
     >
@@ -59,51 +60,57 @@ export default function FrustrationSummaryCards({ data, loading }: FrustrationSu
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
       {/* Rage Clicks */}
-      <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6">
+      <div className="glass-surface rounded-2xl p-6">
         <p className="text-sm font-medium text-neutral-400 mb-1">
           Rage Clicks
         </p>
         <div className="flex items-baseline gap-2">
-          <span className="text-2xl font-bold text-white tabular-nums">
-            {data.rage_clicks.toLocaleString()}
-          </span>
+          <AnimatedNumber
+            value={data.rage_clicks}
+            format={(v: number) => Math.round(v).toLocaleString()}
+            className="text-2xl font-semibold text-white tabular-nums"
+          />
           <ChangeIndicator change={rageChange} />
         </div>
-        <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
+        <p className="text-xs text-neutral-500 mt-1">
           {data.rage_unique_elements} unique elements
         </p>
       </div>
 
       {/* Dead Clicks */}
-      <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6">
+      <div className="glass-surface rounded-2xl p-6">
         <p className="text-sm font-medium text-neutral-400 mb-1">
           Dead Clicks
         </p>
         <div className="flex items-baseline gap-2">
-          <span className="text-2xl font-bold text-white tabular-nums">
-            {data.dead_clicks.toLocaleString()}
-          </span>
+          <AnimatedNumber
+            value={data.dead_clicks}
+            format={(v: number) => Math.round(v).toLocaleString()}
+            className="text-2xl font-semibold text-white tabular-nums"
+          />
           <ChangeIndicator change={deadChange} />
         </div>
-        <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
+        <p className="text-xs text-neutral-500 mt-1">
           {data.dead_unique_elements} unique elements
         </p>
       </div>
 
       {/* Total Frustration Signals */}
-      <div className="bg-neutral-900/80 border border-white/[0.08] rounded-2xl p-6">
+      <div className="glass-surface rounded-2xl p-6">
         <p className="text-sm font-medium text-neutral-400 mb-1">
           Total Signals
         </p>
-        <span className="text-2xl font-bold text-white tabular-nums">
-          {totalSignals.toLocaleString()}
-        </span>
+        <AnimatedNumber
+          value={totalSignals}
+          format={(v: number) => Math.round(v).toLocaleString()}
+          className="text-2xl font-semibold text-white tabular-nums"
+        />
         {topPage ? (
-          <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
+          <p className="text-xs text-neutral-500 mt-1">
             Top page: {topPage}
           </p>
         ) : (
-          <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
+          <p className="text-xs text-neutral-500 mt-1">
             No data in this period
           </p>
         )}
