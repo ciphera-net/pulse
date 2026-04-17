@@ -84,7 +84,7 @@ export default function BreakdownDrawer({ siteId, funnelId, stepIndex, stepName,
           {loading ? (
             <div className="space-y-3">
               {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="h-10 bg-neutral-800 rounded-lg animate-pulse" />
+                <div key={i} className="h-10 bg-neutral-800 rounded-lg animate-skeleton-fade" />
               ))}
             </div>
           ) : !breakdown || breakdown.entries.length === 0 ? (

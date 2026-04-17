@@ -25,7 +25,7 @@ function SkeletonRows() {
   return (
     <div className="space-y-2">
       {Array.from({ length: DISPLAY_LIMIT }).map((_, i) => (
-        <div key={i} className="animate-pulse flex items-center justify-between h-9 px-2">
+        <div key={i} className="animate-skeleton-fade flex items-center justify-between h-9 px-2">
           <div className="flex items-center gap-3 flex-1">
             <div className="h-4 w-32 bg-neutral-700 rounded" />
             <div className="h-3 w-20 bg-neutral-700 rounded" />
