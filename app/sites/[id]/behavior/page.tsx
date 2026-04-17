@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
+import { motion } from 'framer-motion'
+import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 import { getDateRange, formatDate, getThisWeekRange, getThisMonthRange } from '@/lib/utils/dateRanges'
 import { Select, DatePicker } from '@ciphera-net/ui'
 import dynamic from 'next/dynamic'
@@ -106,10 +108,21 @@ export default function BehaviorPage() {
       </div>
 
       {/* Summary cards */}
-      <FrustrationSummaryCards data={summary} loading={loading} />
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0 }}
+      >
+        <FrustrationSummaryCards data={summary} loading={loading} />
+      </motion.div>
 
       {/* Rage clicks + Dead clicks side by side */}
-      <div className="grid gap-6 lg:grid-cols-2 mb-8 [&>*]:min-w-0">
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0.05 }}
+        className="grid gap-6 lg:grid-cols-2 mb-8 [&>*]:min-w-0"
+      >
         <FrustrationTable
           title="Rage Clicks"
           description="Elements users clicked repeatedly in frustration"
@@ -129,20 +142,31 @@ export default function BehaviorPage() {
           loading={loading}
           fetchAll={fetchAllDead}
         />
-      </div>
+      </motion.div>
 
       {/* By page breakdown */}
-      <FrustrationByPageTable pages={byPage} loading={loading} />
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0.1 }}
+      >
+        <FrustrationByPageTable pages={byPage} loading={loading} />
+      </motion.div>
 
       {/* Scroll depth + Frustration trend — hide when data failed to load */}
       {!behaviorError && (
-        <div className="grid gap-6 lg:grid-cols-2 mb-8 [&>*]:min-w-0">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0.15 }}
+          className="grid gap-6 lg:grid-cols-2 mb-8 [&>*]:min-w-0"
+        >
           <ScrollDepth
             goalCounts={dashboard?.goal_counts ?? []}
             totalPageviews={dashboard?.stats?.pageviews ?? 0}
           />
           <FrustrationTrend summary={summary} loading={loading} />
-        </div>
+        </motion.div>
       )}
 
       <DatePicker

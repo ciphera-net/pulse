@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
+import { DURATION_FAST, DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 import { cn } from '@/lib/utils'
 import { useParams } from 'next/navigation'
 import { useUnifiedSettings } from '@/lib/unified-settings-context'
@@ -260,7 +260,12 @@ export default function SearchConsolePage() {
       </div>
 
       {/* Overview cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0 }}
+        className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8"
+      >
         <OverviewCard
           label="Total Clicks"
           value={overview ? formatNumber(overview.total_clicks) : '-'}
@@ -282,13 +287,24 @@ export default function SearchConsolePage() {
           change={positionChange}
           invertChange
         />
-      </div>
+      </motion.div>
 
-      <ClicksImpressionsChart siteId={siteId} startDate={dateRange.start} endDate={dateRange.end} />
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0.05 }}
+      >
+        <ClicksImpressionsChart siteId={siteId} startDate={dateRange.start} endDate={dateRange.end} />
+      </motion.div>
 
       {/* Position tracker */}
       {topQueries?.queries && topQueries.queries.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-6">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0.1 }}
+          className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-6"
+        >
           {topQueries.queries.slice(0, 5).map((q) => (
             <div key={q.query} className="glass-surface rounded-2xl p-3">
               <p className="text-xs text-neutral-400 truncate mb-1">{q.query}</p>
@@ -299,7 +315,7 @@ export default function SearchConsolePage() {
               <p className="text-xs text-neutral-500 mt-0.5">{q.clicks} {q.clicks === 1 ? 'click' : 'clicks'}</p>
             </div>
           ))}
-        </div>
+        </motion.div>
       )}
 
       {/* New queries badge */}
@@ -339,7 +355,12 @@ export default function SearchConsolePage() {
 
       {/* Queries table */}
       {activeView === 'queries' && (
-        <div className="glass-surface rounded-2xl overflow-hidden">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0.15 }}
+          className="glass-surface rounded-2xl overflow-hidden"
+        >
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-neutral-800">
@@ -408,12 +429,17 @@ export default function SearchConsolePage() {
               </div>
             </div>
           )}
-        </div>
+        </motion.div>
       )}
 
       {/* Pages table */}
       {activeView === 'pages' && (
-        <div className="glass-surface rounded-2xl overflow-hidden">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0.15 }}
+          className="glass-surface rounded-2xl overflow-hidden"
+        >
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-neutral-800">
@@ -482,7 +508,7 @@ export default function SearchConsolePage() {
               </div>
             </div>
           )}
-        </div>
+        </motion.div>
       )}
 
       <DatePicker
