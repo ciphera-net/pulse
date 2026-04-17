@@ -2,6 +2,7 @@
 
 import type { FrustrationSummary } from '@/lib/api/stats'
 import { StatCardSkeleton } from '@/components/skeletons'
+import { AnimatedNumber } from '@/components/ui/animated-number'
 
 interface FrustrationSummaryCardsProps {
   data: FrustrationSummary | null
@@ -64,9 +65,11 @@ export default function FrustrationSummaryCards({ data, loading }: FrustrationSu
           Rage Clicks
         </p>
         <div className="flex items-baseline gap-2">
-          <span className="text-2xl font-semibold text-white tabular-nums">
-            {data.rage_clicks.toLocaleString()}
-          </span>
+          <AnimatedNumber
+            value={data.rage_clicks}
+            format={(v: number) => Math.round(v).toLocaleString()}
+            className="text-2xl font-semibold text-white tabular-nums"
+          />
           <ChangeIndicator change={rageChange} />
         </div>
         <p className="text-xs text-neutral-500 mt-1">
@@ -80,9 +83,11 @@ export default function FrustrationSummaryCards({ data, loading }: FrustrationSu
           Dead Clicks
         </p>
         <div className="flex items-baseline gap-2">
-          <span className="text-2xl font-semibold text-white tabular-nums">
-            {data.dead_clicks.toLocaleString()}
-          </span>
+          <AnimatedNumber
+            value={data.dead_clicks}
+            format={(v: number) => Math.round(v).toLocaleString()}
+            className="text-2xl font-semibold text-white tabular-nums"
+          />
           <ChangeIndicator change={deadChange} />
         </div>
         <p className="text-xs text-neutral-500 mt-1">
@@ -95,9 +100,11 @@ export default function FrustrationSummaryCards({ data, loading }: FrustrationSu
         <p className="text-sm font-medium text-neutral-400 mb-1">
           Total Signals
         </p>
-        <span className="text-2xl font-semibold text-white tabular-nums">
-          {totalSignals.toLocaleString()}
-        </span>
+        <AnimatedNumber
+          value={totalSignals}
+          format={(v: number) => Math.round(v).toLocaleString()}
+          className="text-2xl font-semibold text-white tabular-nums"
+        />
         {topPage ? (
           <p className="text-xs text-neutral-500 mt-1">
             Top page: {topPage}
