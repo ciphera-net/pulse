@@ -132,12 +132,12 @@ const METRIC_CONFIGS: {
 ]
 
 const CHART_COLORS: Record<MetricType, string> = {
-  visitors: '#FD5E0F',
-  pageviews: '#FD5E0F',
-  pages_per_visit: '#FD5E0F',
-  bounce_rate: '#FD5E0F',
-  avg_duration: '#FD5E0F',
-  engagement: '#FD5E0F',
+  visitors: 'var(--chart-1)',       // orange (brand)
+  pageviews: 'var(--chart-2)',      // blue
+  pages_per_visit: 'var(--chart-2)', // blue (reuse)
+  bounce_rate: 'var(--chart-4)',    // purple
+  avg_duration: 'var(--chart-5)',   // amber
+  engagement: 'var(--chart-3)',     // green
 }
 
 // ─── Chart Component ─────────────────────────────────────────────────
