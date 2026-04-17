@@ -111,7 +111,10 @@ export interface BarChartContextValue {
   orientation: "vertical" | "horizontal";
   stacked: boolean;
   stackGap: number;
+  /** key: dataIndex → (dataKey → pixel-offset from bar baseline) */
   stackOffsets: Map<number, Map<string, number>>;
+  /** key: stackId → sorted list of dataKeys in that stack (bottom to top) */
+  stackGroups: Map<string, string[]>;
   barGap: number;
   barWidth?: number;
 }
@@ -120,6 +123,7 @@ interface BarConfig {
   dataKey: string;
   fill: string;
   stroke?: string;
+  stackId?: string;
 }
 
 const BarChartContext = createContext<BarChartContextValue | null>(null);
@@ -634,7 +638,10 @@ export interface BarProps {
   dataKey: string;
   fill?: string;
   stroke?: string;
-  lineCap?: "round" | "butt" | number;
+  /** Pixel radius for top corners. Default 3. Pass 0 for square caps. */
+  radius?: number;
+  /** Recharts-compatible stackId: bars sharing the same stackId are stacked. */
+  stackId?: string;
   animate?: boolean;
   animationType?: "grow" | "fade";
   fadedOpacity?: number;
@@ -642,28 +649,43 @@ export interface BarProps {
   stackGap?: number;
 }
 
-function resolveRadius(lineCap: "round" | "butt" | number, barWidth: number): number {
-  if (lineCap === "butt") return 0;
-  if (lineCap === "round") return barWidth / 2;
-  return lineCap;
-}
-
 export function Bar({
-  dataKey, fill = chartCssVars.linePrimary, stroke, lineCap = "round", animate = true,
-  animationType = "grow", fadedOpacity = 0.3, staggerDelay, stackGap = 0,
+  dataKey,
+  fill = "var(--chart-1)",
+  stroke,
+  radius: radiusProp = 3,
+  stackId,
+  animate = true,
+  animationType = "grow",
+  fadedOpacity = 0.3,
+  staggerDelay,
+  stackGap = 0,
 }: BarProps) {
   const {
     data, xScale, yScale, innerHeight, innerWidth, bandWidth, hoveredBarIndex, isLoaded, animationDuration,
-    xDataKey, orientation, stacked, stackOffsets, bars, barWidth: fixedBarWidth,
+    xDataKey, orientation, stacked, stackOffsets, stackGroups, bars, barWidth: fixedBarWidth,
   } = useChart();
 
   const isHorizontal = orientation === "horizontal";
-  const barIndex = bars.findIndex((b) => b.dataKey === dataKey);
-  const barCount = bars.length;
-  const singleBarWidth = stacked ? bandWidth : bandWidth / barCount;
-  const actualBarWidth = fixedBarWidth ?? singleBarWidth;
-  const radius = resolveRadius(lineCap, actualBarWidth);
+
+  // Determine layout: how many groups of non-stacked bars are there at this x position?
+  // Bars with no stackId each occupy their own slot; bars in a stackId share one slot.
+  const nonStackedKeys = bars.filter((b) => !b.stackId).map((b) => b.dataKey);
+  const stackedGroupIds = Array.from(new Set(bars.filter((b) => b.stackId).map((b) => b.stackId!)));
+  // Total "slots" across the band width
+  const totalSlots = nonStackedKeys.length + stackedGroupIds.length;
+  const mySlotIndex = stackId
+    ? nonStackedKeys.length + stackedGroupIds.indexOf(stackId)
+    : nonStackedKeys.indexOf(dataKey);
+
+  const singleBarWidth = totalSlots > 0 ? bandWidth / totalSlots : bandWidth;
+  const actualBarWidth = fixedBarWidth ?? (stacked && totalSlots <= 1 ? bandWidth : singleBarWidth);
   const autoStagger = staggerDelay ?? Math.min(0.06, 0.8 / data.length);
+
+  // Is this the topmost bar in its stack group? (only the top gets rounded corners)
+  const isTopOfStack = stackId
+    ? stackGroups.get(stackId)?.at(-1) === dataKey
+    : true;
 
   return (
     <>
@@ -671,24 +693,24 @@ export function Bar({
         const category = String(d[xDataKey] ?? "");
         const value = typeof d[dataKey] === "number" ? (d[dataKey] as number) : 0;
         const bandStart = xScale(category) ?? 0;
-        const stackOffset = stacked ? stackOffsets.get(i)?.get(dataKey) ?? 0 : 0;
+        const stackOffset = stackOffsets.get(i)?.get(dataKey) ?? 0;
 
         let barX: number, barY: number, barW: number, barH: number;
 
         if (isHorizontal) {
           const barLength = innerWidth - (yScale(value) ?? innerWidth);
-          barY = bandStart + (stacked ? 0 : barIndex * singleBarWidth);
+          barY = bandStart + mySlotIndex * singleBarWidth;
           barH = actualBarWidth;
           barW = barLength;
-          barX = stacked ? stackOffset : 0;
-          if (stacked && stackGap > 0 && barIndex > 0) { barX += stackGap; barW = Math.max(0, barW - stackGap); }
+          barX = stackOffset;
+          if (stackId && stackGap > 0 && stackOffset > 0) { barX += stackGap; barW = Math.max(0, barW - stackGap); }
         } else {
           const scaledY = yScale(value) ?? innerHeight;
-          barX = bandStart + (stacked ? 0 : barIndex * singleBarWidth);
+          barX = bandStart + mySlotIndex * singleBarWidth;
           barW = actualBarWidth;
           barH = innerHeight - scaledY;
-          barY = stacked ? scaledY - stackOffset : scaledY;
-          if (stacked && stackGap > 0 && barIndex > 0) { barY += stackGap; barH = Math.max(0, barH - stackGap); }
+          barY = scaledY - stackOffset;
+          if (stackId && stackGap > 0 && stackOffset > 0) { barY += stackGap; barH = Math.max(0, barH - stackGap); }
         }
 
         if (barW <= 0 || barH <= 0) return null;
@@ -697,12 +719,16 @@ export function Bar({
         const someoneHovered = hoveredBarIndex !== null;
         const barOpacity = someoneHovered ? (isHovered ? 1 : fadedOpacity) : 1;
         const delay = i * autoStagger;
-        const r = Math.min(radius, barW / 2, barH / 2);
+        // Only apply radius on the leading edge (top for vertical, right for horizontal)
+        // and only for the topmost bar in a stack
+        const r = isTopOfStack ? Math.min(radiusProp, barW / 2, barH / 2) : 0;
 
         let path: string;
         if (isHorizontal) {
+          // Round right side (leading edge for horizontal bars)
           path = `M${barX},${barY} L${barX + barW - r},${barY} Q${barX + barW},${barY} ${barX + barW},${barY + r} L${barX + barW},${barY + barH - r} Q${barX + barW},${barY + barH} ${barX + barW - r},${barY + barH} L${barX},${barY + barH}Z`;
         } else {
+          // Round top corners (leading edge for vertical bars)
           path = `M${barX},${barY + barH} L${barX},${barY + r} Q${barX},${barY} ${barX + r},${barY} L${barX + barW - r},${barY} Q${barX + barW},${barY} ${barX + barW},${barY + r} L${barX + barW},${barY + barH}Z`;
         }
 
@@ -750,7 +776,12 @@ function extractBarConfigs(children: ReactNode): BarConfig[] {
     const props = child.props as BarProps | undefined;
     const isBarComponent = componentName === "Bar" || child.type === Bar || (props && typeof props.dataKey === "string" && props.dataKey.length > 0);
     if (isBarComponent && props?.dataKey) {
-      configs.push({ dataKey: props.dataKey, fill: props.fill || "var(--chart-line-primary)", stroke: props.stroke });
+      configs.push({
+        dataKey: props.dataKey,
+        fill: props.fill || "var(--chart-1)",
+        stroke: props.stroke,
+        stackId: props.stackId,
+      });
     }
   });
   return configs;
@@ -790,7 +821,7 @@ interface BarChartInnerProps {
 }
 
 function BarChartInner({
-  width, height, data, xDataKey, margin, animationDuration, barGap, barWidth, orientation, stacked, stackGap, children, containerRef,
+  width, height, data, xDataKey, margin, animationDuration, barGap, barWidth, orientation, stacked: stackedProp, stackGap, children, containerRef,
 }: BarChartInnerProps) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [hoveredBarIndex, setHoveredBarIndex] = useState<number | null>(null);
@@ -798,6 +829,20 @@ function BarChartInner({
   const innerWidth = width - margin.left - margin.right;
   const innerHeight = height - margin.top - margin.bottom;
   const isHorizontal = orientation === "horizontal";
+
+  // Auto-detect stacking: if any Bar has a stackId, the chart is stacked
+  const stacked = stackedProp || bars.some((b) => !!b.stackId);
+
+  // Build stackGroups: stackId → ordered list of dataKeys (bottom → top)
+  const stackGroups = useMemo(() => {
+    const groups = new Map<string, string[]>();
+    for (const bar of bars) {
+      if (!bar.stackId) continue;
+      if (!groups.has(bar.stackId)) groups.set(bar.stackId, []);
+      groups.get(bar.stackId)!.push(bar.dataKey);
+    }
+    return groups;
+  }, [bars]);
 
   const xScale = useMemo(() => {
     const domain = data.map((d) => String(d[xDataKey] ?? ""));
@@ -809,30 +854,55 @@ function BarChartInner({
   const yScale = useMemo(() => {
     let maxValue = 0;
     if (stacked) {
-      for (const d of data) { let sum = 0; for (const bar of bars) { const v = d[bar.dataKey]; if (typeof v === "number") sum += v; } if (sum > maxValue) maxValue = sum; }
+      // For each stackId group, sum all bars in that group per data point
+      for (const d of data) {
+        // Non-stacked bars contribute individually
+        for (const bar of bars.filter((b) => !b.stackId)) {
+          const v = d[bar.dataKey];
+          if (typeof v === "number" && v > maxValue) maxValue = v;
+        }
+        // Stacked groups: sum within each group
+        for (const [, keys] of stackGroups) {
+          let sum = 0;
+          for (const key of keys) { const v = d[key]; if (typeof v === "number") sum += v; }
+          if (sum > maxValue) maxValue = sum;
+        }
+      }
     } else {
       for (const bar of bars) { for (const d of data) { const v = d[bar.dataKey]; if (typeof v === "number" && v > maxValue) maxValue = v; } }
     }
     if (maxValue === 0) maxValue = 100;
     return scaleLinear<number>({ range: isHorizontal ? [innerWidth, 0] : [innerHeight, 0], domain: [0, maxValue * 1.1], nice: true });
-  }, [data, bars, innerWidth, innerHeight, stacked, isHorizontal]);
+  }, [data, bars, stackGroups, innerWidth, innerHeight, stacked, isHorizontal]);
 
+  // Compute per-dataIndex, per-dataKey pixel offsets for stacked bars
   const stackOffsets = useMemo(() => {
-    if (!stacked) return new Map<number, Map<string, number>>();
     const offsets = new Map<number, Map<string, number>>();
+    if (!stacked) return offsets;
     for (let i = 0; i < data.length; i++) {
       const d = data[i]!;
-      let cumulative = 0;
       const barOffsets = new Map<string, number>();
-      for (const bar of bars) {
-        barOffsets.set(bar.dataKey, cumulative);
-        const v = d[bar.dataKey];
-        if (typeof v === "number") { cumulative += isHorizontal ? innerWidth - (yScale(v) ?? innerWidth) : innerHeight - (yScale(v) ?? innerHeight); }
+      // For each stack group, accumulate pixel offsets bottom-to-top
+      for (const [, keys] of stackGroups) {
+        let cumulative = 0;
+        for (const key of keys) {
+          barOffsets.set(key, cumulative);
+          const v = d[key];
+          if (typeof v === "number") {
+            cumulative += isHorizontal
+              ? innerWidth - (yScale(v) ?? innerWidth)
+              : innerHeight - (yScale(v) ?? innerHeight);
+          }
+        }
+      }
+      // Non-stacked bars get offset 0
+      for (const bar of bars.filter((b) => !b.stackId)) {
+        barOffsets.set(bar.dataKey, 0);
       }
       offsets.set(i, barOffsets);
     }
     return offsets;
-  }, [data, bars, stacked, yScale, innerHeight, innerWidth, isHorizontal]);
+  }, [data, bars, stackGroups, stacked, yScale, innerHeight, innerWidth, isHorizontal]);
 
   const [tooltipData, setTooltipData] = useState<TooltipData | null>(null);
 
@@ -873,7 +943,7 @@ function BarChartInner({
   if (width < 10 || height < 10) return null;
 
   const contextValue: BarChartContextValue = {
-    data, xScale, yScale, width, height, innerWidth, innerHeight, margin, bandWidth, tooltipData, setTooltipData, containerRef, bars, isLoaded, animationDuration, xDataKey, hoveredBarIndex, setHoveredBarIndex, orientation, stacked, stackGap, stackOffsets, barGap, barWidth,
+    data, xScale, yScale, width, height, innerWidth, innerHeight, margin, bandWidth, tooltipData, setTooltipData, containerRef, bars, isLoaded, animationDuration, xDataKey, hoveredBarIndex, setHoveredBarIndex, orientation, stacked, stackGap, stackOffsets, stackGroups, barGap, barWidth,
   };
 
   return (
@@ -890,7 +960,7 @@ function BarChartInner({
 }
 
 export function BarChart({
-  data, xDataKey = "name", margin: marginProp, animationDuration = 1100, aspectRatio = "2 / 1",
+  data, xDataKey = "date", margin: marginProp, animationDuration = 1100, aspectRatio = "2 / 1",
   barGap = 0.2, barWidth, orientation = "vertical", stacked = false, stackGap = 0, className = "", children,
 }: BarChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
