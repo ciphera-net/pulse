@@ -258,14 +258,14 @@ export default function Chart({
                 key={m.key}
                 onClick={() => setMetric(m.key)}
                 className={cn(
-                  'group relative overflow-hidden cursor-pointer flex-1 text-start p-4 border-b md:border-b-0 md:border-r md:last:border-r-0 border-neutral-200 dark:border-neutral-800 transition-all ease-apple',
-                  metric === m.key && 'bg-neutral-50 dark:bg-neutral-800/40',
+                  'group relative overflow-hidden cursor-pointer flex-1 text-start p-4 border-b md:border-b-0 md:border-r md:last:border-r-0 border-neutral-800 transition-all ease-apple',
+                  metric === m.key && 'bg-neutral-800/40',
                 )}
               >
                 <Sparkline data={m.key === 'engagement' ? chartData : data} dataKey={m.key} active={metric === m.key} engagementDaily={m.key === 'engagement' ? engagementData?.daily : undefined} />
                 <div className="relative z-10">
                   <div className="flex items-start justify-between mb-2">
-                    <div className={cn('text-micro-label font-semibold uppercase tracking-widest', metric === m.key ? 'text-brand-orange' : 'text-neutral-400 dark:text-neutral-500')}>{m.label}</div>
+                    <div className={cn('text-micro-label font-semibold uppercase tracking-widest', metric === m.key ? 'text-brand-orange' : 'text-neutral-500')}>{m.label}</div>
                     {m.change !== null && (
                       <span className={cn('flex items-center gap-0.5 text-xs font-semibold', m.isPositive ? 'text-[#10B981]' : 'text-[#EF4444]')}>
                         {m.isPositive ? <ArrowUpRight weight="bold" className="size-3" /> : <ArrowDownRight weight="bold" className="size-3" />}

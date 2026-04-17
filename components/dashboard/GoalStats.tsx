@@ -123,7 +123,7 @@ export default function GoalStats({ goalCounts, siteId, dateRange }: GoalStatsPr
                     <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
                       {total > 0 ? `${Math.round((row.count / total) * 100)}%` : ''}
                     </span>
-                    <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
+                    <span className="text-sm font-semibold text-neutral-400">
                       {formatNumber(row.count)}
                     </span>
                   </div>
@@ -168,7 +168,7 @@ export default function GoalStats({ goalCounts, siteId, dateRange }: GoalStatsPr
                                   <span className="relative text-xs font-medium text-white truncate">
                                     {v.value}
                                   </span>
-                                  <span className="relative text-sm font-semibold text-neutral-600 dark:text-neutral-400 ml-4">
+                                  <span className="relative text-sm font-semibold text-neutral-400 ml-4">
                                     {formatNumber(v.count)}
                                   </span>
                                 </div>

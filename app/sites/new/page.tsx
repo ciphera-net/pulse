@@ -110,18 +110,18 @@ export default function NewSitePage() {
       <div className="w-full max-w-2xl mx-auto px-4 sm:px-6 py-8">
         <div className="glass-surface rounded-2xl p-6">
           <div className="text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-500/10 text-green-600 dark:text-green-400 mb-6">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-500/10 text-green-400 mb-6">
               <CheckCircleIcon className="h-7 w-7" />
             </div>
             <h2 className="text-2xl font-bold text-white">
               Site created
             </h2>
-            <p className="mt-2 text-neutral-600 dark:text-neutral-400">
+            <p className="mt-2 text-neutral-400">
               Add the script to your site to start collecting data.
             </p>
           </div>
 
-          <div className="mt-6 pt-6 border-t border-neutral-200 dark:border-neutral-700">
+          <div className="mt-6 pt-6 border-t border-neutral-700">
             <ScriptSetupBlock
               site={{ domain: createdSite.domain, name: createdSite.name }}
               onScriptCopy={trackSiteCreatedScriptCopied}
@@ -133,7 +133,7 @@ export default function NewSitePage() {
             <button
               type="button"
               onClick={() => setShowVerificationModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-all text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 ease-apple"
+              className="flex items-center gap-2 px-4 py-2 bg-neutral-800 border border-neutral-700 text-neutral-300 rounded-xl hover:bg-neutral-700 transition-all text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 ease-apple"
             >
               <span className="text-brand-orange">Verify installation</span>
             </button>
@@ -146,7 +146,7 @@ export default function NewSitePage() {
             <button
               type="button"
               onClick={handleBackToForm}
-              className="text-sm text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 underline"
+              className="text-sm text-neutral-400 hover:text-neutral-300 underline"
             >
               Edit site details
             </button>
@@ -179,7 +179,7 @@ export default function NewSitePage() {
       </h1>
 
       {atLimit && limitsChecked && (
-        <p className="mb-4 text-sm text-amber-600 dark:text-amber-400">
+        <p className="mb-4 text-sm text-amber-400">
           Plan limit reached. Upgrade to add more sites.
         </p>
       )}
@@ -212,7 +212,7 @@ export default function NewSitePage() {
             onChange={(e) => setFormData({ ...formData, domain: e.target.value.toLowerCase().trim() })}
             placeholder="example.com"
           />
-          <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
+          <p className="mt-2 text-sm text-neutral-400">
             Enter your domain without http:// or https://
           </p>
         </div>

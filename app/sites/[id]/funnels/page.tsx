@@ -43,7 +43,7 @@ export default function FunnelsPage() {
             <h1 className="text-lg font-semibold text-neutral-200">
               Funnels
             </h1>
-            <p className="text-neutral-600 dark:text-neutral-400">
+            <p className="text-neutral-400">
               Track user journeys and identify drop-off points
             </p>
           </div>
@@ -68,7 +68,7 @@ export default function FunnelsPage() {
             <h3 className="text-lg font-semibold text-white mb-2">
               No funnels yet
             </h3>
-            <p className="text-neutral-600 dark:text-neutral-400 mb-6 max-w-md mx-auto">
+            <p className="text-neutral-400 mb-6 max-w-md mx-auto">
               Create a funnel to track how users move through your site and where they drop off.
             </p>
             <Link href={`/sites/${siteId}/funnels/new`}>
@@ -93,14 +93,14 @@ export default function FunnelsPage() {
                         {funnel.name}
                       </h3>
                       {funnel.description && (
-                        <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
+                        <p className="text-sm text-neutral-400 mt-1">
                           {funnel.description}
                         </p>
                       )}
                       <div className="flex items-center gap-2 mt-4">
                         {funnel.steps.map((step, i) => (
                           <div key={step.name} className="flex items-center text-sm text-neutral-500">
-                            <span className="px-2 py-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg text-neutral-700 dark:text-neutral-300">
+                            <span className="px-2 py-1 bg-neutral-800 rounded-lg text-neutral-300">
                               {step.name}
                             </span>
                             {i < funnel.steps.length - 1 && (
@@ -113,7 +113,7 @@ export default function FunnelsPage() {
                     <div className="flex items-center gap-4">
                       <button
                         onClick={(e) => handleDelete(e, funnel.id)}
-                        className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors ease-apple"
+                        className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-900/20 rounded-xl transition-colors ease-apple"
                         aria-label="Delete funnel"
                       >
                         <TrashIcon className="w-5 h-5" />

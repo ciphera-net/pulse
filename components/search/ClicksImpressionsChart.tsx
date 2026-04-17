@@ -30,7 +30,7 @@ function CustomTooltip({ active, payload, label }: TooltipProps) {
   const impressions = payload.find((p) => p.dataKey === 'impressions')
 
   return (
-    <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-3 shadow-sm shadow-black/5 min-w-[140px]">
+    <div className="rounded-lg border border-neutral-700 bg-neutral-800 p-3 shadow-sm shadow-black/5 min-w-[140px]">
       <div className="text-xs text-neutral-400 mb-1.5">{label}</div>
       {clicks && (
         <div className="flex items-center gap-2 text-sm">
@@ -88,7 +88,7 @@ export default function ClicksImpressionsChart({ siteId, startDate, endDate }: C
 
   return (
     <div className="glass-surface rounded-2xl p-4 mb-6">
-      <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-3">
+      <p className="text-sm font-medium text-neutral-300 mb-3">
         Clicks &amp; Impressions
       </p>
       <ChartContainer

@@ -104,13 +104,13 @@ export default function VerificationModal({ isOpen, onClose, site, onVerified }:
               className="glass-surface w-full max-w-md rounded-2xl shadow-xl pointer-events-auto overflow-hidden"
             >
               {/* Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-800">
                 <h3 className="font-semibold text-white">
                   Verify Installation
                 </h3>
                 <button
                   onClick={onClose}
-                  className="p-1 rounded-lg text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors ease-apple"
+                  className="p-1 rounded-lg text-neutral-500 hover:bg-neutral-800 transition-colors ease-apple"
                 >
                   <XIcon className="w-5 h-5" />
                 </button>
@@ -126,7 +126,7 @@ export default function VerificationModal({ isOpen, onClose, site, onVerified }:
                       </div>
                       <div className="space-y-1">
                         <h4 className="font-medium text-brand-orange">How this works</h4>
-                        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                        <p className="text-sm text-neutral-400">
                           We will open your website in a new tab. Keep it open while we check if the script sends back a signal.
                         </p>
                       </div>
@@ -144,7 +144,7 @@ export default function VerificationModal({ isOpen, onClose, site, onVerified }:
                 {status === 'checking' && (
                   <div className="flex flex-col items-center justify-center py-8 space-y-6">
                     <div className="relative">
-                      <div className="w-16 h-16 border-4 border-neutral-100 dark:border-neutral-800 rounded-full" />
+                      <div className="w-16 h-16 border-4 border-neutral-800 rounded-full" />
                       <div className="absolute inset-0 w-16 h-16 border-4 border-brand-orange border-t-transparent rounded-full animate-spin" />
                     </div>
                     <div className="text-center space-y-1">
@@ -160,7 +160,7 @@ export default function VerificationModal({ isOpen, onClose, site, onVerified }:
 
                 {status === 'success' && (
                   <div className="flex flex-col items-center justify-center py-6 space-y-6">
-                    <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center text-green-600 dark:text-green-400">
+                    <div className="w-16 h-16 bg-green-900/20 rounded-full flex items-center justify-center text-green-400">
                       <CheckCircleIcon className="w-8 h-8" />
                     </div>
                     <div className="text-center space-y-1">
@@ -180,19 +180,19 @@ export default function VerificationModal({ isOpen, onClose, site, onVerified }:
                 {status === 'error' && (
                   <div className="space-y-6">
                     <div className="flex flex-col items-center justify-center space-y-2 text-center">
-                      <div className="w-12 h-12 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center text-red-600 dark:text-red-400">
+                      <div className="w-12 h-12 bg-red-900/20 rounded-full flex items-center justify-center text-red-400">
                         <AlertTriangleIcon className="w-6 h-6" />
                       </div>
-                      <h4 className="font-medium text-red-600 dark:text-red-400">
+                      <h4 className="font-medium text-red-400">
                         Connection Timed Out
                       </h4>
                     </div>
 
-                    <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-neutral-100 dark:border-neutral-800">
+                    <div className="p-4 bg-neutral-800/50 rounded-xl border border-neutral-800">
                       <p className="text-sm font-medium text-white mb-2">
                         Troubleshooting Checklist:
                       </p>
-                      <ul className="text-sm text-neutral-600 dark:text-neutral-400 space-y-1 list-disc list-inside">
+                      <ul className="text-sm text-neutral-400 space-y-1 list-disc list-inside">
                         <li>Did the new tab open successfully?</li>
                         <li>Is your ad blocker disabled?</li>
                         <li>Is the script inside the <code>&lt;head&gt;</code> tag?</li>

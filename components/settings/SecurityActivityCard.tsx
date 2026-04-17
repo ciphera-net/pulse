@@ -35,12 +35,12 @@ const EVENT_ICONS: Record<string, string> = {
 }
 
 function getEventColor(eventType: string, outcome: string): string {
-  if (outcome === 'failure') return 'text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-950/30'
-  if (eventType === '2fa_enabled') return 'text-green-500 dark:text-green-400 bg-green-50 dark:bg-green-950/30'
-  if (eventType === '2fa_disabled') return 'text-amber-500 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30'
-  if (eventType === 'account_deleted') return 'text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-950/30'
-  if (eventType === 'recovery_codes_regenerated') return 'text-amber-500 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30'
-  return 'text-neutral-400 bg-neutral-100 dark:bg-neutral-800'
+  if (outcome === 'failure') return 'text-red-400 bg-red-950/30'
+  if (eventType === '2fa_enabled') return 'text-green-400 bg-green-950/30'
+  if (eventType === '2fa_disabled') return 'text-amber-400 bg-amber-950/30'
+  if (eventType === 'account_deleted') return 'text-red-400 bg-red-950/30'
+  if (eventType === 'recovery_codes_regenerated') return 'text-amber-400 bg-amber-950/30'
+  return 'text-neutral-400 bg-neutral-800'
 }
 
 function getMethodLabel(entry: AuditLogEntry): string | null {
@@ -132,8 +132,8 @@ export default function SecurityActivityCard() {
           <Spinner />
         </div>
       ) : error ? (
-        <div className="rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/20 p-6 text-center">
-          <p className="text-red-600 dark:text-red-400">{error}</p>
+        <div className="rounded-2xl border border-red-900/50 bg-red-950/20 p-6 text-center">
+          <p className="text-red-400">{error}</p>
         </div>
       ) : entries.length === 0 ? (
         <div className="glass-surface rounded-2xl">
@@ -172,12 +172,12 @@ export default function SecurityActivityCard() {
                       {label}
                     </span>
                     {method && (
-                      <span className="text-xs px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-400">
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-400">
                         {method}
                       </span>
                     )}
                     {entry.outcome === 'failure' && (
-                      <span className="text-xs px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400">
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-red-950/40 text-red-400">
                         Failed
                       </span>
                     )}
@@ -206,7 +206,7 @@ export default function SecurityActivityCard() {
                 type="button"
                 onClick={handleLoadMore}
                 disabled={loadingMore}
-                className="text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors disabled:opacity-50 ease-apple"
+                className="text-sm font-medium text-neutral-400 hover:text-white transition-colors disabled:opacity-50 ease-apple"
               >
                 {loadingMore ? 'Loading...' : 'Load more'}
               </button>

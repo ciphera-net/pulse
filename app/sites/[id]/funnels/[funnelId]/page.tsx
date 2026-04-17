@@ -84,7 +84,7 @@ export default function FunnelReportPage() {
   if (loadError === 'not_found' || (!funnel && !stats && !loadError)) {
     return (
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
-        <p className="text-neutral-600 dark:text-neutral-400">Funnel not found</p>
+        <p className="text-neutral-400">Funnel not found</p>
       </div>
     )
   }
@@ -92,7 +92,7 @@ export default function FunnelReportPage() {
   if (loadError === 'forbidden') {
     return (
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
-        <p className="text-neutral-600 dark:text-neutral-400">Access denied</p>
+        <p className="text-neutral-400">Access denied</p>
         <Link href={`/sites/${siteId}/funnels`}>
           <Button variant="primary" className="mt-4">
             Back to Funnels
@@ -105,7 +105,7 @@ export default function FunnelReportPage() {
   if (loadError === 'error') {
     return (
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
-        <p className="text-neutral-600 dark:text-neutral-400 mb-4">Unable to load funnel</p>
+        <p className="text-neutral-400 mb-4">Unable to load funnel</p>
         <Button type="button" onClick={() => loadData()} variant="primary">
           Try again
         </Button>
@@ -116,7 +116,7 @@ export default function FunnelReportPage() {
   if (!funnel || !stats) {
     return (
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
-        <p className="text-neutral-600 dark:text-neutral-400">Funnel not found</p>
+        <p className="text-neutral-400">Funnel not found</p>
       </div>
     )
   }
@@ -148,7 +148,7 @@ export default function FunnelReportPage() {
           <div className="flex items-center gap-4">
             <Link 
               href={`/sites/${siteId}/funnels`}
-              className="p-2 -ml-2 text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors ease-apple"
+              className="p-2 -ml-2 text-neutral-400 hover:text-white rounded-xl hover:bg-neutral-800 transition-colors ease-apple"
             >
               <ChevronLeftIcon className="w-5 h-5" />
             </Link>
@@ -157,7 +157,7 @@ export default function FunnelReportPage() {
                 {funnel.name}
               </h1>
               {funnel.description && (
-                <p className="text-neutral-600 dark:text-neutral-400">
+                <p className="text-neutral-400">
                   {funnel.description}
                 </p>
               )}
@@ -187,14 +187,14 @@ export default function FunnelReportPage() {
             
             <Link
               href={`/sites/${siteId}/funnels/${funnelId}/edit`}
-              className="p-2 text-neutral-400 hover:text-brand-orange hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-xl transition-colors ease-apple"
+              className="p-2 text-neutral-400 hover:text-brand-orange hover:bg-orange-900/20 rounded-xl transition-colors ease-apple"
               aria-label="Edit funnel"
             >
               <PencilSimple className="w-5 h-5" />
             </Link>
             <button
               onClick={handleDelete}
-              className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors ease-apple"
+              className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-900/20 rounded-xl transition-colors ease-apple"
               aria-label="Delete funnel"
             >
               <TrashIcon className="w-5 h-5" />
@@ -250,7 +250,7 @@ export default function FunnelReportPage() {
                     className={`px-2 py-1 text-xs rounded-md transition-colors ${
                       visibleSteps.has(String(i))
                         ? 'bg-brand-orange/10 text-brand-orange border border-brand-orange/30'
-                        : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 border border-transparent'
+                        : 'bg-neutral-800 text-neutral-500 border border-transparent'
                     } ease-apple`}
                   >
                     {s.step.name}
@@ -262,7 +262,7 @@ export default function FunnelReportPage() {
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={trendsChartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-neutral-200 dark:text-neutral-700" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-neutral-700" />
                   <XAxis
                     dataKey="date"
                     tick={{ fontSize: 12 }}
@@ -315,7 +315,7 @@ export default function FunnelReportPage() {
         <div className="glass-surface rounded-2xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="bg-neutral-50 dark:bg-neutral-800/50 border-b border-neutral-200 dark:border-neutral-800">
+              <thead className="bg-neutral-800/50 border-b border-neutral-800">
                 <tr>
                   <th className="px-6 py-4 font-medium text-neutral-400 uppercase tracking-wider">Step</th>
                   <th className="px-6 py-4 font-medium text-neutral-400 uppercase tracking-wider text-right">Visitors</th>
@@ -323,13 +323,13 @@ export default function FunnelReportPage() {
                   <th className="px-6 py-4 font-medium text-neutral-400 uppercase tracking-wider text-right">Conversion</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
+              <tbody className="divide-y divide-neutral-800">
                 {stats.steps.map((step, i) => (
                   <React.Fragment key={step.step.name}>
-                    <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-800/30 transition-colors cursor-pointer ease-apple" onClick={() => setBreakdownStep(i)}>
+                    <tr className="hover:bg-neutral-800/30 transition-colors cursor-pointer ease-apple" onClick={() => setBreakdownStep(i)}>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <span className="w-6 h-6 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-xs font-medium text-neutral-600 dark:text-neutral-400">
+                          <span className="w-6 h-6 rounded-full bg-neutral-800 flex items-center justify-center text-xs font-medium text-neutral-400">
                             {i + 1}
                           </span>
                           <div>
@@ -347,8 +347,8 @@ export default function FunnelReportPage() {
                         {i > 0 ? (
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                             step.dropoff > 50
-                              ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-                              : 'bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-300'
+                              ? 'bg-red-900/30 text-red-400'
+                              : 'bg-neutral-800 text-neutral-300'
                           }`}>
                             {Math.round(step.dropoff)}%
                           </span>
@@ -357,13 +357,13 @@ export default function FunnelReportPage() {
                         )}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <span className="text-green-600 dark:text-green-400 font-medium">
+                        <span className="text-green-400 font-medium">
                           {Math.round(step.conversion)}%
                         </span>
                       </td>
                     </tr>
                     {step.exit_pages && step.exit_pages.length > 0 && (
-                      <tr className="bg-neutral-50/50 dark:bg-neutral-800/20">
+                      <tr className="bg-neutral-800/20">
                         <td colSpan={4} className="px-6 py-3">
                           <div className="ml-9">
                             <p className="text-xs font-medium text-neutral-500 mb-2">
@@ -371,8 +371,8 @@ export default function FunnelReportPage() {
                             </p>
                             <div className="flex flex-wrap gap-2">
                               {(expandedExitStep === i ? step.exit_pages : step.exit_pages.slice(0, 3)).map(ep => (
-                                <span key={ep.path} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-xs">
-                                  <span className="font-mono text-neutral-600 dark:text-neutral-300">{ep.path}</span>
+                                <span key={ep.path} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-neutral-800 border border-neutral-700 rounded-lg text-xs">
+                                  <span className="font-mono text-neutral-300">{ep.path}</span>
                                   <span className="text-neutral-400">{ep.visitors}</span>
                                 </span>
                               ))}

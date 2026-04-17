@@ -18,7 +18,7 @@ function CopyableOrgId({ id }: { id: string }) {
     <button
       type="button"
       onClick={copy}
-      className="font-mono text-xs text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange cursor-pointer transition-colors text-left ease-apple"
+      className="font-mono text-xs text-neutral-500 hover:text-brand-orange cursor-pointer transition-colors text-left ease-apple"
       title="Click to copy"
     >
       {copied ? 'Copied!' : `${id.substring(0, 8)}...`}
@@ -50,7 +50,7 @@ export default function AdminOrgsPage() {
         <h3 className="text-lg font-semibold text-white mb-4">All Organizations</h3>
         <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="border-b border-neutral-200 dark:border-neutral-800">
+              <thead className="border-b border-neutral-800">
                 <tr>
                   <th className="px-4 py-3 font-medium text-neutral-400">Name</th>
                   <th className="px-4 py-3 font-medium text-neutral-400">Org ID</th>
@@ -61,9 +61,9 @@ export default function AdminOrgsPage() {
                   <th className="px-4 py-3 font-medium text-neutral-400">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
+              <tbody className="divide-y divide-neutral-800">
                 {orgs.map((org) => (
-                  <tr key={org.organization_id} className="hover:bg-neutral-50 dark:hover:bg-neutral-900/50">
+                  <tr key={org.organization_id} className="hover:bg-neutral-900/50">
                     <td className="px-4 py-3 text-white font-medium">
                       {org.business_name || 'N/A'}
                     </td>
@@ -72,18 +72,18 @@ export default function AdminOrgsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        org.plan_id === 'business' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
-                        org.plan_id === 'team' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                        org.plan_id === 'solo' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                        'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400'
+                        org.plan_id === 'business' ? 'bg-purple-900/30 text-purple-400' :
+                        org.plan_id === 'team' ? 'bg-blue-900/30 text-blue-400' :
+                        org.plan_id === 'solo' ? 'bg-green-900/30 text-green-400' :
+                        'bg-neutral-800 text-neutral-400'
                       }`}>
                         {org.plan_id}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-neutral-600 dark:text-neutral-300">
+                    <td className="px-4 py-3 text-neutral-300">
                       {org.subscription_status || '-'}
                     </td>
-                    <td className="px-4 py-3 text-neutral-600 dark:text-neutral-300">
+                    <td className="px-4 py-3 text-neutral-300">
                       {new Intl.NumberFormat().format(org.pageview_limit)}
                     </td>
                     <td className="px-4 py-3 text-neutral-500 text-xs">

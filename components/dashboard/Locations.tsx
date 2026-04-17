@@ -201,11 +201,11 @@ export default function Audience({ countries, cities, regions, languages, timezo
 
     switch (countryCode) {
       case 'T1':
-        return <ShieldCheck className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+        return <ShieldCheck className="w-5 h-5 text-purple-400" />
       case 'A1':
         return <Detective className="w-5 h-5 text-neutral-400" />
       case 'A2':
-        return <Broadcast className="w-5 h-5 text-blue-500 dark:text-blue-400" />
+        return <Broadcast className="w-5 h-5 text-blue-400" />
       case 'O1':
       case 'EU':
       case 'AP':
@@ -376,7 +376,7 @@ export default function Audience({ countries, cities, regions, languages, timezo
                 className={`relative px-2.5 py-1 text-xs font-medium transition-colors capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded cursor-pointer ${
                   activeTab === tab
                     ? 'text-white'
-                    : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-300'
+                    : 'text-neutral-500 hover:text-neutral-300'
                 } ease-apple`}
               >
                 {tab}
@@ -391,7 +391,7 @@ export default function Audience({ countries, cities, regions, languages, timezo
           {showViewAll && (
             <button
               onClick={() => setIsModalOpen(true)}
-              className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-lg ease-apple"
+              className="p-1.5 text-neutral-500 hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-lg ease-apple"
               aria-label="View all audience data"
             >
               <FrameCornersIcon className="w-4 h-4" weight="bold" />
@@ -457,7 +457,7 @@ export default function Audience({ countries, cities, regions, languages, timezo
                         <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
                           {totalPageviews > 0 ? `${Math.round((item.pageviews / totalPageviews) * 100)}%` : ''}
                         </span>
-                        <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
+                        <span className="text-sm font-semibold text-neutral-400">
                           {formatNumber(item.pageviews)}
                         </span>
                       </div>
@@ -541,7 +541,7 @@ export default function Audience({ countries, cities, regions, languages, timezo
                         <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
                           {modalTotal > 0 ? `${Math.round((item.pageviews / modalTotal) * 100)}%` : ''}
                         </span>
-                        <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
+                        <span className="text-sm font-semibold text-neutral-400">
                           {formatNumber(item.pageviews)}
                         </span>
                       </div>

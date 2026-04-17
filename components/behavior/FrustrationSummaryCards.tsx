@@ -29,9 +29,9 @@ function ChangeIndicator({ change }: { change: ReturnType<typeof pctChange> }) {
     <span
       className={`text-xs font-medium ${
         isUp
-          ? 'text-red-600 dark:text-red-400'
+          ? 'text-red-400'
           : isDown
-            ? 'text-green-600 dark:text-green-400'
+            ? 'text-green-400'
             : 'text-neutral-400'
       }`}
     >
@@ -69,7 +69,7 @@ export default function FrustrationSummaryCards({ data, loading }: FrustrationSu
           </span>
           <ChangeIndicator change={rageChange} />
         </div>
-        <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
+        <p className="text-xs text-neutral-500 mt-1">
           {data.rage_unique_elements} unique elements
         </p>
       </div>
@@ -85,7 +85,7 @@ export default function FrustrationSummaryCards({ data, loading }: FrustrationSu
           </span>
           <ChangeIndicator change={deadChange} />
         </div>
-        <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
+        <p className="text-xs text-neutral-500 mt-1">
           {data.dead_unique_elements} unique elements
         </p>
       </div>
@@ -99,11 +99,11 @@ export default function FrustrationSummaryCards({ data, loading }: FrustrationSu
           {totalSignals.toLocaleString()}
         </span>
         {topPage ? (
-          <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
+          <p className="text-xs text-neutral-500 mt-1">
             Top page: {topPage}
           </p>
         ) : (
-          <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
+          <p className="text-xs text-neutral-500 mt-1">
             No data in this period
           </p>
         )}

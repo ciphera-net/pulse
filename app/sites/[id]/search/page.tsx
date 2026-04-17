@@ -168,8 +168,8 @@ export default function SearchConsolePage() {
     return (
       <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
         <div className="flex flex-col items-center justify-center py-24 text-center">
-          <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-5 mb-6">
-            <MagnifyingGlass size={40} className="text-neutral-400 dark:text-neutral-500" />
+          <div className="rounded-full bg-neutral-800 p-5 mb-6">
+            <MagnifyingGlass size={40} className="text-neutral-500" />
           </div>
           <h2 className="text-xl font-semibold text-white mb-2">
             Connect Google Search Console
@@ -301,21 +301,21 @@ export default function SearchConsolePage() {
 
       {/* New queries badge */}
       {newQueries && newQueries.count > 0 && (
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 text-sm mb-4">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-900/20 text-green-300 text-sm mb-4">
           <span className="font-medium">{newQueries.count} new {newQueries.count === 1 ? 'query' : 'queries'}</span>
-          <span className="text-green-600 dark:text-green-400">appeared this period</span>
+          <span className="text-green-400">appeared this period</span>
         </div>
       )}
 
       {/* View toggle */}
       <div className="mb-6">
-        <div className="inline-flex bg-neutral-100 dark:bg-neutral-800 rounded-lg p-1">
+        <div className="inline-flex bg-neutral-800 rounded-lg p-1">
           <button
             onClick={() => { setActiveView('queries'); setExpandedQuery(null); setExpandedData([]) }}
             className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all cursor-pointer ${
               activeView === 'queries'
-                ? 'bg-white dark:bg-neutral-700 text-white shadow-sm'
-                : 'text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300'
+                ? 'bg-neutral-700 text-white shadow-sm'
+                : 'text-neutral-400 hover:text-neutral-300'
             } ease-apple`}
           >
             Top Queries
@@ -324,8 +324,8 @@ export default function SearchConsolePage() {
             onClick={() => { setActiveView('pages'); setExpandedPage(null); setExpandedData([]) }}
             className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all cursor-pointer ${
               activeView === 'pages'
-                ? 'bg-white dark:bg-neutral-700 text-white shadow-sm'
-                : 'text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300'
+                ? 'bg-neutral-700 text-white shadow-sm'
+                : 'text-neutral-400 hover:text-neutral-300'
             } ease-apple`}
           >
             Top Pages
@@ -338,7 +338,7 @@ export default function SearchConsolePage() {
         <div className="glass-surface rounded-2xl overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-neutral-200 dark:border-neutral-800">
+              <tr className="border-b border-neutral-800">
                 <th className="text-left px-4 py-3 font-medium text-neutral-400 w-8" />
                 <th className="text-left px-4 py-3 font-medium text-neutral-400">Query</th>
                 <th className="text-right px-4 py-3 font-medium text-neutral-400">Clicks</th>
@@ -350,7 +350,7 @@ export default function SearchConsolePage() {
             <tbody>
               {queriesLoading && queries.length === 0 ? (
                 Array.from({ length: 10 }).map((_, i) => (
-                  <tr key={i} className="border-b border-neutral-100 dark:border-neutral-800/50">
+                  <tr key={i} className="border-b border-neutral-800/50">
                     <td className="px-4 py-3" />
                     <td className="px-4 py-3"><SkeletonLine className="h-4 w-3/4" /></td>
                     <td className="px-4 py-3"><SkeletonLine className="h-4 w-12 ml-auto" /></td>
@@ -382,7 +382,7 @@ export default function SearchConsolePage() {
 
           {/* Pagination */}
           {queriesTotal > PAGE_SIZE && (
-            <div className="flex items-center justify-between px-4 py-3 border-t border-neutral-200 dark:border-neutral-800">
+            <div className="flex items-center justify-between px-4 py-3 border-t border-neutral-800">
               <p className="text-sm text-neutral-400">
                 Showing {queryPage * PAGE_SIZE + 1}-{Math.min((queryPage + 1) * PAGE_SIZE, queriesTotal)} of {queriesTotal.toLocaleString()}
               </p>
@@ -390,14 +390,14 @@ export default function SearchConsolePage() {
                 <button
                   disabled={queryPage === 0}
                   onClick={() => { setQueryPage((p) => p - 1); setExpandedQuery(null); setExpandedData([]) }}
-                  className="px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer ease-apple"
+                  className="px-3 py-1.5 text-sm rounded-lg border border-neutral-700 text-neutral-300 hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer ease-apple"
                 >
                   Previous
                 </button>
                 <button
                   disabled={(queryPage + 1) * PAGE_SIZE >= queriesTotal}
                   onClick={() => { setQueryPage((p) => p + 1); setExpandedQuery(null); setExpandedData([]) }}
-                  className="px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer ease-apple"
+                  className="px-3 py-1.5 text-sm rounded-lg border border-neutral-700 text-neutral-300 hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer ease-apple"
                 >
                   Next
                 </button>
@@ -412,7 +412,7 @@ export default function SearchConsolePage() {
         <div className="glass-surface rounded-2xl overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-neutral-200 dark:border-neutral-800">
+              <tr className="border-b border-neutral-800">
                 <th className="text-left px-4 py-3 font-medium text-neutral-400 w-8" />
                 <th className="text-left px-4 py-3 font-medium text-neutral-400">Page</th>
                 <th className="text-right px-4 py-3 font-medium text-neutral-400">Clicks</th>
@@ -424,7 +424,7 @@ export default function SearchConsolePage() {
             <tbody>
               {pagesLoading && pages.length === 0 ? (
                 Array.from({ length: 10 }).map((_, i) => (
-                  <tr key={i} className="border-b border-neutral-100 dark:border-neutral-800/50">
+                  <tr key={i} className="border-b border-neutral-800/50">
                     <td className="px-4 py-3" />
                     <td className="px-4 py-3"><SkeletonLine className="h-4 w-3/4" /></td>
                     <td className="px-4 py-3"><SkeletonLine className="h-4 w-12 ml-auto" /></td>
@@ -456,7 +456,7 @@ export default function SearchConsolePage() {
 
           {/* Pagination */}
           {pagesTotal > PAGE_SIZE && (
-            <div className="flex items-center justify-between px-4 py-3 border-t border-neutral-200 dark:border-neutral-800">
+            <div className="flex items-center justify-between px-4 py-3 border-t border-neutral-800">
               <p className="text-sm text-neutral-400">
                 Showing {pagePage * PAGE_SIZE + 1}-{Math.min((pagePage + 1) * PAGE_SIZE, pagesTotal)} of {pagesTotal.toLocaleString()}
               </p>
@@ -464,14 +464,14 @@ export default function SearchConsolePage() {
                 <button
                   disabled={pagePage === 0}
                   onClick={() => { setPagePage((p) => p - 1); setExpandedPage(null); setExpandedData([]) }}
-                  className="px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer ease-apple"
+                  className="px-3 py-1.5 text-sm rounded-lg border border-neutral-700 text-neutral-300 hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer ease-apple"
                 >
                   Previous
                 </button>
                 <button
                   disabled={(pagePage + 1) * PAGE_SIZE >= pagesTotal}
                   onClick={() => { setPagePage((p) => p + 1); setExpandedPage(null); setExpandedData([]) }}
-                  className="px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer ease-apple"
+                  className="px-3 py-1.5 text-sm rounded-lg border border-neutral-700 text-neutral-300 hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer ease-apple"
                 >
                   Next
                 </button>
@@ -518,8 +518,8 @@ function OverviewCard({
       <p className="text-2xl font-semibold tabular-nums text-white">{value}</p>
       {change && (
         <p className={`text-xs mt-1 font-medium ${
-          isPositive ? 'text-green-600 dark:text-green-400' :
-          isNegative ? 'text-red-600 dark:text-red-400' :
+          isPositive ? 'text-green-400' :
+          isNegative ? 'text-red-400' :
           'text-neutral-400'
         }`}>
           {change.label} vs previous period
@@ -547,19 +547,19 @@ function QueryRow({
     <>
       <tr
         onClick={onToggle}
-        className="border-b border-neutral-100 dark:border-neutral-800/50 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 cursor-pointer transition-colors ease-apple"
+        className="border-b border-neutral-800/50 hover:bg-neutral-800/50 cursor-pointer transition-colors ease-apple"
       >
-        <td className="px-4 py-3 text-neutral-400 dark:text-neutral-500">
+        <td className="px-4 py-3 text-neutral-500">
           <Caret size={14} />
         </td>
         <td className="px-4 py-3 text-white font-medium">{row.query}</td>
-        <td className="px-4 py-3 text-right text-neutral-700 dark:text-neutral-300 tabular-nums">{row.clicks.toLocaleString()}</td>
-        <td className="px-4 py-3 text-right text-neutral-700 dark:text-neutral-300 tabular-nums">{row.impressions.toLocaleString()}</td>
-        <td className="px-4 py-3 text-right text-neutral-700 dark:text-neutral-300 tabular-nums">{formatCTR(row.ctr)}</td>
-        <td className="px-4 py-3 text-right text-neutral-700 dark:text-neutral-300 tabular-nums">{formatPosition(row.position)}</td>
+        <td className="px-4 py-3 text-right text-neutral-300 tabular-nums">{row.clicks.toLocaleString()}</td>
+        <td className="px-4 py-3 text-right text-neutral-300 tabular-nums">{row.impressions.toLocaleString()}</td>
+        <td className="px-4 py-3 text-right text-neutral-300 tabular-nums">{formatCTR(row.ctr)}</td>
+        <td className="px-4 py-3 text-right text-neutral-300 tabular-nums">{formatPosition(row.position)}</td>
       </tr>
       {isExpanded && (
-        <tr className="bg-neutral-50 dark:bg-neutral-800/30">
+        <tr className="bg-neutral-800/30">
           <td colSpan={6} className="px-4 py-3">
             {expandedLoading ? (
               <div className="space-y-2 py-1">
@@ -573,21 +573,21 @@ function QueryRow({
               <table className="w-full text-sm">
                 <thead>
                   <tr>
-                    <th className="text-left px-2 py-1.5 text-xs font-medium text-neutral-400 dark:text-neutral-500">Page</th>
-                    <th className="text-right px-2 py-1.5 text-xs font-medium text-neutral-400 dark:text-neutral-500">Clicks</th>
-                    <th className="text-right px-2 py-1.5 text-xs font-medium text-neutral-400 dark:text-neutral-500">Impressions</th>
-                    <th className="text-right px-2 py-1.5 text-xs font-medium text-neutral-400 dark:text-neutral-500">CTR</th>
-                    <th className="text-right px-2 py-1.5 text-xs font-medium text-neutral-400 dark:text-neutral-500">Position</th>
+                    <th className="text-left px-2 py-1.5 text-xs font-medium text-neutral-500">Page</th>
+                    <th className="text-right px-2 py-1.5 text-xs font-medium text-neutral-500">Clicks</th>
+                    <th className="text-right px-2 py-1.5 text-xs font-medium text-neutral-500">Impressions</th>
+                    <th className="text-right px-2 py-1.5 text-xs font-medium text-neutral-500">CTR</th>
+                    <th className="text-right px-2 py-1.5 text-xs font-medium text-neutral-500">Position</th>
                   </tr>
                 </thead>
                 <tbody>
                   {expandedData.map((sub) => (
-                    <tr key={sub.page} className="border-t border-neutral-200/50 dark:border-neutral-700/50">
-                      <td className="px-2 py-1.5 text-neutral-700 dark:text-neutral-300 max-w-md truncate" title={stripProtocol(sub.page)}>{stripProtocol(sub.page)}</td>
-                      <td className="px-2 py-1.5 text-right text-neutral-600 dark:text-neutral-400 tabular-nums">{sub.clicks.toLocaleString()}</td>
-                      <td className="px-2 py-1.5 text-right text-neutral-600 dark:text-neutral-400 tabular-nums">{sub.impressions.toLocaleString()}</td>
-                      <td className="px-2 py-1.5 text-right text-neutral-600 dark:text-neutral-400 tabular-nums">{formatCTR(sub.ctr)}</td>
-                      <td className="px-2 py-1.5 text-right text-neutral-600 dark:text-neutral-400 tabular-nums">{formatPosition(sub.position)}</td>
+                    <tr key={sub.page} className="border-t border-neutral-700/50">
+                      <td className="px-2 py-1.5 text-neutral-300 max-w-md truncate" title={stripProtocol(sub.page)}>{stripProtocol(sub.page)}</td>
+                      <td className="px-2 py-1.5 text-right text-neutral-400 tabular-nums">{sub.clicks.toLocaleString()}</td>
+                      <td className="px-2 py-1.5 text-right text-neutral-400 tabular-nums">{sub.impressions.toLocaleString()}</td>
+                      <td className="px-2 py-1.5 text-right text-neutral-400 tabular-nums">{formatCTR(sub.ctr)}</td>
+                      <td className="px-2 py-1.5 text-right text-neutral-400 tabular-nums">{formatPosition(sub.position)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -618,19 +618,19 @@ function PageRow({
     <>
       <tr
         onClick={onToggle}
-        className="border-b border-neutral-100 dark:border-neutral-800/50 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 cursor-pointer transition-colors ease-apple"
+        className="border-b border-neutral-800/50 hover:bg-neutral-800/50 cursor-pointer transition-colors ease-apple"
       >
-        <td className="px-4 py-3 text-neutral-400 dark:text-neutral-500">
+        <td className="px-4 py-3 text-neutral-500">
           <Caret size={14} />
         </td>
         <td className="px-4 py-3 text-white font-medium max-w-md truncate" title={stripProtocol(row.page)}>{stripProtocol(row.page)}</td>
-        <td className="px-4 py-3 text-right text-neutral-700 dark:text-neutral-300 tabular-nums">{row.clicks.toLocaleString()}</td>
-        <td className="px-4 py-3 text-right text-neutral-700 dark:text-neutral-300 tabular-nums">{row.impressions.toLocaleString()}</td>
-        <td className="px-4 py-3 text-right text-neutral-700 dark:text-neutral-300 tabular-nums">{formatCTR(row.ctr)}</td>
-        <td className="px-4 py-3 text-right text-neutral-700 dark:text-neutral-300 tabular-nums">{formatPosition(row.position)}</td>
+        <td className="px-4 py-3 text-right text-neutral-300 tabular-nums">{row.clicks.toLocaleString()}</td>
+        <td className="px-4 py-3 text-right text-neutral-300 tabular-nums">{row.impressions.toLocaleString()}</td>
+        <td className="px-4 py-3 text-right text-neutral-300 tabular-nums">{formatCTR(row.ctr)}</td>
+        <td className="px-4 py-3 text-right text-neutral-300 tabular-nums">{formatPosition(row.position)}</td>
       </tr>
       {isExpanded && (
-        <tr className="bg-neutral-50 dark:bg-neutral-800/30">
+        <tr className="bg-neutral-800/30">
           <td colSpan={6} className="px-4 py-3">
             {expandedLoading ? (
               <div className="space-y-2 py-1">
@@ -644,21 +644,21 @@ function PageRow({
               <table className="w-full text-sm">
                 <thead>
                   <tr>
-                    <th className="text-left px-2 py-1.5 text-xs font-medium text-neutral-400 dark:text-neutral-500">Query</th>
-                    <th className="text-right px-2 py-1.5 text-xs font-medium text-neutral-400 dark:text-neutral-500">Clicks</th>
-                    <th className="text-right px-2 py-1.5 text-xs font-medium text-neutral-400 dark:text-neutral-500">Impressions</th>
-                    <th className="text-right px-2 py-1.5 text-xs font-medium text-neutral-400 dark:text-neutral-500">CTR</th>
-                    <th className="text-right px-2 py-1.5 text-xs font-medium text-neutral-400 dark:text-neutral-500">Position</th>
+                    <th className="text-left px-2 py-1.5 text-xs font-medium text-neutral-500">Query</th>
+                    <th className="text-right px-2 py-1.5 text-xs font-medium text-neutral-500">Clicks</th>
+                    <th className="text-right px-2 py-1.5 text-xs font-medium text-neutral-500">Impressions</th>
+                    <th className="text-right px-2 py-1.5 text-xs font-medium text-neutral-500">CTR</th>
+                    <th className="text-right px-2 py-1.5 text-xs font-medium text-neutral-500">Position</th>
                   </tr>
                 </thead>
                 <tbody>
                   {expandedData.map((sub) => (
-                    <tr key={sub.query} className="border-t border-neutral-200/50 dark:border-neutral-700/50">
-                      <td className="px-2 py-1.5 text-neutral-700 dark:text-neutral-300">{sub.query}</td>
-                      <td className="px-2 py-1.5 text-right text-neutral-600 dark:text-neutral-400 tabular-nums">{sub.clicks.toLocaleString()}</td>
-                      <td className="px-2 py-1.5 text-right text-neutral-600 dark:text-neutral-400 tabular-nums">{sub.impressions.toLocaleString()}</td>
-                      <td className="px-2 py-1.5 text-right text-neutral-600 dark:text-neutral-400 tabular-nums">{formatCTR(sub.ctr)}</td>
-                      <td className="px-2 py-1.5 text-right text-neutral-600 dark:text-neutral-400 tabular-nums">{formatPosition(sub.position)}</td>
+                    <tr key={sub.query} className="border-t border-neutral-700/50">
+                      <td className="px-2 py-1.5 text-neutral-300">{sub.query}</td>
+                      <td className="px-2 py-1.5 text-right text-neutral-400 tabular-nums">{sub.clicks.toLocaleString()}</td>
+                      <td className="px-2 py-1.5 text-right text-neutral-400 tabular-nums">{sub.impressions.toLocaleString()}</td>
+                      <td className="px-2 py-1.5 text-right text-neutral-400 tabular-nums">{formatCTR(sub.ctr)}</td>
+                      <td className="px-2 py-1.5 text-right text-neutral-400 tabular-nums">{formatPosition(sub.position)}</td>
                     </tr>
                   ))}
                 </tbody>
