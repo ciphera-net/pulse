@@ -176,8 +176,8 @@ export default function CDNPage() {
     return (
       <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
         <div className="flex flex-col items-center justify-center py-24 text-center">
-          <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-5 mb-6">
-            <CloudArrowUp size={40} className="text-neutral-400 dark:text-neutral-500" />
+          <div className="rounded-full bg-neutral-800 p-5 mb-6">
+            <CloudArrowUp size={40} className="text-neutral-500" />
           </div>
           <h2 className="text-xl font-semibold text-white mb-2">
             Connect BunnyCDN
@@ -297,19 +297,19 @@ export default function CDNPage() {
                   <stop offset="100%" stopColor="#22C55E" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-neutral-200 dark:text-neutral-800" />
+              <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-neutral-800" />
               <XAxis
                 dataKey="date"
                 tickFormatter={formatDateShort}
                 tick={{ fontSize: 12, fill: 'currentColor' }}
-                className="text-neutral-400 dark:text-neutral-500"
+                className="text-neutral-500"
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
                 tickFormatter={(v) => formatBytes(v)}
                 tick={{ fontSize: 12, fill: 'currentColor' }}
-                className="text-neutral-400 dark:text-neutral-500"
+                className="text-neutral-500"
                 axisLine={false}
                 tickLine={false}
                 width={60}
@@ -324,7 +324,7 @@ export default function CDNPage() {
                         Total: {formatBytes(payload[0]?.value as number)}
                       </p>
                       {payload[1] && (
-                        <p className="text-green-600 dark:text-green-400">
+                        <p className="text-green-400">
                           Cached: {formatBytes(payload[1]?.value as number)}
                         </p>
                       )}
@@ -351,7 +351,7 @@ export default function CDNPage() {
             </AreaChart>
           </ResponsiveContainer>
         ) : (
-          <div className="h-[280px] flex items-center justify-center text-neutral-400 dark:text-neutral-500 text-sm">
+          <div className="h-[280px] flex items-center justify-center text-neutral-500 text-sm">
             No bandwidth data for this period.
           </div>
         )}
@@ -365,19 +365,19 @@ export default function CDNPage() {
           {daily.length > 0 ? (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={daily} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-neutral-200 dark:text-neutral-800" />
+                <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-neutral-800" />
                 <XAxis
                   dataKey="date"
                   tickFormatter={formatDateShort}
                   tick={{ fontSize: 11, fill: 'currentColor' }}
-                  className="text-neutral-400 dark:text-neutral-500"
+                  className="text-neutral-500"
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
                   tickFormatter={(v) => formatNumber(v)}
                   tick={{ fontSize: 11, fill: 'currentColor' }}
-                  className="text-neutral-400 dark:text-neutral-500"
+                  className="text-neutral-500"
                   axisLine={false}
                   tickLine={false}
                   width={50}
@@ -399,7 +399,7 @@ export default function CDNPage() {
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-[220px] flex items-center justify-center text-neutral-400 dark:text-neutral-500 text-sm">
+            <div className="h-[220px] flex items-center justify-center text-neutral-500 text-sm">
               No request data for this period.
             </div>
           )}
@@ -419,19 +419,19 @@ export default function CDNPage() {
                 }))}
                 margin={{ top: 4, right: 4, bottom: 0, left: 0 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-neutral-200 dark:text-neutral-800" />
+                <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-neutral-800" />
                 <XAxis
                   dataKey="date"
                   tickFormatter={formatDateShort}
                   tick={{ fontSize: 11, fill: 'currentColor' }}
-                  className="text-neutral-400 dark:text-neutral-500"
+                  className="text-neutral-500"
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
                   tickFormatter={(v) => formatNumber(v)}
                   tick={{ fontSize: 11, fill: 'currentColor' }}
-                  className="text-neutral-400 dark:text-neutral-500"
+                  className="text-neutral-500"
                   axisLine={false}
                   tickLine={false}
                   width={50}
@@ -457,7 +457,7 @@ export default function CDNPage() {
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-[220px] flex items-center justify-center text-neutral-400 dark:text-neutral-500 text-sm">
+            <div className="h-[220px] flex items-center justify-center text-neutral-500 text-sm">
               No error data for this period.
             </div>
           )}
@@ -488,13 +488,13 @@ export default function CDNPage() {
                         {formatBytes(row.bandwidth)}
                       </span>
                     </div>
-                    <div className="relative h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+                    <div className="relative h-1.5 bg-neutral-800 rounded-full overflow-hidden">
                       <div
                         className="absolute inset-y-0 left-0 rounded-full bg-brand-orange transition-[width] ease-apple"
                         style={{ width: `${Math.max(pct, 1)}%` }}
                       />
                     </div>
-                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-neutral-900 dark:bg-neutral-700 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 ease-apple">
+                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-neutral-700 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 ease-apple">
                       {pct.toFixed(1)}% of total traffic
                     </div>
                   </div>
@@ -503,7 +503,7 @@ export default function CDNPage() {
             </div>
           </>
         ) : (
-          <div className="h-[360px] flex items-center justify-center text-neutral-400 dark:text-neutral-500 text-sm">
+          <div className="h-[360px] flex items-center justify-center text-neutral-500 text-sm">
             No geographic data for this period.
           </div>
         )}
@@ -536,8 +536,8 @@ function OverviewCard({
       <p className="text-2xl font-semibold tabular-nums text-white">{value}</p>
       {changeLabel && (
         <p className={`text-xs mt-1 font-medium ${
-          isGood ? 'text-green-600 dark:text-green-400' :
-          isBad ? 'text-red-600 dark:text-red-400' :
+          isGood ? 'text-green-400' :
+          isBad ? 'text-red-400' :
           'text-neutral-400'
         }`}>
           {changeLabel} vs previous period

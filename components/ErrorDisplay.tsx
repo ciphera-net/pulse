@@ -24,7 +24,7 @@ export default function ErrorDisplay({
       <div className="absolute inset-0 -z-10 pointer-events-none">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-red-500/10 rounded-full blur-[128px] opacity-60" />
         <div
-          className="absolute inset-0 bg-grid-pattern opacity-[0.02] dark:opacity-[0.05]"
+          className="absolute inset-0 bg-grid-pattern opacity-[0.05]"
           style={{ maskImage: 'radial-gradient(ellipse at center, black 0%, transparent 70%)' }}
         />
       </div>
@@ -39,7 +39,7 @@ export default function ErrorDisplay({
         <h2 className="text-2xl font-bold text-white mb-4">
           {title}
         </h2>
-        <p className="text-lg text-neutral-600 dark:text-neutral-400 max-w-md mx-auto mb-10 leading-relaxed">
+        <p className="text-lg text-neutral-400 max-w-md mx-auto mb-10 leading-relaxed">
           {message}
         </p>
 

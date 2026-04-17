@@ -150,7 +150,7 @@ export default function AdminOrgDetailPage() {
           <h3 className="text-lg font-semibold text-white mb-4">Sites ({org.sites.length})</h3>
             <ul className="space-y-2 max-h-60 overflow-y-auto">
               {org.sites.map((site) => (
-                <li key={site.id} className="flex justify-between items-center text-sm p-2 bg-neutral-50 dark:bg-neutral-900 rounded">
+                <li key={site.id} className="flex justify-between items-center text-sm p-2 bg-neutral-900 rounded">
                   <span className="font-medium">{site.domain}</span>
                   <span className="text-neutral-500 text-xs">{formatDate(new Date(site.created_at))}</span>
                 </li>
@@ -198,7 +198,7 @@ export default function AdminOrgDetailPage() {
                   type="datetime-local"
                   value={periodEnd}
                   onChange={(e) => setPeriodEnd(e.target.value)}
-                  className="w-full px-4 py-2 border border-neutral-200 dark:border-neutral-800 rounded-lg bg-white dark:bg-neutral-900 text-white focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2"
+                  className="w-full px-4 py-2 border border-neutral-800 rounded-lg bg-neutral-900 text-white focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2"
                   required
                 />
                 <div className="flex gap-2 mt-1">

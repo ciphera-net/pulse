@@ -41,7 +41,7 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<
   if (!active || !payload?.length) return null
   const item = payload[0].payload
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-2.5 py-1.5 text-xs shadow-xl">
+    <div className="flex items-center gap-2 rounded-lg border border-neutral-700 bg-neutral-800 px-2.5 py-1.5 text-xs shadow-xl">
       <div
         className="h-2.5 w-2.5 shrink-0 rounded-full"
         style={{ backgroundColor: item.fill }}
@@ -49,7 +49,7 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<
       <span className="text-neutral-400">
         {LABELS[item.type] ?? item.type}
       </span>
-      <span className="font-mono font-medium tabular-nums text-neutral-900 dark:text-neutral-50">
+      <span className="font-mono font-medium tabular-nums text-neutral-50">
         {item.count.toLocaleString()}
       </span>
     </div>
@@ -88,7 +88,7 @@ export default function FrustrationTrend({ summary, loading }: FrustrationTrendP
           Rage vs. dead click breakdown
         </p>
         <div className="flex-1 min-h-[270px] flex flex-col items-center justify-center text-center px-6 py-8 gap-4">
-          <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4">
+          <div className="rounded-full bg-neutral-800 p-4">
             <TrendUp className="w-8 h-8 text-neutral-400" />
           </div>
           <h4 className="font-semibold text-white">

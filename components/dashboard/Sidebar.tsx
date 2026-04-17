@@ -302,7 +302,7 @@ function SidebarContent({
                 {c ? (
                   <div className="mx-1 w-full border-t border-white/[0.04]" />
                 ) : (
-                  <p className="px-2.5 text-caption font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider whitespace-nowrap">
+                  <p className="px-2.5 text-caption font-semibold text-neutral-500 uppercase tracking-wider whitespace-nowrap">
                     {group.label}
                   </p>
                 )}
@@ -326,7 +326,7 @@ function SidebarContent({
               <div className="mx-3 my-2 border-t border-white/[0.04]" />
             ) : (
               <div className="h-5 flex items-center overflow-hidden">
-                <p className="px-2.5 text-caption font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider whitespace-nowrap">
+                <p className="px-2.5 text-caption font-semibold text-neutral-500 uppercase tracking-wider whitespace-nowrap">
                   Your Sites
                 </p>
               </div>
@@ -345,7 +345,7 @@ function SidebarContent({
               <div className="mx-3 my-2 border-t border-white/[0.04]" />
             ) : (
               <div className="h-5 flex items-center overflow-hidden">
-                <p className="px-2.5 text-caption font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider whitespace-nowrap">
+                <p className="px-2.5 text-caption font-semibold text-neutral-500 uppercase tracking-wider whitespace-nowrap">
                   Organization
                 </p>
               </div>
@@ -363,7 +363,7 @@ function SidebarContent({
               <div className="mx-3 my-2 border-t border-white/[0.04]" />
             ) : (
               <div className="h-5 flex items-center overflow-hidden">
-                <p className="px-2.5 text-caption font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider whitespace-nowrap">
+                <p className="px-2.5 text-caption font-semibold text-neutral-500 uppercase tracking-wider whitespace-nowrap">
                   Resources
                 </p>
               </div>

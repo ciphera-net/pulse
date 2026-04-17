@@ -122,7 +122,7 @@ export function getOSIcon(osName: string) {
   if (!osName) return <Question className="text-neutral-400" />
   const file = OS_ICON_MAP[osName.toLowerCase()]
   if (!file) return <Question className="text-neutral-400" />
-  const cls = OS_DARK_INVERT.has(file) ? 'inline-block dark:invert' : 'inline-block'
+  const cls = OS_DARK_INVERT.has(file) ? 'inline-block invert' : 'inline-block'
   return <img src={`/icons/os/${file}.png`} alt={osName} width={18} height={18} className={cls} style={{ verticalAlign: '-0.125em' }} />
 }
 

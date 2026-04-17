@@ -333,7 +333,7 @@ export default function SiteDashboardPage() {
   if (!site) {
     return (
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
-        <p className="text-neutral-600 dark:text-neutral-400">Site not found</p>
+        <p className="text-neutral-400">Site not found</p>
       </div>
     )
   }

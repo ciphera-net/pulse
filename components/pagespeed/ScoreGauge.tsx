@@ -40,7 +40,7 @@ export default function ScoreGauge({ score, label, size = 120 }: ScoreGaugeProps
             r={RADIUS}
             fill="none"
             stroke="currentColor"
-            className="text-neutral-200 dark:text-neutral-700"
+            className="text-neutral-700"
             strokeWidth={strokeWidth}
           />
           {/* Filled arc */}
@@ -64,12 +64,12 @@ export default function ScoreGauge({ score, label, size = 120 }: ScoreGaugeProps
             style={{ color: hasScore ? color : undefined }}
           >
             {displayScore !== null ? displayScore : (
-              <span className="text-neutral-400 dark:text-neutral-500">--</span>
+              <span className="text-neutral-500">--</span>
             )}
           </span>
         </div>
       </div>
-      <span className={`${labelSize} font-medium text-neutral-600 dark:text-neutral-400 text-center`}>
+      <span className={`${labelSize} font-medium text-neutral-400 text-center`}>
         {label}
       </span>
     </div>

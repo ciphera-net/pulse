@@ -24,9 +24,9 @@ function getMetricStatus(metric: string, value: number | null): { label: string;
     tti: [3800, 7300],
   }
   const [good, poor] = thresholds[metric] ?? [0, 0]
-  if (value <= good) return { label: 'Good', color: 'text-emerald-600 dark:text-emerald-400' }
-  if (value <= poor) return { label: 'Needs Improvement', color: 'text-amber-600 dark:text-amber-400' }
-  return { label: 'Poor', color: 'text-red-600 dark:text-red-400' }
+  if (value <= good) return { label: 'Good', color: 'text-emerald-400' }
+  if (value <= poor) return { label: 'Needs Improvement', color: 'text-amber-400' }
+  return { label: 'Poor', color: 'text-red-400' }
 }
 
 // * Format metric values for display
@@ -249,7 +249,7 @@ export default function PageSpeedPage() {
 
         {/* Empty state */}
         <div className="glass-surface rounded-2xl p-12 text-center">
-          <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+          <div className="rounded-full bg-neutral-800 p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
             <svg className="w-8 h-8 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -383,7 +383,7 @@ export default function PageSpeedPage() {
                 className={`relative px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded cursor-pointer ${
                   strategy === tab
                     ? 'text-white'
-                    : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-300'
+                    : 'text-neutral-500 hover:text-neutral-300'
                 } ease-apple`}
               >
                 {tab === 'mobile' ? 'Mobile' : 'Desktop'}
@@ -441,21 +441,21 @@ export default function PageSpeedPage() {
               <img
                 src={currentCheck.screenshot}
                 alt={`${strategy} screenshot`}
-                className="rounded-lg max-h-44 w-auto border border-neutral-200 dark:border-neutral-700 object-contain"
+                className="rounded-lg max-h-44 w-auto border border-neutral-700 object-contain"
               />
             </div>
           )}
         </div>
 
         {/* Check navigator + frequency + legend */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-6 pt-4 border-t border-neutral-100 dark:border-neutral-800">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-6 pt-4 border-t border-neutral-800">
           <div className="flex items-center gap-2 text-sm text-neutral-400">
             {/* Prev/Next arrows */}
             {checkTimestamps.length > 1 && (
               <button
                 onClick={handlePrevCheck}
                 disabled={!canGoPrev}
-                className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors ease-apple"
+                className="p-1 rounded hover:bg-neutral-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors ease-apple"
                 aria-label="Previous check"
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -475,7 +475,7 @@ export default function PageSpeedPage() {
               <button
                 onClick={handleNextCheck}
                 disabled={!canGoNext}
-                className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors ease-apple"
+                className="p-1 rounded hover:bg-neutral-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors ease-apple"
                 aria-label="Next check"
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -484,7 +484,7 @@ export default function PageSpeedPage() {
               </button>
             )}
             {config?.frequency && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-neutral-800 text-neutral-400">
                 {config.frequency}
               </span>
             )}
@@ -492,7 +492,7 @@ export default function PageSpeedPage() {
               <span className="text-xs text-neutral-400 animate-pulse">Loading...</span>
             )}
           </div>
-          <div className="flex items-center gap-x-3 text-caption text-neutral-400 dark:text-neutral-500 ml-auto">
+          <div className="flex items-center gap-x-3 text-caption text-neutral-500 ml-auto">
             <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-red-500" />0&ndash;49</span>
             <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-amber-500" />50&ndash;89</span>
             <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />90&ndash;100</span>
@@ -512,7 +512,7 @@ export default function PageSpeedPage() {
                 <img
                   src={frame.data}
                   alt={`${frame.timing}ms`}
-                  className="h-24 rounded border border-neutral-200 dark:border-neutral-700 object-contain bg-neutral-50 dark:bg-neutral-800"
+                  className="h-24 rounded border border-neutral-700 object-contain bg-neutral-800"
                 />
                 <span className="text-micro-label text-neutral-400 mt-1 block">
                   {frame.timing < 1000 ? `${frame.timing}ms` : `${(frame.timing / 1000).toFixed(1)}s`}
@@ -521,7 +521,7 @@ export default function PageSpeedPage() {
             ))}
           </div>
           {/* Fade indicator for horizontal scroll */}
-          <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-white dark:from-neutral-900 to-transparent rounded-r-2xl pointer-events-none" />
+          <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-neutral-900 to-transparent rounded-r-2xl pointer-events-none" />
         </div>
       )}
 
@@ -621,10 +621,10 @@ export default function PageSpeedPage() {
 
                 {groupManual.length > 0 && (
                   <details className="mt-4">
-                    <summary className="cursor-pointer text-sm font-medium text-neutral-400 select-none hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors ease-apple">
+                    <summary className="cursor-pointer text-sm font-medium text-neutral-400 select-none hover:text-neutral-300 transition-colors ease-apple">
                       <span className="ml-1">Additional items to manually check ({groupManual.length})</span>
                     </summary>
-                    <div className="mt-2 divide-y divide-neutral-100 dark:divide-neutral-800">
+                    <div className="mt-2 divide-y divide-neutral-800">
                       {groupManual.map(audit => <AuditRow key={audit.id} audit={audit} />)}
                     </div>
                   </details>
@@ -632,10 +632,10 @@ export default function PageSpeedPage() {
 
                 {groupPassed.length > 0 && (
                   <details className="mt-4">
-                    <summary className="cursor-pointer text-sm font-medium text-neutral-400 select-none hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors ease-apple">
+                    <summary className="cursor-pointer text-sm font-medium text-neutral-400 select-none hover:text-neutral-300 transition-colors ease-apple">
                       <span className="ml-1">{groupPassed.length} passed audit{groupPassed.length !== 1 ? 's' : ''}</span>
                     </summary>
-                    <div className="mt-2 divide-y divide-neutral-100 dark:divide-neutral-800">
+                    <div className="mt-2 divide-y divide-neutral-800">
                       {groupPassed.map(audit => <AuditRow key={audit.id} audit={audit} />)}
                     </div>
                   </details>
@@ -696,7 +696,7 @@ function AuditsBySubGroup({ audits }: { audits: AuditSummary[] }) {
   // * If no sub-groups exist, render flat list sorted by severity
   if (subGroupOrder.length === 1 && subGroupOrder[0] === '__none__') {
     return (
-      <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
+      <div className="divide-y divide-neutral-800">
         {sortBySeverity(audits).map(audit => <AuditRow key={audit.id} audit={audit} />)}
       </div>
     )
@@ -710,11 +710,11 @@ function AuditsBySubGroup({ audits }: { audits: AuditSummary[] }) {
         return (
           <div key={key}>
             {title && (
-              <h4 className="text-caption font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-2">
+              <h4 className="text-caption font-semibold text-neutral-500 uppercase tracking-wider mb-2">
                 {title}
               </h4>
             )}
-            <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
+            <div className="divide-y divide-neutral-800">
               {items.map(audit => <AuditRow key={audit.id} audit={audit} />)}
             </div>
           </div>
@@ -742,14 +742,14 @@ function AuditSeverityIcon({ score }: { score: number | null }) {
 function AuditRow({ audit }: { audit: AuditSummary }) {
   return (
     <details className="group">
-      <summary className="flex items-center gap-3 py-3 px-2 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800/50 cursor-pointer list-none">
+      <summary className="flex items-center gap-3 py-3 px-2 rounded-lg hover:bg-neutral-800/50 cursor-pointer list-none">
         <AuditSeverityIcon score={audit.score} />
         <span className="font-medium text-sm text-white flex-1 min-w-0 truncate">{audit.title}</span>
         {audit.display_value && (
-          <span className="text-xs text-neutral-500 dark:text-neutral-500 flex-shrink-0 tabular-nums">{audit.display_value}</span>
+          <span className="text-xs text-neutral-500 flex-shrink-0 tabular-nums">{audit.display_value}</span>
         )}
         {audit.savings_ms != null && audit.savings_ms > 0 && !audit.display_value && (
-          <span className="text-sm font-medium text-amber-600 dark:text-amber-400 flex-shrink-0 tabular-nums">
+          <span className="text-sm font-medium text-amber-400 flex-shrink-0 tabular-nums">
             {audit.savings_ms < 1000 ? `${Math.round(audit.savings_ms)}ms` : `${(audit.savings_ms / 1000).toFixed(1)}s`}
           </span>
         )}
@@ -818,13 +818,13 @@ function AuditItem({ item }: { item: Record<string, any> }) {
   const text = item.text || item.linkText || null
 
   return (
-    <div className="flex items-start gap-3 py-2 border-b border-neutral-100 dark:border-neutral-800 last:border-0 text-xs text-neutral-600 dark:text-neutral-400">
+    <div className="flex items-start gap-3 py-2 border-b border-neutral-800 last:border-0 text-xs text-neutral-400">
       {/* Element screenshot */}
       {item.node?.screenshot?.data && (
         <img
           src={item.node.screenshot.data}
           alt=""
-          className="w-20 h-14 object-contain rounded border border-neutral-200 dark:border-neutral-700 flex-shrink-0 bg-neutral-50 dark:bg-neutral-800"
+          className="w-20 h-14 object-contain rounded border border-neutral-700 flex-shrink-0 bg-neutral-800"
         />
       )}
       {/* Content */}
@@ -841,7 +841,7 @@ function AuditItem({ item }: { item: Record<string, any> }) {
           <div className="text-xs text-neutral-400 mt-0.5">{text}</div>
         )}
         {item.node?.snippet && (
-          <code className="text-xs bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded break-all mt-1 inline-block">{item.node.snippet}</code>
+          <code className="text-xs bg-neutral-800 px-1.5 py-0.5 rounded break-all mt-1 inline-block">{item.node.snippet}</code>
         )}
         {/* Fallback for items with only string values we haven't handled */}
         {!label && !url && !text && !item.node && item.statistic && (
@@ -851,7 +851,7 @@ function AuditItem({ item }: { item: Record<string, any> }) {
       {/* Metrics on the right */}
       <div className="flex-shrink-0 text-right space-y-0.5">
         {item.wastedBytes != null && (
-          <div className="text-amber-600 dark:text-amber-400 whitespace-nowrap">
+          <div className="text-amber-400 whitespace-nowrap">
             {item.wastedBytes < 1024 ? `${item.wastedBytes} B` : `${(item.wastedBytes / 1024).toFixed(1)} KiB`}
           </div>
         )}
@@ -861,7 +861,7 @@ function AuditItem({ item }: { item: Record<string, any> }) {
           </div>
         )}
         {item.wastedMs != null && (
-          <div className="text-amber-600 dark:text-amber-400 whitespace-nowrap">
+          <div className="text-amber-400 whitespace-nowrap">
             {item.wastedMs < 1000 ? `${Math.round(item.wastedMs)}ms` : `${(item.wastedMs / 1000).toFixed(1)}s`}
           </div>
         )}

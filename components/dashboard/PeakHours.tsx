@@ -219,7 +219,7 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
           <div className="flex-1 min-h-[270px] flex flex-col justify-center gap-[5px] relative" ref={gridRef}>
             {grid.map((buckets, dayIdx) => (
               <div key={dayIdx} className="flex items-center gap-1.5">
-                <span className="text-caption text-neutral-400 dark:text-neutral-500 w-7 flex-shrink-0 text-right leading-none">
+                <span className="text-caption text-neutral-500 w-7 flex-shrink-0 text-right leading-none">
                   {DAYS[dayIdx]}
                 </span>
                 <div
@@ -281,7 +281,7 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
 
             {/* Intensity legend */}
             <div className="flex items-center justify-end gap-1.5 mt-2">
-              <span className="text-micro-label text-neutral-400 dark:text-neutral-500">Less</span>
+              <span className="text-micro-label text-neutral-500">Less</span>
               {HIGHLIGHT_COLORS.map((color, i) => (
                 <div
                   key={i}
@@ -289,7 +289,7 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
                   style={{ backgroundColor: color }}
                 />
               ))}
-              <span className="text-micro-label text-neutral-400 dark:text-neutral-500">More</span>
+              <span className="text-micro-label text-neutral-500">More</span>
             </div>
 
             {/* Cell-anchored tooltip */}

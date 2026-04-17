@@ -58,43 +58,43 @@ const badgeVariants = cva(
         variant: 'primary',
         appearance: 'light',
         className:
-          'text-blue-700 bg-blue-50 dark:bg-blue-950 dark:text-blue-600',
+          'bg-blue-950 text-blue-600',
       },
       {
         variant: 'secondary',
         appearance: 'light',
-        className: 'bg-secondary dark:bg-secondary/50 text-secondary-foreground',
+        className: 'bg-secondary/50 text-secondary-foreground',
       },
       {
         variant: 'success',
         appearance: 'light',
         className:
-          'text-green-800 bg-green-100 dark:bg-green-950 dark:text-green-600',
+          'bg-green-950 text-green-600',
       },
       {
         variant: 'warning',
         appearance: 'light',
         className:
-          'text-yellow-700 bg-yellow-100 dark:bg-yellow-950 dark:text-yellow-600',
+          'bg-yellow-950 text-yellow-600',
       },
       {
         variant: 'info',
         appearance: 'light',
         className:
-          'text-violet-700 bg-violet-100 dark:bg-violet-950 dark:text-violet-400',
+          'bg-violet-950 text-violet-400',
       },
       {
         variant: 'destructive',
         appearance: 'light',
         className:
-          'text-red-700 bg-red-50 dark:bg-red-950 dark:text-red-600',
+          'bg-red-950 text-red-600',
       },
       /* Outline */
       {
         variant: 'primary',
         appearance: 'outline',
         className:
-          'text-blue-700 border-blue-100 bg-blue-50 dark:bg-blue-950 dark:border-blue-900 dark:text-blue-600',
+          'bg-blue-950 border-blue-900 text-blue-600',
       },
       {
         variant: 'success',
@@ -106,13 +106,13 @@ const badgeVariants = cva(
         variant: 'warning',
         appearance: 'outline',
         className:
-          'text-yellow-700 border-yellow-200 bg-yellow-50 dark:bg-yellow-950 dark:border-yellow-900 dark:text-yellow-600',
+          'bg-yellow-950 border-yellow-900 text-yellow-600',
       },
       {
         variant: 'info',
         appearance: 'outline',
         className:
-          'text-violet-700 border-violet-100 bg-violet-50 dark:bg-violet-950 dark:border-violet-900 dark:text-violet-400',
+          'bg-violet-950 border-violet-900 text-violet-400',
       },
       {
         variant: 'destructive',

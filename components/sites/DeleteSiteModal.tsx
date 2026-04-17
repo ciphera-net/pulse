@@ -75,19 +75,19 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[70] flex items-center justify-center bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm p-4 pointer-events-none"
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-neutral-900/80 backdrop-blur-sm p-4 pointer-events-none"
         >
           <motion.div
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
-            className="w-full max-w-sm bg-neutral-900/80 p-6 rounded-2xl border border-red-200 dark:border-red-900 shadow-xl pointer-events-auto"
+            className="w-full max-w-sm bg-neutral-900/80 p-6 rounded-2xl border border-red-900 shadow-xl pointer-events-auto"
           >
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-red-600 dark:text-red-500">Delete {siteName || 'Site'}?</h3>
+              <h3 className="text-lg font-semibold text-red-500">Delete {siteName || 'Site'}?</h3>
               <button
                 onClick={handleClose}
-                className="text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-white"
+                className="text-neutral-400 hover:text-white"
               >
                 <XIcon className="w-5 h-5" />
               </button>
@@ -95,20 +95,20 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
 
             {!showPermanent ? (
               <>
-                <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
+                <p className="text-sm text-neutral-400 mb-4">
                   This site will be scheduled for deletion with a <span className="font-bold">7-day grace period</span>. You can restore it at any time during this period.
                 </p>
 
                 <div className="mb-5 space-y-2">
-                  <div className="flex items-center gap-3 p-3 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 rounded-lg">
+                  <div className="flex items-center gap-3 p-3 bg-red-900/10 border border-red-900/20 rounded-lg">
                     <AlertTriangleIcon className="h-4 w-4 text-red-500 shrink-0" />
-                    <span className="text-sm font-medium text-red-700 dark:text-red-300">
+                    <span className="text-sm font-medium text-red-300">
                       All events and analytics data
                     </span>
                   </div>
-                  <div className="flex items-center gap-3 p-3 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 rounded-lg">
+                  <div className="flex items-center gap-3 p-3 bg-red-900/10 border border-red-900/20 rounded-lg">
                     <AlertTriangleIcon className="h-4 w-4 text-red-500 shrink-0" />
-                    <span className="text-sm font-medium text-red-700 dark:text-red-300">
+                    <span className="text-sm font-medium text-red-300">
                       Report schedules and goals
                     </span>
                   </div>
@@ -116,15 +116,15 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                      Type <span className="font-mono font-bold text-red-600 dark:text-red-400">DELETE</span> to confirm
+                    <label className="block text-xs font-medium text-neutral-300 mb-1">
+                      Type <span className="font-mono font-bold text-red-400">DELETE</span> to confirm
                     </label>
                     <input
                       type="text"
                       value={deleteConfirm}
                       onChange={(e) => setDeleteConfirm(e.target.value)}
                       autoComplete="off"
-                      className="w-full px-3 py-2 text-sm border border-neutral-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-red-500 dark:focus:ring-red-400"
+                      className="w-full px-3 py-2 text-sm border border-neutral-700 rounded-lg bg-neutral-800 text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-red-400"
                       placeholder="DELETE"
                     />
                   </div>
@@ -133,7 +133,7 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
                     <button
                       type="button"
                       onClick={handleClose}
-                      className="flex-1 px-4 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition-colors ease-apple"
+                      className="flex-1 px-4 py-2 text-sm font-medium text-neutral-300 hover:bg-neutral-800 rounded-xl transition-colors ease-apple"
                       disabled={isDeleting}
                     >
                       Cancel
@@ -141,7 +141,7 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
                     <button
                       onClick={handleSoftDelete}
                       disabled={deleteConfirm !== 'DELETE' || isDeleting}
-                      className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed ease-apple"
+                      className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700  rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed ease-apple"
                     >
                       {isDeleting ? 'Deleting...' : 'Schedule Deletion'}
                     </button>
@@ -150,7 +150,7 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
                   <button
                     type="button"
                     onClick={() => setShowPermanent(true)}
-                    className="w-full text-center text-xs text-neutral-400 hover:text-red-500 dark:hover:text-red-400 transition-colors ease-apple"
+                    className="w-full text-center text-xs text-neutral-400 hover:text-red-400 transition-colors ease-apple"
                   >
                     Permanently delete now (cannot be undone)
                   </button>
@@ -158,20 +158,20 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
               </>
             ) : (
               <>
-                <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
+                <p className="text-sm text-neutral-400 mb-4">
                   This action is <span className="font-bold">irreversible</span>. The site and all its data will be permanently deleted immediately.
                 </p>
 
                 <div className="mb-5 space-y-2">
-                  <div className="flex items-center gap-3 p-3 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 rounded-lg">
+                  <div className="flex items-center gap-3 p-3 bg-red-900/10 border border-red-900/20 rounded-lg">
                     <AlertTriangleIcon className="h-4 w-4 text-red-500 shrink-0" />
-                    <span className="text-sm font-medium text-red-700 dark:text-red-300">
+                    <span className="text-sm font-medium text-red-300">
                       All analytics data will be permanently lost
                     </span>
                   </div>
-                  <div className="flex items-center gap-3 p-3 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 rounded-lg">
+                  <div className="flex items-center gap-3 p-3 bg-red-900/10 border border-red-900/20 rounded-lg">
                     <AlertTriangleIcon className="h-4 w-4 text-red-500 shrink-0" />
-                    <span className="text-sm font-medium text-red-700 dark:text-red-300">
+                    <span className="text-sm font-medium text-red-300">
                       This cannot be undone
                     </span>
                   </div>
@@ -179,15 +179,15 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                      Type <span className="font-mono font-bold text-red-600 dark:text-red-400">{siteDomain}</span> to confirm
+                    <label className="block text-xs font-medium text-neutral-300 mb-1">
+                      Type <span className="font-mono font-bold text-red-400">{siteDomain}</span> to confirm
                     </label>
                     <input
                       type="text"
                       value={permanentConfirm}
                       onChange={(e) => setPermanentConfirm(e.target.value)}
                       autoComplete="off"
-                      className="w-full px-3 py-2 text-sm border border-neutral-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-red-500 dark:focus:ring-red-400"
+                      className="w-full px-3 py-2 text-sm border border-neutral-700 rounded-lg bg-neutral-800 text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-red-400"
                       placeholder={siteDomain}
                     />
                   </div>
@@ -203,7 +203,7 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
                           setPermanentConfirm('')
                         }
                       }}
-                      className="flex-1 px-4 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition-colors ease-apple"
+                      className="flex-1 px-4 py-2 text-sm font-medium text-neutral-300 hover:bg-neutral-800 rounded-xl transition-colors ease-apple"
                       disabled={isPermanentDeleting}
                     >
                       {permanentOnly ? 'Cancel' : 'Back'}
@@ -211,7 +211,7 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
                     <button
                       onClick={handlePermanentDelete}
                       disabled={permanentConfirm !== siteDomain || isPermanentDeleting}
-                      className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed ease-apple"
+                      className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700  rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed ease-apple"
                     >
                       {isPermanentDeleting ? 'Deleting...' : 'Delete Forever'}
                     </button>

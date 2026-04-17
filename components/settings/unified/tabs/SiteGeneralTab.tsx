@@ -142,8 +142,8 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
           onClick={() => setShowVerificationModal(true)}
           className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl border transition-colors ${
             site.is_verified
-              ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-900/30 text-green-700 dark:text-green-400'
-              : 'bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700'
+              ? 'bg-green-900/10 border-green-900/30 text-green-400'
+              : 'bg-neutral-800 border-neutral-700 text-neutral-300 hover:bg-neutral-700'
           } ease-apple`}
         >
           {site.is_verified ? (
