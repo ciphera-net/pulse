@@ -144,7 +144,7 @@ export default function SearchConsolePage() {
           <StatCardSkeleton />
           <StatCardSkeleton />
         </div>
-        <div className="glass-surface rounded-xl p-6">
+        <div className="glass-surface rounded-2xl p-6">
           <SkeletonLine className="h-9 w-48 rounded-lg mb-6" />
           {Array.from({ length: 10 }).map((_, i) => (
             <div key={i} className="flex items-center justify-between py-3">
@@ -287,7 +287,7 @@ export default function SearchConsolePage() {
       {topQueries?.queries && topQueries.queries.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-6">
           {topQueries.queries.slice(0, 5).map((q) => (
-            <div key={q.query} className="glass-surface rounded-xl p-3">
+            <div key={q.query} className="glass-surface rounded-2xl p-3">
               <p className="text-xs text-neutral-400 truncate mb-1">{q.query}</p>
               <div className="flex items-baseline gap-1.5">
                 <p className="text-lg font-semibold text-white">{q.position.toFixed(1)}</p>
@@ -335,7 +335,7 @@ export default function SearchConsolePage() {
 
       {/* Queries table */}
       {activeView === 'queries' && (
-        <div className="glass-surface rounded-xl overflow-hidden">
+        <div className="glass-surface rounded-2xl overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-neutral-200 dark:border-neutral-800">
@@ -409,7 +409,7 @@ export default function SearchConsolePage() {
 
       {/* Pages table */}
       {activeView === 'pages' && (
-        <div className="glass-surface rounded-xl overflow-hidden">
+        <div className="glass-surface rounded-2xl overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-neutral-200 dark:border-neutral-800">
@@ -513,7 +513,7 @@ function OverviewCard({
   const isNegative = change ? (invertChange ? change.value > 0 : change.value < 0) : false
 
   return (
-    <div className="glass-surface p-4 rounded-xl">
+    <div className="glass-surface p-4 rounded-2xl">
       <p className="text-xs font-medium text-neutral-400 mb-1">{label}</p>
       <p className="text-2xl font-bold tabular-nums text-white">{value}</p>
       {change && (
