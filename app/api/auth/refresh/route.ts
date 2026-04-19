@@ -8,13 +8,18 @@ import { env } from '@/lib/env'
 // throws at module load on any missing/malformed input.
 const AUTH_API_URL = env.NEXT_PUBLIC_AUTH_API_URL
 
-export async function POST() {
+export async function POST(request: Request) {
   const cookieStore = await cookies()
   const refreshToken = cookieStore.get('refresh_token')?.value
 
   if (!refreshToken) {
     return NextResponse.json({ error: 'No refresh token' }, { status: 401 })
   }
+
+  let body: { screen_width?: number; screen_height?: number; timezone?: string } = {}
+  try {
+    body = await request.json()
+  } catch { /* no body or invalid JSON — device signals will be omitted */ }
 
   // * Preserve whatever organization the user is currently scoped to so the
   // * rotated token keeps that context. Falls back to "" when the existing
@@ -36,6 +41,11 @@ export async function POST() {
       body: JSON.stringify({
         refresh_token: refreshToken,
         ...(previousOrgId ? { organization_id: previousOrgId } : {}),
+        ...(body.screen_width ? {
+          screen_width: body.screen_width,
+          screen_height: body.screen_height,
+          timezone: body.timezone,
+        } : {}),
       }),
     })
 
