@@ -150,7 +150,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
                     className={`interactive-row relative flex items-center justify-between h-9 group rounded-lg px-2 -mx-2${onFilter ? ' cursor-pointer' : ''}`}
                   >
                     <div
-                      className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.07] border-l-2 border-brand-orange/70 rounded-r-md transition-[width,background-color] ease-apple"
+                      className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.07] border-l-2 border-brand-orange/70 rounded-md transition-[width,background-color] ease-apple"
                       style={{ width: `${barWidth}%` }}
                     />
                     <div className="relative flex-1 truncate text-white flex items-center">
