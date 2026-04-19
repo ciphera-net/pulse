@@ -95,7 +95,12 @@ export async function exchangeAuthCode(code: string, codeVerifier: string | null
       for (const cookieStr of setCookieHeaders) {
         // * Parse Set-Cookie header (format: name=value; attributes...)
         const [nameValue] = cookieStr.split(';')
-        const [name, value] = nameValue.trim().split('=')
+        const eqIdx = nameValue.indexOf('=')
+        if (eqIdx === -1) continue
+        const name = nameValue.slice(0, eqIdx).trim()
+        const value = nameValue.slice(eqIdx + 1).trim()
+
+        if (name === 'access_token' || name === 'refresh_token') continue
 
         if (name && value) {
           // * Determine if httpOnly (default true for security)
