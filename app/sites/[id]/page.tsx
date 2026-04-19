@@ -388,6 +388,16 @@ export default function SiteDashboardPage() {
         </div>
       )}
       <div className="flex-1" />
+      <FilterPanel filters={filters} onApply={handleApplyFilters} onFetchSuggestions={handleFetchSuggestions} />
+      <div className={`flex items-center rounded-lg border border-neutral-700 overflow-hidden`}>
+        <button onClick={() => shiftPeriod(-1)} className={`${compact ? 'p-1' : 'p-1.5'} text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors`} aria-label="Previous period">
+          <ChevronLeftIcon className={compact ? 'w-3.5 h-3.5' : 'w-4 h-4'} weight="bold" />
+        </button>
+        <div className={`w-px ${compact ? 'h-4' : 'h-5'} bg-neutral-700`} />
+        <button onClick={() => shiftPeriod(1)} className={`${compact ? 'p-1' : 'p-1.5'} text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors`} aria-label="Next period">
+          <ChevronRightIcon className={compact ? 'w-3.5 h-3.5' : 'w-4 h-4'} weight="bold" />
+        </button>
+      </div>
       <Select
         variant="input"
         className={compact ? 'min-w-[120px] text-xs' : 'min-w-[140px]'}
@@ -460,16 +470,6 @@ export default function SiteDashboardPage() {
           { value: 'custom', label: 'Custom' },
         ]}
       />
-      <div className={`flex items-center rounded-lg border border-neutral-700 overflow-hidden`}>
-        <button onClick={() => shiftPeriod(-1)} className={`${compact ? 'p-1' : 'p-1.5'} text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors`} aria-label="Previous period">
-          <ChevronLeftIcon className={compact ? 'w-3.5 h-3.5' : 'w-4 h-4'} weight="bold" />
-        </button>
-        <div className={`w-px ${compact ? 'h-4' : 'h-5'} bg-neutral-700`} />
-        <button onClick={() => shiftPeriod(1)} className={`${compact ? 'p-1' : 'p-1.5'} text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors`} aria-label="Next period">
-          <ChevronRightIcon className={compact ? 'w-3.5 h-3.5' : 'w-4 h-4'} weight="bold" />
-        </button>
-      </div>
-      <FilterPanel filters={filters} onApply={handleApplyFilters} onFetchSuggestions={handleFetchSuggestions} />
     </>
   )
 
