@@ -536,10 +536,10 @@ export default function FilterPanel({ filters, onApply, onFetchSuggestions }: Fi
         ref={buttonRef}
         type="button"
         onClick={() => { if (isOpen) handleDiscard(); else handleOpen() }}
-        className={`inline-flex items-center gap-2 h-10 px-4 text-sm font-medium rounded-lg border shadow-sm transition-[color,background-color,border-color,transform] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 cursor-pointer ${
+        className={`inline-flex items-center gap-2 h-8 px-3 text-sm font-medium rounded-lg transition-[color,background-color,transform] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 cursor-pointer ${
           hasActive || isOpen
-            ? 'bg-brand-orange/10 text-brand-orange border-brand-orange/30'
-            : 'bg-neutral-900/80 text-neutral-300 hover:bg-neutral-800 hover:text-white border-white/[0.08]'
+            ? 'bg-brand-orange/10 text-brand-orange'
+            : 'text-neutral-400 hover:bg-white/[0.06] hover:text-white'
         } ease-apple`}
       >
         {/* Adjustments/sliders icon */}

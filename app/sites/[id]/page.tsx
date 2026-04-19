@@ -393,87 +393,88 @@ export default function SiteDashboardPage() {
       )}
       <div className="flex-1" />
       <FilterPanel filters={filters} onApply={handleApplyFilters} onFetchSuggestions={handleFetchSuggestions} />
-      <div className={`flex items-center rounded-lg border border-neutral-700 overflow-hidden`}>
+      <div className="flex items-center rounded-lg border border-neutral-700 overflow-hidden">
         <button onClick={() => shiftPeriod(-1)} className={`${compact ? 'p-1' : 'p-1.5'} text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors`} aria-label="Previous period">
           <ChevronLeftIcon className={compact ? 'w-3.5 h-3.5' : 'w-4 h-4'} weight="bold" />
         </button>
-        <div className={`w-px ${compact ? 'h-4' : 'h-5'} bg-neutral-700`} />
+        <div className="w-px h-full bg-neutral-700" />
+        <Select
+          variant="input"
+          className={`${compact ? 'min-w-[110px] text-xs' : 'min-w-[130px]'} border-0 rounded-none`}
+          value={period}
+          onChange={(value) => {
+            if (value === 'today') {
+              const today = formatDate(new Date())
+              const range = { start: today, end: today }
+              setDateRange(range)
+              setPeriod('today')
+              saveSettings('today', range)
+            } else if (value === 'yesterday') {
+              const range = getYesterdayRange()
+              setDateRange(range)
+              setPeriod('yesterday')
+              saveSettings('yesterday', range)
+            } else if (value === '1h') {
+              const range = getLast1HourRange()
+              setDateRange(range)
+              setTodayInterval('minute')
+              setPeriod('1h')
+              saveSettings('1h', range)
+            } else if (value === '24h') {
+              const range = getLast24HoursRange()
+              setDateRange(range)
+              setPeriod('24h')
+              saveSettings('24h', range)
+            } else if (value === '7') {
+              const range = getDateRange(7)
+              setDateRange(range)
+              setPeriod('7')
+              saveSettings('7', range)
+            } else if (value === 'week') {
+              const range = getThisWeekRange()
+              setDateRange(range)
+              setPeriod('week')
+              saveSettings('week', range)
+            } else if (value === '30') {
+              const range = getDateRange(30)
+              setDateRange(range)
+              setPeriod('30')
+              saveSettings('30', range)
+            } else if (value === 'month') {
+              const range = getThisMonthRange()
+              setDateRange(range)
+              setPeriod('month')
+              saveSettings('month', range)
+            } else if (value === 'year') {
+              const range = getThisYearRange()
+              setDateRange(range)
+              setPeriod('year')
+              saveSettings('year', range)
+            } else if (value === 'custom') {
+              setIsDatePickerOpen(true)
+            }
+          }}
+          options={[
+            { value: '1h', label: 'Last 1 hour' },
+            { value: '24h', label: 'Last 24 hours' },
+            { value: 'divider-0', label: '', divider: true },
+            { value: 'today', label: 'Today' },
+            { value: 'yesterday', label: 'Yesterday' },
+            { value: '7', label: 'Last 7 days' },
+            { value: '30', label: 'Last 30 days' },
+            { value: 'divider-1', label: '', divider: true },
+            { value: 'week', label: 'This week' },
+            { value: 'month', label: 'This month' },
+            { value: 'year', label: 'This year' },
+            { value: 'divider-2', label: '', divider: true },
+            { value: 'custom', label: 'Custom' },
+          ]}
+        />
+        <div className="w-px h-full bg-neutral-700" />
         <button onClick={() => shiftPeriod(1)} className={`${compact ? 'p-1' : 'p-1.5'} text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors`} aria-label="Next period">
           <ChevronRightIcon className={compact ? 'w-3.5 h-3.5' : 'w-4 h-4'} weight="bold" />
         </button>
       </div>
-      <Select
-        variant="input"
-        className={compact ? 'min-w-[120px] text-xs' : 'min-w-[140px]'}
-        value={period}
-        onChange={(value) => {
-          if (value === 'today') {
-            const today = formatDate(new Date())
-            const range = { start: today, end: today }
-            setDateRange(range)
-            setPeriod('today')
-            saveSettings('today', range)
-          } else if (value === 'yesterday') {
-            const range = getYesterdayRange()
-            setDateRange(range)
-            setPeriod('yesterday')
-            saveSettings('yesterday', range)
-          } else if (value === '1h') {
-            const range = getLast1HourRange()
-            setDateRange(range)
-            setTodayInterval('minute')
-            setPeriod('1h')
-            saveSettings('1h', range)
-          } else if (value === '24h') {
-            const range = getLast24HoursRange()
-            setDateRange(range)
-            setPeriod('24h')
-            saveSettings('24h', range)
-          } else if (value === '7') {
-            const range = getDateRange(7)
-            setDateRange(range)
-            setPeriod('7')
-            saveSettings('7', range)
-          } else if (value === 'week') {
-            const range = getThisWeekRange()
-            setDateRange(range)
-            setPeriod('week')
-            saveSettings('week', range)
-          } else if (value === '30') {
-            const range = getDateRange(30)
-            setDateRange(range)
-            setPeriod('30')
-            saveSettings('30', range)
-          } else if (value === 'month') {
-            const range = getThisMonthRange()
-            setDateRange(range)
-            setPeriod('month')
-            saveSettings('month', range)
-          } else if (value === 'year') {
-            const range = getThisYearRange()
-            setDateRange(range)
-            setPeriod('year')
-            saveSettings('year', range)
-          } else if (value === 'custom') {
-            setIsDatePickerOpen(true)
-          }
-        }}
-        options={[
-          { value: '1h', label: 'Last 1 hour' },
-          { value: '24h', label: 'Last 24 hours' },
-          { value: 'divider-0', label: '', divider: true },
-          { value: 'today', label: 'Today' },
-          { value: 'yesterday', label: 'Yesterday' },
-          { value: '7', label: 'Last 7 days' },
-          { value: '30', label: 'Last 30 days' },
-          { value: 'divider-1', label: '', divider: true },
-          { value: 'week', label: 'This week' },
-          { value: 'month', label: 'This month' },
-          { value: 'year', label: 'This year' },
-          { value: 'divider-2', label: '', divider: true },
-          { value: 'custom', label: 'Custom' },
-        ]}
-      />
     </>
   )
 
