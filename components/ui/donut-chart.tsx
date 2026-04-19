@@ -1,6 +1,6 @@
 "use client";
 
-import { Pie } from "@visx/shape";
+import { Pie } from "@/lib/charts/primitives";
 import {
   AnimatePresence,
   motion,
