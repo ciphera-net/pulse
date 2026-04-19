@@ -16,7 +16,10 @@ const EMPTY_STYLE: StyleSpecification = {
   layers: [{ id: 'background', type: 'background', paint: { 'background-color': 'rgba(0,0,0,0)' } }],
 }
 
-const INITIAL_VIEW = { longitude: 20, latitude: 25, zoom: 1.3 }
+const INITIAL_VIEW = { longitude: 15, latitude: 20, zoom: 0.9 }
+
+// Countries that cross the antimeridian — their polygons stretch across the map
+const ANTIMERIDIAN_COUNTRIES = new Set(['010', '016', '028', '242', '258', '296', '520', '570', '583', '584', '585', '643', '798', '876', '882'])
 
 const NUM_TO_ALPHA2: Record<string, string> = {
   '004':'AF','008':'AL','012':'DZ','016':'AS','020':'AD','024':'AO','028':'AG','031':'AZ','032':'AR','036':'AU',
@@ -41,6 +44,54 @@ const NUM_TO_ALPHA2: Record<string, string> = {
   '752':'SE','756':'CH','760':'SY','762':'TJ','764':'TH','768':'TG','776':'TO','780':'TT','784':'AE','788':'TN',
   '792':'TR','795':'TM','798':'TV','800':'UG','804':'UA','807':'MK','818':'EG','826':'GB','834':'TZ','840':'US',
   '854':'BF','858':'UY','860':'UZ','862':'VE','876':'WF','882':'WS','887':'YE','894':'ZM',
+}
+
+function splitAntimeridianPolygon(coords: number[][][]): number[][][][] {
+  const west: number[][][] = []
+  const east: number[][][] = []
+  for (const ring of coords) {
+    const wRing: number[][] = []
+    const eRing: number[][] = []
+    for (const [lng, lat] of ring) {
+      if (lng > 0) { eRing.push([lng, lat]); wRing.push([-180, lat]) }
+      else { wRing.push([lng, lat]); eRing.push([180, lat]) }
+    }
+    if (eRing.length > 2) east.push(eRing)
+    if (wRing.length > 2) west.push(wRing)
+  }
+  return [east, west].filter((p) => p.length > 0)
+}
+
+function fixAntimeridian(fc: GeoJSON.FeatureCollection): GeoJSON.FeatureCollection {
+  const features: GeoJSON.Feature[] = []
+  for (const f of fc.features) {
+    if (!ANTIMERIDIAN_COUNTRIES.has(f.id as string)) {
+      features.push(f)
+      continue
+    }
+    const geom = f.geometry
+    if (geom.type === 'Polygon') {
+      const parts = splitAntimeridianPolygon(geom.coordinates)
+      for (const coords of parts) {
+        features.push({ ...f, geometry: { type: 'Polygon', coordinates: coords } })
+      }
+    } else if (geom.type === 'MultiPolygon') {
+      for (const polygon of geom.coordinates) {
+        const hasAnti = polygon.some((ring) => ring.some(([lng]) => lng > 170) && ring.some(([lng]) => lng < -170))
+        if (hasAnti) {
+          const parts = splitAntimeridianPolygon(polygon)
+          for (const coords of parts) {
+            features.push({ ...f, geometry: { type: 'Polygon', coordinates: coords } })
+          }
+        } else {
+          features.push({ ...f, geometry: { type: 'Polygon', coordinates: polygon } })
+        }
+      }
+    } else {
+      features.push(f)
+    }
+  }
+  return { type: 'FeatureCollection', features }
 }
 
 interface MapViewProps {
@@ -70,7 +121,7 @@ export default function MapView({ data, className, formatValue = formatNumber }:
         for (const f of countries.features) {
           f.properties = { ...f.properties, alpha2: NUM_TO_ALPHA2[f.id as string] || '' }
         }
-        setGeoData(countries as GeoJSON.FeatureCollection)
+        setGeoData(fixAntimeridian(countries as GeoJSON.FeatureCollection))
       })
       .catch(() => {})
   }, [])
@@ -115,18 +166,19 @@ export default function MapView({ data, className, formatValue = formatNumber }:
   }, [])
 
   return (
-    <div className={className} style={{ width: '100%', height: '100%', minHeight: 260, position: 'relative', overflow: 'hidden' }}>
+    <div className={className} style={{ width: '100%', height: '100%', minHeight: 280, position: 'relative', overflow: 'hidden' }}>
       <MapGL
         ref={mapRef}
         initialViewState={INITIAL_VIEW}
         style={{ width: '100%', height: '100%' }}
         mapStyle={EMPTY_STYLE}
         attributionControl={false}
+        renderWorldCopies={false}
         interactiveLayerIds={coloredGeoData ? ['country-fill'] : []}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
         maxZoom={6}
-        minZoom={1}
+        minZoom={0.8}
         dragRotate={false}
         touchZoomRotate={false}
       >
