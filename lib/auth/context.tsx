@@ -130,7 +130,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { showExpiredModal, refreshWithMutex } = useSessionRefresh({
     isAuthenticated: !!user,
     onRefresh: refreshToken,
-    onExpired: logout,
   })
 
   useEffect(() => {
