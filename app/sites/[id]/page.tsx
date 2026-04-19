@@ -479,10 +479,15 @@ export default function SiteDashboardPage() {
 
   return (
     <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
-      {toolbarScrolled && topbarSlot && createPortal(toolbarControls(true), topbarSlot)}
+      {topbarSlot && createPortal(
+        <div className={`flex items-center gap-2 transition-all duration-200 ease-apple ${toolbarScrolled ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1 pointer-events-none'}`}>
+          {toolbarControls(true)}
+        </div>,
+        topbarSlot
+      )}
 
       <div ref={toolbarRef} className="mb-3">
-        <div className={`flex items-center gap-3 ${toolbarScrolled ? 'invisible' : ''}`}>
+        <div className={`flex items-center gap-3 transition-opacity duration-200 ease-apple ${toolbarScrolled ? 'opacity-0' : 'opacity-100'}`}>
           {toolbarControls(false)}
         </div>
       </div>
