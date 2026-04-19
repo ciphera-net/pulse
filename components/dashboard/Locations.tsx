@@ -8,7 +8,7 @@ import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
 import * as Flags from 'country-flag-icons/react/3x2'
 import iso3166 from 'iso-3166-2'
 
-const DottedMap = dynamic(() => import('./DottedMap'), { ssr: false })
+const MapView = dynamic(() => import('./MapView'), { ssr: false })
 import Link from 'next/link'
 import { Modal, GlobeIcon, ArrowRightIcon } from '@ciphera-net/ui'
 import { ListSkeleton } from '@/components/skeletons'
@@ -406,7 +406,7 @@ export default function Audience({ countries, cities, regions, languages, timezo
             </div>
           ) : isVisualTab ? (
             hasData ? (
-              inView ? <DottedMap data={filterUnknown(countries) as { country: string; pageviews: number }[]} /> : null
+              inView ? <MapView data={filterUnknown(countries) as { country: string; pageviews: number }[]} /> : null
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
                 <div className="rounded-full bg-neutral-800 p-4">
@@ -441,10 +441,10 @@ export default function Audience({ countries, cities, regions, languages, timezo
                     <div
                       key={itemKey}
                       onClick={() => canFilter && onFilter({ dimension: dim, operator: 'is', values: [filterValue!] })}
-                      className={`interactive-row relative flex items-center justify-between h-9 group rounded-lg px-2 -mx-2${canFilter ? ' cursor-pointer' : ''}`}
+                      className={`interactive-row relative overflow-hidden flex items-center justify-between h-9 group rounded-lg px-2 -mx-2${canFilter ? ' cursor-pointer' : ''}`}
                     >
                       <div
-                        className="absolute inset-y-0.5 left-0.5 bg-gradient-to-r from-brand-orange/15 via-brand-orange/8 to-transparent border border-brand-orange/20 shadow-[inset_0_1px_0_rgba(253,94,15,0.08)] rounded-md transition-[width,background-color] ease-apple"
+                        className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.07] border-l-2 border-brand-orange/70 rounded-md transition-[width,background-color] ease-apple"
                         style={{ width: `${barWidth}%` }}
                       />
                       <div className="relative flex-1 truncate text-white flex items-center gap-3">
