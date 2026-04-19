@@ -6,7 +6,7 @@ import { AreaChart as VisxAreaChart, Area as VisxArea, Grid as VisxGrid, XAxis a
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import type { EngagementPercentilesData } from '@/lib/api/stats'
 import { formatNumber, formatDuration } from '@ciphera-net/ui'
-import { Select } from '@ciphera-net/ui'
+import { Select, DownloadIcon } from '@ciphera-net/ui'
 import { ArrowUpRight, ArrowDownRight } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { SPRING, EASE_APPLE } from '@/lib/motion'
@@ -47,6 +47,7 @@ interface ChartProps {
   setMultiDayInterval: (interval: 'hour' | 'day') => void
   lastUpdatedAt?: number | null
   engagementData?: EngagementPercentilesData | null
+  onExport?: () => void
 }
 
 type MetricType = 'pageviews' | 'visitors' | 'pages_per_visit' | 'bounce_rate' | 'avg_duration' | 'engagement'
@@ -123,21 +124,21 @@ const METRIC_CONFIGS: {
   format: (v: number) => string
   isNegative?: boolean
 }[] = [
-  { key: 'visitors', label: 'Unique Visitors', format: (v) => formatNumber(Math.round(v)) },
-  { key: 'pageviews', label: 'Total Pageviews', format: (v) => formatNumber(Math.round(v)) },
-  { key: 'pages_per_visit', label: 'Pages per Visit', format: (v) => (v ?? 0).toFixed(1) },
-  { key: 'bounce_rate', label: 'Bounce Rate', format: (v) => `${Math.round(v)}%`, isNegative: true },
-  { key: 'avg_duration', label: 'Visit Duration', format: (v) => formatDuration(Math.round(v)) },
+  { key: 'visitors', label: 'Unique visitors', format: (v) => formatNumber(Math.round(v)) },
+  { key: 'pageviews', label: 'Total pageviews', format: (v) => formatNumber(Math.round(v)) },
+  { key: 'pages_per_visit', label: 'Pages per visit', format: (v) => (v ?? 0).toFixed(1) },
+  { key: 'bounce_rate', label: 'Bounce rate', format: (v) => `${Math.round(v)}%`, isNegative: true },
+  { key: 'avg_duration', label: 'Visit duration', format: (v) => formatDuration(Math.round(v)) },
   { key: 'engagement', label: 'Engagement', format: (v) => String(Math.round(v ?? 0)) },
 ]
 
 const CHART_COLORS: Record<MetricType, string> = {
   visitors: 'var(--chart-1)',       // orange (brand)
   pageviews: 'var(--chart-2)',      // blue
-  pages_per_visit: 'var(--chart-2)', // blue (reuse)
+  pages_per_visit: 'var(--chart-3)', // green
   bounce_rate: 'var(--chart-4)',    // purple
   avg_duration: 'var(--chart-5)',   // amber
-  engagement: 'var(--chart-3)',     // green
+  engagement: 'var(--chart-2)',     // blue
 }
 
 // ─── Chart Component ─────────────────────────────────────────────────
@@ -155,6 +156,7 @@ export default function Chart({
   setMultiDayInterval,
   lastUpdatedAt,
   engagementData,
+  onExport,
 }: ChartProps) {
   const [metric, setMetric] = useState<MetricType>('visitors')
   const chartContainerRef = useRef<HTMLDivElement>(null)
@@ -258,14 +260,14 @@ export default function Chart({
                 key={m.key}
                 onClick={() => setMetric(m.key)}
                 className={cn(
-                  'group relative overflow-hidden cursor-pointer flex-1 text-start p-4 border-b md:border-b-0 md:border-r md:last:border-r-0 border-neutral-800 transition-all ease-apple',
+                  'group relative overflow-hidden cursor-pointer flex-1 text-start px-4 py-2.5 border-b md:border-b-0 md:border-r md:last:border-r-0 border-neutral-800 transition-all ease-apple',
                   metric === m.key && 'bg-neutral-800/40',
                 )}
               >
                 <Sparkline data={m.key === 'engagement' ? chartData : data} dataKey={m.key} active={metric === m.key} engagementDaily={m.key === 'engagement' ? engagementData?.daily : undefined} />
                 <div className="relative z-10">
                   <div className="flex items-start justify-between mb-2">
-                    <div className={cn('text-micro-label font-semibold uppercase tracking-widest', metric === m.key ? 'text-brand-orange' : 'text-neutral-500')}>{m.label}</div>
+                    <div className={cn('text-sm font-medium', metric === m.key ? 'text-brand-orange' : 'text-neutral-500 dark:text-neutral-400')}>{m.label}</div>
                     {m.change !== null && (
                       <span className={cn('flex items-center gap-0.5 text-xs font-semibold', m.isPositive ? 'text-[#10B981]' : 'text-[#EF4444]')}>
                         {m.isPositive ? <ArrowUpRight weight="bold" className="size-3" /> : <ArrowDownRight weight="bold" className="size-3" />}
@@ -310,6 +312,15 @@ export default function Chart({
               </span>
             </div>
             <div className="flex items-center gap-2">
+              {onExport && (
+                <button
+                  onClick={onExport}
+                  className="w-7 h-7 flex items-center justify-center text-neutral-500 hover:text-white hover:bg-white/[0.06] rounded-md transition-colors ease-apple"
+                  aria-label="Export"
+                >
+                  <DownloadIcon className="w-3.5 h-3.5" />
+                </button>
+              )}
               {dateRange.start === dateRange.end ? (
                 <Select
                   variant="input"
@@ -335,7 +346,7 @@ export default function Chart({
           </div>
 
           {!hasData || !hasAnyNonZero ? (
-            <div className="flex h-96 flex-col items-center justify-center">
+            <div className="flex h-72 flex-col items-center justify-center">
               <EmptyState
                 title={!hasData ? 'No data in this window' : `No ${METRIC_CONFIGS.find((m) => m.key === metric)?.label.toLowerCase()} recorded`}
                 description="Try expanding the time range or checking back later."
@@ -380,7 +391,7 @@ export default function Chart({
                   <VisxAreaChart
                     data={activeChartData as Record<string, unknown>[]}
                     xDataKey="dateObj"
-                    aspectRatio="2.5 / 1"
+                    aspectRatio="3.5 / 1"
                     margin={{ top: 20, right: 20, bottom: 40, left: 50 }}
                     animationDuration={400}
                   >

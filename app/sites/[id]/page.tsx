@@ -3,6 +3,7 @@
 
 import { logger } from '@/lib/utils/logger'
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
   getTopPages,
@@ -22,7 +23,7 @@ import {
 import { getDateRange, formatDate, getThisWeekRange, getThisMonthRange, getYesterdayRange, getLast24HoursRange, getLast1HourRange, getThisYearRange } from '@/lib/utils/dateRanges'
 import { toast } from '@ciphera-net/ui'
 import { Button } from '@ciphera-net/ui'
-import { Select, DatePicker, DownloadIcon } from '@ciphera-net/ui'
+import { Select, DatePicker, DownloadIcon, ChevronLeftIcon, ChevronRightIcon } from '@ciphera-net/ui'
 import dynamic from 'next/dynamic'
 import { DashboardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import FilterPanel, { type FilterSuggestion } from '@/components/dashboard/FilterPanel'
@@ -107,6 +108,24 @@ export default function SiteDashboardPage() {
   )
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
+
+  const shiftPeriod = useCallback((direction: -1 | 1) => {
+    const shift = (date: string, days: number) => {
+      const d = new Date(date + 'T00:00:00')
+      d.setDate(d.getDate() + days)
+      return formatDate(d)
+    }
+    const startDate = new Date(dateRange.start + 'T00:00:00')
+    const endDate = new Date(dateRange.end + 'T00:00:00')
+    const spanDays = Math.round((endDate.getTime() - startDate.getTime()) / 86400000) + 1
+    const offsetDays = spanDays * direction
+    const newRange = { start: shift(dateRange.start, offsetDays), end: shift(dateRange.end, offsetDays) }
+    const today = formatDate(new Date())
+    if (newRange.end > today) return
+    setDateRange(newRange)
+    setPeriod('custom')
+    saveSettings('custom', newRange)
+  }, [dateRange])
   const lastUpdatedAtRef = useRef<number | null>(null)
 
   // Dimension filters state
@@ -326,6 +345,29 @@ export default function SiteDashboardPage() {
   const showSkeleton = useMinimumLoading(dashboardLoading && !dashboard)
   const fadeClass = useSkeletonFade(showSkeleton)
 
+  const toolbarRef = useRef<HTMLDivElement>(null)
+  const [toolbarScrolled, setToolbarScrolled] = useState(false)
+  const [topbarSlot, setTopbarSlot] = useState<HTMLElement | null>(null)
+
+  useEffect(() => {
+    if (showSkeleton) return
+    setTopbarSlot(document.getElementById('topbar-controls'))
+    const scroller = document.getElementById('dashboard-scroll-container')
+    if (!scroller) return
+
+    const onScroll = () => {
+      const toolbar = toolbarRef.current
+      if (!toolbar) return
+      const rect = toolbar.getBoundingClientRect()
+      const containerRect = scroller.getBoundingClientRect()
+      setToolbarScrolled(rect.bottom < containerRect.top + 8)
+    }
+
+    scroller.addEventListener('scroll', onScroll, { passive: true })
+    onScroll()
+    return () => scroller.removeEventListener('scroll', onScroll)
+  }, [showSkeleton])
+
   if (showSkeleton) {
     return <DashboardSkeleton />
   }
@@ -338,109 +380,116 @@ export default function SiteDashboardPage() {
     )
   }
 
+  const toolbarControls = (compact: boolean) => (
+    <>
+      {!compact && (
+        <div className="flex items-center gap-2">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+          </span>
+          <span className="text-sm text-neutral-400 tabular-nums">{realtime} current visitors</span>
+        </div>
+      )}
+      <div className="flex-1" />
+      <FilterPanel filters={filters} onApply={handleApplyFilters} onFetchSuggestions={handleFetchSuggestions} />
+      <div className="flex items-center h-10 rounded-lg border border-white/[0.08] bg-neutral-900/80 shadow-sm">
+        <button onClick={() => shiftPeriod(-1)} className={`${compact ? 'px-1.5' : 'px-2'} h-full text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors rounded-l-lg ease-apple`} aria-label="Previous period">
+          <ChevronLeftIcon className={compact ? 'w-3.5 h-3.5' : 'w-4 h-4'} weight="bold" />
+        </button>
+        <div className="w-px h-5 bg-white/[0.08]" />
+        <Select
+          variant="ghost"
+          className={compact ? 'min-w-[110px] text-xs' : 'min-w-[130px]'}
+          value={period}
+          onChange={(value) => {
+            if (value === 'today') {
+              const today = formatDate(new Date())
+              const range = { start: today, end: today }
+              setDateRange(range)
+              setPeriod('today')
+              saveSettings('today', range)
+            } else if (value === 'yesterday') {
+              const range = getYesterdayRange()
+              setDateRange(range)
+              setPeriod('yesterday')
+              saveSettings('yesterday', range)
+            } else if (value === '1h') {
+              const range = getLast1HourRange()
+              setDateRange(range)
+              setTodayInterval('minute')
+              setPeriod('1h')
+              saveSettings('1h', range)
+            } else if (value === '24h') {
+              const range = getLast24HoursRange()
+              setDateRange(range)
+              setPeriod('24h')
+              saveSettings('24h', range)
+            } else if (value === '7') {
+              const range = getDateRange(7)
+              setDateRange(range)
+              setPeriod('7')
+              saveSettings('7', range)
+            } else if (value === 'week') {
+              const range = getThisWeekRange()
+              setDateRange(range)
+              setPeriod('week')
+              saveSettings('week', range)
+            } else if (value === '30') {
+              const range = getDateRange(30)
+              setDateRange(range)
+              setPeriod('30')
+              saveSettings('30', range)
+            } else if (value === 'month') {
+              const range = getThisMonthRange()
+              setDateRange(range)
+              setPeriod('month')
+              saveSettings('month', range)
+            } else if (value === 'year') {
+              const range = getThisYearRange()
+              setDateRange(range)
+              setPeriod('year')
+              saveSettings('year', range)
+            } else if (value === 'custom') {
+              setIsDatePickerOpen(true)
+            }
+          }}
+          options={[
+            { value: '1h', label: 'Last 1 hour' },
+            { value: '24h', label: 'Last 24 hours' },
+            { value: 'divider-0', label: '', divider: true },
+            { value: 'today', label: 'Today' },
+            { value: 'yesterday', label: 'Yesterday' },
+            { value: '7', label: 'Last 7 days' },
+            { value: '30', label: 'Last 30 days' },
+            { value: 'divider-1', label: '', divider: true },
+            { value: 'week', label: 'This week' },
+            { value: 'month', label: 'This month' },
+            { value: 'year', label: 'This year' },
+            { value: 'divider-2', label: '', divider: true },
+            { value: 'custom', label: 'Custom' },
+          ]}
+        />
+        <div className="w-px h-5 bg-white/[0.08]" />
+        <button onClick={() => shiftPeriod(1)} className={`${compact ? 'px-1.5' : 'px-2'} h-full text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors rounded-r-lg ease-apple`} aria-label="Next period">
+          <ChevronRightIcon className={compact ? 'w-3.5 h-3.5' : 'w-4 h-4'} weight="bold" />
+        </button>
+      </div>
+    </>
+  )
+
   return (
     <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
-      <div className="mb-3">
-        <div className="flex items-center justify-between mb-3 gap-3">
-          <div className="flex items-center gap-3 flex-wrap">
-            <FilterPanel filters={filters} onApply={handleApplyFilters} onFetchSuggestions={handleFetchSuggestions} />
+      {topbarSlot && createPortal(
+        <div className={`flex items-center gap-2 transition-all duration-300 ease-apple ${toolbarScrolled ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 -translate-y-3 scale-95 pointer-events-none'}`}>
+          {toolbarControls(true)}
+        </div>,
+        topbarSlot
+      )}
 
-            {/* Realtime Indicator */}
-            <div className="flex items-center gap-2">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-              </span>
-              <span className="text-sm text-neutral-400 tabular-nums">
-                {realtime} current visitors
-              </span>
-            </div>
-          </div>
-
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={() => setIsExportModalOpen(true)}
-                  variant="primary"
-                  className="hidden md:inline-flex gap-2 text-sm"
-                >
-                  <DownloadIcon className="w-4 h-4" />
-                  Export
-                </Button>
-                <Select
-                  variant="input"
-                  className="min-w-[140px]"
-                  value={period}
-                  onChange={(value) => {
-                    if (value === 'today') {
-                      const today = formatDate(new Date())
-                      const range = { start: today, end: today }
-                      setDateRange(range)
-                      setPeriod('today')
-                      saveSettings('today', range)
-                    } else if (value === 'yesterday') {
-                      const range = getYesterdayRange()
-                      setDateRange(range)
-                      setPeriod('yesterday')
-                      saveSettings('yesterday', range)
-                    } else if (value === '1h') {
-                      const range = getLast1HourRange()
-                      setDateRange(range)
-                      setTodayInterval('minute')
-                      setPeriod('1h')
-                      saveSettings('1h', range)
-                    } else if (value === '24h') {
-                      const range = getLast24HoursRange()
-                      setDateRange(range)
-                      setPeriod('24h')
-                      saveSettings('24h', range)
-                    } else if (value === '7') {
-                      const range = getDateRange(7)
-                      setDateRange(range)
-                      setPeriod('7')
-                      saveSettings('7', range)
-                    } else if (value === 'week') {
-                      const range = getThisWeekRange()
-                      setDateRange(range)
-                      setPeriod('week')
-                      saveSettings('week', range)
-                    } else if (value === '30') {
-                      const range = getDateRange(30)
-                      setDateRange(range)
-                      setPeriod('30')
-                      saveSettings('30', range)
-                    } else if (value === 'month') {
-                      const range = getThisMonthRange()
-                      setDateRange(range)
-                      setPeriod('month')
-                      saveSettings('month', range)
-                    } else if (value === 'year') {
-                      const range = getThisYearRange()
-                      setDateRange(range)
-                      setPeriod('year')
-                      saveSettings('year', range)
-                    } else if (value === 'custom') {
-                      setIsDatePickerOpen(true)
-                    }
-                  }}
-                  options={[
-                    { value: '1h', label: 'Last 1 hour' },
-                    { value: '24h', label: 'Last 24 hours' },
-                    { value: 'divider-0', label: '', divider: true },
-                    { value: 'today', label: 'Today' },
-                    { value: 'yesterday', label: 'Yesterday' },
-                    { value: '7', label: 'Last 7 days' },
-                    { value: '30', label: 'Last 30 days' },
-                    { value: 'divider-1', label: '', divider: true },
-                    { value: 'week', label: 'This week' },
-                    { value: 'month', label: 'This month' },
-                    { value: 'year', label: 'This year' },
-                    { value: 'divider-2', label: '', divider: true },
-                    { value: 'custom', label: 'Custom' },
-                  ]}
-                />
-              </div>
-            </div>
+      <div ref={toolbarRef} className="mb-3">
+        <div className={`flex items-center gap-3 transition-opacity duration-200 ease-apple ${toolbarScrolled ? 'opacity-0' : 'opacity-100'}`}>
+          {toolbarControls(false)}
         </div>
       </div>
 
@@ -459,6 +508,7 @@ export default function SiteDashboardPage() {
           setMultiDayInterval={setMultiDayInterval}
           lastUpdatedAt={lastUpdatedAtRef.current}
           engagementData={engagementData}
+          onExport={() => setIsExportModalOpen(true)}
         />
       </div>
 

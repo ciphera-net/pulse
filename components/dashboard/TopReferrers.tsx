@@ -187,10 +187,10 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
                     <div
                       key={ref.referrer}
                       onClick={() => onFilter?.({ dimension: 'referrer', operator: 'is', values: ref.allReferrers ?? [ref.referrer] })}
-                      className={`interactive-row relative flex items-center justify-between h-9 group rounded-lg px-2 -mx-2${onFilter ? ' cursor-pointer' : ''}`}
+                      className={`interactive-row relative overflow-hidden flex items-center justify-between h-9 group rounded-lg px-2 -mx-2${onFilter ? ' cursor-pointer' : ''}`}
                     >
                       <div
-                        className="absolute inset-y-0.5 left-0.5 bg-gradient-to-r from-brand-orange/15 via-brand-orange/8 to-transparent border border-brand-orange/20 shadow-[inset_0_1px_0_rgba(253,94,15,0.08)] rounded-md transition-[width,background-color] ease-apple"
+                        className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.07] border-l-2 border-brand-orange/70 rounded-md transition-[width,background-color] ease-apple"
                         style={{ width: `${barWidth}%` }}
                       />
                       <div className="relative flex-1 truncate text-white flex items-center gap-3">
@@ -242,10 +242,10 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
                   return (
                     <div
                       key={ch.channel}
-                      className="interactive-row relative flex items-center justify-between h-9 group rounded-lg px-2 -mx-2"
+                      className="interactive-row relative overflow-hidden flex items-center justify-between h-9 group rounded-lg px-2 -mx-2"
                     >
                       <div
-                        className="absolute inset-y-0.5 left-0.5 bg-gradient-to-r from-brand-orange/15 via-brand-orange/8 to-transparent border border-brand-orange/20 shadow-[inset_0_1px_0_rgba(253,94,15,0.08)] rounded-md transition-[width,background-color] ease-apple"
+                        className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.07] border-l-2 border-brand-orange/70 rounded-md transition-[width,background-color] ease-apple"
                         style={{ width: `${barWidth}%` }}
                       />
                       <div className="relative flex-1 truncate text-white flex items-center gap-3">

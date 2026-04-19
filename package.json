@@ -15,7 +15,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@ciphera-net/ui": "^0.6.1",
+    "@ciphera-net/ui": "^0.6.3",
     "@ducanh2912/next-pwa": "^10.2.9",
     "@icons-pack/react-simple-icons": "^13.13.0",
     "@phosphor-icons/react": "^2.1.10",
@@ -30,10 +30,10 @@
     "@tanstack/react-virtual": "^3.13.21",
     "@types/d3": "^7.4.3",
     "@types/d3-shape": "^3.1.8",
+    "@types/topojson-client": "^3.1.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
-    "cobe": "^0.6.5",
     "country-flag-icons": "^1.6.4",
     "d3": "^7.9.0",
     "d3-array": "^3.2.4",
@@ -58,10 +58,11 @@
     "rehype-mdx-code-props": "^3.0.1",
     "remark-gfm": "^4.0.1",
     "sonner": "^2.0.7",
-    "svg-dotted-map": "^2.0.1",
     "swr": "^2.3.3",
     "tailwind-merge": "^3.5.0",
     "tailwindcss-animate": "^1.0.7",
+    "topojson-client": "^3.1.0",
+    "visionscarto-world-atlas": "^1.0.0",
     "xlsx": "^0.18.5",
     "zod": "^4.3.6"
   },
