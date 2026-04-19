@@ -123,11 +123,11 @@ const METRIC_CONFIGS: {
   format: (v: number) => string
   isNegative?: boolean
 }[] = [
-  { key: 'visitors', label: 'Unique Visitors', format: (v) => formatNumber(Math.round(v)) },
-  { key: 'pageviews', label: 'Total Pageviews', format: (v) => formatNumber(Math.round(v)) },
-  { key: 'pages_per_visit', label: 'Pages per Visit', format: (v) => (v ?? 0).toFixed(1) },
-  { key: 'bounce_rate', label: 'Bounce Rate', format: (v) => `${Math.round(v)}%`, isNegative: true },
-  { key: 'avg_duration', label: 'Visit Duration', format: (v) => formatDuration(Math.round(v)) },
+  { key: 'visitors', label: 'Unique visitors', format: (v) => formatNumber(Math.round(v)) },
+  { key: 'pageviews', label: 'Total pageviews', format: (v) => formatNumber(Math.round(v)) },
+  { key: 'pages_per_visit', label: 'Pages per visit', format: (v) => (v ?? 0).toFixed(1) },
+  { key: 'bounce_rate', label: 'Bounce rate', format: (v) => `${Math.round(v)}%`, isNegative: true },
+  { key: 'avg_duration', label: 'Visit duration', format: (v) => formatDuration(Math.round(v)) },
   { key: 'engagement', label: 'Engagement', format: (v) => String(Math.round(v ?? 0)) },
 ]
 
@@ -265,7 +265,7 @@ export default function Chart({
                 <Sparkline data={m.key === 'engagement' ? chartData : data} dataKey={m.key} active={metric === m.key} engagementDaily={m.key === 'engagement' ? engagementData?.daily : undefined} />
                 <div className="relative z-10">
                   <div className="flex items-start justify-between mb-2">
-                    <div className={cn('text-micro-label font-semibold uppercase tracking-widest', metric === m.key ? 'text-brand-orange' : 'text-neutral-500')}>{m.label}</div>
+                    <div className={cn('text-xs font-medium', metric === m.key ? 'text-brand-orange' : 'text-neutral-500 dark:text-neutral-400')}>{m.label}</div>
                     {m.change !== null && (
                       <span className={cn('flex items-center gap-0.5 text-xs font-semibold', m.isPositive ? 'text-[#10B981]' : 'text-[#EF4444]')}>
                         {m.isPositive ? <ArrowUpRight weight="bold" className="size-3" /> : <ArrowDownRight weight="bold" className="size-3" />}
