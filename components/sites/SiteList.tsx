@@ -157,7 +157,7 @@ export default function SiteList({ sites, siteStats, loading }: SiteListProps) {
       })}
 
       {/* Resources Card */}
-      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 p-6 text-center ">
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-neutral-700 bg-neutral-900 p-6 text-center">
         <div className="mb-3 rounded-full bg-neutral-800 p-3">
           <BookOpenIcon className="h-6 w-6 text-neutral-500" />
         </div>

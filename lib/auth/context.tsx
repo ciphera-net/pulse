@@ -3,8 +3,8 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSWRConfig } from 'swr'
-import apiRequest from '@/lib/api/client'
-import { LoadingOverlay, useSessionSync, SessionExpiryWarning } from '@ciphera-net/ui'
+import apiRequest, { setRefreshHandler } from '@/lib/api/client'
+import { LoadingOverlay, useSessionSync, SessionExpiryWarning, useSessionRefresh } from '@ciphera-net/ui'
 import { logoutAction, getSessionAction, setSessionAction } from '@/app/actions/auth'
 import { getUserOrganizations, switchContext } from '@/lib/api/organization'
 import { logger } from '@/lib/utils/logger'
@@ -66,11 +66,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await fetch('/api/auth/refresh', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
+        body: JSON.stringify({
+          screen_width: window.screen.width,
+          screen_height: window.screen.height,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        }),
       })
-      if (res.ok) {
-        localStorage.setItem('ciphera_token_refreshed_at', Date.now().toString())
-      }
       return res.ok
     } catch {
       return false
@@ -124,6 +127,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, 500)
   }, [])
 
+  const { showExpiredModal, refreshWithMutex } = useSessionRefresh({
+    isAuthenticated: !!user,
+    onRefresh: refreshToken,
+    onExpired: logout,
+  })
+
+  useEffect(() => {
+    setRefreshHandler(refreshWithMutex)
+    return () => setRefreshHandler(null)
+  }, [refreshWithMutex])
+
   const refresh = useCallback(async () => {
     try {
       const session = await getSessionAction()
@@ -172,16 +186,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // * 2. If no access_token but refresh_token may exist, try refresh (fixes 15-min inactivity logout)
         if (!session && typeof window !== 'undefined') {
-          const refreshRes = await fetch('/api/auth/refresh', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-          })
-          if (refreshRes.ok) {
+          const refreshed = await refreshWithMutex()
+          if (refreshed) {
             try {
               session = await getSessionAction()
             } catch {
-              // * Stale build — fall through as no session
+              // * Stale build — fall through
             }
           }
         }
@@ -306,9 +316,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider value={{ user, loading, login, logout, refresh, refreshSession }}>
       {isLoggingOut && <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" />}
       <SessionExpiryWarning
-        isAuthenticated={!!user}
-        onRefreshToken={refreshToken}
-        onExpired={logout}
+        show={showExpiredModal}
+        onSignIn={logout}
       />
       {children}
     </AuthContext.Provider>
