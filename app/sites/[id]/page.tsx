@@ -393,7 +393,7 @@ export default function SiteDashboardPage() {
       )}
       <div className="flex-1" />
       <FilterPanel filters={filters} onApply={handleApplyFilters} onFetchSuggestions={handleFetchSuggestions} />
-      <div className="flex items-center rounded-lg border border-neutral-700 overflow-hidden">
+      <div className="flex items-center rounded-lg border border-neutral-700">
         <button onClick={() => shiftPeriod(-1)} className={`${compact ? 'p-1' : 'p-1.5'} text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors`} aria-label="Previous period">
           <ChevronLeftIcon className={compact ? 'w-3.5 h-3.5' : 'w-4 h-4'} weight="bold" />
         </button>
