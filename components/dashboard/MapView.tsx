@@ -1,17 +1,42 @@
 'use client'
 
-import { useMemo, useState, useCallback } from 'react'
-import MapGL, { Marker, type ViewStateChangeEvent } from 'react-map-gl/maplibre'
+import { useMemo, useState, useCallback, useEffect, useRef } from 'react'
+import MapGL, { Source, Layer, type MapRef } from 'react-map-gl/maplibre'
+import type { MapLayerMouseEvent } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { formatNumber } from '@ciphera-net/ui'
-import { countryCentroids } from '@/lib/country-centroids'
+import { feature } from 'topojson-client'
+import type { Topology, GeometryCollection } from 'topojson-specification'
 
-const STYLE_URL = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json'
+const STYLE_URL = 'https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json'
+const COUNTRIES_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json'
 
-const INITIAL_VIEW = {
-  longitude: 20,
-  latitude: 25,
-  zoom: 1.3,
+const INITIAL_VIEW = { longitude: 20, latitude: 25, zoom: 1.3 }
+
+// ISO 3166-1 numeric → alpha-2 mapping (used by world-atlas)
+const NUM_TO_ALPHA2: Record<string, string> = {
+  '004':'AF','008':'AL','012':'DZ','016':'AS','020':'AD','024':'AO','028':'AG','031':'AZ','032':'AR','036':'AU',
+  '040':'AT','044':'BS','048':'BH','050':'BD','051':'AM','052':'BB','056':'BE','060':'BM','064':'BT','068':'BO',
+  '070':'BA','072':'BW','076':'BR','084':'BZ','090':'SB','092':'VG','096':'BN','100':'BG','104':'MM','108':'BI',
+  '112':'BY','116':'KH','120':'CM','124':'CA','132':'CV','140':'CF','144':'LK','148':'TD','152':'CL','156':'CN',
+  '158':'TW','170':'CO','174':'KM','178':'CG','180':'CD','184':'CK','188':'CR','191':'HR','192':'CU','196':'CY',
+  '203':'CZ','204':'BJ','208':'DK','212':'DM','214':'DO','218':'EC','222':'SV','226':'GQ','231':'ET','232':'ER',
+  '233':'EE','234':'FO','238':'FK','242':'FJ','246':'FI','250':'FR','254':'GF','258':'PF','262':'DJ','266':'GA',
+  '268':'GE','270':'GM','275':'PS','276':'DE','288':'GH','292':'GI','296':'KI','300':'GR','304':'GL','308':'GD',
+  '312':'GP','316':'GU','320':'GT','324':'GN','328':'GY','332':'HT','336':'VA','340':'HN','344':'HK','348':'HU',
+  '352':'IS','356':'IN','360':'ID','364':'IR','368':'IQ','372':'IE','376':'IL','380':'IT','384':'CI','388':'JM',
+  '392':'JP','398':'KZ','400':'JO','404':'KE','408':'KP','410':'KR','414':'KW','417':'KG','418':'LA','422':'LB',
+  '426':'LS','428':'LV','430':'LR','434':'LY','438':'LI','440':'LT','442':'LU','446':'MO','450':'MG','454':'MW',
+  '458':'MY','462':'MV','466':'ML','470':'MT','478':'MR','480':'MU','484':'MX','492':'MC','496':'MN','498':'MD',
+  '499':'ME','504':'MA','508':'MZ','512':'OM','516':'NA','520':'NR','524':'NP','528':'NL','540':'NC','548':'VU',
+  '554':'NZ','558':'NI','562':'NE','566':'NG','570':'NU','578':'NO','583':'FM','585':'PW','586':'PK','591':'PA',
+  '598':'PG','600':'PY','604':'PE','608':'PH','616':'PL','620':'PT','624':'GW','626':'TL','630':'PR','634':'QA',
+  '638':'RE','642':'RO','643':'RU','646':'RW','654':'SH','659':'KN','660':'AI','662':'LC','666':'PM','670':'VC',
+  '674':'SM','678':'ST','682':'SA','686':'SN','688':'RS','690':'SC','694':'SL','702':'SG','703':'SK','704':'VN',
+  '705':'SI','706':'SO','710':'ZA','716':'ZW','724':'ES','728':'SS','729':'SD','740':'SR','744':'SJ','748':'SZ',
+  '752':'SE','756':'CH','760':'SY','762':'TJ','764':'TH','768':'TG','776':'TO','780':'TT','784':'AE','788':'TN',
+  '792':'TR','795':'TM','798':'TV','800':'UG','804':'UA','807':'MK','818':'EG','826':'GB','834':'TZ','840':'US',
+  '854':'BF','858':'UY','860':'UZ','862':'VE','876':'WF','882':'WS','887':'YE','894':'ZM',
 }
 
 interface MapViewProps {
@@ -29,58 +54,123 @@ function getCountryName(code: string): string {
 }
 
 export default function MapView({ data, className, formatValue = formatNumber }: MapViewProps) {
-  const [tooltip, setTooltip] = useState<{ country: string; pageviews: number; lng: number; lat: number } | null>(null)
+  const mapRef = useRef<MapRef>(null)
+  const [geoData, setGeoData] = useState<GeoJSON.FeatureCollection | null>(null)
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; country: string; pageviews: number } | null>(null)
 
-  const markers = useMemo(() => {
-    if (!data.length) return []
-    const max = Math.max(...data.map((d) => d.pageviews))
-    if (max === 0) return []
+  useEffect(() => {
+    fetch(COUNTRIES_URL)
+      .then((r) => r.json())
+      .then((topo: Topology) => {
+        const countries = feature(topo, topo.objects.countries as GeometryCollection)
+        for (const f of countries.features) {
+          const alpha2 = NUM_TO_ALPHA2[f.id as string] || ''
+          f.properties = { ...f.properties, alpha2 }
+        }
+        setGeoData(countries as GeoJSON.FeatureCollection)
+      })
+      .catch(() => {})
+  }, [])
 
-    return data
-      .filter((d) => d.country && d.country !== 'Unknown' && countryCentroids[d.country])
-      .map((d) => ({
-        lng: countryCentroids[d.country].lng,
-        lat: countryCentroids[d.country].lat,
-        country: d.country,
-        pageviews: d.pageviews,
-        size: 6 + (d.pageviews / max) * 18,
-      }))
+  const trafficMap = useMemo(() => {
+    const map: Record<string, number> = {}
+    for (const d of data) {
+      if (d.country && d.country !== 'Unknown') map[d.country] = d.pageviews
+    }
+    return map
   }, [data])
 
-  const handleMove = useCallback(() => setTooltip(null), [])
+  const max = useMemo(() => Math.max(1, ...Object.values(trafficMap)), [trafficMap])
+
+  const coloredGeoData = useMemo(() => {
+    if (!geoData) return null
+    return {
+      ...geoData,
+      features: geoData.features.map((f) => {
+        const alpha2 = f.properties?.alpha2 as string
+        const value = trafficMap[alpha2] || 0
+        const intensity = value > 0 ? 0.12 + (value / max) * 0.65 : 0
+        return { ...f, properties: { ...f.properties, intensity, value } }
+      }),
+    }
+  }, [geoData, trafficMap, max])
+
+  const handleMouseMove = useCallback((e: MapLayerMouseEvent) => {
+    const f = e.features?.[0]
+    if (f?.properties?.alpha2 && f.properties.value > 0) {
+      setTooltip({
+        x: e.point.x,
+        y: e.point.y,
+        country: f.properties.alpha2,
+        pageviews: f.properties.value,
+      })
+    } else {
+      setTooltip(null)
+    }
+  }, [])
+
+  const handleMouseLeave = useCallback(() => setTooltip(null), [])
 
   return (
-    <div className={className} style={{ width: '100%', height: '100%', minHeight: 260 }}>
+    <div className={className} style={{ width: '100%', height: '100%', minHeight: 260, position: 'relative' }}>
       <MapGL
+        ref={mapRef}
         initialViewState={INITIAL_VIEW}
         style={{ width: '100%', height: '100%', borderRadius: 12 }}
         mapStyle={STYLE_URL}
         attributionControl={false}
-        onMove={handleMove}
+        interactiveLayerIds={coloredGeoData ? ['country-fill'] : []}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        onLoad={(e) => {
+          const map = e.target
+          const bg = map.getLayer('background')
+          if (bg) map.setPaintProperty('background', 'background-color', 'rgba(0,0,0,0)')
+          for (const layer of map.getStyle().layers) {
+            if (layer.id.startsWith('water')) {
+              map.setPaintProperty(layer.id, 'fill-color', 'rgba(0,0,0,0)')
+            }
+          }
+        }}
         maxZoom={6}
         minZoom={1}
       >
-        {markers.map((m) => (
-          <Marker key={m.country} longitude={m.lng} latitude={m.lat} anchor="center">
-            <div
-              className="cursor-pointer"
-              onMouseEnter={() => setTooltip(m)}
-              onMouseLeave={() => setTooltip(null)}
-              style={{
-                width: m.size,
-                height: m.size,
-                borderRadius: '50%',
-                background: 'rgba(253, 94, 15, 0.7)',
-                boxShadow: '0 0 8px rgba(253, 94, 15, 0.5), 0 0 20px rgba(253, 94, 15, 0.2)',
-                border: '1px solid rgba(253, 94, 15, 0.9)',
+        {coloredGeoData && (
+          <Source id="countries" type="geojson" data={coloredGeoData}>
+            <Layer
+              id="country-fill"
+              type="fill"
+              paint={{
+                'fill-color': [
+                  'case',
+                  ['>', ['get', 'intensity'], 0],
+                  ['interpolate', ['linear'], ['get', 'intensity'],
+                    0.12, 'rgba(249, 115, 22, 0.12)',
+                    0.35, 'rgba(249, 115, 22, 0.30)',
+                    0.55, 'rgba(249, 115, 22, 0.50)',
+                    0.77, 'rgba(249, 115, 22, 0.70)',
+                  ],
+                  'rgba(255, 255, 255, 0.03)',
+                ],
               }}
             />
-          </Marker>
-        ))}
+            <Layer
+              id="country-border"
+              type="line"
+              paint={{
+                'line-color': 'rgba(255, 255, 255, 0.08)',
+                'line-width': 0.5,
+              }}
+            />
+          </Source>
+        )}
       </MapGL>
 
       {tooltip && (
-        <div className="absolute top-3 left-3 z-10 px-3 py-2 text-xs font-medium text-white bg-neutral-900/90 border border-neutral-700 rounded-lg shadow-lg backdrop-blur-sm">
+        <div
+          className="absolute z-10 px-3 py-2 text-xs font-medium text-white bg-neutral-900/90 border border-neutral-700 rounded-lg shadow-lg backdrop-blur-sm pointer-events-none"
+          style={{ left: tooltip.x + 12, top: tooltip.y - 12 }}
+        >
           <span>{getCountryName(tooltip.country)}</span>
           <span className="ml-2 text-brand-orange font-bold">{formatValue(tooltip.pageviews)}</span>
         </div>
