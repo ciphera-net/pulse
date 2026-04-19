@@ -1,10 +1,14 @@
 'use client'
 
-import { useMemo, useState, useCallback, memo } from 'react'
-import { ComposableMap, Geographies, Geography } from 'react-simple-maps'
+import { useEffect, useMemo, useRef, useState, useCallback, memo } from 'react'
+import * as d3 from 'd3'
+import * as topojson from 'topojson-client'
 import { formatNumber } from '@ciphera-net/ui'
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const worldJson = require('visionscarto-world-atlas/world/110m.json')
 
-const GEO_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json'
+const WIDTH = 500
+const HEIGHT = 320
 
 const NUM_TO_ALPHA2: Record<string, string> = {
   '004':'AF','008':'AL','012':'DZ','016':'AS','020':'AD','024':'AO','028':'AG','031':'AZ','032':'AR','036':'AU',
@@ -37,24 +41,17 @@ interface MapViewProps {
   formatValue?: (value: number) => string
 }
 
-function getCountryName(code: string): string {
-  try {
-    return new Intl.DisplayNames(['en'], { type: 'region' }).of(code) || code
-  } catch {
-    return code
-  }
-}
+type CountryFeature = { properties: { name: string; a3: string }; id: string }
 
-function getColor(intensity: number): string {
-  if (intensity <= 0) return 'rgba(255, 255, 255, 0.04)'
-  if (intensity < 0.3) return 'rgba(249, 115, 22, 0.18)'
-  if (intensity < 0.5) return 'rgba(249, 115, 22, 0.35)'
-  if (intensity < 0.7) return 'rgba(249, 115, 22, 0.55)'
-  return 'rgba(249, 115, 22, 0.75)'
+function getCountryFeatures(): CountryFeature[] {
+  const collection = topojson.feature(worldJson, worldJson.objects.countries)
+  return (collection as unknown as GeoJSON.FeatureCollection).features as unknown as CountryFeature[]
 }
 
 function MapView({ data, className, formatValue = formatNumber }: MapViewProps) {
-  const [tooltip, setTooltip] = useState<{ x: number; y: number; country: string; pageviews: number } | null>(null)
+  const svgRef = useRef<SVGSVGElement | null>(null)
+  const highlightRef = useRef<d3.Selection<SVGPathElement, unknown, null, undefined> | null>(null)
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; name: string; value: number } | null>(null)
 
   const trafficMap = useMemo(() => {
     const map: Record<string, number> = {}
@@ -64,66 +61,104 @@ function MapView({ data, className, formatValue = formatNumber }: MapViewProps) 
     return map
   }, [data])
 
-  const max = useMemo(() => Math.max(1, ...Object.values(trafficMap)), [trafficMap])
+  const maxValue = useMemo(() => Math.max(1, ...Object.values(trafficMap)), [trafficMap])
 
-  const handleMouseEnter = useCallback((alpha2: string, value: number, e: React.MouseEvent) => {
-    if (value > 0) {
-      setTooltip({ x: e.clientX, y: e.clientY, country: alpha2, pageviews: value })
-    }
+  const getAlpha2 = useCallback((feature: CountryFeature) => {
+    return NUM_TO_ALPHA2[feature.id] || ''
   }, [])
 
-  const handleMouseMove = useCallback((alpha2: string, value: number, e: React.MouseEvent) => {
-    if (value > 0) {
-      setTooltip({ x: e.clientX, y: e.clientY, country: alpha2, pageviews: value })
-    }
+  // Draw the base map once on mount
+  useEffect(() => {
+    if (!svgRef.current) return
+    const svg = d3.select(svgRef.current)
+    svg.selectAll('*').remove()
+
+    const projection = d3.geoMercator()
+      .scale(78)
+      .translate([WIDTH / 2, HEIGHT / 1.45])
+
+    const path = d3.geoPath().projection(projection)
+    const features = getCountryFeatures()
+
+    svg.selectAll('path.country')
+      .data(features)
+      .enter()
+      .append('path')
+      .attr('class', 'country')
+      .attr('d', path as unknown as string)
+      .style('stroke', 'rgba(255,255,255,0.08)')
+      .style('stroke-width', '0.5px')
+      .style('fill', 'rgba(255,255,255,0.04)')
+      .style('transition', 'fill 0.15s ease')
+
+    highlightRef.current = svg.append('path')
+      .style('fill', 'none')
+      .style('stroke', 'rgba(249,115,22,0.6)')
+      .style('stroke-width', '1.5px')
+      .style('pointer-events', 'none')
+
+    return () => { svg.selectAll('*').remove() }
   }, [])
 
-  const handleMouseLeave = useCallback(() => setTooltip(null), [])
+  // Update colors when data changes
+  useEffect(() => {
+    if (!svgRef.current) return
+    const svg = d3.select(svgRef.current)
+
+    const colorScale = d3.scaleLinear<string>()
+      .domain([0, maxValue])
+      .range(['rgba(249,115,22,0.12)', 'rgba(249,115,22,0.75)'])
+
+    svg.selectAll<SVGPathElement, CountryFeature>('path.country')
+      .style('fill', (d) => {
+        const alpha2 = getAlpha2(d)
+        const value = trafficMap[alpha2] || 0
+        return value > 0 ? colorScale(value) : 'rgba(255,255,255,0.04)'
+      })
+      .style('cursor', (d) => {
+        const alpha2 = getAlpha2(d)
+        return (trafficMap[alpha2] || 0) > 0 ? 'pointer' : 'default'
+      })
+      .on('mouseover', function (event, d) {
+        const alpha2 = getAlpha2(d)
+        const value = trafficMap[alpha2] || 0
+        if (value > 0) {
+          const [x, y] = d3.pointer(event, svgRef.current?.parentNode)
+          setTooltip({ x, y, name: d.properties.name, value })
+          highlightRef.current
+            ?.attr('d', this.getAttribute('d'))
+            .style('stroke', 'rgba(249,115,22,0.6)')
+        }
+      })
+      .on('mousemove', function (event) {
+        const [x, y] = d3.pointer(event, svgRef.current?.parentNode)
+        setTooltip((prev) => prev ? { ...prev, x, y } : null)
+      })
+      .on('mouseout', function () {
+        setTooltip(null)
+        highlightRef.current?.attr('d', null)
+      })
+  }, [trafficMap, maxValue, getAlpha2])
 
   return (
-    <div className={className} style={{ width: '100%', height: '100%', position: 'relative', cursor: 'default' }}>
-      <ComposableMap
-        projectionConfig={{ rotate: [-12, 0, 0], scale: 145 }}
-        style={{ width: '100%', height: '100%' }}
-      >
-        <Geographies geography={GEO_URL}>
-          {({ geographies }) =>
-            geographies.map((geo) => {
-              const alpha2 = NUM_TO_ALPHA2[geo.id] || ''
-              const value = trafficMap[alpha2] || 0
-              const intensity = value > 0 ? 0.15 + (value / max) * 0.85 : 0
-              const hasTraffic = value > 0
-              return (
-                <Geography
-                  key={geo.rsmKey}
-                  geography={geo}
-                  fill={getColor(intensity)}
-                  stroke="rgba(255, 255, 255, 0.06)"
-                  strokeWidth={0.4}
-                  style={{
-                    default: { outline: 'none', cursor: hasTraffic ? 'pointer' : 'default' },
-                    hover: { outline: 'none', fill: hasTraffic ? 'rgba(249, 115, 22, 0.85)' : 'rgba(255, 255, 255, 0.06)', cursor: hasTraffic ? 'pointer' : 'default' },
-                    pressed: { outline: 'none' },
-                  }}
-                  onMouseEnter={(e) => handleMouseEnter(alpha2, value, e)}
-                  onMouseMove={(e) => handleMouseMove(alpha2, value, e)}
-                  onMouseLeave={handleMouseLeave}
-                />
-              )
-            })
-          }
-        </Geographies>
-      </ComposableMap>
-
-      {tooltip && (
-        <div
-          className="fixed z-50 px-3 py-2 text-xs font-medium text-white bg-neutral-800/95 border border-neutral-700 rounded-lg shadow-lg backdrop-blur-sm pointer-events-none"
-          style={{ left: tooltip.x + 12, top: tooltip.y - 28 }}
-        >
-          <span>{getCountryName(tooltip.country)}</span>
-          <span className="ml-2 text-brand-orange font-bold">{formatValue(tooltip.pageviews)}</span>
-        </div>
-      )}
+    <div className={className} style={{ width: '100%', height: '100%', position: 'relative' }}>
+      <div className="relative flex justify-center items-center w-full" style={{ maxWidth: WIDTH }}>
+        <svg
+          ref={svgRef}
+          viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+          className="w-full"
+          style={{ cursor: 'default' }}
+        />
+        {tooltip && (
+          <div
+            className="absolute z-10 px-3 py-2 text-xs font-medium text-white bg-neutral-800/95 border border-neutral-700 rounded-lg shadow-lg backdrop-blur-sm pointer-events-none"
+            style={{ left: tooltip.x, top: tooltip.y - 36 }}
+          >
+            <span>{tooltip.name}</span>
+            <span className="ml-2 text-brand-orange font-bold">{formatValue(tooltip.value)}</span>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
