@@ -351,14 +351,13 @@ export default function SiteDashboardPage() {
 
   useEffect(() => {
     setTopbarSlot(document.getElementById('topbar-controls'))
-  }, [])
 
-  useEffect(() => {
     const el = toolbarRef.current
+    const scrollRoot = document.getElementById('dashboard-scroll-container')
     if (!el) return
     const observer = new IntersectionObserver(
       ([entry]) => setToolbarScrolled(!entry.isIntersecting),
-      { threshold: 0 }
+      { threshold: 0, root: scrollRoot }
     )
     observer.observe(el)
     return () => observer.disconnect()
