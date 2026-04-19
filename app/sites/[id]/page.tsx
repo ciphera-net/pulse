@@ -399,8 +399,8 @@ export default function SiteDashboardPage() {
         </button>
         <div className="w-px h-full bg-neutral-700" />
         <Select
-          variant="input"
-          className={`${compact ? 'min-w-[110px] text-xs' : 'min-w-[130px]'} border-0 rounded-none`}
+          variant="ghost"
+          className={compact ? 'min-w-[110px] text-xs' : 'min-w-[130px]'}
           value={period}
           onChange={(value) => {
             if (value === 'today') {
