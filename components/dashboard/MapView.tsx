@@ -2,18 +2,22 @@
 
 import { useMemo, useState, useCallback, useEffect, useRef } from 'react'
 import MapGL, { Source, Layer, type MapRef } from 'react-map-gl/maplibre'
-import type { MapLayerMouseEvent } from 'maplibre-gl'
+import type { MapLayerMouseEvent, StyleSpecification } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { formatNumber } from '@ciphera-net/ui'
 import { feature } from 'topojson-client'
 import type { Topology, GeometryCollection } from 'topojson-specification'
 
-const STYLE_URL = 'https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json'
 const COUNTRIES_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json'
+
+const EMPTY_STYLE: StyleSpecification = {
+  version: 8,
+  sources: {},
+  layers: [{ id: 'background', type: 'background', paint: { 'background-color': 'rgba(0,0,0,0)' } }],
+}
 
 const INITIAL_VIEW = { longitude: 20, latitude: 25, zoom: 1.3 }
 
-// ISO 3166-1 numeric → alpha-2 mapping (used by world-atlas)
 const NUM_TO_ALPHA2: Record<string, string> = {
   '004':'AF','008':'AL','012':'DZ','016':'AS','020':'AD','024':'AO','028':'AG','031':'AZ','032':'AR','036':'AU',
   '040':'AT','044':'BS','048':'BH','050':'BD','051':'AM','052':'BB','056':'BE','060':'BM','064':'BT','068':'BO',
@@ -64,8 +68,7 @@ export default function MapView({ data, className, formatValue = formatNumber }:
       .then((topo: Topology) => {
         const countries = feature(topo, topo.objects.countries as GeometryCollection)
         for (const f of countries.features) {
-          const alpha2 = NUM_TO_ALPHA2[f.id as string] || ''
-          f.properties = { ...f.properties, alpha2 }
+          f.properties = { ...f.properties, alpha2: NUM_TO_ALPHA2[f.id as string] || '' }
         }
         setGeoData(countries as GeoJSON.FeatureCollection)
       })
@@ -89,7 +92,7 @@ export default function MapView({ data, className, formatValue = formatNumber }:
       features: geoData.features.map((f) => {
         const alpha2 = f.properties?.alpha2 as string
         const value = trafficMap[alpha2] || 0
-        const intensity = value > 0 ? 0.12 + (value / max) * 0.65 : 0
+        const intensity = value > 0 ? 0.15 + (value / max) * 0.65 : 0
         return { ...f, properties: { ...f.properties, intensity, value } }
       }),
     }
@@ -98,42 +101,34 @@ export default function MapView({ data, className, formatValue = formatNumber }:
   const handleMouseMove = useCallback((e: MapLayerMouseEvent) => {
     const f = e.features?.[0]
     if (f?.properties?.alpha2 && f.properties.value > 0) {
-      setTooltip({
-        x: e.point.x,
-        y: e.point.y,
-        country: f.properties.alpha2,
-        pageviews: f.properties.value,
-      })
+      setTooltip({ x: e.point.x, y: e.point.y, country: f.properties.alpha2, pageviews: f.properties.value })
+      if (mapRef.current) mapRef.current.getCanvas().style.cursor = 'pointer'
     } else {
       setTooltip(null)
+      if (mapRef.current) mapRef.current.getCanvas().style.cursor = ''
     }
   }, [])
 
-  const handleMouseLeave = useCallback(() => setTooltip(null), [])
+  const handleMouseLeave = useCallback(() => {
+    setTooltip(null)
+    if (mapRef.current) mapRef.current.getCanvas().style.cursor = ''
+  }, [])
 
   return (
-    <div className={className} style={{ width: '100%', height: '100%', minHeight: 260, position: 'relative' }}>
+    <div className={className} style={{ width: '100%', height: '100%', minHeight: 260, position: 'relative', overflow: 'hidden' }}>
       <MapGL
         ref={mapRef}
         initialViewState={INITIAL_VIEW}
-        style={{ width: '100%', height: '100%', borderRadius: 12 }}
-        mapStyle={STYLE_URL}
+        style={{ width: '100%', height: '100%' }}
+        mapStyle={EMPTY_STYLE}
         attributionControl={false}
         interactiveLayerIds={coloredGeoData ? ['country-fill'] : []}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        onLoad={(e) => {
-          const map = e.target
-          const bg = map.getLayer('background')
-          if (bg) map.setPaintProperty('background', 'background-color', 'rgba(0,0,0,0)')
-          for (const layer of map.getStyle().layers) {
-            if (layer.id.startsWith('water')) {
-              map.setPaintProperty(layer.id, 'fill-color', 'rgba(0,0,0,0)')
-            }
-          }
-        }}
         maxZoom={6}
         minZoom={1}
+        dragRotate={false}
+        touchZoomRotate={false}
       >
         {coloredGeoData && (
           <Source id="countries" type="geojson" data={coloredGeoData}>
@@ -145,12 +140,12 @@ export default function MapView({ data, className, formatValue = formatNumber }:
                   'case',
                   ['>', ['get', 'intensity'], 0],
                   ['interpolate', ['linear'], ['get', 'intensity'],
-                    0.12, 'rgba(249, 115, 22, 0.12)',
-                    0.35, 'rgba(249, 115, 22, 0.30)',
-                    0.55, 'rgba(249, 115, 22, 0.50)',
-                    0.77, 'rgba(249, 115, 22, 0.70)',
+                    0.15, 'rgba(249, 115, 22, 0.15)',
+                    0.40, 'rgba(249, 115, 22, 0.35)',
+                    0.60, 'rgba(249, 115, 22, 0.55)',
+                    0.80, 'rgba(249, 115, 22, 0.75)',
                   ],
-                  'rgba(255, 255, 255, 0.03)',
+                  'rgba(255, 255, 255, 0.04)',
                 ],
               }}
             />
@@ -158,7 +153,7 @@ export default function MapView({ data, className, formatValue = formatNumber }:
               id="country-border"
               type="line"
               paint={{
-                'line-color': 'rgba(255, 255, 255, 0.08)',
+                'line-color': 'rgba(255, 255, 255, 0.06)',
                 'line-width': 0.5,
               }}
             />
@@ -168,7 +163,7 @@ export default function MapView({ data, className, formatValue = formatNumber }:
 
       {tooltip && (
         <div
-          className="absolute z-10 px-3 py-2 text-xs font-medium text-white bg-neutral-900/90 border border-neutral-700 rounded-lg shadow-lg backdrop-blur-sm pointer-events-none"
+          className="absolute z-10 px-3 py-2 text-xs font-medium text-white bg-neutral-800/95 border border-neutral-700 rounded-lg shadow-lg backdrop-blur-sm pointer-events-none"
           style={{ left: tooltip.x + 12, top: tooltip.y - 12 }}
         >
           <span>{getCountryName(tooltip.country)}</span>
