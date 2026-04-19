@@ -37,7 +37,10 @@ export async function POST(request: Request) {
   try {
     const res = await fetch(`${AUTH_API_URL}/api/v1/auth/refresh`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': request.headers.get('user-agent') || '',
+      },
       body: JSON.stringify({
         refresh_token: refreshToken,
         ...(previousOrgId ? { organization_id: previousOrgId } : {}),
@@ -53,7 +56,6 @@ export async function POST(request: Request) {
 
     if (!res.ok) {
       cookieStore.set('access_token', '', { maxAge: 0, path: '/', domain: cookieDomain })
-      cookieStore.set('refresh_token', '', { maxAge: 0, path: '/', domain: cookieDomain })
       return NextResponse.json({ error: 'Refresh failed' }, { status: 401 })
     }
 
