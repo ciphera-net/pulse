@@ -375,7 +375,6 @@ export default function SiteDashboardPage() {
 
   const toolbarControls = (compact: boolean) => (
     <>
-      <FilterPanel filters={filters} onApply={handleApplyFilters} onFetchSuggestions={handleFetchSuggestions} />
       {!compact && (
         <div className="flex items-center gap-2">
           <span className="relative flex h-2 w-2">
@@ -386,14 +385,6 @@ export default function SiteDashboardPage() {
         </div>
       )}
       <div className="flex-1" />
-      <button
-        onClick={() => setIsExportModalOpen(true)}
-        className={`hidden md:flex items-center justify-center text-neutral-400 hover:text-white hover:bg-white/[0.06] rounded-lg transition-colors ease-apple ${compact ? 'w-8 h-8' : 'gap-2 px-3 h-9 bg-brand-orange hover:bg-brand-orange-hover text-white'}`}
-        aria-label="Export"
-      >
-        <DownloadIcon className="w-4 h-4" />
-        {!compact && <span className="text-sm">Export</span>}
-      </button>
       <Select
         variant="input"
         className={compact ? 'min-w-[120px] text-xs' : 'min-w-[140px]'}
@@ -475,6 +466,7 @@ export default function SiteDashboardPage() {
           <ChevronRightIcon className={compact ? 'w-3.5 h-3.5' : 'w-4 h-4'} weight="bold" />
         </button>
       </div>
+      <FilterPanel filters={filters} onApply={handleApplyFilters} onFetchSuggestions={handleFetchSuggestions} />
     </>
   )
 
@@ -503,6 +495,7 @@ export default function SiteDashboardPage() {
           setMultiDayInterval={setMultiDayInterval}
           lastUpdatedAt={lastUpdatedAtRef.current}
           engagementData={engagementData}
+          onExport={() => setIsExportModalOpen(true)}
         />
       </div>
 
