@@ -3,6 +3,7 @@
 
 import { logger } from '@/lib/utils/logger'
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
   getTopPages,
@@ -344,20 +345,6 @@ export default function SiteDashboardPage() {
   const showSkeleton = useMinimumLoading(dashboardLoading && !dashboard)
   const fadeClass = useSkeletonFade(showSkeleton)
 
-  const toolbarSentinelRef = useRef<HTMLDivElement>(null)
-  const [isToolbarSticky, setIsToolbarSticky] = useState(false)
-
-  useEffect(() => {
-    const sentinel = toolbarSentinelRef.current
-    if (!sentinel) return
-    const observer = new IntersectionObserver(
-      ([entry]) => setIsToolbarSticky(!entry.isIntersecting),
-      { threshold: 0 }
-    )
-    observer.observe(sentinel)
-    return () => observer.disconnect()
-  }, [])
-
   if (showSkeleton) {
     return <DashboardSkeleton />
   }
@@ -370,129 +357,112 @@ export default function SiteDashboardPage() {
     )
   }
 
+  const topbarSlot = typeof document !== 'undefined' ? document.getElementById('topbar-controls') : null
+
   return (
     <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
-      <div ref={toolbarSentinelRef} className="h-0" />
-      <div className={`mb-3 sticky top-0 z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 transition-[background-color,backdrop-filter] duration-200 ${isToolbarSticky ? 'bg-neutral-950/70 backdrop-blur-2xl border-b border-white/[0.04]' : ''}`}>
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 flex-wrap">
-            <FilterPanel filters={filters} onApply={handleApplyFilters} onFetchSuggestions={handleFetchSuggestions} />
-
-            {/* Realtime Indicator */}
-            <div className="flex items-center gap-2">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-              </span>
-              <span className="text-sm text-neutral-400 tabular-nums">
-                {realtime} current visitors
-              </span>
-            </div>
+      {topbarSlot && createPortal(
+        <>
+          <FilterPanel filters={filters} onApply={handleApplyFilters} onFetchSuggestions={handleFetchSuggestions} />
+          <button
+            onClick={() => setIsExportModalOpen(true)}
+            className="hidden md:flex w-8 h-8 items-center justify-center text-neutral-400 hover:text-white hover:bg-white/[0.06] rounded-lg transition-colors ease-apple"
+            aria-label="Export"
+          >
+            <DownloadIcon className="w-4 h-4" />
+          </button>
+          <Select
+            variant="input"
+            className="min-w-[120px] text-xs"
+            value={period}
+            onChange={(value) => {
+              if (value === 'today') {
+                const today = formatDate(new Date())
+                const range = { start: today, end: today }
+                setDateRange(range)
+                setPeriod('today')
+                saveSettings('today', range)
+              } else if (value === 'yesterday') {
+                const range = getYesterdayRange()
+                setDateRange(range)
+                setPeriod('yesterday')
+                saveSettings('yesterday', range)
+              } else if (value === '1h') {
+                const range = getLast1HourRange()
+                setDateRange(range)
+                setTodayInterval('minute')
+                setPeriod('1h')
+                saveSettings('1h', range)
+              } else if (value === '24h') {
+                const range = getLast24HoursRange()
+                setDateRange(range)
+                setPeriod('24h')
+                saveSettings('24h', range)
+              } else if (value === '7') {
+                const range = getDateRange(7)
+                setDateRange(range)
+                setPeriod('7')
+                saveSettings('7', range)
+              } else if (value === 'week') {
+                const range = getThisWeekRange()
+                setDateRange(range)
+                setPeriod('week')
+                saveSettings('week', range)
+              } else if (value === '30') {
+                const range = getDateRange(30)
+                setDateRange(range)
+                setPeriod('30')
+                saveSettings('30', range)
+              } else if (value === 'month') {
+                const range = getThisMonthRange()
+                setDateRange(range)
+                setPeriod('month')
+                saveSettings('month', range)
+              } else if (value === 'year') {
+                const range = getThisYearRange()
+                setDateRange(range)
+                setPeriod('year')
+                saveSettings('year', range)
+              } else if (value === 'custom') {
+                setIsDatePickerOpen(true)
+              }
+            }}
+            options={[
+              { value: '1h', label: 'Last 1 hour' },
+              { value: '24h', label: 'Last 24 hours' },
+              { value: 'divider-0', label: '', divider: true },
+              { value: 'today', label: 'Today' },
+              { value: 'yesterday', label: 'Yesterday' },
+              { value: '7', label: 'Last 7 days' },
+              { value: '30', label: 'Last 30 days' },
+              { value: 'divider-1', label: '', divider: true },
+              { value: 'week', label: 'This week' },
+              { value: 'month', label: 'This month' },
+              { value: 'year', label: 'This year' },
+              { value: 'divider-2', label: '', divider: true },
+              { value: 'custom', label: 'Custom' },
+            ]}
+          />
+          <div className="flex items-center rounded-md border border-neutral-700 overflow-hidden">
+            <button
+              onClick={() => shiftPeriod(-1)}
+              className="p-1 text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
+              aria-label="Previous period"
+            >
+              <ChevronLeftIcon className="w-3.5 h-3.5" weight="bold" />
+            </button>
+            <div className="w-px h-4 bg-neutral-700" />
+            <button
+              onClick={() => shiftPeriod(1)}
+              className="p-1 text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
+              aria-label="Next period"
+            >
+              <ChevronRightIcon className="w-3.5 h-3.5" weight="bold" />
+            </button>
           </div>
-
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={() => setIsExportModalOpen(true)}
-                  variant="primary"
-                  className="hidden md:inline-flex gap-2 text-sm"
-                >
-                  <DownloadIcon className="w-4 h-4" />
-                  Export
-                </Button>
-                <Select
-                  variant="input"
-                  className="min-w-[140px]"
-                  value={period}
-                  onChange={(value) => {
-                    if (value === 'today') {
-                      const today = formatDate(new Date())
-                      const range = { start: today, end: today }
-                      setDateRange(range)
-                      setPeriod('today')
-                      saveSettings('today', range)
-                    } else if (value === 'yesterday') {
-                      const range = getYesterdayRange()
-                      setDateRange(range)
-                      setPeriod('yesterday')
-                      saveSettings('yesterday', range)
-                    } else if (value === '1h') {
-                      const range = getLast1HourRange()
-                      setDateRange(range)
-                      setTodayInterval('minute')
-                      setPeriod('1h')
-                      saveSettings('1h', range)
-                    } else if (value === '24h') {
-                      const range = getLast24HoursRange()
-                      setDateRange(range)
-                      setPeriod('24h')
-                      saveSettings('24h', range)
-                    } else if (value === '7') {
-                      const range = getDateRange(7)
-                      setDateRange(range)
-                      setPeriod('7')
-                      saveSettings('7', range)
-                    } else if (value === 'week') {
-                      const range = getThisWeekRange()
-                      setDateRange(range)
-                      setPeriod('week')
-                      saveSettings('week', range)
-                    } else if (value === '30') {
-                      const range = getDateRange(30)
-                      setDateRange(range)
-                      setPeriod('30')
-                      saveSettings('30', range)
-                    } else if (value === 'month') {
-                      const range = getThisMonthRange()
-                      setDateRange(range)
-                      setPeriod('month')
-                      saveSettings('month', range)
-                    } else if (value === 'year') {
-                      const range = getThisYearRange()
-                      setDateRange(range)
-                      setPeriod('year')
-                      saveSettings('year', range)
-                    } else if (value === 'custom') {
-                      setIsDatePickerOpen(true)
-                    }
-                  }}
-                  options={[
-                    { value: '1h', label: 'Last 1 hour' },
-                    { value: '24h', label: 'Last 24 hours' },
-                    { value: 'divider-0', label: '', divider: true },
-                    { value: 'today', label: 'Today' },
-                    { value: 'yesterday', label: 'Yesterday' },
-                    { value: '7', label: 'Last 7 days' },
-                    { value: '30', label: 'Last 30 days' },
-                    { value: 'divider-1', label: '', divider: true },
-                    { value: 'week', label: 'This week' },
-                    { value: 'month', label: 'This month' },
-                    { value: 'year', label: 'This year' },
-                    { value: 'divider-2', label: '', divider: true },
-                    { value: 'custom', label: 'Custom' },
-                  ]}
-                />
-                <div className="flex items-center rounded-lg border border-neutral-700 overflow-hidden">
-                  <button
-                    onClick={() => shiftPeriod(-1)}
-                    className="p-1.5 text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
-                    aria-label="Previous period"
-                  >
-                    <ChevronLeftIcon className="w-4 h-4" weight="bold" />
-                  </button>
-                  <div className="w-px h-5 bg-neutral-700" />
-                  <button
-                    onClick={() => shiftPeriod(1)}
-                    className="p-1.5 text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
-                    aria-label="Next period"
-                  >
-                    <ChevronRightIcon className="w-4 h-4" weight="bold" />
-                  </button>
-                </div>
-              </div>
-            </div>
-        </div>
-      </div>
+        </>,
+        topbarSlot
+      )}
 
       {/* Advanced Chart with Integrated Stats */}
       <div className="mb-3">

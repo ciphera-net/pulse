@@ -365,16 +365,18 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
         </nav>
       </div>
 
-      {/* Live indicator — tied to dashboard data refresh (60s cycle) */}
-      {siteId && lastUpdatedAt != null && (
-        <div className="flex items-center gap-1.5 text-xs text-neutral-500">
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
-            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
-          </span>
-          Live · {formatUpdatedAgo(lastUpdatedAt)}
-        </div>
-      )}
+      <div className="flex items-center gap-2">
+        <div id="topbar-controls" className="flex items-center gap-2" />
+        {siteId && lastUpdatedAt != null && (
+          <div className="flex items-center gap-1.5 text-xs text-neutral-500 shrink-0">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
+            </span>
+            Live · {formatUpdatedAgo(lastUpdatedAt)}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
