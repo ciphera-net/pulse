@@ -393,11 +393,11 @@ export default function SiteDashboardPage() {
       )}
       <div className="flex-1" />
       <FilterPanel filters={filters} onApply={handleApplyFilters} onFetchSuggestions={handleFetchSuggestions} />
-      <div className="flex items-center rounded-lg border border-neutral-700">
-        <button onClick={() => shiftPeriod(-1)} className={`${compact ? 'p-1' : 'p-1.5'} text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors`} aria-label="Previous period">
+      <div className="flex items-center h-10 rounded-lg border border-white/[0.08] bg-neutral-900/80 shadow-sm">
+        <button onClick={() => shiftPeriod(-1)} className={`${compact ? 'px-1.5' : 'px-2'} h-full text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors rounded-l-lg ease-apple`} aria-label="Previous period">
           <ChevronLeftIcon className={compact ? 'w-3.5 h-3.5' : 'w-4 h-4'} weight="bold" />
         </button>
-        <div className="w-px h-full bg-neutral-700" />
+        <div className="w-px h-5 bg-white/[0.08]" />
         <Select
           variant="ghost"
           className={compact ? 'min-w-[110px] text-xs' : 'min-w-[130px]'}
@@ -470,8 +470,8 @@ export default function SiteDashboardPage() {
             { value: 'custom', label: 'Custom' },
           ]}
         />
-        <div className="w-px h-full bg-neutral-700" />
-        <button onClick={() => shiftPeriod(1)} className={`${compact ? 'p-1' : 'p-1.5'} text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors`} aria-label="Next period">
+        <div className="w-px h-5 bg-white/[0.08]" />
+        <button onClick={() => shiftPeriod(1)} className={`${compact ? 'px-1.5' : 'px-2'} h-full text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors rounded-r-lg ease-apple`} aria-label="Next period">
           <ChevronRightIcon className={compact ? 'w-3.5 h-3.5' : 'w-4 h-4'} weight="bold" />
         </button>
       </div>
@@ -481,7 +481,7 @@ export default function SiteDashboardPage() {
   return (
     <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
       {topbarSlot && createPortal(
-        <div className={`flex items-center gap-2 transition-all duration-200 ease-apple ${toolbarScrolled ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1 pointer-events-none'}`}>
+        <div className={`flex items-center gap-2 transition-all duration-300 ease-apple ${toolbarScrolled ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 -translate-y-3 scale-95 pointer-events-none'}`}>
           {toolbarControls(true)}
         </div>,
         topbarSlot
