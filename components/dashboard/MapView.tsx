@@ -122,12 +122,12 @@ function MapView({ data, className, formatValue = formatNumber }: MapViewProps) 
       .on('mouseover', function (event, d) {
         const alpha2 = getAlpha2(d)
         const value = trafficMap[alpha2] || 0
+        highlightRef.current
+          ?.attr('d', this.getAttribute('d'))
+          .style('stroke', value > 0 ? 'rgba(249,115,22,0.6)' : 'rgba(255,255,255,0.15)')
         if (value > 0) {
           const [x, y] = d3.pointer(event, svgRef.current?.parentNode)
           setTooltip({ x, y, name: d.properties.name, value })
-          highlightRef.current
-            ?.attr('d', this.getAttribute('d'))
-            .style('stroke', 'rgba(249,115,22,0.6)')
         }
       })
       .on('mousemove', function (event) {
@@ -155,7 +155,7 @@ function MapView({ data, className, formatValue = formatNumber }: MapViewProps) 
             style={{ left: tooltip.x, top: tooltip.y - 36 }}
           >
             <span>{tooltip.name}</span>
-            <span className="ml-2 text-brand-orange font-bold">{formatValue(tooltip.value)}</span>
+            <span className="ml-2 text-brand-orange font-bold">{formatValue(tooltip.value)} {tooltip.value === 1 ? 'visitor' : 'visitors'}</span>
           </div>
         )}
       </div>
