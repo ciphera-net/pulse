@@ -6,7 +6,7 @@ import { AreaChart as VisxAreaChart, Area as VisxArea, Grid as VisxGrid, XAxis a
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import type { EngagementPercentilesData } from '@/lib/api/stats'
 import { formatNumber, formatDuration } from '@ciphera-net/ui'
-import { Select } from '@ciphera-net/ui'
+import { Select, DownloadIcon } from '@ciphera-net/ui'
 import { ArrowUpRight, ArrowDownRight } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { SPRING, EASE_APPLE } from '@/lib/motion'
@@ -47,6 +47,7 @@ interface ChartProps {
   setMultiDayInterval: (interval: 'hour' | 'day') => void
   lastUpdatedAt?: number | null
   engagementData?: EngagementPercentilesData | null
+  onExport?: () => void
 }
 
 type MetricType = 'pageviews' | 'visitors' | 'pages_per_visit' | 'bounce_rate' | 'avg_duration' | 'engagement'
@@ -155,6 +156,7 @@ export default function Chart({
   setMultiDayInterval,
   lastUpdatedAt,
   engagementData,
+  onExport,
 }: ChartProps) {
   const [metric, setMetric] = useState<MetricType>('visitors')
   const chartContainerRef = useRef<HTMLDivElement>(null)
@@ -310,6 +312,15 @@ export default function Chart({
               </span>
             </div>
             <div className="flex items-center gap-2">
+              {onExport && (
+                <button
+                  onClick={onExport}
+                  className="w-7 h-7 flex items-center justify-center text-neutral-500 hover:text-white hover:bg-white/[0.06] rounded-md transition-colors ease-apple"
+                  aria-label="Export"
+                >
+                  <DownloadIcon className="w-3.5 h-3.5" />
+                </button>
+              )}
               {dateRange.start === dateRange.end ? (
                 <Select
                   variant="input"
