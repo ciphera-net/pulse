@@ -356,10 +356,25 @@ export default function SiteDashboardPage() {
     )
   }
 
+  const toolbarSentinelRef = useRef<HTMLDivElement>(null)
+  const [isToolbarSticky, setIsToolbarSticky] = useState(false)
+
+  useEffect(() => {
+    const sentinel = toolbarSentinelRef.current
+    if (!sentinel) return
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsToolbarSticky(!entry.isIntersecting),
+      { threshold: 0 }
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [])
+
   return (
     <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
-      <div className="mb-3">
-        <div className="flex items-center justify-between mb-3 gap-3">
+      <div ref={toolbarSentinelRef} className="h-0" />
+      <div className={`mb-3 sticky top-0 z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 transition-[background-color,backdrop-filter] duration-200 ${isToolbarSticky ? 'bg-neutral-950/70 backdrop-blur-2xl border-b border-white/[0.04]' : ''}`}>
+        <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 flex-wrap">
             <FilterPanel filters={filters} onApply={handleApplyFilters} onFetchSuggestions={handleFetchSuggestions} />
 
