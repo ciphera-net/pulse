@@ -350,18 +350,23 @@ export default function SiteDashboardPage() {
   const [topbarSlot, setTopbarSlot] = useState<HTMLElement | null>(null)
 
   useEffect(() => {
+    if (showSkeleton) return
     setTopbarSlot(document.getElementById('topbar-controls'))
+    const scroller = document.getElementById('dashboard-scroll-container')
+    if (!scroller) return
 
-    const el = toolbarRef.current
-    const scrollRoot = document.getElementById('dashboard-scroll-container')
-    if (!el) return
-    const observer = new IntersectionObserver(
-      ([entry]) => setToolbarScrolled(!entry.isIntersecting),
-      { threshold: 0, root: scrollRoot }
-    )
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [])
+    const onScroll = () => {
+      const toolbar = toolbarRef.current
+      if (!toolbar) return
+      const rect = toolbar.getBoundingClientRect()
+      const containerRect = scroller.getBoundingClientRect()
+      setToolbarScrolled(rect.bottom < containerRect.top + 8)
+    }
+
+    scroller.addEventListener('scroll', onScroll, { passive: true })
+    onScroll()
+    return () => scroller.removeEventListener('scroll', onScroll)
+  }, [showSkeleton])
 
   if (showSkeleton) {
     return <DashboardSkeleton />
