@@ -1,10 +1,7 @@
 "use client";
 
-import { localPoint } from "@visx/event";
-import { LinearGradient as VisxLinearGradient } from "@visx/gradient";
-import { GridColumns, GridRows } from "@visx/grid";
-import { ParentSize } from "@visx/responsive";
-import { scaleBand, scaleLinear } from "@visx/scale";
+import { scaleBand, scaleLinear } from "d3-scale";
+import { localPoint, GridColumns, GridRows, ParentSize, LinearGradient as VisxLinearGradient } from "@/lib/charts/primitives";
 import {
   AnimatePresence,
   motion,
@@ -523,7 +520,8 @@ export function Grid({
       )}
       {vertical && columnScale && typeof columnScale === "function" && (
         <g mask={fadeVertical ? `url(#${vMaskId})` : undefined}>
-          <GridColumns height={innerHeight} numTicks={numTicksColumns} scale={columnScale} stroke={stroke} strokeDasharray={strokeDasharray} strokeOpacity={strokeOpacity} strokeWidth={strokeWidth} />
+          {/* biome-ignore lint/suspicious/noExplicitAny: union scale type narrowed by typeof guard above */}
+          <GridColumns height={innerHeight} numTicks={numTicksColumns} scale={columnScale as any} stroke={stroke} strokeDasharray={strokeDasharray} strokeOpacity={strokeOpacity} strokeWidth={strokeWidth} />
         </g>
       )}
     </g>
@@ -846,7 +844,7 @@ function BarChartInner({
 
   const xScale = useMemo(() => {
     const domain = data.map((d) => String(d[xDataKey] ?? ""));
-    return scaleBand<string>({ range: isHorizontal ? [0, innerHeight] : [0, innerWidth], domain, padding: barGap });
+    return scaleBand<string>().range(isHorizontal ? [0, innerHeight] : [0, innerWidth]).domain(domain).padding(barGap);
   }, [data, xDataKey, innerWidth, innerHeight, barGap, isHorizontal]);
 
   const bandWidth = xScale.bandwidth();
@@ -872,7 +870,7 @@ function BarChartInner({
       for (const bar of bars) { for (const d of data) { const v = d[bar.dataKey]; if (typeof v === "number" && v > maxValue) maxValue = v; } }
     }
     if (maxValue === 0) maxValue = 100;
-    return scaleLinear<number>({ range: isHorizontal ? [innerWidth, 0] : [innerHeight, 0], domain: [0, maxValue * 1.1], nice: true });
+    return scaleLinear<number>().range(isHorizontal ? [innerWidth, 0] : [innerHeight, 0]).domain([0, maxValue * 1.1]).nice();
   }, [data, bars, stackGroups, innerWidth, innerHeight, stacked, isHorizontal]);
 
   // Compute per-dataIndex, per-dataKey pixel offsets for stacked bars
