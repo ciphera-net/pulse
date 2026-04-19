@@ -421,6 +421,7 @@ export default function DashboardShell({
           >
             <ContentHeader onMobileMenuOpen={openMobile} />
             <main
+              id="dashboard-scroll-container"
               className="relative flex-1 overflow-y-auto overflow-x-hidden pt-4"
               style={{
                 maskImage: 'linear-gradient(to bottom, transparent 0, black 24px, black calc(100% - 24px), transparent 100%)',
