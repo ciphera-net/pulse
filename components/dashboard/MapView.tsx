@@ -1,25 +1,10 @@
 'use client'
 
-import { useMemo, useState, useCallback, useEffect, useRef } from 'react'
-import MapGL, { Source, Layer, type MapRef } from 'react-map-gl/maplibre'
-import type { MapLayerMouseEvent, StyleSpecification } from 'maplibre-gl'
-import 'maplibre-gl/dist/maplibre-gl.css'
+import { useMemo, useState, useCallback, memo } from 'react'
+import { ComposableMap, Geographies, Geography } from 'react-simple-maps'
 import { formatNumber } from '@ciphera-net/ui'
-import { feature } from 'topojson-client'
-import type { Topology, GeometryCollection } from 'topojson-specification'
 
-const COUNTRIES_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json'
-
-const EMPTY_STYLE: StyleSpecification = {
-  version: 8,
-  sources: {},
-  layers: [{ id: 'background', type: 'background', paint: { 'background-color': 'rgba(0,0,0,0)' } }],
-}
-
-const INITIAL_VIEW = { longitude: 20, latitude: 15, zoom: 0.55 }
-
-// Countries that cross the antimeridian — their polygons stretch across the map
-const ANTIMERIDIAN_COUNTRIES = new Set(['010', '016', '028', '242', '258', '296', '520', '570', '583', '584', '585', '643', '798', '876', '882'])
+const GEO_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json'
 
 const NUM_TO_ALPHA2: Record<string, string> = {
   '004':'AF','008':'AL','012':'DZ','016':'AS','020':'AD','024':'AO','028':'AG','031':'AZ','032':'AR','036':'AU',
@@ -46,54 +31,6 @@ const NUM_TO_ALPHA2: Record<string, string> = {
   '854':'BF','858':'UY','860':'UZ','862':'VE','876':'WF','882':'WS','887':'YE','894':'ZM',
 }
 
-function splitAntimeridianPolygon(coords: number[][][]): number[][][][] {
-  const west: number[][][] = []
-  const east: number[][][] = []
-  for (const ring of coords) {
-    const wRing: number[][] = []
-    const eRing: number[][] = []
-    for (const [lng, lat] of ring) {
-      if (lng > 0) { eRing.push([lng, lat]); wRing.push([-180, lat]) }
-      else { wRing.push([lng, lat]); eRing.push([180, lat]) }
-    }
-    if (eRing.length > 2) east.push(eRing)
-    if (wRing.length > 2) west.push(wRing)
-  }
-  return [east, west].filter((p) => p.length > 0)
-}
-
-function fixAntimeridian(fc: GeoJSON.FeatureCollection): GeoJSON.FeatureCollection {
-  const features: GeoJSON.Feature[] = []
-  for (const f of fc.features) {
-    if (!ANTIMERIDIAN_COUNTRIES.has(f.id as string)) {
-      features.push(f)
-      continue
-    }
-    const geom = f.geometry
-    if (geom.type === 'Polygon') {
-      const parts = splitAntimeridianPolygon(geom.coordinates)
-      for (const coords of parts) {
-        features.push({ ...f, geometry: { type: 'Polygon', coordinates: coords } })
-      }
-    } else if (geom.type === 'MultiPolygon') {
-      for (const polygon of geom.coordinates) {
-        const hasAnti = polygon.some((ring) => ring.some(([lng]) => lng > 170) && ring.some(([lng]) => lng < -170))
-        if (hasAnti) {
-          const parts = splitAntimeridianPolygon(polygon)
-          for (const coords of parts) {
-            features.push({ ...f, geometry: { type: 'Polygon', coordinates: coords } })
-          }
-        } else {
-          features.push({ ...f, geometry: { type: 'Polygon', coordinates: polygon } })
-        }
-      }
-    } else {
-      features.push(f)
-    }
-  }
-  return { type: 'FeatureCollection', features }
-}
-
 interface MapViewProps {
   data: Array<{ country: string; pageviews: number }>
   className?: string
@@ -108,23 +45,16 @@ function getCountryName(code: string): string {
   }
 }
 
-export default function MapView({ data, className, formatValue = formatNumber }: MapViewProps) {
-  const mapRef = useRef<MapRef>(null)
-  const [geoData, setGeoData] = useState<GeoJSON.FeatureCollection | null>(null)
-  const [tooltip, setTooltip] = useState<{ x: number; y: number; country: string; pageviews: number } | null>(null)
+function getColor(intensity: number): string {
+  if (intensity <= 0) return 'rgba(255, 255, 255, 0.04)'
+  if (intensity < 0.3) return 'rgba(249, 115, 22, 0.18)'
+  if (intensity < 0.5) return 'rgba(249, 115, 22, 0.35)'
+  if (intensity < 0.7) return 'rgba(249, 115, 22, 0.55)'
+  return 'rgba(249, 115, 22, 0.75)'
+}
 
-  useEffect(() => {
-    fetch(COUNTRIES_URL)
-      .then((r) => r.json())
-      .then((topo: Topology) => {
-        const countries = feature(topo, topo.objects.countries as GeometryCollection)
-        for (const f of countries.features) {
-          f.properties = { ...f.properties, alpha2: NUM_TO_ALPHA2[f.id as string] || '' }
-        }
-        setGeoData(fixAntimeridian(countries as GeoJSON.FeatureCollection))
-      })
-      .catch(() => {})
-  }, [])
+function MapView({ data, className, formatValue = formatNumber }: MapViewProps) {
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; country: string; pageviews: number } | null>(null)
 
   const trafficMap = useMemo(() => {
     const map: Record<string, number> = {}
@@ -136,92 +66,59 @@ export default function MapView({ data, className, formatValue = formatNumber }:
 
   const max = useMemo(() => Math.max(1, ...Object.values(trafficMap)), [trafficMap])
 
-  const coloredGeoData = useMemo(() => {
-    if (!geoData) return null
-    return {
-      ...geoData,
-      features: geoData.features.map((f) => {
-        const alpha2 = f.properties?.alpha2 as string
-        const value = trafficMap[alpha2] || 0
-        const intensity = value > 0 ? 0.15 + (value / max) * 0.65 : 0
-        return { ...f, properties: { ...f.properties, intensity, value } }
-      }),
-    }
-  }, [geoData, trafficMap, max])
-
-  const handleMouseMove = useCallback((e: MapLayerMouseEvent) => {
-    const f = e.features?.[0]
-    if (f?.properties?.alpha2 && f.properties.value > 0) {
-      setTooltip({ x: e.point.x, y: e.point.y, country: f.properties.alpha2, pageviews: f.properties.value })
-      if (mapRef.current) mapRef.current.getCanvas().style.cursor = 'pointer'
-    } else {
-      setTooltip(null)
-      if (mapRef.current) mapRef.current.getCanvas().style.cursor = ''
+  const handleMouseEnter = useCallback((alpha2: string, value: number, e: React.MouseEvent) => {
+    if (value > 0) {
+      setTooltip({ x: e.clientX, y: e.clientY, country: alpha2, pageviews: value })
     }
   }, [])
 
-  const handleMouseLeave = useCallback(() => {
-    setTooltip(null)
-    if (mapRef.current) mapRef.current.getCanvas().style.cursor = ''
+  const handleMouseMove = useCallback((alpha2: string, value: number, e: React.MouseEvent) => {
+    if (value > 0) {
+      setTooltip({ x: e.clientX, y: e.clientY, country: alpha2, pageviews: value })
+    }
   }, [])
+
+  const handleMouseLeave = useCallback(() => setTooltip(null), [])
 
   return (
-    <div className={className} style={{ width: '100%', height: '100%', minHeight: 280, position: 'relative', overflow: 'hidden' }}>
-      <MapGL
-        ref={mapRef}
-        initialViewState={INITIAL_VIEW}
+    <div className={className} style={{ width: '100%', height: '100%', position: 'relative', cursor: 'default' }}>
+      <ComposableMap
+        projectionConfig={{ rotate: [-12, 0, 0], scale: 145 }}
         style={{ width: '100%', height: '100%' }}
-        mapStyle={EMPTY_STYLE}
-        attributionControl={false}
-        renderWorldCopies={false}
-        interactiveLayerIds={coloredGeoData ? ['country-fill'] : []}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-        scrollZoom={false}
-        boxZoom={false}
-        doubleClickZoom={false}
-        dragPan={false}
-        dragRotate={false}
-        touchZoomRotate={false}
-        keyboard={false}
-        maxZoom={0.55}
-        minZoom={0.55}
       >
-        {coloredGeoData && (
-          <Source id="countries" type="geojson" data={coloredGeoData}>
-            <Layer
-              id="country-fill"
-              type="fill"
-              paint={{
-                'fill-color': [
-                  'case',
-                  ['>', ['get', 'intensity'], 0],
-                  ['interpolate', ['linear'], ['get', 'intensity'],
-                    0.15, 'rgba(249, 115, 22, 0.15)',
-                    0.40, 'rgba(249, 115, 22, 0.35)',
-                    0.60, 'rgba(249, 115, 22, 0.55)',
-                    0.80, 'rgba(249, 115, 22, 0.75)',
-                  ],
-                  'rgba(255, 255, 255, 0.04)',
-                ],
-              }}
-            />
-            <Layer
-              id="country-border"
-              type="line"
-              paint={{
-                'line-color': 'rgba(255, 255, 255, 0.06)',
-                'line-width': 0.5,
-              }}
-            />
-          </Source>
-        )}
-      </MapGL>
+        <Geographies geography={GEO_URL}>
+          {({ geographies }) =>
+            geographies.map((geo) => {
+              const alpha2 = NUM_TO_ALPHA2[geo.id] || ''
+              const value = trafficMap[alpha2] || 0
+              const intensity = value > 0 ? 0.15 + (value / max) * 0.85 : 0
+              const hasTraffic = value > 0
+              return (
+                <Geography
+                  key={geo.rsmKey}
+                  geography={geo}
+                  fill={getColor(intensity)}
+                  stroke="rgba(255, 255, 255, 0.06)"
+                  strokeWidth={0.4}
+                  style={{
+                    default: { outline: 'none', cursor: hasTraffic ? 'pointer' : 'default' },
+                    hover: { outline: 'none', fill: hasTraffic ? 'rgba(249, 115, 22, 0.85)' : 'rgba(255, 255, 255, 0.06)', cursor: hasTraffic ? 'pointer' : 'default' },
+                    pressed: { outline: 'none' },
+                  }}
+                  onMouseEnter={(e) => handleMouseEnter(alpha2, value, e)}
+                  onMouseMove={(e) => handleMouseMove(alpha2, value, e)}
+                  onMouseLeave={handleMouseLeave}
+                />
+              )
+            })
+          }
+        </Geographies>
+      </ComposableMap>
 
       {tooltip && (
         <div
-          className="absolute z-10 px-3 py-2 text-xs font-medium text-white bg-neutral-800/95 border border-neutral-700 rounded-lg shadow-lg backdrop-blur-sm pointer-events-none"
-          style={{ left: tooltip.x + 12, top: tooltip.y - 12 }}
+          className="fixed z-50 px-3 py-2 text-xs font-medium text-white bg-neutral-800/95 border border-neutral-700 rounded-lg shadow-lg backdrop-blur-sm pointer-events-none"
+          style={{ left: tooltip.x + 12, top: tooltip.y - 28 }}
         >
           <span>{getCountryName(tooltip.country)}</span>
           <span className="ml-2 text-brand-orange font-bold">{formatValue(tooltip.pageviews)}</span>
@@ -230,3 +127,5 @@ export default function MapView({ data, className, formatValue = formatNumber }:
     </div>
   )
 }
+
+export default memo(MapView)
