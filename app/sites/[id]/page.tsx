@@ -22,7 +22,7 @@ import {
 import { getDateRange, formatDate, getThisWeekRange, getThisMonthRange, getYesterdayRange, getLast24HoursRange, getLast1HourRange, getThisYearRange } from '@/lib/utils/dateRanges'
 import { toast } from '@ciphera-net/ui'
 import { Button } from '@ciphera-net/ui'
-import { Select, DatePicker, DownloadIcon } from '@ciphera-net/ui'
+import { Select, DatePicker, DownloadIcon, ChevronLeftIcon, ChevronRightIcon } from '@ciphera-net/ui'
 import dynamic from 'next/dynamic'
 import { DashboardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import FilterPanel, { type FilterSuggestion } from '@/components/dashboard/FilterPanel'
@@ -107,6 +107,24 @@ export default function SiteDashboardPage() {
   )
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
+
+  const shiftPeriod = useCallback((direction: -1 | 1) => {
+    const shift = (date: string, days: number) => {
+      const d = new Date(date + 'T00:00:00')
+      d.setDate(d.getDate() + days)
+      return formatDate(d)
+    }
+    const startDate = new Date(dateRange.start + 'T00:00:00')
+    const endDate = new Date(dateRange.end + 'T00:00:00')
+    const spanDays = Math.round((endDate.getTime() - startDate.getTime()) / 86400000) + 1
+    const offsetDays = spanDays * direction
+    const newRange = { start: shift(dateRange.start, offsetDays), end: shift(dateRange.end, offsetDays) }
+    const today = formatDate(new Date())
+    if (newRange.end > today) return
+    setDateRange(newRange)
+    setPeriod('custom')
+    saveSettings('custom', newRange)
+  }, [dateRange])
   const lastUpdatedAtRef = useRef<number | null>(null)
 
   // Dimension filters state
@@ -439,6 +457,23 @@ export default function SiteDashboardPage() {
                     { value: 'custom', label: 'Custom' },
                   ]}
                 />
+                <div className="flex items-center rounded-lg border border-neutral-700 overflow-hidden">
+                  <button
+                    onClick={() => shiftPeriod(-1)}
+                    className="p-1.5 text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
+                    aria-label="Previous period"
+                  >
+                    <ChevronLeftIcon className="w-4 h-4" weight="bold" />
+                  </button>
+                  <div className="w-px h-5 bg-neutral-700" />
+                  <button
+                    onClick={() => shiftPeriod(1)}
+                    className="p-1.5 text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
+                    aria-label="Next period"
+                  >
+                    <ChevronRightIcon className="w-4 h-4" weight="bold" />
+                  </button>
+                </div>
               </div>
             </div>
         </div>
