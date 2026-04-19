@@ -142,7 +142,7 @@ function MapView({ data, className, formatValue = formatNumber }: MapViewProps) 
 
   return (
     <div className={className} style={{ width: '100%', height: '100%', position: 'relative' }}>
-      <div className="relative flex justify-center items-center w-full" style={{ maxWidth: WIDTH }}>
+      <div className="relative flex justify-center items-center w-full mx-auto">
         <svg
           ref={svgRef}
           viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
