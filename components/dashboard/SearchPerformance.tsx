@@ -165,7 +165,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
     return (
       <div
         key={label}
-        className="interactive-row relative flex items-center justify-between h-9 group rounded-lg px-2 -mx-2"
+        className="interactive-row relative overflow-hidden flex items-center justify-between h-9 group rounded-lg px-2 -mx-2"
       >
         <div
           className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.07] border-l-2 border-brand-orange/70 rounded-md transition-[width,background-color] ease-apple"
@@ -196,7 +196,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
     return (
       <div
         key={row.country}
-        className="interactive-row relative flex items-center justify-between h-9 group rounded-lg px-2 -mx-2"
+        className="interactive-row relative overflow-hidden flex items-center justify-between h-9 group rounded-lg px-2 -mx-2"
       >
         <div
           className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.07] border-l-2 border-brand-orange/70 rounded-md transition-[width,background-color] ease-apple"
@@ -229,7 +229,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
     return (
       <div
         key={row.device}
-        className="interactive-row relative flex items-center justify-between h-9 group rounded-lg px-2 -mx-2"
+        className="interactive-row relative overflow-hidden flex items-center justify-between h-9 group rounded-lg px-2 -mx-2"
       >
         <div
           className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.07] border-l-2 border-brand-orange/70 rounded-md transition-[width,background-color] ease-apple"
@@ -260,7 +260,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
     return (
       <div
         key={row.query}
-        className="interactive-row relative flex items-center justify-between h-9 group rounded-lg px-2 -mx-2"
+        className="interactive-row relative overflow-hidden flex items-center justify-between h-9 group rounded-lg px-2 -mx-2"
       >
         <div
           className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.07] border-l-2 border-brand-orange/70 rounded-md transition-[width,background-color] ease-apple"

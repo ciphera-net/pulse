@@ -441,7 +441,7 @@ export default function Audience({ countries, cities, regions, languages, timezo
                     <div
                       key={itemKey}
                       onClick={() => canFilter && onFilter({ dimension: dim, operator: 'is', values: [filterValue!] })}
-                      className={`interactive-row relative flex items-center justify-between h-9 group rounded-lg px-2 -mx-2${canFilter ? ' cursor-pointer' : ''}`}
+                      className={`interactive-row relative overflow-hidden flex items-center justify-between h-9 group rounded-lg px-2 -mx-2${canFilter ? ' cursor-pointer' : ''}`}
                     >
                       <div
                         className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.07] border-l-2 border-brand-orange/70 rounded-md transition-[width,background-color] ease-apple"
