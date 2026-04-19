@@ -134,10 +134,10 @@ const METRIC_CONFIGS: {
 const CHART_COLORS: Record<MetricType, string> = {
   visitors: 'var(--chart-1)',       // orange (brand)
   pageviews: 'var(--chart-2)',      // blue
-  pages_per_visit: 'var(--chart-2)', // blue (reuse)
+  pages_per_visit: 'var(--chart-3)', // green
   bounce_rate: 'var(--chart-4)',    // purple
   avg_duration: 'var(--chart-5)',   // amber
-  engagement: 'var(--chart-3)',     // green
+  engagement: 'var(--chart-2)',     // blue
 }
 
 // ─── Chart Component ─────────────────────────────────────────────────
@@ -335,7 +335,7 @@ export default function Chart({
           </div>
 
           {!hasData || !hasAnyNonZero ? (
-            <div className="flex h-96 flex-col items-center justify-center">
+            <div className="flex h-72 flex-col items-center justify-center">
               <EmptyState
                 title={!hasData ? 'No data in this window' : `No ${METRIC_CONFIGS.find((m) => m.key === metric)?.label.toLowerCase()} recorded`}
                 description="Try expanding the time range or checking back later."
@@ -380,7 +380,7 @@ export default function Chart({
                   <VisxAreaChart
                     data={activeChartData as Record<string, unknown>[]}
                     xDataKey="dateObj"
-                    aspectRatio="2.5 / 1"
+                    aspectRatio="3.5 / 1"
                     margin={{ top: 20, right: 20, bottom: 40, left: 50 }}
                     animationDuration={400}
                   >
