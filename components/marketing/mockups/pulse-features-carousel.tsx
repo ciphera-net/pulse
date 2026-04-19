@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, type CSSProperties } from 'react'
-import { createMap } from 'svg-dotted-map'
 import {
   Files,
   ArrowSquareOut,
@@ -17,68 +16,18 @@ import {
   Link,
 } from '@phosphor-icons/react'
 
-// ─── Dotted Map Setup (module-level, computed once) ──────────────────────────
-
-const MAP_WIDTH = 150
-const MAP_HEIGHT = 68
-const DOT_RADIUS = 0.25
-
-const { points: MAP_POINTS, addMarkers } = createMap({
-  width: MAP_WIDTH,
-  height: MAP_HEIGHT,
-  mapSamples: 8000,
-})
-
-const _stagger = (() => {
-  const sorted = [...MAP_POINTS].sort((a, b) => a.y - b.y || a.x - b.x)
-  const rowMap = new Map<number, number>()
-  let step = 0
-  let prevY = Number.NaN
-  let prevXInRow = Number.NaN
-
-  for (const p of sorted) {
-    if (p.y !== prevY) {
-      prevY = p.y
-      prevXInRow = Number.NaN
-      if (!rowMap.has(p.y)) rowMap.set(p.y, rowMap.size)
-    }
-    if (!Number.isNaN(prevXInRow)) {
-      const delta = p.x - prevXInRow
-      if (delta > 0) step = step === 0 ? delta : Math.min(step, delta)
-    }
-    prevXInRow = p.x
-  }
-
-  return { xStep: step || 1, yToRowIndex: rowMap }
-})()
-
-const BASE_DOTS_PATH = (() => {
-  const r = DOT_RADIUS
-  const d = r * 2
-  const parts: string[] = []
-  for (const point of MAP_POINTS) {
-    const rowIndex = _stagger.yToRowIndex.get(point.y) ?? 0
-    const offsetX = rowIndex % 2 === 1 ? _stagger.xStep / 2 : 0
-    const cx = point.x + offsetX
-    const cy = point.y
-    parts.push(`M${cx - r},${cy}a${r},${r} 0 1,0 ${d},0a${r},${r} 0 1,0 ${-d},0`)
-  }
-  return parts.join('')
-})()
-
-// Country centroids for marker placement (subset)
-const COUNTRY_CENTROIDS: Record<string, { lat: number; lng: number }> = {
-  CH: { lat: 46.8, lng: 8.2 },
-  DE: { lat: 51.2, lng: 10.4 },
-  US: { lat: 37.1, lng: -95.7 },
-  GB: { lat: 55.4, lng: -3.4 },
-  FR: { lat: 46.2, lng: 2.2 },
-  IN: { lat: 20.6, lng: 78.9 },
-  JP: { lat: 36.2, lng: 138.3 },
-  AU: { lat: -25.3, lng: 133.8 },
-  BR: { lat: -14.2, lng: -51.9 },
-  CA: { lat: 56.1, lng: -106.3 },
-}
+// Marker positions for the marketing mockup (% of container)
+const MOCK_MARKERS = [
+  { x: 18, y: 38, size: 14 },  // US
+  { x: 24, y: 32, size: 8 },   // CA
+  { x: 35, y: 72, size: 6 },   // BR
+  { x: 50, y: 33, size: 12 },  // CH/DE
+  { x: 48, y: 36, size: 8 },   // FR
+  { x: 49, y: 30, size: 7 },   // GB
+  { x: 68, y: 45, size: 7 },   // IN
+  { x: 80, y: 38, size: 6 },   // JP
+  { x: 82, y: 68, size: 6 },   // AU
+]
 
 // ─── Bar Row (shared by Pages, Referrers, Technology) ────────────────────────
 
@@ -207,32 +156,6 @@ export function ReferrersCard() {
 // ─── Card 3: Locations (Real Dotted Map) ─────────────────────────────────────
 
 export function LocationsCard() {
-  const mockData = [
-    { country: 'CH', pageviews: 320 },
-    { country: 'US', pageviews: 186 },
-    { country: 'DE', pageviews: 142 },
-    { country: 'GB', pageviews: 78 },
-    { country: 'FR', pageviews: 54 },
-    { country: 'IN', pageviews: 38 },
-    { country: 'JP', pageviews: 22 },
-    { country: 'AU', pageviews: 16 },
-    { country: 'BR', pageviews: 12 },
-    { country: 'CA', pageviews: 28 },
-  ]
-
-  const markerData = useMemo(() => {
-    const max = Math.max(...mockData.map((d) => d.pageviews))
-    return mockData
-      .filter((d) => COUNTRY_CENTROIDS[d.country])
-      .map((d) => ({
-        lat: COUNTRY_CENTROIDS[d.country].lat,
-        lng: COUNTRY_CENTROIDS[d.country].lng,
-        size: 0.4 + (d.pageviews / max) * 0.8,
-      }))
-  }, [])
-
-  const processedMarkers = useMemo(() => addMarkers(markerData), [markerData])
-
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -247,43 +170,22 @@ export function LocationsCard() {
           <span className="text-neutral-500">Cities</span>
         </div>
       </div>
-      <div className="relative w-full aspect-[2.2/1] flex items-center justify-center">
-        <svg
-          viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`}
-          className="text-neutral-500 w-full h-full"
-        >
-          <defs>
-            <filter id="mockup-marker-glow" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur in="SourceGraphic" stdDeviation="0.8" result="blur" />
-              <feColorMatrix
-                in="blur"
-                type="matrix"
-                values="1 0 0 0 0  0 0.4 0 0 0  0 0 0 0 0  0 0 0 0.6 0"
-              />
-              <feMerge>
-                <feMergeNode />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-          </defs>
-          <path d={BASE_DOTS_PATH} fill="currentColor" />
-          {processedMarkers.map((marker, index) => {
-            const rowIndex = _stagger.yToRowIndex.get(marker.y) ?? 0
-            const offsetX = rowIndex % 2 === 1 ? _stagger.xStep / 2 : 0
-            const cx = marker.x + offsetX
-            const cy = marker.y
-            return (
-              <circle
-                key={`marker-${index}`}
-                cx={cx}
-                cy={cy}
-                r={marker.size ?? DOT_RADIUS}
-                fill="#FD5E0F"
-                filter="url(#mockup-marker-glow)"
-              />
-            )
-          })}
-        </svg>
+      <div className="relative w-full aspect-[2.2/1] rounded-lg bg-neutral-900 overflow-hidden">
+        {MOCK_MARKERS.map((m, i) => (
+          <div
+            key={i}
+            className="absolute rounded-full"
+            style={{
+              left: `${m.x}%`,
+              top: `${m.y}%`,
+              width: m.size,
+              height: m.size,
+              background: 'rgba(253, 94, 15, 0.7)',
+              boxShadow: '0 0 8px rgba(253, 94, 15, 0.5), 0 0 20px rgba(253, 94, 15, 0.2)',
+              transform: 'translate(-50%, -50%)',
+            }}
+          />
+        ))}
       </div>
     </div>
   )

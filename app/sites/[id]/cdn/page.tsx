@@ -8,7 +8,7 @@ import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import * as Flags from 'country-flag-icons/react/3x2'
 
-const DottedMap = dynamic(() => import('@/components/dashboard/DottedMap'), { ssr: false })
+const MapView = dynamic(() => import('@/components/dashboard/MapView'), { ssr: false })
 import { getDateRange, formatDate, Select } from '@ciphera-net/ui'
 import { ArrowSquareOut, CloudArrowUp } from '@phosphor-icons/react'
 import { AreaChart, Area, Grid, XAxis, YAxis, ChartTooltip } from '@/components/ui/area-chart'
@@ -437,7 +437,7 @@ export default function CDNPage() {
         {countries.length > 0 ? (
           <>
             <div className="h-[360px] mb-8">
-              <DottedMap data={mapToCountryCentroids(countries)} formatValue={formatBytes} />
+              <MapView data={mapToCountryCentroids(countries)} formatValue={formatBytes} />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-5">
               {countries.map((row, index) => {
