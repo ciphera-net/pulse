@@ -72,29 +72,13 @@ export class ApiError extends Error {
   }
 }
 
-// * Mutex for token refresh
-let isRefreshing = false
-type RefreshSubscriber = { onSuccess: () => void; onFailure: (err: unknown) => void }
-let refreshSubscribers: RefreshSubscriber[] = []
+// * Shared refresh handler — injected by AuthProvider via setRefreshHandler().
+// * Routes all 401 refresh attempts through useSessionRefresh's mutex,
+// * preventing concurrent refresh calls that trigger token reuse detection.
+let refreshHandler: (() => Promise<boolean>) | null = null
 
-function subscribeToTokenRefresh(onSuccess: () => void, onFailure: (err: unknown) => void) {
-  refreshSubscribers.push({ onSuccess, onFailure })
-}
-
-function onRefreshed() {
-  refreshSubscribers.forEach((s) => s.onSuccess())
-  refreshSubscribers = []
-}
-
-function onRefreshFailed(err: unknown) {
-  refreshSubscribers.forEach((s) => {
-    try {
-      s.onFailure(err)
-    } catch {
-      // ignore
-    }
-  })
-  refreshSubscribers = []
+export function setRefreshHandler(handler: (() => Promise<boolean>) | null) {
+  refreshHandler = handler
 }
 
 // * ============================================================================
@@ -247,97 +231,38 @@ async function apiRequest<T>(
       if (typeof window !== 'undefined') {
         // * Skip token refresh for public endpoints (they use password auth, not session tokens)
         // * and for refresh requests themselves (prevent infinite loop)
-        if (!endpoint.includes('/auth/refresh') && !endpoint.includes('/public/')) {
-          if (isRefreshing) {
-            // * If refresh is already in progress, wait for it to complete (or fail)
-            return new Promise<T>((resolve, reject) => {
-              subscribeToTokenRefresh(
-                () => {
-                  // * Retry with fresh headers after refresh completes
-                  const retryHeaders: Record<string, string> = {
-                    'Content-Type': 'application/json',
-                    [getRequestIdHeader()]: generateRequestId(),
-                  }
-                  if (options.headers) {
-                    Object.entries(options.headers as Record<string, string>).forEach(([key, value]) => {
-                      retryHeaders[key] = value
-                    })
-                  }
-                  if (isStateChangingMethod(method)) {
-                    const csrfToken = getCSRFToken()
-                    if (csrfToken) retryHeaders['X-CSRF-Token'] = csrfToken
-                  }
-                  fetch(url, { ...options, headers: retryHeaders, credentials: 'include' })
-                    .then(async (retryResponse) => {
-                      if (retryResponse.ok) {
-                        resolve(await retryResponse.json())
-                      } else {
-                        reject(new ApiError(authMessageFromStatus(retryResponse.status), retryResponse.status))
-                      }
-                    })
-                    .catch((e) => reject(e))
-                },
-                (err) => reject(err)
-              )
-            })
-          }
+        if (!endpoint.includes('/auth/refresh') && !endpoint.includes('/public/') && refreshHandler) {
+          const success = await refreshHandler()
 
-          isRefreshing = true
-
-          try {
-            // * Call our Next.js API route to handle refresh securely
-            const refreshRes = await fetch('/api/auth/refresh', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+          if (success) {
+            const retryHeaders: Record<string, string> = {
+              'Content-Type': 'application/json',
+              [getRequestIdHeader()]: generateRequestId(),
+            }
+            if (options.headers) {
+              Object.entries(options.headers as Record<string, string>).forEach(([key, value]) => {
+                retryHeaders[key] = value
+              })
+            }
+            if (isStateChangingMethod(method)) {
+              const csrfToken = getCSRFToken()
+              if (csrfToken) retryHeaders['X-CSRF-Token'] = csrfToken
+            }
+            const retryResponse = await fetch(url, {
+              ...options,
+              headers: retryHeaders,
               credentials: 'include',
             })
 
-            if (refreshRes.ok) {
-              // * Refresh successful, cookies updated
-              onRefreshed()
-
-              // * Retry original request with fresh headers
-              const retryHeaders: Record<string, string> = {
-                'Content-Type': 'application/json',
-                [getRequestIdHeader()]: generateRequestId(),
-              }
-              if (options.headers) {
-                Object.entries(options.headers as Record<string, string>).forEach(([key, value]) => {
-                  retryHeaders[key] = value
-                })
-              }
-              if (isStateChangingMethod(method)) {
-                const csrfToken = getCSRFToken()
-                if (csrfToken) retryHeaders['X-CSRF-Token'] = csrfToken
-              }
-              const retryResponse = await fetch(url, {
-                ...options,
-                headers: retryHeaders,
-                credentials: 'include',
-              })
-
-              if (retryResponse.ok) {
-                return retryResponse.json()
-              }
-              // * Retry failed — throw with the retry response status, not the original 401
-              const retryBody = await retryResponse.json().catch(() => ({}))
-              throw new ApiError(authMessageFromStatus(retryResponse.status), retryResponse.status, retryBody)
-            } else {
-              const sessionExpiredMsg = authMessageFromStatus(401)
-              onRefreshFailed(new ApiError(sessionExpiredMsg, 401))
-              localStorage.removeItem('user')
-              throw new ApiError(sessionExpiredMsg, 401)
+            if (retryResponse.ok) {
+              return retryResponse.json()
             }
-          } catch (e) {
-            if (e instanceof ApiError) throw e
-            const err = e instanceof Error && (e.name === 'AbortError' || e.name === 'TypeError')
-              ? new ApiError(AUTH_ERROR_MESSAGES.NETWORK, 0)
-              : e
-            onRefreshFailed(err)
-            throw err
-          } finally {
-            isRefreshing = false
+            const retryBody = await retryResponse.json().catch(() => ({}))
+            throw new ApiError(authMessageFromStatus(retryResponse.status), retryResponse.status, retryBody)
           }
+
+          localStorage.removeItem('user')
+          throw new ApiError(authMessageFromStatus(401), 401)
         }
       }
     }
