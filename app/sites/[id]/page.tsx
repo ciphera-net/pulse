@@ -344,18 +344,6 @@ export default function SiteDashboardPage() {
   const showSkeleton = useMinimumLoading(dashboardLoading && !dashboard)
   const fadeClass = useSkeletonFade(showSkeleton)
 
-  if (showSkeleton) {
-    return <DashboardSkeleton />
-  }
-
-  if (!site) {
-    return (
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
-        <p className="text-neutral-400">Site not found</p>
-      </div>
-    )
-  }
-
   const toolbarSentinelRef = useRef<HTMLDivElement>(null)
   const [isToolbarSticky, setIsToolbarSticky] = useState(false)
 
@@ -369,6 +357,18 @@ export default function SiteDashboardPage() {
     observer.observe(sentinel)
     return () => observer.disconnect()
   }, [])
+
+  if (showSkeleton) {
+    return <DashboardSkeleton />
+  }
+
+  if (!site) {
+    return (
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
+        <p className="text-neutral-400">Site not found</p>
+      </div>
+    )
+  }
 
   return (
     <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
