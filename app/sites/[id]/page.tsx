@@ -347,6 +347,11 @@ export default function SiteDashboardPage() {
 
   const toolbarRef = useRef<HTMLDivElement>(null)
   const [toolbarScrolled, setToolbarScrolled] = useState(false)
+  const [topbarSlot, setTopbarSlot] = useState<HTMLElement | null>(null)
+
+  useEffect(() => {
+    setTopbarSlot(document.getElementById('topbar-controls'))
+  }, [])
 
   useEffect(() => {
     const el = toolbarRef.current
@@ -370,8 +375,6 @@ export default function SiteDashboardPage() {
       </div>
     )
   }
-
-  const topbarSlot = typeof document !== 'undefined' ? document.getElementById('topbar-controls') : null
 
   const toolbarControls = (compact: boolean) => (
     <>
