@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSWRConfig } from 'swr'
-import apiRequest from '@/lib/api/client'
+import apiRequest, { setRefreshHandler } from '@/lib/api/client'
 import { LoadingOverlay, useSessionSync, SessionExpiryWarning, useSessionRefresh } from '@ciphera-net/ui'
 import { logoutAction, getSessionAction, setSessionAction } from '@/app/actions/auth'
 import { getUserOrganizations, switchContext } from '@/lib/api/organization'
@@ -66,7 +66,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await fetch('/api/auth/refresh', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
+        body: JSON.stringify({
+          screen_width: window.screen.width,
+          screen_height: window.screen.height,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        }),
       })
       return res.ok
     } catch {
@@ -126,6 +132,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     onRefresh: refreshToken,
     onExpired: logout,
   })
+
+  useEffect(() => {
+    setRefreshHandler(refreshWithMutex)
+    return () => setRefreshHandler(null)
+  }, [refreshWithMutex])
 
   const refresh = useCallback(async () => {
     try {
