@@ -1,11 +1,9 @@
 "use client";
 
-import { localPoint } from "@visx/event";
-import { curveMonotoneX } from "@visx/curve";
-import { GridColumns, GridRows } from "@visx/grid";
-import { ParentSize } from "@visx/responsive";
-import { scaleLinear, scaleTime, type scaleBand } from "@visx/scale";
-import { AreaClosed, LinePath } from "@visx/shape";
+import { curveMonotoneX } from "d3-shape";
+import { scaleLinear, scaleTime } from "d3-scale";
+import type { ScaleBand } from "d3-scale";
+import { localPoint, AreaClosed, LinePath, GridColumns, GridRows, ParentSize } from "@/lib/charts/primitives";
 import { bisector } from "d3-array";
 import {
   AnimatePresence,
@@ -54,9 +52,7 @@ type ScaleLinearType<Output, _Input = number> = ReturnType<
 type ScaleTimeType<Output, _Input = Date | number> = ReturnType<
   typeof scaleTime<Output>
 >;
-type ScaleBandType<Domain extends { toString(): string }> = ReturnType<
-  typeof scaleBand<Domain>
->;
+type ScaleBandType<Domain extends { toString(): string }> = ScaleBand<Domain>;
 
 export const chartCssVars = {
   background: "var(--chart-background)",
@@ -1279,7 +1275,8 @@ export function Grid({
           <GridColumns
             height={innerHeight}
             numTicks={numTicksColumns}
-            scale={columnScale}
+            // biome-ignore lint/suspicious/noExplicitAny: union scale type narrowed by typeof guard above
+            scale={columnScale as any}
             stroke={stroke}
             strokeDasharray={strokeDasharray}
             strokeOpacity={strokeOpacity}
@@ -2158,10 +2155,9 @@ function ChartInner({
     const minTime = Math.min(...dates.map((d) => d.getTime()));
     const maxTime = Math.max(...dates.map((d) => d.getTime()));
 
-    return scaleTime({
-      range: [0, innerWidth],
-      domain: [minTime, maxTime],
-    });
+    return scaleTime()
+      .range([0, innerWidth])
+      .domain([minTime, maxTime]);
   }, [innerWidth, data, xAccessor]);
 
   const columnWidth = useMemo(() => {
@@ -2186,11 +2182,10 @@ function ChartInner({
       maxValue = 100;
     }
 
-    return scaleLinear({
-      range: [innerHeight, 0],
-      domain: [0, maxValue * 1.1],
-      nice: true,
-    });
+    return scaleLinear()
+      .range([innerHeight, 0])
+      .domain([0, maxValue * 1.1])
+      .nice();
   }, [innerHeight, data, lines]);
 
   const dateLabels = useMemo(() => {

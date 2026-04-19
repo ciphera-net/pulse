@@ -1,11 +1,8 @@
 "use client";
 
-import { curveMonotoneX } from "@visx/curve";
-import { localPoint } from "@visx/event";
-import { GridRows } from "@visx/grid";
-import { ParentSize } from "@visx/responsive";
-import { scaleLinear, scalePoint } from "@visx/scale";
-import { LinePath } from "@visx/shape";
+import { curveMonotoneX } from "d3-shape";
+import { scaleLinear, scalePoint } from "d3-scale";
+import { localPoint, LinePath, GridRows, ParentSize } from "@/lib/charts/primitives";
 import {
   AnimatePresence,
   motion,
@@ -851,11 +848,10 @@ function LineChartInner({
 
   const xScale = useMemo(() => {
     const domain = data.map((d) => String(d[xDataKey] ?? ""));
-    return scalePoint<string>({
-      range: [0, innerWidth],
-      domain,
-      padding: 0.5,
-    });
+    return scalePoint<string>()
+      .range([0, innerWidth])
+      .domain(domain)
+      .padding(0.5);
   }, [data, xDataKey, innerWidth]);
 
   const yScale = useMemo(() => {
@@ -875,11 +871,10 @@ function LineChartInner({
       max = 100;
     }
     const padding = (max - min) * 0.1 || 10;
-    return scaleLinear<number>({
-      range: [innerHeight, 0],
-      domain: [Math.max(0, min - padding), max + padding],
-      nice: true,
-    });
+    return scaleLinear<number>()
+      .range([innerHeight, 0])
+      .domain([Math.max(0, min - padding), max + padding])
+      .nice();
   }, [data, lines, innerHeight]);
 
   // Trigger entrance animation on mount
