@@ -8,7 +8,7 @@ import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
 import * as Flags from 'country-flag-icons/react/3x2'
 import iso3166 from 'iso-3166-2'
 
-const DottedMap = dynamic(() => import('./DottedMap'), { ssr: false })
+const MapView = dynamic(() => import('./MapView'), { ssr: false })
 import Link from 'next/link'
 import { Modal, GlobeIcon, ArrowRightIcon } from '@ciphera-net/ui'
 import { ListSkeleton } from '@/components/skeletons'
@@ -406,7 +406,7 @@ export default function Audience({ countries, cities, regions, languages, timezo
             </div>
           ) : isVisualTab ? (
             hasData ? (
-              inView ? <DottedMap data={filterUnknown(countries) as { country: string; pageviews: number }[]} /> : null
+              inView ? <MapView data={filterUnknown(countries) as { country: string; pageviews: number }[]} /> : null
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
                 <div className="rounded-full bg-neutral-800 p-4">
