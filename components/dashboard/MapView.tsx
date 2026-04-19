@@ -16,7 +16,7 @@ const EMPTY_STYLE: StyleSpecification = {
   layers: [{ id: 'background', type: 'background', paint: { 'background-color': 'rgba(0,0,0,0)' } }],
 }
 
-const INITIAL_VIEW = { longitude: 15, latitude: 20, zoom: 0.9 }
+const INITIAL_VIEW = { longitude: 20, latitude: 15, zoom: 0.55 }
 
 // Countries that cross the antimeridian — their polygons stretch across the map
 const ANTIMERIDIAN_COUNTRIES = new Set(['010', '016', '028', '242', '258', '296', '520', '570', '583', '584', '585', '643', '798', '876', '882'])
@@ -177,10 +177,15 @@ export default function MapView({ data, className, formatValue = formatNumber }:
         interactiveLayerIds={coloredGeoData ? ['country-fill'] : []}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        maxZoom={6}
-        minZoom={0.8}
+        scrollZoom={false}
+        boxZoom={false}
+        doubleClickZoom={false}
+        dragPan={false}
         dragRotate={false}
         touchZoomRotate={false}
+        keyboard={false}
+        maxZoom={0.55}
+        minZoom={0.55}
       >
         {coloredGeoData && (
           <Source id="countries" type="geojson" data={coloredGeoData}>
