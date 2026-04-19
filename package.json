@@ -30,6 +30,7 @@
     "@tanstack/react-virtual": "^3.13.21",
     "@types/d3": "^7.4.3",
     "@types/d3-shape": "^3.1.8",
+    "@types/topojson-client": "^3.1.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -62,6 +63,7 @@
     "swr": "^2.3.3",
     "tailwind-merge": "^3.5.0",
     "tailwindcss-animate": "^1.0.7",
+    "topojson-client": "^3.1.0",
     "xlsx": "^0.18.5",
     "zod": "^4.3.6"
   },
