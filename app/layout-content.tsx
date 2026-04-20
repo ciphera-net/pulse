@@ -175,6 +175,31 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
     )
   }
 
+  // Session expired on a protected page — show modal instead of marketing header
+  if (!isAuthenticated && !auth.loading && (isSitePage || isDashboardPage)) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-neutral-950">
+        <div className="w-full max-w-sm bg-neutral-900 border border-white/[0.08] rounded-2xl p-8 text-center shadow-2xl shadow-black/60"
+          style={{ backgroundImage: 'linear-gradient(to bottom, rgba(255,255,255,0.03), transparent 120px)' }}
+        >
+          <div className="w-14 h-14 rounded-xl bg-red-500/10 flex items-center justify-center mx-auto mb-5">
+            <svg className="w-7 h-7 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+            </svg>
+          </div>
+          <h2 className="text-lg font-semibold text-white mb-2">Session expired</h2>
+          <p className="text-sm text-neutral-400 mb-6">Your session has expired. Please sign in again to continue.</p>
+          <button
+            onClick={() => window.location.href = '/'}
+            className="w-full px-4 py-2.5 bg-brand-orange hover:bg-brand-orange-hover text-white text-sm font-medium rounded-xl transition-colors cursor-pointer"
+          >
+            Sign in again
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   // Public/marketing: sticky header + footer
   return (
     <div className="flex flex-col min-h-screen">
