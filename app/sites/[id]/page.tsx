@@ -161,10 +161,11 @@ export default function SiteDashboardPage() {
   // and caches the result in Redis for efficient data loading.
   const { data: dashboard, isLoading: dashboardLoading, error: dashboardError } = useDashboard(siteId, dateRange?.start || '', dateRange?.end || '', interval, filtersParam || undefined, apiPeriod)
 
-  // Use the server-resolved date range as the source of truth once data arrives.
-  // For period-based queries, wait for the server response — don't use browser dates.
-  // For custom ranges, fall back to client-computed dateRange immediately.
-  const resolvedDateRange = dashboard?.date_range || (apiPeriod ? { start: '', end: '' } : dateRange)
+  // Server-resolved date range is the single source of truth for period-based queries.
+  // null while loading — all downstream consumers must gate on this being non-null.
+  // Custom ranges use client-computed dateRange immediately (no server resolution needed).
+  const resolvedDateRange: { start: string; end: string } | null =
+    dashboard?.date_range ?? (apiPeriod ? null : dateRange)
 
   // Filter modal state
   const [editingFilterIndex, setEditingFilterIndex] = useState<number | null>(null)
@@ -225,6 +226,7 @@ export default function SiteDashboardPage() {
 
   // Fetch full suggestion list (up to 100) when a dimension is selected in the filter dropdown
   const handleFetchSuggestions = useCallback(async (dimension: string): Promise<FilterSuggestion[]> => {
+    if (!resolvedDateRange) return []
     const start = resolvedDateRange.start
     const end = resolvedDateRange.end
     const f = filtersParam || undefined
@@ -284,7 +286,7 @@ export default function SiteDashboardPage() {
     } catch {
       return []
     }
-  }, [siteId, resolvedDateRange.start, resolvedDateRange.end, filtersParam])
+  }, [siteId, resolvedDateRange?.start, resolvedDateRange?.end, filtersParam])
 
   // Sync filters to URL
   useEffect(() => {
@@ -303,6 +305,7 @@ export default function SiteDashboardPage() {
   //   - previous start would fall before Pulse's data-collection floor (2020-01-01)
   // Hooks below gate on prevRange via empty-string fallthrough so SWR skips the fetch.
   const prevRange = useMemo((): { start: string; end: string } | null => {
+    if (!resolvedDateRange) return null
     const startDate = new Date(resolvedDateRange.start)
     const endDate = new Date(resolvedDateRange.end)
     const duration = endDate.getTime() - startDate.getTime()
@@ -325,13 +328,14 @@ export default function SiteDashboardPage() {
   const { data: realtimeData } = useRealtime(siteId, 15_000)
   const { data: prevStats } = useStats(siteId, prevRange?.start ?? '', prevRange?.end ?? '')
   const { data: prevDailyStats } = useDailyStats(siteId, prevRange?.start ?? '', prevRange?.end ?? '', interval)
-  const { data: campaigns } = useCampaigns(siteId, resolvedDateRange.start, resolvedDateRange.end, 100, apiPeriod)
+  const { data: campaigns } = useCampaigns(siteId, resolvedDateRange?.start ?? '', resolvedDateRange?.end ?? '', 100, apiPeriod)
   // Fetch engagement percentiles in parallel with dashboard data
   useEffect(() => {
+    if (!resolvedDateRange) return
     getEngagementPercentiles(siteId, resolvedDateRange.start, resolvedDateRange.end)
       .then(setEngagementData)
       .catch(() => setEngagementData(null))
-  }, [siteId, resolvedDateRange.start, resolvedDateRange.end])
+  }, [siteId, resolvedDateRange?.start, resolvedDateRange?.end])
 
   // Derive typed values from single dashboard response
   const site = dashboard?.site ?? null
@@ -555,7 +559,7 @@ export default function SiteDashboardPage() {
       </div>
 
       {/* Advanced Chart with Integrated Stats */}
-      <div className="mb-3">
+      {resolvedDateRange && <><div className="mb-3">
         <Chart
           data={dailyStats}
           stats={stats}
@@ -631,7 +635,7 @@ export default function SiteDashboardPage() {
           siteId={siteId}
           dateRange={resolvedDateRange}
         />
-      </div>
+      </div></>}
 
       <DatePicker
         isOpen={isDatePickerOpen}
