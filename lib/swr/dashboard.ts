@@ -296,10 +296,10 @@ export function useDashboardGoals(siteId: string, start: string, end: string, fi
 }
 
 // * Hook for campaigns data (used by export modal)
-export function useCampaigns(siteId: string, start: string, end: string, limit = 100) {
+export function useCampaigns(siteId: string, start: string, end: string, limit = 100, period?: string) {
   return useSWR<CampaignStat[]>(
-    siteId && start && end ? ['campaigns', siteId, start, end, limit] : null,
-    () => fetchers.campaigns(siteId, start, end, limit),
+    siteId && (period || (start && end)) ? ['campaigns', siteId, period || `${start}-${end}`, limit] : null,
+    () => getCampaigns(siteId, start, end, limit, undefined, period),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,
