@@ -378,27 +378,23 @@ export default function FilterModal({
   const modal = (
     <AnimatePresence>
       {open && (
-        <>
-          {/* Backdrop */}
-          <motion.div
-            key="backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
-            className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-[2px]"
-            onClick={onClose}
-          />
-
-          {/* Modal panel */}
+        <motion.div
+          key="modal-wrapper"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
+          className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh] bg-black/60 backdrop-blur-[2px]"
+          onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+        >
           <motion.div
             key="panel"
             initial={{ opacity: 0, scale: 0.96, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 12 }}
             transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
-            className="fixed z-[101] left-1/2 top-1/3 -translate-x-1/2 -translate-y-1/2 w-full max-w-md rounded-2xl border border-white/[0.08] bg-neutral-950 shadow-2xl shadow-black/60 p-6"
-            style={{ backgroundImage: 'linear-gradient(to bottom, rgba(255,255,255,0.03), transparent 120px)' }}
+            className="w-full max-w-md rounded-2xl border border-white/[0.08] bg-neutral-900 shadow-2xl shadow-black/60 p-6"
+            style={{ backgroundImage: 'linear-gradient(to bottom, rgba(255,255,255,0.04), transparent 120px)' }}
           >
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
@@ -478,7 +474,7 @@ export default function FilterModal({
               </button>
             </div>
           </motion.div>
-        </>
+        </motion.div>
       )}
     </AnimatePresence>
   )
