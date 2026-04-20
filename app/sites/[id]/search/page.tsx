@@ -50,6 +50,19 @@ export default function SearchConsolePage() {
   const [dateRange, setDateRange] = useState(() => getDateRange(28))
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
 
+  // Map frontend period values to backend period names
+  const PERIOD_TO_API: Record<string, string> = {
+    'today': 'today',
+    '7': '7d',
+    'week': 'week',
+    '28': '28d',
+    '30': '30d',
+    'month': 'month',
+  }
+
+  // For relative periods send the period name; for custom ranges send dates
+  const apiPeriod = period !== 'custom' ? (PERIOD_TO_API[period] || undefined) : undefined
+
   // View toggle
   const [activeView, setActiveView] = useState<'queries' | 'pages'>('queries')
 
@@ -65,7 +78,7 @@ export default function SearchConsolePage() {
 
   // Data fetching
   const { data: gscStatus } = useGSCStatus(siteId)
-  const { data: dashboard } = useDashboard(siteId, dateRange.start, dateRange.end)
+  const { data: dashboard } = useDashboard(siteId, dateRange.start, dateRange.end, undefined, undefined, apiPeriod)
   const { data: overview } = useGSCOverview(siteId, dateRange.start, dateRange.end)
   const { data: topQueries, isLoading: queriesLoading } = useGSCTopQueries(siteId, dateRange.start, dateRange.end, PAGE_SIZE, queryPage * PAGE_SIZE)
   const { data: topPages, isLoading: pagesLoading } = useGSCTopPages(siteId, dateRange.start, dateRange.end, PAGE_SIZE, pagePage * PAGE_SIZE)
