@@ -63,7 +63,7 @@ import type {
 // * SWR fetcher functions
 const fetchers = {
   site: (siteId: string) => getSite(siteId),
-  dashboard: (siteId: string, start: string, end: string, interval?: string, filters?: string) => getDashboard(siteId, start, end, 10, interval, filters),
+  dashboard: (siteId: string, start: string, end: string, interval?: string, filters?: string, period?: string) => getDashboard(siteId, start, end, 10, interval, filters, period),
   dashboardOverview: (siteId: string, start: string, end: string, interval?: string, filters?: string) => getDashboardOverview(siteId, start, end, interval, filters),
   dashboardPages: (siteId: string, start: string, end: string, filters?: string) => getDashboardPages(siteId, start, end, undefined, filters),
   dashboardLocations: (siteId: string, start: string, end: string, filters?: string) => getDashboardLocations(siteId, start, end, undefined, undefined, filters),
@@ -149,30 +149,30 @@ export function useSite(siteId: string) {
 
 // * Hook for full dashboard data (single request replaces 7 focused hooks)
 // * The backend runs all queries in parallel and caches the result in Redis (30s TTL)
-export function useDashboard(siteId: string, start: string, end: string, interval?: string, filters?: string) {
+export function useDashboard(siteId: string, start: string, end: string, interval?: string, filters?: string, period?: string) {
   return useSWR<DashboardData>(
-    siteId && start && end ? ['dashboard', siteId, start, end, interval, filters] : null,
-    () => fetchers.dashboard(siteId, start, end, interval, filters),
+    siteId && (period || (start && end)) ? ['dashboard', siteId, period || `${start}-${end}`, interval, filters] : null,
+    () => fetchers.dashboard(siteId, start, end, interval, filters, period),
     {
       ...dashboardSWRConfig,
       // * Refresh every 60 seconds for dashboard data
-      refreshInterval: 60 * 1000,
+      refreshInterval: 60_000,
       // * Deduping interval to prevent duplicate requests
-      dedupingInterval: 10 * 1000,
+      dedupingInterval: 10_000,
     }
   )
 }
 
 // * Hook for stats (refreshed less frequently)
-export function useStats(siteId: string, start: string, end: string, filters?: string) {
+export function useStats(siteId: string, start: string, end: string, filters?: string, period?: string) {
   return useSWR<Stats>(
-    siteId && start && end ? ['stats', siteId, start, end, filters] : null,
-    () => fetchers.stats(siteId, start, end, filters),
+    siteId && (period || (start && end)) ? ['stats', siteId, period || `${start}-${end}`, filters] : null,
+    () => getStats(siteId, start, end, filters, period),
     {
       ...dashboardSWRConfig,
       // * Refresh every 60 seconds for stats
-      refreshInterval: 60 * 1000,
-      dedupingInterval: 10 * 1000,
+      refreshInterval: 60_000,
+      dedupingInterval: 10_000,
     }
   )
 }
@@ -182,16 +182,17 @@ export function useDailyStats(
   siteId: string,
   start: string,
   end: string,
-  interval: 'hour' | 'day' | 'minute'
+  interval: 'hour' | 'day' | 'minute',
+  period?: string
 ) {
   return useSWR<DailyStat[]>(
-    siteId && start && end ? ['dailyStats', siteId, start, end, interval] : null,
-    () => fetchers.dailyStats(siteId, start, end, interval),
+    siteId && (period || (start && end)) ? ['dailyStats', siteId, period || `${start}-${end}`, interval] : null,
+    () => getDailyStats(siteId, start, end, interval, undefined, period),
     {
       ...dashboardSWRConfig,
       // * Refresh every 60 seconds for chart data
-      refreshInterval: 60 * 1000,
-      dedupingInterval: 10 * 1000,
+      refreshInterval: 60_000,
+      dedupingInterval: 10_000,
     }
   )
 }
