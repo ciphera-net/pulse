@@ -162,8 +162,9 @@ export default function SiteDashboardPage() {
   const { data: dashboard, isLoading: dashboardLoading, error: dashboardError } = useDashboard(siteId, dateRange?.start || '', dateRange?.end || '', interval, filtersParam || undefined, apiPeriod)
 
   // Use the server-resolved date range as the source of truth once data arrives.
-  // Falls back to client-computed dateRange for instant UI feedback before the API responds.
-  const resolvedDateRange = dashboard?.date_range || dateRange
+  // For period-based queries, wait for the server response — don't use browser dates.
+  // For custom ranges, fall back to client-computed dateRange immediately.
+  const resolvedDateRange = dashboard?.date_range || (apiPeriod ? { start: '', end: '' } : dateRange)
 
   // Filter modal state
   const [editingFilterIndex, setEditingFilterIndex] = useState<number | null>(null)
@@ -324,7 +325,7 @@ export default function SiteDashboardPage() {
   const { data: realtimeData } = useRealtime(siteId, 15_000)
   const { data: prevStats } = useStats(siteId, prevRange?.start ?? '', prevRange?.end ?? '')
   const { data: prevDailyStats } = useDailyStats(siteId, prevRange?.start ?? '', prevRange?.end ?? '', interval)
-  const { data: campaigns } = useCampaigns(siteId, resolvedDateRange.start, resolvedDateRange.end)
+  const { data: campaigns } = useCampaigns(siteId, resolvedDateRange.start, resolvedDateRange.end, 100, apiPeriod)
   // Fetch engagement percentiles in parallel with dashboard data
   useEffect(() => {
     getEngagementPercentiles(siteId, resolvedDateRange.start, resolvedDateRange.end)
