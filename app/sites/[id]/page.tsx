@@ -425,13 +425,13 @@ export default function SiteDashboardPage() {
           <span className="text-sm text-neutral-400 tabular-nums">{realtime} current visitors</span>
         </div>
       )}
+      <div className="flex-1" />
       {!compact && (
         <FilterPills filters={filters} onEdit={handleEditFilter} onRemove={handleRemoveFilter} onClear={handleClearFilters} />
       )}
       {compact && filters.length > 0 && (
         <span className="text-xs text-brand-orange font-medium">{filters.length} filter{filters.length > 1 ? 's' : ''}</span>
       )}
-      <div className="flex-1" />
       <FilterButton hasActiveFilters={filters.length > 0} onSelectDimension={handleOpenFilterForDimension} />
       <div className="flex items-center h-10 rounded-lg border border-white/[0.08] bg-neutral-900/80 shadow-sm">
         <button onClick={() => shiftPeriod(-1)} className={`${compact ? 'px-1.5' : 'px-2'} h-full text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors rounded-l-lg ease-apple`} aria-label="Previous period">
