@@ -138,6 +138,33 @@ export default function SiteDashboardPage() {
   })
   const filtersParam = useMemo(() => serializeFilters(filters), [filters])
 
+  // Map frontend period values to backend period names
+  const PERIOD_TO_API: Record<string, string> = {
+    'today': 'today',
+    'yesterday': 'yesterday',
+    '1h': '1h',
+    '24h': '24h',
+    '7': '7d',
+    '30': '30d',
+    'week': 'week',
+    'month': 'month',
+    'year': 'year',
+  }
+
+  // For relative periods send the period name; for custom ranges send dates
+  const apiPeriod = period !== 'custom' ? (PERIOD_TO_API[period] || undefined) : undefined
+
+  const interval = dateRange.start === dateRange.end ? todayInterval : multiDayInterval
+
+  // Single dashboard request replaces focused hooks (overview, pages, locations,
+  // devices, referrers, goals). The backend runs all queries in parallel
+  // and caches the result in Redis for efficient data loading.
+  const { data: dashboard, isLoading: dashboardLoading, error: dashboardError } = useDashboard(siteId, dateRange?.start || '', dateRange?.end || '', interval, filtersParam || undefined, apiPeriod)
+
+  // Use the server-resolved date range as the source of truth once data arrives.
+  // Falls back to client-computed dateRange for instant UI feedback before the API responds.
+  const resolvedDateRange = dashboard?.date_range || dateRange
+
   // Filter modal state
   const [editingFilterIndex, setEditingFilterIndex] = useState<number | null>(null)
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
@@ -197,8 +224,8 @@ export default function SiteDashboardPage() {
 
   // Fetch full suggestion list (up to 100) when a dimension is selected in the filter dropdown
   const handleFetchSuggestions = useCallback(async (dimension: string): Promise<FilterSuggestion[]> => {
-    const start = dateRange.start
-    const end = dateRange.end
+    const start = resolvedDateRange.start
+    const end = resolvedDateRange.end
     const f = filtersParam || undefined
     const limit = 100
 
@@ -256,7 +283,7 @@ export default function SiteDashboardPage() {
     } catch {
       return []
     }
-  }, [siteId, dateRange.start, dateRange.end, filtersParam])
+  }, [siteId, resolvedDateRange.start, resolvedDateRange.end, filtersParam])
 
   // Sync filters to URL
   useEffect(() => {
@@ -269,16 +296,14 @@ export default function SiteDashboardPage() {
     window.history.replaceState({}, '', url.toString())
   }, [filtersParam])
 
-  const interval = dateRange.start === dateRange.end ? todayInterval : multiDayInterval
-
   // Previous period date range for comparison.
   // Returns null when the previous range would be invalid for the backend:
   //   - current duration exceeds the backend's 366-day query cap
   //   - previous start would fall before Pulse's data-collection floor (2020-01-01)
   // Hooks below gate on prevRange via empty-string fallthrough so SWR skips the fetch.
   const prevRange = useMemo((): { start: string; end: string } | null => {
-    const startDate = new Date(dateRange.start)
-    const endDate = new Date(dateRange.end)
+    const startDate = new Date(resolvedDateRange.start)
+    const endDate = new Date(resolvedDateRange.end)
     const duration = endDate.getTime() - startDate.getTime()
     const DAY_MS = 24 * 60 * 60 * 1000
     const MAX_DURATION_MS = 366 * DAY_MS
@@ -295,22 +320,17 @@ export default function SiteDashboardPage() {
     const prevStart = new Date(prevEnd.getTime() - duration)
     if (prevStart.getTime() < DATA_FLOOR) return null
     return { start: prevStart.toISOString().split('T')[0], end: prevEnd.toISOString().split('T')[0] }
-  }, [dateRange])
-
-  // Single dashboard request replaces focused hooks (overview, pages, locations,
-  // devices, referrers, goals). The backend runs all queries in parallel
-  // and caches the result in Redis for efficient data loading.
-  const { data: dashboard, isLoading: dashboardLoading, error: dashboardError } = useDashboard(siteId, dateRange.start, dateRange.end, interval, filtersParam || undefined)
+  }, [resolvedDateRange])
   const { data: realtimeData } = useRealtime(siteId, 15_000)
   const { data: prevStats } = useStats(siteId, prevRange?.start ?? '', prevRange?.end ?? '')
   const { data: prevDailyStats } = useDailyStats(siteId, prevRange?.start ?? '', prevRange?.end ?? '', interval)
-  const { data: campaigns } = useCampaigns(siteId, dateRange.start, dateRange.end)
+  const { data: campaigns } = useCampaigns(siteId, resolvedDateRange.start, resolvedDateRange.end)
   // Fetch engagement percentiles in parallel with dashboard data
   useEffect(() => {
-    getEngagementPercentiles(siteId, dateRange.start, dateRange.end)
+    getEngagementPercentiles(siteId, resolvedDateRange.start, resolvedDateRange.end)
       .then(setEngagementData)
       .catch(() => setEngagementData(null))
-  }, [siteId, dateRange.start, dateRange.end])
+  }, [siteId, resolvedDateRange.start, resolvedDateRange.end])
 
   // Derive typed values from single dashboard response
   const site = dashboard?.site ?? null
@@ -539,8 +559,8 @@ export default function SiteDashboardPage() {
           data={dailyStats}
           stats={stats}
           prevStats={prevStats}
-          interval={dateRange.start === dateRange.end ? todayInterval : multiDayInterval}
-          dateRange={dateRange}
+          interval={resolvedDateRange.start === resolvedDateRange.end ? todayInterval : multiDayInterval}
+          dateRange={resolvedDateRange}
           period={period}
           todayInterval={todayInterval}
           setTodayInterval={setTodayInterval}
@@ -560,7 +580,7 @@ export default function SiteDashboardPage() {
           domain={site.domain}
           collectPagePaths={site.collect_page_paths ?? true}
           siteId={siteId}
-          dateRange={dateRange}
+          dateRange={resolvedDateRange}
           onFilter={handleAddFilter}
         />
         <TopReferrers
@@ -568,7 +588,7 @@ export default function SiteDashboardPage() {
           channels={dashboard?.channels ?? []}
           collectReferrers={site.collect_referrers ?? true}
           siteId={siteId}
-          dateRange={dateRange}
+          dateRange={resolvedDateRange}
           onFilter={handleAddFilter}
         />
       </div>
@@ -583,7 +603,7 @@ export default function SiteDashboardPage() {
           geoDataLevel={site.collect_geo_data || 'full'}
           collectAudienceData={site.collect_audience_data ?? true}
           siteId={siteId}
-          dateRange={dateRange}
+          dateRange={resolvedDateRange}
           onFilter={handleAddFilter}
         />
         <TechSpecs
@@ -594,21 +614,21 @@ export default function SiteDashboardPage() {
           collectDeviceInfo={site.collect_device_info ?? true}
           collectScreenResolution={site.collect_screen_resolution ?? true}
           siteId={siteId}
-          dateRange={dateRange}
+          dateRange={resolvedDateRange}
           onFilter={handleAddFilter}
         />
       </div>
 
       <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
-        <Campaigns siteId={siteId} dateRange={dateRange} filters={filtersParam || undefined} onFilter={handleAddFilter} />
-        <PeakHours siteId={siteId} dateRange={dateRange} />
+        <Campaigns siteId={siteId} dateRange={resolvedDateRange} filters={filtersParam || undefined} onFilter={handleAddFilter} />
+        <PeakHours siteId={siteId} dateRange={resolvedDateRange} />
       </div>
       <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
-        <SearchPerformance siteId={siteId} dateRange={dateRange} />
+        <SearchPerformance siteId={siteId} dateRange={resolvedDateRange} />
         <GoalStats
           goalCounts={(dashboard?.goal_counts ?? []).filter(g => !/^scroll_\d+$/.test(g.event_name))}
           siteId={siteId}
-          dateRange={dateRange}
+          dateRange={resolvedDateRange}
         />
       </div>
 
