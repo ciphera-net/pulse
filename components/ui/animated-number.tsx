@@ -13,7 +13,7 @@ interface AnimatedNumberProps {
 export function AnimatedNumber({ value, format, className }: AnimatedNumberProps) {
   const motionValue = useMotionValue(value)
   const spring = useSpring(motionValue, SPRING)
-  const display = useTransform(spring, (v) => format(v))
+  const display = useTransform(spring, (v) => format(Math.max(0, v)))
   const isFirst = useRef(true)
 
   useEffect(() => {
