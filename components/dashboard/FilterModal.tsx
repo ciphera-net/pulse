@@ -397,7 +397,8 @@ export default function FilterModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 12 }}
             transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
-            className="fixed z-[101] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md glass-overlay rounded-xl shadow-2xl shadow-black/50 p-5"
+            className="fixed z-[101] left-1/2 top-1/3 -translate-x-1/2 -translate-y-1/2 w-full max-w-md rounded-2xl border border-white/[0.08] bg-neutral-950 shadow-2xl shadow-black/60 p-6"
+            style={{ backgroundImage: 'linear-gradient(to bottom, rgba(255,255,255,0.03), transparent 120px)' }}
           >
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
