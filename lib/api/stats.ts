@@ -289,10 +289,11 @@ export function getPublicDashboard(
   limit = 10,
   interval?: string,
   password?: string,
-  captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
+  captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string },
+  period?: string
 ): Promise<DashboardData> {
   return apiRequest<DashboardData>(
-    `/public/sites/${siteId}/dashboard${buildQuery({ startDate, endDate, limit, interval }, { password, captcha })}`
+    `/public/sites/${siteId}/dashboard${buildQuery({ startDate, endDate, limit, interval, period }, { password, captcha })}`
   )
 }
 
@@ -474,8 +475,8 @@ const emptyBehavior: BehaviorData = {
   by_page: [],
 }
 
-export function getBehavior(siteId: string, startDate?: string, endDate?: string, limit = 7): Promise<BehaviorData> {
-  return apiRequest<BehaviorData>(`/sites/${siteId}/behavior${buildQuery({ startDate, endDate, limit })}`)
+export function getBehavior(siteId: string, startDate?: string, endDate?: string, limit = 7, period?: string): Promise<BehaviorData> {
+  return apiRequest<BehaviorData>(`/sites/${siteId}/behavior${buildQuery({ startDate, endDate, limit, period })}`)
     .then(r => r ?? emptyBehavior)
 }
 

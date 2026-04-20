@@ -109,11 +109,22 @@ export default function CDNPage() {
   const [period, setPeriod] = useState('7')
   const [dateRange, setDateRange] = useState(() => getDateRange(7))
 
+  // Map frontend period values to backend period names
+  const PERIOD_TO_API: Record<string, string> = {
+    'today': 'today',
+    '7': '7d',
+    '28': '28d',
+    '30': '30d',
+  }
+
+  // For relative periods send the period name; for custom ranges send dates
+  const apiPeriod = PERIOD_TO_API[period] || undefined
+
   const { openUnifiedSettings } = useUnifiedSettings()
 
   // Data fetching
   const { data: bunnyStatus } = useBunnyStatus(siteId)
-  const { data: dashboard } = useDashboard(siteId, dateRange.start, dateRange.end)
+  const { data: dashboard } = useDashboard(siteId, dateRange.start, dateRange.end, undefined, undefined, apiPeriod)
   const { data: overview } = useBunnyOverview(siteId, dateRange.start, dateRange.end)
   const { data: dailyStats } = useBunnyDailyStats(siteId, dateRange.start, dateRange.end)
   const { data: topCountries } = useBunnyTopCountries(siteId, dateRange.start, dateRange.end)

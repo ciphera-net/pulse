@@ -309,10 +309,10 @@ export function useCampaigns(siteId: string, start: string, end: string, limit =
 }
 
 // * Hook for bundled behavior data (all frustration signals in one request)
-export function useBehavior(siteId: string, start: string, end: string) {
+export function useBehavior(siteId: string, start: string, end: string, period?: string) {
   return useSWR<BehaviorData>(
-    siteId && start && end ? ['behavior', siteId, start, end] : null,
-    () => fetchers.behavior(siteId, start, end),
+    siteId && (period || (start && end)) ? ['behavior', siteId, period || `${start}-${end}`] : null,
+    () => getBehavior(siteId, period ? undefined : start, period ? undefined : end, 7, period),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,
