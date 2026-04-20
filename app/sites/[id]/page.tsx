@@ -26,7 +26,9 @@ import { Button } from '@ciphera-net/ui'
 import { Select, DatePicker, DownloadIcon, ChevronLeftIcon, ChevronRightIcon } from '@ciphera-net/ui'
 import dynamic from 'next/dynamic'
 import { DashboardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
-import FilterPanel, { type FilterSuggestion } from '@/components/dashboard/FilterPanel'
+import FilterButton from '@/components/dashboard/FilterButton'
+import FilterPills from '@/components/dashboard/FilterPills'
+import FilterModal, { type FilterSuggestion } from '@/components/dashboard/FilterModal'
 const Chart = dynamic(() => import('@/components/dashboard/Chart'), { ssr: false })
 import ContentStats from '@/components/dashboard/ContentStats'
 import TopReferrers from '@/components/dashboard/TopReferrers'
@@ -136,6 +138,11 @@ export default function SiteDashboardPage() {
   })
   const filtersParam = useMemo(() => serializeFilters(filters), [filters])
 
+  // Filter modal state
+  const [editingFilterIndex, setEditingFilterIndex] = useState<number | null>(null)
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
+  const [filterModalDimension, setFilterModalDimension] = useState<string | null>(null)
+
   // Engagement percentile data
   const [engagementData, setEngagementData] = useState<EngagementPercentilesData | null>(null)
 
@@ -159,6 +166,33 @@ export default function SiteDashboardPage() {
 
   const handleApplyFilters = useCallback((newFilters: DimensionFilter[]) => {
     setFilters(newFilters)
+  }, [])
+
+  const handleOpenFilterForDimension = useCallback((dimension: string) => {
+    setFilterModalDimension(dimension)
+    setEditingFilterIndex(null)
+    setIsFilterModalOpen(true)
+  }, [])
+
+  const handleEditFilter = useCallback((index: number) => {
+    setEditingFilterIndex(index)
+    setFilterModalDimension(filters[index]?.dimension || null)
+    setIsFilterModalOpen(true)
+  }, [filters])
+
+  const handleFilterModalSave = useCallback((filter: DimensionFilter) => {
+    if (editingFilterIndex !== null) {
+      setFilters(prev => prev.map((f, i) => i === editingFilterIndex ? filter : f))
+    } else {
+      setFilters(prev => [...prev, filter])
+    }
+    setIsFilterModalOpen(false)
+    setEditingFilterIndex(null)
+  }, [editingFilterIndex])
+
+  const handleFilterModalClose = useCallback(() => {
+    setIsFilterModalOpen(false)
+    setEditingFilterIndex(null)
   }, [])
 
   // Fetch full suggestion list (up to 100) when a dimension is selected in the filter dropdown
@@ -391,8 +425,14 @@ export default function SiteDashboardPage() {
           <span className="text-sm text-neutral-400 tabular-nums">{realtime} current visitors</span>
         </div>
       )}
+      {!compact && (
+        <FilterPills filters={filters} onEdit={handleEditFilter} onRemove={handleRemoveFilter} onClear={handleClearFilters} />
+      )}
+      {compact && filters.length > 0 && (
+        <span className="text-xs text-brand-orange font-medium">{filters.length} filter{filters.length > 1 ? 's' : ''}</span>
+      )}
       <div className="flex-1" />
-      <FilterPanel filters={filters} onApply={handleApplyFilters} onFetchSuggestions={handleFetchSuggestions} />
+      <FilterButton hasActiveFilters={filters.length > 0} onSelectDimension={handleOpenFilterForDimension} />
       <div className="flex items-center h-10 rounded-lg border border-white/[0.08] bg-neutral-900/80 shadow-sm">
         <button onClick={() => shiftPeriod(-1)} className={`${compact ? 'px-1.5' : 'px-2'} h-full text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors rounded-l-lg ease-apple`} aria-label="Previous period">
           <ChevronLeftIcon className={compact ? 'w-3.5 h-3.5' : 'w-4 h-4'} weight="bold" />
@@ -592,6 +632,15 @@ export default function SiteDashboardPage() {
         topPages={dashboard?.top_pages}
         topReferrers={dashboard?.top_referrers}
         campaigns={campaigns}
+      />
+
+      <FilterModal
+        open={isFilterModalOpen}
+        initialDimension={filterModalDimension}
+        initialFilter={editingFilterIndex !== null ? filters[editingFilterIndex] : null}
+        onSave={handleFilterModalSave}
+        onClose={handleFilterModalClose}
+        onFetchSuggestions={handleFetchSuggestions}
       />
     </div>
   )

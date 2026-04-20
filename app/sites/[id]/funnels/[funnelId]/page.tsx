@@ -7,7 +7,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { useParams, useRouter } from 'next/navigation'
 import { ApiError } from '@/lib/api/client'
 import { getFunnel, getFunnelStats, getFunnelTrends, deleteFunnel, type Funnel, type FunnelStats, type FunnelTrends } from '@/lib/api/funnels'
-import FilterPanel from '@/components/dashboard/FilterPanel'
+import FilterButton from '@/components/dashboard/FilterButton'
+import FilterPills from '@/components/dashboard/FilterPills'
+import FilterModal from '@/components/dashboard/FilterModal'
 import { type DimensionFilter, serializeFilters } from '@/lib/filters'
 import { toast, Select, DatePicker, ChevronLeftIcon, ArrowRightIcon, TrashIcon, Button } from '@ciphera-net/ui'
 import { PencilSimple } from '@phosphor-icons/react'
@@ -32,6 +34,9 @@ export default function FunnelReportPage() {
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
   const [loadError, setLoadError] = useState<'not_found' | 'forbidden' | 'error' | null>(null)
   const [filters, setFilters] = useState<DimensionFilter[]>([])
+  const [editingFilterIndex, setEditingFilterIndex] = useState<number | null>(null)
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
+  const [filterModalDimension, setFilterModalDimension] = useState<string | null>(null)
   const [expandedExitStep, setExpandedExitStep] = useState<number | null>(null)
   const [trends, setTrends] = useState<FunnelTrends | null>(null)
   const [visibleSteps, setVisibleSteps] = useState<Set<string>>(new Set())
@@ -76,6 +81,41 @@ export default function FunnelReportPage() {
       toast.error('Failed to delete funnel')
     }
   }
+
+  const handleOpenFilterForDimension = useCallback((dimension: string) => {
+    setFilterModalDimension(dimension)
+    setEditingFilterIndex(null)
+    setIsFilterModalOpen(true)
+  }, [])
+
+  const handleEditFilter = useCallback((index: number) => {
+    setEditingFilterIndex(index)
+    setFilterModalDimension(filters[index]?.dimension || null)
+    setIsFilterModalOpen(true)
+  }, [filters])
+
+  const handleRemoveFilter = useCallback((index: number) => {
+    setFilters(prev => prev.filter((_, i) => i !== index))
+  }, [])
+
+  const handleClearFilters = useCallback(() => {
+    setFilters([])
+  }, [])
+
+  const handleFilterModalSave = useCallback((filter: DimensionFilter) => {
+    if (editingFilterIndex !== null) {
+      setFilters(prev => prev.map((f, i) => i === editingFilterIndex ? filter : f))
+    } else {
+      setFilters(prev => [...prev, filter])
+    }
+    setIsFilterModalOpen(false)
+    setEditingFilterIndex(null)
+  }, [editingFilterIndex])
+
+  const handleFilterModalClose = useCallback(() => {
+    setIsFilterModalOpen(false)
+    setEditingFilterIndex(null)
+  }, [])
 
   const showSkeleton = useMinimumLoading(loading && !funnel)
   const fadeClass = useSkeletonFade(showSkeleton)
@@ -207,10 +247,8 @@ export default function FunnelReportPage() {
 
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-2 mb-6">
-          <FilterPanel
-            filters={filters}
-            onApply={(newFilters) => setFilters(newFilters)}
-          />
+          <FilterButton hasActiveFilters={filters.length > 0} onSelectDimension={handleOpenFilterForDimension} />
+          <FilterPills filters={filters} onEdit={handleEditFilter} onRemove={handleRemoveFilter} onClear={handleClearFilters} />
         </div>
 
         {/* Chart */}
@@ -446,6 +484,14 @@ export default function FunnelReportPage() {
           setIsDatePickerOpen(false)
         }}
         initialRange={dateRange}
+      />
+
+      <FilterModal
+        open={isFilterModalOpen}
+        initialDimension={filterModalDimension}
+        initialFilter={editingFilterIndex !== null ? filters[editingFilterIndex] : null}
+        onSave={handleFilterModalSave}
+        onClose={handleFilterModalClose}
       />
     </div>
   )
