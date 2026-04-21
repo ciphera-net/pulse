@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 import { getDateRange, formatDate, getThisWeekRange, getThisMonthRange } from '@/lib/utils/dateRanges'
-import { Select, DatePicker } from '@ciphera-net/ui'
+import { Select, DatePicker, ChevronLeftIcon, ChevronRightIcon } from '@ciphera-net/ui'
 import dynamic from 'next/dynamic'
 import { getRageClicks, getDeadClicks } from '@/lib/api/stats'
 import FrustrationSummaryCards from '@/components/behavior/FrustrationSummaryCards'
@@ -42,6 +42,23 @@ export default function BehaviorPage() {
 
   // Fetch dashboard data for scroll depth (goal_counts + stats)
   const { data: dashboard } = useDashboard(siteId, dateRange.start, dateRange.end, undefined, undefined, apiPeriod)
+
+  const shiftPeriod = useCallback((direction: -1 | 1) => {
+    const shift = (date: string, days: number) => {
+      const d = new Date(date + 'T00:00:00')
+      d.setDate(d.getDate() + days)
+      return formatDate(d)
+    }
+    const startDate = new Date(dateRange.start + 'T00:00:00')
+    const endDate = new Date(dateRange.end + 'T00:00:00')
+    const spanDays = Math.round((endDate.getTime() - startDate.getTime()) / 86400000) + 1
+    const offsetDays = spanDays * direction
+    const newRange = { start: shift(dateRange.start, offsetDays), end: shift(dateRange.end, offsetDays) }
+    const today = formatDate(new Date())
+    if (newRange.end > today) return
+    setDateRange(newRange)
+    setPeriod('custom')
+  }, [dateRange])
 
   const showSkeleton = useMinimumLoading(loading && !behavior)
   const fadeClass = useSkeletonFade(showSkeleton)
@@ -81,42 +98,75 @@ export default function BehaviorPage() {
             Frustration signals and user engagement patterns
           </p>
         </div>
-        <Select
-          variant="input"
-          className="min-w-[140px]"
-          value={period}
-          onChange={(value) => {
-            if (value === 'today') {
-              const today = formatDate(new Date())
-              setDateRange({ start: today, end: today })
-              setPeriod('today')
-            } else if (value === '7') {
-              setDateRange(getDateRange(7))
-              setPeriod('7')
-            } else if (value === 'week') {
-              setDateRange(getThisWeekRange())
-              setPeriod('week')
-            } else if (value === '30') {
-              setDateRange(getDateRange(30))
-              setPeriod('30')
-            } else if (value === 'month') {
-              setDateRange(getThisMonthRange())
-              setPeriod('month')
-            } else if (value === 'custom') {
-              setIsDatePickerOpen(true)
-            }
-          }}
-          options={[
-            { value: 'today', label: 'Today' },
-            { value: '7', label: 'Last 7 days' },
-            { value: '30', label: 'Last 30 days' },
-            { value: 'divider-1', label: '', divider: true },
-            { value: 'week', label: 'This week' },
-            { value: 'month', label: 'This month' },
-            { value: 'divider-2', label: '', divider: true },
-            { value: 'custom', label: 'Custom' },
-          ]}
-        />
+        <div className="flex items-center h-10 rounded-lg border border-white/[0.08] bg-neutral-900/80 shadow-sm">
+          <button onClick={() => shiftPeriod(-1)} className="px-2 h-full text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors rounded-l-lg ease-apple" aria-label="Previous period">
+            <ChevronLeftIcon className="w-4 h-4" weight="bold" />
+          </button>
+          <div className="w-px h-5 bg-white/[0.08]" />
+          <Select
+            variant="ghost"
+            className="min-w-[130px]"
+            value={period}
+            onChange={(value) => {
+              if (value === '1h') {
+                const now = new Date()
+                const end = formatDate(now)
+                const start = formatDate(now)
+                setDateRange({ start, end })
+                setPeriod('1h')
+              } else if (value === '24h') {
+                setDateRange(getDateRange(1))
+                setPeriod('24h')
+              } else if (value === 'today') {
+                const today = formatDate(new Date())
+                setDateRange({ start: today, end: today })
+                setPeriod('today')
+              } else if (value === 'yesterday') {
+                const d = new Date()
+                d.setDate(d.getDate() - 1)
+                const y = formatDate(d)
+                setDateRange({ start: y, end: y })
+                setPeriod('yesterday')
+              } else if (value === '7') {
+                setDateRange(getDateRange(7))
+                setPeriod('7')
+              } else if (value === '30') {
+                setDateRange(getDateRange(30))
+                setPeriod('30')
+              } else if (value === 'week') {
+                setDateRange(getThisWeekRange())
+                setPeriod('week')
+              } else if (value === 'month') {
+                setDateRange(getThisMonthRange())
+                setPeriod('month')
+              } else if (value === 'year') {
+                setDateRange(getDateRange(365))
+                setPeriod('year')
+              } else if (value === 'custom') {
+                setIsDatePickerOpen(true)
+              }
+            }}
+            options={[
+              { value: '1h', label: 'Last hour' },
+              { value: '24h', label: 'Last 24 hours' },
+              { value: 'divider-1', label: '', divider: true },
+              { value: 'today', label: 'Today' },
+              { value: 'yesterday', label: 'Yesterday' },
+              { value: '7', label: 'Last 7 days' },
+              { value: '30', label: 'Last 30 days' },
+              { value: 'divider-2', label: '', divider: true },
+              { value: 'week', label: 'This week' },
+              { value: 'month', label: 'This month' },
+              { value: 'year', label: 'This year' },
+              { value: 'divider-3', label: '', divider: true },
+              { value: 'custom', label: 'Custom' },
+            ]}
+          />
+          <div className="w-px h-5 bg-white/[0.08]" />
+          <button onClick={() => shiftPeriod(1)} className="px-2 h-full text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors rounded-r-lg ease-apple" aria-label="Next period">
+            <ChevronRightIcon className="w-4 h-4" weight="bold" />
+          </button>
+        </div>
       </div>
 
       {/* Summary cards */}
@@ -173,10 +223,7 @@ export default function BehaviorPage() {
           transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0.15 }}
           className="grid gap-6 lg:grid-cols-2 mb-8 [&>*]:min-w-0"
         >
-          <ScrollDepth
-            goalCounts={dashboard?.goal_counts ?? []}
-            totalPageviews={dashboard?.stats?.pageviews ?? 0}
-          />
+          <ScrollDepth scrollDepth={dashboard?.scroll_depth} />
           <FrustrationTrend summary={summary} loading={loading} />
         </motion.div>
       )}

@@ -2,36 +2,23 @@
 
 import { PolarAngleAxis, PolarGrid, Radar, RadarChart, Tooltip } from 'recharts'
 import { BarChartIcon } from '@ciphera-net/ui'
-import type { GoalCountStat } from '@/lib/api/stats'
+import type { ScrollDepthDistribution } from '@/lib/api/stats'
 
 interface ScrollDepthProps {
-  goalCounts: GoalCountStat[]
-  totalPageviews: number
+  scrollDepth?: ScrollDepthDistribution
 }
 
 const THRESHOLDS = [25, 50, 75, 100] as const
 
-export default function ScrollDepth({ goalCounts, totalPageviews }: ScrollDepthProps) {
-  // Raw counts: each event represents the MAX depth that visitor reached
-  const rawCounts = new Map<number, number>()
-  for (const row of goalCounts) {
-    const match = row.event_name.match(/^scroll_(\d+)$/)
-    if (match) {
-      rawCounts.set(Number(match[1]), row.count)
-    }
-  }
+export default function ScrollDepth({ scrollDepth }: ScrollDepthProps) {
+  const total = scrollDepth?.total_sessions ?? 0
+  const hasData = total > 0
 
-  const hasData = rawCounts.size > 0 && totalPageviews > 0
-
-  // Cumulative: scroll_100 implies 75, 50, 25 were also reached
-  // So each threshold's count = its own count + all higher thresholds' counts
   const chartData = THRESHOLDS.map((threshold) => {
-    const cumulative = THRESHOLDS
-      .filter((t) => t >= threshold)
-      .reduce((sum, t) => sum + (rawCounts.get(t) ?? 0), 0)
+    const count = scrollDepth?.[`scroll_${threshold}` as keyof ScrollDepthDistribution] as number ?? 0
     return {
       label: `${threshold}%`,
-      value: totalPageviews > 0 ? Math.round((cumulative / totalPageviews) * 100) : 0,
+      value: total > 0 ? Math.round((count / total) * 100) : 0,
     }
   })
 

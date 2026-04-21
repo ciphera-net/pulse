@@ -6,6 +6,10 @@ import {
   getDateRange,
   getThisWeekRange,
   getThisMonthRange,
+  getThisYearRange,
+  getYesterdayRange,
+  getLast24HoursRange,
+  getLast1HourRange,
   formatDate,
 } from '@/lib/utils/dateRanges'
 
@@ -22,15 +26,19 @@ export const DENSITY_STEP = 5
 export const DENSITY_DEFAULT = 20
 
 export type ViewMode = 'columns' | 'flow'
-export type Period = 'today' | '7' | '30' | 'week' | 'month' | 'custom'
+export type Period = '1h' | '24h' | 'today' | 'yesterday' | '7' | '30' | 'week' | 'month' | 'year' | 'custom'
 
 const VIEW_MODES: ReadonlySet<ViewMode> = new Set(['columns', 'flow'])
 const PERIODS: ReadonlySet<Period> = new Set([
+  '1h',
+  '24h',
   'today',
+  'yesterday',
   '7',
   '30',
   'week',
   'month',
+  'year',
   'custom',
 ])
 
@@ -70,10 +78,16 @@ function isValidDateString(s: string | null): s is string {
 
 function periodToDateRange(period: Period) {
   switch (period) {
+    case '1h':
+      return getLast1HourRange()
+    case '24h':
+      return getLast24HoursRange()
     case 'today': {
       const today = formatDate(new Date())
       return { start: today, end: today }
     }
+    case 'yesterday':
+      return getYesterdayRange()
     case '7':
       return getDateRange(7)
     case '30':
@@ -82,6 +96,8 @@ function periodToDateRange(period: Period) {
       return getThisWeekRange()
     case 'month':
       return getThisMonthRange()
+    case 'year':
+      return getThisYearRange()
     case 'custom':
       // * Fallback only — actual custom range comes from URL read path
       return getDateRange(30)

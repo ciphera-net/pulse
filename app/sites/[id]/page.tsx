@@ -594,7 +594,7 @@ export default function SiteDashboardPage() {
       <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
         <SearchPerformance siteId={siteId} dateRange={resolvedDateRange} />
         <GoalStats
-          goalCounts={(dashboard?.goal_counts ?? []).filter(g => !/^scroll_\d+$/.test(g.event_name))}
+          goalCounts={dashboard?.goal_counts ?? []}
           siteId={siteId}
           dateRange={resolvedDateRange}
         />
