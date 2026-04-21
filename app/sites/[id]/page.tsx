@@ -26,7 +26,9 @@ import { Button } from '@ciphera-net/ui'
 import { Select, DatePicker, DownloadIcon, ChevronLeftIcon, ChevronRightIcon } from '@ciphera-net/ui'
 import dynamic from 'next/dynamic'
 import { DashboardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
-import FilterPanel, { type FilterSuggestion } from '@/components/dashboard/FilterPanel'
+import FilterButton from '@/components/dashboard/FilterButton'
+import FilterPills from '@/components/dashboard/FilterPills'
+import FilterModal, { type FilterSuggestion } from '@/components/dashboard/FilterModal'
 const Chart = dynamic(() => import('@/components/dashboard/Chart'), { ssr: false })
 import ContentStats from '@/components/dashboard/ContentStats'
 import TopReferrers from '@/components/dashboard/TopReferrers'
@@ -136,6 +138,40 @@ export default function SiteDashboardPage() {
   })
   const filtersParam = useMemo(() => serializeFilters(filters), [filters])
 
+  // Map frontend period values to backend period names
+  const PERIOD_TO_API: Record<string, string> = {
+    'today': 'today',
+    'yesterday': 'yesterday',
+    '1h': '1h',
+    '24h': '24h',
+    '7': '7d',
+    '30': '30d',
+    'week': 'week',
+    'month': 'month',
+    'year': 'year',
+  }
+
+  // For relative periods send the period name; for custom ranges send dates
+  const apiPeriod = period !== 'custom' ? (PERIOD_TO_API[period] || undefined) : undefined
+
+  const interval = dateRange.start === dateRange.end ? todayInterval : multiDayInterval
+
+  // Single dashboard request replaces focused hooks (overview, pages, locations,
+  // devices, referrers, goals). The backend runs all queries in parallel
+  // and caches the result in Redis for efficient data loading.
+  const { data: dashboard, isLoading: dashboardLoading, error: dashboardError } = useDashboard(siteId, dateRange?.start || '', dateRange?.end || '', interval, filtersParam || undefined, apiPeriod)
+
+  // Server-resolved date range is the single source of truth for period-based queries.
+  // null while loading — all downstream consumers must gate on this being non-null.
+  // Custom ranges use client-computed dateRange immediately (no server resolution needed).
+  const resolvedDateRange: { start: string; end: string } | null =
+    dashboard?.date_range ?? (apiPeriod ? null : dateRange)
+
+  // Filter modal state
+  const [editingFilterIndex, setEditingFilterIndex] = useState<number | null>(null)
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
+  const [filterModalDimension, setFilterModalDimension] = useState<string | null>(null)
+
   // Engagement percentile data
   const [engagementData, setEngagementData] = useState<EngagementPercentilesData | null>(null)
 
@@ -161,10 +197,38 @@ export default function SiteDashboardPage() {
     setFilters(newFilters)
   }, [])
 
+  const handleOpenFilterForDimension = useCallback((dimension: string) => {
+    setFilterModalDimension(dimension)
+    setEditingFilterIndex(null)
+    setIsFilterModalOpen(true)
+  }, [])
+
+  const handleEditFilter = useCallback((index: number) => {
+    setEditingFilterIndex(index)
+    setFilterModalDimension(filters[index]?.dimension || null)
+    setIsFilterModalOpen(true)
+  }, [filters])
+
+  const handleFilterModalSave = useCallback((filter: DimensionFilter) => {
+    if (editingFilterIndex !== null) {
+      setFilters(prev => prev.map((f, i) => i === editingFilterIndex ? filter : f))
+    } else {
+      setFilters(prev => [...prev, filter])
+    }
+    setIsFilterModalOpen(false)
+    setEditingFilterIndex(null)
+  }, [editingFilterIndex])
+
+  const handleFilterModalClose = useCallback(() => {
+    setIsFilterModalOpen(false)
+    setEditingFilterIndex(null)
+  }, [])
+
   // Fetch full suggestion list (up to 100) when a dimension is selected in the filter dropdown
   const handleFetchSuggestions = useCallback(async (dimension: string): Promise<FilterSuggestion[]> => {
-    const start = dateRange.start
-    const end = dateRange.end
+    if (!resolvedDateRange) return []
+    const start = resolvedDateRange.start
+    const end = resolvedDateRange.end
     const f = filtersParam || undefined
     const limit = 100
 
@@ -222,7 +286,7 @@ export default function SiteDashboardPage() {
     } catch {
       return []
     }
-  }, [siteId, dateRange.start, dateRange.end, filtersParam])
+  }, [siteId, resolvedDateRange?.start, resolvedDateRange?.end, filtersParam])
 
   // Sync filters to URL
   useEffect(() => {
@@ -235,16 +299,15 @@ export default function SiteDashboardPage() {
     window.history.replaceState({}, '', url.toString())
   }, [filtersParam])
 
-  const interval = dateRange.start === dateRange.end ? todayInterval : multiDayInterval
-
   // Previous period date range for comparison.
   // Returns null when the previous range would be invalid for the backend:
   //   - current duration exceeds the backend's 366-day query cap
   //   - previous start would fall before Pulse's data-collection floor (2020-01-01)
   // Hooks below gate on prevRange via empty-string fallthrough so SWR skips the fetch.
   const prevRange = useMemo((): { start: string; end: string } | null => {
-    const startDate = new Date(dateRange.start)
-    const endDate = new Date(dateRange.end)
+    if (!resolvedDateRange) return null
+    const startDate = new Date(resolvedDateRange.start)
+    const endDate = new Date(resolvedDateRange.end)
     const duration = endDate.getTime() - startDate.getTime()
     const DAY_MS = 24 * 60 * 60 * 1000
     const MAX_DURATION_MS = 366 * DAY_MS
@@ -261,22 +324,18 @@ export default function SiteDashboardPage() {
     const prevStart = new Date(prevEnd.getTime() - duration)
     if (prevStart.getTime() < DATA_FLOOR) return null
     return { start: prevStart.toISOString().split('T')[0], end: prevEnd.toISOString().split('T')[0] }
-  }, [dateRange])
-
-  // Single dashboard request replaces focused hooks (overview, pages, locations,
-  // devices, referrers, goals). The backend runs all queries in parallel
-  // and caches the result in Redis for efficient data loading.
-  const { data: dashboard, isLoading: dashboardLoading, error: dashboardError } = useDashboard(siteId, dateRange.start, dateRange.end, interval, filtersParam || undefined)
+  }, [resolvedDateRange])
   const { data: realtimeData } = useRealtime(siteId, 15_000)
   const { data: prevStats } = useStats(siteId, prevRange?.start ?? '', prevRange?.end ?? '')
   const { data: prevDailyStats } = useDailyStats(siteId, prevRange?.start ?? '', prevRange?.end ?? '', interval)
-  const { data: campaigns } = useCampaigns(siteId, dateRange.start, dateRange.end)
+  const { data: campaigns } = useCampaigns(siteId, resolvedDateRange?.start ?? '', resolvedDateRange?.end ?? '', 100, apiPeriod)
   // Fetch engagement percentiles in parallel with dashboard data
   useEffect(() => {
-    getEngagementPercentiles(siteId, dateRange.start, dateRange.end)
+    if (!resolvedDateRange) return
+    getEngagementPercentiles(siteId, resolvedDateRange.start, resolvedDateRange.end)
       .then(setEngagementData)
       .catch(() => setEngagementData(null))
-  }, [siteId, dateRange.start, dateRange.end])
+  }, [siteId, resolvedDateRange?.start, resolvedDateRange?.end])
 
   // Derive typed values from single dashboard response
   const site = dashboard?.site ?? null
@@ -392,7 +451,13 @@ export default function SiteDashboardPage() {
         </div>
       )}
       <div className="flex-1" />
-      <FilterPanel filters={filters} onApply={handleApplyFilters} onFetchSuggestions={handleFetchSuggestions} />
+      {!compact && (
+        <FilterPills filters={filters} onEdit={handleEditFilter} onRemove={handleRemoveFilter} onClear={handleClearFilters} />
+      )}
+      {compact && filters.length > 0 && (
+        <span className="text-xs text-brand-orange font-medium">{filters.length} filter{filters.length > 1 ? 's' : ''}</span>
+      )}
+      <FilterButton hasActiveFilters={filters.length > 0} onSelectDimension={handleOpenFilterForDimension} />
       <div className="flex items-center h-10 rounded-lg border border-white/[0.08] bg-neutral-900/80 shadow-sm">
         <button onClick={() => shiftPeriod(-1)} className={`${compact ? 'px-1.5' : 'px-2'} h-full text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors rounded-l-lg ease-apple`} aria-label="Previous period">
           <ChevronLeftIcon className={compact ? 'w-3.5 h-3.5' : 'w-4 h-4'} weight="bold" />
@@ -494,13 +559,13 @@ export default function SiteDashboardPage() {
       </div>
 
       {/* Advanced Chart with Integrated Stats */}
-      <div className="mb-3">
+      {resolvedDateRange && <><div className="mb-3">
         <Chart
           data={dailyStats}
           stats={stats}
           prevStats={prevStats}
-          interval={dateRange.start === dateRange.end ? todayInterval : multiDayInterval}
-          dateRange={dateRange}
+          interval={resolvedDateRange.start === resolvedDateRange.end ? todayInterval : multiDayInterval}
+          dateRange={resolvedDateRange}
           period={period}
           todayInterval={todayInterval}
           setTodayInterval={setTodayInterval}
@@ -520,7 +585,7 @@ export default function SiteDashboardPage() {
           domain={site.domain}
           collectPagePaths={site.collect_page_paths ?? true}
           siteId={siteId}
-          dateRange={dateRange}
+          dateRange={resolvedDateRange}
           onFilter={handleAddFilter}
         />
         <TopReferrers
@@ -528,7 +593,7 @@ export default function SiteDashboardPage() {
           channels={dashboard?.channels ?? []}
           collectReferrers={site.collect_referrers ?? true}
           siteId={siteId}
-          dateRange={dateRange}
+          dateRange={resolvedDateRange}
           onFilter={handleAddFilter}
         />
       </div>
@@ -543,7 +608,7 @@ export default function SiteDashboardPage() {
           geoDataLevel={site.collect_geo_data || 'full'}
           collectAudienceData={site.collect_audience_data ?? true}
           siteId={siteId}
-          dateRange={dateRange}
+          dateRange={resolvedDateRange}
           onFilter={handleAddFilter}
         />
         <TechSpecs
@@ -554,23 +619,23 @@ export default function SiteDashboardPage() {
           collectDeviceInfo={site.collect_device_info ?? true}
           collectScreenResolution={site.collect_screen_resolution ?? true}
           siteId={siteId}
-          dateRange={dateRange}
+          dateRange={resolvedDateRange}
           onFilter={handleAddFilter}
         />
       </div>
 
       <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
-        <Campaigns siteId={siteId} dateRange={dateRange} filters={filtersParam || undefined} onFilter={handleAddFilter} />
-        <PeakHours siteId={siteId} dateRange={dateRange} />
+        <Campaigns siteId={siteId} dateRange={resolvedDateRange} filters={filtersParam || undefined} onFilter={handleAddFilter} />
+        <PeakHours siteId={siteId} dateRange={resolvedDateRange} />
       </div>
       <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
-        <SearchPerformance siteId={siteId} dateRange={dateRange} />
+        <SearchPerformance siteId={siteId} dateRange={resolvedDateRange} />
         <GoalStats
           goalCounts={(dashboard?.goal_counts ?? []).filter(g => !/^scroll_\d+$/.test(g.event_name))}
           siteId={siteId}
-          dateRange={dateRange}
+          dateRange={resolvedDateRange}
         />
-      </div>
+      </div></>}
 
       <DatePicker
         isOpen={isDatePickerOpen}
@@ -592,6 +657,15 @@ export default function SiteDashboardPage() {
         topPages={dashboard?.top_pages}
         topReferrers={dashboard?.top_referrers}
         campaigns={campaigns}
+      />
+
+      <FilterModal
+        open={isFilterModalOpen}
+        initialDimension={filterModalDimension}
+        initialFilter={editingFilterIndex !== null ? filters[editingFilterIndex] : null}
+        onSave={handleFilterModalSave}
+        onClose={handleFilterModalClose}
+        onFetchSuggestions={handleFetchSuggestions}
       />
     </div>
   )

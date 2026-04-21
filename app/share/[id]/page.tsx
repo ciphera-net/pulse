@@ -50,11 +50,22 @@ export default function PublicDashboardPage() {
   const [captchaToken, setCaptchaToken] = useState('')
   
   // Date range state
+  const [period, setPeriod] = useState('30')
   const [dateRange, setDateRange] = useState(getDateRange(30))
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const [todayInterval, setTodayInterval] = useState<'minute' | 'hour'>('hour')
   const [multiDayInterval, setMultiDayInterval] = useState<'hour' | 'day'>('day')
+
+  // Map frontend period values to backend period names
+  const PERIOD_TO_API: Record<string, string> = {
+    'today': 'today',
+    '7': '7d',
+    '30': '30d',
+  }
+
+  // For relative periods send the period name; for custom ranges send dates
+  const apiPeriod = period !== 'custom' ? (PERIOD_TO_API[period] || undefined) : undefined
 
   // Previous period data
   const [prevStats, setPrevStats] = useState<Stats | undefined>(undefined)
@@ -110,7 +121,7 @@ export default function PublicDashboardPage() {
       const interval = dateRange.start === dateRange.end ? todayInterval : multiDayInterval
 
       const [dashboardData, prevStatsData, prevDailyStatsData] = await Promise.all([
-        getPublicDashboard(siteId, dateRange.start, dateRange.end, 10, interval),
+        getPublicDashboard(siteId, apiPeriod ? undefined : dateRange.start, apiPeriod ? undefined : dateRange.end, 10, interval, undefined, undefined, apiPeriod),
         (async () => {
             const prevRange = getPreviousDateRange(dateRange.start, dateRange.end)
             return getPublicStats(siteId, prevRange.start, prevRange.end)
@@ -138,7 +149,7 @@ export default function PublicDashboardPage() {
     } finally {
       if (!silent) setLoading(false)
     }
-  }, [siteId, dateRange, todayInterval, multiDayInterval])
+  }, [siteId, dateRange, todayInterval, multiDayInterval, apiPeriod])
 
   // * Auto-refresh interval: chart, KPIs, and realtime count update every 30 seconds
   useEffect(() => {
@@ -149,11 +160,11 @@ export default function PublicDashboardPage() {
       }, 30000)
       return () => clearInterval(interval)
     }
-  }, [data, isPasswordProtected, dateRange, todayInterval, multiDayInterval, loadDashboard, loadRealtime])
+  }, [data, isPasswordProtected, dateRange, todayInterval, multiDayInterval, apiPeriod, loadDashboard, loadRealtime])
 
   useEffect(() => {
     loadDashboard()
-  }, [siteId, dateRange, todayInterval, multiDayInterval, loadDashboard])
+  }, [siteId, dateRange, todayInterval, multiDayInterval, apiPeriod, loadDashboard])
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -312,23 +323,19 @@ export default function PublicDashboardPage() {
               </button>
 
               <Select
-                value={
-                  dateRange.start === new Date().toISOString().split('T')[0] && dateRange.end === new Date().toISOString().split('T')[0] 
-                  ? 'today' 
-                  : dateRange.start === getDateRange(7).start 
-                  ? '7' 
-                  : dateRange.start === getDateRange(30).start 
-                  ? '30' 
-                  : 'custom'
-                }
+                value={period}
                 onChange={(value) => {
-                  if (value === '7') setDateRange(getDateRange(7))
-                  else if (value === '30') setDateRange(getDateRange(30))
-                  else if (value === 'today') {
+                  if (value === 'today') {
                     const today = new Date().toISOString().split('T')[0]
                     setDateRange({ start: today, end: today })
-                  }
-                  else if (value === 'custom') {
+                    setPeriod('today')
+                  } else if (value === '7') {
+                    setDateRange(getDateRange(7))
+                    setPeriod('7')
+                  } else if (value === '30') {
+                    setDateRange(getDateRange(30))
+                    setPeriod('30')
+                  } else if (value === 'custom') {
                     setIsDatePickerOpen(true)
                   }
                 }}
@@ -432,6 +439,7 @@ export default function PublicDashboardPage() {
         initialRange={dateRange}
         onApply={(range) => {
           setDateRange(range)
+          setPeriod('custom')
           setIsDatePickerOpen(false)
         }}
       />
