@@ -91,6 +91,7 @@ export default function PricingSection() {
   const { data: subscription } = useSubscription()
   const { data: prices } = useSWR('plan-prices', getPrices)
   const currentPlanId = subscription?.plan_id || (user ? 'free' : null)
+  const currentLimit = subscription?.pageview_limit
 
   // * Show toast when redirected from checkout with canceled=true
   useEffect(() => {
@@ -299,7 +300,8 @@ export default function PricingSection() {
           {PLANS.map((plan, index) => {
             const priceDetails = getPriceDetails(plan.id)
             const isTeam = plan.id === 'team'
-            const isCurrent = currentPlanId === plan.id
+            const selectedLimit = TRAFFIC_TIERS[sliderIndex]?.value
+            const isCurrent = currentPlanId === plan.id && currentLimit === selectedLimit
 
             return (
               <div
