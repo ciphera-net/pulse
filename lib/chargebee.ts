@@ -11,7 +11,8 @@ export interface ChargebeeInstance {
   openCheckout: (options: CheckoutOptions) => void
   createChargebeePortal: () => PortalInstance
   setPortalSession: (callback: () => Promise<PortalSession>) => void
-  load: (module: string) => Promise<unknown>
+  load: (module: string) => Promise<void>
+  createComponent: (type: string, options?: Record<string, unknown>) => unknown
 }
 
 export interface CheckoutOptions {
