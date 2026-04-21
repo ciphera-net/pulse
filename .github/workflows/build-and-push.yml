@@ -33,11 +33,15 @@ jobs:
             echo "dokploy_app_id=${{ secrets.DOKPLOY_PULSE_FRONTEND_PROD_APP_ID }}" >> "$GITHUB_OUTPUT"
             echo "public_api_url=https://pulse-api.ciphera.net" >> "$GITHUB_OUTPUT"
             echo "public_app_url=https://pulse.ciphera.net" >> "$GITHUB_OUTPUT"
+            echo "chargebee_site=ciphera-net" >> "$GITHUB_OUTPUT"
+            echo "chargebee_pub_key=live_P4hmgDm6Xcdx6mBgvUCbXQ4pnRZDG3hQy" >> "$GITHUB_OUTPUT"
           else
             echo "image_name=ciphera-net/pulse-frontend-staging" >> "$GITHUB_OUTPUT"
             echo "dokploy_app_id=${{ secrets.DOKPLOY_PULSE_FRONTEND_STAGING_APP_ID }}" >> "$GITHUB_OUTPUT"
             echo "public_api_url=https://pulse-api-staging.ciphera.net" >> "$GITHUB_OUTPUT"
             echo "public_app_url=https://pulse-staging.ciphera.net" >> "$GITHUB_OUTPUT"
+            echo "chargebee_site=ciphera-net-test" >> "$GITHUB_OUTPUT"
+            echo "chargebee_pub_key=test_dRcuB7qQO8c4c6cublGf2oXczKlRRNDPyA" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Set up Docker Buildx
@@ -87,8 +91,8 @@ jobs:
             NEXT_PUBLIC_AUTH_URL=https://id.ciphera.net
             NEXT_PUBLIC_AUTH_API_URL=https://api.id.ciphera.net
             NEXT_PUBLIC_CAPTCHA_API_URL=https://captcha.ciphera.net/api/v1
-            NEXT_PUBLIC_CHARGEBEE_SITE=ciphera-net
-            NEXT_PUBLIC_CHARGEBEE_PUBLISHABLE_KEY=live_P4hmgDm6Xcdx6mBgvUCbXQ4pnRZDG3hQy
+            NEXT_PUBLIC_CHARGEBEE_SITE=${{ steps.target.outputs.chargebee_site }}
+            NEXT_PUBLIC_CHARGEBEE_PUBLISHABLE_KEY=${{ steps.target.outputs.chargebee_pub_key }}
 
       - name: Install Teleport
         uses: teleport-actions/setup@v1
