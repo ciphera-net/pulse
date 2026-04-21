@@ -84,9 +84,10 @@ export async function createCheckoutSession(params: CreateCheckoutParams): Promi
   })
 }
 
-export async function updatePaymentMethod(): Promise<{ url: string }> {
-  return apiRequest<{ url: string }>('/api/billing/update-payment-method', {
+export async function updatePaymentMethod(token: string): Promise<{ ok: boolean }> {
+  return apiRequest<{ ok: boolean }>('/api/billing/update-payment-method', {
     method: 'POST',
+    body: JSON.stringify({ token }),
   })
 }
 
