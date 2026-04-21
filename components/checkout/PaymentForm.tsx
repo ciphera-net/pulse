@@ -55,12 +55,12 @@ function MethodLogo({ type }: { type: string }) {
 const cardFieldBase =
   'w-full rounded-lg border border-neutral-700 bg-neutral-800/50 px-3 py-3 h-[48px] transition-all ease-apple focus-within:ring-1 focus-within:ring-brand-orange focus-within:border-brand-orange'
 
-// Chargebee card field interface (minimal subset used here)
 interface ChargebeeCardComponent {
   mount: (selector: string) => void
-  unmount: () => void
-  tokenize: () => Promise<{ token: string }>
-  on: (event: string, callback: (status: { field: string; error?: { message: string } }) => void) => void
+  tokenize: (additionalData?: Record<string, string>) => Promise<{ token: string }>
+  on: (event: string, callback: (state: { complete?: boolean; error?: { message: string }; cardType?: string }) => void) => void
+  focus: () => void
+  clear: () => void
 }
 
 export default function PaymentForm({ plan, interval, limit, country, vatId }: PaymentFormProps) {
@@ -80,7 +80,6 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
 
   const [scriptLoaded, setScriptLoaded] = useState(false)
 
-  // Mount Chargebee card component after script loads
   useEffect(() => {
     if (!scriptLoaded || cardInitialized.current) return
 
@@ -92,8 +91,10 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
           return
         }
 
-        const cardModule = await cbInstance.load('card-fields') as { create: (type: string, options: Record<string, unknown>) => ChargebeeCardComponent }
-        const cardComponent = cardModule.create('number', {
+        await cbInstance.load('components')
+
+        const cardComponent = cbInstance.createComponent('card', {
+          placeholder: { number: 'Card number', expiry: 'MM / YY', cvv: 'CVV' },
           style: {
             base: {
               color: '#ffffff',
@@ -105,18 +106,18 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
             },
             invalid: { color: '#ef4444' },
           },
-        })
-
-        const el = document.querySelector('#chargebee-card') as HTMLElement | null
-        if (!el) {
-          setCardError(true)
-          return
-        }
+          icon: true,
+        }) as ChargebeeCardComponent
 
         cardComponent.mount('#chargebee-card')
-        cardComponent.on('change', (status) => {
-          if (status.error?.message) {
-            setFieldError(status.error.message)
+
+        cardComponent.on('ready', () => {
+          setCardReady(true)
+        })
+
+        cardComponent.on('change', (state) => {
+          if (state.error?.message) {
+            setFieldError(state.error.message)
           } else {
             setFieldError(null)
           }
@@ -129,17 +130,10 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
         console.error('Chargebee card mount error:', err)
         setCardError(true)
       }
-    }, 100)
+    }, 200)
 
     return () => clearTimeout(timer)
   }, [scriptLoaded])
-
-  // Unmount card component on cleanup
-  useEffect(() => {
-    return () => {
-      try { cardComponentRef.current?.unmount() } catch { /* DOM already removed */ }
-    }
-  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
