@@ -164,6 +164,7 @@ function buildQuery(
   opts: {
     startDate?: string
     endDate?: string
+    period?: string
     limit?: number
     interval?: string
     countryLimit?: number
@@ -173,8 +174,12 @@ function buildQuery(
   auth?: AuthParams
 ): string {
   const params = new URLSearchParams()
-  if (opts.startDate) params.append('start_date', opts.startDate)
-  if (opts.endDate) params.append('end_date', opts.endDate)
+  if (opts.period) {
+    params.append('period', opts.period)
+  } else {
+    if (opts.startDate) params.append('start_date', opts.startDate)
+    if (opts.endDate) params.append('end_date', opts.endDate)
+  }
   if (opts.limit != null) params.append('limit', opts.limit.toString())
   if (opts.interval) params.append('interval', opts.interval)
   if (opts.countryLimit != null) params.append('country_limit', opts.countryLimit.toString())
@@ -187,8 +192,8 @@ function buildQuery(
 
 /** Factory for endpoints that return an array nested under a response key. */
 function createListFetcher<T>(path: string, field: string, defaultLimit = 10) {
-  return (siteId: string, startDate?: string, endDate?: string, limit = defaultLimit, filters?: string): Promise<T[]> =>
-    apiRequest<Record<string, T[]>>(`/sites/${siteId}/${path}${buildQuery({ startDate, endDate, limit, filters })}`)
+  return (siteId: string, startDate?: string, endDate?: string, limit = defaultLimit, filters?: string, period?: string): Promise<T[]> =>
+    apiRequest<Record<string, T[]>>(`/sites/${siteId}/${path}${buildQuery({ startDate, endDate, limit, filters, period })}`)
       .then(r => r?.[field] || [])
 }
 
@@ -213,8 +218,8 @@ export const getCampaigns = createListFetcher<CampaignStat>('campaigns', 'campai
 
 // ─── Stats & Realtime ───────────────────────────────────────────────
 
-export function getStats(siteId: string, startDate?: string, endDate?: string, filters?: string): Promise<Stats> {
-  return apiRequest<Stats>(`/sites/${siteId}/stats${buildQuery({ startDate, endDate, filters })}`)
+export function getStats(siteId: string, startDate?: string, endDate?: string, filters?: string, period?: string): Promise<Stats> {
+  return apiRequest<Stats>(`/sites/${siteId}/stats${buildQuery({ startDate, endDate, filters, period })}`)
 }
 
 export function getPublicStats(siteId: string, startDate?: string, endDate?: string, auth?: AuthParams): Promise<Stats> {
@@ -231,8 +236,8 @@ export function getPublicRealtime(siteId: string, auth?: AuthParams): Promise<Re
 
 // ─── Daily Stats ────────────────────────────────────────────────────
 
-export function getDailyStats(siteId: string, startDate?: string, endDate?: string, interval?: string, filters?: string): Promise<DailyStat[]> {
-  return apiRequest<{ stats: DailyStat[] }>(`/sites/${siteId}/daily${buildQuery({ startDate, endDate, interval, filters })}`)
+export function getDailyStats(siteId: string, startDate?: string, endDate?: string, interval?: string, filters?: string, period?: string): Promise<DailyStat[]> {
+  return apiRequest<{ stats: DailyStat[] }>(`/sites/${siteId}/daily${buildQuery({ startDate, endDate, interval, filters, period })}`)
     .then(r => r?.stats || [])
 }
 
@@ -270,10 +275,11 @@ export interface DashboardData {
   devices: DeviceStat[]
   screen_resolutions: ScreenResolutionStat[]
   goal_counts?: GoalCountStat[]
+  date_range?: { start: string; end: string }
 }
 
-export function getDashboard(siteId: string, startDate?: string, endDate?: string, limit = 10, interval?: string, filters?: string): Promise<DashboardData> {
-  return apiRequest<DashboardData>(`/sites/${siteId}/dashboard${buildQuery({ startDate, endDate, limit, interval, filters })}`)
+export function getDashboard(siteId: string, startDate?: string, endDate?: string, limit = 10, interval?: string, filters?: string, period?: string): Promise<DashboardData> {
+  return apiRequest<DashboardData>(`/sites/${siteId}/dashboard${buildQuery({ startDate, endDate, limit, interval, filters, period })}`)
 }
 
 export function getPublicDashboard(
@@ -283,10 +289,11 @@ export function getPublicDashboard(
   limit = 10,
   interval?: string,
   password?: string,
-  captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
+  captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string },
+  period?: string
 ): Promise<DashboardData> {
   return apiRequest<DashboardData>(
-    `/public/sites/${siteId}/dashboard${buildQuery({ startDate, endDate, limit, interval }, { password, captcha })}`
+    `/public/sites/${siteId}/dashboard${buildQuery({ startDate, endDate, limit, interval, period }, { password, captcha })}`
   )
 }
 
@@ -297,6 +304,7 @@ export interface DashboardOverviewData {
   stats: Stats
   realtime_visitors: number
   daily_stats: DailyStat[]
+  date_range?: { start: string; end: string }
 }
 
 export interface DashboardPagesData {
@@ -467,8 +475,8 @@ const emptyBehavior: BehaviorData = {
   by_page: [],
 }
 
-export function getBehavior(siteId: string, startDate?: string, endDate?: string, limit = 7): Promise<BehaviorData> {
-  return apiRequest<BehaviorData>(`/sites/${siteId}/behavior${buildQuery({ startDate, endDate, limit })}`)
+export function getBehavior(siteId: string, startDate?: string, endDate?: string, limit = 7, period?: string): Promise<BehaviorData> {
+  return apiRequest<BehaviorData>(`/sites/${siteId}/behavior${buildQuery({ startDate, endDate, limit, period })}`)
     .then(r => r ?? emptyBehavior)
 }
 

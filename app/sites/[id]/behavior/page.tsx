@@ -25,11 +25,23 @@ export default function BehaviorPage() {
   const [dateRange, setDateRange] = useState(() => getDateRange(30))
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
 
+  // Map frontend period values to backend period names
+  const PERIOD_TO_API: Record<string, string> = {
+    'today': 'today',
+    '7': '7d',
+    'week': 'week',
+    '30': '30d',
+    'month': 'month',
+  }
+
+  // For relative periods send the period name; for custom ranges send dates
+  const apiPeriod = period !== 'custom' ? (PERIOD_TO_API[period] || undefined) : undefined
+
   // Single request for all frustration data
-  const { data: behavior, isLoading: loading, error: behaviorError } = useBehavior(siteId, dateRange.start, dateRange.end)
+  const { data: behavior, isLoading: loading, error: behaviorError } = useBehavior(siteId, dateRange.start, dateRange.end, apiPeriod)
 
   // Fetch dashboard data for scroll depth (goal_counts + stats)
-  const { data: dashboard } = useDashboard(siteId, dateRange.start, dateRange.end)
+  const { data: dashboard } = useDashboard(siteId, dateRange.start, dateRange.end, undefined, undefined, apiPeriod)
 
   const showSkeleton = useMinimumLoading(loading && !behavior)
   const fadeClass = useSkeletonFade(showSkeleton)

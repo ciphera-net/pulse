@@ -30,6 +30,13 @@ export const OPERATOR_LABELS: Record<string, string> = {
 export const DIMENSIONS = Object.keys(DIMENSION_LABELS)
 export const OPERATORS = Object.keys(OPERATOR_LABELS) as DimensionFilter['operator'][]
 
+export const DIMENSION_CATEGORIES = [
+  { label: 'URL', dimensions: ['page'] },
+  { label: 'Acquisition', dimensions: ['referrer', 'utm_source', 'utm_medium', 'utm_campaign'] },
+  { label: 'Device', dimensions: ['browser', 'os', 'device'] },
+  { label: 'Audience', dimensions: ['country', 'region', 'city'] },
+] as const
+
 /** Serialize filters to query param format: "browser|is|Chrome,country|is|US" */
 export function serializeFilters(filters: DimensionFilter[]): string {
   if (!filters.length) return ''
