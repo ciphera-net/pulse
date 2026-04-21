@@ -8,7 +8,7 @@ import { motion } from 'framer-motion'
 import { useAuth } from '@/lib/auth/context'
 import { useSubscription } from '@/lib/swr/dashboard'
 import { getSubscription } from '@/lib/api/billing'
-import { PLAN_PRICES, TRAFFIC_TIERS } from '@/lib/plans'
+import { TRAFFIC_TIERS } from '@/lib/plans'
 import PlanSummary from '@/components/checkout/PlanSummary'
 import PaymentForm from '@/components/checkout/PaymentForm'
 import FeatureSlideshow from '@/components/checkout/FeatureSlideshow'
@@ -18,7 +18,7 @@ import pulseIcon from '@/public/pulse_icon_no_margins.png'
 // Validation helpers
 // ---------------------------------------------------------------------------
 
-const VALID_PLANS = new Set(Object.keys(PLAN_PRICES))
+const VALID_PLANS = new Set(['solo', 'team', 'business'])
 const VALID_INTERVALS = new Set(['month', 'year'])
 const VALID_LIMITS = new Set<number>(TRAFFIC_TIERS.map((t) => t.value))
 
@@ -28,7 +28,6 @@ function isValidCheckoutParams(plan: string | null, interval: string | null, lim
   if (!VALID_PLANS.has(plan)) return false
   if (!VALID_INTERVALS.has(interval)) return false
   if (!VALID_LIMITS.has(limitNum)) return false
-  if (!PLAN_PRICES[plan]?.[limitNum]) return false
   return true
 }
 
