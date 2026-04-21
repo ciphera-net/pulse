@@ -68,6 +68,25 @@ export async function changePlan(params: ChangePlanParams): Promise<{ ok: boolea
   })
 }
 
+export interface PlanChangeEstimate {
+  sub_total: number
+  tax: number
+  total: number
+  credits_applied: number
+  amount_due: number
+  currency: string
+  next_total: number
+  next_date: number
+  next_interval: string
+}
+
+export async function estimatePlanChange(params: ChangePlanParams): Promise<PlanChangeEstimate> {
+  return apiRequest<PlanChangeEstimate>('/api/billing/estimate-change', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  })
+}
+
 export interface CreateCheckoutParams {
   plan_id: string
   interval: string
