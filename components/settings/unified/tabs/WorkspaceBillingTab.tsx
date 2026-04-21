@@ -142,12 +142,10 @@ export default function WorkspaceBillingTab() {
 
       {/* Actions */}
       <div className="flex flex-wrap gap-3">
-        {subscription.has_payment_method && (
-          <Button onClick={handleManageBilling} variant="secondary" className="text-sm gap-1.5">
-            <ArrowSquareOut weight="bold" className="w-3.5 h-3.5" />
-            Update payment method
-          </Button>
-        )}
+        <Button onClick={handleManageBilling} variant="secondary" className="text-sm gap-1.5">
+          <ArrowSquareOut weight="bold" className="w-3.5 h-3.5" />
+          Update payment method
+        </Button>
 
         {isActive && !subscription.cancel_at_period_end && (
           <Button

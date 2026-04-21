@@ -13,7 +13,7 @@ import CTASection from '@/components/marketing/CTASection'
 import { Slider } from '@/components/ui/slider'
 import useSWR from 'swr'
 import { TRAFFIC_TIERS } from '@/lib/plans'
-import { getPrices } from '@/lib/api/billing'
+import { getPrices, changePlan } from '@/lib/api/billing'
 
 // 1. Define Plans with IDs, Categories, and Feature Matrix
 const PLANS = [
@@ -152,7 +152,7 @@ export default function PricingSection() {
     }
   }
 
-  const handleSubscribe = (planId: string, options?: { interval?: string, limit?: number }) => {
+  const handleSubscribe = async (planId: string, options?: { interval?: string, limit?: number }) => {
     // 1. If not logged in, redirect to login/signup
     if (!user) {
       const intent = {
@@ -167,9 +167,22 @@ export default function PricingSection() {
       return
     }
 
-    // 2. Navigate to embedded checkout page
     const selectedInterval = options?.interval || (isYearly ? 'year' : 'month')
     const selectedLimit = options?.limit || currentTraffic.value
+
+    // 2. If already subscribed, change plan via API
+    if (subscription?.subscription_status === 'active') {
+      try {
+        await changePlan({ plan_id: planId, interval: selectedInterval, limit: selectedLimit })
+        toast.success('Plan updated successfully')
+        router.push('/')
+      } catch (err) {
+        toast.error('Failed to change plan')
+      }
+      return
+    }
+
+    // 3. New subscription — navigate to checkout
     router.push(`/checkout?plan=${planId}&interval=${selectedInterval}&limit=${selectedLimit}`)
   }
 
@@ -378,7 +391,7 @@ export default function PricingSection() {
                   } ease-apple`}
                 >
                   <span>
-                    {isCurrent ? 'Current plan' : !priceDetails ? 'Contact us' : 'Get Started'}
+                    {isCurrent ? 'Current plan' : !priceDetails ? 'Contact us' : subscription?.subscription_status === 'active' ? 'Switch plan' : 'Get Started'}
                   </span>
                   {!isCurrent && priceDetails && (
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
