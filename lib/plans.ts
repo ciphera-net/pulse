@@ -3,6 +3,12 @@
  * Backend supports plan_id solo, team, business and limit 10k–10M; month/year interval.
  */
 
+export interface PlanPrices {
+  [planId: string]: {
+    [limit: number]: number // monthly price in EUR cents
+  }
+}
+
 export const PLAN_ID_SOLO = 'solo'
 export const PLAN_ID_TEAM = 'team'
 export const PLAN_ID_BUSINESS = 'business'
@@ -80,13 +86,3 @@ export function formatRetentionMonths(months: number): string {
   return `${months} months`
 }
 
-/**
- * Monthly prices in EUR cents per plan and traffic tier.
- * IMPORTANT: Must stay in sync with backend GetSubscriptionAmount() in internal/billing/mollie.go
- * Yearly = monthly * 11 (1 month free)
- */
-export const PLAN_PRICES: Record<string, Record<number, number>> = {
-  solo:     { 10000: 700, 50000: 1100, 100000: 1500, 250000: 2500, 500000: 3900, 1000000: 5500, 2500000: 7900, 5000000: 10300, 10000000: 13500 },
-  team:     { 10000: 1100, 50000: 1900, 100000: 2300, 250000: 3900, 500000: 5900, 1000000: 7900, 2500000: 11900, 5000000: 15500, 10000000: 19900 },
-  business: { 10000: 1500, 50000: 2700, 100000: 3100, 250000: 5900, 500000: 7900, 1000000: 11100, 2500000: 16900, 5000000: 20700, 10000000: 26900 },
-}

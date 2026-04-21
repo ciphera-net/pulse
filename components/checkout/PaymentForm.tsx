@@ -6,7 +6,7 @@ import Script from 'next/script'
 import { motion, AnimatePresence } from 'framer-motion'
 import { TIMING } from '@/lib/motion'
 import { Lock, ShieldCheck } from '@phosphor-icons/react'
-import { initMollie, getMollie, MOLLIE_FIELD_STYLES, type MollieComponent } from '@/lib/mollie'
+import { initChargebee } from '@/lib/chargebee'
 import { createEmbeddedCheckout, createCheckoutSession } from '@/lib/api/billing'
 
 interface PaymentFormProps {
@@ -52,89 +52,92 @@ function MethodLogo({ type }: { type: string }) {
   return <img src={logo.src} alt={logo.alt} className="h-6 w-auto rounded-sm" />
 }
 
-const mollieFieldBase =
+const cardFieldBase =
   'w-full rounded-lg border border-neutral-700 bg-neutral-800/50 px-3 py-3 h-[48px] transition-all ease-apple focus-within:ring-1 focus-within:ring-brand-orange focus-within:border-brand-orange'
+
+// Chargebee card field interface (minimal subset used here)
+interface ChargebeeCardComponent {
+  mount: (selector: string) => void
+  unmount: () => void
+  tokenize: () => Promise<{ token: string }>
+  on: (event: string, callback: (status: { field: string; error?: { message: string } }) => void) => void
+}
 
 export default function PaymentForm({ plan, interval, limit, country, vatId }: PaymentFormProps) {
   const router = useRouter()
 
   const [selectedMethod, setSelectedMethod] = useState('')
-  const [mollieReady, setMollieReady] = useState(false)
-  const [mollieError, setMollieError] = useState(false)
+  const [cardReady, setCardReady] = useState(false)
+  const [cardError, setCardError] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
-  const [cardErrors, setCardErrors] = useState<Record<string, string>>({})
+  const [fieldError, setFieldError] = useState<string | null>(null)
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   const submitRef = useRef<HTMLButtonElement>(null)
-  const componentsRef = useRef<Record<string, MollieComponent | null>>({
-    cardHolder: null,
-    cardNumber: null,
-    expiryDate: null,
-    verificationCode: null,
-  })
-  const mollieInitialized = useRef(false)
+  const cardComponentRef = useRef<ChargebeeCardComponent | null>(null)
+  const cardInitialized = useRef(false)
 
   const [scriptLoaded, setScriptLoaded] = useState(false)
 
-  // Mount Mollie components AFTER script loaded
+  // Mount Chargebee card component after script loads
   useEffect(() => {
-    if (!scriptLoaded || mollieInitialized.current) return
+    if (!scriptLoaded || cardInitialized.current) return
 
-    const timer = setTimeout(() => {
-      const mollie = initMollie()
-      if (!mollie) {
-        setMollieError(true)
-        return
-      }
-
+    const timer = setTimeout(async () => {
       try {
-        const fields: Array<{ type: string; selector: string; placeholder?: string }> = [
-          { type: 'cardHolder', selector: '#mollie-card-holder', placeholder: 'John Doe' },
-          { type: 'cardNumber', selector: '#mollie-card-number', placeholder: '1234 5678 9012 3456' },
-          { type: 'expiryDate', selector: '#mollie-card-expiry', placeholder: 'MM / YY' },
-          { type: 'verificationCode', selector: '#mollie-card-cvc', placeholder: 'CVC' },
-        ]
-
-        for (const { type, selector, placeholder } of fields) {
-          const el = document.querySelector(selector) as HTMLElement | null
-          if (!el) {
-            setMollieError(true)
-            return
-          }
-          const opts: Record<string, unknown> = { styles: MOLLIE_FIELD_STYLES }
-          if (placeholder) opts.placeholder = placeholder
-          const component = mollie.createComponent(type, opts)
-          component.mount(el)
-          component.addEventListener('change', (event: unknown) => {
-            const e = event as { error?: string }
-            setCardErrors((prev) => {
-              const next = { ...prev }
-              if (e.error) next[type] = e.error
-              else delete next[type]
-              return next
-            })
-          })
-          componentsRef.current[type] = component
+        const cbInstance = initChargebee()
+        if (!cbInstance) {
+          setCardError(true)
+          return
         }
 
-        mollieInitialized.current = true
-        setMollieReady(true)
+        const cardModule = await cbInstance.load('card-fields') as { create: (type: string, options: Record<string, unknown>) => ChargebeeCardComponent }
+        const cardComponent = cardModule.create('number', {
+          style: {
+            base: {
+              color: '#ffffff',
+              fontSize: '15px',
+              fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+              fontWeight: '400',
+              letterSpacing: '0.025em',
+              '::placeholder': { color: '#737373' },
+            },
+            invalid: { color: '#ef4444' },
+          },
+        })
+
+        const el = document.querySelector('#chargebee-card') as HTMLElement | null
+        if (!el) {
+          setCardError(true)
+          return
+        }
+
+        cardComponent.mount('#chargebee-card')
+        cardComponent.on('change', (status) => {
+          if (status.error?.message) {
+            setFieldError(status.error.message)
+          } else {
+            setFieldError(null)
+          }
+        })
+
+        cardComponentRef.current = cardComponent
+        cardInitialized.current = true
+        setCardReady(true)
       } catch (err) {
-        console.error('Mollie mount error:', err)
-        setMollieError(true)
+        console.error('Chargebee card mount error:', err)
+        setCardError(true)
       }
     }, 100)
 
     return () => clearTimeout(timer)
   }, [scriptLoaded])
 
-  // Cleanup Mollie components on unmount
+  // Unmount card component on cleanup
   useEffect(() => {
     return () => {
-      Object.values(componentsRef.current).forEach((c) => {
-        try { c?.unmount() } catch { /* DOM already removed */ }
-      })
+      try { cardComponentRef.current?.unmount() } catch { /* DOM already removed */ }
     }
   }, [])
 
@@ -157,16 +160,19 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
 
     try {
       if (selectedMethod === 'card') {
-        const mollie = getMollie()
-        if (!mollie) {
+        const cardComponent = cardComponentRef.current
+        if (!cardComponent) {
           setFormError('Payment system not loaded. Please refresh.')
           setSubmitting(false)
           return
         }
 
-        const { token, error } = await mollie.createToken()
-        if (error || !token) {
-          setFormError(error?.message || 'Invalid card details.')
+        let token: string
+        try {
+          const result = await cardComponent.tokenize()
+          token = result.token
+        } catch (err) {
+          setFormError((err as Error)?.message || 'Invalid card details.')
           setSubmitting(false)
           return
         }
@@ -177,7 +183,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
           limit,
           country,
           vat_id: vatId || undefined,
-          card_token: token,
+          token,
         })
 
         if (result.status === 'success') router.push('/checkout?status=success')
@@ -206,9 +212,9 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
   return (
     <>
       <Script
-        src="https://js.mollie.com/v1/mollie.js"
+        src="https://js.chargebee.com/v2/chargebee.js"
         onLoad={() => setScriptLoaded(true)}
-        onError={() => setMollieError(true)}
+        onError={() => setCardError(true)}
       />
 
       <form
@@ -244,58 +250,21 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
           })}
         </div>
 
-        {/* Card form — always rendered for Mollie mount, animated visibility */}
+        {/* Card form — always rendered for Chargebee mount, animated visibility */}
         <div
           className="overflow-hidden transition-all duration-slow ease-apple"
-          style={{ maxHeight: isCard ? '400px' : '0px', opacity: isCard ? 1 : 0 }}
+          style={{ maxHeight: isCard ? '200px' : '0px', opacity: isCard ? 1 : 0 }}
         >
           <div className="space-y-4 pb-1">
-            {/* Cardholder name */}
             <div>
-              <label className="block text-sm font-medium text-neutral-300 mb-1.5">Cardholder name</label>
-              <div className="overflow-hidden transition-all duration-slow ease-apple" style={{ height: mollieReady ? '48px' : '0px' }}>
-                <div id="mollie-card-holder" className={mollieFieldBase} />
+              <label className="block text-sm font-medium text-neutral-300 mb-1.5">Card details</label>
+              <div className="overflow-hidden transition-all duration-slow ease-apple" style={{ height: cardReady ? '48px' : '0px' }}>
+                <div id="chargebee-card" className={cardFieldBase} />
               </div>
-              {!mollieReady && isCard && <div className={`${mollieFieldBase} bg-neutral-800/30 animate-skeleton-fade`} />}
-              {submitted && cardErrors.cardHolder && (
-                <p className="mt-1 text-xs text-red-400">{cardErrors.cardHolder}</p>
+              {!cardReady && isCard && <div className={`${cardFieldBase} bg-neutral-800/30 animate-skeleton-fade`} />}
+              {submitted && fieldError && (
+                <p className="mt-1 text-xs text-red-400">{fieldError}</p>
               )}
-            </div>
-
-            {/* Card number */}
-            <div>
-              <label className="block text-sm font-medium text-neutral-300 mb-1.5">Card number</label>
-              <div className="overflow-hidden transition-all duration-slow ease-apple" style={{ height: mollieReady ? '48px' : '0px' }}>
-                <div id="mollie-card-number" className={mollieFieldBase} />
-              </div>
-              {!mollieReady && isCard && <div className={`${mollieFieldBase} bg-neutral-800/30 animate-skeleton-fade`} />}
-              {submitted && cardErrors.cardNumber && (
-                <p className="mt-1 text-xs text-red-400">{cardErrors.cardNumber}</p>
-              )}
-            </div>
-
-            {/* Expiry & CVC */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-neutral-300 mb-1.5">Expiry date</label>
-                <div className="overflow-hidden transition-all duration-slow ease-apple" style={{ height: mollieReady ? '48px' : '0px' }}>
-                  <div id="mollie-card-expiry" className={mollieFieldBase} />
-                </div>
-                {!mollieReady && isCard && <div className={`${mollieFieldBase} bg-neutral-800/30 animate-skeleton-fade`} />}
-                {submitted && cardErrors.expiryDate && (
-                  <p className="mt-1 text-xs text-red-400">{cardErrors.expiryDate}</p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-neutral-300 mb-1.5">CVC</label>
-                <div className="overflow-hidden transition-all duration-slow ease-apple" style={{ height: mollieReady ? '48px' : '0px' }}>
-                  <div id="mollie-card-cvc" className={mollieFieldBase} />
-                </div>
-                {!mollieReady && isCard && <div className={`${mollieFieldBase} bg-neutral-800/30 animate-skeleton-fade`} />}
-                {submitted && cardErrors.verificationCode && (
-                  <p className="mt-1 text-xs text-red-400">{cardErrors.verificationCode}</p>
-                )}
-              </div>
             </div>
           </div>
         </div>
@@ -322,8 +291,8 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
           </div>
         )}
 
-        {/* Mollie fallback */}
-        {mollieError && isCard && (
+        {/* Card load failure fallback */}
+        {cardError && isCard && (
           <div className="mb-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20 px-4 py-3 text-sm text-yellow-400">
             Card fields could not load. Please select another payment method.
           </div>
@@ -333,7 +302,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
         <button
           ref={submitRef}
           type="submit"
-          disabled={submitting || !selectedMethod || (isCard && !mollieReady && !mollieError)}
+          disabled={submitting || !selectedMethod || (isCard && !cardReady && !cardError)}
           className="mt-4 w-full rounded-lg bg-brand-orange-button px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-orange-button-hover disabled:opacity-50 disabled:cursor-not-allowed ease-apple"
         >
           {submitting ? 'Processing...' : 'Subscribe'}

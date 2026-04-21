@@ -84,7 +84,6 @@ export async function createCheckoutSession(params: CreateCheckoutParams): Promi
   })
 }
 
-/** Creates a Mollie checkout session to update the payment mandate. */
 export async function updatePaymentMethod(): Promise<{ url: string }> {
   return apiRequest<{ url: string }>('/api/billing/update-payment-method', {
     method: 'POST',
@@ -155,7 +154,7 @@ export interface CreateEmbeddedCheckoutParams {
   limit: number
   country: string
   vat_id?: string
-  card_token: string
+  token: string
 }
 
 export async function createEmbeddedCheckout(params: CreateEmbeddedCheckoutParams): Promise<{ status: 'success' | 'pending'; redirect_url?: string }> {
@@ -163,4 +162,8 @@ export async function createEmbeddedCheckout(params: CreateEmbeddedCheckoutParam
     method: 'POST',
     body: JSON.stringify(params),
   })
+}
+
+export async function getPrices(): Promise<Record<string, Record<number, number>>> {
+  return apiRequest('/api/billing/prices')
 }
