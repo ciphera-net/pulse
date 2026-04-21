@@ -153,7 +153,7 @@ export default function SiteDashboardPage() {
   // For relative periods send the period name; for custom ranges send dates
   const apiPeriod = period !== 'custom' ? (PERIOD_TO_API[period] || undefined) : undefined
 
-  const interval = dateRange.start === dateRange.end ? todayInterval : multiDayInterval
+  const interval = period === '1h' ? 'minute' : (dateRange.start === dateRange.end ? todayInterval : multiDayInterval)
 
   // Single dashboard request replaces focused hooks (overview, pages, locations,
   // devices, referrers, goals). The backend runs all queries in parallel
