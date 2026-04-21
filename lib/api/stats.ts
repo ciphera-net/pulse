@@ -275,7 +275,16 @@ export interface DashboardData {
   devices: DeviceStat[]
   screen_resolutions: ScreenResolutionStat[]
   goal_counts?: GoalCountStat[]
+  scroll_depth?: ScrollDepthDistribution
   date_range?: { start: string; end: string }
+}
+
+export interface ScrollDepthDistribution {
+  scroll_25: number
+  scroll_50: number
+  scroll_75: number
+  scroll_100: number
+  total_sessions: number
 }
 
 export function getDashboard(siteId: string, startDate?: string, endDate?: string, limit = 10, interval?: string, filters?: string, period?: string): Promise<DashboardData> {

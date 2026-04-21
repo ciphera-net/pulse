@@ -11,12 +11,12 @@ import FilterButton from '@/components/dashboard/FilterButton'
 import FilterPills from '@/components/dashboard/FilterPills'
 import FilterModal from '@/components/dashboard/FilterModal'
 import { type DimensionFilter, serializeFilters } from '@/lib/filters'
-import { toast, Select, DatePicker, ChevronLeftIcon, ArrowRightIcon, TrashIcon, Button } from '@ciphera-net/ui'
+import { toast, Select, DatePicker, ChevronLeftIcon, ChevronRightIcon, ArrowRightIcon, TrashIcon, Button } from '@ciphera-net/ui'
 import { PencilSimple } from '@phosphor-icons/react'
 import { FunnelDetailSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import Link from 'next/link'
 import { FunnelChart } from '@/components/ui/funnel-chart'
-import { getDateRange } from '@ciphera-net/ui'
+import { getDateRange, formatDate, getYesterdayRange, getLast1HourRange, getLast24HoursRange, getThisWeekRange, getThisMonthRange, getThisYearRange } from '@/lib/utils/dateRanges'
 import BreakdownDrawer from '@/components/funnels/BreakdownDrawer'
 import { LineChart, Line, Grid, XAxis, YAxis, ChartTooltip } from '@/components/ui/line-chart'
 
@@ -30,7 +30,7 @@ export default function FunnelReportPage() {
   const [stats, setStats] = useState<FunnelStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [dateRange, setDateRange] = useState(() => getDateRange(30))
-  const [datePreset, setDatePreset] = useState<'7' | '30' | 'custom'>('30')
+  const [datePreset, setDatePreset] = useState<'1h' | '24h' | 'today' | 'yesterday' | '7' | '30' | 'week' | 'month' | 'year' | 'custom'>('30')
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
   const [loadError, setLoadError] = useState<'not_found' | 'forbidden' | 'error' | null>(null)
   const [filters, setFilters] = useState<DimensionFilter[]>([])
@@ -101,6 +101,23 @@ export default function FunnelReportPage() {
   const handleClearFilters = useCallback(() => {
     setFilters([])
   }, [])
+
+  const shiftPeriod = useCallback((direction: -1 | 1) => {
+    const shift = (date: string, days: number) => {
+      const d = new Date(date + 'T00:00:00')
+      d.setDate(d.getDate() + days)
+      return formatDate(d)
+    }
+    const startDate = new Date(dateRange.start + 'T00:00:00')
+    const endDate = new Date(dateRange.end + 'T00:00:00')
+    const spanDays = Math.round((endDate.getTime() - startDate.getTime()) / 86400000) + 1
+    const offsetDays = spanDays * direction
+    const newRange = { start: shift(dateRange.start, offsetDays), end: shift(dateRange.end, offsetDays) }
+    const today = formatDate(new Date())
+    if (newRange.end > today) return
+    setDateRange(newRange)
+    setDatePreset('custom')
+  }, [dateRange])
 
   const handleFilterModalSave = useCallback((filter: DimensionFilter) => {
     if (editingFilterIndex !== null) {
@@ -208,25 +225,69 @@ export default function FunnelReportPage() {
           </div>
           
           <div className="flex items-center gap-2">
-            <Select
-              value={datePreset}
-              onChange={(value) => {
-                if (value === '7') {
-                  setDateRange(getDateRange(7))
-                  setDatePreset('7')
-                } else if (value === '30') {
-                  setDateRange(getDateRange(30))
-                  setDatePreset('30')
-                } else if (value === 'custom') {
-                  setIsDatePickerOpen(true)
-                }
-              }}
-              options={[
-                { value: '7', label: 'Last 7 days' },
-                { value: '30', label: 'Last 30 days' },
-                { value: 'custom', label: 'Custom' },
-              ]}
-            />
+            <div className="flex items-center h-10 rounded-lg border border-white/[0.08] bg-neutral-900/80 shadow-sm">
+              <button onClick={() => shiftPeriod(-1)} className="px-2 h-full text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors rounded-l-lg ease-apple" aria-label="Previous period">
+                <ChevronLeftIcon className="w-4 h-4" weight="bold" />
+              </button>
+              <div className="w-px h-5 bg-white/[0.08]" />
+              <Select
+                variant="ghost"
+                className="min-w-[130px]"
+                value={datePreset}
+                onChange={(value) => {
+                  if (value === 'today') {
+                    const today = formatDate(new Date())
+                    setDateRange({ start: today, end: today })
+                    setDatePreset('today')
+                  } else if (value === 'yesterday') {
+                    setDateRange(getYesterdayRange())
+                    setDatePreset('yesterday')
+                  } else if (value === '1h') {
+                    setDateRange(getLast1HourRange())
+                    setDatePreset('1h')
+                  } else if (value === '24h') {
+                    setDateRange(getLast24HoursRange())
+                    setDatePreset('24h')
+                  } else if (value === '7') {
+                    setDateRange(getDateRange(7))
+                    setDatePreset('7')
+                  } else if (value === '30') {
+                    setDateRange(getDateRange(30))
+                    setDatePreset('30')
+                  } else if (value === 'week') {
+                    setDateRange(getThisWeekRange())
+                    setDatePreset('week')
+                  } else if (value === 'month') {
+                    setDateRange(getThisMonthRange())
+                    setDatePreset('month')
+                  } else if (value === 'year') {
+                    setDateRange(getThisYearRange())
+                    setDatePreset('year')
+                  } else if (value === 'custom') {
+                    setIsDatePickerOpen(true)
+                  }
+                }}
+                options={[
+                  { value: '1h', label: 'Last 1 hour' },
+                  { value: '24h', label: 'Last 24 hours' },
+                  { value: 'divider-0', label: '', divider: true },
+                  { value: 'today', label: 'Today' },
+                  { value: 'yesterday', label: 'Yesterday' },
+                  { value: '7', label: 'Last 7 days' },
+                  { value: '30', label: 'Last 30 days' },
+                  { value: 'divider-1', label: '', divider: true },
+                  { value: 'week', label: 'This week' },
+                  { value: 'month', label: 'This month' },
+                  { value: 'year', label: 'This year' },
+                  { value: 'divider-2', label: '', divider: true },
+                  { value: 'custom', label: 'Custom' },
+                ]}
+              />
+              <div className="w-px h-5 bg-white/[0.08]" />
+              <button onClick={() => shiftPeriod(1)} className="px-2 h-full text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors rounded-r-lg ease-apple" aria-label="Next period">
+                <ChevronRightIcon className="w-4 h-4" weight="bold" />
+              </button>
+            </div>
             
             <Link
               href={`/sites/${siteId}/funnels/${funnelId}/edit`}
