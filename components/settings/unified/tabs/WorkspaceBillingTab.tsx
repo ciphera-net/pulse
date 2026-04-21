@@ -1,15 +1,18 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Button, toast, Spinner, Modal } from '@ciphera-net/ui'
 import { CreditCard, ArrowSquareOut, DownloadSimple } from '@phosphor-icons/react'
 import { useSubscription } from '@/lib/swr/dashboard'
+import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { updatePaymentMethod, cancelSubscription, resumeSubscription, getInvoices, downloadInvoicePDF, type Invoice } from '@/lib/api/billing'
 import { formatDateLong, formatDate } from '@/lib/utils/formatDate'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 
 export default function WorkspaceBillingTab() {
+  const router = useRouter()
+  const { closeUnifiedSettings } = useUnifiedSettings()
   const { data: subscription, isLoading, mutate } = useSubscription()
   const [cancelling, setCancelling] = useState(false)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
@@ -66,9 +69,7 @@ export default function WorkspaceBillingTab() {
         <CreditCard className="w-10 h-10 text-neutral-500 mx-auto mb-3" />
         <h3 className="text-base font-semibold text-white mb-1">No subscription</h3>
         <p className="text-sm text-neutral-400 mb-4">You're on the Hobby plan.</p>
-        <Link href="/pricing">
-          <Button variant="primary" className="text-sm">View Plans</Button>
-        </Link>
+        <Button variant="primary" className="text-sm" onClick={() => { closeUnifiedSettings(); router.push('/pricing'); }}>View Plans</Button>
       </div>
     )
   }
@@ -105,9 +106,7 @@ export default function WorkspaceBillingTab() {
               </span>
             )}
           </div>
-          <Link href="/pricing">
-            <Button variant="primary" className="text-sm">Change Plan</Button>
-          </Link>
+          <Button variant="primary" className="text-sm" onClick={() => { closeUnifiedSettings(); router.push('/pricing'); }}>Change Plan</Button>
         </div>
 
         {/* Usage stats */}
