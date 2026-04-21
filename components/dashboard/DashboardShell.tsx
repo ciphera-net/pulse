@@ -366,7 +366,6 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
       </div>
 
       <div className="flex items-center gap-2">
-        <div id="topbar-controls" className="flex items-center gap-2" />
         {siteId && lastUpdatedAt != null && (
           <div className="flex items-center gap-1.5 text-xs text-neutral-500 shrink-0">
             <span className="relative flex h-1.5 w-1.5">

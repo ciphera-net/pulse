@@ -3,7 +3,6 @@
 
 import { logger } from '@/lib/utils/logger'
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
-import { createPortal } from 'react-dom'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
   getTopPages,
@@ -404,28 +403,6 @@ export default function SiteDashboardPage() {
   const showSkeleton = useMinimumLoading(dashboardLoading && !dashboard)
   const fadeClass = useSkeletonFade(showSkeleton)
 
-  const toolbarRef = useRef<HTMLDivElement>(null)
-  const [toolbarScrolled, setToolbarScrolled] = useState(false)
-  const [topbarSlot, setTopbarSlot] = useState<HTMLElement | null>(null)
-
-  useEffect(() => {
-    if (showSkeleton) return
-    setTopbarSlot(document.getElementById('topbar-controls'))
-    const scroller = document.getElementById('dashboard-scroll-container')
-    if (!scroller) return
-
-    const onScroll = () => {
-      const toolbar = toolbarRef.current
-      if (!toolbar) return
-      const rect = toolbar.getBoundingClientRect()
-      const containerRect = scroller.getBoundingClientRect()
-      setToolbarScrolled(rect.bottom < containerRect.top + 8)
-    }
-
-    scroller.addEventListener('scroll', onScroll, { passive: true })
-    onScroll()
-    return () => scroller.removeEventListener('scroll', onScroll)
-  }, [showSkeleton])
 
   if (showSkeleton) {
     return <DashboardSkeleton />
@@ -439,33 +416,26 @@ export default function SiteDashboardPage() {
     )
   }
 
-  const toolbarControls = (compact: boolean) => (
+  const toolbarControls = () => (
     <>
-      {!compact && (
-        <div className="flex items-center gap-2">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
-          </span>
-          <span className="text-sm text-neutral-400 tabular-nums">{realtime} current visitors</span>
-        </div>
-      )}
+      <div className="flex items-center gap-2">
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+        </span>
+        <span className="text-sm text-neutral-400 tabular-nums">{realtime} current visitors</span>
+      </div>
       <div className="flex-1" />
-      {!compact && (
-        <FilterPills filters={filters} onEdit={handleEditFilter} onRemove={handleRemoveFilter} onClear={handleClearFilters} />
-      )}
-      {compact && filters.length > 0 && (
-        <span className="text-xs text-brand-orange font-medium">{filters.length} filter{filters.length > 1 ? 's' : ''}</span>
-      )}
+      <FilterPills filters={filters} onEdit={handleEditFilter} onRemove={handleRemoveFilter} onClear={handleClearFilters} />
       <FilterButton hasActiveFilters={filters.length > 0} onSelectDimension={handleOpenFilterForDimension} />
       <div className="flex items-center h-10 rounded-lg border border-white/[0.08] bg-neutral-900/80 shadow-sm">
-        <button onClick={() => shiftPeriod(-1)} className={`${compact ? 'px-1.5' : 'px-2'} h-full text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors rounded-l-lg ease-apple`} aria-label="Previous period">
-          <ChevronLeftIcon className={compact ? 'w-3.5 h-3.5' : 'w-4 h-4'} weight="bold" />
+        <button onClick={() => shiftPeriod(-1)} className="px-2 h-full text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors rounded-l-lg ease-apple" aria-label="Previous period">
+          <ChevronLeftIcon className="w-4 h-4" weight="bold" />
         </button>
         <div className="w-px h-5 bg-white/[0.08]" />
         <Select
           variant="ghost"
-          className={compact ? 'min-w-[110px] text-xs' : 'min-w-[130px]'}
+          className="min-w-[130px]"
           value={period}
           onChange={(value) => {
             if (value === 'today') {
@@ -536,8 +506,8 @@ export default function SiteDashboardPage() {
           ]}
         />
         <div className="w-px h-5 bg-white/[0.08]" />
-        <button onClick={() => shiftPeriod(1)} className={`${compact ? 'px-1.5' : 'px-2'} h-full text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors rounded-r-lg ease-apple`} aria-label="Next period">
-          <ChevronRightIcon className={compact ? 'w-3.5 h-3.5' : 'w-4 h-4'} weight="bold" />
+        <button onClick={() => shiftPeriod(1)} className="px-2 h-full text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors rounded-r-lg ease-apple" aria-label="Next period">
+          <ChevronRightIcon className="w-4 h-4" weight="bold" />
         </button>
       </div>
     </>
@@ -545,16 +515,9 @@ export default function SiteDashboardPage() {
 
   return (
     <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
-      {topbarSlot && createPortal(
-        <div className={`flex items-center gap-2 transition-all duration-300 ease-apple ${toolbarScrolled ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 -translate-y-3 scale-95 pointer-events-none'}`}>
-          {toolbarControls(true)}
-        </div>,
-        topbarSlot
-      )}
-
-      <div ref={toolbarRef} className="mb-3">
-        <div className={`flex items-center gap-3 transition-opacity duration-200 ease-apple ${toolbarScrolled ? 'opacity-0' : 'opacity-100'}`}>
-          {toolbarControls(false)}
+      <div className="mb-3">
+        <div className="flex items-center gap-3">
+          {toolbarControls()}
         </div>
       </div>
 
