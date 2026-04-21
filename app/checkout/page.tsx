@@ -11,6 +11,7 @@ import { getSubscription } from '@/lib/api/billing'
 import { TRAFFIC_TIERS } from '@/lib/plans'
 import PlanSummary from '@/components/checkout/PlanSummary'
 import PaymentForm from '@/components/checkout/PaymentForm'
+import UpgradeSummary from '@/components/checkout/UpgradeSummary'
 import FeatureSlideshow from '@/components/checkout/FeatureSlideshow'
 import pulseIcon from '@/public/pulse_icon_no_margins.png'
 
@@ -138,13 +139,7 @@ function CheckoutContent() {
     }
   }, [authLoading, user, router])
 
-  // -- Subscription guard (skip on success page — it handles its own redirect) --
-  useEffect(() => {
-    if (status === 'success') return
-    if (subscription && (subscription.subscription_status === 'active' || subscription.subscription_status === 'trialing')) {
-      router.replace('/')
-    }
-  }, [subscription, status, router])
+  const isUpgrade = !!(subscription && (subscription.subscription_status === 'active' || subscription.subscription_status === 'trialing'))
 
   // -- Param validation --
   useEffect(() => {
@@ -204,25 +199,35 @@ function CheckoutContent() {
             transition={{ duration: 0.45, ease: 'easeOut' }}
             className="w-full max-w-lg mx-auto flex flex-col gap-6"
           >
-            {/* Plan summary (compact) */}
-            <PlanSummary
-              plan={planId}
-              interval={billingInterval}
-              limit={pageviewLimit}
-              country={country}
-              vatId={vatId}
-              onCountryChange={setCountry}
-              onVatIdChange={setVatId}
-            />
-
-            {/* Payment form */}
-            <PaymentForm
-              plan={planId}
-              interval={billingInterval}
-              limit={pageviewLimit}
-              country={country}
-              vatId={vatId}
-            />
+            {isUpgrade ? (
+              <UpgradeSummary
+                currentPlan={subscription!.plan_id}
+                currentInterval={subscription!.billing_interval}
+                currentLimit={subscription!.pageview_limit}
+                newPlan={planId}
+                newInterval={billingInterval}
+                newLimit={pageviewLimit}
+              />
+            ) : (
+              <>
+                <PlanSummary
+                  plan={planId}
+                  interval={billingInterval}
+                  limit={pageviewLimit}
+                  country={country}
+                  vatId={vatId}
+                  onCountryChange={setCountry}
+                  onVatIdChange={setVatId}
+                />
+                <PaymentForm
+                  plan={planId}
+                  interval={billingInterval}
+                  limit={pageviewLimit}
+                  country={country}
+                  vatId={vatId}
+                />
+              </>
+            )}
           </motion.div>
         </div>
       </div>

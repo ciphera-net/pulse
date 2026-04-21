@@ -6,14 +6,14 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { Check, X } from '@phosphor-icons/react'
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
-import { toast, Modal, Button } from '@ciphera-net/ui'
+import { toast } from '@ciphera-net/ui'
 import { useSubscription } from '@/lib/swr/dashboard'
 import PricingFAQ from '@/components/marketing/PricingFAQ'
 import CTASection from '@/components/marketing/CTASection'
 import { Slider } from '@/components/ui/slider'
 import useSWR from 'swr'
 import { TRAFFIC_TIERS } from '@/lib/plans'
-import { getPrices, changePlan } from '@/lib/api/billing'
+import { getPrices } from '@/lib/api/billing'
 
 // 1. Define Plans with IDs, Categories, and Feature Matrix
 const PLANS = [
@@ -92,8 +92,6 @@ export default function PricingSection() {
   const { data: prices } = useSWR('plan-prices', getPrices)
   const currentPlanId = subscription?.plan_id || (user ? 'free' : null)
   const currentLimit = subscription?.pageview_limit
-  const [changingPlan, setChangingPlan] = useState(false)
-  const [pendingChange, setPendingChange] = useState<{ planId: string; interval: string; limit: number } | null>(null)
 
   // * Show toast when redirected from checkout with canceled=true
   useEffect(() => {
@@ -172,9 +170,9 @@ export default function PricingSection() {
     const selectedInterval = options?.interval || (isYearly ? 'year' : 'month')
     const selectedLimit = options?.limit || currentTraffic.value
 
-    // 2. If already subscribed, show confirmation before changing
+    // 2. If already subscribed, navigate to checkout upgrade flow
     if (subscription?.subscription_status === 'active') {
-      setPendingChange({ planId, interval: selectedInterval, limit: selectedLimit })
+      router.push(`/checkout?plan=${planId}&interval=${selectedInterval}&limit=${selectedLimit}`)
       return
     }
 
@@ -182,46 +180,8 @@ export default function PricingSection() {
     router.push(`/checkout?plan=${planId}&interval=${selectedInterval}&limit=${selectedLimit}`)
   }
 
-  const confirmPlanChange = async () => {
-    if (!pendingChange) return
-    setChangingPlan(true)
-    try {
-      await changePlan({ plan_id: pendingChange.planId, interval: pendingChange.interval, limit: pendingChange.limit })
-      toast.success('Plan updated successfully')
-      setPendingChange(null)
-      router.push('/')
-    } catch {
-      toast.error('Failed to change plan')
-    } finally {
-      setChangingPlan(false)
-    }
-  }
-
   return (
     <section className="pb-24 px-4 max-w-6xl mx-auto">
-      {/* Plan change confirmation */}
-      <Modal isOpen={!!pendingChange} onClose={() => setPendingChange(null)} title="Change plan" className="max-w-md">
-        <div className="p-6 text-center">
-          <h3 className="text-lg font-semibold text-white mb-2">Change plan?</h3>
-          <p className="text-sm text-neutral-400 mb-6">
-            Switch to <span className="text-white font-medium capitalize">{pendingChange?.planId}</span> with{' '}
-            {pendingChange && pendingChange.limit >= 1_000_000
-              ? `${pendingChange.limit / 1_000_000}M`
-              : `${(pendingChange?.limit ?? 0) / 1_000}k`}{' '}
-            pageviews ({pendingChange?.interval === 'year' ? 'yearly' : 'monthly'}).
-            Chargebee will prorate the difference automatically.
-          </p>
-          <div className="flex gap-3 justify-center">
-            <Button variant="secondary" onClick={() => setPendingChange(null)} disabled={changingPlan}>
-              Cancel
-            </Button>
-            <Button variant="primary" onClick={confirmPlanChange} disabled={changingPlan}>
-              {changingPlan ? 'Switching...' : 'Confirm'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
       {/* Hero */}
       <div className="text-center mb-16">
         <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-6">
