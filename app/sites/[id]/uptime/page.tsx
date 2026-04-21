@@ -164,7 +164,7 @@ function StatusBarTooltip({
 
   return (
     <div
-      className="fixed z-50 pointer-events-none"
+      className="fixed z-[200] pointer-events-none"
       style={{ left: position.x, top: position.y - 10, transform: 'translate(-50%, -100%)' }}
     >
       <div className="bg-neutral-800 border border-neutral-700 rounded-xl shadow-lg transition-shadow duration-slow px-3 py-2.5 text-xs min-w-40 ease-apple">

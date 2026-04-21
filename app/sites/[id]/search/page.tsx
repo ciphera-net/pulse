@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 import { useParams } from 'next/navigation'
 import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { Select, DatePicker } from '@ciphera-net/ui'
-import { getDateRange, formatDate, getThisWeekRange, getThisMonthRange } from '@/lib/utils/dateRanges'
+import { getDateRange, formatDate, getThisWeekRange, getThisMonthRange, getYesterdayRange, getLast1HourRange, getLast24HoursRange, getThisYearRange } from '@/lib/utils/dateRanges'
 import { CaretDown, CaretUp, MagnifyingGlass, ArrowSquareOut } from '@phosphor-icons/react'
 import { useDashboard, useGSCStatus, useGSCOverview, useGSCTopQueries, useGSCTopPages, useGSCNewQueries } from '@/lib/swr/dashboard'
 import { getGSCQueryPages, getGSCPageQueries } from '@/lib/api/gsc'
@@ -46,18 +46,21 @@ export default function SearchConsolePage() {
   const { openUnifiedSettings } = useUnifiedSettings()
 
   // Date range
-  const [period, setPeriod] = useState('28')
-  const [dateRange, setDateRange] = useState(() => getDateRange(28))
+  const [period, setPeriod] = useState('30')
+  const [dateRange, setDateRange] = useState(() => getDateRange(30))
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
 
   // Map frontend period values to backend period names
   const PERIOD_TO_API: Record<string, string> = {
     'today': 'today',
+    'yesterday': 'yesterday',
+    '1h': '1h',
+    '24h': '24h',
     '7': '7d',
-    'week': 'week',
-    '28': '28d',
     '30': '30d',
+    'week': 'week',
     'month': 'month',
+    'year': 'year',
   }
 
   // For relative periods send the period name; for custom ranges send dates
@@ -235,37 +238,50 @@ export default function SearchConsolePage() {
           className="min-w-[140px]"
           value={period}
           onChange={(value) => {
-            if (value === 'today') {
+            if (value === '1h') {
+              setDateRange(getLast1HourRange())
+              setPeriod('1h')
+            } else if (value === '24h') {
+              setDateRange(getLast24HoursRange())
+              setPeriod('24h')
+            } else if (value === 'today') {
               const today = formatDate(new Date())
               setDateRange({ start: today, end: today })
               setPeriod('today')
+            } else if (value === 'yesterday') {
+              setDateRange(getYesterdayRange())
+              setPeriod('yesterday')
             } else if (value === '7') {
               setDateRange(getDateRange(7))
               setPeriod('7')
-            } else if (value === 'week') {
-              setDateRange(getThisWeekRange())
-              setPeriod('week')
-            } else if (value === '28') {
-              setDateRange(getDateRange(28))
-              setPeriod('28')
             } else if (value === '30') {
               setDateRange(getDateRange(30))
               setPeriod('30')
+            } else if (value === 'week') {
+              setDateRange(getThisWeekRange())
+              setPeriod('week')
             } else if (value === 'month') {
               setDateRange(getThisMonthRange())
               setPeriod('month')
+            } else if (value === 'year') {
+              setDateRange(getThisYearRange())
+              setPeriod('year')
             } else if (value === 'custom') {
               setIsDatePickerOpen(true)
             }
           }}
           options={[
+            { value: '1h', label: 'Last 1 hour' },
+            { value: '24h', label: 'Last 24 hours' },
+            { value: 'divider-0', label: '', divider: true },
             { value: 'today', label: 'Today' },
+            { value: 'yesterday', label: 'Yesterday' },
             { value: '7', label: 'Last 7 days' },
-            { value: '28', label: 'Last 28 days' },
             { value: '30', label: 'Last 30 days' },
             { value: 'divider-1', label: '', divider: true },
             { value: 'week', label: 'This week' },
             { value: 'month', label: 'This month' },
+            { value: 'year', label: 'This year' },
             { value: 'divider-2', label: '', divider: true },
             { value: 'custom', label: 'Custom' },
           ]}
