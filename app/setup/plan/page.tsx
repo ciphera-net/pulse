@@ -46,7 +46,7 @@ export default function SetupPlanPage() {
 
   const [selectedPlan, setSelectedPlan] = useState<string | null>(pendingPlan?.planId ?? null)
   const [isYearly, setIsYearly] = useState(pendingPlan?.interval === 'year')
-  const [selectedLimit] = useState<number>(pendingPlan?.limit ?? DEFAULT_LIMIT)
+  const [selectedLimit, setSelectedLimit] = useState<number>(pendingPlan?.limit ?? DEFAULT_LIMIT)
   const [country, setCountry] = useState('')
   const [vatId, setVatId] = useState('')
 
@@ -158,6 +158,24 @@ export default function SetupPlanPage() {
               {isYearly && (
                 <span className="text-xs text-brand-orange font-medium">1 month free</span>
               )}
+            </div>
+
+            {/* Traffic tier */}
+            <div className="mb-6">
+              <label className="block text-xs font-medium text-neutral-500 mb-1.5 text-center">
+                Monthly pageviews
+              </label>
+              <select
+                value={selectedLimit}
+                onChange={(e) => setSelectedLimit(Number(e.target.value))}
+                className="w-full py-2 px-3 bg-neutral-800/80 border border-white/[0.08] rounded-xl text-white text-sm outline-none focus-visible:border-brand-orange"
+              >
+                {TRAFFIC_TIERS.map((tier) => (
+                  <option key={tier.value} value={tier.value}>
+                    {tier.label} pageviews/month
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Plan cards */}

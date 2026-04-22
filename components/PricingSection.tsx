@@ -18,6 +18,25 @@ import { getPrices } from '@/lib/api/billing'
 // 1. Define Plans with IDs, Categories, and Feature Matrix
 const PLANS = [
   {
+    id: 'free',
+    name: 'Hobby',
+    category: 'FREE',
+    description: 'For side projects and exploration',
+    features: [
+      { name: '1 site', included: true },
+      { name: 'Up to 5 sites', included: false },
+      { name: 'Up to 10 sites', included: false },
+      { name: 'Custom events', included: true },
+      { name: 'Email reports', included: false },
+      { name: 'Team dashboard', included: false },
+      { name: 'Shared links', included: false },
+      { name: 'Funnels', included: false },
+      { name: 'API access', included: false },
+      { name: 'Uptime monitoring', included: false },
+      { name: 'Priority support', included: false },
+    ]
+  },
+  {
     id: 'solo',
     name: 'Solo',
     category: 'PERSONAL',
@@ -250,33 +269,15 @@ export default function PricingSection() {
         </div>
       </div>
 
-      {/* Hobby nudge */}
-      <div className="rounded-2xl border border-brand-orange/30 bg-brand-orange/10 px-6 py-4 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <p className="text-sm text-neutral-300">
-          <span className="font-semibold text-white">Just exploring?</span>{' '}
-          Start free with the Hobby plan — 1 site, 5k pageviews, no credit card needed.
-        </p>
-        <button
-          onClick={() => {
-            if (currentPlanId === 'free') return
-            if (!user) { initiateOAuthFlow(); return }
-            window.location.href = '/'
-          }}
-          disabled={currentPlanId === 'free'}
-          className="text-sm font-semibold text-brand-orange hover:text-white transition-colors shrink-0 disabled:opacity-50 disabled:cursor-default ease-apple"
-        >
-          {currentPlanId === 'free' ? 'Your current plan' : 'Get started →'}
-        </button>
-      </div>
-
       {/* Unified card block */}
       <div className="rounded-2xl glass-surface overflow-hidden mb-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
           {PLANS.map((plan, index) => {
-            const priceDetails = getPriceDetails(plan.id)
+            const isFree = plan.id === 'free'
+            const priceDetails = isFree ? null : getPriceDetails(plan.id)
             const isTeam = plan.id === 'team'
             const selectedLimit = TRAFFIC_TIERS[sliderIndex]?.value
-            const isCurrent = currentPlanId === plan.id && currentLimit === selectedLimit
+            const isCurrent = isFree ? currentPlanId === 'free' : currentPlanId === plan.id && currentLimit === selectedLimit
 
             return (
               <div
@@ -297,7 +298,15 @@ export default function PricingSection() {
 
                 {/* Price block */}
                 <div>
-                  {priceDetails ? (
+                  {isFree ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-display font-bold text-white">€0</span>
+                      <div>
+                        <p className="text-white font-semibold text-sm uppercase">{plan.name}</p>
+                        <p className="text-neutral-500 text-xs">5k pageviews/mo · forever free</p>
+                      </div>
+                    </div>
+                  ) : priceDetails ? (
                     <>
                       <div className="flex items-center gap-2">
                         <span className="text-display font-bold text-white">
@@ -344,8 +353,16 @@ export default function PricingSection() {
 
                 {/* CTA button */}
                 <button
-                  onClick={() => !isCurrent && handleSubscribe(plan.id)}
-                  disabled={isCurrent || !priceDetails}
+                  onClick={() => {
+                    if (isCurrent) return
+                    if (isFree) {
+                      if (!user) { initiateOAuthFlow(); return }
+                      window.location.href = '/'
+                      return
+                    }
+                    handleSubscribe(plan.id)
+                  }}
+                  disabled={isCurrent || (!isFree && !priceDetails)}
                   className={`w-full h-[44px] rounded-xl flex items-center justify-between px-6 font-semibold text-sm uppercase tracking-wider transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                     isTeam
                       ? 'bg-brand-orange hover:bg-brand-orange-hover text-white'
@@ -353,7 +370,7 @@ export default function PricingSection() {
                   } ease-apple`}
                 >
                   <span>
-                    {isCurrent ? 'Current plan' : !priceDetails ? 'Contact us' : subscription?.subscription_status === 'active' ? 'Switch plan' : 'Get Started'}
+                    {isCurrent ? 'Current plan' : isFree ? 'Get Started Free' : !priceDetails ? 'Contact us' : subscription?.subscription_status === 'active' ? 'Switch plan' : 'Get Started'}
                   </span>
                   {!isCurrent && priceDetails && (
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
