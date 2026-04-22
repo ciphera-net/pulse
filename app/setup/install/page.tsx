@@ -130,6 +130,14 @@ export default function SetupInstallPage() {
           Continue
         </Button>
       )}
+
+      <button
+        type="button"
+        onClick={handleContinue}
+        className="mt-4 w-full text-center text-sm text-neutral-500 hover:text-neutral-400 transition-colors"
+      >
+        Skip for now
+      </button>
     </>
   )
 }
