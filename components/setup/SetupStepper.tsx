@@ -58,12 +58,12 @@ export default function SetupStepper({ completedSteps }: SetupStepperProps) {
                 <span className={`text-xs font-medium ${labelColor} mt-2.5 whitespace-nowrap`}>
                   {step.label}
                 </span>
-                {step.optional && (
-                  <span className="text-[10px] text-neutral-600 mt-0.5">Optional</span>
-                )}
+                <span className={`text-[10px] mt-0.5 ${step.optional ? 'text-neutral-600' : 'invisible'}`}>
+                  Optional
+                </span>
               </div>
               {i < steps.length - 1 && (
-                <div className={`h-px flex-1 mx-3 mb-7 ${lineCompleted ? 'bg-brand-orange' : 'bg-neutral-700'}`} />
+                <div className={`h-px flex-1 mx-3 mb-10 ${lineCompleted ? 'bg-brand-orange' : 'bg-neutral-700'}`} />
               )}
             </Fragment>
           )
