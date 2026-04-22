@@ -135,6 +135,43 @@ export default function SetupPlanPage() {
             exit={{ opacity: 0, y: -12 }}
             transition={TIMING}
           >
+            {/* Free plan — prominent */}
+            <button
+              type="button"
+              onClick={handleSkip}
+              className="w-full text-left p-4 rounded-xl border-2 border-emerald-500/40 bg-emerald-500/5 hover:border-emerald-500/70 hover:bg-emerald-500/10 transition-all mb-6"
+            >
+              <div className="flex items-start justify-between mb-2">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-white">Hobby</span>
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                      Recommended
+                    </span>
+                  </div>
+                  <p className="text-xs text-neutral-500 mt-0.5">Start free, upgrade when you need more</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <span className="text-lg font-bold text-white">€0</span>
+                  <span className="text-xs text-neutral-500">/mo</span>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-x-3 gap-y-1">
+                {['1 site', '5k pageviews', 'Custom events', 'No credit card'].map((f) => (
+                  <span key={f} className="flex items-center gap-1 text-xs text-neutral-400">
+                    <Check className="w-3 h-3 text-emerald-400" weight="bold" />
+                    {f}
+                  </span>
+                ))}
+              </div>
+            </button>
+
+            <div className="relative flex items-center justify-center mb-6">
+              <div className="h-px flex-1 bg-neutral-800" />
+              <span className="px-3 text-xs text-neutral-600">or pick a paid plan</span>
+              <div className="h-px flex-1 bg-neutral-800" />
+            </div>
+
             {/* Billing toggle */}
             <div className="flex flex-col items-center gap-2 mb-6">
               <div className="bg-neutral-800/80 border border-white/[0.08] p-1 rounded-xl flex">
@@ -232,13 +269,6 @@ export default function SetupPlanPage() {
         )}
       </AnimatePresence>
 
-      <button
-        type="button"
-        onClick={handleSkip}
-        className="mt-6 w-full text-center text-sm text-neutral-500 hover:text-neutral-400 transition-colors"
-      >
-        Skip — start free
-      </button>
     </>
   )
 }
