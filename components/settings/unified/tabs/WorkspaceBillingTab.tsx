@@ -189,6 +189,17 @@ export default function WorkspaceBillingTab() {
         </div>
       </div>
 
+      {/* Account credit */}
+      {subscription.credit_balance != null && subscription.credit_balance > 0 && (
+        <div className="rounded-lg border border-green-500/20 bg-green-500/5 px-4 py-3 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-green-400">Account credit</p>
+            <p className="text-xs text-neutral-500">Automatically applied to your next invoice</p>
+          </div>
+          <p className="text-lg font-semibold text-green-400">&euro;{(subscription.credit_balance / 100).toFixed(2)}</p>
+        </div>
+      )}
+
       {/* Actions */}
       <div className="flex flex-wrap gap-3">
         <Button onClick={() => setShowPaymentModal(true)} variant="secondary" className="text-sm gap-1.5">
