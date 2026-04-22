@@ -23,6 +23,8 @@ export interface SubscriptionDetails {
   business_name?: string
   /** Tax ID collected on the billing customer (VAT, EIN, etc.). */
   tax_id?: TaxID | null
+  /** Account credit balance in cents (from proration credits, etc.). */
+  credit_balance?: number
 }
 
 export async function getSubscription(): Promise<SubscriptionDetails> {
@@ -68,6 +70,25 @@ export async function changePlan(params: ChangePlanParams): Promise<{ ok: boolea
   })
 }
 
+export interface PlanChangeEstimate {
+  sub_total: number
+  tax: number
+  total: number
+  credits_applied: number
+  amount_due: number
+  currency: string
+  next_total: number
+  next_date: number
+  next_interval: string
+}
+
+export async function estimatePlanChange(params: ChangePlanParams): Promise<PlanChangeEstimate> {
+  return apiRequest<PlanChangeEstimate>('/api/billing/estimate-change', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  })
+}
+
 export interface CreateCheckoutParams {
   plan_id: string
   interval: string
@@ -84,10 +105,10 @@ export async function createCheckoutSession(params: CreateCheckoutParams): Promi
   })
 }
 
-/** Creates a Mollie checkout session to update the payment mandate. */
-export async function updatePaymentMethod(): Promise<{ url: string }> {
-  return apiRequest<{ url: string }>('/api/billing/update-payment-method', {
+export async function updatePaymentMethod(token: string): Promise<{ ok: boolean }> {
+  return apiRequest<{ ok: boolean }>('/api/billing/update-payment-method', {
     method: 'POST',
+    body: JSON.stringify({ token }),
   })
 }
 
@@ -149,18 +170,31 @@ export async function calculateVAT(params: CalculateVATParams): Promise<VATResul
   })
 }
 
-export interface CreateEmbeddedCheckoutParams {
-  plan_id: string
-  interval: string
-  limit: number
-  country: string
-  vat_id?: string
-  card_token: string
+export interface PaymentIntentResponse {
+  payment_intent: {
+    id: string
+    gateway_account_id: string
+    amount: number
+    currency_code: string
+    status: string
+    [key: string]: unknown
+  }
 }
 
-export async function createEmbeddedCheckout(params: CreateEmbeddedCheckoutParams): Promise<{ status: 'success' | 'pending'; redirect_url?: string }> {
-  return apiRequest<{ status: 'success' | 'pending'; redirect_url?: string }>('/api/billing/checkout-embedded', {
+export async function createPaymentIntent(params: { plan_id: string; interval: string; limit: number }): Promise<PaymentIntentResponse> {
+  return apiRequest<PaymentIntentResponse>('/api/billing/create-payment-intent', {
     method: 'POST',
     body: JSON.stringify(params),
   })
+}
+
+export async function createEmbeddedCheckout(params: { plan_id: string; interval: string; limit: number; payment_intent_id: string }): Promise<{ status: 'success' }> {
+  return apiRequest<{ status: 'success' }>('/api/billing/checkout-embedded', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  })
+}
+
+export async function getPrices(): Promise<Record<string, Record<number, number>>> {
+  return apiRequest('/api/billing/prices')
 }

@@ -1,30 +1,82 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import Link from 'next/link'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import Script from 'next/script'
+import { useRouter } from 'next/navigation'
 import { Button, toast, Spinner, Modal } from '@ciphera-net/ui'
 import { CreditCard, ArrowSquareOut, DownloadSimple } from '@phosphor-icons/react'
 import { useSubscription } from '@/lib/swr/dashboard'
+import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { updatePaymentMethod, cancelSubscription, resumeSubscription, getInvoices, downloadInvoicePDF, type Invoice } from '@/lib/api/billing'
 import { formatDateLong, formatDate } from '@/lib/utils/formatDate'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
+import { initChargebee } from '@/lib/chargebee'
 
 export default function WorkspaceBillingTab() {
+  const router = useRouter()
+  const { closeUnifiedSettings } = useUnifiedSettings()
   const { data: subscription, isLoading, mutate } = useSubscription()
   const [cancelling, setCancelling] = useState(false)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [updatingPayment, setUpdatingPayment] = useState(false)
+  const [cardMounted, setCardMounted] = useState(false)
+  const cardRef = useRef<any>(null)
 
   useEffect(() => {
     getInvoices().then(setInvoices).catch(() => {})
   }, [])
 
-  const handleManageBilling = async () => {
+  const mountCardComponent = useCallback(async () => {
+    if (cardRef.current) return
     try {
-      const { url } = await updatePaymentMethod()
-      if (url) window.location.href = url
+      const cbInstance = initChargebee()
+      if (!cbInstance) return
+      await cbInstance.load('components')
+      const card = cbInstance.createComponent('card', {
+        placeholder: { number: 'Card number', expiry: 'MM / YY', cvv: 'CVV' },
+        style: {
+          base: {
+            color: '#ffffff',
+            fontSize: '15px',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+            '::placeholder': { color: '#737373' },
+          },
+          invalid: { color: '#ef4444' },
+        },
+        icon: true,
+      }) as any
+      card.mount('#payment-card-field')
+      card.on('ready', () => setCardMounted(true))
+      cardRef.current = card
+    } catch {
+      toast.error('Failed to load card form')
+    }
+  }, [])
+
+  useEffect(() => {
+    if (showPaymentModal) {
+      const timer = setTimeout(mountCardComponent, 200)
+      return () => clearTimeout(timer)
+    } else {
+      cardRef.current = null
+      setCardMounted(false)
+    }
+  }, [showPaymentModal, mountCardComponent])
+
+  const handleUpdatePayment = async () => {
+    if (!cardRef.current) return
+    setUpdatingPayment(true)
+    try {
+      const { token } = await cardRef.current.tokenize()
+      await updatePaymentMethod(token)
+      toast.success('Payment method updated')
+      setShowPaymentModal(false)
     } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to update payment method')
+      toast.error((err as Error)?.message || 'Failed to update payment method')
+    } finally {
+      setUpdatingPayment(false)
     }
   }
 
@@ -66,9 +118,7 @@ export default function WorkspaceBillingTab() {
         <CreditCard className="w-10 h-10 text-neutral-500 mx-auto mb-3" />
         <h3 className="text-base font-semibold text-white mb-1">No subscription</h3>
         <p className="text-sm text-neutral-400 mb-4">You're on the Hobby plan.</p>
-        <Link href="/pricing">
-          <Button variant="primary" className="text-sm">View Plans</Button>
-        </Link>
+        <Button variant="primary" className="text-sm" onClick={() => { closeUnifiedSettings(); router.push('/pricing'); }}>View Plans</Button>
       </div>
     )
   }
@@ -105,9 +155,7 @@ export default function WorkspaceBillingTab() {
               </span>
             )}
           </div>
-          <Link href="/pricing">
-            <Button variant="primary" className="text-sm">Change Plan</Button>
-          </Link>
+          <Button variant="primary" className="text-sm" onClick={() => { closeUnifiedSettings(); router.push('/pricing'); }}>Change Plan</Button>
         </div>
 
         {/* Usage stats */}
@@ -141,14 +189,23 @@ export default function WorkspaceBillingTab() {
         </div>
       </div>
 
+      {/* Account credit */}
+      {subscription.credit_balance != null && subscription.credit_balance > 0 && (
+        <div className="rounded-lg border border-green-500/20 bg-green-500/5 px-4 py-3 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-green-400">Account credit</p>
+            <p className="text-xs text-neutral-500">Automatically applied to your next invoice</p>
+          </div>
+          <p className="text-lg font-semibold text-green-400">&euro;{(subscription.credit_balance / 100).toFixed(2)}</p>
+        </div>
+      )}
+
       {/* Actions */}
       <div className="flex flex-wrap gap-3">
-        {subscription.has_payment_method && (
-          <Button onClick={handleManageBilling} variant="secondary" className="text-sm gap-1.5">
-            <ArrowSquareOut weight="bold" className="w-3.5 h-3.5" />
-            Update payment method
-          </Button>
-        )}
+        <Button onClick={() => setShowPaymentModal(true)} variant="secondary" className="text-sm gap-1.5">
+          <CreditCard weight="bold" className="w-3.5 h-3.5" />
+          Update payment method
+        </Button>
 
         {isActive && !subscription.cancel_at_period_end && (
           <Button
@@ -188,6 +245,25 @@ export default function WorkspaceBillingTab() {
             disabled={cancelling}
           >
             {cancelling ? 'Cancelling...' : 'Yes, cancel'}
+          </Button>
+        </div>
+      </Modal>
+
+      {/* Update payment method modal */}
+      <Modal isOpen={showPaymentModal} onClose={() => setShowPaymentModal(false)} title="Update payment method" className="max-w-md">
+        <p className="text-sm text-neutral-400 mb-4">
+          Enter your new card details below.
+        </p>
+        <div
+          id="payment-card-field"
+          className="w-full rounded-lg border border-neutral-700 bg-neutral-800/50 px-3 py-3 min-h-[48px] mb-4"
+        />
+        <div className="flex justify-end gap-3">
+          <Button variant="secondary" className="text-sm" onClick={() => setShowPaymentModal(false)} disabled={updatingPayment}>
+            Cancel
+          </Button>
+          <Button variant="primary" className="text-sm" onClick={handleUpdatePayment} disabled={updatingPayment || !cardMounted}>
+            {updatingPayment ? 'Updating...' : 'Update card'}
           </Button>
         </div>
       </Modal>

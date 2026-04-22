@@ -5,9 +5,10 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { SPRING, TIMING } from '@/lib/motion'
 import { Select } from '@ciphera-net/ui'
-import { TRAFFIC_TIERS, PLAN_PRICES } from '@/lib/plans'
+import useSWR from 'swr'
+import { TRAFFIC_TIERS } from '@/lib/plans'
 import { COUNTRY_OPTIONS } from '@/lib/countries'
-import { calculateVAT, type VATResult } from '@/lib/api/billing'
+import { calculateVAT, getPrices, type VATResult } from '@/lib/api/billing'
 
 interface PlanSummaryProps {
   plan: string
@@ -35,7 +36,8 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
   const [vatLoading, setVatLoading] = useState(false)
   const [verifiedVatId, setVerifiedVatId] = useState('')
 
-  const monthlyCents = PLAN_PRICES[plan]?.[limit] || 0
+  const { data: prices } = useSWR('plan-prices', getPrices)
+  const monthlyCents = prices?.[plan]?.[limit] || 0
   const isYearly = currentInterval === 'year'
   const baseDisplay = isYearly ? (monthlyCents * 11) / 100 : monthlyCents / 100
 

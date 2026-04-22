@@ -20,7 +20,7 @@ const faqData: Record<string, { question: string; answer: string }[]> = {
     },
     {
       question: "What payment methods do you accept?",
-      answer: "We accept credit and debit cards (Visa, Mastercard, American Express), iDEAL, Bancontact, and other European payment methods through our payment provider Mollie.",
+      answer: "We accept credit and debit cards (Visa, Mastercard, American Express), iDEAL, Bancontact, SEPA Direct Debit, and other European payment methods. All payments are securely processed.",
     },
     {
       question: "Can I get a refund?",

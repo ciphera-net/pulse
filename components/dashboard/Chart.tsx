@@ -321,7 +321,7 @@ export default function Chart({
                   <DownloadIcon className="w-3.5 h-3.5" />
                 </button>
               )}
-              {dateRange.start === dateRange.end ? (
+              {period === '1h' ? null : dateRange.start === dateRange.end ? (
                 <Select
                   variant="input"
                   value={todayInterval}

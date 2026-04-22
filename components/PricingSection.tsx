@@ -11,6 +11,9 @@ import { useSubscription } from '@/lib/swr/dashboard'
 import PricingFAQ from '@/components/marketing/PricingFAQ'
 import CTASection from '@/components/marketing/CTASection'
 import { Slider } from '@/components/ui/slider'
+import useSWR from 'swr'
+import { TRAFFIC_TIERS } from '@/lib/plans'
+import { getPrices } from '@/lib/api/billing'
 
 // 1. Define Plans with IDs, Categories, and Feature Matrix
 const PLANS = [
@@ -73,60 +76,11 @@ const PLANS = [
   }
 ]
 
-// 2. Define Explicit Pricing per Tier (approx 20% cheaper than Plausible)
-// Includes intermediate steps: 50k, 250k, 2.5M
-const TRAFFIC_TIERS = [
-  { 
-    label: '10k', 
-    value: 10000, 
-    prices: { solo: 7, team: 11, business: 15 } 
-  },
-  { 
-    label: '50k', 
-    value: 50000, 
-    prices: { solo: 11, team: 19, business: 27 } 
-  },
-  { 
-    label: '100k', 
-    value: 100000, 
-    prices: { solo: 15, team: 23, business: 31 } 
-  },
-  { 
-    label: '250k', 
-    value: 250000, 
-    prices: { solo: 25, team: 39, business: 59 } 
-  },
-  { 
-    label: '500k', 
-    value: 500000, 
-    prices: { solo: 39, team: 59, business: 79 } 
-  },
-  { 
-    label: '1M', 
-    value: 1000000, 
-    prices: { solo: 55, team: 79, business: 111 } 
-  },
-  { 
-    label: '2.5M', 
-    value: 2500000, 
-    prices: { solo: 79, team: 119, business: 169 } 
-  },
-  { 
-    label: '5M', 
-    value: 5000000, 
-    prices: { solo: 103, team: 155, business: 207 } 
-  },
-  { 
-    label: '10M', 
-    value: 10000000, 
-    prices: { solo: 135, team: 199, business: 269 } 
-  },
-  { 
-    label: '10M+', 
-    value: 10000001, 
-    prices: { solo: null, team: null, business: null } 
-  },
-]
+// The "10M+" tier — no price means custom/contact-us
+const TIER_10M_PLUS = { label: '10M+', value: 10000001 }
+
+// All tiers shown in the slider, including the custom-price 10M+ tier
+const ALL_SLIDER_TIERS = [...TRAFFIC_TIERS, TIER_10M_PLUS] as const
 
 export default function PricingSection() {
   const searchParams = useSearchParams()
@@ -135,12 +89,14 @@ export default function PricingSection() {
   const [sliderIndex, setSliderIndex] = useState(0) // Default to 10k (index 0)
   const { user } = useAuth()
   const { data: subscription } = useSubscription()
+  const { data: prices } = useSWR('plan-prices', getPrices)
   const currentPlanId = subscription?.plan_id || (user ? 'free' : null)
+  const currentLimit = subscription?.pageview_limit
 
-  // * Show toast when redirected from Mollie Checkout with canceled=true
+  // * Show toast when redirected from checkout with canceled=true
   useEffect(() => {
     if (searchParams.get('canceled') === 'true') {
-      toast.info('Checkout was canceled. You can try again whenever you’re ready.')
+      toast.info("Checkout was canceled. You can try again whenever you're ready.")
       const url = new URL(window.location.href)
       url.searchParams.delete('canceled')
       window.history.replaceState({}, '', url.pathname + url.search)
@@ -175,26 +131,28 @@ export default function PricingSection() {
     }
   }, [user])
 
-  const currentTraffic = TRAFFIC_TIERS[sliderIndex]
+  const currentTraffic = ALL_SLIDER_TIERS[sliderIndex]
 
-  // Helper to get all price details
+  // Helper to get all price details (prices in EUR cents from API, display in whole euros)
   const getPriceDetails = (planId: string) => {
-    const basePrice = currentTraffic.prices[planId as keyof typeof currentTraffic.prices]
-    
-    // Handle "Custom"
-    if (basePrice === null || basePrice === undefined) return null
-    
-    const yearlyTotal = basePrice * 11 // 1 month free (pay for 11)
-    const effectiveMonthly = Math.round(yearlyTotal / 12)
-    
+    // The 10M+ tier never has a price
+    if (currentTraffic.value === TIER_10M_PLUS.value) return null
+
+    const baseCents = prices?.[planId]?.[currentTraffic.value]
+    if (!baseCents) return null
+
+    const baseMonthly = baseCents / 100
+    const yearlyTotal = Math.round((baseMonthly * 11) * 100) / 100
+    const effectiveMonthly = Math.round((yearlyTotal / 12) * 100) / 100
+
     return {
-      baseMonthly: basePrice,
-      yearlyTotal: yearlyTotal,
-      effectiveMonthly: effectiveMonthly
+      baseMonthly,
+      yearlyTotal,
+      effectiveMonthly,
     }
   }
 
-  const handleSubscribe = (planId: string, options?: { interval?: string, limit?: number }) => {
+  const handleSubscribe = async (planId: string, options?: { interval?: string, limit?: number }) => {
     // 1. If not logged in, redirect to login/signup
     if (!user) {
       const intent = {
@@ -209,9 +167,16 @@ export default function PricingSection() {
       return
     }
 
-    // 2. Navigate to embedded checkout page
     const selectedInterval = options?.interval || (isYearly ? 'year' : 'month')
     const selectedLimit = options?.limit || currentTraffic.value
+
+    // 2. If already subscribed, navigate to checkout upgrade flow
+    if (subscription?.subscription_status === 'active') {
+      router.push(`/checkout?plan=${planId}&interval=${selectedInterval}&limit=${selectedLimit}`)
+      return
+    }
+
+    // 3. New subscription — navigate to checkout
     router.push(`/checkout?plan=${planId}&interval=${selectedInterval}&limit=${selectedLimit}`)
   }
 
@@ -237,7 +202,7 @@ export default function PricingSection() {
         {/* Desktop: tier labels on top, Radix slider below */}
         <div className="hidden md:block">
           <div className="flex items-end justify-between mb-3 px-0.5">
-            {TRAFFIC_TIERS.map((tier, i) => (
+            {ALL_SLIDER_TIERS.map((tier, i) => (
               <button
                 key={tier.label}
                 type="button"
@@ -257,7 +222,7 @@ export default function PricingSection() {
             value={[sliderIndex]}
             onValueChange={([v]) => setSliderIndex(v)}
             min={0}
-            max={TRAFFIC_TIERS.length - 1}
+            max={ALL_SLIDER_TIERS.length - 1}
             step={1}
             aria-label={`${currentTraffic.label} pageviews per month`}
             className="[&_[role=slider]]:h-6 [&_[role=slider]]:w-2.5 [&_[role=slider]]:border-[3px] [&_[role=slider]]:border-background [&_[role=slider]]:bg-primary [&_[role=slider]]:ring-offset-0"
@@ -271,12 +236,15 @@ export default function PricingSection() {
             onChange={(e) => setSliderIndex(parseInt(e.target.value))}
             className="w-full py-2.5 px-4 bg-neutral-900/80 border border-white/[0.08] rounded-xl text-white text-sm outline-none focus:ring-2 focus:ring-brand-orange"
           >
-            {TRAFFIC_TIERS.map((tier, i) => (
-              <option key={tier.label} value={i}>
-                {tier.label} pageviews/month
-                {tier.prices.solo !== null ? ` — from €${tier.prices.solo}/mo` : ' — Custom'}
-              </option>
-            ))}
+            {ALL_SLIDER_TIERS.map((tier, i) => {
+              const soloCents = prices?.['solo']?.[(tier as { value: number }).value]
+              return (
+                <option key={tier.label} value={i}>
+                  {tier.label} pageviews/month
+                  {soloCents ? ` — from €${soloCents / 100}/mo` : ' — Custom'}
+                </option>
+              )
+            })}
           </select>
         </div>
 
@@ -339,7 +307,8 @@ export default function PricingSection() {
           {PLANS.map((plan, index) => {
             const priceDetails = getPriceDetails(plan.id)
             const isTeam = plan.id === 'team'
-            const isCurrent = currentPlanId === plan.id
+            const selectedLimit = TRAFFIC_TIERS[sliderIndex]?.value
+            const isCurrent = currentPlanId === plan.id && currentLimit === selectedLimit
 
             return (
               <div
@@ -416,7 +385,7 @@ export default function PricingSection() {
                   } ease-apple`}
                 >
                   <span>
-                    {isCurrent ? 'Current plan' : !priceDetails ? 'Contact us' : 'Get Started'}
+                    {isCurrent ? 'Current plan' : !priceDetails ? 'Contact us' : subscription?.subscription_status === 'active' ? 'Switch plan' : 'Get Started'}
                   </span>
                   {!isCurrent && priceDetails && (
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

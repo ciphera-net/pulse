@@ -8,9 +8,10 @@ import { motion } from 'framer-motion'
 import { useAuth } from '@/lib/auth/context'
 import { useSubscription } from '@/lib/swr/dashboard'
 import { getSubscription } from '@/lib/api/billing'
-import { PLAN_PRICES, TRAFFIC_TIERS } from '@/lib/plans'
+import { TRAFFIC_TIERS } from '@/lib/plans'
 import PlanSummary from '@/components/checkout/PlanSummary'
 import PaymentForm from '@/components/checkout/PaymentForm'
+import UpgradeSummary from '@/components/checkout/UpgradeSummary'
 import FeatureSlideshow from '@/components/checkout/FeatureSlideshow'
 import pulseIcon from '@/public/pulse_icon_no_margins.png'
 
@@ -18,7 +19,7 @@ import pulseIcon from '@/public/pulse_icon_no_margins.png'
 // Validation helpers
 // ---------------------------------------------------------------------------
 
-const VALID_PLANS = new Set(Object.keys(PLAN_PRICES))
+const VALID_PLANS = new Set(['solo', 'team', 'business'])
 const VALID_INTERVALS = new Set(['month', 'year'])
 const VALID_LIMITS = new Set<number>(TRAFFIC_TIERS.map((t) => t.value))
 
@@ -28,7 +29,6 @@ function isValidCheckoutParams(plan: string | null, interval: string | null, lim
   if (!VALID_PLANS.has(plan)) return false
   if (!VALID_INTERVALS.has(interval)) return false
   if (!VALID_LIMITS.has(limitNum)) return false
-  if (!PLAN_PRICES[plan]?.[limitNum]) return false
   return true
 }
 
@@ -139,13 +139,7 @@ function CheckoutContent() {
     }
   }, [authLoading, user, router])
 
-  // -- Subscription guard (skip on success page — it handles its own redirect) --
-  useEffect(() => {
-    if (status === 'success') return
-    if (subscription && (subscription.subscription_status === 'active' || subscription.subscription_status === 'trialing')) {
-      router.replace('/')
-    }
-  }, [subscription, status, router])
+  const isUpgrade = !!(subscription && (subscription.subscription_status === 'active' || subscription.subscription_status === 'trialing'))
 
   // -- Param validation --
   useEffect(() => {
@@ -205,25 +199,35 @@ function CheckoutContent() {
             transition={{ duration: 0.45, ease: 'easeOut' }}
             className="w-full max-w-lg mx-auto flex flex-col gap-6"
           >
-            {/* Plan summary (compact) */}
-            <PlanSummary
-              plan={planId}
-              interval={billingInterval}
-              limit={pageviewLimit}
-              country={country}
-              vatId={vatId}
-              onCountryChange={setCountry}
-              onVatIdChange={setVatId}
-            />
-
-            {/* Payment form */}
-            <PaymentForm
-              plan={planId}
-              interval={billingInterval}
-              limit={pageviewLimit}
-              country={country}
-              vatId={vatId}
-            />
+            {isUpgrade ? (
+              <UpgradeSummary
+                currentPlan={subscription!.plan_id}
+                currentInterval={subscription!.billing_interval}
+                currentLimit={subscription!.pageview_limit}
+                newPlan={planId}
+                newInterval={billingInterval}
+                newLimit={pageviewLimit}
+              />
+            ) : (
+              <>
+                <PlanSummary
+                  plan={planId}
+                  interval={billingInterval}
+                  limit={pageviewLimit}
+                  country={country}
+                  vatId={vatId}
+                  onCountryChange={setCountry}
+                  onVatIdChange={setVatId}
+                />
+                <PaymentForm
+                  plan={planId}
+                  interval={billingInterval}
+                  limit={pageviewLimit}
+                  country={country}
+                  vatId={vatId}
+                />
+              </>
+            )}
           </motion.div>
         </div>
       </div>
