@@ -29,7 +29,7 @@ export default function SetupStepper({ completedSteps }: SetupStepperProps) {
 
   return (
     <div className="w-full max-w-2xl mx-auto mb-10">
-      <div className="flex items-center">
+      <div className="flex items-start">
         {steps.map((step, i) => {
           const isCompleted = completedSteps.has(step.key)
           const isCurrent = i === currentIndex
@@ -63,7 +63,7 @@ export default function SetupStepper({ completedSteps }: SetupStepperProps) {
                 </span>
               </div>
               {i < steps.length - 1 && (
-                <div className={`h-px flex-1 mx-3 mb-10 ${lineCompleted ? 'bg-brand-orange' : 'bg-neutral-700'}`} />
+                <div className={`h-px flex-1 mx-3 mt-3.5 sm:mt-4 ${lineCompleted ? 'bg-brand-orange' : 'bg-neutral-700'}`} />
               )}
             </Fragment>
           )
