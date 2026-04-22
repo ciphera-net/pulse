@@ -22,19 +22,9 @@ export default function SetupSitePage() {
   const searchParams = useSearchParams()
   const { setSite, completeStep } = useSetup()
 
-  const [siteName, setSiteName] = useState('')
   const [siteDomain, setSiteDomain] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-
-  const handleDomainChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value
-    setSiteDomain(raw)
-    if (!siteName) {
-      const clean = domainFromUrl(raw)
-      if (clean) setSiteName(clean)
-    }
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -44,7 +34,7 @@ export default function SetupSitePage() {
     setError('')
 
     try {
-      const site = await createSite({ name: siteName || domain, domain })
+      const site = await createSite({ name: domain, domain })
       setSite(site)
       completeStep('site')
       router.push(`/setup/install${preservePlanParams(searchParams)}`)
@@ -81,21 +71,10 @@ export default function SetupSitePage() {
           <Input
             id="site-domain"
             value={siteDomain}
-            onChange={handleDomainChange}
+            onChange={(e) => setSiteDomain(e.target.value)}
             placeholder="example.com"
             autoFocus
             required
-          />
-        </div>
-        <div>
-          <label htmlFor="site-name" className="block text-sm font-medium text-neutral-300 mb-1.5">
-            Display name
-          </label>
-          <Input
-            id="site-name"
-            value={siteName}
-            onChange={(e) => setSiteName(e.target.value)}
-            placeholder="My Website"
           />
         </div>
 
