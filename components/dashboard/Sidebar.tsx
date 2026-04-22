@@ -30,6 +30,7 @@ import {
   UserMenu,
 } from '@ciphera-net/ui'
 import NotificationCenter from '@/components/notifications/NotificationCenter'
+import CreateOrgModal from '@/components/shared/CreateOrgModal'
 
 const EXPANDED = 256
 const COLLAPSED = 64
@@ -268,6 +269,7 @@ interface SidebarContentProps {
   auth: ReturnType<typeof useAuth>
   orgs: OrganizationMember[]
   onSwitchOrganization: (orgId: string | null) => Promise<void>
+  onCreateOrganization: () => void
   openSettings: () => void
   openOrgSettings: () => void
 }
@@ -275,9 +277,8 @@ interface SidebarContentProps {
 function SidebarContent({
   isMobile, collapsed, siteId, sites, canEdit, pendingHref,
   onNavigate, onMobileClose, onToggle,
-  auth, orgs, onSwitchOrganization, openSettings, openOrgSettings,
+  auth, orgs, onSwitchOrganization, onCreateOrganization, openSettings, openOrgSettings,
 }: SidebarContentProps) {
-  const router = useRouter()
   const c = isMobile ? false : collapsed
   const { user } = auth
 
@@ -398,7 +399,7 @@ function SidebarContent({
                 orgs={orgs}
                 activeOrgId={auth.user?.org_id}
                 onSwitchOrganization={onSwitchOrganization}
-                onCreateOrganization={() => router.push('/onboarding')}
+                onCreateOrganization={onCreateOrganization}
                 allowPersonalOrganization={false}
                 onOpenSettings={openSettings}
                 onOpenOrgSettings={openOrgSettings}
@@ -415,7 +416,7 @@ function SidebarContent({
               orgs={orgs}
               activeOrgId={auth.user?.org_id}
               onSwitchOrganization={onSwitchOrganization}
-              onCreateOrganization={() => router.push('/onboarding')}
+              onCreateOrganization={onCreateOrganization}
               allowPersonalOrganization={false}
               onOpenSettings={openSettings}
               onOpenOrgSettings={openOrgSettings}
@@ -448,6 +449,7 @@ export default function Sidebar({
   const [orgs, setOrgs] = useState<OrganizationMember[]>([])
   const [pendingHref, setPendingHref] = useState<string | null>(null)
   const [mobileClosing, setMobileClosing] = useState(false)
+  const [showCreateOrgModal, setShowCreateOrgModal] = useState(false)
   const { collapsed, toggle } = useSidebar()
 
   useEffect(() => {
@@ -502,6 +504,7 @@ export default function Sidebar({
           auth={auth}
           orgs={orgs}
           onSwitchOrganization={handleSwitchOrganization}
+          onCreateOrganization={() => setShowCreateOrgModal(true)}
           openSettings={() => openUnifiedSettings({ context: 'account', tab: 'profile' })}
           openOrgSettings={() => openUnifiedSettings({ context: 'workspace', tab: 'general' })}
         />
@@ -542,12 +545,14 @@ export default function Sidebar({
               auth={auth}
               orgs={orgs}
               onSwitchOrganization={handleSwitchOrganization}
+              onCreateOrganization={() => setShowCreateOrgModal(true)}
               openSettings={() => openUnifiedSettings({ context: 'account', tab: 'profile' })}
               openOrgSettings={() => openUnifiedSettings({ context: 'workspace', tab: 'general' })}
             />
           </aside>
         </>
       )}
+      <CreateOrgModal open={showCreateOrgModal} onClose={() => setShowCreateOrgModal(false)} />
     </>
   )
 }

@@ -19,6 +19,7 @@ import { UnifiedSettingsProvider, useUnifiedSettings } from '@/lib/unified-setti
 import UnifiedSettingsModal from '@/components/settings/unified/UnifiedSettingsModal'
 import DashboardShell from '@/components/dashboard/DashboardShell'
 import { ErrorBoundary } from '@/components/error-boundary'
+import CreateOrgModal from '@/components/shared/CreateOrgModal'
 
 const ORG_SWITCH_KEY = 'pulse_switching_org'
 
@@ -48,6 +49,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   const isOnline = useOnlineStatus()
   const { openUnifiedSettings } = useUnifiedSettings()
   const [orgs, setOrgs] = useState<OrganizationMember[]>([])
+  const [showCreateOrgModal, setShowCreateOrgModal] = useState(false)
   const [isSwitchingOrg, setIsSwitchingOrg] = useState(() => {
     if (typeof window === 'undefined') return false
     return sessionStorage.getItem(ORG_SWITCH_KEY) === 'true'
@@ -157,7 +159,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
           orgs={orgs}
           activeOrgId={auth.user?.org_id}
           onSwitchOrganization={handleSwitchOrganization}
-          onCreateOrganization={() => router.push('/onboarding')}
+          onCreateOrganization={() => setShowCreateOrgModal(true)}
           allowPersonalOrganization={false}
           showFaq={false}
           showSecurity={false}
@@ -171,6 +173,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
           {children}
         </main>
         <UnifiedSettingsModal />
+        <CreateOrgModal open={showCreateOrgModal} onClose={() => setShowCreateOrgModal(false)} />
       </div>
     )
   }

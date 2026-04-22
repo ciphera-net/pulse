@@ -48,8 +48,11 @@ function AuthCallbackContent() {
       // * by exchangeAuthCode is guaranteed committed before AuthProvider re-initializes
       // * on the destination route. Eliminates the post-login SWR race where useSites()
       // * fires before cookies are observable and caches an empty/401 result for 30s.
-      if (localStorage.getItem('pulse_pending_checkout')) {
-        window.location.assign('/welcome')
+      const storedReturn = localStorage.getItem('pulse_auth_return_to')
+      if (storedReturn) {
+        localStorage.removeItem('pulse_auth_return_to')
+        const safe = (typeof storedReturn === 'string' && storedReturn.startsWith('/') && !storedReturn.startsWith('//')) ? storedReturn : '/'
+        window.location.assign(safe)
       } else {
         const raw = searchParams.get('returnTo') || '/'
         const safe = (typeof raw === 'string' && raw.startsWith('/') && !raw.startsWith('//')) ? raw : '/'

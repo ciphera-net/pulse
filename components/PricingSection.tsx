@@ -1,13 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { logger } from '@/lib/utils/logger'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Check, X } from '@phosphor-icons/react'
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
 import { toast } from '@ciphera-net/ui'
 import { useSubscription } from '@/lib/swr/dashboard'
+import { getUserOrganizations } from '@/lib/api/organization'
 import PricingFAQ from '@/components/marketing/PricingFAQ'
 import CTASection from '@/components/marketing/CTASection'
 import { Slider } from '@/components/ui/slider'
@@ -103,34 +103,6 @@ export default function PricingSection() {
     }
   }, [searchParams])
 
-  // * Check for pending checkout on mount/auth
-  useEffect(() => {
-    if (!user) return
-
-    const pendingCheckout = localStorage.getItem('pulse_pending_checkout')
-    if (pendingCheckout) {
-      try {
-        const intent = JSON.parse(pendingCheckout)
-        
-        // Restore UI state
-        if (typeof intent.sliderIndex === 'number') setSliderIndex(intent.sliderIndex)
-        if (typeof intent.isYearly === 'boolean') setIsYearly(intent.isYearly)
-        
-        // Trigger checkout
-        handleSubscribe(intent.planId, {
-          interval: intent.interval,
-          limit: intent.limit
-        })
-        
-        // Clear intent
-        localStorage.removeItem('pulse_pending_checkout')
-      } catch (e) {
-        logger.error('Failed to parse pending checkout', e)
-        localStorage.removeItem('pulse_pending_checkout')
-      }
-    }
-  }, [user])
-
   const currentTraffic = ALL_SLIDER_TIERS[sliderIndex]
 
   // Helper to get all price details (prices in EUR cents from API, display in whole euros)
@@ -153,31 +125,27 @@ export default function PricingSection() {
   }
 
   const handleSubscribe = async (planId: string, options?: { interval?: string, limit?: number }) => {
-    // 1. If not logged in, redirect to login/signup
+    const selectedInterval = options?.interval || (isYearly ? 'year' : 'month')
+    const selectedLimit = options?.limit || currentTraffic.value
+    const planParams = `plan=${planId}&interval=${selectedInterval}&limit=${selectedLimit}`
+
     if (!user) {
-      const intent = {
-        planId,
-        interval: isYearly ? 'year' : 'month',
-        limit: currentTraffic.value,
-        sliderIndex,
-        isYearly
-      }
-      localStorage.setItem('pulse_pending_checkout', JSON.stringify(intent))
+      // Store plan intent so callback can redirect there after auth
+      localStorage.setItem('pulse_auth_return_to', `/setup/org?${planParams}`)
       initiateOAuthFlow()
       return
     }
 
-    const selectedInterval = options?.interval || (isYearly ? 'year' : 'month')
-    const selectedLimit = options?.limit || currentTraffic.value
-
-    // 2. If already subscribed, navigate to checkout upgrade flow
-    if (subscription?.subscription_status === 'active') {
-      router.push(`/checkout?plan=${planId}&interval=${selectedInterval}&limit=${selectedLimit}`)
-      return
+    try {
+      const orgs = await getUserOrganizations()
+      if (orgs.length === 0) {
+        router.push(`/setup/org?${planParams}`)
+      } else {
+        router.push(`/setup/plan?${planParams}`)
+      }
+    } catch {
+      router.push(`/setup/plan?${planParams}`)
     }
-
-    // 3. New subscription — navigate to checkout
-    router.push(`/checkout?plan=${planId}&interval=${selectedInterval}&limit=${selectedLimit}`)
   }
 
   return (

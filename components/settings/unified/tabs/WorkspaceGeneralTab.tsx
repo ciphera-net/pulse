@@ -68,7 +68,7 @@ export default function WorkspaceGeneralTab({ onDirtyChange, onRegisterSave }: {
       await deleteOrganization(user.org_id)
       localStorage.clear()
       closeUnifiedSettings()
-      window.location.href = '/welcome'
+      window.location.href = '/setup/org'
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to delete organization')
       setDeleting(false)
