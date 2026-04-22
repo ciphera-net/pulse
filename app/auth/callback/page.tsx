@@ -21,9 +21,10 @@ function AuthCallbackContent() {
     const codeVerifier = localStorage.getItem('oauth_code_verifier')
     const redirectUri = typeof window !== 'undefined' ? window.location.origin + '/auth/callback' : ''
     if (!code) return
+    const rememberMe = searchParams.get('remember_me') !== 'false'
     let result: Awaited<ReturnType<typeof exchangeAuthCode>>
     try {
-      result = await exchangeAuthCode(code, codeVerifier, redirectUri)
+      result = await exchangeAuthCode(code, codeVerifier, redirectUri, rememberMe)
     } catch {
       // * Stale build or network error — show error so user can retry via full navigation
       setError('Something went wrong. Please try logging in again.')
