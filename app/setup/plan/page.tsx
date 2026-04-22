@@ -36,7 +36,7 @@ const PLANS = [
   },
 ]
 
-const DEFAULT_LIMIT = 100_000
+const DEFAULT_LIMIT = 10_000
 
 export default function SetupPlanPage() {
   const router = useRouter()
