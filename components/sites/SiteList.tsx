@@ -8,8 +8,7 @@ import { formatNumber } from '@ciphera-net/ui'
 import { BarChartIcon, SettingsIcon, BookOpenIcon, ExternalLinkIcon, Button } from '@ciphera-net/ui'
 import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
-import { PlusCircle, UserPlus, ArrowRight } from '@phosphor-icons/react'
-import { useAuth } from '@/lib/auth/context'
+import { PlusCircle } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 
 export type SiteStatsMap = Record<string, { stats: Stats }>
@@ -157,9 +156,6 @@ export default function SiteList({ sites, siteStats, loading }: SiteListProps) {
         )
       })}
 
-      {/* Next step card (option C — empty state integration) */}
-      <NextStepCard sites={sites} />
-
       {/* Resources Card */}
       <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-neutral-700 bg-neutral-900 p-6 text-center">
         <div className="mb-3 rounded-full bg-neutral-800 p-3">
@@ -172,36 +168,5 @@ export default function SiteList({ sites, siteStats, loading }: SiteListProps) {
         </Link>
       </div>
     </div>
-  )
-}
-
-function NextStepCard({ sites }: { sites: Site[] }) {
-  const { user } = useAuth()
-
-  const steps = [
-    { key: 'site', label: 'Add your first site', description: 'Connect a domain to start tracking', href: '/sites/new', icon: PlusCircle, done: sites.length > 0 },
-    { key: 'teammate', label: 'Invite a teammate', description: 'Share your dashboard with your team', href: '/org-settings?tab=members', icon: UserPlus, done: false },
-  ]
-
-  const next = steps.find(s => !s.done)
-  if (!next || !user?.org_id) return null
-
-  const Icon = next.icon
-
-  return (
-    <Link
-      href={next.href}
-      className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-brand-orange/30 bg-brand-orange/5 p-6 text-center hover:border-brand-orange/50 hover:bg-brand-orange/10 transition-all group"
-    >
-      <div className="mb-3 rounded-full bg-brand-orange/10 p-3">
-        <Icon className="h-6 w-6 text-brand-orange" />
-      </div>
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-brand-orange mb-1">Next step</span>
-      <h3 className="font-semibold text-white">{next.label}</h3>
-      <p className="text-sm text-neutral-400 mb-3">{next.description}</p>
-      <span className="flex items-center gap-1 text-sm font-medium text-brand-orange group-hover:gap-2 transition-all">
-        Get started <ArrowRight className="w-3.5 h-3.5" />
-      </span>
-    </Link>
   )
 }
