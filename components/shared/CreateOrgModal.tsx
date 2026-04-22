@@ -22,19 +22,10 @@ export default function CreateOrgModal({ open, onClose }: CreateOrgModalProps) {
   const router = useRouter()
   const { user, login } = useAuth()
   const [orgName, setOrgName] = useState('')
-  const [orgSlug, setOrgSlug] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   if (!open) return null
-
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value
-    setOrgName(val)
-    if (!orgSlug || orgSlug === slugFromName(orgName)) {
-      setOrgSlug(slugFromName(val))
-    }
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -43,7 +34,7 @@ export default function CreateOrgModal({ open, onClose }: CreateOrgModalProps) {
     setError('')
 
     try {
-      const org = await createOrganization(orgName.trim(), orgSlug.trim())
+      const org = await createOrganization(orgName.trim(), slugFromName(orgName.trim()))
       const { access_token } = await switchContext(org.id)
       const result = await setSessionAction(access_token)
 
@@ -90,21 +81,9 @@ export default function CreateOrgModal({ open, onClose }: CreateOrgModalProps) {
             <Input
               id="modal-org-name"
               value={orgName}
-              onChange={handleNameChange}
+              onChange={(e) => setOrgName(e.target.value)}
               placeholder="Acme Corp"
               autoFocus
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="modal-org-slug" className="block text-sm font-medium text-neutral-300 mb-1.5">
-              URL slug
-            </label>
-            <Input
-              id="modal-org-slug"
-              value={orgSlug}
-              onChange={(e) => setOrgSlug(e.target.value)}
-              placeholder="acme-corp"
               required
             />
           </div>
