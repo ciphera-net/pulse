@@ -23,6 +23,8 @@ export interface SubscriptionDetails {
   business_name?: string
   /** Tax ID collected on the billing customer (VAT, EIN, etc.). */
   tax_id?: TaxID | null
+  /** Account credit balance in cents (from proration credits, etc.). */
+  credit_balance?: number
 }
 
 export async function getSubscription(): Promise<SubscriptionDetails> {
