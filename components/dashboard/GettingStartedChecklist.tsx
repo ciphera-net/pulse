@@ -153,15 +153,18 @@ export default function GettingStartedChecklist() {
         initial={{ opacity: 0, scale: 0.8, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ delay: 0.5, type: 'spring', stiffness: 300, damping: 20 }}
-        className="flex items-center gap-2.5 pl-2 pr-4 py-2 rounded-full border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 shadow-xl shadow-black/40 transition-colors ease-apple"
+        className="flex items-center gap-3 pl-3 pr-5 py-2.5 rounded-full border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 shadow-xl shadow-black/40 transition-colors ease-apple"
       >
         <div className="relative flex items-center justify-center">
-          <ProgressRing progress={progress} size={28} />
-          <span className="absolute text-[9px] font-bold text-brand-orange">{completedCount}/{items.length}</span>
+          <ProgressRing progress={progress} size={36} />
+          <span className="absolute text-[10px] font-bold text-brand-orange">{completedCount}/{items.length}</span>
         </div>
-        <span className="text-xs font-medium text-neutral-300">
-          {nextItem?.label}
-        </span>
+        <div className="flex flex-col items-start">
+          <span className="text-sm font-medium text-white leading-tight">
+            {nextItem?.label}
+          </span>
+          <span className="text-[11px] text-neutral-500 leading-tight">Next step</span>
+        </div>
       </motion.button>
     </div>
   )
