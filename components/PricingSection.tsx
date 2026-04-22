@@ -2,97 +2,54 @@
 
 import { useState, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { Check, X } from '@phosphor-icons/react'
+import { CircleCheck } from 'lucide-react'
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
-import { toast } from '@ciphera-net/ui'
+import { toast, Button } from '@ciphera-net/ui'
 import { useSubscription } from '@/lib/swr/dashboard'
 import { getUserOrganizations } from '@/lib/api/organization'
 import PricingFAQ from '@/components/marketing/PricingFAQ'
 import CTASection from '@/components/marketing/CTASection'
 import { Slider } from '@/components/ui/slider'
+import { Badge } from '@/components/ui/badge-2'
 import useSWR from 'swr'
 import { TRAFFIC_TIERS } from '@/lib/plans'
 import { getPrices } from '@/lib/api/billing'
+import { cn } from '@/lib/utils'
 
-// 1. Define Plans with IDs, Categories, and Feature Matrix
 const PLANS = [
   {
     id: 'free',
     name: 'Hobby',
-    category: 'FREE',
     description: 'For side projects and exploration',
-    features: [
-      { name: '1 site', included: true },
-      { name: 'Up to 5 sites', included: false },
-      { name: 'Up to 10 sites', included: false },
-      { name: 'Custom events', included: true },
-      { name: 'Email reports', included: false },
-      { name: 'Team dashboard', included: false },
-      { name: 'Shared links', included: false },
-      { name: 'Funnels', included: false },
-      { name: 'API access', included: false },
-      { name: 'Uptime monitoring', included: false },
-      { name: 'Priority support', included: false },
-    ]
+    features: ['1 site', '5k pageviews/mo', 'Custom events', 'GDPR compliant'],
+    isFree: true,
+    isPopular: false,
   },
   {
     id: 'solo',
     name: 'Solo',
-    category: 'PERSONAL',
     description: 'For personal sites and freelancers',
-    features: [
-      { name: '1 site', included: true },
-      { name: 'Up to 5 sites', included: false },
-      { name: 'Up to 10 sites', included: false },
-      { name: 'Custom events', included: true },
-      { name: 'Email reports', included: true },
-      { name: 'Team dashboard', included: false },
-      { name: 'Shared links', included: false },
-      { name: 'Funnels', included: false },
-      { name: 'API access', included: false },
-      { name: 'Uptime monitoring', included: false },
-      { name: 'Priority support', included: false },
-    ]
+    features: ['1 site', 'Custom events', 'Email reports', 'Responsive design'],
+    isFree: false,
+    isPopular: false,
   },
   {
     id: 'team',
     name: 'Team',
-    category: 'TEAM',
     description: 'For startups and growing agencies',
-    features: [
-      { name: '1 site', included: true },
-      { name: 'Up to 5 sites', included: true },
-      { name: 'Up to 10 sites', included: false },
-      { name: 'Custom events', included: true },
-      { name: 'Email reports', included: true },
-      { name: 'Team dashboard', included: true },
-      { name: 'Shared links', included: true },
-      { name: 'Funnels', included: true },
-      { name: 'API access', included: true },
-      { name: 'Uptime monitoring', included: true },
-      { name: 'Priority support', included: false },
-    ]
+    features: ['Up to 5 sites', 'Team dashboard', 'Funnels & journeys', 'API access', 'Shared links'],
+    isFree: false,
+    isPopular: true,
   },
   {
     id: 'business',
     name: 'Business',
-    category: 'BUSINESS',
-    description: 'For large organizations',
-    features: [
-      { name: '1 site', included: true },
-      { name: 'Up to 5 sites', included: true },
-      { name: 'Up to 10 sites', included: true },
-      { name: 'Custom events', included: true },
-      { name: 'Email reports', included: true },
-      { name: 'Team dashboard', included: true },
-      { name: 'Shared links', included: true },
-      { name: 'Funnels', included: true },
-      { name: 'API access', included: true },
-      { name: 'Uptime monitoring', included: true },
-      { name: 'Priority support', included: true },
-    ]
-  }
+    description: 'For larger organizations',
+    features: ['Up to 10 sites', 'Everything in Team', 'Uptime monitoring', 'Priority support', 'Custom events'],
+    isFree: false,
+    isPopular: false,
+  },
 ]
 
 // The "10M+" tier — no price means custom/contact-us
@@ -105,14 +62,14 @@ export default function PricingSection() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [isYearly, setIsYearly] = useState(true)
-  const [sliderIndex, setSliderIndex] = useState(0) // Default to 10k (index 0)
+  const [sliderIndex, setSliderIndex] = useState(0)
   const { user } = useAuth()
   const { data: subscription } = useSubscription()
   const { data: prices } = useSWR('plan-prices', getPrices)
   const currentPlanId = subscription?.plan_id || (user ? 'free' : null)
   const currentLimit = subscription?.pageview_limit
 
-  // * Show toast when redirected from checkout with canceled=true
+  // Show toast when redirected from checkout with canceled=true
   useEffect(() => {
     if (searchParams.get('canceled') === 'true') {
       toast.info("Checkout was canceled. You can try again whenever you're ready.")
@@ -124,32 +81,24 @@ export default function PricingSection() {
 
   const currentTraffic = ALL_SLIDER_TIERS[sliderIndex]
 
-  // Helper to get all price details (prices in EUR cents from API, display in whole euros)
-  const getPriceDetails = (planId: string) => {
-    // The 10M+ tier never has a price
+  const getPrice = (planId: string) => {
+    if (planId === 'free') return null
     if (currentTraffic.value === TIER_10M_PLUS.value) return null
-
-    const baseCents = prices?.[planId]?.[currentTraffic.value]
+    const selectedLimit = TRAFFIC_TIERS[sliderIndex]?.value
+    const baseCents = prices?.[planId]?.[selectedLimit]
     if (!baseCents) return null
-
-    const baseMonthly = baseCents / 100
-    const yearlyTotal = Math.round((baseMonthly * 11) * 100) / 100
+    const monthly = baseCents / 100
+    const yearlyTotal = Math.round((monthly * 11) * 100) / 100
     const effectiveMonthly = Math.round((yearlyTotal / 12) * 100) / 100
-
-    return {
-      baseMonthly,
-      yearlyTotal,
-      effectiveMonthly,
-    }
+    return { monthly, effectiveMonthly, yearlyTotal }
   }
 
-  const handleSubscribe = async (planId: string, options?: { interval?: string, limit?: number }) => {
-    const selectedInterval = options?.interval || (isYearly ? 'year' : 'month')
-    const selectedLimit = options?.limit || currentTraffic.value
+  const handleSubscribe = async (planId: string) => {
+    const selectedInterval = isYearly ? 'year' : 'month'
+    const selectedLimit = TRAFFIC_TIERS[sliderIndex]?.value ?? 10000
     const planParams = `plan=${planId}&interval=${selectedInterval}&limit=${selectedLimit}`
 
     if (!user) {
-      // Store plan intent so callback can redirect there after auth
       localStorage.setItem('pulse_auth_return_to', `/setup/org?${planParams}`)
       initiateOAuthFlow()
       return
@@ -169,24 +118,62 @@ export default function PricingSection() {
 
   return (
     <section className="pb-24 px-4 max-w-6xl mx-auto">
-      {/* Hero */}
-      <div className="text-center mb-16">
-        <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-6">
-          Transparent Pricing
+      {/* Title section */}
+      <div className="text-center mb-10">
+        <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-4">
+          Pricing
         </h2>
-        <p className="text-xl text-neutral-400 max-w-2xl mx-auto leading-relaxed">
-          Scale with your traffic. No hidden fees.
+        <p className="text-lg text-neutral-400 max-w-xl mx-auto leading-relaxed">
+          Select the plan that best suits your needs
         </p>
       </div>
 
-      {/* Slider + Toggle */}
-      <div className="max-w-4xl mx-auto mb-12">
-        {/* Question label */}
-        <p className="text-neutral-400 font-medium text-sm text-center mb-8">
+      {/* Monthly/Yearly toggle */}
+      <div className="flex flex-col items-center gap-2 mb-10">
+        <div
+          className="bg-neutral-900 border border-neutral-800 p-1 rounded-xl flex"
+          role="radiogroup"
+          aria-label="Billing interval"
+        >
+          <button
+            onClick={() => setIsYearly(false)}
+            role="radio"
+            aria-checked={!isYearly}
+            className={cn(
+              'min-w-[96px] px-4 py-2 rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ease-apple',
+              !isYearly
+                ? 'bg-neutral-700 text-white shadow-sm'
+                : 'text-neutral-500 hover:text-white',
+            )}
+          >
+            Monthly
+          </button>
+          <button
+            onClick={() => setIsYearly(true)}
+            role="radio"
+            aria-checked={isYearly}
+            className={cn(
+              'min-w-[96px] px-4 py-2 rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ease-apple',
+              isYearly
+                ? 'bg-neutral-700 text-white shadow-sm'
+                : 'text-neutral-500 hover:text-white',
+            )}
+          >
+            Yearly
+          </button>
+        </div>
+        <span className="text-xs text-neutral-500 font-medium">
+          Get 1 month free with yearly
+        </span>
+      </div>
+
+      {/* Pageview tier slider */}
+      <div className="max-w-3xl mx-auto mb-12">
+        <p className="text-neutral-400 text-sm text-center mb-6">
           How many monthly pageviews do you expect?
         </p>
 
-        {/* Desktop: tier labels on top, Radix slider below */}
+        {/* Desktop: labels + slider */}
         <div className="hidden md:block">
           <div className="flex items-end justify-between mb-3 px-0.5">
             {ALL_SLIDER_TIERS.map((tier, i) => (
@@ -195,11 +182,12 @@ export default function PricingSection() {
                 type="button"
                 onClick={() => setSliderIndex(i)}
                 aria-label={`Select ${tier.label} pageviews per month`}
-                className={`text-xs font-medium tabular-nums whitespace-nowrap transition-colors rounded px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                className={cn(
+                  'text-xs font-medium tabular-nums whitespace-nowrap transition-colors rounded px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ease-apple',
                   i === sliderIndex
-                    ? 'text-primary font-semibold'
-                    : 'text-neutral-500 hover:text-neutral-300'
-                } ease-apple`}
+                    ? 'text-brand-orange font-semibold'
+                    : 'text-neutral-500 hover:text-neutral-300',
+                )}
               >
                 {tier.label}
               </button>
@@ -216,12 +204,12 @@ export default function PricingSection() {
           />
         </div>
 
-        {/* Mobile: Dropdown select */}
-        <div className="md:hidden px-4">
+        {/* Mobile: dropdown */}
+        <div className="md:hidden">
           <select
             value={sliderIndex}
             onChange={(e) => setSliderIndex(parseInt(e.target.value))}
-            className="w-full py-2.5 px-4 bg-neutral-900/80 border border-white/[0.08] rounded-xl text-white text-sm outline-none focus:ring-2 focus:ring-brand-orange"
+            className="w-full py-2.5 px-4 bg-neutral-900 border border-neutral-800 rounded-xl text-white text-sm outline-none focus:ring-2 focus:ring-brand-orange"
           >
             {ALL_SLIDER_TIERS.map((tier, i) => {
               const soloCents = prices?.['solo']?.[(tier as { value: number }).value]
@@ -234,168 +222,156 @@ export default function PricingSection() {
             })}
           </select>
         </div>
-
-        {/* Billing toggle — centered */}
-        <div className="flex flex-col items-center gap-2 mt-8">
-          <div className="bg-neutral-800/80 backdrop-blur-sm border border-white/[0.08] p-1 rounded-xl flex" role="radiogroup" aria-label="Billing interval">
-            <button
-              onClick={() => setIsYearly(false)}
-              role="radio"
-              aria-checked={!isYearly}
-              className={`min-w-[88px] px-4 py-2 rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ${
-                !isYearly
-                  ? 'bg-neutral-700 text-white shadow-sm'
-                  : 'text-neutral-500 hover:text-white'
-              } ease-apple`}
-            >
-              Monthly
-            </button>
-            <button
-              onClick={() => setIsYearly(true)}
-              role="radio"
-              aria-checked={isYearly}
-              className={`min-w-[88px] px-4 py-2 rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ${
-                isYearly
-                  ? 'bg-neutral-700 text-white shadow-sm'
-                  : 'text-neutral-500 hover:text-white'
-              } ease-apple`}
-            >
-              Yearly
-            </button>
-          </div>
-          <span className="text-xs text-neutral-500 font-medium">
-            Get 1 month free with yearly
-          </span>
-        </div>
       </div>
 
-      {/* Unified card block */}
-      <div className="rounded-2xl glass-surface overflow-hidden mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
-          {PLANS.map((plan, index) => {
-            const isFree = plan.id === 'free'
-            const priceDetails = isFree ? null : getPriceDetails(plan.id)
-            const isTeam = plan.id === 'team'
-            const selectedLimit = TRAFFIC_TIERS[sliderIndex]?.value
-            const isCurrent = isFree ? currentPlanId === 'free' : currentPlanId === plan.id && currentLimit === selectedLimit
+      {/* 4-column plan card grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {PLANS.map((plan) => {
+          const priceDetails = getPrice(plan.id)
+          const isTeam = plan.id === 'team'
+          const selectedLimit = TRAFFIC_TIERS[sliderIndex]?.value
+          const isCurrent = plan.isFree
+            ? currentPlanId === 'free'
+            : currentPlanId === plan.id && currentLimit === selectedLimit
+          const isCustomTier = currentTraffic.value === TIER_10M_PLUS.value
 
-            return (
-              <div
-                key={plan.id}
-                className={`px-6 py-8 flex flex-col gap-8 ${
-                  index < PLANS.length - 1 ? 'lg:border-r border-b lg:border-b-0 border-white/[0.08]' : ''
-                }`}
-              >
-                {/* Category label */}
-                <div className="flex items-center justify-between">
-                  <p className={`font-semibold text-sm uppercase tracking-wider ${
-                    isTeam ? 'text-brand-orange' : 'text-neutral-400'
-                  }`}>
-                    {plan.category}
-                  </p>
-                  {isTeam && <span className="badge-primary">Most Popular</span>}
-                </div>
-
-                {/* Price block */}
-                <div>
-                  {isFree ? (
-                    <div className="flex items-center gap-2">
-                      <span className="text-display font-bold text-white">€0</span>
-                      <div>
-                        <p className="text-white font-semibold text-sm uppercase">{plan.name}</p>
-                        <p className="text-neutral-500 text-xs">5k pageviews/mo · forever free</p>
-                      </div>
-                    </div>
-                  ) : priceDetails ? (
-                    <>
-                      <div className="flex items-center gap-2">
-                        <span className="text-display font-bold text-white">
-                          €{isYearly ? priceDetails.effectiveMonthly : priceDetails.baseMonthly}
-                        </span>
-                        <div>
-                          <p className="text-white font-semibold text-sm uppercase">{plan.name}</p>
-                          <p className="text-neutral-500 text-xs">
-                            {currentTraffic.label} pageviews/mo · billed {isYearly ? 'yearly' : 'monthly'}
-                          </p>
-                        </div>
-                      </div>
-                      {isYearly && (
-                        <p className="text-xs text-neutral-500 mt-1">
-                          €{priceDetails.yearlyTotal} billed yearly · excl. VAT
-                        </p>
-                      )}
-                    </>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <span className="text-display font-bold text-white">Custom</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Feature list — check/x */}
-                <div className="flex flex-col gap-3 flex-grow">
-                  {plan.features.map((feature) => (
-                    <div key={feature.name} className="flex items-center gap-2">
-                      {feature.included ? (
-                        <>
-                          <Check className="w-4 h-4 text-brand-orange shrink-0" weight="bold" />
-                          <span className="text-neutral-200 text-sm">{feature.name}</span>
-                        </>
-                      ) : (
-                        <>
-                          <X className="w-4 h-4 text-neutral-700 shrink-0" weight="bold" />
-                          <span className="text-neutral-500 text-sm line-through">{feature.name}</span>
-                        </>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                {/* CTA button */}
-                <button
-                  onClick={() => {
-                    if (isCurrent) return
-                    if (isFree) {
-                      if (!user) { initiateOAuthFlow(); return }
-                      window.location.href = '/'
-                      return
-                    }
-                    handleSubscribe(plan.id)
-                  }}
-                  disabled={isCurrent || (!isFree && !priceDetails)}
-                  className={`w-full h-[44px] rounded-xl flex items-center justify-between px-6 font-semibold text-sm uppercase tracking-wider transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
-                    isTeam
-                      ? 'bg-brand-orange hover:bg-brand-orange-hover text-white'
-                      : 'bg-neutral-700 hover:bg-neutral-600 text-white'
-                  } ease-apple`}
+          return (
+            <div
+              key={plan.id}
+              className={cn(
+                'relative flex flex-col rounded-2xl border p-6 transition-all',
+                isTeam
+                  ? 'border-brand-orange bg-neutral-900/50 shadow-lg shadow-brand-orange/5 lg:scale-105 lg:z-10'
+                  : 'border-neutral-800 bg-neutral-900/50',
+              )}
+            >
+              {/* Badge + plan name */}
+              <div className="flex items-center justify-between mb-4">
+                <Badge
+                  variant={isTeam ? 'primary' : 'secondary'}
+                  appearance={isTeam ? 'default' : 'light'}
+                  size="md"
+                  className={isTeam ? 'bg-brand-orange text-white border-transparent' : ''}
                 >
-                  <span>
-                    {isCurrent ? 'Current plan' : isFree ? 'Get Started Free' : !priceDetails ? 'Contact us' : subscription?.subscription_status === 'active' ? 'Switch plan' : 'Get Started'}
+                  {plan.name}
+                </Badge>
+                {isTeam && (
+                  <span className="text-xs font-semibold text-brand-orange uppercase tracking-wider">
+                    Popular
                   </span>
-                  {!isCurrent && priceDetails && (
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                    </svg>
-                  )}
-                </button>
+                )}
               </div>
-            )
-          })}
-        </div>
 
-        {/* All Plans Include row */}
-        <div className="border-t border-white/[0.08] px-6 py-6">
-          <p className="text-neutral-400 font-semibold text-sm uppercase tracking-wider text-center mb-4">
-            All plans include
-          </p>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-4 sm:gap-8">
-            {['Cookie-free tracking', 'GDPR compliant', 'Swiss infrastructure', '100% data ownership'].map((item) => (
-              <div key={item} className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-brand-orange shrink-0" weight="bold" />
-                <span className="text-neutral-200 text-sm">{item}</span>
+              {/* Price */}
+              <div className="mb-2">
+                {plan.isFree ? (
+                  <>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-4xl font-bold text-white">€0</span>
+                      <span className="text-neutral-500 text-sm">/mo</span>
+                    </div>
+                    <p className="text-neutral-500 text-xs mt-1">5k pageviews · forever free</p>
+                  </>
+                ) : isCustomTier ? (
+                  <>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-4xl font-bold text-white">Custom</span>
+                    </div>
+                    <p className="text-neutral-500 text-xs mt-1">Contact us for pricing</p>
+                  </>
+                ) : priceDetails ? (
+                  <>
+                    <div className="flex items-baseline gap-1">
+                      <span className={cn('text-4xl font-bold', isTeam ? 'text-white' : 'text-white')}>
+                        €{isYearly ? priceDetails.effectiveMonthly : priceDetails.monthly}
+                      </span>
+                      <span className="text-neutral-500 text-sm">/mo</span>
+                    </div>
+                    {isYearly ? (
+                      <p className="text-neutral-500 text-xs mt-1">
+                        €{priceDetails.yearlyTotal} billed yearly · excl. VAT
+                      </p>
+                    ) : (
+                      <p className="text-neutral-500 text-xs mt-1">
+                        {currentTraffic.label} pageviews · billed monthly
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-4xl font-bold text-neutral-500">—</span>
+                    </div>
+                    <p className="text-neutral-500 text-xs mt-1">Loading...</p>
+                  </>
+                )}
               </div>
-            ))}
-          </div>
+
+              {/* Description */}
+              <p className="text-neutral-400 text-sm mb-5">{plan.description}</p>
+
+              {/* Divider */}
+              <div className="border-t border-neutral-800 mb-5" />
+
+              {/* Feature list */}
+              <ul className="flex flex-col gap-3 flex-grow mb-6">
+                {plan.features.map((feature) => (
+                  <li key={feature} className="flex items-start gap-2.5">
+                    <CircleCheck className="w-4 h-4 text-brand-orange shrink-0 mt-0.5" />
+                    <span className="text-neutral-200 text-sm">{feature}</span>
+                  </li>
+                ))}
+              </ul>
+
+              {/* CTA button */}
+              <Button
+                variant={isTeam ? 'primary' : 'secondary'}
+                onClick={() => {
+                  if (isCurrent) return
+                  if (plan.isFree) {
+                    if (!user) { initiateOAuthFlow(); return }
+                    window.location.href = '/'
+                    return
+                  }
+                  if (isCustomTier) {
+                    window.location.href = 'mailto:business@ciphera.net?subject=Enterprise%20Plan%20Inquiry'
+                    return
+                  }
+                  handleSubscribe(plan.id)
+                }}
+                disabled={isCurrent || (!plan.isFree && !isCustomTier && !priceDetails)}
+                className={cn(
+                  'w-full justify-center',
+                  isTeam && 'shadow-md shadow-brand-orange/20',
+                )}
+              >
+                {isCurrent
+                  ? 'Current plan'
+                  : plan.isFree
+                  ? 'Get Started Free'
+                  : isCustomTier
+                  ? 'Contact us'
+                  : subscription?.subscription_status === 'active'
+                  ? 'Switch plan'
+                  : 'Get Started'}
+              </Button>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* All plans include row */}
+      <div className="rounded-2xl border border-neutral-800 bg-neutral-900/30 px-6 py-5 mb-4">
+        <p className="text-neutral-400 text-sm font-semibold text-center uppercase tracking-wider mb-4">
+          All plans include
+        </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-4 sm:gap-8">
+          {['Cookie-free tracking', 'GDPR compliant', 'Swiss infrastructure', '100% data ownership'].map((item) => (
+            <div key={item} className="flex items-center gap-2">
+              <CircleCheck className="w-4 h-4 text-brand-orange shrink-0" />
+              <span className="text-neutral-200 text-sm">{item}</span>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -413,7 +389,7 @@ export default function PricingSection() {
         </a>
       </div>
 
-      {/* Gradient Divider */}
+      {/* Gradient divider */}
       <div className="h-px w-full bg-gradient-to-r from-transparent via-neutral-800 to-transparent" />
 
       {/* FAQ */}
