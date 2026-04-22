@@ -26,7 +26,7 @@ interface UserPayload {
 /** Error type returned to client for mapping to user-facing copy (no sensitive details). */
 export type AuthExchangeErrorType = 'network' | 'expired' | 'invalid' | 'server'
 
-export async function exchangeAuthCode(code: string, codeVerifier: string | null, redirectUri: string) {
+export async function exchangeAuthCode(code: string, codeVerifier: string | null, redirectUri: string, rememberMe: boolean = true) {
   try {
     // * IMPORTANT: credentials: 'include' is required to receive httpOnly cookies from Auth API
     // * The Auth API sets access_token, refresh_token, and csrf_token as httpOnly cookies
@@ -43,6 +43,7 @@ export async function exchangeAuthCode(code: string, codeVerifier: string | null
         client_id: 'pulse-app',
         redirect_uri: redirectUri,
         code_verifier: codeVerifier || '',
+        remember_me: rememberMe,
       }),
     })
 
@@ -85,7 +86,7 @@ export async function exchangeAuthCode(code: string, codeVerifier: string | null
       sameSite: 'lax',
       path: '/',
       domain: cookieDomain,
-      maxAge: 60 * 60 * 24 * 30 // 30 days
+      maxAge: rememberMe ? 60 * 60 * 24 * 30 : 0 // 30 days or session only
     })
 
     // * Forward cookies from Auth API response to browser
@@ -133,7 +134,7 @@ export async function exchangeAuthCode(code: string, codeVerifier: string | null
         sameSite: 'lax',
         path: '/',
         domain: cookieDomain,
-        maxAge: 60 * 60 * 24 * 30
+        maxAge: rememberMe ? 60 * 60 * 24 * 30 : 0 // 30 days or session only
       })
     }
 
@@ -157,7 +158,7 @@ export async function exchangeAuthCode(code: string, codeVerifier: string | null
   }
 }
 
-export async function setSessionAction(accessToken: string, refreshToken?: string) {
+export async function setSessionAction(accessToken: string, refreshToken?: string, rememberMe: boolean = true) {
     try {
         if (!accessToken) throw new Error('Access token is missing')
         
@@ -184,7 +185,7 @@ export async function setSessionAction(accessToken: string, refreshToken?: strin
                 sameSite: 'lax',
                 path: '/',
                 domain: cookieDomain,
-                maxAge: 60 * 60 * 24 * 30
+                maxAge: rememberMe ? 60 * 60 * 24 * 30 : 0 // 30 days or session only
             })
         }
         

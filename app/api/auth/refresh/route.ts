@@ -65,6 +65,7 @@ export async function POST(request: Request) {
     }
 
     const data = await res.json()
+    const rememberMe = data.remember_me !== false
     const csrfToken = res.headers.get('X-CSRF-Token')
 
     cookieStore.set('access_token', data.access_token, {
@@ -82,7 +83,7 @@ export async function POST(request: Request) {
       sameSite: 'lax',
       path: '/',
       domain: cookieDomain,
-      maxAge: 60 * 60 * 24 * 30
+      maxAge: rememberMe ? 60 * 60 * 24 * 30 : 0 // 30 days or session only
     })
 
     if (csrfToken) {
@@ -92,7 +93,7 @@ export async function POST(request: Request) {
         sameSite: 'lax',
         path: '/',
         domain: cookieDomain,
-        maxAge: 60 * 60 * 24 * 30
+        maxAge: rememberMe ? 60 * 60 * 24 * 30 : 0 // 30 days or session only
       })
     }
 
