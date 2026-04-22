@@ -18,6 +18,7 @@ import { useRouter } from 'next/navigation'
 import { UnifiedSettingsProvider, useUnifiedSettings } from '@/lib/unified-settings-context'
 import UnifiedSettingsModal from '@/components/settings/unified/UnifiedSettingsModal'
 import DashboardShell from '@/components/dashboard/DashboardShell'
+import GettingStartedChecklist from '@/components/dashboard/GettingStartedChecklist'
 import { ErrorBoundary } from '@/components/error-boundary'
 
 const ORG_SWITCH_KEY = 'pulse_switching_org'
@@ -134,6 +135,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
         {showOfflineBar && <OfflineBanner isOnline={isOnline} />}
         <DashboardShell siteId={null}>{children}</DashboardShell>
         <UnifiedSettingsModal />
+        <GettingStartedChecklist />
       </>
     )
   }
