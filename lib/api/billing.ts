@@ -168,17 +168,22 @@ export async function calculateVAT(params: CalculateVATParams): Promise<VATResul
   })
 }
 
-export interface CreateEmbeddedCheckoutParams {
-  plan_id: string
-  interval: string
-  limit: number
-  country: string
-  vat_id?: string
-  token: string
+export interface PaymentIntentResponse {
+  payment_intent_id: string
+  gateway_account_id: string
+  amount: number
+  currency: string
 }
 
-export async function createEmbeddedCheckout(params: CreateEmbeddedCheckoutParams): Promise<{ status: 'success' | 'pending'; redirect_url?: string }> {
-  return apiRequest<{ status: 'success' | 'pending'; redirect_url?: string }>('/api/billing/checkout-embedded', {
+export async function createPaymentIntent(params: { plan_id: string; interval: string; limit: number }): Promise<PaymentIntentResponse> {
+  return apiRequest<PaymentIntentResponse>('/api/billing/create-payment-intent', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  })
+}
+
+export async function createEmbeddedCheckout(params: { plan_id: string; interval: string; limit: number; payment_intent_id: string }): Promise<{ status: 'success' }> {
+  return apiRequest<{ status: 'success' }>('/api/billing/checkout-embedded', {
     method: 'POST',
     body: JSON.stringify(params),
   })
