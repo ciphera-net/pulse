@@ -29,13 +29,9 @@ function SetupGuard({ children }: { children: React.ReactNode }) {
           const sites = await listSites()
           hasSites = sites.length > 0
 
-          if (hasSites && !pathname.startsWith('/setup/plan') && !pathname.startsWith('/setup/done')) {
-            router.replace('/')
-            return
-          }
-
+          // Already has org — skip past org creation
           if (pathname === '/setup/org') {
-            router.replace('/setup/site')
+            router.replace(hasSites ? '/setup/install' : '/setup/site')
             return
           }
 
