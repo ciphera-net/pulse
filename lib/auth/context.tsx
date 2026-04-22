@@ -293,14 +293,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           // * Onboarding lock: if current org hasn't completed onboarding, redirect to setup
           if (userOrgId && !pathname?.startsWith('/setup')) {
-            try {
-              const org = await getOrganization(userOrgId)
-              if (!org.onboarding_completed_at) {
-                router.push('/setup/site')
-                return
+            const cacheKey = `pulse_onboarding_done_${userOrgId}`
+            const cached = typeof window !== 'undefined' && localStorage.getItem(cacheKey)
+            if (!cached) {
+              try {
+                const org = await getOrganization(userOrgId)
+                if (!org.onboarding_completed_at) {
+                  router.push('/setup/site')
+                  return
+                }
+                localStorage.setItem(cacheKey, '1')
+              } catch {
+                // org fetch failed — don't block
               }
-            } catch {
-              // org fetch failed — don't block
             }
           }
 

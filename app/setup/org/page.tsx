@@ -22,7 +22,8 @@ export default function SetupOrgPage() {
   const { user, login } = useAuth()
   const { setOrg, completeStep } = useSetup()
 
-  const [orgName, setOrgName] = useState('')
+  const defaultName = user?.display_name ? `${user.display_name}'s workspace` : ''
+  const [orgName, setOrgName] = useState(defaultName)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 

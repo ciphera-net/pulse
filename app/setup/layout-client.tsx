@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense, useEffect, useState } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth/context'
 import { getUserOrganizations } from '@/lib/api/organization'
 import { listSites } from '@/lib/api/sites'
@@ -12,9 +12,11 @@ import { LoadingOverlay } from '@ciphera-net/ui'
 function SetupGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const { user, loading: authLoading } = useAuth()
   const { completedSteps } = useSetup()
   const [resolved, setResolved] = useState(false)
+  const isNewOrg = searchParams.get('new') === '1'
 
   useEffect(() => {
     if (authLoading || !user) return
@@ -29,8 +31,8 @@ function SetupGuard({ children }: { children: React.ReactNode }) {
           const sites = await listSites()
           hasSites = sites.length > 0
 
-          // Already has org — skip past org creation
-          if (pathname === '/setup/org') {
+          // Already has org — skip past org creation (unless creating a new one)
+          if (pathname === '/setup/org' && !isNewOrg) {
             router.replace(hasSites ? '/setup/install' : '/setup/site')
             return
           }

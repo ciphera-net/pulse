@@ -94,7 +94,7 @@ export default function SetupDonePage() {
       {/* Next steps cards */}
       <div className="space-y-3 mb-8">
         <Link
-          href="/sites/new"
+          href={site ? `/sites/${site.id}/settings` : '/'}
           className="flex items-center gap-3 p-3 rounded-xl border border-neutral-800 hover:border-neutral-700 hover:bg-neutral-800/30 transition-all"
         >
           <div className="h-9 w-9 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
