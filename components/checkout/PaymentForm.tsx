@@ -172,14 +172,14 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
             {
               success: (intent: { id: string }) => resolve(intent.id),
               error: (err: any) => {
+                console.log('Chargebee 3DS error:', JSON.stringify(err))
                 let raw: string
                 if (typeof err === 'string') raw = err
-                else if (err?.displayMessage) raw = err.displayMessage
-                else if (err?.message) raw = err.message
-                else raw = String(err)
+                else raw = err?.displayMessage || err?.message || err?.error_message || err?.errorMessage || err?.error_msg || err?.error || (typeof err?.toString === 'function' && err.toString() !== '[object Object]' ? err.toString() : '') || JSON.stringify(err)
                 const clean = raw
                   .replace(/^[A-Z_]+:\s*/, '')
                   .replace(/;?\s*code:\s*[\w_]+;?\s*$/g, '')
+                  .replace(/^\{.*\}$/, '')
                   .trim()
                 reject(new Error(clean || 'Your card could not be processed. Please try a different card.'))
               },
