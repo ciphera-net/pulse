@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { TIMING } from '@/lib/motion'
 import { useAuth } from '@/lib/auth/context'
 import { type Site } from '@/lib/api/sites'
+import { getUserOrganizations } from '@/lib/api/organization'
 import { useSites } from '@/lib/swr/sites'
 import { trackWelcomeStepView } from '@/lib/welcomeAnalytics'
 import { LoadingOverlay } from '@ciphera-net/ui'
@@ -53,18 +54,33 @@ function WelcomeFlowInner() {
   useEffect(() => {
     if (authLoading || !user || sitesLoading) return
 
-    if (!user.org_id) {
+    const resolve = async () => {
+      if (!user.org_id) {
+        setResolving(false)
+        return
+      }
+
+      try {
+        const orgs = await getUserOrganizations()
+        if (orgs.length === 0) {
+          setResolving(false)
+          return
+        }
+      } catch {
+        setResolving(false)
+        return
+      }
+
+      if (sites.length > 0) {
+        router.replace('/')
+        return
+      }
+
+      setStepState(2)
       setResolving(false)
-      return
     }
 
-    if (sites.length > 0) {
-      router.replace('/')
-      return
-    }
-
-    setStepState(2)
-    setResolving(false)
+    resolve()
   }, [authLoading, user, sitesLoading, sites, router])
 
   // Track step views
