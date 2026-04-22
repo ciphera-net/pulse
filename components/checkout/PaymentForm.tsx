@@ -171,7 +171,11 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
             {},
             {
               success: (intent: { id: string }) => resolve(intent.id),
-              error: (err: any) => reject(new Error(err?.message || 'Card authorization failed')),
+              error: (err: any) => {
+                const msg = err?.displayMessage || err?.message || 'Card authorization failed'
+                const clean = msg.replace(/;?\s*code:\s*\w+;?\s*$/, '').trim()
+                reject(new Error(clean))
+              },
             }
           )
         })
