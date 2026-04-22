@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useAuth } from '@/lib/auth/context'
 import { useSites } from '@/lib/swr/sites'
 import { XIcon, CheckCircleIcon } from '@ciphera-net/ui'
-import { Circle as CircleIcon, CaretDown } from '@phosphor-icons/react'
+import { Circle as CircleIcon, Rocket } from '@phosphor-icons/react'
 
 interface ChecklistItem {
   key: string
@@ -46,70 +46,49 @@ export default function GettingStartedChecklist() {
   }
 
   const progress = (completedCount / items.length) * 100
+  const nextItem = items.find(i => !i.check())
 
   return (
-    <div className="mb-4">
-      {/* Compact bar */}
-      <button
-        type="button"
-        onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl border border-neutral-800 bg-neutral-900/50 hover:bg-neutral-800/50 transition-colors group"
-      >
-        <span className="text-xs font-semibold text-white whitespace-nowrap">Getting Started</span>
-
-        {/* Progress bar */}
-        <div className="flex-1 h-1.5 bg-neutral-800 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-brand-orange rounded-full transition-all duration-500 ease-apple"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-
-        <span className="text-xs text-neutral-500 tabular-nums whitespace-nowrap">{completedCount}/{items.length}</span>
-
-        <CaretDown
-          className={`w-3.5 h-3.5 text-neutral-500 transition-transform ease-apple ${expanded ? 'rotate-180' : ''}`}
-          weight="bold"
-        />
-
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={handleDismiss}
-          onKeyDown={(e) => { if (e.key === 'Enter') handleDismiss(e as unknown as React.MouseEvent) }}
-          className="text-neutral-600 hover:text-neutral-400 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-          aria-label="Dismiss"
-        >
-          <XIcon className="h-3.5 w-3.5" />
-        </div>
-      </button>
-
-      {/* Expandable items */}
+    <div className="fixed bottom-5 right-5 z-40">
       <AnimatePresence>
         {expanded && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden"
+            initial={{ opacity: 0, y: 8, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.95 }}
+            transition={{ duration: 0.15 }}
+            className="absolute bottom-full right-0 mb-2 w-72 rounded-2xl border border-neutral-800 bg-neutral-900 p-4 shadow-2xl shadow-black/40"
           >
-            <div className="flex items-center gap-4 px-4 py-3 mt-1 rounded-xl border border-neutral-800 bg-neutral-900/30">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-semibold text-white">Getting Started</span>
+              <button onClick={handleDismiss} className="text-neutral-600 hover:text-neutral-400 p-0.5" aria-label="Dismiss">
+                <XIcon className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            <div className="h-1.5 bg-neutral-800 rounded-full overflow-hidden mb-4">
+              <div
+                className="h-full bg-brand-orange rounded-full transition-all duration-500 ease-apple"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+
+            <div className="space-y-2.5">
               {items.map((item) => {
                 const done = item.check()
                 const inner = (
-                  <div className={`flex items-center gap-1.5 text-xs ${done ? 'text-neutral-500' : 'text-neutral-300 hover:text-white'}`}>
+                  <div className={`flex items-center gap-2 text-sm py-1 ${done ? 'text-neutral-500' : 'text-neutral-300 hover:text-white'}`}>
                     {done ? (
-                      <CheckCircleIcon className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                      <CheckCircleIcon className="h-4 w-4 text-emerald-400 shrink-0" />
                     ) : (
-                      <CircleIcon className="h-3.5 w-3.5 text-neutral-600 shrink-0" />
+                      <CircleIcon className="h-4 w-4 text-neutral-600 shrink-0" />
                     )}
                     <span className={done ? 'line-through' : ''}>{item.label}</span>
                   </div>
                 )
 
                 if (item.href && !done) {
-                  return <Link key={item.key} href={item.href}>{inner}</Link>
+                  return <Link key={item.key} href={item.href} onClick={() => setExpanded(false)}>{inner}</Link>
                 }
                 return <div key={item.key}>{inner}</div>
               })}
@@ -117,6 +96,24 @@ export default function GettingStartedChecklist() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Floating pill */}
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-2.5 pl-3 pr-4 py-2.5 rounded-full border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 shadow-xl shadow-black/30 transition-all ease-apple group"
+      >
+        <div className="relative">
+          <Rocket className="w-5 h-5 text-brand-orange" weight="fill" />
+          <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-brand-orange rounded-full animate-pulse" />
+        </div>
+        <div className="flex flex-col items-start">
+          <span className="text-xs font-medium text-white leading-tight">
+            {nextItem ? nextItem.label : 'Setup'}
+          </span>
+          <span className="text-[10px] text-neutral-500 leading-tight">{completedCount}/{items.length} complete</span>
+        </div>
+      </button>
     </div>
   )
 }
