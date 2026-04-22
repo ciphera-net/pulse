@@ -3,26 +3,53 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
+import useSWR from 'swr'
+import { Check } from '@phosphor-icons/react'
 import { useSetup } from '@/lib/setup/context'
 import { useSubscription } from '@/lib/swr/dashboard'
+import { getPrices } from '@/lib/api/billing'
+import { TRAFFIC_TIERS } from '@/lib/plans'
 import PlanSummary from '@/components/checkout/PlanSummary'
 import PaymentForm from '@/components/checkout/PaymentForm'
+import { Button, Spinner } from '@ciphera-net/ui'
 import { TIMING } from '@/lib/motion'
+
+const PLANS = [
+  {
+    id: 'solo',
+    name: 'Solo',
+    description: 'For personal sites',
+    highlights: ['1 site', 'Custom events', 'Email reports'],
+  },
+  {
+    id: 'team',
+    name: 'Team',
+    description: 'For startups & agencies',
+    popular: true,
+    highlights: ['Up to 5 sites', 'Funnels & journeys', 'Team dashboard', 'API access'],
+  },
+  {
+    id: 'business',
+    name: 'Business',
+    description: 'For larger organizations',
+    highlights: ['Up to 10 sites', 'Uptime monitoring', 'Priority support', 'Everything in Team'],
+  },
+]
+
+const DEFAULT_LIMIT = 100_000
 
 export default function SetupPlanPage() {
   const router = useRouter()
   const { pendingPlan, completeStep } = useSetup()
   const { data: subscription } = useSubscription()
+  const { data: prices } = useSWR('plan-prices', getPrices)
 
   const [selectedPlan, setSelectedPlan] = useState<string | null>(pendingPlan?.planId ?? null)
-  const [selectedInterval, setSelectedInterval] = useState<'month' | 'year'>(
-    (pendingPlan?.interval as 'month' | 'year') ?? 'month'
-  )
-  const [selectedLimit, setSelectedLimit] = useState<number>(pendingPlan?.limit ?? 100_000)
+  const [isYearly, setIsYearly] = useState(pendingPlan?.interval === 'year')
+  const [selectedLimit] = useState<number>(pendingPlan?.limit ?? DEFAULT_LIMIT)
   const [country, setCountry] = useState('')
   const [vatId, setVatId] = useState('')
 
-  // If already subscribed, skip to done
   useEffect(() => {
     if (
       subscription?.subscription_status === 'active' ||
@@ -42,6 +69,17 @@ export default function SetupPlanPage() {
     completeStep('plan')
     router.push('/setup/done')
   }
+
+  const getPrice = (planId: string) => {
+    const baseCents = prices?.[planId]?.[selectedLimit]
+    if (!baseCents) return null
+    const monthly = baseCents / 100
+    const yearlyTotal = Math.round((monthly * 11) * 100) / 100
+    const effectiveMonthly = Math.round((yearlyTotal / 12) * 100) / 100
+    return { monthly, effectiveMonthly, yearlyTotal }
+  }
+
+  const selectedInterval = isYearly ? 'year' as const : 'month' as const
 
   return (
     <>
@@ -96,18 +134,82 @@ export default function SetupPlanPage() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
             transition={TIMING}
-            className="space-y-3"
           >
-            {['solo', 'team', 'business'].map((planId) => (
-              <button
-                key={planId}
-                type="button"
-                onClick={() => setSelectedPlan(planId)}
-                className="w-full text-left px-4 py-3 rounded-xl border border-neutral-800 hover:border-brand-orange/50 hover:bg-neutral-800/50 transition-all"
-              >
-                <span className="text-sm font-medium text-white capitalize">{planId}</span>
-              </button>
-            ))}
+            {/* Billing toggle */}
+            <div className="flex flex-col items-center gap-2 mb-6">
+              <div className="bg-neutral-800/80 border border-white/[0.08] p-1 rounded-xl flex">
+                <button
+                  onClick={() => setIsYearly(false)}
+                  className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ease-apple ${
+                    !isYearly ? 'bg-neutral-700 text-white shadow-sm' : 'text-neutral-500 hover:text-white'
+                  }`}
+                >
+                  Monthly
+                </button>
+                <button
+                  onClick={() => setIsYearly(true)}
+                  className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ease-apple ${
+                    isYearly ? 'bg-neutral-700 text-white shadow-sm' : 'text-neutral-500 hover:text-white'
+                  }`}
+                >
+                  Yearly
+                </button>
+              </div>
+              {isYearly && (
+                <span className="text-xs text-brand-orange font-medium">1 month free</span>
+              )}
+            </div>
+
+            {/* Plan cards */}
+            <div className="space-y-3">
+              {PLANS.map((plan) => {
+                const price = getPrice(plan.id)
+                return (
+                  <button
+                    key={plan.id}
+                    type="button"
+                    onClick={() => setSelectedPlan(plan.id)}
+                    className={`w-full text-left p-4 rounded-xl border transition-all ${
+                      plan.popular
+                        ? 'border-brand-orange/40 bg-brand-orange/5 hover:border-brand-orange/70'
+                        : 'border-neutral-800 hover:border-neutral-700 hover:bg-neutral-800/30'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-white">{plan.name}</span>
+                          {plan.popular && (
+                            <span className="text-[10px] font-semibold uppercase tracking-wider text-brand-orange bg-brand-orange/10 px-1.5 py-0.5 rounded">
+                              Popular
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-neutral-500 mt-0.5">{plan.description}</p>
+                      </div>
+                      {price ? (
+                        <div className="text-right shrink-0">
+                          <span className="text-lg font-bold text-white">
+                            €{isYearly ? price.effectiveMonthly : price.monthly}
+                          </span>
+                          <span className="text-xs text-neutral-500">/mo</span>
+                        </div>
+                      ) : (
+                        <Spinner size="sm" />
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-x-3 gap-y-1">
+                      {plan.highlights.map((f) => (
+                        <span key={f} className="flex items-center gap-1 text-xs text-neutral-400">
+                          <Check className="w-3 h-3 text-brand-orange" weight="bold" />
+                          {f}
+                        </span>
+                      ))}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
