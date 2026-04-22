@@ -172,9 +172,9 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
             {
               success: (intent: { id: string }) => resolve(intent.id),
               error: (err: any) => {
-                const msg = err?.displayMessage || err?.message || 'Card authorization failed'
-                const clean = msg.replace(/;?\s*code:\s*\w+;?\s*$/, '').trim()
-                reject(new Error(clean))
+                const raw = typeof err === 'string' ? err : (err?.displayMessage || err?.message || 'Card authorization failed')
+                const clean = raw.replace(/^\w+:\s*/, '').replace(/;?\s*code:\s*\w+;?\s*$/g, '').trim()
+                reject(new Error(clean || 'Card authorization failed'))
               },
             }
           )
