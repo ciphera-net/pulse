@@ -263,15 +263,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const checkOrg = async () => {
       if (!loading && isAuthenticated) {
-        if (pathname?.startsWith('/onboarding')) return
         if (pathname?.startsWith('/auth/callback')) return
 
         try {
           const organizations = await getUserOrganizations()
 
           if (organizations.length === 0) {
-            if (pathname?.startsWith('/welcome')) return
-            router.push('/welcome')
+            if (pathname?.startsWith('/setup')) return
+            router.push('/setup/org')
             return
           }
 
