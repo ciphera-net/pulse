@@ -162,12 +162,12 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
         }
 
         // Step 1: Create payment intent on the backend
-        const pi = await createPaymentIntent({ plan_id: plan, interval, limit })
+        const { payment_intent } = await createPaymentIntent({ plan_id: plan, interval, limit })
 
-        // Step 2: Authorize with 3DS via Chargebee.js
+        // Step 2: Authorize with 3DS via Chargebee.js (pass full payment intent object)
         const authorizedIntentId = await new Promise<string>((resolve, reject) => {
           (cardComponent as any).authorizeWith3ds(
-            { id: pi.payment_intent_id, gateway_account_id: pi.gateway_account_id, amount: pi.amount, currency_code: pi.currency },
+            payment_intent,
             {},
             {
               success: (intent: { id: string }) => resolve(intent.id),

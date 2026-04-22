@@ -169,10 +169,14 @@ export async function calculateVAT(params: CalculateVATParams): Promise<VATResul
 }
 
 export interface PaymentIntentResponse {
-  payment_intent_id: string
-  gateway_account_id: string
-  amount: number
-  currency: string
+  payment_intent: {
+    id: string
+    gateway_account_id: string
+    amount: number
+    currency_code: string
+    status: string
+    [key: string]: unknown
+  }
 }
 
 export async function createPaymentIntent(params: { plan_id: string; interval: string; limit: number }): Promise<PaymentIntentResponse> {
