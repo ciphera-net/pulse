@@ -145,6 +145,11 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
     return <>{children}</>
   }
 
+  // Setup wizard: own layout with stepper — no app shell
+  if (isAuthenticated && pathname.startsWith('/setup')) {
+    return <>{children}</>
+  }
+
   // Authenticated non-site pages (sites list, onboarding, etc.): static header
   if (isAuthenticated) {
     return (
