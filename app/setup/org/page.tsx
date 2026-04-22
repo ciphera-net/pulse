@@ -22,18 +22,9 @@ export default function SetupOrgPage() {
   const { user, login } = useAuth()
   const { setOrg, completeStep } = useSetup()
 
-  const [orgName, setOrgName] = useState('My organization')
-  const [orgSlug, setOrgSlug] = useState(slugFromName('My organization'))
+  const [orgName, setOrgName] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value
-    setOrgName(val)
-    if (!orgSlug || orgSlug === slugFromName(orgName)) {
-      setOrgSlug(slugFromName(val))
-    }
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -42,7 +33,7 @@ export default function SetupOrgPage() {
     setError('')
 
     try {
-      const org = await createOrganization(orgName.trim(), orgSlug.trim())
+      const org = await createOrganization(orgName.trim(), slugFromName(orgName.trim()))
       const { access_token } = await switchContext(org.id)
       const result = await setSessionAction(access_token)
 
@@ -68,12 +59,7 @@ export default function SetupOrgPage() {
       completeStep('org')
       router.push(`/setup/site${preservePlanParams(searchParams)}`)
     } catch (err) {
-      const msg = getAuthErrorMessage(err as Error)
-      if (msg?.toLowerCase().includes('slug')) {
-        setError(`Slug "${orgSlug}" is already taken. Try a different one.`)
-      } else {
-        setError(msg || 'Failed to create organization')
-      }
+      setError(getAuthErrorMessage(err as Error) || 'Failed to create organization')
       setLoading(false)
     }
   }
@@ -100,24 +86,11 @@ export default function SetupOrgPage() {
           <Input
             id="org-name"
             value={orgName}
-            onChange={handleNameChange}
+            onChange={(e) => setOrgName(e.target.value)}
             placeholder="Acme Corp"
             autoFocus
             required
           />
-        </div>
-        <div>
-          <label htmlFor="org-slug" className="block text-sm font-medium text-neutral-300 mb-1.5">
-            URL slug
-          </label>
-          <Input
-            id="org-slug"
-            value={orgSlug}
-            onChange={(e) => setOrgSlug(e.target.value)}
-            placeholder="acme-corp"
-            required
-          />
-          <p className="text-xs text-neutral-500 mt-1">Used in your workspace URL</p>
         </div>
 
         {error && (
