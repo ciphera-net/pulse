@@ -6,6 +6,7 @@ export interface Organization {
   slug: string
   plan_tier: string
   created_at: string
+  onboarding_completed_at: string | null
 }
 
 export interface OrganizationMember {
@@ -62,6 +63,12 @@ export async function getOrganization(organizationId: string): Promise<Organizat
 export async function deleteOrganization(organizationId: string): Promise<void> {
   await authFetch(`/auth/organizations/${organizationId}`, {
     method: 'DELETE',
+  })
+}
+
+export async function completeOnboarding(organizationId: string): Promise<void> {
+  await authFetch(`/auth/organizations/${organizationId}/complete-onboarding`, {
+    method: 'POST',
   })
 }
 
