@@ -165,7 +165,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
           orgs={orgs}
           activeOrgId={auth.user?.org_id}
           onSwitchOrganization={handleSwitchOrganization}
-          onCreateOrganization={() => router.push('/setup/org')}
+          onCreateOrganization={() => router.push('/setup/org?new=1')}
           allowPersonalOrganization={false}
           showFaq={false}
           showSecurity={false}

@@ -502,7 +502,7 @@ export default function Sidebar({
           auth={auth}
           orgs={orgs}
           onSwitchOrganization={handleSwitchOrganization}
-          onCreateOrganization={() => router.push('/setup/org')}
+          onCreateOrganization={() => router.push('/setup/org?new=1')}
           openSettings={() => openUnifiedSettings({ context: 'account', tab: 'profile' })}
           openOrgSettings={() => openUnifiedSettings({ context: 'workspace', tab: 'general' })}
         />
@@ -543,7 +543,7 @@ export default function Sidebar({
               auth={auth}
               orgs={orgs}
               onSwitchOrganization={handleSwitchOrganization}
-              onCreateOrganization={() => router.push('/setup/org')}
+              onCreateOrganization={() => router.push('/setup/org?new=1')}
               openSettings={() => openUnifiedSettings({ context: 'account', tab: 'profile' })}
               openOrgSettings={() => openUnifiedSettings({ context: 'workspace', tab: 'general' })}
             />
