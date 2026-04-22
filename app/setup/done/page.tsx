@@ -4,19 +4,25 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
+import { useAuth } from '@/lib/auth/context'
 import { useSetup } from '@/lib/setup/context'
+import { completeOnboarding } from '@/lib/api/organization'
 import { getRealtime } from '@/lib/api/stats'
 import { Button, Spinner, CheckCircleIcon, UsersIcon, BookOpenIcon, FunnelIcon } from '@ciphera-net/ui'
 
 export default function SetupDonePage() {
   const router = useRouter()
+  const { user } = useAuth()
   const { site, completeStep } = useSetup()
   const [dataReceived, setDataReceived] = useState(false)
   const cancelledRef = useRef(false)
 
   useEffect(() => {
     completeStep('done')
-  }, [completeStep])
+    if (user?.org_id) {
+      completeOnboarding(user.org_id).catch(() => {})
+    }
+  }, [completeStep, user?.org_id])
 
   // Poll for first pageview if a site was created
   useEffect(() => {

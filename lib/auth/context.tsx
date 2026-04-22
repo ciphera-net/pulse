@@ -6,7 +6,7 @@ import { useSWRConfig } from 'swr'
 import apiRequest, { setRefreshHandler } from '@/lib/api/client'
 import { LoadingOverlay, useSessionSync, SessionExpiryWarning, useSessionRefresh } from '@ciphera-net/ui'
 import { logoutAction, getSessionAction, setSessionAction } from '@/app/actions/auth'
-import { getUserOrganizations, switchContext } from '@/lib/api/organization'
+import { getUserOrganizations, switchContext, getOrganization } from '@/lib/api/organization'
 import { logger } from '@/lib/utils/logger'
 import { cleanupStaleStorage } from '@/lib/utils/storage-cleanup'
 
@@ -272,6 +272,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (pathname?.startsWith('/setup')) return
             router.push('/setup/org')
             return
+          }
+
+          // * Onboarding lock: if current org hasn't completed onboarding, redirect to setup
+          if (userOrgId && !pathname?.startsWith('/setup')) {
+            try {
+              const org = await getOrganization(userOrgId)
+              if (!org.onboarding_completed_at) {
+                router.push('/setup/site')
+                return
+              }
+            } catch {
+              // org fetch failed — don't block
+            }
           }
 
           // * If user has organizations but no context (org_id), switch to the first one

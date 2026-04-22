@@ -30,7 +30,6 @@ import {
   UserMenu,
 } from '@ciphera-net/ui'
 import NotificationCenter from '@/components/notifications/NotificationCenter'
-import CreateOrgModal from '@/components/shared/CreateOrgModal'
 
 const EXPANDED = 256
 const COLLAPSED = 64
@@ -449,7 +448,6 @@ export default function Sidebar({
   const [orgs, setOrgs] = useState<OrganizationMember[]>([])
   const [pendingHref, setPendingHref] = useState<string | null>(null)
   const [mobileClosing, setMobileClosing] = useState(false)
-  const [showCreateOrgModal, setShowCreateOrgModal] = useState(false)
   const { collapsed, toggle } = useSidebar()
 
   useEffect(() => {
@@ -504,7 +502,7 @@ export default function Sidebar({
           auth={auth}
           orgs={orgs}
           onSwitchOrganization={handleSwitchOrganization}
-          onCreateOrganization={() => setShowCreateOrgModal(true)}
+          onCreateOrganization={() => router.push('/setup/org')}
           openSettings={() => openUnifiedSettings({ context: 'account', tab: 'profile' })}
           openOrgSettings={() => openUnifiedSettings({ context: 'workspace', tab: 'general' })}
         />
@@ -545,14 +543,13 @@ export default function Sidebar({
               auth={auth}
               orgs={orgs}
               onSwitchOrganization={handleSwitchOrganization}
-              onCreateOrganization={() => setShowCreateOrgModal(true)}
+              onCreateOrganization={() => router.push('/setup/org')}
               openSettings={() => openUnifiedSettings({ context: 'account', tab: 'profile' })}
               openOrgSettings={() => openUnifiedSettings({ context: 'workspace', tab: 'general' })}
             />
           </aside>
         </>
       )}
-      <CreateOrgModal open={showCreateOrgModal} onClose={() => setShowCreateOrgModal(false)} />
     </>
   )
 }
