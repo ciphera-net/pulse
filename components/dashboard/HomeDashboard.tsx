@@ -114,7 +114,6 @@ export default function HomeDashboard() {
   return (
     <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
       <GettingStartedChecklist />
-
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-lg font-semibold text-neutral-200 mb-1">Your Sites</h1>
