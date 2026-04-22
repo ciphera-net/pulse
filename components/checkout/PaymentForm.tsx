@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { TIMING } from '@/lib/motion'
 import { Lock, ShieldCheck } from '@phosphor-icons/react'
 import { initChargebee } from '@/lib/chargebee'
-import { createEmbeddedCheckout, createCheckoutSession } from '@/lib/api/billing'
+import { createPaymentIntent, createEmbeddedCheckout, createCheckoutSession } from '@/lib/api/billing'
 
 interface PaymentFormProps {
   plan: string
@@ -161,28 +161,30 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
           return
         }
 
-        let token: string
-        try {
-          const result = await cardComponent.tokenize()
-          token = result.token
-        } catch (err) {
-          setFormError((err as Error)?.message || 'Invalid card details.')
-          setSubmitting(false)
-          return
-        }
+        // Step 1: Create payment intent on the backend
+        const pi = await createPaymentIntent({ plan_id: plan, interval, limit })
 
-        const result = await createEmbeddedCheckout({
+        // Step 2: Authorize with 3DS via Chargebee.js
+        const authorizedIntentId = await new Promise<string>((resolve, reject) => {
+          (cardComponent as any).authorizeWith3ds(
+            { id: pi.payment_intent_id, gateway_account_id: pi.gateway_account_id, amount: pi.amount, currency_code: pi.currency },
+            {},
+            {
+              success: (intent: { id: string }) => resolve(intent.id),
+              error: (err: any) => reject(new Error(err?.message || 'Card authorization failed')),
+            }
+          )
+        })
+
+        // Step 3: Create subscription with authorized payment intent
+        await createEmbeddedCheckout({
           plan_id: plan,
           interval,
           limit,
-          country,
-          vat_id: vatId || undefined,
-          token,
+          payment_intent_id: authorizedIntentId,
         })
 
-        if (result.status === 'success') router.push('/checkout?status=success')
-        else if (result.status === 'pending' && result.redirect_url)
-          window.location.href = result.redirect_url
+        router.push('/checkout?status=success')
       } else {
         const result = await createCheckoutSession({
           plan_id: plan,
