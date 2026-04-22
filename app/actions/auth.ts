@@ -133,7 +133,7 @@ export async function exchangeAuthCode(code: string, codeVerifier: string | null
         sameSite: 'lax',
         path: '/',
         domain: cookieDomain,
-        maxAge: 60 * 60 * 24 * 30 // 30 days
+        maxAge: 60 * 60 * 24 * 30
       })
     }
 
@@ -184,7 +184,7 @@ export async function setSessionAction(accessToken: string, refreshToken?: strin
                 sameSite: 'lax',
                 path: '/',
                 domain: cookieDomain,
-                maxAge: 60 * 60 * 24 * 30 // 30 days
+                maxAge: 60 * 60 * 24 * 30
             })
         }
         
@@ -222,14 +222,13 @@ export async function logoutAction() {
     }
   }
 
-  const expireNow = new Date(0)
   cookieStore.set('access_token', '', {
-    maxAge: -1, expires: expireNow,
+    maxAge: 0,
     path: '/',
     domain: cookieDomain
   })
   cookieStore.set('refresh_token', '', {
-    maxAge: -1, expires: expireNow,
+    maxAge: 0,
     path: '/',
     domain: cookieDomain
   })
