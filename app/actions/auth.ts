@@ -232,6 +232,14 @@ export async function logoutAction() {
     path: '/',
     domain: cookieDomain
   })
+  cookieStore.set('ciphera_logged_out_at', Date.now().toString(), {
+    httpOnly: false,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    domain: cookieDomain,
+    maxAge: 300
+  })
   return { success: true }
 }
 

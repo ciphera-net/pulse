@@ -4,7 +4,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { useRouter, usePathname } from 'next/navigation'
 import { useSWRConfig } from 'swr'
 import apiRequest, { setRefreshHandler } from '@/lib/api/client'
-import { LoadingOverlay, useSessionSync, SessionExpiryWarning, useSessionRefresh } from '@ciphera-net/ui'
+import { LoadingOverlay, useSessionSync, SessionExpiryWarning, useSessionRefresh, useLogoutSync } from '@ciphera-net/ui'
 import { logoutAction, getSessionAction, setSessionAction } from '@/app/actions/auth'
 import { getUserOrganizations, switchContext, getOrganization } from '@/lib/api/organization'
 import { logger } from '@/lib/utils/logger'
@@ -77,7 +77,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         }),
       })
-      return res.ok
+      if (res.ok) return true
+      const data = await res.json().catch(() => null)
+      if (data?.retryable) {
+        const retry = await fetch('/api/auth/refresh', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            screen_width: window.screen.width,
+            screen_height: window.screen.height,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          }),
+        })
+        return retry.ok
+      }
+      return false
     } catch {
       return false
     }
@@ -253,6 +268,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       refresh()
     },
   })
+
+  useLogoutSync(logout)
 
   // * Stable primitives for the effect dependency array — avoids re-running
   // * on every render when the `user` object reference changes.
