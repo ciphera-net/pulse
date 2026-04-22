@@ -15,6 +15,7 @@ interface PaymentFormProps {
   limit: number
   country: string
   vatId: string
+  onSuccess?: () => void
 }
 
 const PAYMENT_METHODS = [
@@ -63,7 +64,7 @@ interface ChargebeeCardComponent {
   clear: () => void
 }
 
-export default function PaymentForm({ plan, interval, limit, country, vatId }: PaymentFormProps) {
+export default function PaymentForm({ plan, interval, limit, country, vatId, onSuccess }: PaymentFormProps) {
   const router = useRouter()
 
   const [selectedMethod, setSelectedMethod] = useState('')
@@ -190,7 +191,11 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
           payment_intent_id: authorizedIntentId,
         })
 
-        router.push('/checkout?status=success')
+        if (onSuccess) {
+          onSuccess()
+        } else {
+          router.push('/checkout?status=success')
+        }
       } else {
         const result = await createCheckoutSession({
           plan_id: plan,
