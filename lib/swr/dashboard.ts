@@ -2,6 +2,7 @@
 // * Implements stale-while-revalidate pattern for efficient data updates
 
 import useSWR from 'swr'
+import { useAuth } from '@/lib/auth/context'
 import { toast } from '@ciphera-net/ui'
 import {
   getDashboard,
@@ -537,10 +538,12 @@ export function useBunnyTopCountries(siteId: string, startDate: string, endDate:
   )
 }
 
-// * Hook for subscription details (changes rarely)
+// * Hook for subscription details (changes rarely).
+// * Returns null key when not authenticated to avoid 401 on public pages.
 export function useSubscription() {
+  const { user } = useAuth()
   return useSWR<SubscriptionDetails>(
-    'subscription',
+    user ? 'subscription' : null,
     () => fetchers.subscription(),
     {
       ...dashboardSWRConfig,

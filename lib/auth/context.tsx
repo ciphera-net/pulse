@@ -39,6 +39,7 @@ interface User {
 interface AuthContextType {
   user: User | null
   loading: boolean
+  hadPriorSession: boolean
   login: (user: User) => void
   logout: () => void
   refresh: () => Promise<void>
@@ -48,6 +49,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
+  hadPriorSession: false,
   login: () => {},
   logout: () => {},
   refresh: async () => {},
@@ -57,6 +59,7 @@ const AuthContext = createContext<AuthContextType>({
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const [hadPriorSession, setHadPriorSession] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
@@ -183,8 +186,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // * which fetches fresh HTML/JS from the server on return.
         }
 
-        // * 2. If no access_token but refresh_token may exist, try refresh (fixes 15-min inactivity logout)
-        if (!session && typeof window !== 'undefined') {
+        // * 2. If no access_token but user was previously logged in, try refresh
+        const cachedUser = typeof window !== 'undefined' ? localStorage.getItem('user') : null
+        if (!session && cachedUser) {
+          setHadPriorSession(true)
           const refreshed = await refreshWithMutex()
           if (refreshed) {
             try {
@@ -312,7 +317,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [loading, isAuthenticated, userOrgId, pathname, router])
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, refresh, refreshSession }}>
+    <AuthContext.Provider value={{ user, loading, hadPriorSession, login, logout, refresh, refreshSession }}>
       {isLoggingOut && <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" />}
       <SessionExpiryWarning
         show={showExpiredModal}

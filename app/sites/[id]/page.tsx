@@ -153,7 +153,7 @@ export default function SiteDashboardPage() {
   // For relative periods send the period name; for custom ranges send dates
   const apiPeriod = period !== 'custom' ? (PERIOD_TO_API[period] || undefined) : undefined
 
-  const interval = dateRange.start === dateRange.end ? todayInterval : multiDayInterval
+  const interval = period === '1h' ? 'minute' : (dateRange.start === dateRange.end ? todayInterval : multiDayInterval)
 
   // Single dashboard request replaces focused hooks (overview, pages, locations,
   // devices, referrers, goals). The backend runs all queries in parallel
@@ -594,7 +594,7 @@ export default function SiteDashboardPage() {
       <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
         <SearchPerformance siteId={siteId} dateRange={resolvedDateRange} />
         <GoalStats
-          goalCounts={(dashboard?.goal_counts ?? []).filter(g => !/^scroll_\d+$/.test(g.event_name))}
+          goalCounts={dashboard?.goal_counts ?? []}
           siteId={siteId}
           dateRange={resolvedDateRange}
         />

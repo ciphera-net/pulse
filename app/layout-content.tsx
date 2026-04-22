@@ -175,8 +175,9 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
     )
   }
 
-  // Session expired on a protected page — show modal instead of marketing header
-  if (!isAuthenticated && !auth.loading && (isSitePage || isDashboardPage)) {
+  // Session expired on a protected page — only shown when user HAD a session
+  // that expired, not for first-time unauthenticated visitors.
+  if (!isAuthenticated && !auth.loading && auth.hadPriorSession && (isSitePage || isDashboardPage)) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-neutral-950">
         <div className="w-full max-w-sm bg-neutral-900 border border-white/[0.08] rounded-2xl p-8 text-center shadow-2xl shadow-black/60"
