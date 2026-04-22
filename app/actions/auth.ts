@@ -223,13 +223,14 @@ export async function logoutAction() {
     }
   }
 
+  const expireNow = new Date(0)
   cookieStore.set('access_token', '', {
-    maxAge: 0,
+    maxAge: -1, expires: expireNow,
     path: '/',
     domain: cookieDomain
   })
   cookieStore.set('refresh_token', '', {
-    maxAge: 0,
+    maxAge: -1, expires: expireNow,
     path: '/',
     domain: cookieDomain
   })
