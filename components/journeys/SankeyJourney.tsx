@@ -4,6 +4,7 @@ import * as d3 from 'd3'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { TreeStructure, X } from '@phosphor-icons/react'
 import type { PathTransition } from '@/lib/api/journeys'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { aggregateJourney } from '@/lib/journeys/aggregate'
 
 function escapeHtml(s: string): string {
@@ -614,20 +615,12 @@ export default function SankeyJourney({
   // ─── Empty state ────────────────────────────────────────────────
   if (!transitions.length || data.nodes.length === 0) {
     return (
-      <div className="h-[400px] flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
-        <div className="rounded-full bg-neutral-800 p-4">
-          <TreeStructure className="w-8 h-8 text-neutral-400" />
-        </div>
-        <h4 className="font-semibold text-white">
-          No journey data yet
-        </h4>
-        <p className="text-sm text-neutral-400 max-w-xs">
-          Navigation flows will appear here as visitors browse through your site.
-        </p>
-        <a href="/installation" target="_blank" rel="noopener noreferrer" className="mt-2 text-sm font-medium text-brand-orange hover:underline">
-          View setup guide
-        </a>
-      </div>
+      <EmptyState
+        icon={<TreeStructure />}
+        title="No journey data yet"
+        description="Navigation flows will appear here as visitors browse through your site."
+        action={{ label: 'View setup guide', href: '/installation' }}
+      />
     )
   }
 

@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { logger } from '@/lib/utils/logger'
 import { formatNumber, Modal } from '@ciphera-net/ui'
-import { FrameCornersIcon, Monitor, DeviceMobile, DeviceTablet } from '@phosphor-icons/react'
+import { FrameCornersIcon, Monitor, DeviceMobile, DeviceTablet, MagnifyingGlass } from '@phosphor-icons/react'
+import { EmptyState } from '@/components/ui/EmptyState'
 import * as Flags from 'country-flag-icons/react/3x2'
 import countries from 'i18n-iso-countries'
 import { useGSCStatus, useGSCOverview, useGSCTopQueries, useGSCTopPages, useGSCTopCountries, useGSCTopDevices, useGSCOpportunities } from '@/lib/swr/dashboard'
@@ -288,9 +289,11 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
   function renderDataList() {
     if (displayedData.length === 0) {
       return (
-        <div className="flex-1 flex items-center justify-center py-6">
-          <p className="text-sm text-neutral-500">No search data yet</p>
-        </div>
+        <EmptyState
+          icon={<MagnifyingGlass />}
+          title="No queries synced yet"
+          description="Connect Google Search Console to see what people search to find your site."
+        />
       )
     }
 
