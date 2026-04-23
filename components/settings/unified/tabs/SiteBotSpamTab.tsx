@@ -215,6 +215,7 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
           {(!sessions || sessions.filter(s => botView === 'blocked' ? s.quarantined : !s.quarantined).length === 0) && (
             <EmptyState
               title={botView === 'blocked' ? 'No quarantined sessions' : 'No suspicious sessions found'}
+              description={botView === 'blocked' ? 'Suspicious and blocked sessions will appear here once traffic flows through your site.' : undefined}
               icon={<Shield weight="regular" />}
               className="py-4"
             />
@@ -312,7 +313,7 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
           {(!domainReputation?.domains || domainReputation.domains.length === 0) && (
             <EmptyState
               title="No domain data yet"
-              description="Referrer domains will appear here once traffic flows through your site."
+              description="Referrer domain reputation scores will appear once traffic flows through your site."
               icon={<Shield weight="regular" />}
               className="py-4"
             />

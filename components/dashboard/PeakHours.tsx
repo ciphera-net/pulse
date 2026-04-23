@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, type CSSProperties } from 'react'
 import { Clock } from '@phosphor-icons/react'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DURATION_FAST, DURATION_SLOW, EASE_APPLE } from '@/lib/motion'
 import { logger } from '@/lib/utils/logger'
@@ -340,17 +341,11 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
           )}
         </>
       ) : (
-        <div className="flex-1 min-h-[270px] flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
-          <div className="rounded-full bg-neutral-800 p-4">
-            <Clock className="w-8 h-8 text-neutral-400" />
-          </div>
-          <h4 className="font-semibold text-white">
-            No peak hours yet
-          </h4>
-          <p className="text-sm text-neutral-400 max-w-xs">
-            Once your site receives traffic, this heatmap will show when your visitors are most active.
-          </p>
-        </div>
+        <EmptyState
+          icon={<Clock />}
+          title="Too early to tell"
+          description="This heatmap needs a few days of traffic to reveal when your visitors are most active. Check back soon."
+        />
       )}
     </div>
   )

@@ -2,8 +2,9 @@
 
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { PathTransition } from '@/lib/api/journeys'
-import { cdnUrl } from '@/lib/cdn'
 import { aggregateJourney, type AggregatedStep, type AggregatedPage } from '@/lib/journeys/aggregate'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { TreeStructure } from '@phosphor-icons/react'
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -486,22 +487,12 @@ export default function ColumnJourney({
   // ─── Empty state ────────────────────────────────────────────────
   if (!transitions.length) {
     return (
-      <div className="h-[400px] flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
-        <img
-          src={cdnUrl('/illustrations/journey.svg')}
-          alt="No journey data"
-          className="w-52 h-auto mb-2"
-        />
-        <h4 className="font-semibold text-white">
-          No journey data yet
-        </h4>
-        <p className="text-sm text-neutral-400 max-w-xs">
-          Navigation flows will appear here as visitors browse through your site.
-        </p>
-        <a href="/installation" target="_blank" rel="noopener noreferrer" className="mt-2 text-sm font-medium text-brand-orange hover:underline">
-          View setup guide
-        </a>
-      </div>
+      <EmptyState
+        icon={<TreeStructure />}
+        title="No journey data yet"
+        description="Navigation flows will appear here as visitors browse through your site."
+        action={{ label: 'View setup guide', href: '/installation' }}
+      />
     )
   }
 

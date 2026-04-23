@@ -170,6 +170,7 @@ export default function WorkspaceMembersTab() {
         {members.length === 0 && (
           <EmptyState
             title="No members found"
+            description="Invite your team to collaborate on analytics and settings."
             icon={<Users weight="regular" />}
             className="py-8"
           />

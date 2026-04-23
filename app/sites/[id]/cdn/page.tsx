@@ -11,7 +11,7 @@ import * as Flags from 'country-flag-icons/react/3x2'
 const MapView = dynamic(() => import('@/components/dashboard/MapView'), { ssr: false })
 import { getDateRange, formatDate, Select, DatePicker, ChevronLeftIcon, ChevronRightIcon } from '@ciphera-net/ui'
 import { getYesterdayRange, getLast1HourRange, getLast24HoursRange, getThisWeekRange, getThisMonthRange, getThisYearRange } from '@/lib/utils/dateRanges'
-import { ArrowSquareOut, CloudArrowUp } from '@phosphor-icons/react'
+import { ArrowSquareOut, CloudArrowUp, CloudArrowDown, ChartLine, Warning } from '@phosphor-icons/react'
 import { AreaChart, Area, Grid, XAxis, YAxis, ChartTooltip } from '@/components/ui/area-chart'
 import { BarChart, Bar, Grid as BarGrid, BarXAxis, BarValueAxis, ChartTooltip as BarTooltip } from '@/components/ui/bar-chart'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -397,8 +397,9 @@ export default function CDNPage() {
           </AreaChart>
         ) : (
           <EmptyState
+            icon={<CloudArrowDown />}
             title="No bandwidth data"
-            description="Data will appear here once your CDN starts serving traffic."
+            description="Bandwidth stats will appear here once your CDN starts serving traffic."
             className="h-[280px]"
           />
         )}
@@ -438,8 +439,9 @@ export default function CDNPage() {
             </BarChart>
           ) : (
             <EmptyState
+              icon={<ChartLine />}
               title="No request data"
-              description="Data will appear here once your CDN starts serving traffic."
+              description="Request counts will appear here once your CDN starts serving traffic."
               className="h-[220px]"
             />
           )}
@@ -489,8 +491,9 @@ export default function CDNPage() {
             </BarChart>
           ) : (
             <EmptyState
+              icon={<Warning />}
               title="No error data"
-              description="Data will appear here once your CDN starts serving traffic."
+              description="Error rates will appear here once your CDN starts serving traffic."
               className="h-[220px]"
             />
           )}

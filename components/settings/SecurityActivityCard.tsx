@@ -139,7 +139,7 @@ export default function SecurityActivityCard() {
         <div className="glass-surface rounded-2xl">
           <EmptyState
             title="No security activity yet"
-            description="Sign-ins, password changes, and device events will appear here."
+            description="Sign-ins, password changes, and device events will appear here over time."
             icon={<Shield weight="regular" />}
           />
         </div>

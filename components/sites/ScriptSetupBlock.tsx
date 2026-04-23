@@ -7,7 +7,6 @@
 
 import { useState, useCallback, useMemo } from 'react'
 import Link from 'next/link'
-import { API_URL, APP_URL } from '@/lib/api/client'
 import { integrations, getIntegration } from '@/lib/integrations'
 import { toast, Toggle, Select, CheckIcon } from '@ciphera-net/ui'
 import sriHashes from '@/public/script-sri.json'
@@ -86,35 +85,35 @@ export default function ScriptSetupBlock({
   const [ttl, setTtl] = useState(typeof sf.ttl === 'string' ? sf.ttl : '24')
   const [framework, setFramework] = useState('')
   const [copied, setCopied] = useState(false)
+  const [showSRI, setShowSRI] = useState(false)
 
   // * Build the script snippet dynamically based on toggles
   const scriptSnippet = useMemo(() => {
     const attrs: string[] = [
       'defer',
       `data-domain="${site.domain}"`,
-      `data-api="${API_URL}"`,
     ]
     if (storage === 'session') attrs.push('data-storage="session"')
     if (storage === 'local' && ttl !== '24') attrs.push(`data-storage-ttl="${ttl}"`)
     for (const f of FEATURES) {
       if (!features[f.key]) attrs.push(f.attr)
     }
-    attrs.push(`src="${APP_URL}/script.js"`)
-    if (SCRIPT_SRI) {
+    attrs.push(`src="https://js.ciphera.net/script.js"`)
+    if (showSRI && SCRIPT_SRI) {
       attrs.push(`integrity="${SCRIPT_SRI}"`)
       attrs.push('crossorigin="anonymous"')
     }
     let script = `<script ${attrs.join(' ')}></script>`
     if (features.frustration) {
-      const frustrationAttrs = ['defer', `src="${APP_URL}/script.frustration.js"`]
-      if (FRUSTRATION_SRI) {
+      const frustrationAttrs = ['defer', `src="https://js.ciphera.net/script.frustration.js"`]
+      if (showSRI && FRUSTRATION_SRI) {
         frustrationAttrs.push(`integrity="${FRUSTRATION_SRI}"`)
         frustrationAttrs.push('crossorigin="anonymous"')
       }
       script += `\n<script ${frustrationAttrs.join(' ')}></script>`
     }
     return script
-  }, [site.domain, features, storage, ttl])
+  }, [site.domain, features, storage, ttl, showSRI])
 
   const copyScript = useCallback(() => {
     navigator.clipboard.writeText(scriptSnippet)
@@ -214,6 +213,18 @@ export default function ScriptSetupBlock({
             </span>
           </div>
           <Toggle checked={features.frustration} onChange={() => toggleFeature('frustration')} />
+        </div>
+        {/* * SRI — security option, opt-in only */}
+        <div className="mt-3 flex items-center justify-between rounded-xl border border-dashed border-neutral-700 bg-neutral-900/50 px-4 py-3">
+          <div className="min-w-0 mr-3">
+            <span className="text-sm font-medium text-white block">
+              Subresource Integrity (SRI)
+            </span>
+            <span className="text-xs text-neutral-400">
+              Verify script hasn&apos;t been tampered with &middot; Update snippet when script is updated
+            </span>
+          </div>
+          <Toggle checked={showSRI} onChange={() => setShowSRI((v) => !v)} />
         </div>
       </div>
 
