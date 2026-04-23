@@ -222,17 +222,14 @@ export async function logoutAction() {
     }
   }
 
-  // Clear on parent domain (.ciphera.net) AND without domain (exact hostname)
-  // to handle cookies that may have been set on either scope.
-  const clearOpts = { maxAge: 0, path: '/' } as const
-  cookieStore.set('access_token', '', { ...clearOpts, domain: cookieDomain })
-  cookieStore.set('refresh_token', '', { ...clearOpts, domain: cookieDomain })
-  cookieStore.set('csrf_token', '', { ...clearOpts, domain: cookieDomain })
-  if (cookieDomain) {
-    cookieStore.set('access_token', '', clearOpts)
-    cookieStore.set('refresh_token', '', clearOpts)
-    cookieStore.set('csrf_token', '', clearOpts)
-  }
+  // cookies().delete() uses Expires=epoch which is more reliable than
+  // maxAge:0 (falsy in JS, some frameworks skip it).
+  // ResponseCookies is keyed by name — can only hold one entry per cookie,
+  // so we clear on the domain they were set on (.ciphera.net in prod).
+  const deleteOpts = { path: '/', domain: cookieDomain } as const
+  cookieStore.delete({ name: 'access_token', ...deleteOpts })
+  cookieStore.delete({ name: 'refresh_token', ...deleteOpts })
+  cookieStore.delete({ name: 'csrf_token', ...deleteOpts })
   return { success: true }
 }
 
