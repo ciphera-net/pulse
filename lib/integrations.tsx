@@ -37,7 +37,6 @@ export interface Integration {
   /** Related integration IDs for cross-linking */
   relatedIds: string[]
   /** Whether this integration has a dedicated guide page */
-  dedicatedPage: boolean
 }
 
 // * ─── Category labels (for UI grouping) ──────────────────────────────────────
@@ -80,7 +79,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://nextjs.org/docs',
     relatedIds: ['react', 'vercel', 'nuxt'],
-    dedicatedPage: true,
   },
   {
     id: 'react',
@@ -95,7 +93,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://react.dev',
     relatedIds: ['nextjs', 'remix', 'gatsby', 'preact'],
-    dedicatedPage: true,
   },
   {
     id: 'vue',
@@ -110,7 +107,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://vuejs.org',
     relatedIds: ['nuxt', 'vitepress'],
-    dedicatedPage: true,
   },
   {
     id: 'angular',
@@ -126,7 +122,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://angular.dev',
     relatedIds: ['react', 'vue'],
-    dedicatedPage: true,
   },
   {
     id: 'svelte',
@@ -141,7 +136,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://svelte.dev',
     relatedIds: ['astro', 'vue'],
-    dedicatedPage: true,
   },
   {
     id: 'nuxt',
@@ -156,7 +150,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://nuxt.com/docs',
     relatedIds: ['vue', 'nextjs', 'vitepress'],
-    dedicatedPage: true,
   },
   {
     id: 'remix',
@@ -172,7 +165,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://remix.run/docs',
     relatedIds: ['react', 'nextjs'],
-    dedicatedPage: true,
   },
   {
     id: 'astro',
@@ -187,7 +179,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://docs.astro.build',
     relatedIds: ['svelte', 'hugo', 'eleventy'],
-    dedicatedPage: true,
   },
   {
     id: 'solidjs',
@@ -202,7 +193,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://www.solidjs.com/docs',
     relatedIds: ['react', 'qwik', 'preact'],
-    dedicatedPage: false,
   },
   {
     id: 'qwik',
@@ -217,7 +207,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://qwik.dev/docs',
     relatedIds: ['react', 'solidjs', 'astro'],
-    dedicatedPage: false,
   },
   {
     id: 'preact',
@@ -232,7 +221,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://preactjs.com/guide',
     relatedIds: ['react', 'solidjs'],
-    dedicatedPage: false,
   },
   {
     id: 'htmx',
@@ -247,7 +235,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://htmx.org/docs',
     relatedIds: ['django', 'flask', 'laravel', 'rails'],
-    dedicatedPage: false,
   },
   {
     id: 'ember',
@@ -262,7 +249,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://guides.emberjs.com',
     relatedIds: ['react', 'angular'],
-    dedicatedPage: false,
   },
 
   // * ─── Backend Frameworks ───────────────────────────────────────────────────
@@ -279,7 +265,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://laravel.com/docs',
     relatedIds: ['django', 'rails', 'wordpress'],
-    dedicatedPage: true,
   },
   {
     id: 'django',
@@ -294,7 +279,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://docs.djangoproject.com',
     relatedIds: ['flask', 'laravel', 'htmx'],
-    dedicatedPage: true,
   },
   {
     id: 'rails',
@@ -309,7 +293,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://guides.rubyonrails.org',
     relatedIds: ['laravel', 'django', 'jekyll'],
-    dedicatedPage: true,
   },
   {
     id: 'flask',
@@ -324,7 +307,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://flask.palletsprojects.com',
     relatedIds: ['django', 'htmx', 'express'],
-    dedicatedPage: true,
   },
   {
     id: 'express',
@@ -340,7 +322,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://expressjs.com',
     relatedIds: ['flask', 'nextjs', 'react'],
-    dedicatedPage: true,
   },
 
   // * ─── Static Sites & Documentation ─────────────────────────────────────────
@@ -357,7 +338,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://www.gatsbyjs.com/docs',
     relatedIds: ['react', 'nextjs', 'hugo'],
-    dedicatedPage: true,
   },
   {
     id: 'hugo',
@@ -372,7 +352,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://gohugo.io/documentation',
     relatedIds: ['jekyll', 'eleventy', 'astro'],
-    dedicatedPage: true,
   },
   {
     id: 'eleventy',
@@ -388,7 +367,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://www.11ty.dev/docs',
     relatedIds: ['hugo', 'jekyll', 'astro'],
-    dedicatedPage: true,
   },
   {
     id: 'jekyll',
@@ -403,7 +381,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://jekyllrb.com/docs',
     relatedIds: ['hugo', 'eleventy', 'github-pages'],
-    dedicatedPage: false,
   },
   {
     id: 'docusaurus',
@@ -418,7 +395,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://docusaurus.io/docs',
     relatedIds: ['vitepress', 'mkdocs', 'gatsby'],
-    dedicatedPage: false,
   },
   {
     id: 'vitepress',
@@ -433,7 +409,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://vitepress.dev',
     relatedIds: ['docusaurus', 'vue', 'nuxt'],
-    dedicatedPage: false,
   },
   {
     id: 'hexo',
@@ -448,7 +423,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://hexo.io/docs',
     relatedIds: ['hugo', 'jekyll', 'eleventy'],
-    dedicatedPage: false,
   },
   {
     id: 'mkdocs',
@@ -463,7 +437,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://www.mkdocs.org',
     relatedIds: ['docusaurus', 'vitepress', 'django'],
-    dedicatedPage: false,
   },
 
   // * ─── CMS & Blogging ──────────────────────────────────────────────────────
@@ -480,7 +453,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://wordpress.org/documentation',
     relatedIds: ['ghost', 'drupal', 'woocommerce'],
-    dedicatedPage: true,
   },
   {
     id: 'ghost',
@@ -496,7 +468,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://ghost.org/docs',
     relatedIds: ['wordpress', 'blogger'],
-    dedicatedPage: true,
   },
   {
     id: 'drupal',
@@ -511,7 +482,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://www.drupal.org/docs',
     relatedIds: ['wordpress', 'joomla'],
-    dedicatedPage: true,
   },
   {
     id: 'joomla',
@@ -526,7 +496,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://docs.joomla.org',
     relatedIds: ['wordpress', 'drupal'],
-    dedicatedPage: false,
   },
   {
     id: 'strapi',
@@ -541,7 +510,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://docs.strapi.io',
     relatedIds: ['contentful', 'sanity', 'nextjs'],
-    dedicatedPage: false,
   },
   {
     id: 'sanity',
@@ -557,7 +525,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://www.sanity.io/docs',
     relatedIds: ['strapi', 'contentful', 'nextjs'],
-    dedicatedPage: false,
   },
   {
     id: 'contentful',
@@ -572,7 +539,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://www.contentful.com/developers/docs',
     relatedIds: ['strapi', 'sanity', 'nextjs'],
-    dedicatedPage: false,
   },
   {
     id: 'payload',
@@ -588,7 +554,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://payloadcms.com/docs',
     relatedIds: ['strapi', 'contentful', 'nextjs'],
-    dedicatedPage: false,
   },
 
   // * ─── eCommerce ────────────────────────────────────────────────────────────
@@ -605,7 +570,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://shopify.dev/docs',
     relatedIds: ['woocommerce', 'bigcommerce', 'prestashop'],
-    dedicatedPage: true,
   },
   {
     id: 'woocommerce',
@@ -620,7 +584,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://woocommerce.com/documentation',
     relatedIds: ['shopify', 'wordpress', 'bigcommerce'],
-    dedicatedPage: false,
   },
   {
     id: 'bigcommerce',
@@ -636,7 +599,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://developer.bigcommerce.com/docs',
     relatedIds: ['shopify', 'woocommerce', 'prestashop'],
-    dedicatedPage: false,
   },
   {
     id: 'prestashop',
@@ -651,7 +613,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://devdocs.prestashop-project.org',
     relatedIds: ['shopify', 'woocommerce', 'bigcommerce'],
-    dedicatedPage: false,
   },
 
   // * ─── Platforms & Tools ────────────────────────────────────────────────────
@@ -668,7 +629,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://university.webflow.com',
     relatedIds: ['squarespace', 'wix', 'framer'],
-    dedicatedPage: true,
   },
   {
     id: 'squarespace',
@@ -684,7 +644,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://support.squarespace.com',
     relatedIds: ['webflow', 'wix', 'carrd'],
-    dedicatedPage: true,
   },
   {
     id: 'wix',
@@ -699,7 +658,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://support.wix.com',
     relatedIds: ['webflow', 'squarespace', 'framer'],
-    dedicatedPage: true,
   },
   {
     id: 'framer',
@@ -714,7 +672,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://www.framer.com/help',
     relatedIds: ['webflow', 'squarespace', 'wix'],
-    dedicatedPage: true,
   },
   {
     id: 'carrd',
@@ -729,7 +686,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://carrd.co/docs',
     relatedIds: ['framer', 'webflow'],
-    dedicatedPage: false,
   },
   {
     id: 'blogger',
@@ -744,7 +700,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://support.google.com/blogger',
     relatedIds: ['wordpress', 'ghost'],
-    dedicatedPage: false,
   },
   {
     id: 'gtm',
@@ -759,7 +714,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://tagmanager.google.com',
     relatedIds: ['wordpress', 'shopify', 'webflow'],
-    dedicatedPage: true,
   },
   {
     id: 'notion',
@@ -775,7 +729,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://www.notion.so',
     relatedIds: ['webflow', 'framer', 'carrd'],
-    dedicatedPage: false,
   },
 
   // * ─── Hosting & Deployment ─────────────────────────────────────────────────
@@ -792,7 +745,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://developers.cloudflare.com/pages',
     relatedIds: ['netlify', 'vercel', 'github-pages'],
-    dedicatedPage: false,
   },
   {
     id: 'netlify',
@@ -807,7 +759,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://docs.netlify.com',
     relatedIds: ['cloudflare-pages', 'vercel', 'github-pages'],
-    dedicatedPage: false,
   },
   {
     id: 'vercel',
@@ -823,7 +774,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://vercel.com/docs',
     relatedIds: ['netlify', 'cloudflare-pages', 'nextjs'],
-    dedicatedPage: false,
   },
   {
     id: 'github-pages',
@@ -839,7 +789,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://docs.github.com/en/pages',
     relatedIds: ['jekyll', 'hugo', 'netlify'],
-    dedicatedPage: false,
   },
 
   // * ─── CMS & Blogging (continued) ──────────────────────────────────────────
@@ -856,7 +805,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://craftcms.com/docs',
     relatedIds: ['wordpress', 'statamic', 'drupal'],
-    dedicatedPage: false,
   },
   {
     id: 'statamic',
@@ -871,7 +819,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://statamic.dev/docs',
     relatedIds: ['craftcms', 'laravel', 'wordpress'],
-    dedicatedPage: false,
   },
   {
     id: 'typo3',
@@ -886,7 +833,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://docs.typo3.org',
     relatedIds: ['wordpress', 'drupal', 'joomla'],
-    dedicatedPage: false,
   },
   {
     id: 'kirby',
@@ -902,7 +848,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://getkirby.com/docs',
     relatedIds: ['craftcms', 'statamic', 'grav'],
-    dedicatedPage: false,
   },
   {
     id: 'grav',
@@ -918,7 +863,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://learn.getgrav.org',
     relatedIds: ['kirby', 'craftcms', 'hugo'],
-    dedicatedPage: false,
   },
   {
     id: 'umbraco',
@@ -933,7 +877,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://docs.umbraco.com',
     relatedIds: ['wordpress', 'drupal', 'typo3'],
-    dedicatedPage: false,
   },
   {
     id: 'storyblok',
@@ -948,7 +891,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://www.storyblok.com/docs',
     relatedIds: ['contentful', 'prismic', 'nextjs'],
-    dedicatedPage: false,
   },
   {
     id: 'prismic',
@@ -963,7 +905,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://prismic.io/docs',
     relatedIds: ['contentful', 'storyblok', 'nextjs'],
-    dedicatedPage: false,
   },
 
   // * ─── eCommerce (continued) ───────────────────────────────────────────────
@@ -980,7 +921,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://developer.shopware.com/docs',
     relatedIds: ['shopify', 'woocommerce', 'magento'],
-    dedicatedPage: false,
   },
   {
     id: 'magento',
@@ -995,7 +935,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://developer.adobe.com/commerce',
     relatedIds: ['shopify', 'woocommerce', 'shopware'],
-    dedicatedPage: false,
   },
 
   // * ─── Platforms & Tools (continued) ───────────────────────────────────────
@@ -1013,7 +952,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://manual.bubble.io',
     relatedIds: ['webflow', 'framer', 'wix'],
-    dedicatedPage: false,
   },
   {
     id: 'discourse',
@@ -1029,7 +967,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://meta.discourse.org/docs',
     relatedIds: ['wordpress', 'ghost'],
-    dedicatedPage: false,
   },
   {
     id: 'hubspot',
@@ -1044,7 +981,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://knowledge.hubspot.com',
     relatedIds: ['wordpress', 'webflow'],
-    dedicatedPage: false,
   },
   {
     id: 'substack',
@@ -1059,7 +995,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://substack.com',
     relatedIds: ['ghost', 'blogger', 'wordpress'],
-    dedicatedPage: false,
   },
   {
     id: 'linktree',
@@ -1074,7 +1009,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://linktr.ee',
     relatedIds: ['carrd', 'framer', 'webflow'],
-    dedicatedPage: false,
   },
   {
     id: 'weebly',
@@ -1089,7 +1023,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://www.weebly.com',
     relatedIds: ['squarespace', 'wix', 'webflow'],
-    dedicatedPage: false,
   },
 
   // * ─── Static Sites & Documentation (continued) ───────────────────────────
@@ -1106,7 +1039,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://docs.gitbook.com',
     relatedIds: ['docusaurus', 'readme', 'readthedocs'],
-    dedicatedPage: false,
   },
   {
     id: 'gridsome',
@@ -1121,7 +1053,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://gridsome.org/docs',
     relatedIds: ['gatsby', 'vue', 'nuxt'],
-    dedicatedPage: false,
   },
   {
     id: 'readthedocs',
@@ -1137,7 +1068,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://docs.readthedocs.io',
     relatedIds: ['sphinx', 'mkdocs', 'docusaurus'],
-    dedicatedPage: false,
   },
   {
     id: 'sphinx',
@@ -1153,7 +1083,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://www.sphinx-doc.org',
     relatedIds: ['readthedocs', 'mkdocs', 'docusaurus'],
-    dedicatedPage: false,
   },
   {
     id: 'readme',
@@ -1168,7 +1097,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://docs.readme.com',
     relatedIds: ['gitbook', 'docusaurus', 'readthedocs'],
-    dedicatedPage: false,
   },
 
   // * ─── JavaScript Frameworks (continued) ───────────────────────────────────
@@ -1185,7 +1113,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://docs.flutter.dev',
     relatedIds: ['react', 'angular', 'preact'],
-    dedicatedPage: false,
   },
 
   // * ─── Hosting & Deployment (continued) ────────────────────────────────────
@@ -1203,7 +1130,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://docs.render.com',
     relatedIds: ['netlify', 'vercel', 'cloudflare-pages'],
-    dedicatedPage: false,
   },
   {
     id: 'firebase',
@@ -1218,7 +1144,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://firebase.google.com/docs/hosting',
     relatedIds: ['netlify', 'vercel', 'render'],
-    dedicatedPage: false,
   },
 
   // * ─── Platforms & Tools (continued) ───────────────────────────────────────
@@ -1235,7 +1160,6 @@ export const integrations: Integration[] = [
     ),
     officialUrl: 'https://amp.dev/documentation',
     relatedIds: ['gtm', 'wordpress', 'webflow'],
-    dedicatedPage: false,
   },
 ]
 
