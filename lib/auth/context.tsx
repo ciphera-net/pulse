@@ -144,12 +144,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       channel.postMessage({ type: 'LOGOUT' })
       channel.close()
     }
-    setUser(null)
-    setHadPriorSession(false)
-    setIsLoggingOut(false)
-    router.push('/')
-    router.refresh()
-  }, [router])
+    // Full page reload ensures the browser sends updated (deleted) cookies
+    // to the server. Client-side router.push would race with cookie deletion.
+    window.location.href = '/login'
+  }, [])
 
   const { showExpiredModal, refreshWithMutex } = useSessionRefresh({
     isAuthenticated: !!user,
