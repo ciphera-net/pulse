@@ -136,6 +136,15 @@
     animation: float 6s ease-in-out infinite;
   }
 
+  @keyframes ring-pulse {
+    0%, 100% { box-shadow: 0 0 0 1px rgba(253, 94, 15, 0.08); }
+    50% { box-shadow: 0 0 0 1px rgba(253, 94, 15, 0.20); }
+  }
+
+  .animate-ring-pulse {
+    animation: ring-pulse 3s ease-in-out infinite;
+  }
+
   @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
