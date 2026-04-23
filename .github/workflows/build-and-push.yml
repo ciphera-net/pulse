@@ -93,6 +93,7 @@ jobs:
             NEXT_PUBLIC_CAPTCHA_API_URL=https://captcha.ciphera.net/api/v1
             NEXT_PUBLIC_CHARGEBEE_SITE=${{ steps.target.outputs.chargebee_site }}
             NEXT_PUBLIC_CHARGEBEE_PUBLISHABLE_KEY=${{ steps.target.outputs.chargebee_pub_key }}
+            NEXT_PUBLIC_CDN_URL=https://cdn.ciphera.net/pulse
 
       - name: Install Teleport
         uses: teleport-actions/setup@v1

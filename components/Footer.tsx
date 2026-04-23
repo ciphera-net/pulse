@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { GithubIcon, TwitterIcon, SwissFlagIcon } from '@ciphera-net/ui'
+import { cdnUrl } from '@/lib/cdn'
 
 interface FooterProps {
   LinkComponent?: React.ElementType
@@ -80,7 +81,7 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
           <div className="col-span-1 sm:col-span-2 md:col-span-4 lg:col-span-1 lg:pr-8">
             <Link href="/" className="flex items-center gap-3 mb-4 group">
               <Image
-                src="/pulse_icon_no_margins.png"
+                src={cdnUrl('/pulse_icon_no_margins.png')}
                 alt="Pulse privacy-first analytics logo"
                 width={36}
                 height={36}

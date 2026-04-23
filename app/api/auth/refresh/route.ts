@@ -55,8 +55,14 @@ export async function POST(request: Request) {
     const cookieDomain = getCookieDomain()
 
     if (!res.ok) {
-      cookieStore.set('access_token', '', { maxAge: 0, path: '/', domain: cookieDomain })
-      return NextResponse.json({ error: 'Refresh failed' }, { status: 401 })
+      const upstream = await res.json().catch(() => ({ error: 'Unknown' }))
+      const reason = upstream?.error || 'Refresh failed'
+      const deleteOpts = { path: '/', domain: cookieDomain } as const
+      cookieStore.delete({ name: 'access_token', ...deleteOpts })
+      if (res.status !== 403) {
+        cookieStore.delete({ name: 'refresh_token', ...deleteOpts })
+      }
+      return NextResponse.json({ error: reason, retryable: res.status === 403 }, { status: res.status })
     }
 
     const data = await res.json()

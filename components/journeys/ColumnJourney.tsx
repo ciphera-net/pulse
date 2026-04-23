@@ -2,6 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { PathTransition } from '@/lib/api/journeys'
+import { cdnUrl } from '@/lib/cdn'
 import { aggregateJourney, type AggregatedStep, type AggregatedPage } from '@/lib/journeys/aggregate'
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -487,7 +488,7 @@ export default function ColumnJourney({
     return (
       <div className="h-[400px] flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
         <img
-          src="/illustrations/journey.svg"
+          src={cdnUrl('/illustrations/journey.svg')}
           alt="No journey data"
           className="w-52 h-auto mb-2"
         />

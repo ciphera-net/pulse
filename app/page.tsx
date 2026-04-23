@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
 import { LoadingOverlay, Button } from '@ciphera-net/ui'
+import { cdnUrl } from '@/lib/cdn'
 import { Cookie, ShieldCheck, Code, Lightning, ArrowRight, GithubLogo } from '@phosphor-icons/react'
 import DashboardDemo from '@/components/marketing/DashboardDemo'
 import FeatureSections from '@/components/marketing/FeatureSections'
@@ -16,7 +17,7 @@ export default function HomePage() {
   const { user, loading: authLoading } = useAuth()
 
   if (authLoading) {
-    return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" portal={false} />
+    return <LoadingOverlay logoSrc={cdnUrl('/pulse_icon_no_margins.png')} title="Pulse" portal={false} />
   }
 
   if (!user) {
@@ -103,7 +104,7 @@ export default function HomePage() {
   // * hooks (useSites, etc.) only fire once auth is fully ready — prevents the
   // * post-login race where SWR caches an empty/401 response for 30s.
   if (!user.org_id) {
-    return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" portal={false} />
+    return <LoadingOverlay logoSrc={cdnUrl('/pulse_icon_no_margins.png')} title="Pulse" portal={false} />
   }
 
   return <HomeDashboard />

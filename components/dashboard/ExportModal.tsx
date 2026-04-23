@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { Modal, Button, Checkbox, Input, Select } from '@ciphera-net/ui'
+import { cdnUrl } from '@/lib/cdn'
 import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
@@ -157,7 +158,7 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
             await updateProgress(++currentStep, totalSteps, 'Building header...')
             try {
               // Logo
-              const logoData = await loadImage('/pulse_icon_no_margins.png')
+              const logoData = await loadImage(cdnUrl('/pulse_icon_no_margins.png'))
               doc.addImage(logoData, 'PNG', 14, 12, 12, 12) // x, y, w, h
 
               // Title

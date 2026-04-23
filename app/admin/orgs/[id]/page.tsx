@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { getAdminOrg, grantPlan, type AdminOrgDetail } from '@/lib/api/admin'
 import { Button, LoadingOverlay, Select, toast } from '@ciphera-net/ui'
+import { cdnUrl } from '@/lib/cdn'
 import { Globe } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { formatDate, formatDateTime } from '@/lib/utils/formatDate'
@@ -103,7 +104,7 @@ export default function AdminOrgDetailPage() {
     }
   }
 
-  if (loading) return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Loading organization..." />
+  if (loading) return <LoadingOverlay logoSrc={cdnUrl('/pulse_icon_no_margins.png')} title="Loading organization..." />
   if (!org) return <div>Organization not found</div>
 
   return (

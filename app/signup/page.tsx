@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { initiateSignupFlow } from '@/lib/api/oauth'
 import { LoadingOverlay } from '@ciphera-net/ui'
+import { cdnUrl } from '@/lib/cdn'
 
 export default function SignupPage() {
   useEffect(() => {
@@ -12,7 +13,7 @@ export default function SignupPage() {
 
   return (
     <LoadingOverlay 
-      logoSrc="/pulse_icon_no_margins.png"
+      logoSrc={cdnUrl('/pulse_icon_no_margins.png')}
       title="Redirecting to sign up..."
     />
   )

@@ -8,6 +8,7 @@ import { type Site } from '@/lib/api/sites'
 import { useAuth } from '@/lib/auth/context'
 import { useSites, FaviconPreloader } from '@/lib/swr/sites'
 import { useUnifiedSettings } from '@/lib/unified-settings-context'
+import { cdnUrl } from '@/lib/cdn'
 import { useSidebar } from '@/lib/sidebar-context'
 // `,` shortcut handled globally by UnifiedSettingsModal
 import { getUserOrganizations, switchContext, type OrganizationMember } from '@/lib/api/organization'
@@ -268,6 +269,7 @@ interface SidebarContentProps {
   auth: ReturnType<typeof useAuth>
   orgs: OrganizationMember[]
   onSwitchOrganization: (orgId: string | null) => Promise<void>
+  onCreateOrganization: () => void
   openSettings: () => void
   openOrgSettings: () => void
 }
@@ -275,9 +277,8 @@ interface SidebarContentProps {
 function SidebarContent({
   isMobile, collapsed, siteId, sites, canEdit, pendingHref,
   onNavigate, onMobileClose, onToggle,
-  auth, orgs, onSwitchOrganization, openSettings, openOrgSettings,
+  auth, orgs, onSwitchOrganization, onCreateOrganization, openSettings, openOrgSettings,
 }: SidebarContentProps) {
-  const router = useRouter()
   const c = isMobile ? false : collapsed
   const { user } = auth
 
@@ -286,7 +287,7 @@ function SidebarContent({
       {/* Logo — fixed layout, text fades */}
       <Link href="/" className="flex items-center gap-3 px-[14px] py-4 shrink-0 group overflow-hidden">
         <span className="w-9 h-9 flex items-center justify-center shrink-0">
-          <img src="/pulse_icon_no_margins.png" alt="Pulse" className="w-9 h-9 shrink-0 object-contain group-hover:scale-105 transition-transform duration-base ease-apple" />
+          <img src={cdnUrl('/pulse_icon_no_margins.png')} alt="Pulse" className="w-9 h-9 shrink-0 object-contain group-hover:scale-105 transition-transform duration-base ease-apple" />
         </span>
         <span className={`text-xl font-bold text-white tracking-tight group-hover:text-brand-orange whitespace-nowrap transition-opacity duration-fast ${c ? 'opacity-0' : 'opacity-100'} ease-apple`}>
           Pulse
@@ -398,7 +399,7 @@ function SidebarContent({
                 orgs={orgs}
                 activeOrgId={auth.user?.org_id}
                 onSwitchOrganization={onSwitchOrganization}
-                onCreateOrganization={() => router.push('/onboarding')}
+                onCreateOrganization={onCreateOrganization}
                 allowPersonalOrganization={false}
                 onOpenSettings={openSettings}
                 onOpenOrgSettings={openOrgSettings}
@@ -415,7 +416,7 @@ function SidebarContent({
               orgs={orgs}
               activeOrgId={auth.user?.org_id}
               onSwitchOrganization={onSwitchOrganization}
-              onCreateOrganization={() => router.push('/onboarding')}
+              onCreateOrganization={onCreateOrganization}
               allowPersonalOrganization={false}
               onOpenSettings={openSettings}
               onOpenOrgSettings={openOrgSettings}
@@ -502,6 +503,7 @@ export default function Sidebar({
           auth={auth}
           orgs={orgs}
           onSwitchOrganization={handleSwitchOrganization}
+          onCreateOrganization={() => router.push('/setup/org?new=1')}
           openSettings={() => openUnifiedSettings({ context: 'account', tab: 'profile' })}
           openOrgSettings={() => openUnifiedSettings({ context: 'workspace', tab: 'general' })}
         />
@@ -542,6 +544,7 @@ export default function Sidebar({
               auth={auth}
               orgs={orgs}
               onSwitchOrganization={handleSwitchOrganization}
+              onCreateOrganization={() => router.push('/setup/org?new=1')}
               openSettings={() => openUnifiedSettings({ context: 'account', tab: 'profile' })}
               openOrgSettings={() => openUnifiedSettings({ context: 'workspace', tab: 'general' })}
             />

@@ -222,16 +222,14 @@ export async function logoutAction() {
     }
   }
 
-  cookieStore.set('access_token', '', {
-    maxAge: 0,
-    path: '/',
-    domain: cookieDomain
-  })
-  cookieStore.set('refresh_token', '', {
-    maxAge: 0,
-    path: '/',
-    domain: cookieDomain
-  })
+  // cookies().delete() uses Expires=epoch which is more reliable than
+  // maxAge:0 (falsy in JS, some frameworks skip it).
+  // ResponseCookies is keyed by name — can only hold one entry per cookie,
+  // so we clear on the domain they were set on (.ciphera.net in prod).
+  const deleteOpts = { path: '/', domain: cookieDomain } as const
+  cookieStore.delete({ name: 'access_token', ...deleteOpts })
+  cookieStore.delete({ name: 'refresh_token', ...deleteOpts })
+  cookieStore.delete({ name: 'csrf_token', ...deleteOpts })
   return { success: true }
 }
 
