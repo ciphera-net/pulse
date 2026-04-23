@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { logger } from '@/lib/utils/logger'
 import { formatNumber } from '@ciphera-net/ui'
 import { getReferrerDisplayName, getReferrerFavicon, getReferrerIcon, mergeReferrersByDisplayName } from '@/lib/utils/icons'
-import Link from 'next/link'
 import {
   ArrowSquareOut,
   FrameCornersIcon,
@@ -21,7 +20,9 @@ import {
   ChatCircle,
   Question,
 } from '@phosphor-icons/react'
-import { Modal, GlobeIcon, ArrowRightIcon } from '@ciphera-net/ui'
+import { Modal } from '@ciphera-net/ui'
+import { Globe } from '@phosphor-icons/react'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { ListSkeleton } from '@/components/skeletons'
 import VirtualList from './VirtualList'
 import { getTopReferrers, TopReferrer } from '@/lib/api/stats'
@@ -213,24 +214,12 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
                 ))}
               </>
             ) : (
-              <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
-                <div className="rounded-full bg-neutral-800 p-4">
-                  <GlobeIcon className="w-8 h-8 text-neutral-400" />
-                </div>
-                <h4 className="font-semibold text-white">
-                  No referrers yet
-                </h4>
-                <p className="text-sm text-neutral-400 max-w-xs">
-                  Traffic sources will appear here when visitors come from external sites.
-                </p>
-                <Link
-                  href="/installation"
-                  className="inline-flex items-center gap-2 text-sm font-medium text-brand-orange hover:text-brand-orange/90 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/20 rounded"
-                >
-                  Install tracking script
-                  <ArrowRightIcon className="w-4 h-4" />
-                </Link>
-              </div>
+              <EmptyState
+                icon={<Globe />}
+                title="Nobody's linked to you yet"
+                description="Traffic sources appear here when visitors come from other websites, social media, or search engines."
+                action={{ label: 'Install tracking script', href: '/installation' }}
+              />
             )
           ) : (
             /* ── Channels tab ── */
@@ -268,17 +257,11 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
                 ))}
               </>
             ) : (
-              <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
-                <div className="rounded-full bg-neutral-800 p-4">
-                  <GlobeIcon className="w-8 h-8 text-neutral-400" />
-                </div>
-                <h4 className="font-semibold text-white">
-                  No channel data yet
-                </h4>
-                <p className="text-sm text-neutral-400 max-w-xs">
-                  Traffic channels will appear here once visitors start arriving.
-                </p>
-              </div>
+              <EmptyState
+                icon={<Globe />}
+                title="No channel data yet"
+                description="Channels group your traffic by type — direct, organic, social, and referral — as visitors arrive."
+              />
             )
           )}
         </div>
