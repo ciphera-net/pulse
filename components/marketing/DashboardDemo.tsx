@@ -1,5 +1,6 @@
 'use client'
 
+import { cdnUrl } from '@/lib/cdn'
 import Chart from '@/components/dashboard/Chart'
 import ContentStats from '@/components/dashboard/ContentStats'
 import TopReferrers from '@/components/dashboard/TopReferrers'
@@ -181,7 +182,7 @@ export default function DashboardDemo() {
 
       {/* Outer frame with showcase bg */}
       <div className="relative rounded-3xl border border-white/[0.08] overflow-hidden p-5 sm:p-8 lg:p-10">
-        <img src="/pulse-showcase-bg.png" alt="" className="absolute inset-0 w-full h-full object-cover" />
+        <img src={cdnUrl('/pulse-showcase-bg.png')} alt="" className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-black/40" />
 
         {/* Inner dashboard — solid background */}

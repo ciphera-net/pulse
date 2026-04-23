@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { LoadingOverlay, toast } from '@ciphera-net/ui'
+import { cdnUrl } from '@/lib/cdn'
 import { Shield } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import {
@@ -84,7 +85,7 @@ const PAGE_SIZE = 50
 
 function OverviewTab({ stats, loading }: { stats: QuarantineStats | null; loading: boolean }) {
   if (loading || !stats) {
-    return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Loading quarantine stats..." />
+    return <LoadingOverlay logoSrc={cdnUrl('/pulse_icon_no_margins.png')} title="Loading quarantine stats..." />
   }
 
   const statCards = [
