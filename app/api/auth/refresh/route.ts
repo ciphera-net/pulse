@@ -57,16 +57,10 @@ export async function POST(request: Request) {
     if (!res.ok) {
       const upstream = await res.json().catch(() => ({ error: 'Unknown' }))
       const reason = upstream?.error || 'Refresh failed'
-      const clearOpts = { maxAge: 0, path: '/' } as const
-      cookieStore.set('access_token', '', { ...clearOpts, domain: cookieDomain })
+      const deleteOpts = { path: '/', domain: cookieDomain } as const
+      cookieStore.delete({ name: 'access_token', ...deleteOpts })
       if (res.status !== 403) {
-        cookieStore.set('refresh_token', '', { ...clearOpts, domain: cookieDomain })
-      }
-      if (cookieDomain) {
-        cookieStore.set('access_token', '', clearOpts)
-        if (res.status !== 403) {
-          cookieStore.set('refresh_token', '', clearOpts)
-        }
+        cookieStore.delete({ name: 'refresh_token', ...deleteOpts })
       }
       return NextResponse.json({ error: reason, retryable: res.status === 403 }, { status: res.status })
     }
