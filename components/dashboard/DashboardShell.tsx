@@ -6,8 +6,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { formatUpdatedAgo, PlusIcon, ExternalLinkIcon, type CipheraApp } from '@ciphera-net/ui'
-import { CaretDown, CaretRight, SidebarSimple } from '@phosphor-icons/react'
+import { formatUpdatedAgo, PlusIcon, ExternalLinkIcon, LayoutDashboardIcon, PathIcon, FunnelIcon, CursorClickIcon, SearchIcon, CloudUploadIcon, HeartbeatIcon, SettingsIcon, type CipheraApp } from '@ciphera-net/ui'
+import { cdnUrl } from '@/lib/cdn'
+import { CaretDown, CaretRight, SidebarSimple, Gauge as GaugeIcon, Plugs as PlugsIcon, Tag as TagIcon, Globe as GlobeIcon } from '@phosphor-icons/react'
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { SidebarProvider, useSidebar } from '@/lib/sidebar-context'
@@ -21,39 +22,40 @@ import { ShortcutsOverlay } from '@/components/keyboard/ShortcutsOverlay'
 import { CommandPalette } from '@/components/command/CommandPalette'
 
 const CIPHERA_APPS: CipheraApp[] = [
-  { id: 'pulse', name: 'Pulse', description: 'Your current app — Privacy-first analytics', icon: 'https://ciphera.net/pulse_icon_no_margins.png', href: 'https://pulse.ciphera.net', isAvailable: false },
+  { id: 'pulse', name: 'Pulse', description: 'Your current app — Privacy-first analytics', icon: cdnUrl('/pulse_icon_no_margins.png'), href: 'https://pulse.ciphera.net', isAvailable: false },
   { id: 'id', name: 'ID', description: 'Your Ciphera account settings', icon: 'https://ciphera.net/id_icon_no_margins.png', href: 'https://id.ciphera.net', isAvailable: true },
 ]
 
-const PAGE_TITLES: Record<string, string> = {
-  '': 'Dashboard',
-  journeys: 'Journeys',
-  funnels: 'Funnels',
-  behavior: 'Behavior',
-  search: 'Search',
-  cdn: 'CDN',
-  uptime: 'Uptime',
-  pagespeed: 'PageSpeed',
-  settings: 'Site Settings',
+type PageMeta = { title: string; icon: React.ComponentType<{ className?: string }> }
+
+const PAGE_META: Record<string, PageMeta> = {
+  '':         { title: 'Dashboard',     icon: LayoutDashboardIcon },
+  journeys:   { title: 'Journeys',      icon: PathIcon },
+  funnels:    { title: 'Funnels',       icon: FunnelIcon },
+  behavior:   { title: 'Behavior',      icon: CursorClickIcon },
+  search:     { title: 'Search',        icon: SearchIcon },
+  cdn:        { title: 'CDN',           icon: CloudUploadIcon },
+  uptime:     { title: 'Uptime',        icon: HeartbeatIcon },
+  pagespeed:  { title: 'PageSpeed',     icon: GaugeIcon },
+  settings:   { title: 'Site Settings', icon: SettingsIcon },
 }
 
-function usePageTitle() {
+function usePageMeta(): PageMeta {
   const pathname = usePathname()
-  // pathname is /sites/:id or /sites/:id/section/...
   const segment = pathname.replace(/^\/sites\/[^/]+\/?/, '').split('/')[0]
-  return PAGE_TITLES[segment] ?? (segment ? segment.charAt(0).toUpperCase() + segment.slice(1) : 'Dashboard')
+  return PAGE_META[segment] ?? { title: segment ? segment.charAt(0).toUpperCase() + segment.slice(1) : 'Dashboard', icon: LayoutDashboardIcon }
 }
 
-const HOME_PAGE_TITLES: Record<string, string> = {
-  '': 'Your Sites',
-  integrations: 'Integrations',
-  pricing: 'Pricing',
+const HOME_PAGE_META: Record<string, PageMeta> = {
+  '':            { title: 'Your Sites',    icon: GlobeIcon },
+  integrations:  { title: 'Integrations',  icon: PlugsIcon },
+  pricing:       { title: 'Pricing',       icon: TagIcon },
 }
 
-function useHomePageTitle() {
+function useHomePageMeta(): PageMeta {
   const pathname = usePathname()
   const segment = pathname.split('/').filter(Boolean)[0] ?? ''
-  return HOME_PAGE_TITLES[segment] ?? (segment ? segment.charAt(0).toUpperCase() + segment.slice(1) : 'Your Sites')
+  return HOME_PAGE_META[segment] ?? { title: segment ? segment.charAt(0).toUpperCase() + segment.slice(1) : 'Your Sites', icon: GlobeIcon }
 }
 
 // Load sidebar only on the client — prevents SSR flash
@@ -331,9 +333,10 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
     getSite(siteId).then((s) => setSiteName(s.name)).catch(() => {})
   }, [siteId])
 
-  const dashboardTitle = usePageTitle()
-  const homeTitle = useHomePageTitle()
-  const pageTitle = siteId ? dashboardTitle : homeTitle
+  const pageMeta = usePageMeta()
+  const homeMeta = useHomePageMeta()
+  const currentMeta = siteId ? pageMeta : homeMeta
+  const PageIcon = currentMeta.icon
 
   return (
     <div className="hidden md:flex items-center justify-between shrink-0 px-3 pt-1.5 pb-1">
@@ -352,15 +355,24 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
           {siteId ? (
             siteName ? (
               <>
-                <Link href="/" className="text-neutral-500 hover:text-neutral-300 transition-colors ease-apple">Your Sites</Link>
+                <Link href="/" className="inline-flex items-center gap-1 text-neutral-500 hover:text-neutral-300 transition-colors ease-apple">
+                  <GlobeIcon className="w-3.5 h-3.5" />
+                  Your Sites
+                </Link>
                 <CaretRight className="w-3 h-3 text-neutral-600" />
                 <BreadcrumbSitePicker currentSiteId={siteId} currentSiteName={siteName} />
                 <CaretRight className="w-3 h-3 text-neutral-600" />
-                <span className="text-neutral-400">{pageTitle}</span>
+                <span className="inline-flex items-center gap-1 text-neutral-400">
+                  <PageIcon className="w-3.5 h-3.5" />
+                  {currentMeta.title}
+                </span>
               </>
             ) : null
           ) : (
-            <span className="text-neutral-400">{pageTitle}</span>
+            <span className="inline-flex items-center gap-1 text-neutral-400">
+              <PageIcon className="w-3.5 h-3.5" />
+              {currentMeta.title}
+            </span>
           )}
         </nav>
       </div>

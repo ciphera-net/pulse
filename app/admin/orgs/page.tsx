@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { listAdminOrgs, type AdminOrgSummary } from '@/lib/api/admin'
 import { Button, LoadingOverlay, toast } from '@ciphera-net/ui'
+import { cdnUrl } from '@/lib/cdn'
 import { formatDate } from '@/lib/utils/formatDate'
 
 function CopyableOrgId({ id }: { id: string }) {
@@ -37,7 +38,7 @@ export default function AdminOrgsPage() {
   }, [])
 
   if (loading) {
-    return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Loading organizations..." />
+    return <LoadingOverlay logoSrc={cdnUrl('/pulse_icon_no_margins.png')} title="Loading organizations..." />
   }
 
   return (

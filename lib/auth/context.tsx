@@ -5,8 +5,9 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useSWRConfig } from 'swr'
 import apiRequest, { setRefreshHandler } from '@/lib/api/client'
 import { LoadingOverlay, useSessionSync, SessionExpiryWarning, useSessionRefresh } from '@ciphera-net/ui'
+import { cdnUrl } from '@/lib/cdn'
 import { logoutAction, getSessionAction, setSessionAction } from '@/app/actions/auth'
-import { getUserOrganizations, switchContext } from '@/lib/api/organization'
+import { getUserOrganizations, switchContext, getOrganization } from '@/lib/api/organization'
 import { logger } from '@/lib/utils/logger'
 import { cleanupStaleStorage } from '@/lib/utils/storage-cleanup'
 
@@ -77,7 +78,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         }),
       })
-      return res.ok
+      if (res.ok) return true
+      const data = await res.json().catch(() => null)
+      if (data?.retryable) {
+        const retry = await fetch('/api/auth/refresh', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            screen_width: window.screen.width,
+            screen_height: window.screen.height,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          }),
+        })
+        return retry.ok
+      }
+      return false
     } catch {
       return false
     }
@@ -119,16 +135,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('user')
     localStorage.removeItem('ciphera_token_refreshed_at')
     localStorage.removeItem('ciphera_last_activity')
-    // * Broadcast logout to other tabs (BroadcastChannel will handle if available)
+    document.cookie = 'csrf_token=; Max-Age=0; path=/;'
+    document.cookie = 'csrf_token=; Max-Age=0; path=/; domain=.ciphera.net;'
+    document.cookie = 'ciphera_pii=; Max-Age=0; path=/;'
+    document.cookie = 'ciphera_pii=; Max-Age=0; path=/; domain=.ciphera.net;'
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
       const channel = new BroadcastChannel('ciphera_session')
       channel.postMessage({ type: 'LOGOUT' })
       channel.close()
     }
-    setTimeout(() => {
-      window.location.href = '/'
-    }, 500)
-  }, [])
+    setUser(null)
+    setHadPriorSession(false)
+    setIsLoggingOut(false)
+    router.push('/')
+    router.refresh()
+  }, [router])
 
   const { showExpiredModal, refreshWithMutex } = useSessionRefresh({
     isAuthenticated: !!user,
@@ -243,7 +264,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem('user')
       localStorage.removeItem('ciphera_token_refreshed_at')
       localStorage.removeItem('ciphera_last_activity')
-      window.location.href = '/'
+      setUser(null)
+      setHadPriorSession(false)
+      router.push('/')
+      router.refresh()
     },
     onLogin: (userData) => {
       setUser(userData as User)
@@ -263,16 +287,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const checkOrg = async () => {
       if (!loading && isAuthenticated) {
-        if (pathname?.startsWith('/onboarding')) return
         if (pathname?.startsWith('/auth/callback')) return
 
         try {
           const organizations = await getUserOrganizations()
 
           if (organizations.length === 0) {
-            if (pathname?.startsWith('/welcome')) return
-            router.push('/welcome')
+            if (pathname?.startsWith('/setup')) return
+            router.push('/setup/org')
             return
+          }
+
+          // * Onboarding lock: if current org hasn't completed onboarding, redirect to setup
+          if (userOrgId && !pathname?.startsWith('/setup')) {
+            const cacheKey = `pulse_onboarding_done_${userOrgId}`
+            const cached = typeof window !== 'undefined' && localStorage.getItem(cacheKey)
+            if (!cached) {
+              try {
+                const org = await getOrganization(userOrgId)
+                if (!org.onboarding_completed_at) {
+                  router.push('/setup/site')
+                  return
+                }
+                localStorage.setItem(cacheKey, '1')
+              } catch {
+                // org fetch failed — don't block
+              }
+            }
           }
 
           // * If user has organizations but no context (org_id), switch to the first one
@@ -318,7 +359,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ user, loading, hadPriorSession, login, logout, refresh, refreshSession }}>
-      {isLoggingOut && <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" />}
+      {isLoggingOut && <LoadingOverlay logoSrc={cdnUrl('/pulse_icon_no_margins.png')} title="Pulse" />}
       <SessionExpiryWarning
         show={showExpiredModal}
         onSignIn={logout}

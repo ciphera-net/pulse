@@ -8,7 +8,7 @@ import { getStats, type Stats } from '@/lib/api/stats'
 import { getSubscription, type SubscriptionDetails } from '@/lib/api/billing'
 import SiteList from '@/components/sites/SiteList'
 import DeleteSiteModal from '@/components/sites/DeleteSiteModal'
-import { Button, XIcon, toast, getAuthErrorMessage } from '@ciphera-net/ui'
+import { Button, toast, getAuthErrorMessage } from '@ciphera-net/ui'
 import { PlusCircle } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { getSitesLimitForPlan } from '@/lib/plans'
@@ -20,7 +20,6 @@ export default function HomeDashboard() {
   const { sites, isLoading: sitesLoading, mutate: mutateSitesList } = useSites()
   const [siteStats, setSiteStats] = useState<SiteStatsMap>({})
   const [subscription, setSubscription] = useState<SubscriptionDetails | null>(null)
-  const [showFinishSetupBanner, setShowFinishSetupBanner] = useState(true)
   const [deletedSites, setDeletedSites] = useState<Site[]>([])
   const [permanentDeleteSiteModal, setPermanentDeleteSiteModal] = useState<Site | null>(null)
 
@@ -59,11 +58,6 @@ export default function HomeDashboard() {
     load()
     return () => { cancelled = true }
   }, [sites])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    if (localStorage.getItem('pulse_welcome_completed') === 'true') setShowFinishSetupBanner(false)
-  }, [])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -118,32 +112,6 @@ export default function HomeDashboard() {
 
   return (
     <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
-      {showFinishSetupBanner && (
-        <div className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-brand-orange/30 bg-brand-orange/10 px-4 py-3">
-          <p className="text-sm text-neutral-300">
-            Finish setting up your workspace and add your first site.
-          </p>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <Link href="/welcome?step=5">
-              <Button variant="primary" className="text-sm">
-                Finish setup
-              </Button>
-            </Link>
-            <button
-              type="button"
-              onClick={() => {
-                if (typeof window !== 'undefined') localStorage.setItem('pulse_welcome_completed', 'true')
-                setShowFinishSetupBanner(false)
-              }}
-              className="text-neutral-500 hover:text-neutral-400 p-1 rounded"
-              aria-label="Dismiss"
-            >
-              <XIcon className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      )}
-
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-lg font-semibold text-neutral-200 mb-1">Your Sites</h1>

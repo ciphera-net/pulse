@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { Button } from '@ciphera-net/ui'
+import { cdnUrl } from '@/lib/cdn'
 
 interface ErrorDisplayProps {
   title?: string
@@ -48,7 +49,7 @@ export default function ErrorDisplay({
 
       <div className="text-center px-4 z-10">
         <img
-          src="/illustrations/server-down.svg"
+          src={cdnUrl('/illustrations/server-down.svg')}
           alt="Something went wrong"
           className="w-56 h-auto mx-auto mb-8"
         />

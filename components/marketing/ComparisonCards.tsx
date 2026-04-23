@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion'
 import Image from 'next/image'
 import { Check, X } from '@phosphor-icons/react'
+import { cdnUrl } from '@/lib/cdn'
 
 const pulseFeatures = [
   { label: 'No cookies required', has: true },
@@ -58,7 +59,7 @@ export default function ComparisonCards() {
           >
             <div className="absolute top-0 left-0 right-0 h-[3px] bg-brand-orange" />
             <div className="flex items-center gap-3 mb-6">
-              <Image src="/pulse_icon_no_margins.png" alt="Pulse" width={40} height={40} className="rounded-lg" unoptimized />
+              <Image src={cdnUrl('/pulse_icon_no_margins.png')} alt="Pulse" width={40} height={40} className="rounded-lg" unoptimized />
               <div>
                 <h3 className="text-xl font-bold text-white">Pulse</h3>
                 <p className="text-xs text-brand-orange">Privacy-first analytics</p>

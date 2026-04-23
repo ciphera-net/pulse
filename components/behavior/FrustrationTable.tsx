@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { formatNumber, Modal } from '@ciphera-net/ui'
+import { cdnUrl } from '@/lib/cdn'
 import { FrameCornersIcon, Copy, Check, CursorClick, WarningCircle } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { toast } from '@ciphera-net/ui'
@@ -179,7 +180,7 @@ export default function FrustrationTable({
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-4">
               <img
-                src="/illustrations/blank-canvas.svg"
+                src={cdnUrl('/illustrations/blank-canvas.svg')}
                 alt="No frustration signals"
                 className="w-44 h-auto mb-1"
               />

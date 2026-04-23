@@ -3,6 +3,7 @@
 import { OfflineBanner } from '@/components/OfflineBanner'
 import { Footer } from '@/components/Footer'
 import { Header, type CipheraApp } from '@ciphera-net/ui'
+import { cdnUrl } from '@/lib/cdn'
 import { Header as MarketingHeader } from '@/components/marketing/Header'
 import NotificationCenter from '@/components/notifications/NotificationCenter'
 import { useAuth } from '@/lib/auth/context'
@@ -18,6 +19,7 @@ import { useRouter } from 'next/navigation'
 import { UnifiedSettingsProvider, useUnifiedSettings } from '@/lib/unified-settings-context'
 import UnifiedSettingsModal from '@/components/settings/unified/UnifiedSettingsModal'
 import DashboardShell from '@/components/dashboard/DashboardShell'
+import GettingStartedChecklist from '@/components/dashboard/GettingStartedChecklist'
 import { ErrorBoundary } from '@/components/error-boundary'
 
 const ORG_SWITCH_KEY = 'pulse_switching_org'
@@ -27,7 +29,7 @@ const CIPHERA_APPS: CipheraApp[] = [
     id: 'pulse',
     name: 'Pulse',
     description: 'Your current app — Privacy-first analytics',
-    icon: 'https://ciphera.net/pulse_icon_no_margins.png',
+    icon: cdnUrl('/pulse_icon_no_margins.png'),
     href: 'https://pulse.ciphera.net',
     isAvailable: false,
   },
@@ -93,7 +95,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   // Site pages use DashboardShell with full sidebar — no Header needed
   const isSitePage = pathname.startsWith('/sites/') && pathname !== '/sites/new'
   // Pages that use DashboardShell with home sidebar (no site context)
-  const isDashboardPage = pathname === '/' || pathname.startsWith('/integrations') || pathname === '/pricing' || pathname.startsWith('/welcome')
+  const isDashboardPage = pathname === '/' || pathname.startsWith('/integrations') || pathname === '/pricing' || pathname === '/notifications' || pathname === '/sites/new'
   // Checkout page has its own minimal layout — no app header/footer
   const isCheckoutPage = pathname.startsWith('/checkout')
   // Auth callback is a transient route that only renders <LoadingOverlay> while
@@ -104,7 +106,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   const isAuthCallback = pathname.startsWith('/auth/callback')
 
   if (isSwitchingOrg) {
-    return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" portal={false} />
+    return <LoadingOverlay logoSrc={cdnUrl('/pulse_icon_no_margins.png')} title="Pulse" portal={false} />
   }
 
   if (isAuthCallback) {
@@ -134,12 +136,19 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
         {showOfflineBar && <OfflineBanner isOnline={isOnline} />}
         <DashboardShell siteId={null}>{children}</DashboardShell>
         <UnifiedSettingsModal />
+        <GettingStartedChecklist />
       </>
     )
   }
 
   // Checkout page: render children only (has its own layout)
   if (isAuthenticated && isCheckoutPage) {
+    return <>{children}</>
+  }
+
+  // Setup wizard: own layout with stepper — no app shell
+  // Org-settings: redirect shim that opens unified settings modal — no shell needed
+  if (isAuthenticated && (pathname.startsWith('/setup') || pathname.startsWith('/org-settings'))) {
     return <>{children}</>
   }
 
@@ -151,13 +160,13 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
         <Header
           auth={auth}
           LinkComponent={Link}
-          logoSrc="/pulse_icon_no_margins.png"
+          logoSrc={cdnUrl('/pulse_icon_no_margins.png')}
           appName="Pulse"
           variant="static"
           orgs={orgs}
           activeOrgId={auth.user?.org_id}
           onSwitchOrganization={handleSwitchOrganization}
-          onCreateOrganization={() => router.push('/onboarding')}
+          onCreateOrganization={() => router.push('/setup/org?new=1')}
           allowPersonalOrganization={false}
           showFaq={false}
           showSecurity={false}
