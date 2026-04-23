@@ -9,8 +9,9 @@ import * as Flags from 'country-flag-icons/react/3x2'
 import iso3166 from 'iso-3166-2'
 
 const MapView = dynamic(() => import('./MapView'), { ssr: false })
-import Link from 'next/link'
-import { Modal, GlobeIcon, ArrowRightIcon } from '@ciphera-net/ui'
+import { Modal, GlobeIcon } from '@ciphera-net/ui'
+import { GlobeHemisphereWest } from '@phosphor-icons/react'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { ListSkeleton } from '@/components/skeletons'
 import VirtualList from './VirtualList'
 import { ShieldCheck, Detective, Broadcast, FrameCornersIcon } from '@phosphor-icons/react'
@@ -408,24 +409,12 @@ export default function Audience({ countries, cities, regions, languages, timezo
             hasData ? (
               inView ? <MapView data={filterUnknown(countries) as { country: string; pageviews: number }[]} /> : null
             ) : (
-              <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
-                <div className="rounded-full bg-neutral-800 p-4">
-                  <GlobeIcon className="w-8 h-8 text-neutral-400" />
-                </div>
-                <h4 className="font-semibold text-white">
-                  No location data yet
-                </h4>
-                <p className="text-sm text-neutral-400 max-w-xs">
-                  Visitor locations will appear here based on anonymous geographic data.
-                </p>
-                <Link
-                  href="/installation"
-                  className="inline-flex items-center gap-2 text-sm font-medium text-brand-orange hover:text-brand-orange/90 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/20 rounded"
-                >
-                  Install tracking script
-                  <ArrowRightIcon className="w-4 h-4" />
-                </Link>
-              </div>
+              <EmptyState
+                icon={<GlobeHemisphereWest />}
+                title="Your first visitor hasn't arrived"
+                description="Countries and cities will light up on this map as traffic flows in from around the world."
+                action={{ label: 'Install tracking script', href: '/installation' }}
+              />
             )
           ) : (
             hasData ? (
@@ -469,19 +458,11 @@ export default function Audience({ countries, cities, regions, languages, timezo
                 ))}
             </>
           ) : (
-            <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
-              <div className="rounded-full bg-neutral-800 p-4">
-                <GlobeIcon className="w-8 h-8 text-neutral-400" />
-              </div>
-              <h4 className="font-semibold text-white">
-                No {activeTab === 'languages' ? 'language' : activeTab === 'timezones' ? 'timezone' : 'location'} data yet
-              </h4>
-              <p className="text-sm text-neutral-400 max-w-xs">
-                {activeTab === 'languages' ? 'Visitor language preferences will appear here.' :
-                 activeTab === 'timezones' ? 'Visitor timezones will appear here.' :
-                 'Visitor locations will appear here based on anonymous geographic data.'}
-              </p>
-            </div>
+            <EmptyState
+              icon={<GlobeHemisphereWest />}
+              title={`No ${activeTab} data yet`}
+              description={`${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}-level breakdowns appear once enough visitors arrive to generate meaningful geographic data.`}
+            />
           )
         )}
         </div>
