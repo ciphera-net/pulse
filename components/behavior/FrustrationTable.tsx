@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { formatNumber, Modal } from '@ciphera-net/ui'
-import { cdnUrl } from '@/lib/cdn'
-import { FrameCornersIcon, Copy, Check, CursorClick, WarningCircle } from '@phosphor-icons/react'
+import { FrameCornersIcon, Copy, Check, CursorClick } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { toast } from '@ciphera-net/ui'
 import type { FrustrationElement } from '@/lib/api/stats'
@@ -178,25 +177,11 @@ export default function FrustrationTable({
               ))}
             </>
           ) : (
-            <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-4">
-              <img
-                src={cdnUrl('/illustrations/blank-canvas.svg')}
-                alt="No frustration signals"
-                className="w-44 h-auto mb-1"
-              />
-              <h4 className="font-semibold text-white">
-                No {title.toLowerCase()} detected
-              </h4>
-              <p className="text-sm text-neutral-400 max-w-md">
-                Frustration tracking requires the add-on script. Add it after your core Pulse script:
-              </p>
-              <code className="text-xs bg-neutral-800 text-neutral-300 px-3 py-2 rounded-lg font-mono break-all">
-                {'<script defer src="https://pulse.ciphera.net/script.frustration.js"></script>'}
-              </code>
-              <a href="/installation" target="_blank" rel="noopener noreferrer" className="mt-1 text-sm font-medium text-brand-orange hover:underline">
-                View setup guide
-              </a>
-            </div>
+            <EmptyState
+              icon={<CursorClick />}
+              title={`No ${title} detected`}
+              description="Frustration signals like rage clicks and dead clicks are tracked automatically once the behavior script is installed."
+            />
           )}
         </div>
       </div>
@@ -220,9 +205,9 @@ export default function FrustrationTable({
             </div>
           ) : (
             <EmptyState
+              icon={<CursorClick />}
               title="No frustration signals yet"
               description="Rage clicks, dead clicks, and thrashing will appear here as sessions are recorded."
-              icon={<WarningCircle weight="regular" />}
               className="py-8"
             />
           )}

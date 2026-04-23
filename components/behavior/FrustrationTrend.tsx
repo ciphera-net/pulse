@@ -2,6 +2,7 @@
 
 import { TrendUp } from '@phosphor-icons/react'
 
+import { EmptyState } from '@/components/ui/EmptyState'
 import { DonutChart } from '@/components/ui/donut-chart'
 import type { FrustrationSummary } from '@/lib/api/stats'
 import { WidgetSkeleton } from '@/components/skeletons'
@@ -56,16 +57,12 @@ export default function FrustrationTrend({ summary, loading }: FrustrationTrendP
         <p className="text-sm text-neutral-400 mb-4">
           Rage vs. dead click breakdown
         </p>
-        <div className="flex-1 min-h-[270px] flex flex-col items-center justify-center text-center px-6 py-8 gap-4">
-          <div className="rounded-full bg-neutral-800 p-4">
-            <TrendUp className="w-8 h-8 text-neutral-400" />
-          </div>
-          <h4 className="font-semibold text-white">
-            No trend data yet
-          </h4>
-          <p className="text-sm text-neutral-400 max-w-md">
-            Frustration trend data will appear here once rage clicks or dead clicks are detected on your site.
-          </p>
+        <div className="flex-1 min-h-[270px] flex flex-col items-center justify-center">
+          <EmptyState
+            icon={<TrendUp />}
+            title="No trend data yet"
+            description="The frustration trend chart needs a few days of data before patterns emerge."
+          />
         </div>
       </div>
     )

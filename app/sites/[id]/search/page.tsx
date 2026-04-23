@@ -8,7 +8,7 @@ import { useParams } from 'next/navigation'
 import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { Select, DatePicker, ChevronLeftIcon, ChevronRightIcon } from '@ciphera-net/ui'
 import { getDateRange, formatDate, getThisWeekRange, getThisMonthRange, getYesterdayRange, getLast1HourRange, getLast24HoursRange, getThisYearRange } from '@/lib/utils/dateRanges'
-import { CaretDown, CaretUp, MagnifyingGlass, ArrowSquareOut } from '@phosphor-icons/react'
+import { CaretDown, CaretUp, MagnifyingGlass, ArrowSquareOut, FileText } from '@phosphor-icons/react'
 import { useDashboard, useGSCStatus, useGSCOverview, useGSCTopQueries, useGSCTopPages, useGSCNewQueries } from '@/lib/swr/dashboard'
 import { getGSCQueryPages, getGSCPageQueries } from '@/lib/api/gsc'
 import type { GSCDataRow } from '@/lib/api/gsc'
@@ -443,7 +443,7 @@ export default function SearchConsolePage() {
               ) : queries.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-4 py-6">
-                    <EmptyState title="No queries in this window" description="Try a wider date range or check back once your Search Console data has synced." className="py-6" />
+                    <EmptyState icon={<MagnifyingGlass />} title="No queries in this window" description="Try a wider date range or check back once your Search Console data has synced." className="py-6" />
                   </td>
                 </tr>
               ) : (
@@ -522,7 +522,7 @@ export default function SearchConsolePage() {
               ) : pages.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-4 py-6">
-                    <EmptyState title="No pages in this window" description="Try a wider date range or check back once your Search Console data has synced." className="py-6" />
+                    <EmptyState icon={<FileText />} title="No pages in this window" description="Try a wider date range or check back once your Search Console data has synced." className="py-6" />
                   </td>
                 </tr>
               ) : (
@@ -662,7 +662,7 @@ function QueryRow({
                     ))}
                   </div>
                 ) : expandedData.length === 0 ? (
-                  <EmptyState title="No pages for this query" className="py-3" />
+                  <EmptyState icon={<FileText />} title="No pages for this query" className="py-3" />
                 ) : (
                   <table className="w-full text-sm">
                     <thead>
@@ -743,7 +743,7 @@ function PageRow({
                     ))}
                   </div>
                 ) : expandedData.length === 0 ? (
-                  <EmptyState title="No queries for this page" className="py-3" />
+                  <EmptyState icon={<MagnifyingGlass />} title="No queries for this page" className="py-3" />
                 ) : (
                   <table className="w-full text-sm">
                     <thead>
