@@ -51,7 +51,7 @@ export default function ErrorDisplay({
         <img
           src={cdnUrl('/illustrations/server-down.png')}
           alt="Something went wrong"
-          className="w-56 h-auto mx-auto mb-8"
+          className="w-80 h-auto mx-auto mb-8"
         />
 
         <h2 className="text-2xl font-bold text-white mb-4">
