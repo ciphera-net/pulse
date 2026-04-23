@@ -18,6 +18,8 @@ import { formatTimeAgo, getTypeIcon } from '@/lib/utils/notifications'
 import { SettingsIcon } from '@ciphera-net/ui'
 import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { SkeletonLine, SkeletonCircle } from '@/components/skeletons'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { BellSimple } from '@phosphor-icons/react'
 
 // * Bell icon (simple SVG, no extra deps)
 function BellIcon({ className }: { className?: string }) {
@@ -267,9 +269,11 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
                 <div className="p-6 text-center text-red-500 text-sm">{error}</div>
               )}
               {!loading && !error && (receipts?.length ?? 0) === 0 && (
-                <div className="p-6 text-center text-neutral-400 text-sm">
-                  No notifications yet
-                </div>
+                <EmptyState
+                  icon={<BellSimple />}
+                  title="All quiet"
+                  description="You'll see alerts about uptime, traffic spikes, and goal milestones here."
+                />
               )}
               {!loading && !error && (receipts?.length ?? 0) > 0 && (
                 <ul className="divide-y divide-white/[0.06]">
