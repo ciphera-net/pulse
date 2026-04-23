@@ -5,7 +5,8 @@ import { logger } from '@/lib/utils/logger'
 import Link from 'next/link'
 import Image from 'next/image'
 import { formatNumber } from '@ciphera-net/ui'
-import { Modal, ArrowRightIcon } from '@ciphera-net/ui'
+import { Modal } from '@ciphera-net/ui'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { ListSkeleton } from '@/components/skeletons'
 import VirtualList from './VirtualList'
 import { getCampaigns, CampaignStat } from '@/lib/api/stats'
@@ -232,24 +233,12 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
               ))}
             </>
           ) : (
-            <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
-              <div className="rounded-full bg-neutral-800 p-4">
-                <Megaphone className="w-8 h-8 text-neutral-400" />
-              </div>
-              <h4 className="font-semibold text-white">
-                Track your marketing campaigns
-              </h4>
-              <p className="text-sm text-neutral-400 max-w-xs">
-                Add UTM parameters to your links to see campaign performance here.
-              </p>
-              <button
-                onClick={() => setIsBuilderOpen(true)}
-                className="inline-flex items-center gap-2 text-sm font-medium text-brand-orange hover:text-brand-orange/90 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/20 rounded cursor-pointer"
-              >
-                Build a UTM URL
-                <ArrowRightIcon className="w-4 h-4" />
-              </button>
-            </div>
+            <EmptyState
+              icon={<Megaphone />}
+              title="No UTM data yet"
+              description="Tag your links with UTM parameters to track which campaigns drive the most traffic."
+              action={{ label: 'Build a UTM URL', onClick: () => setIsBuilderOpen(true) }}
+            />
           )}
         </div>
       </div>

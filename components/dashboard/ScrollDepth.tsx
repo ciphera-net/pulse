@@ -1,7 +1,8 @@
 'use client'
 
 import { PolarAngleAxis, PolarGrid, Radar, RadarChart, Tooltip } from 'recharts'
-import { BarChartIcon } from '@ciphera-net/ui'
+import { ArrowDown } from '@phosphor-icons/react'
+import { EmptyState } from '@/components/ui/EmptyState'
 import type { ScrollDepthDistribution } from '@/lib/api/stats'
 
 interface ScrollDepthProps {
@@ -67,17 +68,11 @@ export default function ScrollDepth({ scrollDepth }: ScrollDepthProps) {
           </RadarChart>
         </div>
       ) : (
-        <div className="flex-1 min-h-[270px] flex flex-col items-center justify-center text-center px-6 py-8 gap-4">
-          <div className="rounded-full bg-neutral-800 p-4">
-            <BarChartIcon className="w-8 h-8 text-neutral-400" />
-          </div>
-          <h4 className="font-semibold text-white">
-            No scroll data yet
-          </h4>
-          <p className="text-sm text-neutral-400 max-w-md">
-            Scroll depth tracking is automatic — data will appear here once visitors start scrolling on your pages.
-          </p>
-        </div>
+        <EmptyState
+          icon={<ArrowDown />}
+          title="No scrolls recorded yet"
+          description="Scroll tracking is automatic — depth data appears once visitors start reading your pages."
+        />
       )}
     </div>
   )

@@ -133,7 +133,7 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
       {goals.length === 0 && !creating ? (
         <EmptyState
           title="No goals yet"
-          description="Track custom events like signups, purchases, or clicks."
+          description="Track custom events like signups, purchases, or button clicks."
           action={{ label: 'Add your first goal', onClick: startCreate }}
           icon={<Target weight="regular" />}
           className="py-8"

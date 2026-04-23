@@ -639,7 +639,7 @@ export default function SiteReportsTab({ siteId }: { siteId: string }) {
         {reports.length === 0 ? (
           <EmptyState
             title="No scheduled reports yet"
-            description="Automated analytics summaries can be sent to your inbox or webhook on a recurring schedule."
+            description="Get automated analytics summaries delivered to your inbox on a recurring schedule."
             icon={<FileText weight="regular" />}
             className="py-8"
           />
@@ -667,7 +667,7 @@ export default function SiteReportsTab({ siteId }: { siteId: string }) {
         {alerts.length === 0 ? (
           <EmptyState
             title="No alert channels yet"
-            description="Add a channel to get notified when your uptime monitors detect downtime."
+            description="Add a channel to get notified when uptime monitors detect downtime."
             icon={<Bell weight="regular" />}
             className="py-8"
           />

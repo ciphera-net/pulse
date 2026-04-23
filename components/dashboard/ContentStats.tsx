@@ -5,9 +5,9 @@ import { logger } from '@/lib/utils/logger'
 import { formatNumber } from '@ciphera-net/ui'
 import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
 import { TopPage, getTopPages, getEntryPages, getExitPages } from '@/lib/api/stats'
-import Link from 'next/link'
-import { FrameCornersIcon } from '@phosphor-icons/react'
-import { Modal, ArrowUpRightIcon, ArrowRightIcon, LayoutDashboardIcon } from '@ciphera-net/ui'
+import { FrameCornersIcon, FileText } from '@phosphor-icons/react'
+import { Modal, ArrowUpRightIcon } from '@ciphera-net/ui'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { ListSkeleton } from '@/components/skeletons'
 import VirtualList from './VirtualList'
 import { type DimensionFilter } from '@/lib/filters'
@@ -181,24 +181,12 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
               ))}
             </>
           ) : (
-            <div className="h-full flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
-              <div className="rounded-full bg-neutral-800 p-4">
-                <LayoutDashboardIcon className="w-8 h-8 text-neutral-400" />
-              </div>
-              <h4 className="font-semibold text-white">
-                No page data yet
-              </h4>
-              <p className="text-sm text-neutral-400 max-w-xs">
-                Your most visited pages will appear here as traffic arrives.
-              </p>
-              <Link
-                href="/installation"
-                className="inline-flex items-center gap-2 text-sm font-medium text-brand-orange hover:text-brand-orange/90 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/20 rounded"
-              >
-                Install tracking script
-                <ArrowRightIcon className="w-4 h-4" />
-              </Link>
-            </div>
+            <EmptyState
+              icon={<FileText />}
+              title="Waiting for page views"
+              description="Your most visited pages will rank here once traffic arrives. Entry and exit pages are tracked automatically."
+              action={{ label: 'Install tracking script', href: '/installation' }}
+            />
           )}
         </div>
       </div>

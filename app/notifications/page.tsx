@@ -8,6 +8,8 @@ import FilterChips from './FilterChips'
 import BulkActionBar from './BulkActionBar'
 import NotificationRow from './NotificationRow'
 import { groupByRecency } from './sections'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { BellSimple } from '@phosphor-icons/react'
 
 export default function NotificationsPage() {
   return (
@@ -44,7 +46,11 @@ function NotificationsContent() {
       {loading && <div className="text-neutral-500 text-sm py-12 text-center">Loading…</div>}
       {error && <div className="text-red-400 text-sm py-12 text-center">Failed to load notifications.</div>}
       {!loading && !error && receipts.length === 0 && (
-        <div className="text-neutral-500 text-sm py-12 text-center">No notifications match.</div>
+        <EmptyState
+          icon={<BellSimple />}
+          title="All quiet"
+          description="You'll see alerts about uptime, traffic spikes, and goal milestones here."
+        />
       )}
       {!loading && !error && receipts.length > 0 && (
         <div className="space-y-6">

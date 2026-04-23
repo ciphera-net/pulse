@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { Button } from '@ciphera-net/ui'
+import { cdnUrl } from '@/lib/cdn'
 
 export default function NotFound() {
   return (
@@ -15,11 +16,11 @@ export default function NotFound() {
 
       <div className="text-center px-4 z-10">
         <img
-          src="/illustrations/page-not-found.svg"
-          alt="Page not found"
+          src={cdnUrl('/illustrations/page-not-found.png')}
+          alt=""
           loading="lazy"
           decoding="async"
-          className="w-72 h-auto mx-auto mb-8"
+          className="w-96 h-auto mx-auto mb-8"
         />
         <h2 className="text-2xl font-bold text-white mb-6">
           Page not found

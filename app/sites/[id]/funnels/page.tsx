@@ -8,9 +8,9 @@ import { deleteFunnel, type Funnel } from '@/lib/api/funnels'
 import { useFunnels } from '@/lib/swr/dashboard'
 import { toast, PlusIcon, ArrowRightIcon, ChevronLeftIcon, TrashIcon, Button } from '@ciphera-net/ui'
 import { FunnelsListSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
-import { cdnUrl } from '@/lib/cdn'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { FunnelSimple } from '@phosphor-icons/react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 
 export default function FunnelsPage() {
@@ -62,28 +62,12 @@ export default function FunnelsPage() {
         </div>
 
         {funnels.length === 0 ? (
-          <div className="glass-surface rounded-2xl p-12 text-center flex flex-col items-center">
-            <Image
-              src={cdnUrl('/illustrations/data-trends.svg')}
-              alt="Create your first funnel"
-              width={260}
-              height={195}
-              className="mb-6"
-              unoptimized
-            />
-            <h3 className="text-lg font-semibold text-white mb-2">
-              No funnels yet
-            </h3>
-            <p className="text-neutral-400 mb-6 max-w-md mx-auto">
-              Create a funnel to track how users move through your site and where they drop off.
-            </p>
-            <Link href={`/sites/${siteId}/funnels/new`}>
-              <Button variant="primary" className="inline-flex items-center gap-2">
-                <PlusIcon className="w-4 h-4" />
-                <span>Create Funnel</span>
-              </Button>
-            </Link>
-          </div>
+          <EmptyState
+            icon={<FunnelSimple />}
+            title="No funnels yet"
+            description="Create a funnel to track how visitors move through your site and where they drop off."
+            action={{ label: 'Create funnel', href: `/sites/${siteId}/funnels/new` }}
+          />
         ) : (
           <div className="grid gap-4">
             {funnels.map((funnel, index) => (
