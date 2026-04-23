@@ -6,7 +6,6 @@
  */
 
 import { useState, useCallback, useMemo } from 'react'
-import Link from 'next/link'
 import { integrations, getIntegration } from '@/lib/integrations'
 import { toast, Toggle, Select, CheckIcon } from '@ciphera-net/ui'
 import sriHashes from '@/public/script-sri.json'
@@ -271,14 +270,14 @@ export default function ScriptSetupBlock({
             <h4 className="text-sm font-semibold text-white">
               Setup guide
             </h4>
-            <Link
-              href="/integrations"
+            <a
+              href="https://docs.ciphera.net/pulse/framework-guides"
               target="_blank"
               rel="noopener noreferrer"
               className="text-xs font-medium text-neutral-400 hover:text-brand-orange transition-colors ease-apple"
             >
-              All integrations →
-            </Link>
+              Installation docs →
+            </a>
           </div>
           <div className="flex flex-wrap gap-2">
             {FRAMEWORKS.map((fw) => (
@@ -300,14 +299,14 @@ export default function ScriptSetupBlock({
             ))}
           </div>
           {selectedIntegration && (
-            <Link
-              href={`/integrations/${framework}`}
+            <a
+              href="https://docs.ciphera.net/pulse/framework-guides"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 mt-3 text-sm font-medium text-brand-orange hover:text-brand-orange/80 transition-colors ease-apple"
             >
-              See full {selectedIntegration.name} guide →
-            </Link>
+              See full installation guide →
+            </a>
           )}
         </div>
       )}
