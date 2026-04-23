@@ -154,7 +154,7 @@ export default function HomeDashboard() {
           <img
             src={cdnUrl('/illustrations/no-sites.png')}
             alt=""
-            className="w-56 h-auto animate-float"
+            className="w-80 h-auto"
           />
           <h3 className="text-title-2 font-semibold text-neutral-100">No sites yet</h3>
           <p className="max-w-sm text-caption text-neutral-400">

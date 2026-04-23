@@ -20,7 +20,7 @@ export default function NotFound() {
           alt=""
           loading="lazy"
           decoding="async"
-          className="w-72 h-auto mx-auto mb-8"
+          className="w-96 h-auto mx-auto mb-8"
         />
         <h2 className="text-2xl font-bold text-white mb-6">
           Page not found
