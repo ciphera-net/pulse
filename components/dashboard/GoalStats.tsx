@@ -3,9 +3,9 @@
 import { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { TIMING } from '@/lib/motion'
-import Link from 'next/link'
+import { Target } from '@phosphor-icons/react'
 import { formatNumber } from '@ciphera-net/ui'
-import { BookOpenIcon, ArrowRightIcon } from '@ciphera-net/ui'
+import { EmptyState } from '@/components/ui/EmptyState'
 import type { GoalCountStat } from '@/lib/api/stats'
 import { getEventPropertyKeys, getEventPropertyValues, type EventPropertyKey, type EventPropertyValue } from '@/lib/api/stats'
 
@@ -192,24 +192,12 @@ export default function GoalStats({ goalCounts, siteId, dateRange }: GoalStatsPr
           ))}
         </div>
       ) : (
-        <div className="flex-1 min-h-[270px] flex flex-col items-center justify-center text-center px-6 py-8 gap-4">
-          <div className="rounded-full bg-neutral-800 p-4">
-            <BookOpenIcon className="w-8 h-8 text-neutral-400" />
-          </div>
-          <h4 className="font-semibold text-white">
-            Need help tracking goals?
-          </h4>
-          <p className="text-sm text-neutral-400 max-w-md">
-            Add <code className="px-1.5 py-0.5 rounded bg-neutral-700 text-xs font-mono">pulse.track(&apos;event_name&apos;)</code> where actions happen on your site, then see counts here. Check our guide for step-by-step instructions.
-          </p>
-          <Link
-            href="/installation"
-            className="inline-flex items-center gap-2 text-sm font-medium text-brand-orange hover:text-brand-orange/90 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/20 rounded"
-          >
-            Read documentation
-            <ArrowRightIcon className="w-4 h-4" />
-          </Link>
-        </div>
+        <EmptyState
+          icon={<Target />}
+          title="No events tracked yet"
+          description="Add pulse.track('event') where actions happen on your site, then see conversion counts here."
+          action={{ label: 'Read the docs', href: '/installation' }}
+        />
       )}
     </div>
   )
