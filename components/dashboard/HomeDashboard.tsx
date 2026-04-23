@@ -9,8 +9,7 @@ import { getSubscription, type SubscriptionDetails } from '@/lib/api/billing'
 import SiteList from '@/components/sites/SiteList'
 import DeleteSiteModal from '@/components/sites/DeleteSiteModal'
 import { Button, toast, getAuthErrorMessage } from '@ciphera-net/ui'
-import { PlusCircle } from '@phosphor-icons/react'
-import { EmptyState } from '@/components/ui/EmptyState'
+import { cdnUrl } from '@/lib/cdn'
 import { getSitesLimitForPlan } from '@/lib/plans'
 import { SitesListSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 
@@ -151,13 +150,22 @@ export default function HomeDashboard() {
       {showSkeleton ? (
         <SitesListSkeleton rows={3} />
       ) : sites.length === 0 ? (
-        <div className="mb-8 rounded-2xl border-2 border-dashed border-brand-orange/30 bg-brand-orange/10">
-          <EmptyState
-            icon={<PlusCircle />}
-            title="No sites yet"
-            description="Connect a domain to start collecting privacy-friendly analytics. You can add more sites later from the dashboard."
-            action={{ label: 'New site', href: '/sites/new' }}
+        <div className="mb-8 flex flex-col items-center justify-center gap-4 py-16 px-6 text-center rounded-2xl border-2 border-dashed border-brand-orange/30 bg-brand-orange/10">
+          <img
+            src={cdnUrl('/illustrations/no-sites.png')}
+            alt=""
+            className="w-56 h-auto animate-float"
           />
+          <h3 className="text-title-2 font-semibold text-neutral-100">No sites yet</h3>
+          <p className="max-w-sm text-caption text-neutral-400">
+            Connect a domain to start collecting privacy-friendly analytics. You can add more sites later from the dashboard.
+          </p>
+          <Link
+            href="/sites/new"
+            className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-orange text-white text-sm font-medium hover:bg-brand-orange-hover transition-colors duration-fast ease-apple active:scale-[0.97]"
+          >
+            New site
+          </Link>
         </div>
       ) : (
         <SiteList sites={sites} siteStats={siteStats} loading={false} />
