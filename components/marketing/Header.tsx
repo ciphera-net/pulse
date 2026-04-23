@@ -2,6 +2,7 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { cdnUrl } from '@/lib/cdn';
 import { Button } from '@/components/ui/button-website';
 import { cn } from '@/lib/utils';
 import { initiateOAuthFlow, initiateSignupFlow } from '@/lib/api/oauth';
@@ -107,7 +108,7 @@ export function Header() {
                 <div className="flex items-center gap-5">
                     <Link href="/" className="hover:bg-accent rounded-md p-2 flex items-center gap-2">
                         <Image
-                            src="/pulse_icon_no_margins.png"
+                            src={cdnUrl('/pulse_icon_no_margins.png')}
                             alt="Pulse"
                             width={36}
                             height={36}

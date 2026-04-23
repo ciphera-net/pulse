@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion'
 import { Check } from '@phosphor-icons/react'
+import { cdnUrl } from '@/lib/cdn'
 import { PulseMockup } from './mockups/pulse-mockup'
 import { PulseFeaturesCarousel } from './mockups/pulse-features-carousel'
 import { FunnelMockup } from './mockups/funnel-mockup'
@@ -64,7 +65,7 @@ function FeatureSection({
           <div className={`relative rounded-3xl overflow-hidden ${showBg ? 'border border-white/[0.08]' : 'glass-surface'}`}>
             {showBg && (
               <>
-                <img src="/pulse-showcase-bg.png" alt="" className="absolute inset-0 w-full h-full object-cover" />
+                <img src={cdnUrl('/pulse-showcase-bg.png')} alt="" className="absolute inset-0 w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-black/30" />
               </>
             )}

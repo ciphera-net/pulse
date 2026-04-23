@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getAdminMe } from '@/lib/api/admin'
 import { LoadingOverlay } from '@ciphera-net/ui'
+import { cdnUrl } from '@/lib/cdn'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
@@ -27,7 +28,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [router])
 
   if (isAdmin === null) {
-    return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Checking access..." />
+    return <LoadingOverlay logoSrc={cdnUrl('/pulse_icon_no_margins.png')} title="Checking access..." />
   }
 
   if (!isAdmin) {

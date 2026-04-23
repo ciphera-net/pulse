@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useSWRConfig } from 'swr'
 import apiRequest, { setRefreshHandler } from '@/lib/api/client'
 import { LoadingOverlay, useSessionSync, SessionExpiryWarning, useSessionRefresh } from '@ciphera-net/ui'
+import { cdnUrl } from '@/lib/cdn'
 import { logoutAction, getSessionAction, setSessionAction } from '@/app/actions/auth'
 import { getUserOrganizations, switchContext, getOrganization } from '@/lib/api/organization'
 import { logger } from '@/lib/utils/logger'
@@ -358,7 +359,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ user, loading, hadPriorSession, login, logout, refresh, refreshSession }}>
-      {isLoggingOut && <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" />}
+      {isLoggingOut && <LoadingOverlay logoSrc={cdnUrl('/pulse_icon_no_margins.png')} title="Pulse" />}
       <SessionExpiryWarning
         show={showExpiredModal}
         onSignIn={logout}

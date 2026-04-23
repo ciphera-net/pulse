@@ -8,6 +8,7 @@ import { AUTH_URL, default as apiRequest } from '@/lib/api/client'
 import { exchangeAuthCode } from '@/app/actions/auth'
 import { authMessageFromErrorType, type AuthErrorType } from '@ciphera-net/ui'
 import { LoadingOverlay } from '@ciphera-net/ui'
+import { cdnUrl } from '@/lib/cdn'
 
 function AuthCallbackContent() {
   const searchParams = useSearchParams()
@@ -135,12 +136,12 @@ function AuthCallbackContent() {
   }
 
   // * Use standard Pulse loading screen to make transition to Home seamless
-  return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" portal={false} />
+  return <LoadingOverlay logoSrc={cdnUrl('/pulse_icon_no_margins.png')} title="Pulse" portal={false} />
 }
 
 export default function AuthCallback() {
   return (
-    <Suspense fallback={<LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" portal={false} />}>
+    <Suspense fallback={<LoadingOverlay logoSrc={cdnUrl('/pulse_icon_no_margins.png')} title="Pulse" portal={false} />}>
       <AuthCallbackContent />
     </Suspense>
   )

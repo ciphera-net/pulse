@@ -8,6 +8,7 @@ import { listSites } from '@/lib/api/sites'
 import { SetupProvider, useSetup } from '@/lib/setup/context'
 import SetupStepper from '@/components/setup/SetupStepper'
 import { LoadingOverlay } from '@ciphera-net/ui'
+import { cdnUrl } from '@/lib/cdn'
 
 function SetupGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -59,7 +60,7 @@ function SetupGuard({ children }: { children: React.ReactNode }) {
   }, [authLoading, user, pathname, router])
 
   if (authLoading || !resolved) {
-    return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" />
+    return <LoadingOverlay logoSrc={cdnUrl('/pulse_icon_no_margins.png')} title="Pulse" />
   }
 
   return (
@@ -74,7 +75,7 @@ function SetupGuard({ children }: { children: React.ReactNode }) {
 
 export default function SetupLayoutClient({ children }: { children: React.ReactNode }) {
   return (
-    <Suspense fallback={<LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" />}>
+    <Suspense fallback={<LoadingOverlay logoSrc={cdnUrl('/pulse_icon_no_margins.png')} title="Pulse" />}>
       <SetupProvider>
         <SetupGuard>{children}</SetupGuard>
       </SetupProvider>

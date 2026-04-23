@@ -1,4 +1,5 @@
 import React, { type ReactNode } from 'react'
+import { cdnUrl } from '@/lib/cdn'
 import {
   Globe,
   Question,
@@ -93,7 +94,7 @@ export function getBrowserIcon(browserName: string) {
   if (component) return component()
   const entry = BROWSER_ICON_MAP[lower]
   if (!entry) return <Globe className="text-neutral-500" />
-  const src = `/icons/browsers/${entry.file}.${entry.ext}`
+  const src = cdnUrl(`/icons/browsers/${entry.file}.${entry.ext}`)
   return <img src={src} alt={browserName} width={18} height={18} className="inline-block" style={{ verticalAlign: '-0.125em' }} />
 }
 
@@ -123,7 +124,7 @@ export function getOSIcon(osName: string) {
   const file = OS_ICON_MAP[osName.toLowerCase()]
   if (!file) return <Question className="text-neutral-400" />
   const cls = OS_DARK_INVERT.has(file) ? 'inline-block invert' : 'inline-block'
-  return <img src={`/icons/os/${file}.png`} alt={osName} width={18} height={18} className={cls} style={{ verticalAlign: '-0.125em' }} />
+  return <img src={cdnUrl(`/icons/os/${file}.png`)} alt={osName} width={18} height={18} className={cls} style={{ verticalAlign: '-0.125em' }} />
 }
 
 export function getDeviceIcon(deviceName: string) {
@@ -192,10 +193,10 @@ const REFERRER_REGISTRY: Record<string, ReferrerEntry> = {
   phind:       { display: 'Phind',       icon: () => <Globe className="w-5 h-5 text-neutral-400" /> },
 
   // ── Browsers as referrers ──
-  googlechrome: { display: 'Google Chrome', icon: () => <img src="/icons/browsers/chrome.svg" alt="Chrome" width={20} height={20} className="inline-block" />, hostnames: ['googlechrome.github.io'] },
+  googlechrome: { display: 'Google Chrome', icon: () => <img src={cdnUrl('/icons/browsers/chrome.svg')} alt="Chrome" width={20} height={20} className="inline-block" />, hostnames: ['googlechrome.github.io'] },
 
   // ── Ciphera products ──
-  pulse:       { display: 'Pulse',        icon: () => <img src="/pulse_icon_no_margins.png" alt="Pulse" width={20} height={20} className="inline-block" />, hostnames: ['pulse.ciphera.net', 'pulse-staging.ciphera.net'] },
+  pulse:       { display: 'Pulse',        icon: () => <img src={cdnUrl('/pulse_icon_no_margins.png')} alt="Pulse" width={20} height={20} className="inline-block" />, hostnames: ['pulse.ciphera.net', 'pulse-staging.ciphera.net'] },
 }
 
 // ── Derived lookup maps (built once at module load) ──

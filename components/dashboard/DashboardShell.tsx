@@ -7,6 +7,7 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { formatUpdatedAgo, PlusIcon, ExternalLinkIcon, LayoutDashboardIcon, PathIcon, FunnelIcon, CursorClickIcon, SearchIcon, CloudUploadIcon, HeartbeatIcon, SettingsIcon, type CipheraApp } from '@ciphera-net/ui'
+import { cdnUrl } from '@/lib/cdn'
 import { CaretDown, CaretRight, SidebarSimple, Gauge as GaugeIcon, Plugs as PlugsIcon, Tag as TagIcon, Globe as GlobeIcon } from '@phosphor-icons/react'
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -21,7 +22,7 @@ import { ShortcutsOverlay } from '@/components/keyboard/ShortcutsOverlay'
 import { CommandPalette } from '@/components/command/CommandPalette'
 
 const CIPHERA_APPS: CipheraApp[] = [
-  { id: 'pulse', name: 'Pulse', description: 'Your current app — Privacy-first analytics', icon: 'https://ciphera.net/pulse_icon_no_margins.png', href: 'https://pulse.ciphera.net', isAvailable: false },
+  { id: 'pulse', name: 'Pulse', description: 'Your current app — Privacy-first analytics', icon: cdnUrl('/pulse_icon_no_margins.png'), href: 'https://pulse.ciphera.net', isAvailable: false },
   { id: 'id', name: 'ID', description: 'Your Ciphera account settings', icon: 'https://ciphera.net/id_icon_no_margins.png', href: 'https://id.ciphera.net', isAvailable: true },
 ]
 

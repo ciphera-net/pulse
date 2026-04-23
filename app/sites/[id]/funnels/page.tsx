@@ -8,6 +8,7 @@ import { deleteFunnel, type Funnel } from '@/lib/api/funnels'
 import { useFunnels } from '@/lib/swr/dashboard'
 import { toast, PlusIcon, ArrowRightIcon, ChevronLeftIcon, TrashIcon, Button } from '@ciphera-net/ui'
 import { FunnelsListSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
+import { cdnUrl } from '@/lib/cdn'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
@@ -63,7 +64,7 @@ export default function FunnelsPage() {
         {funnels.length === 0 ? (
           <div className="glass-surface rounded-2xl p-12 text-center flex flex-col items-center">
             <Image
-              src="/illustrations/data-trends.svg"
+              src={cdnUrl('/illustrations/data-trends.svg')}
               alt="Create your first funnel"
               width={260}
               height={195}

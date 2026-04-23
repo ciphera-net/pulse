@@ -3,6 +3,7 @@
 import { OfflineBanner } from '@/components/OfflineBanner'
 import { Footer } from '@/components/Footer'
 import { Header, type CipheraApp } from '@ciphera-net/ui'
+import { cdnUrl } from '@/lib/cdn'
 import { Header as MarketingHeader } from '@/components/marketing/Header'
 import NotificationCenter from '@/components/notifications/NotificationCenter'
 import { useAuth } from '@/lib/auth/context'
@@ -28,7 +29,7 @@ const CIPHERA_APPS: CipheraApp[] = [
     id: 'pulse',
     name: 'Pulse',
     description: 'Your current app — Privacy-first analytics',
-    icon: 'https://ciphera.net/pulse_icon_no_margins.png',
+    icon: cdnUrl('/pulse_icon_no_margins.png'),
     href: 'https://pulse.ciphera.net',
     isAvailable: false,
   },
@@ -105,7 +106,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   const isAuthCallback = pathname.startsWith('/auth/callback')
 
   if (isSwitchingOrg) {
-    return <LoadingOverlay logoSrc="/pulse_icon_no_margins.png" title="Pulse" portal={false} />
+    return <LoadingOverlay logoSrc={cdnUrl('/pulse_icon_no_margins.png')} title="Pulse" portal={false} />
   }
 
   if (isAuthCallback) {
@@ -159,7 +160,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
         <Header
           auth={auth}
           LinkComponent={Link}
-          logoSrc="/pulse_icon_no_margins.png"
+          logoSrc={cdnUrl('/pulse_icon_no_margins.png')}
           appName="Pulse"
           variant="static"
           orgs={orgs}

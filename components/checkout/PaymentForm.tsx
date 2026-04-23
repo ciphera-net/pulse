@@ -8,6 +8,7 @@ import { TIMING } from '@/lib/motion'
 import { Lock, ShieldCheck } from '@phosphor-icons/react'
 import { initChargebee } from '@/lib/chargebee'
 import { createPaymentIntent, createEmbeddedCheckout, createCheckoutSession } from '@/lib/api/billing'
+import { cdnUrl } from '@/lib/cdn'
 
 interface PaymentFormProps {
   plan: string
@@ -28,12 +29,12 @@ const PAYMENT_METHODS = [
 ]
 
 const METHOD_LOGOS: Record<string, { src: string | string[]; alt: string }> = {
-  card: { src: ['/images/payment/visa.svg', '/images/payment/mastercard.svg'], alt: 'Card' },
-  bancontact: { src: '/images/payment/bancontact.svg', alt: 'Bancontact' },
-  ideal: { src: '/images/payment/ideal.svg', alt: 'iDEAL' },
-  applepay: { src: '/images/payment/applepay.svg', alt: 'Apple Pay' },
-  googlepay: { src: '/images/payment/googlepay.svg', alt: 'Google Pay' },
-  directdebit: { src: '/images/payment/sepa.svg', alt: 'SEPA' },
+  card: { src: [cdnUrl('/images/payment/visa.svg'), cdnUrl('/images/payment/mastercard.svg')], alt: 'Card' },
+  bancontact: { src: cdnUrl('/images/payment/bancontact.svg'), alt: 'Bancontact' },
+  ideal: { src: cdnUrl('/images/payment/ideal.svg'), alt: 'iDEAL' },
+  applepay: { src: cdnUrl('/images/payment/applepay.svg'), alt: 'Apple Pay' },
+  googlepay: { src: cdnUrl('/images/payment/googlepay.svg'), alt: 'Google Pay' },
+  directdebit: { src: cdnUrl('/images/payment/sepa.svg'), alt: 'SEPA' },
 }
 
 function MethodLogo({ type }: { type: string }) {
