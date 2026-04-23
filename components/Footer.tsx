@@ -29,7 +29,6 @@ const footerLinks = {
     { name: 'Installation', href: '/installation', external: false },
     { name: 'Integrations', href: '/integrations', external: false },
     { name: 'Documentation', href: 'https://docs.ciphera.net', external: true },
-    { name: 'Status', href: 'https://status.ciphera.net', external: true },
     { name: 'GitHub', href: 'https://github.com/ciphera-net', external: true },
   ],
   legal: [

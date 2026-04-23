@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth/context'
 import { AUTH_URL, default as apiRequest } from '@/lib/api/client'
 import { exchangeAuthCode } from '@/app/actions/auth'
 import { authMessageFromErrorType, type AuthErrorType } from '@ciphera-net/ui'
+import { safeRedirectUrl } from '@/lib/utils/safe-redirect'
 import { LoadingOverlay } from '@ciphera-net/ui'
 import { cdnUrl } from '@/lib/cdn'
 
@@ -52,12 +53,9 @@ function AuthCallbackContent() {
       const storedReturn = localStorage.getItem('pulse_auth_return_to')
       if (storedReturn) {
         localStorage.removeItem('pulse_auth_return_to')
-        const safe = (typeof storedReturn === 'string' && storedReturn.startsWith('/') && !storedReturn.startsWith('//')) ? storedReturn : '/'
-        window.location.assign(safe)
+        window.location.assign(safeRedirectUrl(storedReturn))
       } else {
-        const raw = searchParams.get('returnTo') || '/'
-        const safe = (typeof raw === 'string' && raw.startsWith('/') && !raw.startsWith('//')) ? raw : '/'
-        window.location.assign(safe)
+        window.location.assign(safeRedirectUrl(searchParams.get('returnTo')))
       }
     } else {
       if (result.error === 'server') {
