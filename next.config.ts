@@ -80,31 +80,27 @@ const nextConfig: NextConfig = {
     ]
   },
   async redirects() {
-    const removedIntegrations = [
-      'solidjs', 'qwik', 'preact', 'htmx', 'ember',
-      'jekyll', 'docusaurus', 'vitepress', 'hexo', 'mkdocs',
-      'joomla', 'strapi', 'sanity', 'contentful', 'payload',
-      'craftcms', 'statamic', 'typo3', 'kirby', 'grav', 'umbraco',
-      'storyblok', 'prismic', 'shopware', 'magento',
-      'woocommerce', 'bigcommerce', 'prestashop',
-      'blogger', 'substack', 'linktree', 'weebly', 'gitbook',
-      'gridsome', 'readthedocs', 'sphinx', 'readme',
-      'bubble', 'discourse', 'hubspot', 'notion',
-      'cloudflare-pages', 'netlify', 'vercel', 'github-pages',
-      'firebase', 'render', 'flutter', 'amp', 'carrd',
-    ]
-
     return [
       {
         source: '/dashboard',
         destination: '/',
         permanent: false,
       },
-      ...removedIntegrations.map((slug) => ({
-        source: `/integrations/${slug}`,
-        destination: '/integrations/script-tag',
+      {
+        source: '/integrations/script-tag',
+        destination: 'https://docs.ciphera.net/pulse/script-installation',
         permanent: true,
-      })),
+      },
+      {
+        source: '/integrations/wordpress',
+        destination: 'https://docs.ciphera.net/pulse/wordpress-plugin',
+        permanent: true,
+      },
+      {
+        source: '/integrations/:slug',
+        destination: 'https://docs.ciphera.net/pulse/framework-guides',
+        permanent: true,
+      },
     ]
   },
   async rewrites() {
