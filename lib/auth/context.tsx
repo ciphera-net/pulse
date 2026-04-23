@@ -4,7 +4,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { useRouter, usePathname } from 'next/navigation'
 import { useSWRConfig } from 'swr'
 import apiRequest, { setRefreshHandler } from '@/lib/api/client'
-import { LoadingOverlay, useSessionSync, SessionExpiryWarning, useSessionRefresh, useLogoutSync } from '@ciphera-net/ui'
+import { LoadingOverlay, useSessionSync, SessionExpiryWarning, useSessionRefresh } from '@ciphera-net/ui'
 import { logoutAction, getSessionAction, setSessionAction } from '@/app/actions/auth'
 import { getUserOrganizations, switchContext, getOrganization } from '@/lib/api/organization'
 import { logger } from '@/lib/utils/logger'
@@ -134,16 +134,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('user')
     localStorage.removeItem('ciphera_token_refreshed_at')
     localStorage.removeItem('ciphera_last_activity')
-    // * Broadcast logout to other tabs (BroadcastChannel will handle if available)
+    document.cookie = 'csrf_token=; Max-Age=0; path=/;'
+    document.cookie = 'csrf_token=; Max-Age=0; path=/; domain=.ciphera.net;'
+    document.cookie = 'ciphera_pii=; Max-Age=0; path=/;'
+    document.cookie = 'ciphera_pii=; Max-Age=0; path=/; domain=.ciphera.net;'
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
       const channel = new BroadcastChannel('ciphera_session')
       channel.postMessage({ type: 'LOGOUT' })
       channel.close()
     }
-    setTimeout(() => {
-      window.location.href = '/'
-    }, 500)
-  }, [])
+    setUser(null)
+    setHadPriorSession(false)
+    setIsLoggingOut(false)
+    router.push('/')
+    router.refresh()
+  }, [router])
 
   const { showExpiredModal, refreshWithMutex } = useSessionRefresh({
     isAuthenticated: !!user,
@@ -258,7 +263,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem('user')
       localStorage.removeItem('ciphera_token_refreshed_at')
       localStorage.removeItem('ciphera_last_activity')
-      window.location.href = '/'
+      setUser(null)
+      setHadPriorSession(false)
+      router.push('/')
+      router.refresh()
     },
     onLogin: (userData) => {
       setUser(userData as User)
@@ -268,8 +276,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       refresh()
     },
   })
-
-  useLogoutSync(logout)
 
   // * Stable primitives for the effect dependency array — avoids re-running
   // * on every render when the `user` object reference changes.

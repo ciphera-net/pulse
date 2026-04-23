@@ -222,24 +222,17 @@ export async function logoutAction() {
     }
   }
 
-  cookieStore.set('access_token', '', {
-    maxAge: 0,
-    path: '/',
-    domain: cookieDomain
-  })
-  cookieStore.set('refresh_token', '', {
-    maxAge: 0,
-    path: '/',
-    domain: cookieDomain
-  })
-  cookieStore.set('ciphera_logged_out_at', Date.now().toString(), {
-    httpOnly: false,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-    domain: cookieDomain,
-    maxAge: 300
-  })
+  // Clear on parent domain (.ciphera.net) AND without domain (exact hostname)
+  // to handle cookies that may have been set on either scope.
+  const clearOpts = { maxAge: 0, path: '/' } as const
+  cookieStore.set('access_token', '', { ...clearOpts, domain: cookieDomain })
+  cookieStore.set('refresh_token', '', { ...clearOpts, domain: cookieDomain })
+  cookieStore.set('csrf_token', '', { ...clearOpts, domain: cookieDomain })
+  if (cookieDomain) {
+    cookieStore.set('access_token', '', clearOpts)
+    cookieStore.set('refresh_token', '', clearOpts)
+    cookieStore.set('csrf_token', '', clearOpts)
+  }
   return { success: true }
 }
 
