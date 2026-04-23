@@ -111,7 +111,7 @@ export default function WorkspaceAuditTab() {
       {entries.length === 0 ? (
         <EmptyState
           title="No activity yet"
-          description="Workspace actions like site changes and member updates will appear here."
+          description="Workspace actions like site changes and member updates will appear here as they happen."
           icon={<ListChecks weight="regular" />}
           className="py-8"
         />
