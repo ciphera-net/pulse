@@ -37,7 +37,7 @@ function capitalize(s: string): string {
 
 const LIMIT = 7
 
-const TAB_TO_DIMENSION: Record<string, string> = { browsers: 'browser', os: 'os', devices: 'device' }
+const TAB_TO_DIMENSION: Record<string, string> = { browsers: 'browser', os: 'os', devices: 'device', screens: 'screen_resolution' }
 
 export default function TechSpecs({ browsers, os, devices, screenResolutions, collectDeviceInfo = true, collectScreenResolution = true, siteId, dateRange, onFilter }: TechSpecsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('browsers')
