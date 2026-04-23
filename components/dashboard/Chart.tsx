@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import type { EngagementPercentilesData } from '@/lib/api/stats'
 import { formatNumber, formatDuration } from '@ciphera-net/ui'
 import { Select, DownloadIcon } from '@ciphera-net/ui'
-import { ArrowUpRight, ArrowDownRight } from '@phosphor-icons/react'
+import { ArrowUpRight, ArrowDownRight, ChartLine } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { SPRING, EASE_APPLE } from '@/lib/motion'
 import { AnimatedNumber } from '@/components/ui/animated-number'
@@ -345,10 +345,20 @@ export default function Chart({
             </div>
           </div>
 
-          {!hasData || !hasAnyNonZero ? (
+          {!hasData ? (
             <div className="flex h-72 flex-col items-center justify-center">
               <EmptyState
-                title={!hasData ? 'No data in this window' : `No ${METRIC_CONFIGS.find((m) => m.key === metric)?.label.toLowerCase()} recorded`}
+                icon={<ChartLine />}
+                title="No visitors yet"
+                description="Your traffic chart will come alive once visitors start arriving. Share your site to get the first data point."
+                className="py-0"
+              />
+            </div>
+          ) : !hasAnyNonZero ? (
+            <div className="flex h-72 flex-col items-center justify-center">
+              <EmptyState
+                icon={<ChartLine />}
+                title={`No ${METRIC_CONFIGS.find((m) => m.key === metric)?.label.toLowerCase()} recorded`}
                 description="Try expanding the time range or checking back later."
                 className="py-0"
               />
