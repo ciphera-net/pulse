@@ -8,9 +8,9 @@
 // Tests that need to assert on specific URL substrings can override these
 // per-test via `vi.stubEnv(...)`.
 process.env.NEXT_PUBLIC_API_URL ??= 'http://test.invalid/api'
-process.env.NEXT_PUBLIC_AUTH_URL ??= 'http://test.invalid/auth-ui'
+process.env.NEXT_PUBLIC_ID_URL      ??= 'http://test.invalid/id-ui'
 process.env.NEXT_PUBLIC_APP_URL ??= 'http://test.invalid/app'
-process.env.NEXT_PUBLIC_AUTH_API_URL ??= 'http://test.invalid/auth-api'
+process.env.NEXT_PUBLIC_ID_API_URL  ??= 'http://test.invalid/id-api'
 process.env.NEXT_PUBLIC_CAPTCHA_API_URL ??= 'http://test.invalid/captcha/api/v1'
 process.env.NEXT_PUBLIC_CHARGEBEE_SITE ??= 'test-site'
 process.env.NEXT_PUBLIC_CHARGEBEE_PUBLISHABLE_KEY ??= 'test_pub_stub'

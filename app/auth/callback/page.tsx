@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense, useRef, useCallback } from 'react'
 import { logger } from '@/lib/utils/logger'
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth/context'
-import { AUTH_URL, default as apiRequest } from '@/lib/api/client'
+import { ID_URL, default as apiRequest } from '@/lib/api/client'
 import { exchangeAuthCode } from '@/app/actions/auth'
 import { authMessageFromErrorType, type AuthErrorType } from '@ciphera-net/ui'
 import { safeRedirectUrl } from '@/lib/utils/safe-redirect'
@@ -122,7 +122,7 @@ function AuthCallbackContent() {
             )}
             <button
               type="button"
-              onClick={() => { window.location.href = `${AUTH_URL}/login` }}
+              onClick={() => { window.location.href = `${ID_URL}/login` }}
               className="text-sm underline text-left"
             >
               Back to Login

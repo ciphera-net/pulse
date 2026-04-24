@@ -6,7 +6,7 @@ import { getCookieDomain } from '@/lib/utils/cookies'
 import { env } from '@/lib/env'
 
 // Server-side runtime code. Reads from the Zod-validated env schema.
-const AUTH_API_URL = env.NEXT_PUBLIC_AUTH_API_URL
+const ID_API_URL = env.NEXT_PUBLIC_ID_API_URL
 
 interface AuthResponse {
   access_token: string
@@ -31,7 +31,7 @@ export async function exchangeAuthCode(code: string, codeVerifier: string | null
     // * IMPORTANT: credentials: 'include' is required to receive httpOnly cookies from Auth API
     // * The Auth API sets access_token, refresh_token, and csrf_token as httpOnly cookies
     // * We must forward these to the browser for cross-subdomain auth to work
-    const res = await fetch(`${AUTH_API_URL}/oauth/token`, {
+    const res = await fetch(`${ID_API_URL}/oauth/token`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -212,7 +212,7 @@ export async function logoutAction() {
   // Revoke the refresh token server-side before clearing local cookies.
   if (refreshToken) {
     try {
-      await fetch(`${AUTH_API_URL}/api/v1/auth/logout`, {
+      await fetch(`${ID_API_URL}/api/v1/auth/logout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refresh_token: refreshToken }),
