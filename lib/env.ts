@@ -48,13 +48,13 @@ export const env = createEnv({
     NEXT_PUBLIC_API_URL: z.string().url(),
 
     /** id-frontend public URL used for OAuth redirects from pulse → id. */
-    NEXT_PUBLIC_AUTH_URL: z.string().url(),
+    NEXT_PUBLIC_ID_URL: z.string().url(),
 
     /** pulse-frontend's own public URL (self-links, OAuth callback, share URLs). */
     NEXT_PUBLIC_APP_URL: z.string().url(),
 
     /** id-backend API base URL (used by token refresh and server actions). */
-    NEXT_PUBLIC_AUTH_API_URL: z.string().url(),
+    NEXT_PUBLIC_ID_API_URL: z.string().url(),
 
     /** Captcha service base URL, includes `/api/v1` suffix. */
     NEXT_PUBLIC_CAPTCHA_API_URL: z.string().url(),
@@ -81,9 +81,9 @@ export const env = createEnv({
    */
   runtimeEnv: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
-    NEXT_PUBLIC_AUTH_URL: process.env.NEXT_PUBLIC_AUTH_URL,
+    NEXT_PUBLIC_ID_URL: process.env.NEXT_PUBLIC_ID_URL,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-    NEXT_PUBLIC_AUTH_API_URL: process.env.NEXT_PUBLIC_AUTH_API_URL,
+    NEXT_PUBLIC_ID_API_URL: process.env.NEXT_PUBLIC_ID_API_URL,
     NEXT_PUBLIC_CAPTCHA_API_URL: process.env.NEXT_PUBLIC_CAPTCHA_API_URL,
     NEXT_PUBLIC_CHARGEBEE_SITE: process.env.NEXT_PUBLIC_CHARGEBEE_SITE,
     NEXT_PUBLIC_CHARGEBEE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CHARGEBEE_PUBLISHABLE_KEY,

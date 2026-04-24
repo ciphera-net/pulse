@@ -9,9 +9,7 @@
  */
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
-import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowRightIcon } from '@ciphera-net/ui'
 import {
   integrations,
   categoryLabels,
@@ -119,6 +117,17 @@ export default function IntegrationsPage() {
           <p className="text-xl text-neutral-400 max-w-2xl mx-auto leading-relaxed mb-8">
             Connect Pulse with {integrations.length}+ frameworks and platforms in minutes.
           </p>
+          <a
+            href="https://docs.ciphera.net/pulse/script-installation"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 mt-4 px-4 py-2 text-sm font-medium text-brand-orange border border-brand-orange/30 rounded-lg hover:bg-brand-orange/10 transition-colors ease-apple"
+          >
+            Installation docs
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+            </svg>
+          </a>
 
           {/* * --- Search Input with "/" hint --- */}
           <div className="relative max-w-md mx-auto">
@@ -243,17 +252,16 @@ export default function IntegrationsPage() {
                         viewport={{ once: true }}
                         transition={{ duration: 0.4, delay: i * 0.05 }}
                       >
-                        <Link
-                          href={integration!.dedicatedPage ? `/integrations/${integration!.id}` : '/integrations/script-tag'}
-                          className="group flex items-center gap-3 p-4 glass-surface rounded-xl hover:border-brand-orange/50 transition-all duration-slow hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.99] h-full ease-apple"
+                        <div
+                          className="flex items-center gap-3 p-4 glass-surface rounded-xl h-full"
                         >
-                          <div className="p-2 bg-neutral-800 rounded-lg shrink-0 group-hover:scale-110 transition-transform duration-slow [&_svg]:w-6 [&_svg]:h-6 ease-apple">
+                          <div className="p-2 bg-neutral-800 rounded-lg shrink-0 [&_svg]:w-6 [&_svg]:h-6">
                             {integration!.icon}
                           </div>
                           <span className="font-semibold text-white text-sm">
                             {integration!.name}
                           </span>
-                        </Link>
+                        </div>
                       </motion.div>
                     ))}
                   </div>
@@ -282,27 +290,22 @@ export default function IntegrationsPage() {
                         viewport={{ once: true }}
                         transition={{ duration: 0.5, delay: i * 0.05 }}
                       >
-                        <Link
-                          href={integration.dedicatedPage ? `/integrations/${integration.id}` : '/integrations/script-tag'}
-                          className="group relative p-6 glass-surface rounded-2xl hover:border-brand-orange/50 transition-all duration-slow hover:-translate-y-1 hover:shadow-xl active:translate-y-0 active:scale-[0.99] block h-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 ease-apple"
+                        <div
+                          className="relative p-6 glass-surface rounded-2xl block h-full"
                         >
-                          <div className="flex items-start justify-between mb-6">
-                            <div className="p-3 bg-neutral-800 rounded-xl group-hover:scale-110 transition-transform duration-slow ease-apple">
+                          <div className="flex items-start mb-6">
+                            <div className="p-3 bg-neutral-800 rounded-xl">
                               {integration.icon}
                             </div>
-                            <ArrowRightIcon className="w-5 h-5 text-neutral-400 group-hover:text-brand-orange transition-colors ease-apple" />
                           </div>
 
                           <h3 className="text-xl font-bold text-white mb-3">
                             {integration.name}
                           </h3>
-                          <p className="text-neutral-400 leading-relaxed mb-4">
+                          <p className="text-neutral-400 leading-relaxed">
                             {integration.description}
                           </p>
-                          <span className="text-sm font-medium text-brand-orange opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 ease-apple">
-                            View Guide <span aria-hidden="true">&rarr;</span>
-                          </span>
-                        </Link>
+                        </div>
                       </motion.div>
                     ))}
                   </div>

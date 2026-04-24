@@ -17,18 +17,18 @@ const FETCH_TIMEOUT_MS = 30_000
 // fallbacks and the subsequent DIY requireEnv helper with the
 // industry-standard @t3-oss/env-nextjs + Zod pattern.
 export const API_URL = env.NEXT_PUBLIC_API_URL
-export const AUTH_URL = env.NEXT_PUBLIC_AUTH_URL
+export const ID_URL = env.NEXT_PUBLIC_ID_URL
 export const APP_URL = env.NEXT_PUBLIC_APP_URL
-export const AUTH_API_URL = env.NEXT_PUBLIC_AUTH_API_URL
+export const ID_API_URL = env.NEXT_PUBLIC_ID_API_URL
 
 export function getLoginUrl(redirectPath = '/auth/callback') {
   const redirectUri = encodeURIComponent(`${APP_URL}${redirectPath}`)
-  return `${AUTH_URL}/login?client_id=pulse-app&redirect_uri=${redirectUri}&response_type=code`
+  return `${ID_URL}/login?client_id=pulse-app&redirect_uri=${redirectUri}&response_type=code`
 }
 
 export function getSignupUrl(redirectPath = '/auth/callback') {
   const redirectUri = encodeURIComponent(`${APP_URL}${redirectPath}`)
-  return `${AUTH_URL}/signup?client_id=pulse-app&redirect_uri=${redirectUri}&response_type=code`
+  return `${ID_URL}/signup?client_id=pulse-app&redirect_uri=${redirectUri}&response_type=code`
 }
 
 // * ============================================================================
@@ -166,7 +166,7 @@ async function apiRequest<T>(
 
   // * Determine base URL
   const isAuthRequest = endpoint.startsWith('/auth')
-  const baseUrl = isAuthRequest ? AUTH_API_URL : API_URL
+  const baseUrl = isAuthRequest ? ID_API_URL : API_URL
 
   // * Handle legacy endpoints that already include /api/ prefix
   const url = endpoint.startsWith('/api/')

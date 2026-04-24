@@ -6,7 +6,7 @@ import { env } from '@/lib/env'
 // Server-side runtime code. Reads from the same Zod-validated env schema
 // the client bundle imports — both phases see identical values, and Zod
 // throws at module load on any missing/malformed input.
-const AUTH_API_URL = env.NEXT_PUBLIC_AUTH_API_URL
+const ID_API_URL = env.NEXT_PUBLIC_ID_API_URL
 
 export async function POST(request: Request) {
   const cookieStore = await cookies()
@@ -35,22 +35,37 @@ export async function POST(request: Request) {
   }
 
   try {
-    const res = await fetch(`${AUTH_API_URL}/api/v1/auth/refresh`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': request.headers.get('user-agent') || '',
-      },
-      body: JSON.stringify({
-        refresh_token: refreshToken,
-        ...(previousOrgId ? { organization_id: previousOrgId } : {}),
-        ...(body.screen_width ? {
-          screen_width: body.screen_width,
-          screen_height: body.screen_height,
-          timezone: body.timezone,
-        } : {}),
-      }),
-    })
+    const deviceSignals = body.screen_width ? {
+      screen_width: body.screen_width,
+      screen_height: body.screen_height,
+      timezone: body.timezone,
+    } : {}
+
+    const doRefresh = async (orgId: string) => {
+      return fetch(`${ID_API_URL}/api/v1/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': request.headers.get('user-agent') || '',
+        },
+        body: JSON.stringify({
+          refresh_token: refreshToken,
+          ...(orgId ? { organization_id: orgId } : {}),
+          ...deviceSignals,
+        }),
+      })
+    }
+
+    let res = await doRefresh(previousOrgId)
+
+    // If the org context is stale (user removed or org deleted), retry without
+    // it so the server falls back to the user's primary org.
+    if (res.status === 403 && previousOrgId) {
+      const errBody = await res.json().catch(() => null)
+      if (errBody?.error?.includes('not a member')) {
+        res = await doRefresh('')
+      }
+    }
 
     const cookieDomain = getCookieDomain()
 
