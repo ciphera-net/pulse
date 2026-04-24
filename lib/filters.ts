@@ -9,12 +9,14 @@ export interface DimensionFilter {
 export const DIMENSION_LABELS: Record<string, string> = {
   page: 'Page',
   referrer: 'Referrer',
+  channel: 'Channel',
   country: 'Country',
   city: 'City',
   region: 'Region',
   browser: 'Browser',
   os: 'OS',
   device: 'Device',
+  screen_resolution: 'Screen Resolution',
   utm_source: 'UTM Source',
   utm_medium: 'UTM Medium',
   utm_campaign: 'UTM Campaign',
@@ -32,8 +34,8 @@ export const OPERATORS = Object.keys(OPERATOR_LABELS) as DimensionFilter['operat
 
 export const DIMENSION_CATEGORIES = [
   { label: 'URL', dimensions: ['page'] },
-  { label: 'Acquisition', dimensions: ['referrer', 'utm_source', 'utm_medium', 'utm_campaign'] },
-  { label: 'Device', dimensions: ['browser', 'os', 'device'] },
+  { label: 'Acquisition', dimensions: ['referrer', 'channel', 'utm_source', 'utm_medium', 'utm_campaign'] },
+  { label: 'Device', dimensions: ['browser', 'os', 'device', 'screen_resolution'] },
   { label: 'Audience', dimensions: ['country', 'region', 'city'] },
 ] as const
 
