@@ -6,7 +6,7 @@ import { env } from '@/lib/env'
 // Server-side runtime code. Reads from the same Zod-validated env schema
 // the client bundle imports — both phases see identical values, and Zod
 // throws at module load on any missing/malformed input.
-const AUTH_API_URL = env.NEXT_PUBLIC_AUTH_API_URL
+const ID_API_URL = env.NEXT_PUBLIC_ID_API_URL
 
 export async function POST(request: Request) {
   const cookieStore = await cookies()
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     } : {}
 
     const doRefresh = async (orgId: string) => {
-      return fetch(`${AUTH_API_URL}/api/v1/auth/refresh`, {
+      return fetch(`${ID_API_URL}/api/v1/auth/refresh`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

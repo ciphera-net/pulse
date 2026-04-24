@@ -88,8 +88,8 @@ jobs:
           build-args: |
             NEXT_PUBLIC_API_URL=${{ steps.target.outputs.public_api_url }}
             NEXT_PUBLIC_APP_URL=${{ steps.target.outputs.public_app_url }}
-            NEXT_PUBLIC_AUTH_URL=https://id.ciphera.net
-            NEXT_PUBLIC_AUTH_API_URL=https://api.id.ciphera.net
+            NEXT_PUBLIC_ID_URL=https://id.ciphera.net
+            NEXT_PUBLIC_ID_API_URL=https://api.id.ciphera.net
             NEXT_PUBLIC_CAPTCHA_API_URL=https://captcha.ciphera.net/api/v1
             NEXT_PUBLIC_CHARGEBEE_SITE=${{ steps.target.outputs.chargebee_site }}
             NEXT_PUBLIC_CHARGEBEE_PUBLISHABLE_KEY=${{ steps.target.outputs.chargebee_pub_key }}
