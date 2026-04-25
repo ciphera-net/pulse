@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Script from 'next/script'
 import { useRouter } from 'next/navigation'
 import { Button, toast, Spinner, Modal } from '@ciphera-net/ui'
 import { CreditCard, DownloadSimple } from '@phosphor-icons/react'
@@ -10,7 +9,6 @@ import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { createPortalSession, cancelSubscription, resumeSubscription, getInvoices, downloadInvoicePDF, type Invoice } from '@/lib/api/billing'
 import { formatDateLong, formatDate } from '@/lib/utils/formatDate'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
-import { initChargebee } from '@/lib/chargebee'
 
 export default function WorkspaceBillingTab() {
   const router = useRouter()
@@ -26,17 +24,8 @@ export default function WorkspaceBillingTab() {
 
   const handleUpdatePayment = async () => {
     try {
-      const cbInstance = initChargebee()
-      if (!cbInstance) {
-        toast.error('Payment system unavailable. Please refresh.')
-        return
-      }
-      cbInstance.setPortalSession(() => createPortalSession())
-      const portal = cbInstance.createChargebeePortal()
-      portal.open({
-        sectionType: 'payment_sources',
-        close: () => mutate(),
-      })
+      const session = await createPortalSession()
+      window.location.href = session.access_url
     } catch {
       toast.error('Failed to open payment portal')
     }
@@ -96,10 +85,6 @@ export default function WorkspaceBillingTab() {
 
   return (
     <div className="space-y-6">
-      <Script
-        src="https://js.chargebee.com/v2/chargebee.js"
-        strategy="lazyOnload"
-      />
       <div>
         <h3 className="text-base font-semibold text-white mb-1">Billing & Subscription</h3>
         <p className="text-sm text-neutral-400">Manage your plan, usage, and payment details.</p>
