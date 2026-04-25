@@ -4,6 +4,14 @@ import { useState } from 'react'
 import { Lock, ShieldCheck } from '@phosphor-icons/react'
 import { createCheckoutSession } from '@/lib/api/billing'
 
+const PAYMENT_METHODS = [
+  { id: 'creditcard', label: 'Cards' },
+  { id: 'bancontact', label: 'Bancontact' },
+  { id: 'directdebit', label: 'SEPA' },
+  { id: 'ideal', label: 'iDEAL' },
+  { id: 'applepay', label: 'Apple Pay' },
+]
+
 interface PaymentFormProps {
   plan: string
   interval: string
@@ -14,6 +22,7 @@ interface PaymentFormProps {
 }
 
 export default function PaymentForm({ plan, interval, limit, country, vatId }: PaymentFormProps) {
+  const [selectedMethod, setSelectedMethod] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -21,6 +30,10 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
     e.preventDefault()
     setFormError(null)
 
+    if (!selectedMethod) {
+      setFormError('Please select a payment method')
+      return
+    }
     if (!country) {
       setFormError('Please select your country')
       return
@@ -35,6 +48,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
         limit,
         country,
         vat_id: vatId || undefined,
+        method: selectedMethod,
       })
 
       window.location.href = url
@@ -46,11 +60,30 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
 
   return (
     <form onSubmit={handleSubmit} className="rounded-2xl glass-surface p-6">
-      <h2 className="text-lg font-semibold text-white mb-4">Payment</h2>
+      <h2 className="text-lg font-semibold text-white mb-4">Payment method</h2>
 
-      <p className="text-sm text-neutral-400 mb-5">
-        You&apos;ll be taken to a secure checkout to enter your card details.
-      </p>
+      <div className="grid grid-cols-3 gap-2 mb-5">
+        {PAYMENT_METHODS.map((method) => (
+          <button
+            key={method.id}
+            type="button"
+            onClick={() => { setSelectedMethod(method.id); setFormError(null) }}
+            className={`flex items-center justify-center rounded-xl border h-[44px] text-sm transition-all duration-base ${
+              selectedMethod === method.id
+                ? 'border-brand-orange bg-brand-orange/5 text-white'
+                : 'border-neutral-700/50 bg-neutral-800/30 text-neutral-400 hover:border-neutral-600'
+            } ease-apple`}
+          >
+            {method.label}
+          </button>
+        ))}
+      </div>
+
+      {selectedMethod && (
+        <p className="text-sm text-neutral-400 mb-4">
+          You&apos;ll be redirected to complete payment securely via {PAYMENT_METHODS.find(m => m.id === selectedMethod)?.label}.
+        </p>
+      )}
 
       {formError && (
         <div className="mb-4 rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
@@ -60,7 +93,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
 
       <button
         type="submit"
-        disabled={submitting}
+        disabled={submitting || !selectedMethod}
         className="w-full rounded-lg bg-brand-orange-button px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-orange-button-hover disabled:opacity-50 disabled:cursor-not-allowed ease-apple"
       >
         {submitting ? 'Processing...' : 'Proceed to payment'}
