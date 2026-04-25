@@ -20,7 +20,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId, onS
   const router = useRouter()
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const [scriptReady, setScriptReady] = useState(false)
+  const [scriptReady, setScriptReady] = useState(() => typeof window !== 'undefined' && !!window.Chargebee)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
