@@ -42,23 +42,27 @@ export default function PaymentForm({ plan, interval, limit, country, vatId, onS
         vat_id: vatId || undefined,
       })
 
+      const isTestSite = process.env.NEXT_PUBLIC_CHARGEBEE_SITE?.endsWith('-test')
       const cbInstance = initChargebee()
-      if (!cbInstance) throw new Error('Payment system unavailable. Please refresh the page.')
 
-      cbInstance.openCheckout({
-        hostedPage: () => Promise.resolve({ url }),
-        success: () => {
-          if (onSuccess) onSuccess()
-          else router.push('/setup/done')
-        },
-        error: () => {
-          setFormError('Payment failed. Please try again.')
-          setSubmitting(false)
-        },
-        close: () => {
-          setSubmitting(false)
-        },
-      })
+      if (!isTestSite && cbInstance) {
+        cbInstance.openCheckout({
+          hostedPage: () => Promise.resolve({ url }),
+          success: () => {
+            if (onSuccess) onSuccess()
+            else router.push('/setup/done')
+          },
+          error: () => {
+            setFormError('Payment failed. Please try again.')
+            setSubmitting(false)
+          },
+          close: () => {
+            setSubmitting(false)
+          },
+        })
+      } else {
+        window.location.href = url
+      }
     } catch (err) {
       setFormError((err as Error)?.message || 'Payment failed. Please try again.')
       setSubmitting(false)
