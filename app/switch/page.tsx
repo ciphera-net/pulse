@@ -392,6 +392,12 @@ function SwitchPlanContent() {
                         <span className="text-neutral-400">New plan starts</span>
                         <span className="text-white">Now</span>
                       </div>
+                      {(estimate.credits_applied ?? 0) > 0 && (
+                        <div className="flex justify-between">
+                          <span className="text-neutral-400">Credit from current plan</span>
+                          <span className="text-green-400">−{formatCents(estimate.credits_applied!)}</span>
+                        </div>
+                      )}
                       <div className="border-t border-neutral-700 pt-2 flex justify-between font-medium">
                         <span className="text-neutral-300">Charged today</span>
                         <span className="text-white">{formatCents(estimate.charge_amount ?? 0)}</span>
