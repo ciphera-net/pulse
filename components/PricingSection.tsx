@@ -105,7 +105,7 @@ export default function PricingSection() {
     }
 
     if (subscription?.subscription_status === 'active') {
-      router.push(`/switch-plan?${planParams}`)
+      router.push(`/switch?${planParams}`)
       return
     }
 
