@@ -12,7 +12,5 @@ process.env.NEXT_PUBLIC_ID_URL      ??= 'http://test.invalid/id-ui'
 process.env.NEXT_PUBLIC_APP_URL ??= 'http://test.invalid/app'
 process.env.NEXT_PUBLIC_ID_API_URL  ??= 'http://test.invalid/id-api'
 process.env.NEXT_PUBLIC_CAPTCHA_API_URL ??= 'http://test.invalid/captcha/api/v1'
-process.env.NEXT_PUBLIC_CHARGEBEE_SITE ??= 'test-site'
-process.env.NEXT_PUBLIC_CHARGEBEE_PUBLISHABLE_KEY ??= 'test_pub_stub'
 
 import '@testing-library/jest-dom/vitest'
