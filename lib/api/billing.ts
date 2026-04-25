@@ -1,4 +1,5 @@
 import apiRequest from './client'
+import type { PortalSession } from '@/lib/chargebee'
 
 export interface TaxID {
   type: string
@@ -31,8 +32,8 @@ export async function getSubscription(): Promise<SubscriptionDetails> {
   return apiRequest<SubscriptionDetails>('/api/billing/subscription')
 }
 
-export async function createPortalSession(): Promise<{ url: string }> {
-  return apiRequest<{ url: string }>('/api/billing/portal', {
+export async function createPortalSession(): Promise<PortalSession> {
+  return apiRequest<PortalSession>('/api/billing/portal', {
     method: 'POST',
   })
 }
@@ -105,13 +106,6 @@ export async function createCheckoutSession(params: CreateCheckoutParams): Promi
   })
 }
 
-export async function updatePaymentMethod(token: string): Promise<{ ok: boolean }> {
-  return apiRequest<{ ok: boolean }>('/api/billing/update-payment-method', {
-    method: 'POST',
-    body: JSON.stringify({ token }),
-  })
-}
-
 export interface Invoice {
   id: string
   invoice_number: string | null
@@ -165,31 +159,6 @@ export interface CalculateVATParams {
 
 export async function calculateVAT(params: CalculateVATParams): Promise<VATResult> {
   return apiRequest<VATResult>('/api/billing/calculate-vat', {
-    method: 'POST',
-    body: JSON.stringify(params),
-  })
-}
-
-export interface PaymentIntentResponse {
-  payment_intent: {
-    id: string
-    gateway_account_id: string
-    amount: number
-    currency_code: string
-    status: string
-    [key: string]: unknown
-  }
-}
-
-export async function createPaymentIntent(params: { plan_id: string; interval: string; limit: number }): Promise<PaymentIntentResponse> {
-  return apiRequest<PaymentIntentResponse>('/api/billing/create-payment-intent', {
-    method: 'POST',
-    body: JSON.stringify(params),
-  })
-}
-
-export async function createEmbeddedCheckout(params: { plan_id: string; interval: string; limit: number; payment_intent_id: string }): Promise<{ status: 'success' }> {
-  return apiRequest<{ status: 'success' }>('/api/billing/checkout-embedded', {
     method: 'POST',
     body: JSON.stringify(params),
   })

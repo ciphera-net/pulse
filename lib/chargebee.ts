@@ -23,7 +23,7 @@ export interface CheckoutOptions {
 }
 
 export interface PortalInstance {
-  open: (options: unknown) => void
+  open: (options: { sectionType?: string; close?: () => void }) => void
 }
 
 export interface PortalSession {

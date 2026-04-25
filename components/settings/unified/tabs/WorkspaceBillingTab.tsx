@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import Script from 'next/script'
 import { useRouter } from 'next/navigation'
 import { Button, toast, Spinner, Modal } from '@ciphera-net/ui'
-import { CreditCard, ArrowSquareOut, DownloadSimple } from '@phosphor-icons/react'
+import { CreditCard, DownloadSimple } from '@phosphor-icons/react'
 import { useSubscription } from '@/lib/swr/dashboard'
 import { useUnifiedSettings } from '@/lib/unified-settings-context'
-import { updatePaymentMethod, cancelSubscription, resumeSubscription, getInvoices, downloadInvoicePDF, type Invoice } from '@/lib/api/billing'
+import { createPortalSession, cancelSubscription, resumeSubscription, getInvoices, downloadInvoicePDF, type Invoice } from '@/lib/api/billing'
 import { formatDateLong, formatDate } from '@/lib/utils/formatDate'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { initChargebee } from '@/lib/chargebee'
@@ -19,64 +19,26 @@ export default function WorkspaceBillingTab() {
   const [cancelling, setCancelling] = useState(false)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [invoices, setInvoices] = useState<Invoice[]>([])
-  const [showPaymentModal, setShowPaymentModal] = useState(false)
-  const [updatingPayment, setUpdatingPayment] = useState(false)
-  const [cardMounted, setCardMounted] = useState(false)
-  const cardRef = useRef<any>(null)
 
   useEffect(() => {
     getInvoices().then(setInvoices).catch(() => {})
   }, [])
 
-  const mountCardComponent = useCallback(async () => {
-    if (cardRef.current) return
+  const handleUpdatePayment = async () => {
     try {
       const cbInstance = initChargebee()
-      if (!cbInstance) return
-      await cbInstance.load('components')
-      const card = cbInstance.createComponent('card', {
-        placeholder: { number: 'Card number', expiry: 'MM / YY', cvv: 'CVV' },
-        style: {
-          base: {
-            color: '#ffffff',
-            fontSize: '15px',
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-            '::placeholder': { color: '#737373' },
-          },
-          invalid: { color: '#ef4444' },
-        },
-        icon: true,
-      }) as any
-      card.mount('#payment-card-field')
-      card.on('ready', () => setCardMounted(true))
-      cardRef.current = card
+      if (!cbInstance) {
+        toast.error('Payment system unavailable. Please refresh.')
+        return
+      }
+      cbInstance.setPortalSession(() => createPortalSession())
+      const portal = cbInstance.createChargebeePortal()
+      portal.open({
+        sectionType: 'payment_sources',
+        close: () => mutate(),
+      })
     } catch {
-      toast.error('Failed to load card form')
-    }
-  }, [])
-
-  useEffect(() => {
-    if (showPaymentModal) {
-      const timer = setTimeout(mountCardComponent, 200)
-      return () => clearTimeout(timer)
-    } else {
-      cardRef.current = null
-      setCardMounted(false)
-    }
-  }, [showPaymentModal, mountCardComponent])
-
-  const handleUpdatePayment = async () => {
-    if (!cardRef.current) return
-    setUpdatingPayment(true)
-    try {
-      const { token } = await cardRef.current.tokenize()
-      await updatePaymentMethod(token)
-      toast.success('Payment method updated')
-      setShowPaymentModal(false)
-    } catch (err) {
-      toast.error((err as Error)?.message || 'Failed to update payment method')
-    } finally {
-      setUpdatingPayment(false)
+      toast.error('Failed to open payment portal')
     }
   }
 
@@ -134,6 +96,10 @@ export default function WorkspaceBillingTab() {
 
   return (
     <div className="space-y-6">
+      <Script
+        src="https://js.chargebee.com/v2/chargebee.js"
+        strategy="lazyOnload"
+      />
       <div>
         <h3 className="text-base font-semibold text-white mb-1">Billing & Subscription</h3>
         <p className="text-sm text-neutral-400">Manage your plan, usage, and payment details.</p>
@@ -202,7 +168,7 @@ export default function WorkspaceBillingTab() {
 
       {/* Actions */}
       <div className="flex flex-wrap gap-3">
-        <Button onClick={() => setShowPaymentModal(true)} variant="secondary" className="text-sm gap-1.5">
+        <Button onClick={handleUpdatePayment} variant="secondary" className="text-sm gap-1.5">
           <CreditCard weight="bold" className="w-3.5 h-3.5" />
           Update payment method
         </Button>
@@ -245,25 +211,6 @@ export default function WorkspaceBillingTab() {
             disabled={cancelling}
           >
             {cancelling ? 'Cancelling...' : 'Yes, cancel'}
-          </Button>
-        </div>
-      </Modal>
-
-      {/* Update payment method modal */}
-      <Modal isOpen={showPaymentModal} onClose={() => setShowPaymentModal(false)} title="Update payment method" className="max-w-md">
-        <p className="text-sm text-neutral-400 mb-4">
-          Enter your new card details below.
-        </p>
-        <div
-          id="payment-card-field"
-          className="w-full rounded-lg border border-neutral-700 bg-neutral-800/50 px-3 py-3 min-h-[48px] mb-4"
-        />
-        <div className="flex justify-end gap-3">
-          <Button variant="secondary" className="text-sm" onClick={() => setShowPaymentModal(false)} disabled={updatingPayment}>
-            Cancel
-          </Button>
-          <Button variant="primary" className="text-sm" onClick={handleUpdatePayment} disabled={updatingPayment || !cardMounted}>
-            {updatingPayment ? 'Updating...' : 'Update card'}
           </Button>
         </div>
       </Modal>
