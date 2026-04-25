@@ -355,36 +355,48 @@ function SwitchPlanContent() {
                   <p className="text-sm text-red-400">Failed to estimate cost. Please try again.</p>
                 )}
 
-                {estimate && !estimateLoading && (
+                {estimate && !estimateLoading && estimate.direction === 'downgrade' && (
                   <div className="rounded-xl border border-neutral-700 bg-neutral-800/30 p-4 space-y-3">
-                    <h3 className="text-sm font-medium text-neutral-300">Cost summary</h3>
+                    <h3 className="text-sm font-medium text-neutral-300">Downgrade summary</h3>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
-                        <span className="text-neutral-400">New plan (prorated)</span>
-                        <span className="text-white">{formatCents(estimate.sub_total)}</span>
+                        <span className="text-neutral-400">Current plan active until</span>
+                        <span className="text-white">{estimate.current_plan_end}</span>
                       </div>
-                      {estimate.credits_applied > 0 && (
+                      {(estimate.refund_amount ?? 0) > 0 && (
                         <div className="flex justify-between">
-                          <span className="text-neutral-400">Credit from current plan</span>
-                          <span className="text-green-400">-{formatCents(estimate.credits_applied)}</span>
-                        </div>
-                      )}
-                      {estimate.tax > 0 && (
-                        <div className="flex justify-between">
-                          <span className="text-neutral-400">VAT</span>
-                          <span className="text-white">{formatCents(estimate.tax)}</span>
+                          <span className="text-neutral-400">Refund (unused months)</span>
+                          <span className="text-green-400">{formatCents(estimate.refund_amount!)}</span>
                         </div>
                       )}
                       <div className="border-t border-neutral-700 pt-2 flex justify-between font-medium">
-                        <span className="text-neutral-300">Due now</span>
-                        <span className="text-white">{formatCents(estimate.amount_due)}</span>
+                        <span className="text-neutral-300">New plan starts</span>
+                        <span className="text-white">{estimate.new_plan_start}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-neutral-400">First charge</span>
+                        <span className="text-white">{formatCents(estimate.new_plan_cost ?? 0)}</span>
                       </div>
                     </div>
-                    {estimate.next_date > 0 && (
-                      <p className="text-xs text-neutral-500 pt-1">
-                        Next renewal: {formatCents(estimate.next_total)} on {formatDate(estimate.next_date)}
-                      </p>
-                    )}
+                    <p className="text-xs text-neutral-500 pt-1">
+                      Refund will be returned to your original payment method.
+                    </p>
+                  </div>
+                )}
+
+                {estimate && !estimateLoading && estimate.direction === 'upgrade' && (
+                  <div className="rounded-xl border border-neutral-700 bg-neutral-800/30 p-4 space-y-3">
+                    <h3 className="text-sm font-medium text-neutral-300">Upgrade summary</h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-neutral-400">New plan starts</span>
+                        <span className="text-white">Now</span>
+                      </div>
+                      <div className="border-t border-neutral-700 pt-2 flex justify-between font-medium">
+                        <span className="text-neutral-300">Charged today</span>
+                        <span className="text-white">{formatCents(estimate.charge_amount ?? 0)}</span>
+                      </div>
+                    </div>
                   </div>
                 )}
 
@@ -402,7 +414,10 @@ function SwitchPlanContent() {
                     disabled={switching || estimateLoading || estimateError}
                     className="flex-1 rounded-lg bg-brand-orange-button px-4 py-3 text-sm font-semibold text-white hover:bg-brand-orange-button-hover transition-colors disabled:opacity-50 ease-apple"
                   >
-                    {switching ? 'Switching...' : estimate ? `Pay ${formatCents(estimate.amount_due)} & switch` : 'Confirm switch'}
+                    {switching ? 'Switching...'
+                      : estimate?.direction === 'downgrade' ? 'Confirm downgrade'
+                      : estimate?.direction === 'upgrade' ? `Pay ${formatCents(estimate.charge_amount ?? 0)} & upgrade`
+                      : 'Confirm switch'}
                   </button>
                 </div>
               </div>

@@ -71,15 +71,25 @@ export async function changePlan(params: ChangePlanParams): Promise<{ ok: boolea
 }
 
 export interface PlanChangeEstimate {
-  sub_total: number
-  tax: number
-  total: number
-  credits_applied: number
-  amount_due: number
+  direction: 'upgrade' | 'downgrade'
   currency: string
-  next_total: number
-  next_date: number
-  next_interval: string
+  // Downgrade fields
+  refund_amount?: number
+  current_plan_end?: string
+  new_plan_start?: string
+  new_plan_cost?: number
+  // Upgrade fields
+  charge_amount?: number
+  effective?: string
+  // Legacy fields (kept for compatibility)
+  sub_total?: number
+  tax?: number
+  total?: number
+  credits_applied?: number
+  amount_due?: number
+  next_total?: number
+  next_date?: number
+  next_interval?: string
 }
 
 export async function estimatePlanChange(params: ChangePlanParams): Promise<PlanChangeEstimate> {
