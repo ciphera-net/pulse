@@ -69,7 +69,7 @@ export default function WorkspaceBillingTab() {
         <CreditCard className="w-10 h-10 text-neutral-500 mx-auto mb-3" />
         <h3 className="text-base font-semibold text-white mb-1">No subscription</h3>
         <p className="text-sm text-neutral-400 mb-4">You're on the Hobby plan.</p>
-        <Button variant="primary" className="text-sm" onClick={() => { closeUnifiedSettings(); router.push('/pricing'); }}>View Plans</Button>
+        <Button variant="primary" className="text-sm" onClick={() => { closeUnifiedSettings(); router.push('/switch'); }}>View Plans</Button>
       </div>
     )
   }
@@ -106,7 +106,7 @@ export default function WorkspaceBillingTab() {
               </span>
             )}
           </div>
-          <Button variant="primary" className="text-sm" onClick={() => { closeUnifiedSettings(); router.push('/pricing'); }}>Change Plan</Button>
+          <Button variant="primary" className="text-sm" onClick={() => { closeUnifiedSettings(); router.push('/switch'); }}>Change Plan</Button>
         </div>
 
         {/* Usage stats */}
