@@ -104,6 +104,11 @@ export default function PricingSection() {
       return
     }
 
+    if (subscription?.subscription_status === 'active') {
+      router.push(`/switch-plan?${planParams}`)
+      return
+    }
+
     try {
       const orgs = await getUserOrganizations()
       if (orgs.length === 0) {
