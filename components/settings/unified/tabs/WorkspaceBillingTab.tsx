@@ -6,7 +6,7 @@ import { Button, toast, Spinner, Modal } from '@ciphera-net/ui'
 import { CreditCard, DownloadSimple, ArrowRight } from '@phosphor-icons/react'
 import { useSubscription } from '@/lib/swr/dashboard'
 import { useUnifiedSettings } from '@/lib/unified-settings-context'
-import { updatePaymentMethod, cancelSubscription, resumeSubscription, getInvoices, downloadInvoicePDF, type Invoice } from '@/lib/api/billing'
+import { updatePaymentMethod, cancelSubscription, cancelPendingChange, resumeSubscription, getInvoices, downloadInvoicePDF, type Invoice } from '@/lib/api/billing'
 import { formatDateLong, formatDate } from '@/lib/utils/formatDate'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 
@@ -106,9 +106,7 @@ export default function WorkspaceBillingTab() {
               </span>
             )}
           </div>
-          <Button variant="primary" className="text-sm" onClick={() => { closeUnifiedSettings(); router.push('/switch'); }} disabled={!!subscription.pending_plan_id}>
-            {subscription.pending_plan_id ? 'Change Pending' : 'Change Plan'}
-          </Button>
+          <Button variant="primary" className="text-sm" onClick={() => { closeUnifiedSettings(); router.push('/switch'); }}>Change Plan</Button>
         </div>
 
         {/* Usage stats */}
@@ -155,13 +153,29 @@ export default function WorkspaceBillingTab() {
 
       {/* Pending plan change notice */}
       {subscription.pending_plan_id && (
-        <div className="flex items-center gap-3 p-3 rounded-lg bg-blue-900/20 border border-blue-900/40 text-sm mt-4">
-          <ArrowRight size={16} className="text-blue-400 shrink-0" />
-          <p className="text-blue-300">
-            Switching to <span className="font-semibold text-white">{subscription.pending_plan_id.charAt(0).toUpperCase() + subscription.pending_plan_id.slice(1)} Plan</span>
-            {subscription.pending_limit ? ` (${subscription.pending_limit.toLocaleString()} pageviews/${subscription.pending_interval === 'month' ? 'mo' : 'yr'})` : ''}
-            {subscription.current_period_end ? ` on ${formatDateLong(new Date(subscription.current_period_end))}` : ''}
-          </p>
+        <div className="flex items-center justify-between p-3 rounded-lg bg-blue-900/20 border border-blue-900/40 text-sm mt-4">
+          <div className="flex items-center gap-3">
+            <ArrowRight size={16} className="text-blue-400 shrink-0" />
+            <p className="text-blue-300">
+              Switching to <span className="font-semibold text-white">{subscription.pending_plan_id.charAt(0).toUpperCase() + subscription.pending_plan_id.slice(1)} Plan</span>
+              {subscription.pending_limit ? ` (${subscription.pending_limit.toLocaleString()} pageviews/${subscription.pending_interval === 'month' ? 'mo' : 'yr'})` : ''}
+              {subscription.current_period_end ? ` on ${formatDateLong(new Date(subscription.current_period_end))}` : ''}
+            </p>
+          </div>
+          <button
+            onClick={async () => {
+              try {
+                await cancelPendingChange()
+                mutate()
+                toast.success('Plan change cancelled')
+              } catch {
+                toast.error('Failed to cancel plan change')
+              }
+            }}
+            className="text-xs text-blue-400 hover:text-white transition-colors shrink-0 ml-3"
+          >
+            Cancel change
+          </button>
         </div>
       )}
 
