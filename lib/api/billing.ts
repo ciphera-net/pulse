@@ -1,5 +1,4 @@
 import apiRequest from './client'
-import type { PortalSession } from '@/lib/chargebee'
 
 export interface TaxID {
   type: string
@@ -32,8 +31,8 @@ export async function getSubscription(): Promise<SubscriptionDetails> {
   return apiRequest<SubscriptionDetails>('/api/billing/subscription')
 }
 
-export async function createPortalSession(): Promise<PortalSession> {
-  return apiRequest<PortalSession>('/api/billing/portal', {
+export async function updatePaymentMethod(): Promise<{ url: string }> {
+  return apiRequest<{ url: string }>('/api/billing/update-payment-method', {
     method: 'POST',
   })
 }

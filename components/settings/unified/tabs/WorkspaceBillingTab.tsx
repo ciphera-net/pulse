@@ -6,7 +6,7 @@ import { Button, toast, Spinner, Modal } from '@ciphera-net/ui'
 import { CreditCard, DownloadSimple } from '@phosphor-icons/react'
 import { useSubscription } from '@/lib/swr/dashboard'
 import { useUnifiedSettings } from '@/lib/unified-settings-context'
-import { createPortalSession, cancelSubscription, resumeSubscription, getInvoices, downloadInvoicePDF, type Invoice } from '@/lib/api/billing'
+import { updatePaymentMethod, cancelSubscription, resumeSubscription, getInvoices, downloadInvoicePDF, type Invoice } from '@/lib/api/billing'
 import { formatDateLong, formatDate } from '@/lib/utils/formatDate'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 
@@ -24,8 +24,8 @@ export default function WorkspaceBillingTab() {
 
   const handleUpdatePayment = async () => {
     try {
-      const session = await createPortalSession()
-      window.location.href = session.access_url
+      const { url } = await updatePaymentMethod()
+      window.location.href = url
     } catch {
       toast.error('Failed to open payment portal')
     }
