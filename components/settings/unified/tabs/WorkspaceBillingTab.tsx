@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button, toast, Spinner, Modal } from '@ciphera-net/ui'
-import { CreditCard, DownloadSimple } from '@phosphor-icons/react'
+import { CreditCard, DownloadSimple, ArrowRight } from '@phosphor-icons/react'
 import { useSubscription } from '@/lib/swr/dashboard'
 import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { updatePaymentMethod, cancelSubscription, resumeSubscription, getInvoices, downloadInvoicePDF, type Invoice } from '@/lib/api/billing'
@@ -106,7 +106,9 @@ export default function WorkspaceBillingTab() {
               </span>
             )}
           </div>
-          <Button variant="primary" className="text-sm" onClick={() => { closeUnifiedSettings(); router.push('/switch'); }}>Change Plan</Button>
+          <Button variant="primary" className="text-sm" onClick={() => { closeUnifiedSettings(); router.push('/switch'); }} disabled={!!subscription.pending_plan_id}>
+            {subscription.pending_plan_id ? 'Change Pending' : 'Change Plan'}
+          </Button>
         </div>
 
         {/* Usage stats */}
@@ -148,6 +150,18 @@ export default function WorkspaceBillingTab() {
             <p className="text-xs text-neutral-500">Automatically applied to your next invoice</p>
           </div>
           <p className="text-lg font-semibold text-green-400">&euro;{(subscription.credit_balance / 100).toFixed(2)}</p>
+        </div>
+      )}
+
+      {/* Pending plan change notice */}
+      {subscription.pending_plan_id && (
+        <div className="flex items-center gap-3 p-3 rounded-lg bg-blue-900/20 border border-blue-900/40 text-sm mt-4">
+          <ArrowRight size={16} className="text-blue-400 shrink-0" />
+          <p className="text-blue-300">
+            Switching to <span className="font-semibold text-white">{subscription.pending_plan_id.charAt(0).toUpperCase() + subscription.pending_plan_id.slice(1)} Plan</span>
+            {subscription.pending_limit ? ` (${subscription.pending_limit.toLocaleString()} pageviews/${subscription.pending_interval === 'month' ? 'mo' : 'yr'})` : ''}
+            {subscription.current_period_end ? ` on ${formatDateLong(new Date(subscription.current_period_end))}` : ''}
+          </p>
         </div>
       )}
 
@@ -205,32 +219,44 @@ export default function WorkspaceBillingTab() {
         <div className="space-y-2 pt-6 border-t border-neutral-800">
           <h4 className="text-sm font-medium text-neutral-300">Recent Invoices</h4>
           <div className="space-y-1">
-            {invoices.map(invoice => (
-              <div key={invoice.id} className="flex items-center justify-between p-3 rounded-lg border border-neutral-800 text-sm">
-                <div className="flex items-center gap-3">
-                  <span className="text-neutral-400 font-mono text-xs">{invoice.invoice_number ?? '—'}</span>
-                  <span className="text-neutral-300">{formatDate(new Date(invoice.created_at))}</span>
-                  <span className="text-white font-medium">
-                    {new Intl.NumberFormat('en-GB', { style: 'currency', currency: invoice.currency || 'EUR' }).format(invoice.total_cents / 100)}
-                  </span>
-                  <span className="text-neutral-500 text-xs">
-                    (incl. {new Intl.NumberFormat('en-GB', { style: 'currency', currency: invoice.currency || 'EUR' }).format(invoice.vat_cents / 100)} VAT)
-                  </span>
+            {invoices.map(invoice => {
+              const isCreditNote = invoice.document_type === 'credit_note'
+              const fmt = new Intl.NumberFormat('en-GB', { style: 'currency', currency: invoice.currency || 'EUR' })
+              return (
+                <div key={invoice.id} className="flex items-center justify-between p-3 rounded-lg border border-neutral-800 text-sm">
+                  <div className="flex items-center gap-3">
+                    <span className="text-neutral-400 font-mono text-xs">{invoice.invoice_number ?? '—'}</span>
+                    <span className="text-neutral-300">{formatDate(new Date(invoice.created_at))}</span>
+                    <span className={`font-medium ${isCreditNote ? 'text-blue-400' : 'text-white'}`}>
+                      {isCreditNote ? '−' : ''}{fmt.format(Math.abs(invoice.total_cents) / 100)}
+                    </span>
+                    <span className="text-neutral-500 text-xs">
+                      ({isCreditNote ? 'refund' : 'incl.'} {fmt.format(Math.abs(invoice.vat_cents) / 100)} VAT)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {isCreditNote ? (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-blue-900/30 text-blue-400">
+                        Credit Note
+                      </span>
+                    ) : (
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${invoice.status === 'sent' ? 'bg-green-900/30 text-green-400' : 'bg-neutral-800 text-neutral-400'}`}>
+                        {invoice.status === 'sent' ? 'Paid' : invoice.status}
+                      </span>
+                    )}
+                    {!isCreditNote && (
+                      <button
+                        onClick={() => downloadInvoicePDF(invoice.id).catch(() => toast.error('PDF not available yet'))}
+                        className="p-1.5 rounded-md hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors ease-apple"
+                        title="Download PDF"
+                      >
+                        <DownloadSimple size={16} />
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${invoice.status === 'sent' ? 'bg-green-900/30 text-green-400' : 'bg-neutral-800 text-neutral-400'}`}>
-                    {invoice.status === 'sent' ? 'Paid' : invoice.status}
-                  </span>
-                  <button
-                    onClick={() => downloadInvoicePDF(invoice.id).catch(() => toast.error('PDF not available yet'))}
-                    className="p-1.5 rounded-md hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors ease-apple"
-                    title="Download PDF"
-                  >
-                    <DownloadSimple size={16} />
-                  </button>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}

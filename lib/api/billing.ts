@@ -25,6 +25,9 @@ export interface SubscriptionDetails {
   tax_id?: TaxID | null
   /** Account credit balance in cents (from proration credits, etc.). */
   credit_balance?: number
+  pending_plan_id?: string
+  pending_limit?: number
+  pending_interval?: string
 }
 
 export async function getSubscription(): Promise<SubscriptionDetails> {
@@ -124,6 +127,7 @@ export interface Invoice {
   currency: string
   description: string
   status: string
+  document_type?: string
   created_at: string
 }
 
