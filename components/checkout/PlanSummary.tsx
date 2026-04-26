@@ -138,6 +138,7 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
             value={businessName}
             onChange={(e) => onBusinessNameChange(e.target.value)}
             placeholder="Ciphera BV"
+            autoComplete="organization"
             className={inputClass}
           />
         </div>
@@ -148,6 +149,7 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
             value={billingEmail}
             onChange={(e) => onBillingEmailChange(e.target.value)}
             placeholder="billing@example.com"
+            autoComplete="off"
             className={inputClass}
           />
         </div>
@@ -158,6 +160,7 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
             value={address}
             onChange={(e) => onAddressChange(e.target.value)}
             placeholder="Kerkstraat 1"
+            autoComplete="street-address"
             className={inputClass}
           />
         </div>
@@ -169,6 +172,7 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
               value={city}
               onChange={(e) => onCityChange(e.target.value)}
               placeholder="Brussels"
+              autoComplete="address-level2"
               className={inputClass}
             />
           </div>
@@ -179,6 +183,7 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
               value={postalCode}
               onChange={(e) => onPostalCodeChange(e.target.value)}
               placeholder="1000"
+              autoComplete="postal-code"
               className={inputClass}
             />
           </div>
