@@ -191,7 +191,7 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
       </div>
 
       {/* Country */}
-      <div>
+      <div className="relative z-10">
         <label className="block text-sm font-medium text-neutral-300 mb-1.5">Country</label>
         <Select
           value={country}
