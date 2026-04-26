@@ -68,6 +68,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshToken = useCallback(async (): Promise<boolean> => {
     try {
+      const cachedUser = localStorage.getItem('user')
+      const lastOrgId = cachedUser ? (JSON.parse(cachedUser).org_id ?? '') : ''
       const res = await fetch('/api/auth/refresh', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -76,6 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           screen_width: window.screen.width,
           screen_height: window.screen.height,
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          org_id: lastOrgId,
         }),
       })
       if (res.ok) return true

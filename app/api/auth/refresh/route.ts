@@ -16,15 +16,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'No refresh token' }, { status: 401 })
   }
 
-  let body: { screen_width?: number; screen_height?: number; timezone?: string } = {}
+  let body: { screen_width?: number; screen_height?: number; timezone?: string; org_id?: string } = {}
   try {
     body = await request.json()
   } catch { /* no body or invalid JSON — device signals will be omitted */ }
 
   // * Preserve whatever organization the user is currently scoped to so the
-  // * rotated token keeps that context. Falls back to "" when the existing
-  // * token is missing/malformed — the auth backend then embeds the user's
-  // * primary org automatically (single round-trip, no follow-up call).
+  // * rotated token keeps that context. Prefers the access_token cookie (still
+  // * valid), then falls back to the client-supplied org_id from localStorage
+  // * (survives cookie expiry). Without either, the auth backend embeds the
+  // * user's primary org automatically.
   let previousOrgId = ''
   const existingToken = cookieStore.get('access_token')?.value
   if (existingToken) {
@@ -32,6 +33,9 @@ export async function POST(request: Request) {
       const payload = JSON.parse(Buffer.from(existingToken.split('.')[1], 'base64').toString())
       if (typeof payload.org_id === 'string') previousOrgId = payload.org_id
     } catch { /* token may be malformed, proceed without org */ }
+  }
+  if (!previousOrgId && body.org_id) {
+    previousOrgId = body.org_id
   }
 
   try {
