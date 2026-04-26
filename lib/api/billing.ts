@@ -169,6 +169,7 @@ export interface VATResult {
   vat_reason: string
   company_name?: string
   company_address?: string
+  vat_error?: 'invalid' | 'service_unavailable'
 }
 
 export interface CalculateVATParams {

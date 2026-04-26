@@ -251,7 +251,9 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
             >
               {country === 'BE'
                 ? 'Belgian businesses are subject to 21% VAT.'
-                : 'VAT ID could not be verified. 21% VAT will apply.'}
+                : vatResult.vat_error === 'service_unavailable'
+                ? 'VAT verification service is temporarily unavailable. 21% VAT will apply for now.'
+                : 'VAT ID is invalid. 21% VAT will apply.'}
             </motion.p>
           )}
         </AnimatePresence>

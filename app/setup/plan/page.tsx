@@ -107,25 +107,28 @@ export default function SetupPlanPage() {
             transition={TIMING}
             className="space-y-6"
           >
-            <PlanSummary
-              plan={selectedPlan}
-              interval={selectedInterval}
-              limit={selectedLimit}
-              country={country}
-              vatId={vatId}
-              onCountryChange={setCountry}
-              onVatIdChange={setVatId}
-              businessName={businessName}
-              onBusinessNameChange={setBusinessName}
-              billingEmail={billingEmail}
-              onBillingEmailChange={setBillingEmail}
-              address={address}
-              onAddressChange={setAddress}
-              city={city}
-              onCityChange={setCity}
-              postalCode={postalCode}
-              onPostalCodeChange={setPostalCode}
-            />
+            <div className="relative z-10">
+              <PlanSummary
+                plan={selectedPlan}
+                interval={selectedInterval}
+                limit={selectedLimit}
+                country={country}
+                vatId={vatId}
+                onCountryChange={setCountry}
+                onVatIdChange={setVatId}
+                businessName={businessName}
+                onBusinessNameChange={setBusinessName}
+                billingEmail={billingEmail}
+                onBillingEmailChange={setBillingEmail}
+                address={address}
+                onAddressChange={setAddress}
+                city={city}
+                onCityChange={setCity}
+                postalCode={postalCode}
+                onPostalCodeChange={setPostalCode}
+              />
+            </div>
+            <div className="relative z-0">
             <PaymentForm
               plan={selectedPlan}
               interval={selectedInterval}
@@ -139,6 +142,7 @@ export default function SetupPlanPage() {
               city={city}
               postalCode={postalCode}
             />
+            </div>
             <button
               type="button"
               onClick={() => setSelectedPlan(null)}
