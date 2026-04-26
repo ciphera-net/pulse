@@ -269,15 +269,13 @@ export default function WorkspaceBillingTab() {
                         {invoice.status === 'sent' ? 'Paid' : invoice.status}
                       </span>
                     )}
-                    {!isCreditNote && (
-                      <button
-                        onClick={() => downloadInvoicePDF(invoice.id).catch(() => toast.error('PDF not available yet'))}
-                        className="p-1.5 rounded-md hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors ease-apple"
-                        title="Download PDF"
-                      >
-                        <DownloadSimple size={16} />
-                      </button>
-                    )}
+                    <button
+                      onClick={() => downloadInvoicePDF(invoice.id).catch(() => toast.error('PDF not available yet'))}
+                      className="p-1.5 rounded-md hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors ease-apple"
+                      title="Download PDF"
+                    >
+                      <DownloadSimple size={16} />
+                    </button>
                   </div>
                 </div>
               )
