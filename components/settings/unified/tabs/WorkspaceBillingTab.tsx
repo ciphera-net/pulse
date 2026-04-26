@@ -6,7 +6,7 @@ import { Button, toast, Spinner, Modal } from '@ciphera-net/ui'
 import { CreditCard, DownloadSimple, ArrowRight } from '@phosphor-icons/react'
 import { useSubscription } from '@/lib/swr/dashboard'
 import { useUnifiedSettings } from '@/lib/unified-settings-context'
-import { updatePaymentMethod, cancelSubscription, resumeSubscription, getInvoices, downloadInvoicePDF, type Invoice } from '@/lib/api/billing'
+import { updatePaymentMethod, cancelSubscription, resumeSubscription, getInvoices, downloadInvoicePDF, updateBillingSettings, type Invoice } from '@/lib/api/billing'
 import { formatDateLong, formatDate } from '@/lib/utils/formatDate'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 
@@ -211,6 +211,33 @@ export default function WorkspaceBillingTab() {
           </Button>
         </div>
       </Modal>
+
+      {/* Billing Details */}
+      {subscription.billing_email && (
+        <div className="space-y-2 pt-6 border-t border-neutral-800">
+          <h4 className="text-sm font-medium text-neutral-300">Billing Details</h4>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
+            {subscription.business_name && (
+              <>
+                <span className="text-neutral-500">Business name</span>
+                <span className="text-neutral-300">{subscription.business_name}</span>
+              </>
+            )}
+            <span className="text-neutral-500">Email</span>
+            <span className="text-neutral-300">{subscription.billing_email}</span>
+            {subscription.billing_address && (
+              <>
+                <span className="text-neutral-500">Address</span>
+                <span className="text-neutral-300">
+                  {subscription.billing_address}
+                  {subscription.billing_postal_code ? `, ${subscription.billing_postal_code}` : ''}
+                  {subscription.billing_city ? ` ${subscription.billing_city}` : ''}
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Recent Invoices */}
       {invoices.length > 0 && (

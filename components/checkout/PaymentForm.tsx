@@ -19,9 +19,14 @@ interface PaymentFormProps {
   country: string
   vatId: string
   onSuccess?: () => void
+  businessName: string
+  billingEmail: string
+  address: string
+  city: string
+  postalCode: string
 }
 
-export default function PaymentForm({ plan, interval, limit, country, vatId }: PaymentFormProps) {
+export default function PaymentForm({ plan, interval, limit, country, vatId, businessName, billingEmail, address, city, postalCode }: PaymentFormProps) {
   const [selectedMethod, setSelectedMethod] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -39,6 +44,11 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
       return
     }
 
+    if (!businessName.trim() || !billingEmail.trim() || !address.trim() || !city.trim() || !postalCode.trim()) {
+      setFormError('Please fill in all billing details')
+      return
+    }
+
     setSubmitting(true)
 
     try {
@@ -49,6 +59,11 @@ export default function PaymentForm({ plan, interval, limit, country, vatId }: P
         country,
         vat_id: vatId || undefined,
         method: selectedMethod,
+        billing_email: billingEmail,
+        business_name: businessName,
+        address,
+        city,
+        postal_code: postalCode,
       })
 
       window.location.href = url

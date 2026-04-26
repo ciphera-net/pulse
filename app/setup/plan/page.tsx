@@ -49,6 +49,11 @@ export default function SetupPlanPage() {
   const [selectedLimit, setSelectedLimit] = useState<number>(pendingPlan?.limit ?? DEFAULT_LIMIT)
   const [country, setCountry] = useState('')
   const [vatId, setVatId] = useState('')
+  const [businessName, setBusinessName] = useState('')
+  const [billingEmail, setBillingEmail] = useState('')
+  const [address, setAddress] = useState('')
+  const [city, setCity] = useState('')
+  const [postalCode, setPostalCode] = useState('')
 
   useEffect(() => {
     if (
@@ -110,6 +115,16 @@ export default function SetupPlanPage() {
               vatId={vatId}
               onCountryChange={setCountry}
               onVatIdChange={setVatId}
+              businessName={businessName}
+              onBusinessNameChange={setBusinessName}
+              billingEmail={billingEmail}
+              onBillingEmailChange={setBillingEmail}
+              address={address}
+              onAddressChange={setAddress}
+              city={city}
+              onCityChange={setCity}
+              postalCode={postalCode}
+              onPostalCodeChange={setPostalCode}
             />
             <PaymentForm
               plan={selectedPlan}
@@ -118,6 +133,11 @@ export default function SetupPlanPage() {
               country={country}
               vatId={vatId}
               onSuccess={handlePaymentSuccess}
+              businessName={businessName}
+              billingEmail={billingEmail}
+              address={address}
+              city={city}
+              postalCode={postalCode}
             />
             <button
               type="button"

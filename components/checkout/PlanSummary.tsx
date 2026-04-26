@@ -18,6 +18,16 @@ interface PlanSummaryProps {
   vatId: string
   onCountryChange: (country: string) => void
   onVatIdChange: (vatId: string) => void
+  businessName: string
+  onBusinessNameChange: (v: string) => void
+  billingEmail: string
+  onBillingEmailChange: (v: string) => void
+  address: string
+  onAddressChange: (v: string) => void
+  city: string
+  onCityChange: (v: string) => void
+  postalCode: string
+  onPostalCodeChange: (v: string) => void
 }
 
 const inputClass =
@@ -28,7 +38,7 @@ function toTitleCase(s: string) {
   return s.replace(/\S+/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
 }
 
-export default function PlanSummary({ plan, interval, limit, country, vatId, onCountryChange, onVatIdChange }: PlanSummaryProps) {
+export default function PlanSummary({ plan, interval, limit, country, vatId, onCountryChange, onVatIdChange, businessName, onBusinessNameChange, billingEmail, onBillingEmailChange, address, onAddressChange, city, onCityChange, postalCode, onPostalCodeChange }: PlanSummaryProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [currentInterval, setCurrentInterval] = useState(interval)
@@ -116,6 +126,62 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
               <span className="relative z-10">{iv === 'month' ? 'Monthly' : 'Yearly'}</span>
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* Billing details */}
+      <div className="space-y-3">
+        <div>
+          <label className="block text-sm font-medium text-neutral-300 mb-1.5">Business name</label>
+          <input
+            type="text"
+            value={businessName}
+            onChange={(e) => onBusinessNameChange(e.target.value)}
+            placeholder="Ciphera BV"
+            className={inputClass}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-neutral-300 mb-1.5">Billing email</label>
+          <input
+            type="email"
+            value={billingEmail}
+            onChange={(e) => onBillingEmailChange(e.target.value)}
+            placeholder="billing@example.com"
+            className={inputClass}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-neutral-300 mb-1.5">Address</label>
+          <input
+            type="text"
+            value={address}
+            onChange={(e) => onAddressChange(e.target.value)}
+            placeholder="Kerkstraat 1"
+            className={inputClass}
+          />
+        </div>
+        <div className="flex gap-3">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-neutral-300 mb-1.5">City</label>
+            <input
+              type="text"
+              value={city}
+              onChange={(e) => onCityChange(e.target.value)}
+              placeholder="Brussels"
+              className={inputClass}
+            />
+          </div>
+          <div className="w-32">
+            <label className="block text-sm font-medium text-neutral-300 mb-1.5">Postal code</label>
+            <input
+              type="text"
+              value={postalCode}
+              onChange={(e) => onPostalCodeChange(e.target.value)}
+              placeholder="1000"
+              className={inputClass}
+            />
+          </div>
         </div>
       </div>
 

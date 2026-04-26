@@ -25,6 +25,10 @@ export interface SubscriptionDetails {
   tax_id?: TaxID | null
   /** Account credit balance in cents (from proration credits, etc.). */
   credit_balance?: number
+  billing_email?: string | null
+  billing_address?: string
+  billing_city?: string
+  billing_postal_code?: string
   pending_plan_id?: string
   pending_limit?: number
   pending_interval?: string
@@ -109,6 +113,11 @@ export interface CreateCheckoutParams {
   country: string
   vat_id?: string
   method?: string
+  billing_email: string
+  business_name: string
+  address: string
+  city: string
+  postal_code: string
 }
 
 export async function createCheckoutSession(params: CreateCheckoutParams): Promise<{ url: string }> {
@@ -179,4 +188,19 @@ export async function calculateVAT(params: CalculateVATParams): Promise<VATResul
 
 export async function getPrices(): Promise<Record<string, Record<number, number>>> {
   return apiRequest('/api/billing/prices')
+}
+
+export async function updateBillingSettings(params: {
+  billing_email?: string
+  business_name?: string
+  country?: string
+  vat_id?: string
+  address?: string
+  city?: string
+  postal_code?: string
+}): Promise<{ ok: boolean }> {
+  return apiRequest<{ ok: boolean }>('/api/billing/settings', {
+    method: 'PATCH',
+    body: JSON.stringify(params),
+  })
 }
