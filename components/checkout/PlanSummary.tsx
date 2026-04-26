@@ -100,7 +100,7 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
   const isVatValid = isVatChecked && !!vatResult?.company_name
 
   return (
-    <div className="rounded-2xl glass-surface p-5 space-y-4">
+    <div className="rounded-2xl glass-surface p-5 space-y-4 overflow-visible">
       {/* Plan name + interval toggle */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-4">
         <div className="flex items-center gap-3">
