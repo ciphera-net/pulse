@@ -35,7 +35,7 @@ export default function WorkspaceBillingTab() {
     setCancelling(true)
     try {
       await cancelSubscription()
-      await mutate()
+      await mutate(subscription ? { ...subscription, cancel_at_period_end: true } : undefined, { revalidate: true })
       toast.success('Subscription cancelled')
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to cancel subscription')
@@ -48,7 +48,7 @@ export default function WorkspaceBillingTab() {
   const handleResume = async () => {
     try {
       await resumeSubscription()
-      await mutate()
+      await mutate(subscription ? { ...subscription, cancel_at_period_end: false } : undefined, { revalidate: true })
       toast.success('Subscription resumed')
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to resume subscription')
