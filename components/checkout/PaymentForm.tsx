@@ -90,7 +90,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId, bus
                 : 'border-neutral-700/50 bg-neutral-800/30 text-neutral-400 hover:border-neutral-600'
             } ease-apple`}
           >
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1 bg-white rounded-md px-1.5 py-1">
               {method.icons.map((icon) => (
                 <img key={icon} src={cdnUrl(icon)} alt="" className="h-5 w-auto" />
               ))}
