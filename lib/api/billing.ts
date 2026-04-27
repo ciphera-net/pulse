@@ -39,9 +39,10 @@ export async function getSubscription(): Promise<SubscriptionDetails> {
   return apiRequest<SubscriptionDetails>('/api/billing/subscription')
 }
 
-export async function updatePaymentMethod(): Promise<{ url: string }> {
+export async function updatePaymentMethod(paymentMethod?: string): Promise<{ url: string }> {
   return apiRequest<{ url: string }>('/api/billing/update-payment-method', {
     method: 'POST',
+    body: JSON.stringify({ method: paymentMethod || 'creditcard' }),
   })
 }
 

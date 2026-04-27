@@ -9,6 +9,15 @@ import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { updatePaymentMethod, cancelSubscription, resumeSubscription, getInvoices, downloadInvoicePDF, updateBillingSettings, type Invoice } from '@/lib/api/billing'
 import { formatDateLong, formatDate } from '@/lib/utils/formatDate'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
+import { cdnUrl } from '@/lib/cdn'
+
+const PAYMENT_METHODS = [
+  { id: 'creditcard', label: 'Cards', icons: ['/icons/payment/visa.svg', '/icons/payment/mastercard.svg'] },
+  { id: 'bancontact', label: 'Bancontact', icons: ['/icons/payment/bancontact.svg'] },
+  { id: 'directdebit', label: 'SEPA', icons: ['/icons/payment/sepa.svg'] },
+  { id: 'ideal', label: 'iDEAL', icons: ['/icons/payment/ideal.svg'] },
+  { id: 'applepay', label: 'Apple Pay', icons: ['/icons/payment/applepay.svg'] },
+]
 
 export default function WorkspaceBillingTab() {
   const router = useRouter()
@@ -16,6 +25,8 @@ export default function WorkspaceBillingTab() {
   const { data: subscription, isLoading, mutate } = useSubscription()
   const [cancelling, setCancelling] = useState(false)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
+  const [showPaymentMethodModal, setShowPaymentMethodModal] = useState(false)
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('')
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [editingBilling, setEditingBilling] = useState(false)
   const [savingBilling, setSavingBilling] = useState(false)
@@ -25,9 +36,9 @@ export default function WorkspaceBillingTab() {
     getInvoices().then(setInvoices).catch(() => {})
   }, [])
 
-  const handleUpdatePayment = async () => {
+  const handleUpdatePayment = async (method: string) => {
     try {
-      const { url } = await updatePaymentMethod()
+      const { url } = await updatePaymentMethod(method)
       window.location.href = url
     } catch {
       toast.error('Failed to open payment portal')
@@ -230,7 +241,7 @@ export default function WorkspaceBillingTab() {
           <WarningCircle size={16} weight="fill" className="text-amber-400 shrink-0 mt-0.5" />
           <p className="text-amber-300">
             Your last payment could not be processed. Please{' '}
-            <button onClick={handleUpdatePayment} className="underline font-medium text-amber-200 hover:text-white">
+            <button onClick={() => { setSelectedPaymentMethod(''); setShowPaymentMethodModal(true) }} className="underline font-medium text-amber-200 hover:text-white">
               update your payment method
             </button>{' '}
             to avoid service interruption.
@@ -241,7 +252,7 @@ export default function WorkspaceBillingTab() {
       {/* Actions */}
       {!isCanceled && (
         <div className="flex flex-wrap gap-3">
-          <Button onClick={handleUpdatePayment} variant="secondary" className="text-sm gap-1.5">
+          <Button onClick={() => { setSelectedPaymentMethod(''); setShowPaymentMethodModal(true) }} variant="secondary" className="text-sm gap-1.5">
             <CreditCard weight="bold" className="w-3.5 h-3.5" />
             Update payment method
           </Button>
@@ -263,6 +274,38 @@ export default function WorkspaceBillingTab() {
         )}
         </div>
       )}
+
+      {/* Payment method selection */}
+      <Modal isOpen={showPaymentMethodModal} onClose={() => setShowPaymentMethodModal(false)} title="Choose payment method" className="max-w-sm">
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {PAYMENT_METHODS.map(method => (
+            <button
+              key={method.id}
+              onClick={() => setSelectedPaymentMethod(method.id)}
+              className={`flex flex-col items-center justify-center gap-1.5 rounded-xl border h-[60px] text-xs transition-all duration-base ${
+                selectedPaymentMethod === method.id
+                  ? 'border-brand-orange bg-brand-orange/5 text-white'
+                  : 'border-neutral-700/50 bg-neutral-800/30 text-neutral-400 hover:border-neutral-600'
+              } ease-apple`}
+            >
+              <div className="flex items-center gap-1 bg-white rounded-md px-1.5 py-1">
+                {method.icons.map((icon) => (
+                  <img key={icon} src={cdnUrl(icon)} alt="" className="h-5 w-auto" />
+                ))}
+              </div>
+              {method.label}
+            </button>
+          ))}
+        </div>
+        <Button
+          variant="primary"
+          className="w-full text-sm"
+          onClick={() => { setShowPaymentMethodModal(false); handleUpdatePayment(selectedPaymentMethod) }}
+          disabled={!selectedPaymentMethod}
+        >
+          Continue
+        </Button>
+      </Modal>
 
       {/* Cancel confirmation */}
       <Modal isOpen={showCancelConfirm} onClose={() => setShowCancelConfirm(false)} title="Cancel subscription" className="max-w-md">
