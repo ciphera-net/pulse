@@ -105,12 +105,17 @@ export default function WorkspaceBillingTab() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <h4 className="text-lg font-bold text-white">{planLabel} Plan</h4>
-            {isActive && (
+            {isActive && !subscription.cancel_at_period_end && (
               <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-green-900/30 text-green-400 border border-green-900/50">
                 Active
               </span>
             )}
-            {subscription.cancel_at_period_end && (
+            {subscription.subscription_status === 'canceled' && (
+              <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-red-900/30 text-red-400 border border-red-900/50">
+                Cancelled
+              </span>
+            )}
+            {subscription.cancel_at_period_end && subscription.subscription_status !== 'canceled' && (
               <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-900/30 text-yellow-400 border border-yellow-900/50">
                 Cancelling
               </span>
