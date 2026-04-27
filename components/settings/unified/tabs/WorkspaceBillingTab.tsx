@@ -92,6 +92,7 @@ export default function WorkspaceBillingTab() {
   })()
 
   const isActive = subscription.subscription_status === 'active' || subscription.subscription_status === 'trialing'
+  const isCanceled = subscription.subscription_status === 'canceled'
 
   return (
     <div className="space-y-6">
@@ -121,38 +122,48 @@ export default function WorkspaceBillingTab() {
               </span>
             )}
           </div>
-          <Button variant="primary" className="text-sm" onClick={() => { closeUnifiedSettings(); router.push('/switch'); }}>Change Plan</Button>
+          <Button variant="primary" className="text-sm" onClick={() => { closeUnifiedSettings(); router.push(isCanceled ? '/setup/plan' : '/switch'); }}>
+            {isCanceled ? 'Resubscribe' : 'Change Plan'}
+          </Button>
         </div>
 
-        {/* Usage stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {typeof subscription.sites_count === 'number' && (
-            <div>
-              <p className="text-xs text-neutral-500 uppercase tracking-wider">Sites</p>
-              <p className="text-lg font-semibold text-white">{subscription.sites_count}</p>
-            </div>
-          )}
-          {subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number' && (
-            <div>
-              <p className="text-xs text-neutral-500 uppercase tracking-wider">Pageviews</p>
-              <p className="text-lg font-semibold text-white">{subscription.pageview_usage.toLocaleString()} / {subscription.pageview_limit.toLocaleString()}</p>
-            </div>
-          )}
-          {subscription.current_period_end && (
-            <div>
-              <p className="text-xs text-neutral-500 uppercase tracking-wider">
-                {subscription.cancel_at_period_end ? 'Ends' : 'Renews'}
-              </p>
-              <p className="text-lg font-semibold text-white">{formatDateLong(new Date(subscription.current_period_end))}</p>
-            </div>
-          )}
-          {subscription.pageview_limit > 0 && (
-            <div>
-              <p className="text-xs text-neutral-500 uppercase tracking-wider">Limit</p>
-              <p className="text-lg font-semibold text-white">{subscription.pageview_limit.toLocaleString()} / mo</p>
-            </div>
-          )}
-        </div>
+        {isCanceled ? (
+          <div className="flex items-start gap-3 p-3 rounded-lg bg-red-900/20 border border-red-900/40 text-sm">
+            <WarningCircle size={16} weight="fill" className="text-red-400 shrink-0 mt-0.5" />
+            <p className="text-red-300">
+              Your {planLabel} plan has expired. You&apos;re now limited to 5,000 pageviews/month on the free tier.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {typeof subscription.sites_count === 'number' && (
+              <div>
+                <p className="text-xs text-neutral-500 uppercase tracking-wider">Sites</p>
+                <p className="text-lg font-semibold text-white">{subscription.sites_count}</p>
+              </div>
+            )}
+            {subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number' && (
+              <div>
+                <p className="text-xs text-neutral-500 uppercase tracking-wider">Pageviews</p>
+                <p className="text-lg font-semibold text-white">{subscription.pageview_usage.toLocaleString()} / {subscription.pageview_limit.toLocaleString()}</p>
+              </div>
+            )}
+            {subscription.current_period_end && (
+              <div>
+                <p className="text-xs text-neutral-500 uppercase tracking-wider">
+                  {subscription.cancel_at_period_end ? 'Ends' : 'Renews'}
+                </p>
+                <p className="text-lg font-semibold text-white">{formatDateLong(new Date(subscription.current_period_end))}</p>
+              </div>
+            )}
+            {subscription.pageview_limit > 0 && (
+              <div>
+                <p className="text-xs text-neutral-500 uppercase tracking-wider">Limit</p>
+                <p className="text-lg font-semibold text-white">{subscription.pageview_limit.toLocaleString()} / mo</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Account credit */}
@@ -192,28 +203,30 @@ export default function WorkspaceBillingTab() {
       )}
 
       {/* Actions */}
-      <div className="flex flex-wrap gap-3">
-        <Button onClick={handleUpdatePayment} variant="secondary" className="text-sm gap-1.5">
-          <CreditCard weight="bold" className="w-3.5 h-3.5" />
-          Update payment method
-        </Button>
+      {!isCanceled && (
+        <div className="flex flex-wrap gap-3">
+          <Button onClick={handleUpdatePayment} variant="secondary" className="text-sm gap-1.5">
+            <CreditCard weight="bold" className="w-3.5 h-3.5" />
+            Update payment method
+          </Button>
 
-        {isActive && !subscription.cancel_at_period_end && (
-          <Button
-            onClick={() => setShowCancelConfirm(true)}
-            variant="secondary"
-            className="text-sm text-neutral-400 hover:text-red-400"
-          >
-            Cancel subscription
+          {isActive && !subscription.cancel_at_period_end && (
+            <Button
+              onClick={() => setShowCancelConfirm(true)}
+              variant="secondary"
+              className="text-sm text-neutral-400 hover:text-red-400"
+            >
+              Cancel subscription
+            </Button>
+          )}
+
+          {subscription.cancel_at_period_end && (
+            <Button onClick={handleResume} variant="secondary" className="text-sm text-brand-orange">
+              Resume subscription
           </Button>
         )}
-
-        {subscription.cancel_at_period_end && (
-          <Button onClick={handleResume} variant="secondary" className="text-sm text-brand-orange">
-            Resume subscription
-          </Button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Cancel confirmation */}
       <Modal isOpen={showCancelConfirm} onClose={() => setShowCancelConfirm(false)} title="Cancel subscription" className="max-w-md">
