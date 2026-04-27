@@ -365,7 +365,9 @@ function SwitchPlanContent() {
                       </div>
                       {(estimate.refund_amount ?? 0) > 0 && (
                         <div className="flex justify-between">
-                          <span className="text-neutral-400">Refund (unused months)</span>
+                          <span className="text-neutral-400">
+                            Refund ({estimate.remaining_days} unused day{estimate.remaining_days !== 1 ? 's' : ''} of {estimate.current_plan_label})
+                          </span>
                           <span className="text-green-400">{formatCents(estimate.refund_amount!)}</span>
                         </div>
                       )}
@@ -394,7 +396,9 @@ function SwitchPlanContent() {
                       </div>
                       {(estimate.credits_applied ?? 0) > 0 && (
                         <div className="flex justify-between">
-                          <span className="text-neutral-400">Credit from current plan</span>
+                          <span className="text-neutral-400">
+                            Credit ({estimate.remaining_days} unused day{estimate.remaining_days !== 1 ? 's' : ''} of {estimate.current_plan_label})
+                          </span>
                           <span className="text-green-400">−{formatCents(estimate.credits_applied!)}</span>
                         </div>
                       )}
