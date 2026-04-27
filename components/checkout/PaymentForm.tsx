@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Lock, ShieldCheck } from '@phosphor-icons/react'
 import { createCheckoutSession } from '@/lib/api/billing'
 import { cdnUrl } from '@/lib/cdn'
@@ -31,6 +31,12 @@ export default function PaymentForm({ plan, interval, limit, country, vatId, bus
   const [selectedMethod, setSelectedMethod] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    const reset = (e: PageTransitionEvent) => { if (e.persisted) setSubmitting(false) }
+    window.addEventListener('pageshow', reset)
+    return () => window.removeEventListener('pageshow', reset)
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
