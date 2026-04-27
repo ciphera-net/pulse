@@ -146,17 +146,23 @@ export async function getInvoices(): Promise<Invoice[]> {
 
 export async function downloadInvoicePDF(invoiceId: string): Promise<void> {
   const { API_URL } = await import('./client')
-  const res = await fetch(API_URL + '/api/billing/invoices/' + invoiceId + '/pdf', {
+  const url = API_URL + '/api/billing/invoices/' + invoiceId + '/pdf'
+  const res = await fetch(url, {
     credentials: 'include',
+    redirect: 'manual',
   })
+  if (res.type === 'opaqueredirect' || res.status === 302) {
+    window.open(url, '_blank')
+    return
+  }
   if (!res.ok) throw new Error('Failed to download invoice PDF')
   const blob = await res.blob()
-  const url = URL.createObjectURL(blob)
+  const blobUrl = URL.createObjectURL(blob)
   const a = document.createElement('a')
-  a.href = url
+  a.href = blobUrl
   a.download = 'invoice.pdf'
   a.click()
-  URL.revokeObjectURL(url)
+  URL.revokeObjectURL(blobUrl)
 }
 
 export interface VATResult {
