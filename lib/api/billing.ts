@@ -32,6 +32,7 @@ export interface SubscriptionDetails {
   pending_plan_id?: string
   pending_limit?: number
   pending_interval?: string
+  payment_failed_at?: string
 }
 
 export async function getSubscription(): Promise<SubscriptionDetails> {

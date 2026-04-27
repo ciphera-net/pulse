@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button, toast, Spinner, Modal } from '@ciphera-net/ui'
-import { CreditCard, DownloadSimple, ArrowRight } from '@phosphor-icons/react'
+import { CreditCard, DownloadSimple, ArrowRight, WarningCircle } from '@phosphor-icons/react'
 import { useSubscription } from '@/lib/swr/dashboard'
 import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { updatePaymentMethod, cancelSubscription, resumeSubscription, getInvoices, downloadInvoicePDF, updateBillingSettings, type Invoice } from '@/lib/api/billing'
@@ -163,6 +163,19 @@ export default function WorkspaceBillingTab() {
             Switching to <span className="font-semibold text-white">{subscription.pending_plan_id.charAt(0).toUpperCase() + subscription.pending_plan_id.slice(1)} Plan</span>
             {subscription.pending_limit ? ` (${subscription.pending_limit.toLocaleString()} pageviews/${subscription.pending_interval === 'month' ? 'mo' : 'yr'})` : ''}
             {subscription.current_period_end ? ` on ${formatDateLong(new Date(subscription.current_period_end))}` : ''}
+          </p>
+        </div>
+      )}
+
+      {subscription.payment_failed_at && (
+        <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-900/20 border border-amber-900/40 text-sm mt-4">
+          <WarningCircle size={16} weight="fill" className="text-amber-400 shrink-0 mt-0.5" />
+          <p className="text-amber-300">
+            Your last payment could not be processed. Please{' '}
+            <button onClick={handleUpdatePayment} className="underline font-medium text-amber-200 hover:text-white">
+              update your payment method
+            </button>{' '}
+            to avoid service interruption.
           </p>
         </div>
       )}
