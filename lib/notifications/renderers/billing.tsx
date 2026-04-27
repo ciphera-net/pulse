@@ -8,11 +8,14 @@ function formatMoney(amountCents: number, currency: string): string {
 export const billingRenderers = {
   billing_payment_failed: (r: Receipt, _resolvers?: Resolvers): Rendered => {
     const p = r.event.payload as { invoice_id: string; amount: number; currency: string; error_code: string; retry_at: string }
-    const when = new Date(p.retry_at).toLocaleDateString('en', { month: 'short', day: 'numeric' })
+    const title = p.invoice_id ? `Payment failed — Invoice #${p.invoice_id}` : 'Payment failed'
+    const amount = formatMoney(p.amount, p.currency)
+    const reason = p.error_code ? ` (${p.error_code})` : ''
+    const retryDate = p.retry_at && !p.retry_at.startsWith('0001') ? `. We'll retry on ${new Date(p.retry_at).toLocaleDateString('en', { month: 'short', day: 'numeric' })}` : ''
     return {
-      title: `Payment failed — Invoice #${p.invoice_id}`,
-      body: `Your payment of ${formatMoney(p.amount, p.currency)} failed (${p.error_code}). We'll retry on ${when}.`,
-      linkLabel: 'View billing',
+      title,
+      body: `Your payment of ${amount} could not be processed${reason}${retryDate}. Please update your payment method.`,
+      linkLabel: 'Update payment method',
     }
   },
   billing_plan_renewed: (r: Receipt, _resolvers?: Resolvers): Rendered => {
