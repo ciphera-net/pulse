@@ -49,7 +49,13 @@ export default function WorkspaceBillingTab() {
 
   const handleResume = async () => {
     try {
-      await resumeSubscription()
+      const result = await resumeSubscription()
+      if (result.requires_checkout) {
+        closeUnifiedSettings()
+        router.push('/setup/plan')
+        toast.success('Your subscription has expired. Please subscribe again.')
+        return
+      }
       if (subscription) {
         await mutate({ ...subscription, cancel_at_period_end: false }, { revalidate: false })
       }

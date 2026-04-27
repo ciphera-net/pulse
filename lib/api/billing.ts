@@ -58,8 +58,8 @@ export async function cancelSubscription(params?: CancelSubscriptionParams): Pro
 }
 
 /** Clears cancel_at_period_end so the subscription continues past the current period. */
-export async function resumeSubscription(): Promise<{ ok: boolean }> {
-  return apiRequest<{ ok: boolean }>('/api/billing/resume', {
+export async function resumeSubscription(): Promise<{ ok: boolean; requires_checkout?: boolean }> {
+  return apiRequest<{ ok: boolean; requires_checkout?: boolean }>('/api/billing/resume', {
     method: 'POST',
   })
 }
