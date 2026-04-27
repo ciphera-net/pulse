@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button, toast, Spinner, Modal } from '@ciphera-net/ui'
-import { CreditCard, DownloadSimple, ArrowRight, WarningCircle } from '@phosphor-icons/react'
+import { CreditCard, DownloadSimple, ArrowRight, WarningCircle, PencilSimple } from '@phosphor-icons/react'
 import { useSubscription } from '@/lib/swr/dashboard'
 import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { updatePaymentMethod, cancelSubscription, resumeSubscription, getInvoices, downloadInvoicePDF, updateBillingSettings, type Invoice } from '@/lib/api/billing'
@@ -17,6 +17,9 @@ export default function WorkspaceBillingTab() {
   const [cancelling, setCancelling] = useState(false)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [editingBilling, setEditingBilling] = useState(false)
+  const [savingBilling, setSavingBilling] = useState(false)
+  const [billingForm, setBillingForm] = useState({ business_name: '', billing_email: '', address: '', city: '', postal_code: '' })
 
   useEffect(() => {
     getInvoices().then(setInvoices).catch(() => {})
@@ -62,6 +65,39 @@ export default function WorkspaceBillingTab() {
       toast.success('Subscription resumed')
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to resume subscription')
+    }
+  }
+
+  const handleEditBilling = () => {
+    setBillingForm({
+      business_name: subscription?.business_name ?? '',
+      billing_email: subscription?.billing_email ?? '',
+      address: subscription?.billing_address ?? '',
+      city: subscription?.billing_city ?? '',
+      postal_code: subscription?.billing_postal_code ?? '',
+    })
+    setEditingBilling(true)
+  }
+
+  const handleSaveBilling = async () => {
+    setSavingBilling(true)
+    try {
+      const result = await updateBillingSettings({
+        billing_email: billingForm.billing_email,
+        business_name: billingForm.business_name,
+        address: billingForm.address,
+        city: billingForm.city,
+        postal_code: billingForm.postal_code,
+      })
+      if (result.ok) {
+        await mutate()
+        setEditingBilling(false)
+        toast.success('Billing details updated')
+      }
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to update billing details')
+    } finally {
+      setSavingBilling(false)
     }
   }
 
@@ -255,28 +291,112 @@ export default function WorkspaceBillingTab() {
 
       {/* Billing Details */}
       {subscription.billing_email && (
-        <div className="space-y-2 pt-6 border-t border-neutral-800">
-          <h4 className="text-sm font-medium text-neutral-300">Billing Details</h4>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
-            {subscription.business_name && (
-              <>
-                <span className="text-neutral-500">Business name</span>
-                <span className="text-neutral-300">{subscription.business_name}</span>
-              </>
-            )}
-            <span className="text-neutral-500">Email</span>
-            <span className="text-neutral-300">{subscription.billing_email}</span>
-            {subscription.billing_address && (
-              <>
-                <span className="text-neutral-500">Address</span>
-                <span className="text-neutral-300">
-                  {subscription.billing_address}
-                  {subscription.billing_postal_code ? `, ${subscription.billing_postal_code}` : ''}
-                  {subscription.billing_city ? ` ${subscription.billing_city}` : ''}
-                </span>
-              </>
+        <div className="space-y-3 pt-6 border-t border-neutral-800">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-medium text-neutral-300">Billing Details</h4>
+            {!editingBilling && (
+              <button
+                onClick={handleEditBilling}
+                className="p-1.5 rounded-md hover:bg-neutral-800 text-neutral-500 hover:text-neutral-300 transition-colors"
+                title="Edit billing details"
+              >
+                <PencilSimple size={14} />
+              </button>
             )}
           </div>
+
+          {editingBilling ? (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-neutral-500">Business name</label>
+                  <input
+                    type="text"
+                    value={billingForm.business_name}
+                    onChange={e => setBillingForm(f => ({ ...f, business_name: e.target.value }))}
+                    className="bg-neutral-800/50 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-brand-orange"
+                    placeholder="Business name"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-neutral-500">Billing email</label>
+                  <input
+                    type="email"
+                    value={billingForm.billing_email}
+                    onChange={e => setBillingForm(f => ({ ...f, billing_email: e.target.value }))}
+                    className="bg-neutral-800/50 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-brand-orange"
+                    placeholder="billing@example.com"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-neutral-500">Address</label>
+                  <input
+                    type="text"
+                    value={billingForm.address}
+                    onChange={e => setBillingForm(f => ({ ...f, address: e.target.value }))}
+                    className="bg-neutral-800/50 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-brand-orange"
+                    placeholder="Street address"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-neutral-500">City</label>
+                  <input
+                    type="text"
+                    value={billingForm.city}
+                    onChange={e => setBillingForm(f => ({ ...f, city: e.target.value }))}
+                    className="bg-neutral-800/50 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-brand-orange"
+                    placeholder="City"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-neutral-500">Postal code</label>
+                  <input
+                    type="text"
+                    value={billingForm.postal_code}
+                    onChange={e => setBillingForm(f => ({ ...f, postal_code: e.target.value }))}
+                    className="bg-neutral-800/50 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-brand-orange"
+                    placeholder="Postal code"
+                  />
+                </div>
+              </div>
+
+              {subscription.tax_id && (
+                <p className="text-xs text-neutral-500">
+                  To change your country or VAT ID, please contact support.
+                </p>
+              )}
+
+              <div className="flex gap-2">
+                <Button variant="primary" className="text-sm" onClick={handleSaveBilling} disabled={savingBilling}>
+                  {savingBilling ? 'Saving...' : 'Save'}
+                </Button>
+                <Button variant="secondary" className="text-sm" onClick={() => setEditingBilling(false)} disabled={savingBilling}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
+              {subscription.business_name && (
+                <>
+                  <span className="text-neutral-500">Business name</span>
+                  <span className="text-neutral-300">{subscription.business_name}</span>
+                </>
+              )}
+              <span className="text-neutral-500">Email</span>
+              <span className="text-neutral-300">{subscription.billing_email}</span>
+              {subscription.billing_address && (
+                <>
+                  <span className="text-neutral-500">Address</span>
+                  <span className="text-neutral-300">
+                    {subscription.billing_address}
+                    {subscription.billing_postal_code ? `, ${subscription.billing_postal_code}` : ''}
+                    {subscription.billing_city ? ` ${subscription.billing_city}` : ''}
+                  </span>
+                </>
+              )}
+            </div>
+          )}
         </div>
       )}
 
