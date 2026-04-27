@@ -18,6 +18,7 @@ export function getSitesLimitForPlan(planId: string | null | undefined): number 
   if (!planId || planId === 'free') return 1
   switch (planId) {
     case 'solo': return 1
+    case 'pioneer': return 3
     case 'team': return 5
     case 'business': return 10
     default: return null
@@ -51,7 +52,7 @@ export function getLimitForTierIndex(index: number): number {
 export function getMaxRetentionMonthsForPlan(planId: string | null | undefined): number {
   switch (planId) {
     case 'business': return 36
-    case 'team': return 24
+    case 'team': case 'pioneer': return 24
     case 'solo': return 12
     default: return 6
   }
@@ -70,7 +71,7 @@ export function getRetentionOptionsForPlan(planId: string | null | undefined): {
 
   switch (planId) {
     case 'business': return business
-    case 'team': return team
+    case 'team': case 'pioneer': return team
     case 'solo': return solo
     default: return base
   }
