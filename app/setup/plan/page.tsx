@@ -49,6 +49,11 @@ export default function SetupPlanPage() {
   const [selectedLimit, setSelectedLimit] = useState<number>(pendingPlan?.limit ?? DEFAULT_LIMIT)
   const [country, setCountry] = useState('')
   const [vatId, setVatId] = useState('')
+  const [businessName, setBusinessName] = useState('')
+  const [billingEmail, setBillingEmail] = useState('')
+  const [address, setAddress] = useState('')
+  const [city, setCity] = useState('')
+  const [postalCode, setPostalCode] = useState('')
 
   useEffect(() => {
     if (
@@ -102,15 +107,28 @@ export default function SetupPlanPage() {
             transition={TIMING}
             className="space-y-6"
           >
-            <PlanSummary
-              plan={selectedPlan}
-              interval={selectedInterval}
-              limit={selectedLimit}
-              country={country}
-              vatId={vatId}
-              onCountryChange={setCountry}
-              onVatIdChange={setVatId}
-            />
+            <div className="relative z-10">
+              <PlanSummary
+                plan={selectedPlan}
+                interval={selectedInterval}
+                limit={selectedLimit}
+                country={country}
+                vatId={vatId}
+                onCountryChange={setCountry}
+                onVatIdChange={setVatId}
+                businessName={businessName}
+                onBusinessNameChange={setBusinessName}
+                billingEmail={billingEmail}
+                onBillingEmailChange={setBillingEmail}
+                address={address}
+                onAddressChange={setAddress}
+                city={city}
+                onCityChange={setCity}
+                postalCode={postalCode}
+                onPostalCodeChange={setPostalCode}
+              />
+            </div>
+            <div className="relative z-0">
             <PaymentForm
               plan={selectedPlan}
               interval={selectedInterval}
@@ -118,7 +136,13 @@ export default function SetupPlanPage() {
               country={country}
               vatId={vatId}
               onSuccess={handlePaymentSuccess}
+              businessName={businessName}
+              billingEmail={billingEmail}
+              address={address}
+              city={city}
+              postalCode={postalCode}
             />
+            </div>
             <button
               type="button"
               onClick={() => setSelectedPlan(null)}

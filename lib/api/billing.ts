@@ -25,15 +25,24 @@ export interface SubscriptionDetails {
   tax_id?: TaxID | null
   /** Account credit balance in cents (from proration credits, etc.). */
   credit_balance?: number
+  billing_email?: string | null
+  billing_address?: string
+  billing_city?: string
+  billing_postal_code?: string
+  pending_plan_id?: string
+  pending_limit?: number
+  pending_interval?: string
+  payment_failed_at?: string
 }
 
 export async function getSubscription(): Promise<SubscriptionDetails> {
   return apiRequest<SubscriptionDetails>('/api/billing/subscription')
 }
 
-export async function createPortalSession(): Promise<{ url: string }> {
-  return apiRequest<{ url: string }>('/api/billing/portal', {
+export async function updatePaymentMethod(paymentMethod?: string): Promise<{ url: string }> {
+  return apiRequest<{ url: string }>('/api/billing/update-payment-method', {
     method: 'POST',
+    body: JSON.stringify({ method: paymentMethod || 'creditcard' }),
   })
 }
 
@@ -50,8 +59,8 @@ export async function cancelSubscription(params?: CancelSubscriptionParams): Pro
 }
 
 /** Clears cancel_at_period_end so the subscription continues past the current period. */
-export async function resumeSubscription(): Promise<{ ok: boolean }> {
-  return apiRequest<{ ok: boolean }>('/api/billing/resume', {
+export async function resumeSubscription(): Promise<{ ok: boolean; requires_checkout?: boolean }> {
+  return apiRequest<{ ok: boolean; requires_checkout?: boolean }>('/api/billing/resume', {
     method: 'POST',
   })
 }
@@ -71,15 +80,22 @@ export async function changePlan(params: ChangePlanParams): Promise<{ ok: boolea
 }
 
 export interface PlanChangeEstimate {
-  sub_total: number
-  tax: number
-  total: number
-  credits_applied: number
-  amount_due: number
+  direction: 'upgrade' | 'downgrade'
   currency: string
-  next_total: number
-  next_date: number
-  next_interval: string
+  remaining_days?: number
+  total_days?: number
+  current_plan_label?: string
+  // Downgrade fields
+  refund_amount?: number
+  current_plan_end?: string
+  new_plan_start?: string
+  new_plan_cost?: number
+  new_plan_interval?: string
+  // Upgrade fields
+  charge_amount?: number
+  effective?: string
+  next_renewal?: string
+  credits_applied?: number
 }
 
 export async function estimatePlanChange(params: ChangePlanParams): Promise<PlanChangeEstimate> {
@@ -96,19 +112,17 @@ export interface CreateCheckoutParams {
   country: string
   vat_id?: string
   method?: string
+  billing_email: string
+  business_name: string
+  address: string
+  city: string
+  postal_code: string
 }
 
 export async function createCheckoutSession(params: CreateCheckoutParams): Promise<{ url: string }> {
   return apiRequest<{ url: string }>('/api/billing/checkout', {
     method: 'POST',
     body: JSON.stringify(params),
-  })
-}
-
-export async function updatePaymentMethod(token: string): Promise<{ ok: boolean }> {
-  return apiRequest<{ ok: boolean }>('/api/billing/update-payment-method', {
-    method: 'POST',
-    body: JSON.stringify({ token }),
   })
 }
 
@@ -121,6 +135,7 @@ export interface Invoice {
   currency: string
   description: string
   status: string
+  document_type?: string
   created_at: string
 }
 
@@ -131,17 +146,23 @@ export async function getInvoices(): Promise<Invoice[]> {
 
 export async function downloadInvoicePDF(invoiceId: string): Promise<void> {
   const { API_URL } = await import('./client')
-  const res = await fetch(API_URL + '/api/billing/invoices/' + invoiceId + '/pdf', {
+  const url = API_URL + '/api/billing/invoices/' + invoiceId + '/pdf'
+  const res = await fetch(url, {
     credentials: 'include',
+    redirect: 'manual',
   })
+  if (res.type === 'opaqueredirect' || res.status === 302) {
+    window.open(url, '_blank')
+    return
+  }
   if (!res.ok) throw new Error('Failed to download invoice PDF')
   const blob = await res.blob()
-  const url = URL.createObjectURL(blob)
+  const blobUrl = URL.createObjectURL(blob)
   const a = document.createElement('a')
-  a.href = url
+  a.href = blobUrl
   a.download = 'invoice.pdf'
   a.click()
-  URL.revokeObjectURL(url)
+  URL.revokeObjectURL(blobUrl)
 }
 
 export interface VATResult {
@@ -153,6 +174,7 @@ export interface VATResult {
   vat_reason: string
   company_name?: string
   company_address?: string
+  vat_error?: 'invalid' | 'service_unavailable'
 }
 
 export interface CalculateVATParams {
@@ -170,31 +192,21 @@ export async function calculateVAT(params: CalculateVATParams): Promise<VATResul
   })
 }
 
-export interface PaymentIntentResponse {
-  payment_intent: {
-    id: string
-    gateway_account_id: string
-    amount: number
-    currency_code: string
-    status: string
-    [key: string]: unknown
-  }
-}
-
-export async function createPaymentIntent(params: { plan_id: string; interval: string; limit: number }): Promise<PaymentIntentResponse> {
-  return apiRequest<PaymentIntentResponse>('/api/billing/create-payment-intent', {
-    method: 'POST',
-    body: JSON.stringify(params),
-  })
-}
-
-export async function createEmbeddedCheckout(params: { plan_id: string; interval: string; limit: number; payment_intent_id: string }): Promise<{ status: 'success' }> {
-  return apiRequest<{ status: 'success' }>('/api/billing/checkout-embedded', {
-    method: 'POST',
-    body: JSON.stringify(params),
-  })
-}
-
 export async function getPrices(): Promise<Record<string, Record<number, number>>> {
   return apiRequest('/api/billing/prices')
+}
+
+export async function updateBillingSettings(params: {
+  billing_email?: string
+  business_name?: string
+  country?: string
+  vat_id?: string
+  address?: string
+  city?: string
+  postal_code?: string
+}): Promise<{ ok: boolean }> {
+  return apiRequest<{ ok: boolean }>('/api/billing/settings', {
+    method: 'PATCH',
+    body: JSON.stringify(params),
+  })
 }

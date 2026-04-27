@@ -18,6 +18,16 @@ interface PlanSummaryProps {
   vatId: string
   onCountryChange: (country: string) => void
   onVatIdChange: (vatId: string) => void
+  businessName: string
+  onBusinessNameChange: (v: string) => void
+  billingEmail: string
+  onBillingEmailChange: (v: string) => void
+  address: string
+  onAddressChange: (v: string) => void
+  city: string
+  onCityChange: (v: string) => void
+  postalCode: string
+  onPostalCodeChange: (v: string) => void
 }
 
 const inputClass =
@@ -28,7 +38,7 @@ function toTitleCase(s: string) {
   return s.replace(/\S+/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
 }
 
-export default function PlanSummary({ plan, interval, limit, country, vatId, onCountryChange, onVatIdChange }: PlanSummaryProps) {
+export default function PlanSummary({ plan, interval, limit, country, vatId, onCountryChange, onVatIdChange, businessName, onBusinessNameChange, billingEmail, onBillingEmailChange, address, onAddressChange, city, onCityChange, postalCode, onPostalCodeChange }: PlanSummaryProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [currentInterval, setCurrentInterval] = useState(interval)
@@ -90,7 +100,7 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
   const isVatValid = isVatChecked && !!vatResult?.company_name
 
   return (
-    <div className="rounded-2xl glass-surface p-5 space-y-4">
+    <div className="rounded-2xl glass-surface p-5 space-y-4 overflow-visible">
       {/* Plan name + interval toggle */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-4">
         <div className="flex items-center gap-3">
@@ -119,8 +129,69 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
         </div>
       </div>
 
+      {/* Billing details */}
+      <div className="space-y-3">
+        <div>
+          <label className="block text-sm font-medium text-neutral-300 mb-1.5">Business name</label>
+          <input
+            type="text"
+            value={businessName}
+            onChange={(e) => onBusinessNameChange(e.target.value)}
+            placeholder="Ciphera BV"
+            autoComplete="organization"
+            className={inputClass}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-neutral-300 mb-1.5">Billing email</label>
+          <input
+            type="email"
+            value={billingEmail}
+            onChange={(e) => onBillingEmailChange(e.target.value)}
+            placeholder="billing@example.com"
+            autoComplete="off"
+            className={inputClass}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-neutral-300 mb-1.5">Address</label>
+          <input
+            type="text"
+            value={address}
+            onChange={(e) => onAddressChange(e.target.value)}
+            placeholder="Kerkstraat 1"
+            autoComplete="street-address"
+            className={inputClass}
+          />
+        </div>
+        <div className="flex gap-3">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-neutral-300 mb-1.5">City</label>
+            <input
+              type="text"
+              value={city}
+              onChange={(e) => onCityChange(e.target.value)}
+              placeholder="Brussels"
+              autoComplete="address-level2"
+              className={inputClass}
+            />
+          </div>
+          <div className="w-32">
+            <label className="block text-sm font-medium text-neutral-300 mb-1.5">Postal code</label>
+            <input
+              type="text"
+              value={postalCode}
+              onChange={(e) => onPostalCodeChange(e.target.value)}
+              placeholder="1000"
+              autoComplete="postal-code"
+              className={inputClass}
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Country */}
-      <div>
+      <div className="relative z-10">
         <label className="block text-sm font-medium text-neutral-300 mb-1.5">Country</label>
         <Select
           value={country}
@@ -178,7 +249,11 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
               transition={TIMING}
               className="mt-1.5 text-xs text-yellow-400"
             >
-              VAT ID could not be verified. 21% VAT will apply.
+              {country === 'BE'
+                ? 'Belgian businesses are subject to 21% VAT.'
+                : vatResult.vat_error === 'service_unavailable'
+                ? 'VAT verification service is temporarily unavailable. 21% VAT will apply for now.'
+                : 'VAT ID is invalid. 21% VAT will apply.'}
             </motion.p>
           )}
         </AnimatePresence>

@@ -59,18 +59,6 @@ export const env = createEnv({
     /** Captcha service base URL, includes `/api/v1` suffix. */
     NEXT_PUBLIC_CAPTCHA_API_URL: z.string().url(),
 
-    /**
-     * Chargebee site name (subdomain of chargebee.com, e.g. "ciphera").
-     * Used to initialise Chargebee.js in the browser.
-     */
-    NEXT_PUBLIC_CHARGEBEE_SITE: z.string().min(1),
-
-    /**
-     * Chargebee publishable API key. Public — it appears in every
-     * Chargebee.js call from the browser. Starts with `test_` in staging,
-     * `live_` in production.
-     */
-    NEXT_PUBLIC_CHARGEBEE_PUBLISHABLE_KEY: z.string().min(1),
   },
   /*
    * Every entry here MUST be a literal `process.env.NEXT_PUBLIC_X` access.
@@ -85,8 +73,6 @@ export const env = createEnv({
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_ID_API_URL: process.env.NEXT_PUBLIC_ID_API_URL,
     NEXT_PUBLIC_CAPTCHA_API_URL: process.env.NEXT_PUBLIC_CAPTCHA_API_URL,
-    NEXT_PUBLIC_CHARGEBEE_SITE: process.env.NEXT_PUBLIC_CHARGEBEE_SITE,
-    NEXT_PUBLIC_CHARGEBEE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CHARGEBEE_PUBLISHABLE_KEY,
   },
   emptyStringAsUndefined: true,
 })

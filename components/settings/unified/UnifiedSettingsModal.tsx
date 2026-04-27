@@ -369,7 +369,7 @@ export default function UnifiedSettingsModal() {
     <>
       {/* Backdrop — fades in/out */}
       <div
-        className={`fixed inset-0 z-[60] bg-black/50 transition-opacity duration-base ${
+        className={`fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm transition-opacity duration-base ${
           isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
         } ease-apple`}
         onClick={handleBackdropClick}

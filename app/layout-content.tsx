@@ -148,7 +148,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
 
   // Setup wizard: own layout with stepper — no app shell
   // Org-settings: redirect shim that opens unified settings modal — no shell needed
-  if (isAuthenticated && (pathname.startsWith('/setup') || pathname.startsWith('/org-settings'))) {
+  if (isAuthenticated && (pathname.startsWith('/setup') || pathname.startsWith('/org-settings') || pathname.startsWith('/switch'))) {
     return <>{children}</>
   }
 

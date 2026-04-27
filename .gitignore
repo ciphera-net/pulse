@@ -46,3 +46,6 @@ public/swe-worker-*.js
 
 # Local brainstorm mockups — never tracked
 .superpowers/
+playwright.config.ts
+test-results/
+tests/
