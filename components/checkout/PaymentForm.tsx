@@ -3,13 +3,14 @@
 import { useState } from 'react'
 import { Lock, ShieldCheck } from '@phosphor-icons/react'
 import { createCheckoutSession } from '@/lib/api/billing'
+import { cdnUrl } from '@/lib/cdn'
 
 const PAYMENT_METHODS = [
-  { id: 'creditcard', label: 'Cards' },
-  { id: 'bancontact', label: 'Bancontact' },
-  { id: 'directdebit', label: 'SEPA' },
-  { id: 'ideal', label: 'iDEAL' },
-  { id: 'applepay', label: 'Apple Pay' },
+  { id: 'creditcard', label: 'Cards', icons: ['/icons/payment/visa.svg', '/icons/payment/mastercard.svg'] },
+  { id: 'bancontact', label: 'Bancontact', icons: ['/icons/payment/bancontact.svg'] },
+  { id: 'directdebit', label: 'SEPA', icons: ['/icons/payment/sepa.svg'] },
+  { id: 'ideal', label: 'iDEAL', icons: ['/icons/payment/ideal.svg'] },
+  { id: 'applepay', label: 'Apple Pay', icons: ['/icons/payment/applepay.svg'] },
 ]
 
 interface PaymentFormProps {
@@ -83,13 +84,18 @@ export default function PaymentForm({ plan, interval, limit, country, vatId, bus
             key={method.id}
             type="button"
             onClick={() => { setSelectedMethod(method.id); setFormError(null) }}
-            className={`flex items-center justify-center rounded-xl border h-[44px] text-sm transition-all duration-base ${
+            className={`flex flex-col items-center justify-center gap-1.5 rounded-xl border h-[60px] text-xs transition-all duration-base ${
               selectedMethod === method.id
                 ? 'border-brand-orange bg-brand-orange/5 text-white'
                 : 'border-neutral-700/50 bg-neutral-800/30 text-neutral-400 hover:border-neutral-600'
             } ease-apple`}
           >
-            {method.label}
+            <div className="flex items-center gap-1.5">
+              {method.icons.map((icon) => (
+                <img key={icon} src={cdnUrl(icon)} alt="" className="h-5 w-auto" />
+              ))}
+            </div>
+            <span>{method.label}</span>
           </button>
         ))}
       </div>
