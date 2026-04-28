@@ -20,38 +20,68 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Determine image name, Dokploy app ID, and build-time env
+      - name: Determine target
         id: target
         run: |
-          # NEXT_PUBLIC_* values differ between prod and staging for two
-          # variables (API URL, APP URL). The rest are identical and set
-          # as build-args directly below. These values are inlined into
-          # the client JS bundle by `next build` — they ship to the
-          # browser either way, so plaintext in the workflow is fine.
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
             echo "image_name=ciphera-net/pulse-frontend" >> "$GITHUB_OUTPUT"
             echo "dokploy_app_id=${{ secrets.DOKPLOY_PULSE_FRONTEND_PROD_APP_ID }}" >> "$GITHUB_OUTPUT"
-            echo "public_api_url=https://pulse-api.ciphera.net" >> "$GITHUB_OUTPUT"
-            echo "public_app_url=https://pulse.ciphera.net" >> "$GITHUB_OUTPUT"
-            echo "chargebee_site=ciphera-net" >> "$GITHUB_OUTPUT"
-            echo "chargebee_pub_key=live_P4hmgDm6Xcdx6mBgvUCbXQ4pnRZDG3hQy" >> "$GITHUB_OUTPUT"
+            echo "vault_kv_path=kv/data/pulse-frontend/config" >> "$GITHUB_OUTPUT"
           else
             echo "image_name=ciphera-net/pulse-frontend-staging" >> "$GITHUB_OUTPUT"
             echo "dokploy_app_id=${{ secrets.DOKPLOY_PULSE_FRONTEND_STAGING_APP_ID }}" >> "$GITHUB_OUTPUT"
-            echo "public_api_url=https://pulse-api-staging.ciphera.net" >> "$GITHUB_OUTPUT"
-            echo "public_app_url=https://pulse-staging.ciphera.net" >> "$GITHUB_OUTPUT"
-            echo "chargebee_site=ciphera-net-test" >> "$GITHUB_OUTPUT"
-            echo "chargebee_pub_key=test_dRcuB7qQO8c4c6cublGf2oXczKlRRNDPyA" >> "$GITHUB_OUTPUT"
+            echo "vault_kv_path=kv/data/pulse-frontend-staging/config" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Write .npmrc for GitHub Packages auth
+      - name: Install Teleport
+        uses: teleport-actions/setup@v1
+        with:
+          version: "18.7.2"
+          proxy: teleport.ciphera.net:443
+
+      - name: Teleport tunnel to Vault
+        id: vault-tunnel
+        uses: teleport-actions/application-tunnel@v1
+        with:
+          proxy: teleport.ciphera.net:443
+          token: ci-deploy
+          app: vault
+          listen: "tcp://127.0.0.1:8200"
+          diag-port: 57001
+
+      - name: Read build config from Vault
+        id: vault-config
+        run: |
+          VAULT_ADDR=http://127.0.0.1:8200
+          TOKEN=$(curl -sf -X POST "${VAULT_ADDR}/v1/auth/approle/login" \
+            -d "{\"role_id\":\"${{ secrets.VAULT_CI_ROLE_ID }}\",\"secret_id\":\"${{ secrets.VAULT_CI_SECRET_ID }}\"}" \
+            | jq -r '.auth.client_token')
+          CONFIG=$(curl -sf -H "X-Vault-Token: ${TOKEN}" \
+            "${VAULT_ADDR}/v1/${{ steps.target.outputs.vault_kv_path }}" \
+            | jq -r '.data.data')
+          NPM_TOKEN=$(curl -sf -H "X-Vault-Token: ${TOKEN}" \
+            "${VAULT_ADDR}/v1/kv/data/shared/github-npm-token" \
+            | jq -r '.data.data.value')
+          {
+            echo "NEXT_PUBLIC_API_URL=$(echo "$CONFIG" | jq -r '.next_public_api_url')"
+            echo "NEXT_PUBLIC_APP_URL=$(echo "$CONFIG" | jq -r '.next_public_app_url')"
+            echo "NEXT_PUBLIC_ID_URL=$(echo "$CONFIG" | jq -r '.next_public_id_url // "https://id.ciphera.net"')"
+            echo "NEXT_PUBLIC_ID_API_URL=$(echo "$CONFIG" | jq -r '.next_public_id_api_url // "https://api.id.ciphera.net"')"
+            echo "NEXT_PUBLIC_CAPTCHA_API_URL=$(echo "$CONFIG" | jq -r '.next_public_captcha_api_url // "https://captcha.ciphera.net/api/v1"')"
+            echo "NEXT_PUBLIC_CHARGEBEE_SITE=$(echo "$CONFIG" | jq -r '.next_public_chargebee_site')"
+            echo "NEXT_PUBLIC_CHARGEBEE_PUBLISHABLE_KEY=$(echo "$CONFIG" | jq -r '.next_public_chargebee_publishable_key')"
+            echo "NEXT_PUBLIC_CDN_URL=$(echo "$CONFIG" | jq -r '.next_public_cdn_url')"
+            echo "NPM_AUTH_TOKEN=${NPM_TOKEN}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Write .npmrc from Vault token
         run: |
           {
             echo "@ciphera-net:registry=https://npm.pkg.github.com/"
-            echo "//npm.pkg.github.com/:_authToken=${{ secrets.GH_PACKAGES_READ_TOKEN }}"
+            echo "//npm.pkg.github.com/:_authToken=${{ steps.vault-config.outputs.NPM_AUTH_TOKEN }}"
             echo "legacy-peer-deps=true"
           } > /tmp/npmrc
 
@@ -82,18 +112,15 @@ jobs:
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ steps.target.outputs.image_name }}:buildcache,mode=max
           secret-files: |
             npmrc=/tmp/npmrc
-          # Per-branch values come from the `target` step. Shared values are
-          # inlined directly. scripts/validate-env.mjs (prebuild hook) fails
-          # the build loudly if any required var is missing.
           build-args: |
-            NEXT_PUBLIC_API_URL=${{ steps.target.outputs.public_api_url }}
-            NEXT_PUBLIC_APP_URL=${{ steps.target.outputs.public_app_url }}
-            NEXT_PUBLIC_ID_URL=https://id.ciphera.net
-            NEXT_PUBLIC_ID_API_URL=https://api.id.ciphera.net
-            NEXT_PUBLIC_CAPTCHA_API_URL=https://captcha.ciphera.net/api/v1
-            NEXT_PUBLIC_CHARGEBEE_SITE=${{ steps.target.outputs.chargebee_site }}
-            NEXT_PUBLIC_CHARGEBEE_PUBLISHABLE_KEY=${{ steps.target.outputs.chargebee_pub_key }}
-            NEXT_PUBLIC_CDN_URL=https://cdn.ciphera.net/pulse
+            NEXT_PUBLIC_API_URL=${{ steps.vault-config.outputs.NEXT_PUBLIC_API_URL }}
+            NEXT_PUBLIC_APP_URL=${{ steps.vault-config.outputs.NEXT_PUBLIC_APP_URL }}
+            NEXT_PUBLIC_ID_URL=${{ steps.vault-config.outputs.NEXT_PUBLIC_ID_URL }}
+            NEXT_PUBLIC_ID_API_URL=${{ steps.vault-config.outputs.NEXT_PUBLIC_ID_API_URL }}
+            NEXT_PUBLIC_CAPTCHA_API_URL=${{ steps.vault-config.outputs.NEXT_PUBLIC_CAPTCHA_API_URL }}
+            NEXT_PUBLIC_CHARGEBEE_SITE=${{ steps.vault-config.outputs.NEXT_PUBLIC_CHARGEBEE_SITE }}
+            NEXT_PUBLIC_CHARGEBEE_PUBLISHABLE_KEY=${{ steps.vault-config.outputs.NEXT_PUBLIC_CHARGEBEE_PUBLISHABLE_KEY }}
+            NEXT_PUBLIC_CDN_URL=${{ steps.vault-config.outputs.NEXT_PUBLIC_CDN_URL }}
 
       - name: Upload tracking scripts to CDN
         if: github.ref == 'refs/heads/main'
@@ -124,11 +151,10 @@ jobs:
           done
           echo "CDN cache purged"
 
-      - name: Install Teleport
-        uses: teleport-actions/setup@v1
-        with:
-          version: "18.7.2"
-          proxy: teleport.ciphera.net:443
+      - name: Stop Vault tunnel
+        run: |
+          kill ${{ steps.vault-tunnel.outputs.tbot-pid }} 2>/dev/null || true
+          sleep 1
 
       - name: Teleport tunnel to Dokploy
         id: tunnel
@@ -138,9 +164,11 @@ jobs:
           token: ci-deploy
           app: dokploy-pulse
           listen: "tcp://127.0.0.1:9090"
+          diag-port: 57002
 
       - name: Trigger Dokploy redeploy
         run: |
+          sleep 3
           curl -fsS -X POST \
             -H "x-api-key: ${{ secrets.DOKPLOY_PULSE_OPS_API_KEY }}" \
             -H "Content-Type: application/json" \
