@@ -333,84 +333,121 @@ export default function FunnelReportPage() {
         </motion.div>
       )}
 
-      {/* Funnel Chart + Inline Exit Pages */}
+      {/* Funnel Chart */}
       {chartData.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0.05 }}
-          className="glass-surface rounded-2xl overflow-hidden mb-6"
+          className="glass-surface rounded-2xl overflow-hidden p-6 mb-6"
         >
-          <div className="p-6 cursor-pointer" onClick={handleChartClick}>
-            <FunnelChart
-              data={chartData}
-              orientation="horizontal"
-              color="var(--chart-1)"
-              layers={3}
-              labelLayout="grouped"
-              labelAlign="center"
-              labelOrientation="vertical"
-              style={{ aspectRatio: '4 / 1' }}
-              onHoverChange={setHoveredChartStep}
-            />
-          </div>
+          <FunnelChart
+            data={chartData}
+            orientation="horizontal"
+            color="var(--chart-1)"
+            layers={3}
+            labelLayout="grouped"
+            labelAlign="center"
+            labelOrientation="vertical"
+            style={{ aspectRatio: '4 / 1' }}
+          />
+        </motion.div>
+      )}
 
-          <AnimatePresence initial={false}>
-            {expandedChartStep !== null && expandedStep && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={TIMING}
-                className="overflow-hidden"
-              >
-                <div className="px-6 py-4 border-t border-white/[0.08] bg-neutral-800/20">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <span className="w-6 h-6 rounded-full bg-neutral-800 flex items-center justify-center text-xs font-medium text-neutral-400">{expandedChartStep + 1}</span>
-                      <div>
-                        <span className="text-sm font-medium text-white">{expandedStep.step.name}</span>
-                        <span className="text-xs text-neutral-500 font-mono ml-2">{expandedStep.step.value}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4 text-sm">
-                      <span className="text-neutral-400">{formatNumber(expandedStep.visitors)} visitors</span>
-                      {expandedChartStep > 0 && (
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                          expandedStep.dropoff > 50 ? 'bg-red-900/30 text-red-400' :
-                          expandedStep.dropoff > 25 ? 'bg-amber-900/30 text-amber-400' :
-                          'bg-neutral-800 text-neutral-300'
-                        }`}>{Math.round(expandedStep.dropoff)}% dropoff</span>
-                      )}
-                    </div>
+      {/* Step-by-Step Breakdown */}
+      {stats && stats.steps.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0.1 }}
+          className="glass-surface rounded-2xl overflow-hidden mb-6 divide-y divide-white/[0.06]"
+        >
+          {stats.steps.map((step, i) => {
+            const isExpanded = expandedChartStep === i
+            const barWidth = totalVisitors > 0 ? (step.visitors / totalVisitors) * 100 : 0
+            const dropped = i > 0 ? stats.steps[i - 1].visitors - step.visitors : 0
+            const stepExitPages = step.exit_pages && step.exit_pages.length > 0
+
+            return (
+              <div key={step.step.name}>
+                <button
+                  type="button"
+                  onClick={() => setExpandedChartStep(prev => prev === i ? null : i)}
+                  className="w-full text-left px-5 py-4 hover:bg-white/[0.02] transition-colors ease-apple"
+                >
+                  {/* Step header */}
+                  <div className="flex items-center gap-3 mb-2.5">
+                    <span className="w-6 h-6 rounded-full bg-neutral-800 flex items-center justify-center text-xs font-medium text-neutral-400 flex-shrink-0">{i + 1}</span>
+                    <span className="text-xs text-neutral-500 uppercase tracking-wider">{step.step.category === 'event' ? 'Event' : 'Page'}</span>
+                    <span className="text-sm font-medium text-white truncate">{step.step.value}</span>
+                    <svg className={`w-3.5 h-3.5 text-neutral-600 flex-shrink-0 ml-auto transition-transform duration-base ${isExpanded ? 'rotate-90' : ''} ease-apple`} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
                   </div>
 
-                  {hasExitPages ? (
-                    <div>
-                      <p className="text-xs font-medium text-neutral-500 mb-2">Where visitors went after dropping off</p>
-                      <div className="space-y-1">
-                        {expandedStep.exit_pages!.map(ep => {
-                          const maxVisitors = expandedStep.exit_pages![0].visitors
-                          const barWidth = maxVisitors > 0 ? (ep.visitors / maxVisitors) * 60 : 0
-                          return (
-                            <div key={ep.path} className="relative overflow-hidden flex items-center justify-between h-7 rounded-md px-2 -mx-2">
-                              <div className="absolute inset-y-0.5 left-0.5 bg-neutral-700/40 rounded-md transition-[width] ease-apple" style={{ width: `${barWidth}%` }} />
-                              <span className="relative text-xs font-mono text-neutral-300 truncate">{ep.path}</span>
-                              <span className="relative text-xs font-medium text-neutral-500 ml-4 tabular-nums">{formatNumber(ep.visitors)}</span>
-                            </div>
-                          )
-                        })}
-                      </div>
+                  {/* Session count + proportional bar */}
+                  <div className="flex items-center gap-4 ml-9">
+                    <div className="w-28 flex-shrink-0">
+                      <span className="text-lg font-semibold text-white tabular-nums">{formatNumber(step.visitors)}</span>
+                      <span className="text-sm text-neutral-500 ml-1.5">sessions</span>
+                      {dropped > 0 && (
+                        <p className="text-xs text-red-400 mt-0.5">{formatNumber(dropped)} dropped</p>
+                      )}
                     </div>
-                  ) : expandedChartStep === 0 ? (
-                    <p className="text-xs text-neutral-500">This is the entry step — all visitors start here.</p>
-                  ) : (
-                    <p className="text-xs text-neutral-500">No exit page data for this step.</p>
+                    <div className="flex-1 flex items-center gap-3">
+                      <div className="flex-1 h-7 bg-neutral-800/50 rounded-md overflow-hidden">
+                        <motion.div
+                          className="h-full bg-[#10B981] rounded-md"
+                          initial={{ width: 0 }}
+                          animate={{ width: `${barWidth}%` }}
+                          transition={{ duration: 0.6, ease: EASE_APPLE, delay: i * 0.08 }}
+                        />
+                      </div>
+                      <span className="text-sm font-medium text-neutral-300 tabular-nums w-14 text-right">{Math.round(step.conversion)}%</span>
+                    </div>
+                  </div>
+                </button>
+
+                {/* Expanded: exit pages */}
+                <AnimatePresence initial={false}>
+                  {isExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={TIMING}
+                      className="overflow-hidden"
+                    >
+                      <div className="px-5 pb-4 ml-9">
+                        {stepExitPages ? (
+                          <div>
+                            <p className="text-xs font-medium text-neutral-500 mb-2">Where visitors went after dropping off</p>
+                            <div className="space-y-1">
+                              {step.exit_pages!.map(ep => {
+                                const maxEp = step.exit_pages![0].visitors
+                                const epBar = maxEp > 0 ? (ep.visitors / maxEp) * 60 : 0
+                                return (
+                                  <div key={ep.path} className="relative overflow-hidden flex items-center justify-between h-7 rounded-md px-2 -mx-2">
+                                    <div className="absolute inset-y-0.5 left-0.5 bg-neutral-700/40 rounded-md transition-[width] ease-apple" style={{ width: `${epBar}%` }} />
+                                    <span className="relative text-xs font-mono text-neutral-300 truncate">{ep.path}</span>
+                                    <span className="relative text-xs font-medium text-neutral-500 ml-4 tabular-nums">{formatNumber(ep.visitors)}</span>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        ) : i === 0 ? (
+                          <p className="text-xs text-neutral-500">Entry step — all visitors start here.</p>
+                        ) : (
+                          <p className="text-xs text-neutral-500">No exit page data for this step.</p>
+                        )}
+                      </div>
+                    </motion.div>
                   )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                </AnimatePresence>
+              </div>
+            )
+          })}
         </motion.div>
       )}
 
