@@ -77,10 +77,10 @@ export default function FunnelsPage() {
       <div className="mb-8">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-lg font-semibold text-neutral-200">
+            <h1 className="text-lg font-semibold text-neutral-200 mb-1">
               Funnels
             </h1>
-            <p className="text-neutral-400">
+            <p className="text-sm text-neutral-400">
               Track user journeys and identify drop-off points
             </p>
           </div>
