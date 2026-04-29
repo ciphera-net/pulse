@@ -218,10 +218,10 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
           Back to Funnels
         </Link>
 
-        <h1 className="text-2xl font-semibold text-white mb-2">
+        <h1 className="text-lg font-semibold text-neutral-200 mb-1">
           {initialData ? 'Edit Funnel' : 'Create New Funnel'}
         </h1>
-        <p className="text-neutral-400">
+        <p className="text-sm text-neutral-400">
           Define the steps users take to complete a goal.
         </p>
       </div>
@@ -264,7 +264,7 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
         {/* Steps */}
         <div className="space-y-4 mb-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-white">
+            <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">
               Funnel Steps
             </h3>
           </div>
@@ -460,7 +460,7 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
 
         {/* Conversion Window */}
         <div className="glass-surface rounded-2xl p-6 mb-6">
-          <h3 className="text-sm font-medium text-neutral-300 mb-3">
+          <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">
             Conversion Window
           </h3>
           <p className="text-xs text-neutral-500 mb-4">

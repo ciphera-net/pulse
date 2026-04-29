@@ -27,7 +27,7 @@ function FunnelCardStats({ siteId, funnelId }: { siteId: string; funnelId: strin
   const color = conversion >= 50 ? 'text-green-400' : conversion >= 20 ? 'text-amber-400' : 'text-red-400'
 
   return (
-    <div className="flex items-center gap-4 mt-4 pt-4 border-t border-white/[0.06]">
+    <div className="flex items-center gap-4 mt-4 pt-4 border-t border-white/[0.08]">
       <div>
         <span className="text-xs text-neutral-500">Visitors</span>
         <p className="text-sm font-medium text-white tabular-nums">{formatNumber(firstStep.visitors)}</p>
@@ -115,7 +115,7 @@ export default function FunnelsPage() {
                 <div className="glass-surface rounded-2xl p-6 hover:border-brand-orange/50 transition-colors ease-apple">
                   <div className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-xl font-semibold text-white group-hover:text-brand-orange transition-colors ease-apple">
+                      <h3 className="text-lg font-semibold text-white group-hover:text-brand-orange transition-colors ease-apple">
                         {funnel.name}
                       </h3>
                       {funnel.description && (

@@ -1,12 +1,12 @@
 'use client'
 
-import React, { useState, useCallback, useRef } from 'react'
+import React, { useState, useCallback, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DURATION_BASE, EASE_APPLE, TIMING } from '@/lib/motion'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { useParams, useRouter } from 'next/navigation'
 import { deleteFunnel } from '@/lib/api/funnels'
-import { useFunnelDetail, useFunnelStats, useFunnelTrends } from '@/lib/swr/dashboard'
+import { useSite, useFunnelDetail, useFunnelStats, useFunnelTrends } from '@/lib/swr/dashboard'
 import FilterButton from '@/components/dashboard/FilterButton'
 import FilterPills from '@/components/dashboard/FilterPills'
 import FilterModal from '@/components/dashboard/FilterModal'
@@ -53,6 +53,13 @@ export default function FunnelReportPage() {
   const [expandedStep, setExpandedStep] = useState<number | null>(null)
   const [hoveredChartStep, setHoveredChartStep] = useState<number | null>(null)
   const tableRef = useRef<HTMLDivElement>(null)
+
+  const { data: site } = useSite(siteId)
+
+  useEffect(() => {
+    const domain = site?.domain
+    document.title = domain ? `Funnels · ${domain} | Pulse` : 'Funnels | Pulse'
+  }, [site?.domain])
 
   const filterStr = serializeFilters(filters) || undefined
   const { data: funnel, error: funnelError, isLoading: funnelLoading } = useFunnelDetail(siteId, funnelId)
@@ -227,7 +234,7 @@ export default function FunnelReportPage() {
                 )}
               </div>
               {funnel.description && (
-                <p className="text-neutral-400">
+                <p className="text-sm text-neutral-400">
                   {funnel.description}
                 </p>
               )}
@@ -307,7 +314,7 @@ export default function FunnelReportPage() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: DURATION_BASE, ease: EASE_APPLE }}
-            className="glass-surface rounded-2xl overflow-hidden shadow-sm p-6 mb-6 cursor-pointer"
+            className="glass-surface rounded-2xl overflow-hidden p-6 mb-6 cursor-pointer"
             onClick={handleChartClick}
           >
             <FunnelChart
@@ -330,10 +337,10 @@ export default function FunnelReportPage() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0.05 }}
-            className="glass-surface rounded-2xl overflow-hidden shadow-sm p-6 mb-6"
+            className="glass-surface rounded-2xl overflow-hidden p-6 mb-6"
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-medium text-neutral-400 uppercase tracking-wider">
+              <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">
                 Conversion Trends
               </h3>
               <div className="flex flex-wrap gap-2">
