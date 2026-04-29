@@ -1,24 +1,39 @@
 'use client'
 
-import React, { useCallback, useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
-import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
+import React, { useState, useCallback, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { DURATION_BASE, EASE_APPLE, TIMING } from '@/lib/motion'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { useParams, useRouter } from 'next/navigation'
-import { ApiError } from '@/lib/api/client'
-import { getFunnel, getFunnelStats, getFunnelTrends, deleteFunnel, type Funnel, type FunnelStats, type FunnelTrends } from '@/lib/api/funnels'
+import { deleteFunnel } from '@/lib/api/funnels'
+import { useFunnelDetail, useFunnelStats, useFunnelTrends } from '@/lib/swr/dashboard'
 import FilterButton from '@/components/dashboard/FilterButton'
 import FilterPills from '@/components/dashboard/FilterPills'
 import FilterModal from '@/components/dashboard/FilterModal'
 import { type DimensionFilter, serializeFilters } from '@/lib/filters'
-import { toast, Select, DatePicker, ChevronLeftIcon, ChevronRightIcon, ArrowRightIcon, TrashIcon, Button } from '@ciphera-net/ui'
-import { PencilSimple } from '@phosphor-icons/react'
+import { toast, Select, DatePicker, ChevronLeftIcon, ChevronRightIcon, TrashIcon, Button, formatNumber } from '@ciphera-net/ui'
+import { PencilSimple, FunnelSimple, Warning } from '@phosphor-icons/react'
 import { FunnelDetailSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
+import { EmptyState } from '@/components/ui/EmptyState'
 import Link from 'next/link'
 import { FunnelChart } from '@/components/ui/funnel-chart'
 import { getDateRange, formatDate, getYesterdayRange, getLast1HourRange, getLast24HoursRange, getThisWeekRange, getThisMonthRange, getThisYearRange } from '@/lib/utils/dateRanges'
-import BreakdownDrawer from '@/components/funnels/BreakdownDrawer'
 import { LineChart, Line, Grid, XAxis, YAxis, ChartTooltip } from '@/components/ui/line-chart'
+
+const STEP_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16']
+
+function conversionColor(rate: number, isFirst: boolean): string {
+  if (isFirst) return 'text-white'
+  if (rate >= 50) return 'text-green-400'
+  if (rate >= 20) return 'text-amber-400'
+  return 'text-red-400'
+}
+
+function dropoffColor(rate: number): string {
+  if (rate > 50) return 'bg-red-900/30 text-red-400'
+  if (rate > 25) return 'bg-amber-900/30 text-amber-400'
+  return 'bg-neutral-800 text-neutral-300'
+}
 
 export default function FunnelReportPage() {
   const params = useParams()
@@ -26,50 +41,23 @@ export default function FunnelReportPage() {
   const siteId = params.id as string
   const funnelId = params.funnelId as string
 
-  const [funnel, setFunnel] = useState<Funnel | null>(null)
-  const [stats, setStats] = useState<FunnelStats | null>(null)
-  const [loading, setLoading] = useState(true)
   const [dateRange, setDateRange] = useState(() => getDateRange(30))
   const [datePreset, setDatePreset] = useState<'1h' | '24h' | 'today' | 'yesterday' | '7' | '30' | 'week' | 'month' | 'year' | 'custom'>('30')
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
-  const [loadError, setLoadError] = useState<'not_found' | 'forbidden' | 'error' | null>(null)
   const [filters, setFilters] = useState<DimensionFilter[]>([])
   const [editingFilterIndex, setEditingFilterIndex] = useState<number | null>(null)
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
   const [filterModalDimension, setFilterModalDimension] = useState<string | null>(null)
-  const [expandedExitStep, setExpandedExitStep] = useState<number | null>(null)
-  const [trends, setTrends] = useState<FunnelTrends | null>(null)
   const [visibleSteps, setVisibleSteps] = useState<Set<string>>(new Set())
-  const [breakdownStep, setBreakdownStep] = useState<number | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [expandedStep, setExpandedStep] = useState<number | null>(null)
+  const [hoveredChartStep, setHoveredChartStep] = useState<number | null>(null)
+  const tableRef = useRef<HTMLDivElement>(null)
 
-  const loadData = useCallback(async () => {
-    setLoadError(null)
-    try {
-      setLoading(true)
-      const filterStr = serializeFilters(filters) || undefined
-      const [funnelData, statsData, trendsData] = await Promise.all([
-        getFunnel(siteId, funnelId),
-        getFunnelStats(siteId, funnelId, dateRange.start, dateRange.end, filterStr),
-        getFunnelTrends(siteId, funnelId, dateRange.start, dateRange.end, 'day', filterStr)
-      ])
-      setFunnel(funnelData)
-      setStats(statsData)
-      setTrends(trendsData)
-    } catch (error) {
-      const status = error instanceof ApiError ? error.status : 0
-      if (status === 404) setLoadError('not_found')
-      else if (status === 403) setLoadError('forbidden')
-      else setLoadError('error')
-      if (status !== 404 && status !== 403) toast.error('Failed to load funnel details')
-    } finally {
-      setLoading(false)
-    }
-  }, [siteId, funnelId, dateRange, filters])
-
-  useEffect(() => {
-    loadData()
-  }, [loadData])
+  const filterStr = serializeFilters(filters) || undefined
+  const { data: funnel, error: funnelError, isLoading: funnelLoading } = useFunnelDetail(siteId, funnelId)
+  const { data: stats } = useFunnelStats(siteId, funnelId, dateRange.start, dateRange.end, filterStr)
+  const { data: trends } = useFunnelTrends(siteId, funnelId, dateRange.start, dateRange.end, filterStr)
 
   const handleDelete = async () => {
     try {
@@ -77,10 +65,21 @@ export default function FunnelReportPage() {
       toast.success('Funnel deleted')
       setDeleteDialogOpen(false)
       router.push(`/sites/${siteId}/funnels`)
-    } catch (error) {
+    } catch {
       toast.error('Failed to delete funnel')
     }
   }
+
+  const toggleStep = useCallback((index: number) => {
+    setExpandedStep(prev => prev === index ? null : index)
+  }, [])
+
+  const handleChartClick = useCallback(() => {
+    if (hoveredChartStep !== null) {
+      setExpandedStep(prev => prev === hoveredChartStep ? null : hoveredChartStep)
+      tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [hoveredChartStep])
 
   const handleOpenFilterForDimension = useCallback((dimension: string) => {
     setFilterModalDimension(dimension)
@@ -134,59 +133,62 @@ export default function FunnelReportPage() {
     setEditingFilterIndex(null)
   }, [])
 
-  const showSkeleton = useMinimumLoading(loading && !funnel)
+  const showSkeleton = useMinimumLoading(funnelLoading && !funnel)
   const fadeClass = useSkeletonFade(showSkeleton)
 
   if (showSkeleton) {
     return <FunnelDetailSkeleton />
   }
 
-  if (loadError === 'not_found' || (!funnel && !stats && !loadError)) {
+  if (funnelError?.status === 404 || (!funnel && !funnelLoading)) {
     return (
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
-        <p className="text-neutral-400">Funnel not found</p>
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 pt-12">
+        <EmptyState
+          icon={<FunnelSimple />}
+          title="Funnel not found"
+          description="This funnel may have been deleted or you don't have access to it."
+          action={{ label: 'Back to Funnels', href: `/sites/${siteId}/funnels` }}
+        />
       </div>
     )
   }
 
-  if (loadError === 'forbidden') {
+  if (funnelError?.status === 403) {
     return (
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
-        <p className="text-neutral-400">Access denied</p>
-        <Link href={`/sites/${siteId}/funnels`}>
-          <Button variant="primary" className="mt-4">
-            Back to Funnels
-          </Button>
-        </Link>
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 pt-12">
+        <EmptyState
+          icon={<Warning />}
+          title="Access denied"
+          description="You don't have permission to view this funnel."
+          action={{ label: 'Back to Funnels', href: `/sites/${siteId}/funnels` }}
+        />
       </div>
     )
   }
 
-  if (loadError === 'error') {
+  if (funnelError) {
     return (
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
-        <p className="text-neutral-400 mb-4">Unable to load funnel</p>
-        <Button type="button" onClick={() => loadData()} variant="primary">
-          Try again
-        </Button>
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 pt-12">
+        <EmptyState
+          icon={<Warning />}
+          title="Unable to load funnel"
+          description="Something went wrong. Please try again."
+          action={{ label: 'Try again', onClick: () => window.location.reload() }}
+        />
       </div>
     )
   }
 
-  if (!funnel || !stats) {
-    return (
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
-        <p className="text-neutral-400">Funnel not found</p>
-      </div>
-    )
-  }
+  if (!funnel) return null
 
-  const chartData = stats.steps.map(s => ({
+  const chartData = stats?.steps.map(s => ({
     label: s.step.name,
     value: s.visitors,
-  }))
+  })) ?? []
 
-  const STEP_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16']
+  const overallConversion = stats?.steps.length
+    ? stats.steps[stats.steps.length - 1].conversion
+    : 0
 
   const trendsChartData = trends ? trends.dates.map((date, idx) => {
     const point: Record<string, any> = {
@@ -204,18 +206,26 @@ export default function FunnelReportPage() {
   return (
     <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
       <div className="mb-8">
+        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
-            <Link 
+            <Link
               href={`/sites/${siteId}/funnels`}
               className="p-2 -ml-2 text-neutral-400 hover:text-white rounded-xl hover:bg-neutral-800 transition-colors ease-apple"
             >
               <ChevronLeftIcon className="w-5 h-5" />
             </Link>
             <div>
-              <h1 className="text-lg font-semibold text-neutral-200">
-                {funnel.name}
-              </h1>
+              <div className="flex items-center gap-3">
+                <h1 className="text-lg font-semibold text-neutral-200">
+                  {funnel.name}
+                </h1>
+                {stats && (
+                  <span className={`text-sm font-medium ${conversionColor(overallConversion, false)}`}>
+                    {Math.round(overallConversion)}% conversion
+                  </span>
+                )}
+              </div>
               {funnel.description && (
                 <p className="text-neutral-400">
                   {funnel.description}
@@ -223,7 +233,7 @@ export default function FunnelReportPage() {
               )}
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2">
             <div className="flex items-center h-10 rounded-lg border border-white/[0.08] bg-neutral-900/80 shadow-sm">
               <button onClick={() => shiftPeriod(-1)} className="px-2 h-full text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors rounded-l-lg ease-apple" aria-label="Previous period">
@@ -235,37 +245,16 @@ export default function FunnelReportPage() {
                 className="min-w-[130px]"
                 value={datePreset}
                 onChange={(value) => {
-                  if (value === 'today') {
-                    const today = formatDate(new Date())
-                    setDateRange({ start: today, end: today })
-                    setDatePreset('today')
-                  } else if (value === 'yesterday') {
-                    setDateRange(getYesterdayRange())
-                    setDatePreset('yesterday')
-                  } else if (value === '1h') {
-                    setDateRange(getLast1HourRange())
-                    setDatePreset('1h')
-                  } else if (value === '24h') {
-                    setDateRange(getLast24HoursRange())
-                    setDatePreset('24h')
-                  } else if (value === '7') {
-                    setDateRange(getDateRange(7))
-                    setDatePreset('7')
-                  } else if (value === '30') {
-                    setDateRange(getDateRange(30))
-                    setDatePreset('30')
-                  } else if (value === 'week') {
-                    setDateRange(getThisWeekRange())
-                    setDatePreset('week')
-                  } else if (value === 'month') {
-                    setDateRange(getThisMonthRange())
-                    setDatePreset('month')
-                  } else if (value === 'year') {
-                    setDateRange(getThisYearRange())
-                    setDatePreset('year')
-                  } else if (value === 'custom') {
-                    setIsDatePickerOpen(true)
-                  }
+                  if (value === 'today') { setDateRange({ start: formatDate(new Date()), end: formatDate(new Date()) }); setDatePreset('today') }
+                  else if (value === 'yesterday') { setDateRange(getYesterdayRange()); setDatePreset('yesterday') }
+                  else if (value === '1h') { setDateRange(getLast1HourRange()); setDatePreset('1h') }
+                  else if (value === '24h') { setDateRange(getLast24HoursRange()); setDatePreset('24h') }
+                  else if (value === '7') { setDateRange(getDateRange(7)); setDatePreset('7') }
+                  else if (value === '30') { setDateRange(getDateRange(30)); setDatePreset('30') }
+                  else if (value === 'week') { setDateRange(getThisWeekRange()); setDatePreset('week') }
+                  else if (value === 'month') { setDateRange(getThisMonthRange()); setDatePreset('month') }
+                  else if (value === 'year') { setDateRange(getThisYearRange()); setDatePreset('year') }
+                  else if (value === 'custom') { setIsDatePickerOpen(true) }
                 }}
                 options={[
                   { value: '1h', label: 'Last 1 hour' },
@@ -288,7 +277,7 @@ export default function FunnelReportPage() {
                 <ChevronRightIcon className="w-4 h-4" weight="bold" />
               </button>
             </div>
-            
+
             <Link
               href={`/sites/${siteId}/funnels/${funnelId}/edit`}
               className="p-2 text-neutral-400 hover:text-brand-orange hover:bg-orange-900/20 rounded-xl transition-colors ease-apple"
@@ -312,27 +301,28 @@ export default function FunnelReportPage() {
           <FilterPills filters={filters} onEdit={handleEditFilter} onRemove={handleRemoveFilter} onClear={handleClearFilters} />
         </div>
 
-        {/* Chart */}
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0 }}
-          className="glass-surface rounded-2xl overflow-hidden shadow-sm p-6 mb-8"
-        >
-          <h3 className="text-lg font-semibold text-white mb-6">
-            Funnel Visualization
-          </h3>
-          <FunnelChart
-            data={chartData}
-            orientation="horizontal"
-            color="var(--chart-1)"
-            layers={3}
-            labelLayout="grouped"
-            labelAlign="center"
-            labelOrientation="vertical"
-            style={{ aspectRatio: '4 / 1' }}
-          />
-        </motion.div>
+        {/* Funnel Chart */}
+        {chartData.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: DURATION_BASE, ease: EASE_APPLE }}
+            className="glass-surface rounded-2xl overflow-hidden shadow-sm p-6 mb-6 cursor-pointer"
+            onClick={handleChartClick}
+          >
+            <FunnelChart
+              data={chartData}
+              orientation="horizontal"
+              color="var(--chart-1)"
+              layers={3}
+              labelLayout="grouped"
+              labelAlign="center"
+              labelOrientation="vertical"
+              style={{ aspectRatio: '4 / 1' }}
+              onHoverChange={setHoveredChartStep}
+            />
+          </motion.div>
+        )}
 
         {/* Conversion Trends */}
         {trends && trends.dates.length > 1 && (
@@ -340,10 +330,10 @@ export default function FunnelReportPage() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0.05 }}
-            className="glass-surface rounded-2xl overflow-hidden shadow-sm p-6 mb-8"
+            className="glass-surface rounded-2xl overflow-hidden shadow-sm p-6 mb-6"
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-white">
+              <h3 className="text-sm font-medium text-neutral-400 uppercase tracking-wider">
                 Conversion Trends
               </h3>
               <div className="flex flex-wrap gap-2">
@@ -371,18 +361,11 @@ export default function FunnelReportPage() {
               </div>
             </div>
 
-            <LineChart
-              data={trendsChartData}
-              xDataKey="date"
-              aspectRatio="4 / 1"
-            >
+            <LineChart data={trendsChartData} xDataKey="date" aspectRatio="4 / 1">
               <Grid />
               <XAxis />
-              <YAxis
-                numTicks={5}
-                formatValue={(v) => `${Math.round(v)}%`}
-              />
-              <Line dataKey="overall" stroke="#F97316" />
+              <YAxis numTicks={5} formatValue={(v) => `${Math.round(v)}%`} />
+              <Line dataKey="overall" stroke="var(--brand-orange)" />
               {Array.from(visibleSteps).map((stepKey) => (
                 <Line
                   key={stepKey}
@@ -393,7 +376,7 @@ export default function FunnelReportPage() {
               <ChartTooltip
                 rows={(point) => {
                   const rows: { color: string; label: string; value: string | number }[] = [
-                    { color: '#F97316', label: 'Overall', value: `${point.overall ?? 0}%` },
+                    { color: 'var(--brand-orange)', label: 'Overall', value: `${point.overall ?? 0}%` },
                   ]
                   for (const stepKey of Array.from(visibleSteps)) {
                     const key = `step_${stepKey}`
@@ -412,98 +395,137 @@ export default function FunnelReportPage() {
           </motion.div>
         )}
 
-        {/* Detailed Stats Table */}
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0.1 }}
-          className="glass-surface rounded-2xl overflow-hidden"
-        >
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-neutral-800/50 border-b border-neutral-800">
-                <tr>
-                  <th className="px-6 py-4 font-medium text-neutral-400 uppercase tracking-wider">Step</th>
-                  <th className="px-6 py-4 font-medium text-neutral-400 uppercase tracking-wider text-right">Visitors</th>
-                  <th className="px-6 py-4 font-medium text-neutral-400 uppercase tracking-wider text-right">Drop-off</th>
-                  <th className="px-6 py-4 font-medium text-neutral-400 uppercase tracking-wider text-right">Conversion</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-800">
-                {stats.steps.map((step, i) => (
-                  <React.Fragment key={step.step.name}>
-                    <tr className="hover:bg-neutral-800/30 transition-colors cursor-pointer ease-apple" onClick={() => setBreakdownStep(i)}>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <span className="w-6 h-6 rounded-full bg-neutral-800 flex items-center justify-center text-xs font-medium text-neutral-400">
-                            {i + 1}
-                          </span>
-                          <div>
-                            <p className="font-medium text-white">{step.step.name}</p>
-                            <p className="text-neutral-400 text-xs font-mono mt-0.5">{step.step.value}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <span className="font-medium text-white">
-                          {step.visitors.toLocaleString()}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        {i > 0 ? (
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            step.dropoff > 50
-                              ? 'bg-red-900/30 text-red-400'
-                              : 'bg-neutral-800 text-neutral-300'
-                          }`}>
-                            {Math.round(step.dropoff)}%
-                          </span>
-                        ) : (
-                          <span className="text-neutral-400">-</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <span className="text-green-400 font-medium">
-                          {Math.round(step.conversion)}%
-                        </span>
-                      </td>
-                    </tr>
-                    {step.exit_pages && step.exit_pages.length > 0 && (
-                      <tr className="bg-neutral-800/20">
-                        <td colSpan={4} className="px-6 py-3">
-                          <div className="ml-9">
-                            <p className="text-xs font-medium text-neutral-500 mb-2">
-                              Where visitors went after dropping off:
-                            </p>
-                            <div className="flex flex-wrap gap-2">
-                              {(expandedExitStep === i ? step.exit_pages : step.exit_pages.slice(0, 3)).map(ep => (
-                                <span key={ep.path} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-neutral-800 border border-neutral-700 rounded-lg text-xs">
-                                  <span className="font-mono text-neutral-300">{ep.path}</span>
-                                  <span className="text-neutral-400">{ep.visitors}</span>
-                                </span>
-                              ))}
-                            </div>
-                            {step.exit_pages.length > 3 && (
-                              <button
-                                type="button"
-                                onClick={() => setExpandedExitStep(expandedExitStep === i ? null : i)}
-                                className="mt-2 text-xs text-brand-orange hover:underline"
+        {/* Stats Table */}
+        {stats && stats.steps.length > 0 ? (
+          <motion.div
+            ref={tableRef}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0.1 }}
+            className="glass-surface rounded-2xl overflow-hidden"
+          >
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-neutral-800/50 border-b border-neutral-800">
+                  <tr>
+                    <th scope="col" className="px-6 py-4 font-medium text-neutral-400 uppercase tracking-wider text-xs">Step</th>
+                    <th scope="col" className="px-6 py-4 font-medium text-neutral-400 uppercase tracking-wider text-xs text-right">Visitors</th>
+                    <th scope="col" className="px-6 py-4 font-medium text-neutral-400 uppercase tracking-wider text-xs text-right">Drop-off</th>
+                    <th scope="col" className="px-6 py-4 font-medium text-neutral-400 uppercase tracking-wider text-xs text-right">Conversion</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-800">
+                  {stats.steps.map((step, i) => {
+                    const isExpanded = expandedStep === i
+                    const hasExitPages = step.exit_pages && step.exit_pages.length > 0
+
+                    return (
+                      <React.Fragment key={step.step.name}>
+                        <tr
+                          onClick={() => toggleStep(i)}
+                          className="hover:bg-neutral-800/30 transition-colors cursor-pointer ease-apple group"
+                        >
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <span className="w-6 h-6 rounded-full bg-neutral-800 flex items-center justify-center text-xs font-medium text-neutral-400">
+                                {i + 1}
+                              </span>
+                              <svg
+                                className={`w-3.5 h-3.5 text-neutral-500 flex-shrink-0 transition-transform duration-base ${isExpanded ? 'rotate-90' : ''} ease-apple`}
+                                fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"
                               >
-                                {expandedExitStep === i ? 'Show less' : `See all ${step.exit_pages.length} exit pages`}
-                              </button>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                              </svg>
+                              <div>
+                                <p className="font-medium text-white">{step.step.name}</p>
+                                <p className="text-neutral-500 text-xs font-mono mt-0.5">{step.step.value}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <span className="font-medium text-white">
+                              {formatNumber(step.visitors)}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            {i > 0 ? (
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${dropoffColor(step.dropoff)}`}>
+                                {Math.round(step.dropoff)}%
+                              </span>
+                            ) : (
+                              <span className="text-neutral-600">—</span>
                             )}
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </motion.div>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <span className={`font-medium ${conversionColor(step.conversion, i === 0)}`}>
+                              {Math.round(step.conversion)}%
+                            </span>
+                          </td>
+                        </tr>
+
+                        {/* Inline expansion — exit pages */}
+                        <tr>
+                          <td colSpan={4} className="p-0">
+                            <AnimatePresence initial={false}>
+                              {isExpanded && (
+                                <motion.div
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: 'auto', opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  transition={TIMING}
+                                  className="overflow-hidden"
+                                >
+                                  <div className="px-6 py-4 bg-neutral-800/20 border-t border-neutral-800/50">
+                                    {hasExitPages ? (
+                                      <div className="ml-9">
+                                        <p className="text-xs font-medium text-neutral-500 mb-3">
+                                          Where visitors went after dropping off
+                                        </p>
+                                        <div className="space-y-1.5">
+                                          {step.exit_pages!.map(ep => {
+                                            const maxVisitors = step.exit_pages![0].visitors
+                                            const barWidth = maxVisitors > 0 ? (ep.visitors / maxVisitors) * 60 : 0
+                                            return (
+                                              <div key={ep.path} className="relative overflow-hidden flex items-center justify-between h-7 rounded-md px-2 -mx-2">
+                                                <div
+                                                  className="absolute inset-y-0.5 left-0.5 bg-neutral-700/40 rounded-md transition-[width] ease-apple"
+                                                  style={{ width: `${barWidth}%` }}
+                                                />
+                                                <span className="relative text-xs font-mono text-neutral-300 truncate">{ep.path}</span>
+                                                <span className="relative text-xs font-medium text-neutral-500 ml-4 tabular-nums">{formatNumber(ep.visitors)}</span>
+                                              </div>
+                                            )
+                                          })}
+                                        </div>
+                                      </div>
+                                    ) : i === 0 ? (
+                                      <p className="text-xs text-neutral-500 ml-9">This is the entry step — all visitors start here.</p>
+                                    ) : (
+                                      <p className="text-xs text-neutral-500 ml-9">No exit page data for this step.</p>
+                                    )}
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </td>
+                        </tr>
+                      </React.Fragment>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </motion.div>
+        ) : stats && stats.steps.length === 0 ? (
+          <EmptyState
+            icon={<FunnelSimple />}
+            title="No data yet"
+            description="No visitors have entered this funnel in the selected date range."
+          />
+        ) : null}
       </div>
 
+      {/* Delete dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -522,19 +544,6 @@ export default function FunnelReportPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {breakdownStep !== null && stats && (
-        <BreakdownDrawer
-          siteId={siteId}
-          funnelId={funnelId}
-          stepIndex={breakdownStep}
-          stepName={stats.steps[breakdownStep].step.name}
-          startDate={dateRange.start}
-          endDate={dateRange.end}
-          filters={serializeFilters(filters) || undefined}
-          onClose={() => setBreakdownStep(null)}
-        />
-      )}
 
       <DatePicker
         isOpen={isDatePickerOpen}

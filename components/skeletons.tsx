@@ -309,15 +309,16 @@ export function FunnelDetailSkeleton() {
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
       <div className="mb-8">
-        <SkeletonLine className="h-4 w-32 mb-2" />
-        <SkeletonLine className="h-8 w-48 mb-1" />
-        <SkeletonLine className="h-4 w-64" />
-      </div>
-      <SkeletonCard className="h-80 mb-8" />
-      <div className="grid gap-4 md:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <SkeletonCard key={i} className="h-28" />
-        ))}
+        <div className="flex items-center gap-4 mb-6">
+          <SkeletonLine className="h-9 w-9 rounded-xl" />
+          <div>
+            <SkeletonLine className="h-6 w-48 mb-1" />
+            <SkeletonLine className="h-4 w-64" />
+          </div>
+        </div>
+        <SkeletonCard className="h-48 mb-6" />
+        <SkeletonCard className="h-48 mb-6" />
+        <SkeletonCard className="h-64" />
       </div>
     </div>
   )
