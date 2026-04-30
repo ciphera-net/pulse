@@ -100,6 +100,11 @@ function Row({
         <span className="text-sm font-semibold text-neutral-400 tabular-nums">
           {formatNumber(item.count)}
         </span>
+        {showAvgClicks && item.avg_click_count != null && item.avg_click_count > 0 && (
+          <span className="text-neutral-500 text-xs ml-1.5 tabular-nums">
+            avg {item.avg_click_count.toFixed(1)}
+          </span>
+        )}
       </div>
     </div>
   )

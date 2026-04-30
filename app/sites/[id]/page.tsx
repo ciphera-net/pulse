@@ -326,7 +326,7 @@ export default function SiteDashboardPage() {
   }, [resolvedDateRange])
   const { data: realtimeData } = useRealtime(siteId, 15_000)
   const { data: prevStats } = useStats(siteId, prevRange?.start ?? '', prevRange?.end ?? '')
-  const { data: prevDailyStats } = useDailyStats(siteId, prevRange?.start ?? '', prevRange?.end ?? '', interval)
+  const { data: prevDailyStats } = useDailyStats(siteId, prevRange?.start ?? '', prevRange?.end ?? '', interval, filtersParam || undefined)
   const { data: campaigns } = useCampaigns(siteId, resolvedDateRange?.start ?? '', resolvedDateRange?.end ?? '', 100, apiPeriod)
   // Fetch engagement percentiles in parallel with dashboard data
   useEffect(() => {

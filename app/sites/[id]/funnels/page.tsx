@@ -10,28 +10,25 @@ import { toast, PlusIcon, ArrowRightIcon, ChevronLeftIcon, ChevronRightIcon, Tra
 import { FunnelsListSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { AnimatedNumber } from '@/components/ui/animated-number'
-import { FunnelSimple, PencilSimple, ArrowUpRight, ArrowDownRight } from '@phosphor-icons/react'
+import { FunnelSimple, PencilSimple } from '@phosphor-icons/react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import FunnelModal from '@/components/funnels/FunnelModal'
 import { getDateRange, formatDate, getYesterdayRange, getLast1HourRange, getLast24HoursRange, getThisWeekRange, getThisMonthRange, getThisYearRange } from '@/lib/utils/dateRanges'
+import { pctChange, type PctChangeResult } from '@/lib/utils/pctChange'
 import { LineChart, Line, Grid, XAxis, YAxis, ChartTooltip } from '@/components/ui/line-chart'
 
 const STEP_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16']
 const DAY_MS = 86400000
 
-function pctChange(current: number, previous: number): number | null {
-  if (previous === 0 && current === 0) return null
-  if (previous === 0) return null
-  return Math.round(((current - previous) / previous) * 100)
-}
-
-function ChangeIndicator({ change }: { change: number | null }) {
-  if (change === null) return null
-  const isPositive = change > 0
+function ChangeIndicator({ change }: { change: PctChangeResult }) {
+  if (!change) return null
+  if (change.type === 'new') return (
+    <span className="text-[10px] font-medium text-brand-orange bg-brand-orange/10 px-1.5 py-0.5 rounded-full">New</span>
+  )
+  const isPositive = change.value > 0
   return (
-    <span className={`flex items-center gap-0.5 text-xs font-semibold ${isPositive ? 'text-[#10B981]' : 'text-[#EF4444]'}`}>
-      {change > 0 ? <ArrowUpRight weight="bold" className="size-3" /> : <ArrowDownRight weight="bold" className="size-3" />}
-      {Math.abs(change)}%
+    <span className={`text-[10px] font-medium flex items-center gap-0.5 ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+      {isPositive ? '↑' : '↓'} {Math.abs(change.value)}%
     </span>
   )
 }

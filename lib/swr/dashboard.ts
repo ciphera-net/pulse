@@ -184,14 +184,14 @@ export function useDailyStats(
   start: string,
   end: string,
   interval: 'hour' | 'day' | 'minute',
+  filters?: string,
   period?: string
 ) {
   return useSWR<DailyStat[]>(
-    siteId && (period || (start && end)) ? ['dailyStats', siteId, period || `${start}-${end}`, interval] : null,
-    () => getDailyStats(siteId, start, end, interval, undefined, period),
+    siteId && (period || (start && end)) ? ['dailyStats', siteId, period || `${start}-${end}`, interval, filters] : null,
+    () => getDailyStats(siteId, start, end, interval, filters, period),
     {
       ...dashboardSWRConfig,
-      // * Refresh every 60 seconds for chart data
       refreshInterval: 60_000,
       dedupingInterval: 10_000,
     }
