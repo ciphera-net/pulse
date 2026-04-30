@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
+import { DURATION_FAST, DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 import { Button, Spinner, toast } from '@ciphera-net/ui'
 import { CaretUp, CaretDown, X, Plus, Trash } from '@phosphor-icons/react'
 import type { Funnel, FunnelStep, StepPropertyFilter, CreateFunnelRequest } from '@/lib/api/funnels'
@@ -74,138 +74,158 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData }: 
   const removeFilter = (si: number, fi: number) => { setSteps(p => { const n = [...p]; const s = { ...n[si] }; const f = [...(s.property_filters || [])].filter((_, j) => j !== fi); s.property_filters = f.length > 0 ? f : undefined; n[si] = s; return n }) }
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-xl"
-            onClick={onClose}
-          />
-          <div
-            className="fixed inset-0 z-[61] flex items-center justify-center p-4"
-            onClick={onClose}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
-              role="dialog"
-              aria-modal="true"
-              onClick={e => e.stopPropagation()}
-              className="glass-overlay rounded-2xl shadow-xl shadow-black/20 w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden"
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between px-6 pt-6 pb-4">
-                <h3 className="text-lg font-bold text-white">{initialData ? 'Edit Funnel' : 'Create Funnel'}</h3>
-                <button onClick={onClose} className="p-1.5 text-neutral-400 hover:text-white rounded-lg hover:bg-white/[0.06] transition-colors ease-apple">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
+    <>
+      {/* Backdrop — identical to UnifiedSettingsModal */}
+      <div
+        className={`fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm transition-opacity duration-base ${
+          isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        } ease-apple`}
+        onClick={onClose}
+      />
 
-              {/* Body */}
-              <div className="flex-1 overflow-y-auto px-6 space-y-5">
-                <div>
-                  <label className={labelClass}>Name</label>
-                  <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Signup Flow" maxLength={100} className={inputClass} />
-                </div>
-
-                <div>
-                  <label className={labelClass}>Description <span className="text-neutral-600 font-normal">optional</span></label>
-                  <input value={description} onChange={e => setDescription(e.target.value)} placeholder="Tracks users from landing page to signup" className={inputClass} />
-                </div>
-
-                <div>
-                  <label className={labelClass}>Steps</label>
-                  <div className="space-y-2">
-                    {steps.map((step, i) => {
-                      const cat = step.category || 'page'
-                      return (
-                        <div key={stepIds[i]} className="rounded-xl border border-neutral-800 bg-neutral-800/20 p-3">
-                          <div className="flex items-start gap-2">
-                            <div className="flex items-center gap-1 mt-1.5 flex-shrink-0">
-                              <span className="w-5 h-5 rounded-full bg-neutral-800 flex items-center justify-center text-[10px] font-medium text-neutral-400">{i + 1}</span>
-                              <div className="flex flex-col">
-                                <button type="button" onClick={() => moveStep(i, -1)} disabled={i === 0} className="p-0.5 text-neutral-500 hover:text-neutral-300 disabled:opacity-20"><CaretUp className="w-3 h-3" /></button>
-                                <button type="button" onClick={() => moveStep(i, 1)} disabled={i === steps.length - 1} className="p-0.5 text-neutral-500 hover:text-neutral-300 disabled:opacity-20"><CaretDown className="w-3 h-3" /></button>
-                              </div>
-                            </div>
-
-                            <div className="flex-1 min-w-0 space-y-2">
-                              <div className="flex items-center gap-2">
-                                <div className="flex gap-0.5 flex-shrink-0">
-                                  <button type="button" onClick={() => updateStep(i, 'category', 'page')} className={`px-2 py-1 text-xs font-medium rounded-md transition-colors ${cat === 'page' ? 'bg-brand-orange text-white' : 'bg-neutral-800 text-neutral-500 hover:bg-neutral-700'} ease-apple`}>Page</button>
-                                  <button type="button" onClick={() => updateStep(i, 'category', 'event')} className={`px-2 py-1 text-xs font-medium rounded-md transition-colors ${cat === 'event' ? 'bg-brand-orange text-white' : 'bg-neutral-800 text-neutral-500 hover:bg-neutral-700'} ease-apple`}>Event</button>
-                                </div>
-                                <input value={step.name} onChange={e => updateStep(i, 'name', e.target.value)} placeholder="Step name" className={inputClass} />
-                              </div>
-
-                              {cat === 'page' ? (
-                                <div className="flex gap-2">
-                                  <select value={step.type} onChange={e => updateStep(i, 'type', e.target.value)} className={`${selectClass} w-28 flex-shrink-0`}>
-                                    <option value="exact">Exact</option>
-                                    <option value="contains">Contains</option>
-                                    <option value="regex">Regex</option>
-                                  </select>
-                                  <input value={step.value} onChange={e => updateStep(i, 'value', e.target.value)} placeholder={step.type === 'exact' ? '/pricing' : 'pricing'} className={inputClass} />
-                                </div>
-                              ) : (
-                                <input value={step.value} onChange={e => updateStep(i, 'value', e.target.value)} placeholder="e.g. signup, purchase" className={inputClass} />
-                              )}
-
-                              {cat === 'event' && step.property_filters && step.property_filters.length > 0 && (
-                                <div className="space-y-1.5">
-                                  {step.property_filters.map((f, fi) => (
-                                    <div key={fi} className="flex gap-1.5 items-center">
-                                      <input value={f.key} onChange={e => updateFilter(i, fi, 'key', e.target.value)} placeholder="key" className={`${inputClass} flex-1`} />
-                                      <select value={f.operator} onChange={e => updateFilter(i, fi, 'operator', e.target.value)} className={`${selectClass} w-28 flex-shrink-0`}>
-                                        <option value="is">is</option>
-                                        <option value="is_not">is not</option>
-                                        <option value="contains">contains</option>
-                                        <option value="not_contains">does not contain</option>
-                                      </select>
-                                      <input value={f.value} onChange={e => updateFilter(i, fi, 'value', e.target.value)} placeholder="value" className={`${inputClass} flex-1`} />
-                                      <button type="button" onClick={() => removeFilter(i, fi)} className="p-1 text-neutral-500 hover:text-red-400 flex-shrink-0"><Trash className="w-3.5 h-3.5" /></button>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                              {cat === 'event' && (!step.property_filters || step.property_filters.length < MAX_FILTERS) && (
-                                <button type="button" onClick={() => addFilter(i)} className="text-xs text-neutral-500 hover:text-white flex items-center gap-1 transition-colors ease-apple">
-                                  <Plus className="w-3 h-3" /> Filter by property
-                                </button>
-                              )}
-                            </div>
-
-                            <button type="button" onClick={() => removeStep(i)} disabled={steps.length <= 1} className="p-1.5 mt-1 text-neutral-500 hover:text-red-400 disabled:opacity-20 rounded-lg flex-shrink-0">
-                              <Trash className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      )
-                    })}
-
-                    {steps.length < MAX_STEPS && (
-                      <button type="button" onClick={addStep} className="w-full py-2.5 rounded-xl border border-dashed border-neutral-700 text-sm text-neutral-500 hover:text-white hover:border-neutral-500 transition-colors ease-apple flex items-center justify-center gap-2">
-                        <Plus className="w-3.5 h-3.5" /> Add Step
-                      </button>
-                    )}
+      {/* Centering wrapper — identical to UnifiedSettingsModal */}
+      <div
+        className={`fixed inset-0 z-[61] flex items-center justify-center p-4 ${
+          isOpen
+            ? 'opacity-100 pointer-events-auto transition-opacity duration-fast'
+            : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={onClose}
+      >
+        {/* Glass panel — static, not animated. Identical class to UnifiedSettingsModal. */}
+        <div
+          className="relative w-full max-w-2xl max-h-[85vh] glass-overlay rounded-2xl shadow-xl shadow-black/20 flex flex-col overflow-hidden"
+          onClick={e => e.stopPropagation()}
+        >
+          {/* Content animates inside the static panel — identical to UnifiedSettingsModal */}
+          <AnimatePresence>
+            {isOpen && (
+              <motion.div
+                className="flex flex-col h-full"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
+              >
+                {/* Header — matches UnifiedSettingsModal */}
+                <div className="shrink-0 px-6 pt-5 pb-4 border-b border-white/[0.06]">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-semibold text-white">{initialData ? 'Edit Funnel' : 'Create Funnel'}</h2>
+                    <button
+                      onClick={onClose}
+                      className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors ease-apple"
+                    >
+                      <X weight="bold" className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
-              </div>
 
-              {/* Footer */}
-              <div className="flex justify-end gap-2 px-6 py-4 border-t border-neutral-800">
-                <Button variant="secondary" onClick={onClose} disabled={saving}>Cancel</Button>
-                <Button variant="primary" onClick={handleSubmit} disabled={saving}>
-                  {saving && <Spinner className="w-4 h-4" />}
-                  {initialData ? 'Save Changes' : 'Create Funnel'}
-                </Button>
-              </div>
-            </motion.div>
-          </div>
-        </>
-      )}
-    </AnimatePresence>
+                {/* Body */}
+                <div className="flex-1 overflow-y-auto overflow-x-hidden">
+                  <div className="p-6 space-y-5">
+                    <div>
+                      <label className={labelClass}>Name</label>
+                      <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Signup Flow" maxLength={100} className={inputClass} />
+                    </div>
+
+                    <div>
+                      <label className={labelClass}>Description <span className="text-neutral-600 font-normal">optional</span></label>
+                      <input value={description} onChange={e => setDescription(e.target.value)} placeholder="Tracks users from landing page to signup" className={inputClass} />
+                    </div>
+
+                    <div>
+                      <label className={labelClass}>Steps</label>
+                      <div className="space-y-2">
+                        {steps.map((step, i) => {
+                          const cat = step.category || 'page'
+                          return (
+                            <div key={stepIds[i]} className="rounded-xl border border-neutral-800 bg-neutral-800/20 p-3">
+                              <div className="flex items-start gap-2">
+                                <div className="flex items-center gap-1 mt-1.5 flex-shrink-0">
+                                  <span className="w-5 h-5 rounded-full bg-neutral-800 flex items-center justify-center text-[10px] font-medium text-neutral-400">{i + 1}</span>
+                                  <div className="flex flex-col">
+                                    <button type="button" onClick={() => moveStep(i, -1)} disabled={i === 0} className="p-0.5 text-neutral-500 hover:text-neutral-300 disabled:opacity-20"><CaretUp className="w-3 h-3" /></button>
+                                    <button type="button" onClick={() => moveStep(i, 1)} disabled={i === steps.length - 1} className="p-0.5 text-neutral-500 hover:text-neutral-300 disabled:opacity-20"><CaretDown className="w-3 h-3" /></button>
+                                  </div>
+                                </div>
+
+                                <div className="flex-1 min-w-0 space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex gap-0.5 flex-shrink-0">
+                                      <button type="button" onClick={() => updateStep(i, 'category', 'page')} className={`px-2 py-1 text-xs font-medium rounded-md transition-colors ${cat === 'page' ? 'bg-brand-orange text-white' : 'bg-neutral-800 text-neutral-500 hover:bg-neutral-700'} ease-apple`}>Page</button>
+                                      <button type="button" onClick={() => updateStep(i, 'category', 'event')} className={`px-2 py-1 text-xs font-medium rounded-md transition-colors ${cat === 'event' ? 'bg-brand-orange text-white' : 'bg-neutral-800 text-neutral-500 hover:bg-neutral-700'} ease-apple`}>Event</button>
+                                    </div>
+                                    <input value={step.name} onChange={e => updateStep(i, 'name', e.target.value)} placeholder="Step name" className={inputClass} />
+                                  </div>
+
+                                  {cat === 'page' ? (
+                                    <div className="flex gap-2">
+                                      <select value={step.type} onChange={e => updateStep(i, 'type', e.target.value)} className={`${selectClass} w-28 flex-shrink-0`}>
+                                        <option value="exact">Exact</option>
+                                        <option value="contains">Contains</option>
+                                        <option value="regex">Regex</option>
+                                      </select>
+                                      <input value={step.value} onChange={e => updateStep(i, 'value', e.target.value)} placeholder={step.type === 'exact' ? '/pricing' : 'pricing'} className={inputClass} />
+                                    </div>
+                                  ) : (
+                                    <input value={step.value} onChange={e => updateStep(i, 'value', e.target.value)} placeholder="e.g. signup, purchase" className={inputClass} />
+                                  )}
+
+                                  {cat === 'event' && step.property_filters && step.property_filters.length > 0 && (
+                                    <div className="space-y-1.5">
+                                      {step.property_filters.map((f, fi) => (
+                                        <div key={fi} className="flex gap-1.5 items-center">
+                                          <input value={f.key} onChange={e => updateFilter(i, fi, 'key', e.target.value)} placeholder="key" className={`${inputClass} flex-1`} />
+                                          <select value={f.operator} onChange={e => updateFilter(i, fi, 'operator', e.target.value)} className={`${selectClass} w-28 flex-shrink-0`}>
+                                            <option value="is">is</option>
+                                            <option value="is_not">is not</option>
+                                            <option value="contains">contains</option>
+                                            <option value="not_contains">does not contain</option>
+                                          </select>
+                                          <input value={f.value} onChange={e => updateFilter(i, fi, 'value', e.target.value)} placeholder="value" className={`${inputClass} flex-1`} />
+                                          <button type="button" onClick={() => removeFilter(i, fi)} className="p-1 text-neutral-500 hover:text-red-400 flex-shrink-0"><Trash className="w-3.5 h-3.5" /></button>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                  {cat === 'event' && (!step.property_filters || step.property_filters.length < MAX_FILTERS) && (
+                                    <button type="button" onClick={() => addFilter(i)} className="text-xs text-neutral-500 hover:text-white flex items-center gap-1 transition-colors ease-apple">
+                                      <Plus className="w-3 h-3" /> Filter by property
+                                    </button>
+                                  )}
+                                </div>
+
+                                <button type="button" onClick={() => removeStep(i)} disabled={steps.length <= 1} className="p-1.5 mt-1 text-neutral-500 hover:text-red-400 disabled:opacity-20 rounded-lg flex-shrink-0">
+                                  <Trash className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          )
+                        })}
+
+                        {steps.length < MAX_STEPS && (
+                          <button type="button" onClick={addStep} className="w-full py-2.5 rounded-xl border border-dashed border-neutral-700 text-sm text-neutral-500 hover:text-white hover:border-neutral-500 transition-colors ease-apple flex items-center justify-center gap-2">
+                            <Plus className="w-3.5 h-3.5" /> Add Step
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer — matches UnifiedSettingsModal save bar border */}
+                <div className="shrink-0 px-6 py-3 border-t border-white/[0.06] flex justify-end gap-2">
+                  <Button variant="secondary" onClick={onClose} disabled={saving}>Cancel</Button>
+                  <Button variant="primary" onClick={handleSubmit} disabled={saving}>
+                    {saving && <Spinner className="w-4 h-4" />}
+                    {initialData ? 'Save Changes' : 'Create Funnel'}
+                  </Button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+    </>
   )
 }
