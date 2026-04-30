@@ -78,7 +78,7 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData }: 
       {isOpen && (
         <>
           <div
-            className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-md"
+            className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-xl"
             onClick={onClose}
           />
           <div
