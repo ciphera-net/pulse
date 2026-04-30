@@ -220,8 +220,23 @@ export default function ScriptSetupBlock({
   const [copied, setCopied] = useState(false)
   const [showSRI, setShowSRI] = useState(false)
 
-  // * Build the script snippet dynamically based on toggles
+  // * Build the script snippet dynamically based on toggles and selected framework
+  const frameworkSnippet = framework ? FRAMEWORK_SNIPPETS[framework] : null
+
   const scriptSnippet = useMemo(() => {
+    // Framework-specific snippet with custom code takes priority
+    if (frameworkSnippet?.code) {
+      let snippet = frameworkSnippet.code.replace(/DOMAIN/g, site.domain)
+      if (features.frustration) {
+        snippet += `\n<script defer src="https://js.ciphera.net/script.frustration.js"></script>`
+      }
+      if (features.interactions) {
+        snippet += `\n<script defer src="https://js.ciphera.net/script.interactions.js"></script>`
+      }
+      return snippet
+    }
+
+    // Generic snippet (used for frameworks without custom code, and the no-framework default)
     const attrs: string[] = [
       'defer',
       `data-domain="${site.domain}"`,
@@ -249,7 +264,7 @@ export default function ScriptSetupBlock({
       script += `\n<script defer src="https://js.ciphera.net/script.interactions.js"></script>`
     }
     return script
-  }, [site.domain, features, storage, ttl, showSRI])
+  }, [site.domain, features, storage, ttl, showSRI, framework, frameworkSnippet])
 
   const copyScript = useCallback(() => {
     navigator.clipboard.writeText(scriptSnippet)
@@ -271,6 +286,24 @@ export default function ScriptSetupBlock({
 
   return (
     <div className={className}>
+      {/* ── Framework note / CTA (WordPress, Shopify, etc.) ────────────── */}
+      {frameworkSnippet?.note && (
+        <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 p-4 mb-3">
+          <p className="text-sm text-neutral-300">{frameworkSnippet.note}</p>
+          {frameworkSnippet.cta && (
+            <a
+              href={frameworkSnippet.cta.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 mt-3 px-4 py-2 rounded-lg bg-brand-orange text-white text-sm font-medium hover:bg-brand-orange/90 transition-colors"
+            >
+              {frameworkSnippet.cta.text}
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </a>
+          )}
+        </div>
+      )}
+
       {/* ── Script snippet ──────────────────────────────────────────────── */}
       <div className="rounded-2xl border border-white/[0.08] overflow-hidden">
         {/* * Orange accent bar */}
@@ -285,7 +318,7 @@ export default function ScriptSetupBlock({
                 <div className="w-2.5 h-2.5 rounded-full bg-green-500/70" />
               </div>
               <span className="text-xs font-medium text-neutral-500 ml-2">
-                tracking script
+                {frameworkSnippet?.label ?? 'tracking script'}
               </span>
             </div>
             <button
@@ -444,6 +477,9 @@ export default function ScriptSetupBlock({
                   {fw.icon}
                 </span>
                 <span className="font-medium">{fw.name}</span>
+                {site.detected_framework === fw.id && (
+                  <span className="text-[9px] font-medium bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-full ml-1">Detected</span>
+                )}
               </button>
             ))}
           </div>
