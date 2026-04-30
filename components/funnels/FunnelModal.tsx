@@ -7,14 +7,6 @@ import type { Funnel, FunnelStep, StepPropertyFilter, CreateFunnelRequest } from
 
 type StepWithoutOrder = Omit<FunnelStep, 'order'>
 
-const WINDOW_PRESETS = [
-  { label: '1h', value: 1, unit: 'hours' as const },
-  { label: '24h', value: 24, unit: 'hours' as const },
-  { label: '7d', value: 7, unit: 'days' as const },
-  { label: '14d', value: 14, unit: 'days' as const },
-  { label: '30d', value: 30, unit: 'days' as const },
-]
-
 const OPERATOR_OPTIONS = [
   { value: 'is', label: 'is' },
   { value: 'is_not', label: 'is not' },
@@ -41,8 +33,6 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData }: 
       { name: 'Step 2', value: '', type: 'exact' },
     ]
   )
-  const [windowValue, setWindowValue] = useState(initialData?.conversion_window_value ?? 7)
-  const [windowUnit, setWindowUnit] = useState<'hours' | 'days'>(initialData?.conversion_window_unit ?? 'days')
   const [saving, setSaving] = useState(false)
   const stepIdCounter = useRef(initialData?.steps.length ?? 2)
   const [stepIds, setStepIds] = useState<number[]>(() =>
@@ -75,8 +65,8 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData }: 
         name,
         description,
         steps: steps.map((s, i) => ({ ...s, order: i })),
-        conversion_window_value: windowValue,
-        conversion_window_unit: windowUnit,
+        conversion_window_value: 30,
+        conversion_window_unit: 'days',
       })
       onClose()
     } catch {
@@ -164,9 +154,9 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData }: 
       isOpen={isOpen}
       onClose={onClose}
       title={initialData ? 'Edit Funnel' : 'Create Funnel'}
-      className="max-w-2xl max-h-[85vh]"
+      className="max-w-2xl max-h-[85vh] !bg-neutral-900/80 !backdrop-blur-xl !border-white/[0.08]"
     >
-      <div className="space-y-5 overflow-y-auto max-h-[calc(85vh-8rem)] pr-1 -mr-1">
+      <div className="space-y-5 overflow-y-auto max-h-[calc(85vh-10rem)] pr-1 -mr-1">
         {/* Name */}
         <div>
           <label className="block text-sm font-medium text-neutral-300 mb-1.5">Name</label>
@@ -186,7 +176,7 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData }: 
             {steps.map((step, index) => {
               const category = step.category || 'page'
               return (
-                <div key={stepIds[index]} className="rounded-xl border border-neutral-800 bg-neutral-800/20 p-3">
+                <div key={stepIds[index]} className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-3">
                   <div className="flex items-start gap-2">
                     {/* Number + reorder */}
                     <div className="flex items-center gap-1 mt-1.5 flex-shrink-0">
@@ -214,18 +204,17 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData }: 
 
                       {/* Value field */}
                       {category === 'page' ? (
-                        <div className="flex gap-2">
+                        <div className="grid grid-cols-[100px_1fr] gap-2">
                           <Select
                             value={step.type}
                             onChange={(value) => updateStep(index, 'type', value)}
-                            className="w-24 flex-shrink-0"
                             options={[
                               { value: 'exact', label: 'Exact' },
                               { value: 'contains', label: 'Contains' },
                               { value: 'regex', label: 'Regex' },
                             ]}
                           />
-                          <Input value={step.value} onChange={(e) => updateStep(index, 'value', e.target.value)} placeholder={step.type === 'exact' ? '/pricing' : 'pricing'} className="flex-1" />
+                          <Input value={step.value} onChange={(e) => updateStep(index, 'value', e.target.value)} placeholder={step.type === 'exact' ? '/pricing' : 'pricing'} />
                         </div>
                       ) : (
                         <Input value={step.value} onChange={(e) => updateStep(index, 'value', e.target.value)} placeholder="e.g. signup, purchase" />
@@ -269,34 +258,10 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData }: 
             )}
           </div>
         </div>
-
-        {/* Conversion Window */}
-        <div>
-          <label className="block text-sm font-medium text-neutral-300 mb-1.5">Conversion Window</label>
-          <p className="text-xs text-neutral-500 mb-3">All steps must be completed within this time.</p>
-          <div className="flex flex-wrap gap-1.5 mb-3">
-            {WINDOW_PRESETS.map(preset => (
-              <button
-                key={preset.label}
-                type="button"
-                onClick={() => { setWindowValue(preset.value); setWindowUnit(preset.unit) }}
-                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-                  windowValue === preset.value && windowUnit === preset.unit ? 'bg-brand-orange-button text-white' : 'bg-neutral-800 text-neutral-500 hover:bg-neutral-700'
-                } ease-apple`}
-              >
-                {preset.label}
-              </button>
-            ))}
-          </div>
-          <div className="flex gap-2 items-center">
-            <Input type="number" min={1} max={2160} value={windowValue} onChange={(e) => setWindowValue(Math.max(1, parseInt(e.target.value) || 1))} className="w-20" />
-            <Select value={windowUnit} onChange={(value) => setWindowUnit(value as 'hours' | 'days')} options={[{ value: 'hours', label: 'hours' }, { value: 'days', label: 'days' }]} />
-          </div>
-        </div>
       </div>
 
       {/* Footer */}
-      <div className="flex justify-end gap-2 pt-4 mt-4 border-t border-neutral-800">
+      <div className="flex justify-end gap-2 pt-4 mt-4 border-t border-white/[0.06]">
         <Button variant="secondary" onClick={onClose} disabled={saving}>Cancel</Button>
         <Button variant="primary" onClick={handleSubmit} disabled={saving}>
           {saving && <Spinner className="w-4 h-4" />}
