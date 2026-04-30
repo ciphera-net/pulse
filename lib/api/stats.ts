@@ -234,6 +234,16 @@ export function getPublicRealtime(siteId: string, auth?: AuthParams): Promise<Re
   return apiRequest<RealtimeStats>(`/public/sites/${siteId}/realtime${buildQuery({}, auth)}`)
 }
 
+export interface RealtimePageVisitors {
+  path: string
+  visitors: number
+}
+
+export async function getRealtimePages(siteId: string): Promise<RealtimePageVisitors[]> {
+  const res = await apiRequest<{ pages: RealtimePageVisitors[] }>(`/sites/${siteId}/realtime/pages`)
+  return res.pages ?? []
+}
+
 // ─── Daily Stats ────────────────────────────────────────────────────
 
 export function getDailyStats(siteId: string, startDate?: string, endDate?: string, interval?: string, filters?: string, period?: string): Promise<DailyStat[]> {

@@ -14,9 +14,11 @@ import {
   getDashboardGoals,
   getCampaigns,
   getRealtime,
+  getRealtimePages,
   getStats,
   getDailyStats,
   getBehavior,
+  type RealtimePageVisitors,
 } from '@/lib/api/stats'
 import {
   getJourneyTransitions,
@@ -214,6 +216,19 @@ export function useRealtime(siteId: string, refreshInterval: number = 60_000) {
       dedupingInterval: 10_000,
       // * Keep previous data while loading new data
       keepPreviousData: true,
+    }
+  )
+}
+
+// * Hook for per-page real-time visitor counts (refreshes every 15s)
+export function useRealtimePages(siteId: string) {
+  return useSWR<RealtimePageVisitors[]>(
+    siteId ? ['realtimePages', siteId] : null,
+    () => getRealtimePages(siteId),
+    {
+      ...dashboardSWRConfig,
+      refreshInterval: 15_000,
+      revalidateOnFocus: true,
     }
   )
 }
