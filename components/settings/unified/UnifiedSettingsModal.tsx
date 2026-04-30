@@ -20,6 +20,7 @@ const SitePrivacyTab = dynamic(() => import('./tabs/SitePrivacyTab'), { loading:
 const SiteBotSpamTab = dynamic(() => import('./tabs/SiteBotSpamTab'), { loading: tabLoader })
 const SiteReportsTab = dynamic(() => import('./tabs/SiteReportsTab'), { loading: tabLoader })
 const SiteIntegrationsTab = dynamic(() => import('./tabs/SiteIntegrationsTab'), { loading: tabLoader })
+const SitePrivacyScanTab = dynamic(() => import('./tabs/SitePrivacyScanTab'), { loading: tabLoader })
 const WorkspaceGeneralTab = dynamic(() => import('./tabs/WorkspaceGeneralTab'), { loading: tabLoader })
 const WorkspaceBillingTab = dynamic(() => import('./tabs/WorkspaceBillingTab'), { loading: tabLoader })
 const WorkspaceMembersTab = dynamic(() => import('./tabs/WorkspaceMembersTab'), { loading: tabLoader })
@@ -44,6 +45,7 @@ const SITE_TABS: TabDef[] = [
   { id: 'visibility', label: 'Visibility' },
   { id: 'privacy', label: 'Privacy' },
   { id: 'bot-spam', label: 'Bot & Spam' },
+  { id: 'privacy-scan', label: 'Privacy Scan' },
   { id: 'reports', label: 'Reports' },
   { id: 'integrations', label: 'Integrations' },
 ]
@@ -181,6 +183,7 @@ function TabContent({
       case 'visibility': return <SiteVisibilityTab siteId={siteId} {...dirtyProps} />
       case 'privacy': return <SitePrivacyTab siteId={siteId} {...dirtyProps} />
       case 'bot-spam': return <SiteBotSpamTab siteId={siteId} {...dirtyProps} />
+      case 'privacy-scan': return <SitePrivacyScanTab siteId={siteId} {...dirtyProps} />
       case 'reports': return <SiteReportsTab siteId={siteId} />
       case 'integrations': return <SiteIntegrationsTab siteId={siteId} />
     }
