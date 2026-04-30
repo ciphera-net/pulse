@@ -4,15 +4,15 @@ import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DURATION_BASE, EASE_APPLE, TIMING } from '@/lib/motion'
-import { deleteFunnel, type Funnel, type FunnelStats, type FunnelTrends } from '@/lib/api/funnels'
+import { deleteFunnel, createFunnel, updateFunnel, type Funnel, type FunnelStats, type FunnelTrends, type CreateFunnelRequest } from '@/lib/api/funnels'
 import { useSite, useFunnels, useFunnelStats, useFunnelTrends } from '@/lib/swr/dashboard'
 import { toast, PlusIcon, ArrowRightIcon, ChevronLeftIcon, ChevronRightIcon, TrashIcon, Button, formatNumber, Select, DatePicker } from '@ciphera-net/ui'
 import { FunnelsListSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { AnimatedNumber } from '@/components/ui/animated-number'
 import { FunnelSimple, PencilSimple, ArrowUpRight, ArrowDownRight } from '@phosphor-icons/react'
-import Link from 'next/link'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import FunnelModal from '@/components/funnels/FunnelModal'
 import { getDateRange, formatDate, getYesterdayRange, getLast1HourRange, getLast24HoursRange, getThisWeekRange, getThisMonthRange, getThisYearRange } from '@/lib/utils/dateRanges'
 import { LineChart, Line, Grid, XAxis, YAxis, ChartTooltip } from '@/components/ui/line-chart'
 
@@ -36,11 +36,12 @@ function ChangeIndicator({ change }: { change: number | null }) {
   )
 }
 
-function FunnelCard({ funnel, siteId, dateRange, onDelete }: {
+function FunnelCard({ funnel, siteId, dateRange, onDelete, onEdit }: {
   funnel: Funnel
   siteId: string
   dateRange: { start: string; end: string }
   onDelete: (funnel: { id: string; name: string }) => void
+  onEdit: (funnel: Funnel) => void
 }) {
   const [expanded, setExpanded] = useState(false)
   const [expandedStep, setExpandedStep] = useState<number | null>(null)
@@ -116,14 +117,13 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete }: {
             </div>
           </div>
           <div className="flex items-center gap-2 ml-4">
-            <Link
-              href={`/sites/${siteId}/funnels/${funnel.id}/edit`}
-              onClick={(e) => e.stopPropagation()}
+            <button
+              onClick={(e) => { e.stopPropagation(); onEdit(funnel) }}
               className="p-2 text-neutral-400 hover:text-brand-orange hover:bg-orange-900/20 rounded-xl transition-colors ease-apple"
               aria-label="Edit funnel"
             >
               <PencilSimple className="w-4 h-4" />
-            </Link>
+            </button>
             <button
               onClick={(e) => { e.stopPropagation(); onDelete({ id: funnel.id, name: funnel.name }) }}
               className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-900/20 rounded-xl transition-colors ease-apple"
@@ -327,6 +327,8 @@ export default function FunnelsPage() {
   const [dateRange, setDateRange] = useState(() => getDateRange(30))
   const [datePreset, setDatePreset] = useState<'1h' | '24h' | 'today' | 'yesterday' | '7' | '30' | 'week' | 'month' | 'year' | 'custom'>('30')
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editingFunnel, setEditingFunnel] = useState<Funnel | null>(null)
 
   useEffect(() => {
     const domain = site?.domain
@@ -417,12 +419,10 @@ export default function FunnelsPage() {
               <ChevronRightIcon className="w-4 h-4" weight="bold" />
             </button>
           </div>
-          <Link href={`/sites/${siteId}/funnels/new`}>
-            <Button variant="primary" className="inline-flex items-center gap-2">
-              <PlusIcon className="w-4 h-4" />
-              <span>Create Funnel</span>
-            </Button>
-          </Link>
+          <Button variant="primary" className="inline-flex items-center gap-2" onClick={() => { setEditingFunnel(null); setModalOpen(true) }}>
+            <PlusIcon className="w-4 h-4" />
+            <span>Create Funnel</span>
+          </Button>
         </div>
       </div>
 
@@ -431,7 +431,7 @@ export default function FunnelsPage() {
           icon={<FunnelSimple />}
           title="No funnels yet"
           description="Create a funnel to track how visitors move through your site and where they drop off."
-          action={{ label: 'Create funnel', href: `/sites/${siteId}/funnels/new` }}
+          action={{ label: 'Create funnel', onClick: () => { setEditingFunnel(null); setModalOpen(true) } }}
         />
       ) : (
         <div className="grid gap-4">
@@ -442,7 +442,7 @@ export default function FunnelsPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: index * 0.05 }}
             >
-              <FunnelCard funnel={funnel} siteId={siteId} dateRange={dateRange} onDelete={setDeletingFunnel} />
+              <FunnelCard funnel={funnel} siteId={siteId} dateRange={dateRange} onDelete={setDeletingFunnel} onEdit={(f) => { setEditingFunnel(f); setModalOpen(true) }} />
             </motion.div>
           ))}
         </div>
@@ -462,6 +462,24 @@ export default function FunnelsPage() {
       </Dialog>
 
       <DatePicker isOpen={isDatePickerOpen} onClose={() => setIsDatePickerOpen(false)} onApply={(range) => { setDateRange(range); setDatePreset('custom'); setIsDatePickerOpen(false) }} initialRange={dateRange} />
+
+      {modalOpen && (
+        <FunnelModal
+          isOpen={modalOpen}
+          onClose={() => { setModalOpen(false); setEditingFunnel(null) }}
+          initialData={editingFunnel ?? undefined}
+          onSubmit={async (data: CreateFunnelRequest) => {
+            if (editingFunnel) {
+              await updateFunnel(siteId, editingFunnel.id, data)
+              toast.success('Funnel updated')
+            } else {
+              await createFunnel(siteId, data)
+              toast.success('Funnel created')
+            }
+            mutate()
+          }}
+        />
+      )}
     </div>
   )
 }
