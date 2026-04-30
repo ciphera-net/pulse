@@ -12,7 +12,7 @@ import FrustrationSummaryCards from '@/components/behavior/FrustrationSummaryCar
 import FrustrationTable from '@/components/behavior/FrustrationTable'
 import FrustrationByPageTable from '@/components/behavior/FrustrationByPageTable'
 import FrustrationTrend from '@/components/behavior/FrustrationTrend'
-import { useDashboard, useBehavior } from '@/lib/swr/dashboard'
+import { useSite, useBehavior } from '@/lib/swr/dashboard'
 import { BehaviorSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 
 const ScrollDepth = dynamic(() => import('@/components/dashboard/ScrollDepth'))
@@ -40,8 +40,7 @@ export default function BehaviorPage() {
   // Single request for all frustration data
   const { data: behavior, isLoading: loading, error: behaviorError } = useBehavior(siteId, dateRange.start, dateRange.end, apiPeriod)
 
-  // Fetch dashboard data for scroll depth (goal_counts + stats)
-  const { data: dashboard } = useDashboard(siteId, dateRange.start, dateRange.end, undefined, undefined, apiPeriod)
+  const { data: site } = useSite(siteId)
 
   const shiftPeriod = useCallback((direction: -1 | 1) => {
     const shift = (date: string, days: number) => {
@@ -64,9 +63,9 @@ export default function BehaviorPage() {
   const fadeClass = useSkeletonFade(showSkeleton)
 
   useEffect(() => {
-    const domain = dashboard?.site?.domain
+    const domain = site?.domain
     document.title = domain ? `Behavior · ${domain} | Pulse` : 'Behavior | Pulse'
-  }, [dashboard?.site?.domain])
+  }, [site?.domain])
 
   // On-demand fetchers for modal "view all"
   const fetchAllRage = useCallback(
@@ -223,7 +222,7 @@ export default function BehaviorPage() {
           transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0.15 }}
           className="grid gap-6 lg:grid-cols-2 mb-8 [&>*]:min-w-0"
         >
-          <ScrollDepth scrollDepth={dashboard?.scroll_depth} />
+          <ScrollDepth scrollDepth={behavior?.scroll_depth} />
           <FrustrationTrend summary={summary} loading={loading} />
         </motion.div>
       )}

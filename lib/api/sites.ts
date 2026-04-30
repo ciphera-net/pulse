@@ -46,6 +46,7 @@ export interface Site {
 export interface CreateSiteRequest {
   domain: string
   name: string
+  timezone?: string
 }
 
 export interface UpdateSiteRequest {

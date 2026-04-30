@@ -475,6 +475,7 @@ export interface BehaviorData {
   rage_clicks: { items: FrustrationElement[]; total: number }
   dead_clicks: { items: FrustrationElement[]; total: number }
   by_page: FrustrationByPage[]
+  scroll_depth?: ScrollDepthDistribution
 }
 
 const emptyBehavior: BehaviorData = {

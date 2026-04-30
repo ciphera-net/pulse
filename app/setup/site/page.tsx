@@ -34,7 +34,8 @@ export default function SetupSitePage() {
     setError('')
 
     try {
-      const site = await createSite({ name: domain, domain })
+      const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone
+      const site = await createSite({ name: domain, domain, timezone: browserTz })
       setSite(site)
       completeStep('site')
       router.push(`/setup/install${preservePlanParams(searchParams)}`)

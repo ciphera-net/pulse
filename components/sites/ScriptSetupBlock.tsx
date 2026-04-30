@@ -36,7 +36,7 @@ const FEATURES = [
   { key: 'downloads', label: 'File downloads', description: 'Track PDF, ZIP, and more', attr: 'data-no-downloads' },
 ] as const
 
-type FeatureKey = (typeof FEATURES)[number]['key'] | 'frustration'
+type FeatureKey = (typeof FEATURES)[number]['key'] | 'frustration' | 'interactions'
 
 export interface ScriptSetupBlockSite {
   domain: string
@@ -63,6 +63,7 @@ const DEFAULT_FEATURES: Record<FeatureKey, boolean> = {
   outbound: true,
   downloads: true,
   frustration: false,
+  interactions: false,
 }
 
 export default function ScriptSetupBlock({
@@ -79,6 +80,7 @@ export default function ScriptSetupBlock({
     outbound: sf.outbound != null ? Boolean(sf.outbound) : DEFAULT_FEATURES.outbound,
     downloads: sf.downloads != null ? Boolean(sf.downloads) : DEFAULT_FEATURES.downloads,
     frustration: sf.frustration != null ? Boolean(sf.frustration) : DEFAULT_FEATURES.frustration,
+    interactions: sf.interactions != null ? Boolean(sf.interactions) : DEFAULT_FEATURES.interactions,
   })
   const [storage, setStorage] = useState(typeof sf.storage === 'string' ? sf.storage : 'local')
   const [ttl, setTtl] = useState(typeof sf.ttl === 'string' ? sf.ttl : '24')
@@ -110,6 +112,9 @@ export default function ScriptSetupBlock({
         frustrationAttrs.push('crossorigin="anonymous"')
       }
       script += `\n<script ${frustrationAttrs.join(' ')}></script>`
+    }
+    if (features.interactions) {
+      script += `\n<script defer src="https://js.ciphera.net/script.interactions.js"></script>`
     }
     return script
   }, [site.domain, features, storage, ttl, showSRI])
@@ -212,6 +217,18 @@ export default function ScriptSetupBlock({
             </span>
           </div>
           <Toggle checked={features.frustration} onChange={() => toggleFeature('frustration')} />
+        </div>
+        {/* * Interactions — copy, print, video tracking add-on */}
+        <div className="mt-2 flex items-center justify-between rounded-xl border border-dashed border-neutral-700 bg-neutral-900/50 px-4 py-3">
+          <div className="min-w-0 mr-3">
+            <span className="text-sm font-medium text-white block">
+              Interaction tracking
+            </span>
+            <span className="text-xs text-neutral-400">
+              Copy, print &amp; video events &middot; Loads separate add-on script
+            </span>
+          </div>
+          <Toggle checked={features.interactions} onChange={() => toggleFeature('interactions')} />
         </div>
         {/* * SRI — security option, opt-in only */}
         <div className="mt-3 flex items-center justify-between rounded-xl border border-dashed border-neutral-700 bg-neutral-900/50 px-4 py-3">
