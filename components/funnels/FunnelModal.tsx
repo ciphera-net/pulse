@@ -182,7 +182,8 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData }: 
               transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
               role="dialog"
               aria-modal="true"
-              className="glass-overlay rounded-2xl shadow-xl shadow-black/20 w-full max-w-2xl max-h-[85vh] pointer-events-auto flex flex-col overflow-hidden"
+              className="dark glass-overlay rounded-2xl shadow-xl shadow-black/20 w-full max-w-2xl max-h-[85vh] pointer-events-auto flex flex-col overflow-hidden"
+              style={{ backgroundColor: 'rgba(23, 23, 23, 0.65)', backdropFilter: 'blur(64px) saturate(1.5)' }}
             >
               {/* Header */}
               <div className="flex items-center justify-between px-6 pt-6 pb-4">
