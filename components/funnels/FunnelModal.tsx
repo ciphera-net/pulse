@@ -1,20 +1,17 @@
 'use client'
 
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
-import { Input, Button, Select, Spinner, PlusIcon, TrashIcon, toast } from '@ciphera-net/ui'
-import { CaretUp, CaretDown, X } from '@phosphor-icons/react'
+import { Button, Spinner, toast } from '@ciphera-net/ui'
+import { CaretUp, CaretDown, X, Plus, Trash } from '@phosphor-icons/react'
 import type { Funnel, FunnelStep, StepPropertyFilter, CreateFunnelRequest } from '@/lib/api/funnels'
 
 type StepWithoutOrder = Omit<FunnelStep, 'order'>
 
-const OPERATOR_OPTIONS = [
-  { value: 'is', label: 'is' },
-  { value: 'is_not', label: 'is not' },
-  { value: 'contains', label: 'contains' },
-  { value: 'not_contains', label: 'does not contain' },
-]
+const inputClass = 'w-full h-10 px-4 bg-transparent border border-neutral-800 rounded-lg text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 transition-colors ease-apple'
+const selectClass = 'h-10 px-3 bg-transparent border border-neutral-800 rounded-lg text-sm text-white focus:outline-none focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 transition-colors ease-apple appearance-none cursor-pointer'
+const labelClass = 'block text-sm font-medium text-neutral-300 mb-1.5'
 
 const MAX_STEPS = 8
 const MAX_FILTERS = 10
@@ -53,128 +50,41 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData }: 
   const handleSubmit = async () => {
     if (!name.trim()) { toast.error('Please enter a funnel name'); return }
     if (steps.some(s => !s.name.trim())) { toast.error('Please enter a name for all steps'); return }
-
     for (const step of steps) {
-      const category = step.category || 'page'
-      if (!step.value.trim()) {
-        toast.error(category === 'event' ? `Enter an event name for: ${step.name}` : `Enter a path for: ${step.name}`)
-        return
-      }
-      if (category === 'page' && step.type === 'regex') {
-        try { new RegExp(step.value) } catch { toast.error(`Invalid regex in: ${step.name}`); return }
-      }
-      if (category === 'event' && step.property_filters) {
-        for (const f of step.property_filters) {
-          if (!f.key.trim()) { toast.error(`Property filter key required in: ${step.name}`); return }
-        }
-      }
+      const cat = step.category || 'page'
+      if (!step.value.trim()) { toast.error(cat === 'event' ? `Enter an event name for: ${step.name}` : `Enter a path for: ${step.name}`); return }
+      if (cat === 'page' && step.type === 'regex') { try { new RegExp(step.value) } catch { toast.error(`Invalid regex in: ${step.name}`); return } }
+      if (cat === 'event' && step.property_filters) { for (const f of step.property_filters) { if (!f.key.trim()) { toast.error(`Property key required in: ${step.name}`); return } } }
     }
-
     setSaving(true)
     try {
-      await onSubmit({
-        name,
-        description,
-        steps: steps.map((s, i) => ({ ...s, order: i })),
-        conversion_window_value: 30,
-        conversion_window_unit: 'days',
-      })
+      await onSubmit({ name, description, steps: steps.map((s, i) => ({ ...s, order: i })), conversion_window_value: 30, conversion_window_unit: 'days' })
       onClose()
-    } catch {
-      toast.error('Failed to save funnel')
-    } finally {
-      setSaving(false)
-    }
+    } catch { toast.error('Failed to save funnel') } finally { setSaving(false) }
   }
 
-  const addStep = () => {
-    if (steps.length >= MAX_STEPS) return
-    stepIdCounter.current += 1
-    setStepIds(prev => [...prev, stepIdCounter.current])
-    setSteps(prev => [...prev, { name: `Step ${prev.length + 1}`, value: '', type: 'exact' }])
+  const addStep = () => { if (steps.length >= MAX_STEPS) return; stepIdCounter.current += 1; setStepIds(p => [...p, stepIdCounter.current]); setSteps(p => [...p, { name: `Step ${p.length + 1}`, value: '', type: 'exact' }]) }
+  const removeStep = (i: number) => { if (steps.length <= 1) return; setStepIds(p => p.filter((_, j) => j !== i)); setSteps(p => p.filter((_, j) => j !== i)) }
+  const updateStep = (i: number, field: string, value: string) => {
+    setSteps(p => { const n = [...p]; const s = { ...n[i] }; if (field === 'category') { s.category = value as 'page' | 'event'; s.value = ''; if (value === 'page') s.property_filters = undefined; else s.type = 'exact' } else { (s as any)[field] = value }; n[i] = s; return n })
   }
-
-  const removeStep = (index: number) => {
-    if (steps.length <= 1) return
-    setStepIds(prev => prev.filter((_, i) => i !== index))
-    setSteps(prev => prev.filter((_, i) => i !== index))
-  }
-
-  const updateStep = (index: number, field: string, value: string) => {
-    setSteps(prev => {
-      const next = [...prev]
-      const step = { ...next[index] }
-      if (field === 'category') {
-        step.category = value as 'page' | 'event'
-        step.value = ''
-        if (value === 'page') step.property_filters = undefined
-        else step.type = 'exact'
-      } else {
-        ;(step as Record<string, unknown>)[field] = value
-      }
-      next[index] = step
-      return next
-    })
-  }
-
-  const moveStep = (index: number, direction: -1 | 1) => {
-    const target = index + direction
-    if (target < 0 || target >= steps.length) return
-    setSteps(prev => { const n = [...prev]; [n[index], n[target]] = [n[target], n[index]]; return n })
-    setStepIds(prev => { const n = [...prev]; [n[index], n[target]] = [n[target], n[index]]; return n })
-  }
-
-  const addFilter = (stepIndex: number) => {
-    setSteps(prev => {
-      const next = [...prev]
-      const step = { ...next[stepIndex] }
-      const filters = [...(step.property_filters || [])]
-      if (filters.length >= MAX_FILTERS) return prev
-      filters.push({ key: '', operator: 'is', value: '' })
-      step.property_filters = filters
-      next[stepIndex] = step
-      return next
-    })
-  }
-
-  const updateFilter = (stepIndex: number, filterIndex: number, field: keyof StepPropertyFilter, value: string) => {
-    setSteps(prev => {
-      const next = [...prev]
-      const step = { ...next[stepIndex] }
-      const filters = [...(step.property_filters || [])]
-      filters[filterIndex] = { ...filters[filterIndex], [field]: value }
-      step.property_filters = filters
-      next[stepIndex] = step
-      return next
-    })
-  }
-
-  const removeFilter = (stepIndex: number, filterIndex: number) => {
-    setSteps(prev => {
-      const next = [...prev]
-      const step = { ...next[stepIndex] }
-      const filters = [...(step.property_filters || [])].filter((_, i) => i !== filterIndex)
-      step.property_filters = filters.length > 0 ? filters : undefined
-      next[stepIndex] = step
-      return next
-    })
-  }
+  const moveStep = (i: number, d: -1 | 1) => { const t = i + d; if (t < 0 || t >= steps.length) return; setSteps(p => { const n = [...p]; [n[i], n[t]] = [n[t], n[i]]; return n }); setStepIds(p => { const n = [...p]; [n[i], n[t]] = [n[t], n[i]]; return n }) }
+  const addFilter = (si: number) => { setSteps(p => { const n = [...p]; const s = { ...n[si] }; const f = [...(s.property_filters || [])]; if (f.length >= MAX_FILTERS) return p; f.push({ key: '', operator: 'is', value: '' }); s.property_filters = f; n[si] = s; return n }) }
+  const updateFilter = (si: number, fi: number, field: keyof StepPropertyFilter, val: string) => { setSteps(p => { const n = [...p]; const s = { ...n[si] }; const f = [...(s.property_filters || [])]; f[fi] = { ...f[fi], [field]: val }; s.property_filters = f; n[si] = s; return n }) }
+  const removeFilter = (si: number, fi: number) => { setSteps(p => { const n = [...p]; const s = { ...n[si] }; const f = [...(s.property_filters || [])].filter((_, j) => j !== fi); s.property_filters = f.length > 0 ? f : undefined; n[si] = s; return n }) }
 
   return (
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+          <div
+            className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm"
             onClick={onClose}
-            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
           />
-
-          {/* Panel */}
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+          <div
+            className="fixed inset-0 z-[61] flex items-center justify-center p-4"
+            onClick={onClose}
+          >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -182,14 +92,12 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData }: 
               transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
               role="dialog"
               aria-modal="true"
-              className="dark glass-overlay rounded-2xl shadow-xl shadow-black/20 w-full max-w-2xl max-h-[85vh] pointer-events-auto flex flex-col overflow-hidden"
-              style={{ backgroundColor: 'rgba(23, 23, 23, 0.65)', backdropFilter: 'blur(64px) saturate(1.5)' }}
+              onClick={e => e.stopPropagation()}
+              className="glass-overlay rounded-2xl shadow-xl shadow-black/20 w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden"
             >
               {/* Header */}
               <div className="flex items-center justify-between px-6 pt-6 pb-4">
-                <h3 className="text-lg font-bold text-white">
-                  {initialData ? 'Edit Funnel' : 'Create Funnel'}
-                </h3>
+                <h3 className="text-lg font-bold text-white">{initialData ? 'Edit Funnel' : 'Create Funnel'}</h3>
                 <button onClick={onClose} className="p-1.5 text-neutral-400 hover:text-white rounded-lg hover:bg-white/[0.06] transition-colors ease-apple">
                   <X className="w-5 h-5" />
                 </button>
@@ -197,94 +105,80 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData }: 
 
               {/* Body */}
               <div className="flex-1 overflow-y-auto px-6 space-y-5">
-                {/* Name */}
                 <div>
-                  <label className="block text-sm font-medium text-neutral-300 mb-1.5">Name</label>
-                  <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Signup Flow" maxLength={100} />
+                  <label className={labelClass}>Name</label>
+                  <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Signup Flow" maxLength={100} className={inputClass} />
                 </div>
 
-                {/* Description */}
                 <div>
-                  <label className="block text-sm font-medium text-neutral-300 mb-1.5">Description <span className="text-neutral-600 font-normal">optional</span></label>
-                  <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Tracks users from landing page to signup" />
+                  <label className={labelClass}>Description <span className="text-neutral-600 font-normal">optional</span></label>
+                  <input value={description} onChange={e => setDescription(e.target.value)} placeholder="Tracks users from landing page to signup" className={inputClass} />
                 </div>
 
-                {/* Steps */}
                 <div>
-                  <label className="block text-sm font-medium text-neutral-300 mb-3">Steps</label>
+                  <label className={labelClass}>Steps</label>
                   <div className="space-y-2">
-                    {steps.map((step, index) => {
-                      const category = step.category || 'page'
+                    {steps.map((step, i) => {
+                      const cat = step.category || 'page'
                       return (
-                        <div key={stepIds[index]} className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-3">
+                        <div key={stepIds[i]} className="rounded-xl border border-neutral-800 bg-neutral-800/20 p-3">
                           <div className="flex items-start gap-2">
-                            {/* Number + reorder */}
                             <div className="flex items-center gap-1 mt-1.5 flex-shrink-0">
-                              <span className="w-5 h-5 rounded-full bg-neutral-800 flex items-center justify-center text-[10px] font-medium text-neutral-400">{index + 1}</span>
+                              <span className="w-5 h-5 rounded-full bg-neutral-800 flex items-center justify-center text-[10px] font-medium text-neutral-400">{i + 1}</span>
                               <div className="flex flex-col">
-                                <button type="button" onClick={() => moveStep(index, -1)} disabled={index === 0} className="p-0.5 text-neutral-500 hover:text-neutral-300 disabled:opacity-20 transition-colors ease-apple">
-                                  <CaretUp className="w-3 h-3" />
-                                </button>
-                                <button type="button" onClick={() => moveStep(index, 1)} disabled={index === steps.length - 1} className="p-0.5 text-neutral-500 hover:text-neutral-300 disabled:opacity-20 transition-colors ease-apple">
-                                  <CaretDown className="w-3 h-3" />
-                                </button>
+                                <button type="button" onClick={() => moveStep(i, -1)} disabled={i === 0} className="p-0.5 text-neutral-500 hover:text-neutral-300 disabled:opacity-20"><CaretUp className="w-3 h-3" /></button>
+                                <button type="button" onClick={() => moveStep(i, 1)} disabled={i === steps.length - 1} className="p-0.5 text-neutral-500 hover:text-neutral-300 disabled:opacity-20"><CaretDown className="w-3 h-3" /></button>
                               </div>
                             </div>
 
-                            {/* Fields */}
                             <div className="flex-1 min-w-0 space-y-2">
-                              {/* Category toggle + Name */}
                               <div className="flex items-center gap-2">
                                 <div className="flex gap-0.5 flex-shrink-0">
-                                  <button type="button" onClick={() => updateStep(index, 'category', 'page')} className={`px-2 py-1 text-xs font-medium rounded-md transition-colors ${category === 'page' ? 'bg-brand-orange-button text-white' : 'bg-neutral-800 text-neutral-500 hover:bg-neutral-700'} ease-apple`}>Page</button>
-                                  <button type="button" onClick={() => updateStep(index, 'category', 'event')} className={`px-2 py-1 text-xs font-medium rounded-md transition-colors ${category === 'event' ? 'bg-brand-orange-button text-white' : 'bg-neutral-800 text-neutral-500 hover:bg-neutral-700'} ease-apple`}>Event</button>
+                                  <button type="button" onClick={() => updateStep(i, 'category', 'page')} className={`px-2 py-1 text-xs font-medium rounded-md transition-colors ${cat === 'page' ? 'bg-brand-orange text-white' : 'bg-neutral-800 text-neutral-500 hover:bg-neutral-700'} ease-apple`}>Page</button>
+                                  <button type="button" onClick={() => updateStep(i, 'category', 'event')} className={`px-2 py-1 text-xs font-medium rounded-md transition-colors ${cat === 'event' ? 'bg-brand-orange text-white' : 'bg-neutral-800 text-neutral-500 hover:bg-neutral-700'} ease-apple`}>Event</button>
                                 </div>
-                                <Input value={step.name} onChange={(e) => updateStep(index, 'name', e.target.value)} placeholder="Step name" className="flex-1" />
+                                <input value={step.name} onChange={e => updateStep(i, 'name', e.target.value)} placeholder="Step name" className={inputClass} />
                               </div>
 
-                              {/* Value field */}
-                              {category === 'page' ? (
-                                <div className="grid grid-cols-[100px_1fr] gap-2">
-                                  <Select
-                                    value={step.type}
-                                    onChange={(value) => updateStep(index, 'type', value)}
-                                    options={[
-                                      { value: 'exact', label: 'Exact' },
-                                      { value: 'contains', label: 'Contains' },
-                                      { value: 'regex', label: 'Regex' },
-                                    ]}
-                                  />
-                                  <Input value={step.value} onChange={(e) => updateStep(index, 'value', e.target.value)} placeholder={step.type === 'exact' ? '/pricing' : 'pricing'} />
+                              {cat === 'page' ? (
+                                <div className="flex gap-2">
+                                  <select value={step.type} onChange={e => updateStep(i, 'type', e.target.value)} className={`${selectClass} w-28 flex-shrink-0`}>
+                                    <option value="exact">Exact</option>
+                                    <option value="contains">Contains</option>
+                                    <option value="regex">Regex</option>
+                                  </select>
+                                  <input value={step.value} onChange={e => updateStep(i, 'value', e.target.value)} placeholder={step.type === 'exact' ? '/pricing' : 'pricing'} className={inputClass} />
                                 </div>
                               ) : (
-                                <Input value={step.value} onChange={(e) => updateStep(index, 'value', e.target.value)} placeholder="e.g. signup, purchase" />
+                                <input value={step.value} onChange={e => updateStep(i, 'value', e.target.value)} placeholder="e.g. signup, purchase" className={inputClass} />
                               )}
 
-                              {/* Property filters (event only) */}
-                              {category === 'event' && step.property_filters && step.property_filters.length > 0 && (
+                              {cat === 'event' && step.property_filters && step.property_filters.length > 0 && (
                                 <div className="space-y-1.5">
-                                  {step.property_filters.map((filter, fi) => (
+                                  {step.property_filters.map((f, fi) => (
                                     <div key={fi} className="flex gap-1.5 items-center">
-                                      <Input value={filter.key} onChange={(e) => updateFilter(index, fi, 'key', e.target.value)} placeholder="key" className="flex-1" />
-                                      <Select value={filter.operator} onChange={(value) => updateFilter(index, fi, 'operator', value)} options={OPERATOR_OPTIONS} className="w-28 flex-shrink-0" />
-                                      <Input value={filter.value} onChange={(e) => updateFilter(index, fi, 'value', e.target.value)} placeholder="value" className="flex-1" />
-                                      <button type="button" onClick={() => removeFilter(index, fi)} className="p-1 text-neutral-500 hover:text-red-400 transition-colors ease-apple flex-shrink-0">
-                                        <TrashIcon className="w-3.5 h-3.5" />
-                                      </button>
+                                      <input value={f.key} onChange={e => updateFilter(i, fi, 'key', e.target.value)} placeholder="key" className={`${inputClass} flex-1`} />
+                                      <select value={f.operator} onChange={e => updateFilter(i, fi, 'operator', e.target.value)} className={`${selectClass} w-28 flex-shrink-0`}>
+                                        <option value="is">is</option>
+                                        <option value="is_not">is not</option>
+                                        <option value="contains">contains</option>
+                                        <option value="not_contains">does not contain</option>
+                                      </select>
+                                      <input value={f.value} onChange={e => updateFilter(i, fi, 'value', e.target.value)} placeholder="value" className={`${inputClass} flex-1`} />
+                                      <button type="button" onClick={() => removeFilter(i, fi)} className="p-1 text-neutral-500 hover:text-red-400 flex-shrink-0"><Trash className="w-3.5 h-3.5" /></button>
                                     </div>
                                   ))}
                                 </div>
                               )}
-                              {category === 'event' && (!step.property_filters || step.property_filters.length < MAX_FILTERS) && (
-                                <button type="button" onClick={() => addFilter(index)} className="text-xs text-neutral-500 hover:text-white flex items-center gap-1 transition-colors ease-apple">
-                                  <PlusIcon className="w-3 h-3" /> Filter by property
+                              {cat === 'event' && (!step.property_filters || step.property_filters.length < MAX_FILTERS) && (
+                                <button type="button" onClick={() => addFilter(i)} className="text-xs text-neutral-500 hover:text-white flex items-center gap-1 transition-colors ease-apple">
+                                  <Plus className="w-3 h-3" /> Filter by property
                                 </button>
                               )}
                             </div>
 
-                            {/* Remove */}
-                            <button type="button" onClick={() => removeStep(index)} disabled={steps.length <= 1} className="p-1.5 mt-1 text-neutral-500 hover:text-red-400 disabled:opacity-20 rounded-lg transition-colors ease-apple flex-shrink-0">
-                              <TrashIcon className="w-4 h-4" />
+                            <button type="button" onClick={() => removeStep(i)} disabled={steps.length <= 1} className="p-1.5 mt-1 text-neutral-500 hover:text-red-400 disabled:opacity-20 rounded-lg flex-shrink-0">
+                              <Trash className="w-4 h-4" />
                             </button>
                           </div>
                         </div>
@@ -293,7 +187,7 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData }: 
 
                     {steps.length < MAX_STEPS && (
                       <button type="button" onClick={addStep} className="w-full py-2.5 rounded-xl border border-dashed border-neutral-700 text-sm text-neutral-500 hover:text-white hover:border-neutral-500 transition-colors ease-apple flex items-center justify-center gap-2">
-                        <PlusIcon className="w-3.5 h-3.5" /> Add Step
+                        <Plus className="w-3.5 h-3.5" /> Add Step
                       </button>
                     )}
                   </div>
@@ -301,7 +195,7 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData }: 
               </div>
 
               {/* Footer */}
-              <div className="flex justify-end gap-2 px-6 py-4 border-t border-white/[0.06]">
+              <div className="flex justify-end gap-2 px-6 py-4 border-t border-neutral-800">
                 <Button variant="secondary" onClick={onClose} disabled={saving}>Cancel</Button>
                 <Button variant="primary" onClick={handleSubmit} disabled={saving}>
                   {saving && <Spinner className="w-4 h-4" />}
