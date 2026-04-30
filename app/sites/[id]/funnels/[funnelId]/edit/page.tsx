@@ -30,7 +30,7 @@ export default function EditFunnelPage() {
       await updateFunnel(siteId, funnelId, data)
       await mutate(['funnels', siteId])
       toast.success('Funnel updated')
-      router.push(`/sites/${siteId}/funnels/${funnelId}`)
+      router.push(`/sites/${siteId}/funnels`)
     } catch {
       toast.error('Failed to update funnel. Please try again.')
     } finally {
@@ -52,7 +52,7 @@ export default function EditFunnelPage() {
       }}
       onSubmit={handleSubmit}
       submitLabel={saving ? 'Saving...' : 'Save Changes'}
-      cancelHref={`/sites/${siteId}/funnels/${funnelId}`}
+      cancelHref={`/sites/${siteId}/funnels`}
     />
   )
 }

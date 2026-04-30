@@ -26,7 +26,7 @@ import {
 } from '@/lib/api/journeys'
 import { getSite } from '@/lib/api/sites'
 import type { Site } from '@/lib/api/sites'
-import { listFunnels, type Funnel } from '@/lib/api/funnels'
+import { listFunnels, getFunnel, getFunnelStats, getFunnelTrends, type Funnel, type FunnelStats, type FunnelTrends } from '@/lib/api/funnels'
 import { getUptimeStatus, type UptimeStatusResponse } from '@/lib/api/uptime'
 import { getPageSpeedConfig, getPageSpeedLatest, getPageSpeedHistory, type PageSpeedConfig, type PageSpeedCheck } from '@/lib/api/pagespeed'
 import { listGoals, type Goal } from '@/lib/api/goals'
@@ -357,6 +357,47 @@ export function useFunnels(siteId: string) {
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,
       dedupingInterval: 10 * 1000,
+    }
+  )
+}
+
+// * Hook for a single funnel
+export function useFunnelDetail(siteId: string, funnelId: string) {
+  return useSWR<Funnel>(
+    siteId && funnelId ? ['funnel', siteId, funnelId] : null,
+    () => getFunnel(siteId, funnelId),
+    {
+      ...dashboardSWRConfig,
+      refreshInterval: 60_000,
+      dedupingInterval: 10_000,
+    }
+  )
+}
+
+// * Hook for funnel step-level stats
+export function useFunnelStats(siteId: string, funnelId: string, startDate: string, endDate: string, filters?: string) {
+  return useSWR<FunnelStats>(
+    siteId && funnelId && startDate && endDate ? ['funnelStats', siteId, funnelId, `${startDate}-${endDate}`, filters] : null,
+    () => getFunnelStats(siteId, funnelId, startDate, endDate, filters),
+    {
+      ...dashboardSWRConfig,
+      refreshInterval: 60_000,
+      dedupingInterval: 10_000,
+      keepPreviousData: true,
+    }
+  )
+}
+
+// * Hook for funnel completion trends over time
+export function useFunnelTrends(siteId: string, funnelId: string, startDate: string, endDate: string, filters?: string) {
+  return useSWR<FunnelTrends>(
+    siteId && funnelId && startDate && endDate ? ['funnelTrends', siteId, funnelId, `${startDate}-${endDate}`, filters] : null,
+    () => getFunnelTrends(siteId, funnelId, startDate, endDate, 'day', filters),
+    {
+      ...dashboardSWRConfig,
+      refreshInterval: 60_000,
+      dedupingInterval: 10_000,
+      keepPreviousData: true,
     }
   )
 }

@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import Link from 'next/link'
-import { Input, Button, ChevronLeftIcon, ChevronDownIcon, PlusIcon, TrashIcon } from '@ciphera-net/ui'
+import { Input, Button, Select, ChevronLeftIcon, ChevronDownIcon, PlusIcon, TrashIcon } from '@ciphera-net/ui'
 import { CaretUp } from '@phosphor-icons/react'
 import type { FunnelStep, StepPropertyFilter, CreateFunnelRequest } from '@/lib/api/funnels'
 
@@ -60,14 +60,21 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
   )
   const [windowValue, setWindowValue] = useState(initialData?.conversion_window_value ?? 7)
   const [windowUnit, setWindowUnit] = useState<'hours' | 'days'>(initialData?.conversion_window_unit ?? 'days')
+  const stepIdCounter = useRef(initialData?.steps.length ?? 2)
+  const [stepIds, setStepIds] = useState<number[]>(() =>
+    Array.from({ length: initialData?.steps.length ?? 2 }, (_, i) => i)
+  )
 
   const handleAddStep = () => {
     if (steps.length >= MAX_STEPS) return
+    stepIdCounter.current += 1
+    setStepIds(prev => [...prev, stepIdCounter.current])
     setSteps([...steps, { name: `Step ${steps.length + 1}`, value: '', type: 'exact' }])
   }
 
   const handleRemoveStep = (index: number) => {
     if (steps.length <= 1) return
+    setStepIds(prev => prev.filter((_, i) => i !== index))
     setSteps(steps.filter((_, i) => i !== index))
   }
 
@@ -101,6 +108,13 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
     newSteps[index] = newSteps[targetIndex]
     newSteps[targetIndex] = temp
     setSteps(newSteps)
+    setStepIds(prev => {
+      const newIds = [...prev]
+      const tempId = newIds[index]
+      newIds[index] = newIds[targetIndex]
+      newIds[targetIndex] = tempId
+      return newIds
+    })
   }
 
   // Property filter handlers
@@ -193,8 +207,6 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
     })
   }
 
-  const selectClass = 'px-2 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-sm focus:ring-2 focus:ring-brand-orange/20 focus:border-brand-orange outline-none'
-
   return (
     <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 pb-8">
       <div className="mb-8">
@@ -206,10 +218,10 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
           Back to Funnels
         </Link>
 
-        <h1 className="text-2xl font-semibold text-white mb-2">
+        <h1 className="text-lg font-semibold text-neutral-200 mb-1">
           {initialData ? 'Edit Funnel' : 'Create New Funnel'}
         </h1>
-        <p className="text-neutral-400">
+        <p className="text-sm text-neutral-400">
           Define the steps users take to complete a goal.
         </p>
       </div>
@@ -252,7 +264,7 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
         {/* Steps */}
         <div className="space-y-4 mb-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-white">
+            <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">
               Funnel Steps
             </h3>
           </div>
@@ -261,7 +273,7 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
             const category = step.category || 'page'
 
             return (
-              <div key={`step-${index}`} className="glass-surface rounded-2xl p-6">
+              <div key={stepIds[index]} className="glass-surface rounded-2xl p-6">
                 <div className="flex items-start gap-4">
                   {/* Step number + reorder */}
                   <div className="mt-3 text-neutral-400 flex items-center gap-1.5">
@@ -333,15 +345,16 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
                             Path / URL
                           </label>
                           <div className="flex gap-2">
-                            <select
+                            <Select
                               value={step.type}
-                              onChange={(e) => handleUpdateStep(index, 'type', e.target.value)}
-                              className={`w-24 ${selectClass}`}
-                            >
-                              <option value="exact">Exact</option>
-                              <option value="contains">Contains</option>
-                              <option value="regex">Regex</option>
-                            </select>
+                              onChange={(value) => handleUpdateStep(index, 'type', value)}
+                              className="w-24"
+                              options={[
+                                { value: 'exact', label: 'Exact' },
+                                { value: 'contains', label: 'Contains' },
+                                { value: 'regex', label: 'Regex' },
+                              ]}
+                            />
                             <Input
                               value={step.value}
                               onChange={(e) => handleUpdateStep(index, 'value', e.target.value)}
@@ -377,15 +390,11 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
                                   placeholder="key"
                                   className="flex-1"
                                 />
-                                <select
+                                <Select
                                   value={filter.operator}
-                                  onChange={(e) => updatePropertyFilter(index, filterIndex, 'operator', e.target.value)}
-                                  className={selectClass}
-                                >
-                                  {OPERATOR_OPTIONS.map(op => (
-                                    <option key={op.value} value={op.value}>{op.label}</option>
-                                  ))}
-                                </select>
+                                  onChange={(value) => updatePropertyFilter(index, filterIndex, 'operator', value)}
+                                  options={OPERATOR_OPTIONS}
+                                />
                                 <Input
                                   value={filter.value}
                                   onChange={(e) => updatePropertyFilter(index, filterIndex, 'value', e.target.value)}
@@ -451,7 +460,7 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
 
         {/* Conversion Window */}
         <div className="glass-surface rounded-2xl p-6 mb-6">
-          <h3 className="text-sm font-medium text-neutral-300 mb-3">
+          <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">
             Conversion Window
           </h3>
           <p className="text-xs text-neutral-500 mb-4">
@@ -489,14 +498,14 @@ export default function FunnelForm({ siteId, initialData, onSubmit, submitLabel,
               onChange={(e) => setWindowValue(Math.max(1, parseInt(e.target.value) || 1))}
               className="w-20"
             />
-            <select
+            <Select
               value={windowUnit}
-              onChange={(e) => setWindowUnit(e.target.value as 'hours' | 'days')}
-              className={selectClass}
-            >
-              <option value="hours">hours</option>
-              <option value="days">days</option>
-            </select>
+              onChange={(value) => setWindowUnit(value as 'hours' | 'days')}
+              options={[
+                { value: 'hours', label: 'hours' },
+                { value: 'days', label: 'days' },
+              ]}
+            />
           </div>
         </div>
 
