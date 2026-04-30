@@ -20,6 +20,14 @@ import { LineChart, Line, Grid, XAxis, YAxis, ChartTooltip } from '@/components/
 const STEP_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16']
 const DAY_MS = 86400000
 
+function formatConvertTime(seconds: number): string {
+  if (seconds < 60) return `${Math.round(seconds)}s`
+  if (seconds < 3600) return `${Math.round(seconds / 60)}m`
+  const h = Math.floor(seconds / 3600)
+  const m = Math.round((seconds % 3600) / 60)
+  return m > 0 ? `${h}h ${m}m` : `${h}h`
+}
+
 function ChangeIndicator({ change }: { change: PctChangeResult }) {
   if (!change) return null
   if (change.type === 'new') return (
@@ -148,7 +156,7 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete, onEdit }: {
             <div className="border-t border-white/[0.06]">
               {/* Stat cards */}
               {stats && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-5">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 p-5">
                   <div className="bg-neutral-800/30 rounded-xl p-4">
                     <div className="flex items-start justify-between mb-1.5">
                       <span className="text-xs font-medium text-neutral-500">Conversion</span>
@@ -177,6 +185,14 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete, onEdit }: {
                     ) : (
                       <span className="text-xl font-bold text-green-400">0%</span>
                     )}
+                  </div>
+                  <div className="bg-neutral-800/30 rounded-xl p-4">
+                    <span className="text-xs font-medium text-neutral-500 block mb-1.5">Median Time</span>
+                    <span className="text-xl font-bold text-white tabular-nums">
+                      {stats.median_convert_seconds != null
+                        ? formatConvertTime(stats.median_convert_seconds)
+                        : '—'}
+                    </span>
                   </div>
                 </div>
               )}
@@ -210,6 +226,9 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete, onEdit }: {
                               <span className="text-base font-semibold text-white tabular-nums">{formatNumber(step.visitors)}</span>
                               <span className="text-xs text-neutral-500 ml-1">sessions</span>
                               {dropped > 0 && <p className="text-xs text-red-400 mt-0.5">{formatNumber(dropped)} dropped</p>}
+                              {step.median_step_seconds != null && i > 0 && (
+                                <p className="text-xs text-neutral-500 mt-0.5">~{formatConvertTime(step.median_step_seconds)}</p>
+                              )}
                             </div>
                             <div className="flex-1 flex items-center gap-3">
                               <div className="flex-1 h-6 bg-neutral-800/50 rounded overflow-hidden">

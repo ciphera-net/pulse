@@ -38,11 +38,13 @@ export interface FunnelStepStats {
   dropoff: number
   conversion: number
   exit_pages: ExitPage[]
+  median_step_seconds?: number | null
 }
 
 export interface FunnelStats {
   funnel_id: string
   steps: FunnelStepStats[]
+  median_convert_seconds?: number | null
 }
 
 export interface CreateFunnelRequest {
