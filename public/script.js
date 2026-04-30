@@ -388,13 +388,13 @@
 
         // * Check file download first (download attribute or known file extension)
         if (trackDownloads && (el.hasAttribute('download') || FILE_EXT_REGEX.test(url.pathname))) {
-          trackCustomEvent('file_download', { url: url.href });
+          trackCustomEvent('file_download', { url: url.href, page_path: cleanPath() });
           return;
         }
 
         // * Check outbound link (different hostname)
         if (trackOutbound && url.hostname && url.hostname !== location.hostname) {
-          trackCustomEvent('outbound_link', { url: url.href });
+          trackCustomEvent('outbound_link', { url: url.href, page_path: cleanPath() });
         }
       } catch (err) {
         // * Invalid URL - skip silently

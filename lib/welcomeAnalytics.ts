@@ -29,6 +29,15 @@ function emit(event: WelcomeEventName, payload: Omit<WelcomeEventPayload, 'event
   const full: WelcomeEventPayload = { event, ...payload }
   if (typeof window === 'undefined') return
   try {
+    const props: Record<string, string> = {}
+    if (payload.step !== undefined) props.step = String(payload.step)
+    if (payload.had_pending_checkout !== undefined) props.had_pending_checkout = String(payload.had_pending_checkout)
+    if (payload.added_site !== undefined) props.added_site = String(payload.added_site)
+    const pulse = (window as any).pulse
+    if (pulse && typeof pulse.track === 'function') {
+      pulse.track(event, Object.keys(props).length > 0 ? props : undefined)
+    }
+
     window.dispatchEvent(
       new CustomEvent('pulse_welcome', { detail: full })
     )
