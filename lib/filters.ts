@@ -22,6 +22,7 @@ export const DIMENSION_LABELS: Record<string, string> = {
   utm_campaign: 'UTM Campaign',
   utm_term: 'UTM Term',
   utm_content: 'UTM Content',
+  event_name: 'Event',
 }
 
 export const OPERATOR_LABELS: Record<string, string> = {
@@ -39,6 +40,7 @@ export const DIMENSION_CATEGORIES = [
   { label: 'Acquisition', dimensions: ['referrer', 'channel', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'] },
   { label: 'Device', dimensions: ['browser', 'os', 'device', 'screen_resolution'] },
   { label: 'Audience', dimensions: ['country', 'region', 'city'] },
+  { label: 'Events', dimensions: ['event_name'] },
 ] as const
 
 /** Serialize filters to query param format: "browser|is|Chrome,country|is|US" */
