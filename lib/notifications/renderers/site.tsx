@@ -50,4 +50,15 @@ export const siteRenderers = {
       linkLabel: 'View dashboard',
     }
   },
+  site_content_decay: (r: Receipt, resolvers?: Resolvers): Rendered => {
+    const p = r.event.payload as { site_id: string; domain: string; pages: Array<{ path: string; decay_pct: number }> }
+    const name = resolvers?.resolveSiteName?.(p.site_id) ?? p.domain
+    const topPath = p.pages?.[0]?.path ?? ''
+    return {
+      icon: <TrendDown className="w-5 h-5" />,
+      title: `Content decay on ${name}`,
+      body: `${p.pages?.length ?? 0} pages losing traffic. ${topPath} down ${p.pages?.[0]?.decay_pct ?? 0}%.`,
+      linkLabel: 'View details',
+    }
+  },
 }
