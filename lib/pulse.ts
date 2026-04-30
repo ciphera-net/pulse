@@ -16,7 +16,7 @@ type PulseProps = Record<string, string>
 declare global {
   interface Window {
     pulse?: {
-      track: (name: string, props?: Record<string, string>) => void
+      track: (name: string, props?: Record<string, string>, revenue?: number) => void
       cleanPath: () => string
     }
   }
@@ -26,8 +26,8 @@ export function track<K extends keyof PulseEventMap>(
   event: K,
   ...args: PulseEventMap[K] extends Record<string, never> ? [] : [props: PulseEventMap[K]]
 ): void
-export function track(event: string, props?: PulseProps): void
-export function track(event: string, props?: PulseProps): void {
+export function track(event: string, props?: PulseProps, revenue?: number): void
+export function track(event: string, props?: PulseProps, revenue?: number): void {
   if (typeof window === 'undefined' || !window.pulse) return
-  window.pulse.track(event, props)
+  window.pulse.track(event, props, revenue)
 }

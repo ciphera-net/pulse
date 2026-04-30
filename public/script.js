@@ -309,7 +309,7 @@
   });
 
   // * Custom events / goals
-  function trackCustomEvent(eventName, props) {
+  function trackCustomEvent(eventName, props, revenue) {
     if (typeof eventName !== 'string' || !eventName.trim()) return;
     var payload = {
       domain: domain,
@@ -321,6 +321,9 @@
     };
     if (props && typeof props === 'object' && !Array.isArray(props)) {
       payload.props = props;
+    }
+    if (typeof revenue === 'number' && isFinite(revenue) && revenue >= 0) {
+      payload.revenue = revenue;
     }
     fetch(apiUrl + '/api/v1/events', {
       method: 'POST',
