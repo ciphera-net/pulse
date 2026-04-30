@@ -264,8 +264,8 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete }: {
                 </div>
               )}
 
-              {/* Conversion Trends */}
-              {trends && trends.dates.length > 1 && (
+              {/* Conversion Trends — only show when there's meaningful data */}
+              {trends && trends.dates.length > 1 && trends.overall.some(v => v > 0) && (
                 <div className="p-5 border-t border-white/[0.06]">
                   <div className="flex items-center justify-between mb-4">
                     <h4 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Conversion Trends</h4>
@@ -288,14 +288,14 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete }: {
                     <Grid />
                     <XAxis />
                     <YAxis numTicks={4} formatValue={(v) => `${Math.round(v)}%`} />
-                    <Line dataKey="overall" stroke="var(--brand-orange)" />
+                    <Line dataKey="overall" stroke="#FD5E0F" />
                     {Array.from(visibleSteps).map((stepKey) => (
                       <Line key={stepKey} dataKey={`step_${stepKey}`} stroke={STEP_COLORS[Number(stepKey) % STEP_COLORS.length]} />
                     ))}
                     <ChartTooltip
                       rows={(point) => {
                         const rows: { color: string; label: string; value: string | number }[] = [
-                          { color: 'var(--brand-orange)', label: 'Overall', value: `${point.overall ?? 0}%` },
+                          { color: '#FD5E0F', label: 'Overall', value: `${point.overall ?? 0}%` },
                         ]
                         for (const stepKey of Array.from(visibleSteps)) {
                           const key = `step_${stepKey}`
