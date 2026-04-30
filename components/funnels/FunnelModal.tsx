@@ -94,7 +94,7 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData }: 
       >
         {/* Glass panel — static, not animated. Identical class to UnifiedSettingsModal. */}
         <div
-          className="relative w-full max-w-2xl max-h-[85vh] glass-overlay rounded-2xl shadow-xl shadow-black/20 flex flex-col overflow-hidden"
+          className="relative w-full max-w-2xl h-[85vh] glass-overlay rounded-2xl shadow-xl shadow-black/20 flex flex-col overflow-hidden"
           onClick={e => e.stopPropagation()}
         >
           {/* Content animates inside the static panel — identical to UnifiedSettingsModal */}
