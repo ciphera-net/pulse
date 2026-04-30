@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAuth } from '@/lib/auth/context'
 import { useSites } from '@/lib/swr/sites'
-import { getOrganizationMembers } from '@/lib/api/organization'
+import { useMembers } from '@/lib/swr/members'
 import { XIcon, CheckCircleIcon } from '@ciphera-net/ui'
 import { Circle as CircleIcon } from '@phosphor-icons/react'
 
@@ -54,26 +54,19 @@ function ProgressRing({ progress, size = 32 }: { progress: number; size?: number
 export default function GettingStartedChecklist() {
   const { user } = useAuth()
   const { sites } = useSites()
+  const { members } = useMembers()
   const [dismissed, setDismissed] = useState(true)
   const [expanded, setExpanded] = useState(false)
-  const [memberCount, setMemberCount] = useState(0)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
     setDismissed(localStorage.getItem(DISMISSED_KEY) === 'true')
   }, [])
 
-  useEffect(() => {
-    if (!user?.org_id) return
-    getOrganizationMembers(user.org_id)
-      .then(members => setMemberCount(members.length))
-      .catch(() => {})
-  }, [user?.org_id])
-
   const items: ChecklistItem[] = [
     { key: 'org', label: 'Create workspace', check: () => !!user?.org_id },
     { key: 'site', label: 'Add your first site', href: '/sites/new', check: () => sites.length > 0 },
-    { key: 'teammate', label: 'Invite a teammate', href: '/org-settings', check: () => memberCount > 1 },
+    { key: 'teammate', label: 'Invite a teammate', href: '/org-settings', check: () => members.length > 1 },
   ]
 
   const completedCount = items.filter(i => i.check()).length
