@@ -38,6 +38,7 @@ export interface Site {
   // Uptime monitoring toggle
   uptime_enabled: boolean
   is_verified?: boolean
+  detected_framework?: string | null
   created_at: string
   updated_at: string
   deleted_at?: string | null
@@ -137,4 +138,17 @@ export async function permanentDeleteSite(id: string): Promise<void> {
 export async function listDeletedSites(): Promise<Site[]> {
   const response = await apiRequest<{ sites: Site[] }>('/sites/deleted')
   return response?.sites || []
+}
+
+export interface FrameworkDetectionResult {
+  framework: string | null
+  confidence?: string
+  version?: string
+  error?: string
+}
+
+export async function detectFramework(domain: string): Promise<FrameworkDetectionResult> {
+  return apiRequest<FrameworkDetectionResult>(
+    `/detect-framework?domain=${encodeURIComponent(domain)}`
+  )
 }
