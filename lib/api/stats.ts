@@ -33,6 +33,8 @@ export interface CampaignStat {
   source: string
   medium: string
   campaign: string
+  term: string
+  content: string
   visitors: number
   pageviews: number
 }
