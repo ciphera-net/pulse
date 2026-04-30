@@ -146,7 +146,7 @@ export default function SitePrivacyScanTab({
           <p className="text-sm font-medium text-white">Enable privacy scanning</p>
           <p className="text-xs text-neutral-500">Automatically scan for trackers and security issues</p>
         </div>
-        <Toggle checked={enabled} onChange={setEnabled} />
+        <Toggle checked={enabled} onChange={() => setEnabled(v => !v)} />
       </div>
 
       {/* Frequency selector — revealed when enabled */}
