@@ -480,6 +480,24 @@ export function getEventPropertyValues(siteId: string, eventName: string, propNa
     .then(r => r?.values || [])
 }
 
+// ─── Page Engagement ────────────────────────────────────────────────
+
+export interface PageEngagement {
+  path: string
+  sessions: number
+  pageviews: number
+  engagement_score: number
+  avg_scroll_depth: number
+  avg_visible_duration: number
+  bounce_rate: number
+}
+
+export async function getPageEngagement(siteId: string, startDate?: string, endDate?: string, minSessions = 5, limit = 50, filters?: string): Promise<PageEngagement[]> {
+  return apiRequest<{ pages: PageEngagement[] }>(
+    `/sites/${siteId}/page-engagement${buildQuery({ startDate, endDate, limit, filters })}&min_sessions=${minSessions}`
+  ).then(r => r?.pages ?? [])
+}
+
 // ─── Frustration Signals ────────────────────────────────────────────
 
 export interface BehaviorData {

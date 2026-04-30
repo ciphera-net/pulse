@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { logger } from '@/lib/utils/logger'
-import { formatNumber } from '@ciphera-net/ui'
+import { formatNumber, Spinner } from '@ciphera-net/ui'
 import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
-import { TopPage, getTopPages, getEntryPages, getExitPages } from '@/lib/api/stats'
+import { TopPage, getTopPages, getEntryPages, getExitPages, PageEngagement, getPageEngagement } from '@/lib/api/stats'
 import { FrameCornersIcon, FileText } from '@phosphor-icons/react'
 import { Modal, ArrowUpRightIcon } from '@ciphera-net/ui'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -23,7 +23,7 @@ interface ContentStatsProps {
   onFilter?: (filter: DimensionFilter) => void
 }
 
-type Tab = 'top_pages' | 'entry_pages' | 'exit_pages'
+type Tab = 'top_pages' | 'entry_pages' | 'exit_pages' | 'engagement'
 
 const LIMIT = 7
 
@@ -35,6 +35,15 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
   const [fullData, setFullData] = useState<TopPage[]>([])
   const [isLoadingFull, setIsLoadingFull] = useState(false)
 
+  // Engagement tab local state
+  const [engagementData, setEngagementData] = useState<PageEngagement[]>([])
+  const [engagementLoading, setEngagementLoading] = useState(false)
+  const engagementFetched = useRef(false)
+
+  // Engagement modal state
+  const [fullEngagementData, setFullEngagementData] = useState<PageEngagement[]>([])
+  const [isLoadingFullEngagement, setIsLoadingFullEngagement] = useState(false)
+
   // Filter out generic "/" entries when page paths are disabled (all traffic shows as "/")
   const filterGenericPaths = (pages: TopPage[]) => {
     if (!collectPagePaths) return []
@@ -42,29 +51,62 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
     return pages.filter(p => p.path && p.path !== '')
   }
 
+  // Reset engagement fetch flag when date range changes so it refetches
+  useEffect(() => {
+    engagementFetched.current = false
+    // If engagement tab is active, immediately re-trigger fetch
+    if (activeTab === 'engagement') {
+      setEngagementLoading(true)
+      engagementFetched.current = true
+      getPageEngagement(siteId, dateRange?.start, dateRange?.end, 5, LIMIT)
+        .then(setEngagementData)
+        .catch(() => setEngagementData([]))
+        .finally(() => setEngagementLoading(false))
+    }
+  }, [dateRange?.start, dateRange?.end]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Lazy fetch engagement data on first activation
+  useEffect(() => {
+    if (activeTab !== 'engagement' || engagementFetched.current) return
+    engagementFetched.current = true
+    setEngagementLoading(true)
+    getPageEngagement(siteId, dateRange?.start, dateRange?.end, 5, LIMIT)
+      .then(setEngagementData)
+      .catch(() => setEngagementData([]))
+      .finally(() => setEngagementLoading(false))
+  }, [activeTab, siteId, dateRange?.start, dateRange?.end])
+
   useEffect(() => {
     if (isModalOpen) {
       const fetchData = async () => {
         setIsLoadingFull(true)
+        setIsLoadingFullEngagement(true)
         try {
-          let data: TopPage[] = []
-          if (activeTab === 'top_pages') {
-            data = await getTopPages(siteId, dateRange.start, dateRange.end, 100)
-          } else if (activeTab === 'entry_pages') {
-            data = await getEntryPages(siteId, dateRange.start, dateRange.end, 100)
-          } else if (activeTab === 'exit_pages') {
-            data = await getExitPages(siteId, dateRange.start, dateRange.end, 100)
+          if (activeTab === 'engagement') {
+            const data = await getPageEngagement(siteId, dateRange.start, dateRange.end, 5, 50)
+            setFullEngagementData(data)
+          } else {
+            let data: TopPage[] = []
+            if (activeTab === 'top_pages') {
+              data = await getTopPages(siteId, dateRange.start, dateRange.end, 100)
+            } else if (activeTab === 'entry_pages') {
+              data = await getEntryPages(siteId, dateRange.start, dateRange.end, 100)
+            } else if (activeTab === 'exit_pages') {
+              data = await getExitPages(siteId, dateRange.start, dateRange.end, 100)
+            }
+            setFullData(filterGenericPaths(data))
           }
-          setFullData(filterGenericPaths(data))
         } catch (e) {
           logger.error(e)
         } finally {
           setIsLoadingFull(false)
+          setIsLoadingFullEngagement(false)
         }
       }
       fetchData()
     } else {
       setFullData([])
+      setFullEngagementData([])
     }
   }, [isModalOpen, activeTab, siteId, dateRange, collectPagePaths])
 
@@ -81,19 +123,73 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
     }
   }
 
-  const data = getData()
-  const totalPageviews = data.reduce((sum, p) => sum + p.pageviews, 0)
-  const hasData = data && data.length > 0
-  const displayedData = hasData ? data.slice(0, LIMIT) : []
-  const emptySlots = Math.max(0, LIMIT - displayedData.length)
-  const showViewAll = hasData && data.length > LIMIT
-
   const getTabLabel = (tab: Tab) => {
     switch (tab) {
       case 'top_pages': return 'Pages'
       case 'entry_pages': return 'Entries'
       case 'exit_pages': return 'Exits'
+      case 'engagement': return 'Engagement'
     }
+  }
+
+  const isEngagementTab = activeTab === 'engagement'
+
+  const data = isEngagementTab ? [] : getData()
+  const totalPageviews = data.reduce((sum, p) => sum + p.pageviews, 0)
+  const hasData = isEngagementTab ? engagementData.length > 0 : (data && data.length > 0)
+  const displayedData = !isEngagementTab && hasData ? data.slice(0, LIMIT) : []
+  const displayedEngagement = isEngagementTab ? engagementData.slice(0, LIMIT) : []
+  const emptySlots = isEngagementTab
+    ? Math.max(0, LIMIT - displayedEngagement.length)
+    : Math.max(0, LIMIT - displayedData.length)
+  const showViewAll = isEngagementTab
+    ? (engagementData.length >= LIMIT)
+    : (hasData && data.length > LIMIT)
+
+  const renderEngagementRow = (item: PageEngagement, inModal = false) => {
+    const scoreColor = item.engagement_score >= 70
+      ? { bar: 'rgba(34,197,94,0.07)', border: 'rgba(34,197,94,0.7)', badge: 'bg-green-500/20 text-green-400' }
+      : item.engagement_score >= 40
+        ? { bar: 'rgba(245,158,11,0.07)', border: 'rgba(245,158,11,0.7)', badge: 'bg-amber-500/20 text-amber-400' }
+        : { bar: 'rgba(239,68,68,0.07)', border: 'rgba(239,68,68,0.7)', badge: 'bg-red-500/20 text-red-400' }
+
+    const readTime = item.avg_visible_duration >= 60
+      ? `${Math.round(item.avg_visible_duration / 60)}m`
+      : `${Math.round(item.avg_visible_duration)}s`
+
+    return (
+      <div
+        key={item.path}
+        className={`interactive-row relative overflow-hidden flex items-center justify-between h-9 group rounded-lg px-2 -mx-2${onFilter ? ' cursor-pointer' : ''}`}
+        onClick={() => {
+          onFilter?.({ dimension: 'page', operator: 'is', values: [item.path] })
+          if (inModal) setIsModalOpen(false)
+        }}
+      >
+        {/* Bar — width based on engagement score */}
+        <div
+          className="absolute inset-y-0.5 left-0.5 rounded-md transition-all duration-300 ease-apple"
+          style={{
+            width: `${(item.engagement_score / 100) * 75}%`,
+            backgroundColor: scoreColor.bar,
+            borderLeft: `2px solid ${scoreColor.border}`,
+          }}
+        />
+        {/* Path */}
+        <div className="relative flex-1 truncate text-white flex items-center">
+          <span className="truncate">{item.path}</span>
+        </div>
+        {/* Score badge + details on hover */}
+        <div className="relative flex items-center gap-2 ml-4">
+          <span className="opacity-0 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0 transition-all duration-150 text-[10px] font-medium text-neutral-500 whitespace-nowrap">
+            {Math.round(item.avg_scroll_depth)}% scroll · {readTime} read
+          </span>
+          <span className={`inline-flex items-center justify-center w-8 h-5 rounded-full text-[10px] font-bold tabular-nums ${scoreColor.badge}`}>
+            {item.engagement_score}
+          </span>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -101,7 +197,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
       <div className="glass-surface rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-4">
           <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-1" role="tablist" aria-label="Pages view tabs" onKeyDown={handleTabKeyDown}>
-            {(['top_pages', 'entry_pages', 'exit_pages'] as Tab[]).map((tab) => (
+            {(['top_pages', 'entry_pages', 'exit_pages', 'engagement'] as Tab[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -138,9 +234,32 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
             <div className="h-full flex flex-col items-center justify-center text-center px-4">
               <p className="text-neutral-400 text-sm">Page path tracking is disabled in site settings</p>
             </div>
+          ) : isEngagementTab ? (
+            engagementLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Spinner size="sm" />
+              </div>
+            ) : engagementData.length > 0 ? (
+              <>
+                {displayedEngagement.map((item) => renderEngagementRow(item))}
+                {Array.from({ length: emptySlots }).map((_, i) => (
+                  <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
+                ))}
+              </>
+            ) : (
+              <>
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <p className="text-sm text-neutral-500">Not enough data yet</p>
+                  <p className="text-xs text-neutral-600 mt-1">Pages need at least 5 sessions for scoring</p>
+                </div>
+                {Array.from({ length: LIMIT }).map((_, i) => (
+                  <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
+                ))}
+              </>
+            )
           ) : hasData ? (
             <>
-              {displayedData.map((page, idx) => {
+              {displayedData.map((page) => {
                 const maxPv = displayedData[0]?.pageviews ?? 0
                 const barWidth = maxPv > 0 ? (page.pageviews / maxPv) * 75 : 0
                 return (
@@ -207,7 +326,29 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
           />
         </div>
         <div className="flex-1 overflow-y-auto min-h-0">
-          {isLoadingFull ? (
+          {isEngagementTab ? (
+            isLoadingFullEngagement ? (
+              <div className="py-4">
+                <ListSkeleton rows={10} />
+              </div>
+            ) : (() => {
+              const modalEngagementData = (fullEngagementData.length > 0 ? fullEngagementData : engagementData)
+                .filter(p => !modalSearch || p.path.toLowerCase().includes(modalSearch.toLowerCase()))
+              return modalEngagementData.length > 0 ? (
+                <VirtualList
+                  items={modalEngagementData}
+                  estimateSize={36}
+                  className="pr-2"
+                  renderItem={(item) => renderEngagementRow(item, true)}
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <p className="text-sm text-neutral-500">Not enough data yet</p>
+                  <p className="text-xs text-neutral-600 mt-1">Pages need at least 5 sessions for scoring</p>
+                </div>
+              )
+            })()
+          ) : isLoadingFull ? (
             <div className="py-4">
               <ListSkeleton rows={10} />
             </div>
