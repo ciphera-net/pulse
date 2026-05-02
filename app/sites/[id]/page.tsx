@@ -110,6 +110,7 @@ export default function SiteDashboardPage() {
   )
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
+  const [realtimePagesOpen, setRealtimePagesOpen] = useState(false)
 
   const shiftPeriod = useCallback((direction: -1 | 1) => {
     const shift = (date: string, days: number) => {
@@ -420,14 +421,20 @@ export default function SiteDashboardPage() {
 
   const toolbarControls = () => (
     <>
-      <div className="relative group flex items-center gap-2">
-        <span className="relative flex h-2 w-2">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
-        </span>
-        <span className="text-sm text-neutral-400 tabular-nums">{realtime} current visitors</span>
-        {realtimePages && realtimePages.length > 0 && (
-          <div className="absolute top-full left-0 mt-2 w-72 hidden group-hover:block z-50">
+      <div className="relative flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setRealtimePagesOpen(p => !p)}
+          className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+        >
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+          </span>
+          <span className="text-sm text-neutral-400 tabular-nums">{realtime} current visitors</span>
+        </button>
+        {realtimePagesOpen && realtimePages && realtimePages.length > 0 && (
+          <div className="absolute top-full left-0 mt-2 w-72 z-50">
             <div className="rounded-xl border border-neutral-800 bg-neutral-900/95 backdrop-blur-lg shadow-xl shadow-black/30 p-3 space-y-1">
               <p className="text-xs font-medium text-neutral-500 mb-2">Active pages</p>
               {realtimePages.slice(0, 10).map(p => (
