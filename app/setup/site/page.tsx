@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSetup } from '@/lib/setup/context'
 import { preservePlanParams } from '@/lib/setup/utils'
-import { createSite } from '@/lib/api/sites'
+import { createSite, detectFramework } from '@/lib/api/sites'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { Button, Input, toast } from '@ciphera-net/ui'
 import { GlobeIcon } from '@ciphera-net/ui'
@@ -34,9 +34,16 @@ export default function SetupSitePage() {
     setError('')
 
     try {
-      const site = await createSite({ name: domain, domain })
+      const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone
+      const site = await createSite({ name: domain, domain, timezone: browserTz })
       setSite(site)
       completeStep('site')
+      // Fire framework detection in the background — does not block navigation.
+      detectFramework(domain).then(result => {
+        if (result.framework) {
+          setSite({ ...site, detected_framework: result.framework })
+        }
+      }).catch(() => {})
       router.push(`/setup/install${preservePlanParams(searchParams)}`)
     } catch (err) {
       setError(getAuthErrorMessage(err as Error) || 'Failed to add site')

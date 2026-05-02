@@ -43,6 +43,7 @@ import { type DimensionFilter, serializeFilters, parseFiltersFromURL } from '@/l
 import {
   useDashboard,
   useRealtime,
+  useRealtimePages,
   useStats,
   useDailyStats,
   useCampaigns,
@@ -325,8 +326,9 @@ export default function SiteDashboardPage() {
     return { start: prevStart.toISOString().split('T')[0], end: prevEnd.toISOString().split('T')[0] }
   }, [resolvedDateRange])
   const { data: realtimeData } = useRealtime(siteId, 15_000)
+  const { data: realtimePages } = useRealtimePages(siteId)
   const { data: prevStats } = useStats(siteId, prevRange?.start ?? '', prevRange?.end ?? '')
-  const { data: prevDailyStats } = useDailyStats(siteId, prevRange?.start ?? '', prevRange?.end ?? '', interval)
+  const { data: prevDailyStats } = useDailyStats(siteId, prevRange?.start ?? '', prevRange?.end ?? '', interval, filtersParam || undefined)
   const { data: campaigns } = useCampaigns(siteId, resolvedDateRange?.start ?? '', resolvedDateRange?.end ?? '', 100, apiPeriod)
   // Fetch engagement percentiles in parallel with dashboard data
   useEffect(() => {
@@ -418,12 +420,25 @@ export default function SiteDashboardPage() {
 
   const toolbarControls = () => (
     <>
-      <div className="flex items-center gap-2">
+      <div className="relative group flex items-center gap-2">
         <span className="relative flex h-2 w-2">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
           <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
         </span>
         <span className="text-sm text-neutral-400 tabular-nums">{realtime} current visitors</span>
+        {realtimePages && realtimePages.length > 0 && (
+          <div className="absolute top-full left-0 mt-2 w-72 hidden group-hover:block z-50">
+            <div className="rounded-xl border border-neutral-800 bg-neutral-900/95 backdrop-blur-lg shadow-xl shadow-black/30 p-3 space-y-1">
+              <p className="text-xs font-medium text-neutral-500 mb-2">Active pages</p>
+              {realtimePages.slice(0, 10).map(p => (
+                <div key={p.path} className="flex justify-between items-center text-sm py-0.5">
+                  <span className="text-neutral-300 truncate mr-3">{p.path}</span>
+                  <span className="text-green-400 tabular-nums flex-shrink-0">{p.visitors}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
       <div className="flex-1" />
       <FilterPills filters={filters} onEdit={handleEditFilter} onRemove={handleRemoveFilter} onClear={handleClearFilters} />

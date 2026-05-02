@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import { logger } from '@/lib/utils/logger'
-import { formatNumber, Modal } from '@ciphera-net/ui'
+import { formatNumber, Modal, Spinner } from '@ciphera-net/ui'
 import { FrameCornersIcon, Monitor, DeviceMobile, DeviceTablet, MagnifyingGlass } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import * as Flags from 'country-flag-icons/react/3x2'
 import countries from 'i18n-iso-countries'
 import { useGSCStatus, useGSCOverview, useGSCTopQueries, useGSCTopPages, useGSCTopCountries, useGSCTopDevices, useGSCOpportunities } from '@/lib/swr/dashboard'
-import { getGSCTopQueries, getGSCTopPages, getGSCTopCountries, getGSCTopDevices, getGSCOpportunities } from '@/lib/api/gsc'
-import type { GSCDataRow, GSCCountryRow, GSCDeviceRow, GSCOpportunityRow } from '@/lib/api/gsc'
+import { getGSCTopQueries, getGSCTopPages, getGSCTopCountries, getGSCTopDevices, getGSCOpportunities, getGSCQueryTrend } from '@/lib/api/gsc'
+import type { GSCDataRow, GSCCountryRow, GSCDeviceRow, GSCOpportunityRow, GSCQueryTrendPoint } from '@/lib/api/gsc'
 import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
 import { ListSkeleton } from '@/components/skeletons'
 import VirtualList from './VirtualList'
@@ -78,6 +78,9 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
   const [modalSearch, setModalSearch] = useState('')
   const [fullData, setFullData] = useState<(GSCDataRow | GSCCountryRow | GSCOpportunityRow)[]>([])
   const [isLoadingFull, setIsLoadingFull] = useState(false)
+  const [expandedQuery, setExpandedQuery] = useState<string | null>(null)
+  const [trendData, setTrendData] = useState<GSCQueryTrendPoint[] | null>(null)
+  const [trendLoading, setTrendLoading] = useState(false)
 
   const { data: gscStatus } = useGSCStatus(siteId)
   const { data: overview, isLoading: overviewLoading } = useGSCOverview(siteId, dateRange.start, dateRange.end)
@@ -160,13 +163,15 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
   const emptySlots = activeTab === 'devices' ? 0 : Math.max(0, LIMIT - displayedData.length)
 
   // Render a row for queries/pages
-  function renderDataRow(row: GSCDataRow, maxImpressions: number, totalImpressions: number) {
+  function renderDataRow(row: GSCDataRow, maxImpressions: number, totalImpressions: number, onClick?: () => void) {
     const label = activeTab === 'queries' ? row.query : stripProtocol(row.page)
     const barWidth = maxImpressions > 0 ? (row.impressions / maxImpressions) * 75 : 0
+    const isExpanded = onClick && expandedQuery === row.query
     return (
       <div
         key={label}
-        className="interactive-row relative overflow-hidden flex items-center justify-between h-9 group rounded-lg px-2 -mx-2"
+        className={`interactive-row relative overflow-hidden flex items-center justify-between h-9 group rounded-lg px-2 -mx-2${onClick ? ' cursor-pointer' : ''}`}
+        onClick={onClick}
       >
         <div
           className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.07] border-l-2 border-brand-orange/70 rounded-md transition-[width,background-color] ease-apple"
@@ -185,6 +190,11 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
           <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${getPositionBadgeClasses(row.position)}`}>
             {row.position.toFixed(1)}
           </span>
+          {onClick && (
+            <span className={`text-neutral-500 transition-transform duration-150 ${isExpanded ? 'rotate-180' : ''}`}>
+              ▾
+            </span>
+          )}
         </div>
       </div>
     )
@@ -299,7 +309,73 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
 
     let rows: React.ReactNode[]
 
-    if (activeTab === 'queries' || activeTab === 'pages') {
+    if (activeTab === 'queries') {
+      const typed = displayedData as GSCDataRow[]
+      const totalImpressions = typed.reduce((sum, d) => sum + d.impressions, 0)
+      const maxImpressions = typed[0]?.impressions ?? 0
+      rows = typed.map(row => (
+        <div key={row.query}>
+          {renderDataRow(row, maxImpressions, totalImpressions, () => handleQueryClick(row.query))}
+          {expandedQuery === row.query && (
+            <div className="px-4 py-3 bg-neutral-800/30 border-t border-neutral-800 space-y-2 -mx-2 rounded-b-lg mb-1">
+              {trendLoading ? (
+                <div className="flex items-center gap-2 text-sm text-neutral-500">
+                  <Spinner className="w-3.5 h-3.5" /> Loading trend...
+                </div>
+              ) : trendData && trendData.length > 1 ? (
+                <>
+                  <div className="flex items-center gap-4 text-sm">
+                    {(() => {
+                      const first = trendData[0]
+                      const last = trendData[trendData.length - 1]
+                      const posDiff = last.position - first.position
+                      const improved = posDiff < 0
+                      return (
+                        <>
+                          <span className="text-neutral-400">
+                            Position: <span className="text-white">{first.position.toFixed(1)}</span>
+                            {' \u2192 '}
+                            <span className="text-white">{last.position.toFixed(1)}</span>
+                            {' '}
+                            <span className={improved ? 'text-green-400' : 'text-red-400'}>
+                              ({improved ? '\u2191' : '\u2193'}{Math.abs(posDiff).toFixed(1)})
+                            </span>
+                          </span>
+                          <span className="text-neutral-400">
+                            Clicks: <span className="text-white">{last.clicks}</span>
+                          </span>
+                          <span className="text-neutral-400">
+                            Impressions: <span className="text-white">{last.impressions}</span>
+                          </span>
+                        </>
+                      )
+                    })()}
+                  </div>
+                  <div className="flex gap-1 items-end h-8">
+                    {trendData.map((point, i) => {
+                      const maxPos = Math.max(...trendData.map(p => p.position))
+                      const minPos = Math.min(...trendData.map(p => p.position))
+                      const range = maxPos - minPos || 1
+                      const height = Math.max(4, ((maxPos - point.position) / range) * 28 + 4)
+                      return (
+                        <div
+                          key={i}
+                          className="flex-1 rounded-sm bg-brand-orange/60 hover:bg-brand-orange transition-colors"
+                          style={{ height: `${height}px` }}
+                          title={`${point.date}: Pos ${point.position.toFixed(1)}, ${point.clicks} clicks`}
+                        />
+                      )
+                    })}
+                  </div>
+                </>
+              ) : (
+                <span className="text-sm text-neutral-500">Not enough data for trend</span>
+              )}
+            </div>
+          )}
+        </div>
+      ))
+    } else if (activeTab === 'pages') {
       const typed = displayedData as GSCDataRow[]
       const totalImpressions = typed.reduce((sum, d) => sum + d.impressions, 0)
       const maxImpressions = typed[0]?.impressions ?? 0
@@ -424,6 +500,23 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
       case 'countries': return countries
       case 'opportunities': return opportunities
       default: return []
+    }
+  }
+
+  const handleQueryClick = async (query: string) => {
+    if (expandedQuery === query) {
+      setExpandedQuery(null)
+      return
+    }
+    setExpandedQuery(query)
+    setTrendLoading(true)
+    try {
+      const data = await getGSCQueryTrend(siteId, query, dateRange.start, dateRange.end)
+      setTrendData(data)
+    } catch {
+      setTrendData(null)
+    } finally {
+      setTrendLoading(false)
     }
   }
 

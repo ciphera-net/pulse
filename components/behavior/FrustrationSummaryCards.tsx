@@ -3,19 +3,14 @@
 import type { FrustrationSummary } from '@/lib/api/stats'
 import { StatCardSkeleton } from '@/components/skeletons'
 import { AnimatedNumber } from '@/components/ui/animated-number'
+import { pctChange, type PctChangeResult } from '@/lib/utils/pctChange'
 
 interface FrustrationSummaryCardsProps {
   data: FrustrationSummary | null
   loading: boolean
 }
 
-function pctChange(current: number, previous: number): { type: 'pct'; value: number } | { type: 'new' } | null {
-  if (previous === 0 && current === 0) return null
-  if (previous === 0) return { type: 'new' }
-  return { type: 'pct', value: Math.round(((current - previous) / previous) * 100) }
-}
-
-function ChangeIndicator({ change }: { change: ReturnType<typeof pctChange> }) {
+function ChangeIndicator({ change }: { change: PctChangeResult }) {
   if (change === null) return null
   if (change.type === 'new') {
     return (

@@ -33,6 +33,8 @@ export interface CampaignStat {
   source: string
   medium: string
   campaign: string
+  term: string
+  content: string
   visitors: number
   pageviews: number
 }
@@ -232,6 +234,16 @@ export function getRealtime(siteId: string): Promise<RealtimeStats> {
 
 export function getPublicRealtime(siteId: string, auth?: AuthParams): Promise<RealtimeStats> {
   return apiRequest<RealtimeStats>(`/public/sites/${siteId}/realtime${buildQuery({}, auth)}`)
+}
+
+export interface RealtimePageVisitors {
+  path: string
+  visitors: number
+}
+
+export async function getRealtimePages(siteId: string): Promise<RealtimePageVisitors[]> {
+  const res = await apiRequest<{ pages: RealtimePageVisitors[] }>(`/sites/${siteId}/realtime/pages`)
+  return res.pages ?? []
 }
 
 // ─── Daily Stats ────────────────────────────────────────────────────
@@ -468,6 +480,24 @@ export function getEventPropertyValues(siteId: string, eventName: string, propNa
     .then(r => r?.values || [])
 }
 
+// ─── Page Engagement ────────────────────────────────────────────────
+
+export interface PageEngagement {
+  path: string
+  sessions: number
+  pageviews: number
+  engagement_score: number
+  avg_scroll_depth: number
+  avg_visible_duration: number
+  bounce_rate: number
+}
+
+export async function getPageEngagement(siteId: string, startDate?: string, endDate?: string, minSessions = 5, limit = 50, filters?: string): Promise<PageEngagement[]> {
+  return apiRequest<{ pages: PageEngagement[] }>(
+    `/sites/${siteId}/page-engagement${buildQuery({ startDate, endDate, limit, filters })}&min_sessions=${minSessions}`
+  ).then(r => r?.pages ?? [])
+}
+
 // ─── Frustration Signals ────────────────────────────────────────────
 
 export interface BehaviorData {
@@ -475,6 +505,7 @@ export interface BehaviorData {
   rage_clicks: { items: FrustrationElement[]; total: number }
   dead_clicks: { items: FrustrationElement[]; total: number }
   by_page: FrustrationByPage[]
+  scroll_depth?: ScrollDepthDistribution
 }
 
 const emptyBehavior: BehaviorData = {

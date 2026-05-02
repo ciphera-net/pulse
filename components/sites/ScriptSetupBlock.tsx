@@ -6,6 +6,7 @@
  */
 
 import { useState, useCallback, useMemo } from 'react'
+import { ArrowUpRight } from '@phosphor-icons/react'
 import { integrations, getIntegration } from '@/lib/integrations'
 import { toast, Toggle, Select, CheckIcon } from '@ciphera-net/ui'
 import sriHashes from '@/public/script-sri.json'
@@ -16,6 +17,136 @@ const SCRIPT_SRI = (sriHashes as Record<string, string>)['script.js']
 const FRUSTRATION_SRI = (sriHashes as Record<string, string>)['script.frustration.js']
 
 const FRAMEWORKS = integrations.filter((i) => i.category === 'framework').slice(0, 10)
+
+const FRAMEWORK_SNIPPETS: Record<string, { label: string; code?: string; note?: string; cta?: { text: string; url: string } }> = {
+  wordpress: {
+    label: 'WordPress',
+    note: 'Install the Pulse Analytics plugin from your WordPress dashboard or wordpress.org.',
+    cta: { text: 'Install Plugin', url: 'https://wordpress.org/plugins/pulse-analytics/' },
+  },
+  nextjs: {
+    label: 'app/layout.tsx',
+    code: `import Script from 'next/script'
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        {children}
+        <Script
+          defer
+          data-domain="DOMAIN"
+          src="https://js.ciphera.net/script.js"
+          strategy="afterInteractive"
+        />
+      </body>
+    </html>
+  )
+}`,
+  },
+  nuxt: {
+    label: 'nuxt.config.ts',
+    code: `export default defineNuxtConfig({
+  app: {
+    head: {
+      script: [
+        {
+          defer: true,
+          'data-domain': 'DOMAIN',
+          src: 'https://js.ciphera.net/script.js',
+        },
+      ],
+    },
+  },
+})`,
+  },
+  astro: {
+    label: 'src/layouts/Layout.astro',
+    code: `---
+// Your frontmatter
+---
+<html>
+  <head>
+    <script
+      defer
+      data-domain="DOMAIN"
+      src="https://js.ciphera.net/script.js"
+    ></script>
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>`,
+  },
+  sveltekit: {
+    label: 'src/app.html',
+    code: `<!doctype html>
+<html>
+  <head>
+    <script
+      defer
+      data-domain="DOMAIN"
+      src="https://js.ciphera.net/script.js"
+    ></script>
+    %sveltekit.head%
+  </head>
+  <body>
+    %sveltekit.body%
+  </body>
+</html>`,
+  },
+  remix: {
+    label: 'app/root.tsx',
+    code: `export default function App() {
+  return (
+    <html>
+      <head>
+        <Meta />
+        <Links />
+        <script
+          defer
+          data-domain="DOMAIN"
+          src="https://js.ciphera.net/script.js"
+        />
+      </head>
+      <body>
+        <Outlet />
+        <Scripts />
+      </body>
+    </html>
+  )
+}`,
+  },
+  gatsby: {
+    label: 'gatsby-ssr.js',
+    code: `export const onRenderBody = ({ setHeadComponents }) => {
+  setHeadComponents([
+    <script
+      key="pulse"
+      defer
+      data-domain="DOMAIN"
+      src="https://js.ciphera.net/script.js"
+    />,
+  ])
+}`,
+  },
+  angular: { label: 'src/index.html' },
+  vue: { label: 'index.html' },
+  react: { label: 'public/index.html' },
+  hugo: { label: 'layouts/partials/head.html' },
+  jekyll: { label: '_includes/head.html' },
+  svelte: { label: 'src/app.html' },
+  shopify: { label: 'theme.liquid', note: 'Add the tracking script to your theme.liquid file before the closing </head> tag, or use Online Store → Themes → Edit Code.' },
+  wix: { label: 'Custom Code', note: 'Add via Dashboard → Settings → Custom Code → Head.' },
+  squarespace: { label: 'Code Injection', note: 'Add via Settings → Advanced → Code Injection → Header.' },
+  webflow: { label: 'Custom Code', note: 'Add via Project Settings → Custom Code → Head Code.' },
+  framer: { label: 'Custom Code', note: 'Add via Site Settings → Custom Code → Head.' },
+  ghost: { label: 'Code Injection', note: 'Add via Settings → Code Injection → Site Header.' },
+  drupal: { label: 'html.html.twig', note: 'Add to your theme template or use a custom module.' },
+  joomla: { label: 'index.php', note: 'Add via Extensions → Templates → your template → index.php before </head>.' },
+  laravel: { label: 'app.blade.php' },
+  django: { label: 'base.html' },
+}
 
 const STORAGE_OPTIONS = [
   { value: 'local', label: 'Across all tabs' },
@@ -36,12 +167,13 @@ const FEATURES = [
   { key: 'downloads', label: 'File downloads', description: 'Track PDF, ZIP, and more', attr: 'data-no-downloads' },
 ] as const
 
-type FeatureKey = (typeof FEATURES)[number]['key'] | 'frustration'
+type FeatureKey = (typeof FEATURES)[number]['key'] | 'frustration' | 'interactions'
 
 export interface ScriptSetupBlockSite {
   domain: string
   name?: string
   script_features?: Record<string, unknown>
+  detected_framework?: string | null
 }
 
 interface ScriptSetupBlockProps {
@@ -63,6 +195,7 @@ const DEFAULT_FEATURES: Record<FeatureKey, boolean> = {
   outbound: true,
   downloads: true,
   frustration: false,
+  interactions: false,
 }
 
 export default function ScriptSetupBlock({
@@ -79,15 +212,31 @@ export default function ScriptSetupBlock({
     outbound: sf.outbound != null ? Boolean(sf.outbound) : DEFAULT_FEATURES.outbound,
     downloads: sf.downloads != null ? Boolean(sf.downloads) : DEFAULT_FEATURES.downloads,
     frustration: sf.frustration != null ? Boolean(sf.frustration) : DEFAULT_FEATURES.frustration,
+    interactions: sf.interactions != null ? Boolean(sf.interactions) : DEFAULT_FEATURES.interactions,
   })
   const [storage, setStorage] = useState(typeof sf.storage === 'string' ? sf.storage : 'local')
   const [ttl, setTtl] = useState(typeof sf.ttl === 'string' ? sf.ttl : '24')
-  const [framework, setFramework] = useState('')
+  const [framework, setFramework] = useState(site.detected_framework ?? '')
   const [copied, setCopied] = useState(false)
   const [showSRI, setShowSRI] = useState(false)
 
-  // * Build the script snippet dynamically based on toggles
+  // * Build the script snippet dynamically based on toggles and selected framework
+  const frameworkSnippet = framework ? FRAMEWORK_SNIPPETS[framework] : null
+
   const scriptSnippet = useMemo(() => {
+    // Framework-specific snippet with custom code takes priority
+    if (frameworkSnippet?.code) {
+      let snippet = frameworkSnippet.code.replace(/DOMAIN/g, site.domain)
+      if (features.frustration) {
+        snippet += `\n<script defer src="https://js.ciphera.net/script.frustration.js"></script>`
+      }
+      if (features.interactions) {
+        snippet += `\n<script defer src="https://js.ciphera.net/script.interactions.js"></script>`
+      }
+      return snippet
+    }
+
+    // Generic snippet (used for frameworks without custom code, and the no-framework default)
     const attrs: string[] = [
       'defer',
       `data-domain="${site.domain}"`,
@@ -111,8 +260,11 @@ export default function ScriptSetupBlock({
       }
       script += `\n<script ${frustrationAttrs.join(' ')}></script>`
     }
+    if (features.interactions) {
+      script += `\n<script defer src="https://js.ciphera.net/script.interactions.js"></script>`
+    }
     return script
-  }, [site.domain, features, storage, ttl, showSRI])
+  }, [site.domain, features, storage, ttl, showSRI, framework, frameworkSnippet])
 
   const copyScript = useCallback(() => {
     navigator.clipboard.writeText(scriptSnippet)
@@ -134,6 +286,24 @@ export default function ScriptSetupBlock({
 
   return (
     <div className={className}>
+      {/* ── Framework note / CTA (WordPress, Shopify, etc.) ────────────── */}
+      {frameworkSnippet?.note && (
+        <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 p-4 mb-3">
+          <p className="text-sm text-neutral-300">{frameworkSnippet.note}</p>
+          {frameworkSnippet.cta && (
+            <a
+              href={frameworkSnippet.cta.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 mt-3 px-4 py-2 rounded-lg bg-brand-orange text-white text-sm font-medium hover:bg-brand-orange/90 transition-colors"
+            >
+              {frameworkSnippet.cta.text}
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </a>
+          )}
+        </div>
+      )}
+
       {/* ── Script snippet ──────────────────────────────────────────────── */}
       <div className="rounded-2xl border border-white/[0.08] overflow-hidden">
         {/* * Orange accent bar */}
@@ -148,7 +318,7 @@ export default function ScriptSetupBlock({
                 <div className="w-2.5 h-2.5 rounded-full bg-green-500/70" />
               </div>
               <span className="text-xs font-medium text-neutral-500 ml-2">
-                tracking script
+                {frameworkSnippet?.label ?? 'tracking script'}
               </span>
             </div>
             <button
@@ -212,6 +382,18 @@ export default function ScriptSetupBlock({
             </span>
           </div>
           <Toggle checked={features.frustration} onChange={() => toggleFeature('frustration')} />
+        </div>
+        {/* * Interactions — copy, print, video tracking add-on */}
+        <div className="mt-2 flex items-center justify-between rounded-xl border border-dashed border-neutral-700 bg-neutral-900/50 px-4 py-3">
+          <div className="min-w-0 mr-3">
+            <span className="text-sm font-medium text-white block">
+              Interaction tracking
+            </span>
+            <span className="text-xs text-neutral-400">
+              Copy, print &amp; video events &middot; Loads separate add-on script
+            </span>
+          </div>
+          <Toggle checked={features.interactions} onChange={() => toggleFeature('interactions')} />
         </div>
         {/* * SRI — security option, opt-in only */}
         <div className="mt-3 flex items-center justify-between rounded-xl border border-dashed border-neutral-700 bg-neutral-900/50 px-4 py-3">
@@ -295,6 +477,9 @@ export default function ScriptSetupBlock({
                   {fw.icon}
                 </span>
                 <span className="font-medium">{fw.name}</span>
+                {site.detected_framework === fw.id && (
+                  <span className="text-[9px] font-medium bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-full ml-1">Detected</span>
+                )}
               </button>
             ))}
           </div>

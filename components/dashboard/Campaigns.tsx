@@ -22,7 +22,7 @@ interface CampaignsProps {
   onFilter?: (filter: DimensionFilter) => void
 }
 
-type UtmTab = 'source' | 'medium' | 'campaign'
+type UtmTab = 'source' | 'medium' | 'campaign' | 'term' | 'content'
 
 const LIMIT = 7
 
@@ -127,11 +127,11 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
   const handleExportCampaigns = () => {
     const rows = sortedFullData.length > 0 ? sortedFullData : sortedData
     if (rows.length === 0) return
-    const header = ['Source', 'Medium', 'Campaign', 'Visitors', 'Pageviews']
+    const header = ['Source', 'Medium', 'Campaign', 'Term', 'Content', 'Visitors', 'Pageviews']
     const csvRows = [
       header.join(','),
       ...rows.map(r =>
-        [r.source, r.medium || '', r.campaign || '', r.visitors, r.pageviews].join(',')
+        [r.source, r.medium || '', r.campaign || '', r.term || '', r.content || '', r.visitors, r.pageviews].join(',')
       ),
     ]
     const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' })
@@ -150,7 +150,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
       <div className="glass-surface rounded-2xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-4">
           <div className="flex gap-1 pb-1" role="tablist" aria-label="Campaign dimension tabs">
-            {(['source', 'medium', 'campaign'] as const).map((tab) => (
+            {(['source', 'medium', 'campaign', 'term', 'content'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -198,7 +198,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
               {displayedData.map((item) => {
                 const maxVis = displayedData[0]?.visitors ?? 0
                 const barWidth = maxVis > 0 ? (item.visitors / maxVis) * 75 : 0
-                const filterDimension = activeTab === 'source' ? 'utm_source' : activeTab === 'medium' ? 'utm_medium' : 'utm_campaign'
+                const filterDimension = `utm_${activeTab}`
                 return (
                   <div
                     key={item.name}
@@ -266,7 +266,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
           ) : (() => {
             const filteredCampaigns = !modalSearch ? sortedFullData : sortedFullData.filter(item => {
               const search = modalSearch.toLowerCase()
-              return item.source.toLowerCase().includes(search) || (item.medium || '').toLowerCase().includes(search) || (item.campaign || '').toLowerCase().includes(search)
+              return item.source.toLowerCase().includes(search) || (item.medium || '').toLowerCase().includes(search) || (item.campaign || '').toLowerCase().includes(search) || (item.term || '').toLowerCase().includes(search) || (item.content || '').toLowerCase().includes(search)
             })
             const modalTotal = filteredCampaigns.reduce((sum, item) => sum + item.visitors, 0)
             return (

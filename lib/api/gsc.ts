@@ -146,3 +146,26 @@ export async function getGSCTopDevices(siteId: string, startDate: string, endDat
 export async function getGSCOpportunities(siteId: string, startDate: string, endDate: string, limit = 50): Promise<GSCOpportunityResponse> {
   return apiRequest<GSCOpportunityResponse>(`/sites/${siteId}/gsc/opportunities?start_date=${startDate}&end_date=${endDate}&limit=${limit}`)
 }
+
+export interface GSCQueryTrendPoint {
+  date: string
+  position: number
+  clicks: number
+  impressions: number
+  ctr: number
+}
+
+export async function getGSCQueryTrend(
+  siteId: string,
+  query: string,
+  startDate?: string,
+  endDate?: string
+): Promise<GSCQueryTrendPoint[]> {
+  const params = new URLSearchParams({ query })
+  if (startDate) params.set('start_date', startDate)
+  if (endDate) params.set('end_date', endDate)
+  const res = await apiRequest<{ trend: GSCQueryTrendPoint[] }>(
+    `/sites/${siteId}/gsc/query-trend?${params}`
+  )
+  return res.trend
+}

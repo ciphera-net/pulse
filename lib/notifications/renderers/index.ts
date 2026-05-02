@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { NotificationType, Receipt } from '@/lib/notifications/types'
 import { billingRenderers } from './billing'
 import { uptimeRenderers } from './uptime'
@@ -10,6 +11,7 @@ export interface Rendered {
   title: string
   body: string
   linkLabel: string | null
+  icon?: ReactNode
 }
 
 /**

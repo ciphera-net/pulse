@@ -234,6 +234,8 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
                 if (typeof val === 'number') {
                    if (field === 'bounce_rate') return `${Math.round(val)}%`
                    if (field === 'avg_duration') return formatDuration(val)
+                   if (field === 'avg_scroll_depth') return `${Math.round(val)}%`
+                   if (field === 'avg_visible_duration') return formatDuration(val)
                    if (field === 'pageviews' || field === 'visitors') return formatNumber(val)
                 }
                 return val ?? ''
@@ -242,7 +244,7 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
 
             autoTable(doc, {
               startY: startY,
-              head: [fields.map(f => f.charAt(0).toUpperCase() + f.slice(1).replace('_', ' '))],
+              head: [fields.map(f => f.charAt(0).toUpperCase() + f.slice(1).replace(/_/g, ' '))],
               body: tableData as (string | number)[][],
               styles: {
                   font: 'helvetica',
@@ -258,11 +260,13 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
                   halign: 'left'
               },
               columnStyles: {
-                  0: { halign: 'left' }, // Date
-                  1: { halign: 'right' }, // Pageviews
-                  2: { halign: 'right' }, // Visitors
-                  3: { halign: 'right' }, // Bounce Rate
-                  4: { halign: 'right' }, // Avg Duration
+                  0: { halign: 'left' },
+                  1: { halign: 'right' },
+                  2: { halign: 'right' },
+                  3: { halign: 'right' },
+                  4: { halign: 'right' },
+                  5: { halign: 'right' },
+                  6: { halign: 'right' },
               },
               alternateRowStyles: {
                   fillColor: [255, 250, 245], // Very very light orange
@@ -465,6 +469,16 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
               checked={selectedFields.avg_duration}
               onCheckedChange={(c) => handleFieldChange('avg_duration', c)}
               label="Avg Duration"
+            />
+            <Checkbox
+              checked={selectedFields.avg_scroll_depth}
+              onCheckedChange={(c) => handleFieldChange('avg_scroll_depth', c)}
+              label="Avg Scroll Depth"
+            />
+            <Checkbox
+              checked={selectedFields.avg_visible_duration}
+              onCheckedChange={(c) => handleFieldChange('avg_visible_duration', c)}
+              label="Avg Visible Duration"
             />
           </div>
         </div>

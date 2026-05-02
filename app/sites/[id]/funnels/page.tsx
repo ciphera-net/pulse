@@ -4,43 +4,49 @@ import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DURATION_BASE, EASE_APPLE, TIMING } from '@/lib/motion'
-import { deleteFunnel, type Funnel, type FunnelStats, type FunnelTrends } from '@/lib/api/funnels'
+import { deleteFunnel, createFunnel, updateFunnel, type Funnel, type FunnelStats, type FunnelTrends, type CreateFunnelRequest } from '@/lib/api/funnels'
 import { useSite, useFunnels, useFunnelStats, useFunnelTrends } from '@/lib/swr/dashboard'
 import { toast, PlusIcon, ArrowRightIcon, ChevronLeftIcon, ChevronRightIcon, TrashIcon, Button, formatNumber, Select, DatePicker } from '@ciphera-net/ui'
 import { FunnelsListSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { AnimatedNumber } from '@/components/ui/animated-number'
-import { FunnelSimple, PencilSimple, ArrowUpRight, ArrowDownRight } from '@phosphor-icons/react'
-import Link from 'next/link'
+import { FunnelSimple, PencilSimple } from '@phosphor-icons/react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import FunnelModal from '@/components/funnels/FunnelModal'
 import { getDateRange, formatDate, getYesterdayRange, getLast1HourRange, getLast24HoursRange, getThisWeekRange, getThisMonthRange, getThisYearRange } from '@/lib/utils/dateRanges'
+import { pctChange, type PctChangeResult } from '@/lib/utils/pctChange'
 import { LineChart, Line, Grid, XAxis, YAxis, ChartTooltip } from '@/components/ui/line-chart'
 
 const STEP_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16']
 const DAY_MS = 86400000
 
-function pctChange(current: number, previous: number): number | null {
-  if (previous === 0 && current === 0) return null
-  if (previous === 0) return null
-  return Math.round(((current - previous) / previous) * 100)
+function formatConvertTime(seconds: number): string {
+  if (seconds < 60) return `${Math.round(seconds)}s`
+  if (seconds < 3600) return `${Math.round(seconds / 60)}m`
+  const h = Math.floor(seconds / 3600)
+  const m = Math.round((seconds % 3600) / 60)
+  return m > 0 ? `${h}h ${m}m` : `${h}h`
 }
 
-function ChangeIndicator({ change }: { change: number | null }) {
-  if (change === null) return null
-  const isPositive = change > 0
+function ChangeIndicator({ change }: { change: PctChangeResult }) {
+  if (!change) return null
+  if (change.type === 'new') return (
+    <span className="text-[10px] font-medium text-brand-orange bg-brand-orange/10 px-1.5 py-0.5 rounded-full">New</span>
+  )
+  const isPositive = change.value > 0
   return (
-    <span className={`flex items-center gap-0.5 text-xs font-semibold ${isPositive ? 'text-[#10B981]' : 'text-[#EF4444]'}`}>
-      {change > 0 ? <ArrowUpRight weight="bold" className="size-3" /> : <ArrowDownRight weight="bold" className="size-3" />}
-      {Math.abs(change)}%
+    <span className={`text-[10px] font-medium flex items-center gap-0.5 ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+      {isPositive ? '↑' : '↓'} {Math.abs(change.value)}%
     </span>
   )
 }
 
-function FunnelCard({ funnel, siteId, dateRange, onDelete }: {
+function FunnelCard({ funnel, siteId, dateRange, onDelete, onEdit }: {
   funnel: Funnel
   siteId: string
   dateRange: { start: string; end: string }
   onDelete: (funnel: { id: string; name: string }) => void
+  onEdit: (funnel: Funnel) => void
 }) {
   const [expanded, setExpanded] = useState(false)
   const [expandedStep, setExpandedStep] = useState<number | null>(null)
@@ -116,14 +122,13 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete }: {
             </div>
           </div>
           <div className="flex items-center gap-2 ml-4">
-            <Link
-              href={`/sites/${siteId}/funnels/${funnel.id}/edit`}
-              onClick={(e) => e.stopPropagation()}
+            <button
+              onClick={(e) => { e.stopPropagation(); onEdit(funnel) }}
               className="p-2 text-neutral-400 hover:text-brand-orange hover:bg-orange-900/20 rounded-xl transition-colors ease-apple"
               aria-label="Edit funnel"
             >
               <PencilSimple className="w-4 h-4" />
-            </Link>
+            </button>
             <button
               onClick={(e) => { e.stopPropagation(); onDelete({ id: funnel.id, name: funnel.name }) }}
               className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-900/20 rounded-xl transition-colors ease-apple"
@@ -151,7 +156,7 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete }: {
             <div className="border-t border-white/[0.06]">
               {/* Stat cards */}
               {stats && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-5">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 p-5">
                   <div className="bg-neutral-800/30 rounded-xl p-4">
                     <div className="flex items-start justify-between mb-1.5">
                       <span className="text-xs font-medium text-neutral-500">Conversion</span>
@@ -180,6 +185,14 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete }: {
                     ) : (
                       <span className="text-xl font-bold text-green-400">0%</span>
                     )}
+                  </div>
+                  <div className="bg-neutral-800/30 rounded-xl p-4">
+                    <span className="text-xs font-medium text-neutral-500 block mb-1.5">Median Time</span>
+                    <span className="text-xl font-bold text-white tabular-nums">
+                      {stats.median_convert_seconds != null
+                        ? formatConvertTime(stats.median_convert_seconds)
+                        : '—'}
+                    </span>
                   </div>
                 </div>
               )}
@@ -213,6 +226,9 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete }: {
                               <span className="text-base font-semibold text-white tabular-nums">{formatNumber(step.visitors)}</span>
                               <span className="text-xs text-neutral-500 ml-1">sessions</span>
                               {dropped > 0 && <p className="text-xs text-red-400 mt-0.5">{formatNumber(dropped)} dropped</p>}
+                              {step.median_step_seconds != null && i > 0 && (
+                                <p className="text-xs text-neutral-500 mt-0.5">~{formatConvertTime(step.median_step_seconds)}</p>
+                              )}
                             </div>
                             <div className="flex-1 flex items-center gap-3">
                               <div className="flex-1 h-6 bg-neutral-800/50 rounded overflow-hidden">
@@ -327,6 +343,8 @@ export default function FunnelsPage() {
   const [dateRange, setDateRange] = useState(() => getDateRange(30))
   const [datePreset, setDatePreset] = useState<'1h' | '24h' | 'today' | 'yesterday' | '7' | '30' | 'week' | 'month' | 'year' | 'custom'>('30')
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editingFunnel, setEditingFunnel] = useState<Funnel | null>(null)
 
   useEffect(() => {
     const domain = site?.domain
@@ -417,12 +435,10 @@ export default function FunnelsPage() {
               <ChevronRightIcon className="w-4 h-4" weight="bold" />
             </button>
           </div>
-          <Link href={`/sites/${siteId}/funnels/new`}>
-            <Button variant="primary" className="inline-flex items-center gap-2">
-              <PlusIcon className="w-4 h-4" />
-              <span>Create Funnel</span>
-            </Button>
-          </Link>
+          <Button variant="primary" className="inline-flex items-center gap-2" onClick={() => { setEditingFunnel(null); setModalOpen(true) }}>
+            <PlusIcon className="w-4 h-4" />
+            <span>Create Funnel</span>
+          </Button>
         </div>
       </div>
 
@@ -431,7 +447,7 @@ export default function FunnelsPage() {
           icon={<FunnelSimple />}
           title="No funnels yet"
           description="Create a funnel to track how visitors move through your site and where they drop off."
-          action={{ label: 'Create funnel', href: `/sites/${siteId}/funnels/new` }}
+          action={{ label: 'Create funnel', onClick: () => { setEditingFunnel(null); setModalOpen(true) } }}
         />
       ) : (
         <div className="grid gap-4">
@@ -442,7 +458,7 @@ export default function FunnelsPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: index * 0.05 }}
             >
-              <FunnelCard funnel={funnel} siteId={siteId} dateRange={dateRange} onDelete={setDeletingFunnel} />
+              <FunnelCard funnel={funnel} siteId={siteId} dateRange={dateRange} onDelete={setDeletingFunnel} onEdit={(f) => { setEditingFunnel(f); setModalOpen(true) }} />
             </motion.div>
           ))}
         </div>
@@ -462,6 +478,24 @@ export default function FunnelsPage() {
       </Dialog>
 
       <DatePicker isOpen={isDatePickerOpen} onClose={() => setIsDatePickerOpen(false)} onApply={(range) => { setDateRange(range); setDatePreset('custom'); setIsDatePickerOpen(false) }} initialRange={dateRange} />
+
+      {modalOpen && (
+        <FunnelModal
+          isOpen={modalOpen}
+          onClose={() => { setModalOpen(false); setEditingFunnel(null) }}
+          initialData={editingFunnel ?? undefined}
+          onSubmit={async (data: CreateFunnelRequest) => {
+            if (editingFunnel) {
+              await updateFunnel(siteId, editingFunnel.id, data)
+              toast.success('Funnel updated')
+            } else {
+              await createFunnel(siteId, data)
+              toast.success('Funnel created')
+            }
+            mutate()
+          }}
+        />
+      )}
     </div>
   )
 }

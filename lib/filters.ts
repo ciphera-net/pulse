@@ -20,6 +20,9 @@ export const DIMENSION_LABELS: Record<string, string> = {
   utm_source: 'UTM Source',
   utm_medium: 'UTM Medium',
   utm_campaign: 'UTM Campaign',
+  utm_term: 'UTM Term',
+  utm_content: 'UTM Content',
+  event_name: 'Event',
 }
 
 export const OPERATOR_LABELS: Record<string, string> = {
@@ -33,10 +36,12 @@ export const DIMENSIONS = Object.keys(DIMENSION_LABELS)
 export const OPERATORS = Object.keys(OPERATOR_LABELS) as DimensionFilter['operator'][]
 
 export const DIMENSION_CATEGORIES = [
-  { label: 'URL', dimensions: ['page'] },
-  { label: 'Acquisition', dimensions: ['referrer', 'channel', 'utm_source', 'utm_medium', 'utm_campaign'] },
+  { label: 'Pages', dimensions: ['page'] },
+  { label: 'Sources', dimensions: ['referrer', 'channel'] },
+  { label: 'Campaigns', dimensions: ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'] },
   { label: 'Device', dimensions: ['browser', 'os', 'device', 'screen_resolution'] },
   { label: 'Audience', dimensions: ['country', 'region', 'city'] },
+  { label: 'Events', dimensions: ['event_name'] },
 ] as const
 
 /** Serialize filters to query param format: "browser|is|Chrome,country|is|US" */
