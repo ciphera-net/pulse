@@ -129,7 +129,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.EXOSCALE_CDN_SCRIPTS_SECRET }}
           AWS_DEFAULT_REGION: ch-dk-2
         run: |
-          for file in script.js script.frustration.js script-sri.json; do
+          for file in script.js script.frustration.js script.interactions.js script-sri.json; do
             ct="application/javascript"
             [ "$file" = "script-sri.json" ] && ct="application/json"
             aws s3 cp "public/$file" "s3://ciphera-scripts/$file" \
@@ -144,7 +144,7 @@ jobs:
       - name: Purge CDN cache for tracking scripts
         if: github.ref == 'refs/heads/main'
         run: |
-          for path in script.js script.frustration.js script-sri.json; do
+          for path in script.js script.frustration.js script.interactions.js script-sri.json; do
             curl -fsS -X POST \
               "https://api.bunny.net/purge?url=https://js.ciphera.net/$path&async=false" \
               -H "AccessKey: ${{ secrets.BUNNY_API_KEY }}"
