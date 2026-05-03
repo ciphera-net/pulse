@@ -92,6 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             screen_width: window.screen.width,
             screen_height: window.screen.height,
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            org_id: lastOrgId,
           }),
         })
         return retry.ok
