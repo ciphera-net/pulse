@@ -122,6 +122,22 @@ jobs:
             NEXT_PUBLIC_CHARGEBEE_PUBLISHABLE_KEY=${{ steps.vault-config.outputs.NEXT_PUBLIC_CHARGEBEE_PUBLISHABLE_KEY }}
             NEXT_PUBLIC_CDN_URL=${{ steps.vault-config.outputs.NEXT_PUBLIC_CDN_URL }}
 
+      - name: Generate SRI hashes for tracking scripts
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo -n '{' > public/script-sri.json
+          first=true
+          for file in script.js script.frustration.js script.interactions.js; do
+            [ -f "public/$file" ] || continue
+            hash=$(openssl dgst -sha384 -binary "public/$file" | openssl base64 -A)
+            $first || echo -n ',' >> public/script-sri.json
+            echo -n "\"$file\":\"sha384-${hash}\"" >> public/script-sri.json
+            first=false
+          done
+          echo '}' >> public/script-sri.json
+          echo "Generated SRI hashes:"
+          cat public/script-sri.json
+
       - name: Upload tracking scripts to CDN
         if: github.ref == 'refs/heads/main'
         env:
@@ -130,6 +146,7 @@ jobs:
           AWS_DEFAULT_REGION: ch-dk-2
         run: |
           for file in script.js script.frustration.js script.interactions.js script-sri.json; do
+            [ -f "public/$file" ] || continue
             ct="application/javascript"
             [ "$file" = "script-sri.json" ] && ct="application/json"
             aws s3 cp "public/$file" "s3://ciphera-scripts/$file" \
