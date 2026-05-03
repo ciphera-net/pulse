@@ -25,11 +25,11 @@ jobs:
         run: |
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
             echo "image_name=ciphera-net/pulse-frontend" >> "$GITHUB_OUTPUT"
-            echo "dokploy_app_id=${{ secrets.DOKPLOY_PULSE_FRONTEND_PROD_APP_ID }}" >> "$GITHUB_OUTPUT"
+            echo "nomad_job_id=pulse-frontend" >> "$GITHUB_OUTPUT"
             echo "vault_kv_path=kv/data/pulse-frontend/config" >> "$GITHUB_OUTPUT"
           else
             echo "image_name=ciphera-net/pulse-frontend-staging" >> "$GITHUB_OUTPUT"
-            echo "dokploy_app_id=${{ secrets.DOKPLOY_PULSE_FRONTEND_STAGING_APP_ID }}" >> "$GITHUB_OUTPUT"
+            echo "nomad_job_id=pulse-frontend-staging" >> "$GITHUB_OUTPUT"
             echo "vault_kv_path=kv/data/pulse-frontend-staging/config" >> "$GITHUB_OUTPUT"
           fi
 
@@ -173,24 +173,32 @@ jobs:
           kill ${{ steps.vault-tunnel.outputs.tbot-pid }} 2>/dev/null || true
           sleep 1
 
-      - name: Teleport tunnel to Dokploy
+      - name: Teleport tunnel to Nomad
         id: tunnel
         uses: teleport-actions/application-tunnel@v1
         with:
           proxy: teleport.ciphera.net:443
           token: ci-deploy
-          app: dokploy-pulse
-          listen: "tcp://127.0.0.1:9090"
+          app: nomad
+          listen: "tcp://127.0.0.1:4646"
           diag-port: 57002
 
-      - name: Trigger Dokploy redeploy
+      - name: Deploy to Nomad
+        env:
+          NOMAD_TOKEN: ${{ secrets.NOMAD_CI_TOKEN }}
         run: |
           sleep 3
+          DEPLOY_SHA="${GITHUB_SHA::7}"
+          JOB_ID="${{ steps.target.outputs.nomad_job_id }}"
+          JOB=$(curl -sf -H "X-Nomad-Token: $NOMAD_TOKEN" \
+            http://127.0.0.1:4646/v1/job/$JOB_ID)
+          echo "$JOB" | jq ".Meta.deploy_sha = \"$DEPLOY_SHA\"" > /tmp/job.json
           curl -fsS -X POST \
-            -H "x-api-key: ${{ secrets.DOKPLOY_PULSE_OPS_API_KEY }}" \
+            -H "X-Nomad-Token: $NOMAD_TOKEN" \
             -H "Content-Type: application/json" \
-            -d "{\"applicationId\":\"${{ steps.target.outputs.dokploy_app_id }}\"}" \
-            http://localhost:9090/api/application.deploy
+            -d "{\"Job\": $(cat /tmp/job.json)}" \
+            http://127.0.0.1:4646/v1/jobs
+          echo "Deployed $JOB_ID (sha: $DEPLOY_SHA)"
 
       - name: Annotate deployment in Grafana
         if: github.ref == 'refs/heads/main' && success()
