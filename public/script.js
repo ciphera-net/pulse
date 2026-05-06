@@ -81,6 +81,8 @@
   var visibleStart = 0;
   var visibleTotal = 0;
   var hasVisibilityAPI = typeof document.hidden !== 'undefined';
+  var earlyBeaconTimer = null;
+  var heartbeatInterval = null;
 
   // * Cerberus: human signal bitmask for bot detection
   var humanSignals = 0;
@@ -142,6 +144,26 @@
         body: data,
         keepalive: true
       }).catch(function() {});
+    }
+  }
+
+  function sendHeartbeat() {
+    if (!currentEventId) return;
+    var durationSec = pageStartTime > 0 ? Math.round((Date.now() - pageStartTime) / 1000) : 0;
+    if (durationSec <= 0) return;
+    var vt = visibleTotal;
+    if (hasVisibilityAPI) {
+      if (!document.hidden) vt += Date.now() - visibleStart;
+    } else {
+      vt = Date.now() - pageStartTime;
+    }
+    var visibleSec = Math.round(vt / 1000);
+    var payload = { event_id: currentEventId, duration: durationSec, visible_duration: visibleSec };
+    if (typeof maxScrollPct !== 'undefined' && maxScrollPct > 0) {
+      payload.scroll_depth = maxScrollPct;
+    }
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(apiUrl + '/api/v1/metrics', new Blob([JSON.stringify(payload)], {type: 'application/json'}));
     }
   }
 
