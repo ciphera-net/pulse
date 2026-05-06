@@ -318,8 +318,9 @@
     var url = location.href;
     if (url !== lastUrl) {
       lastUrl = url;
+      clearTimeout(earlyBeaconTimer);
+      clearInterval(heartbeatInterval);
       trackPageview();
-      // * Flush & reset scroll depth tracking for the new page
       if (trackScroll) { maxScrollPct = 0; }
     }
   }
@@ -334,6 +335,8 @@
     var url = location.href;
     if (url === lastUrl) return;
     lastUrl = url;
+    clearTimeout(earlyBeaconTimer);
+    clearInterval(heartbeatInterval);
     trackPageview();
     if (trackScroll) { maxScrollPct = 0; }
   });
