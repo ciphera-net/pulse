@@ -433,17 +433,19 @@ export default function DashboardShell({
             <ContentHeader onMobileMenuOpen={openMobile} />
             <main
               id="dashboard-scroll-container"
-              className="relative flex-1 overflow-y-auto overflow-x-hidden"
+              className="relative flex-1 overflow-y-auto overflow-x-hidden pt-4"
+              style={{
+                maskImage: 'linear-gradient(to bottom, transparent 0, black 40px, black calc(100% - 40px), transparent 100%)',
+                WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, black 40px, black calc(100% - 40px), transparent 100%)',
+              }}
             >
-              <div className="sticky top-0 z-10 h-10 -mb-10 pointer-events-none bg-gradient-to-b from-neutral-950 to-transparent" />
               <div
                 key={pathname}
-                className="animate-in fade-in slide-in-from-bottom-4 pt-4"
+                className="animate-in fade-in slide-in-from-bottom-4"
                 style={{ animationDuration: '500ms', animationTimingFunction: 'var(--ease-apple)' }}
               >
                 {children}
               </div>
-              <div className="sticky bottom-0 z-10 h-10 -mt-10 pointer-events-none bg-gradient-to-t from-neutral-950 to-transparent" />
             </main>
           </div>
         </div>
