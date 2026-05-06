@@ -125,6 +125,8 @@
     var visibleSec = Math.round(visibleTotal / 1000);
 
     metricsSent = true;
+    clearTimeout(earlyBeaconTimer);
+    clearInterval(heartbeatInterval);
 
     var payload = { event_id: currentEventId, duration: durationSec, visible_duration: visibleSec };
 
