@@ -288,6 +288,12 @@
         visibleStart = Date.now();
         visibleTotal = 0;
         metricsSent = false;
+        earlyBeaconTimer = setTimeout(function() {
+          if (currentEventId && !metricsSent) sendHeartbeat();
+        }, 3500);
+        heartbeatInterval = setInterval(function() {
+          if (currentEventId && !metricsSent && !document.hidden) sendHeartbeat();
+        }, 5000);
       }
     }).catch(() => {
       // * Silently fail - don't interrupt user experience
