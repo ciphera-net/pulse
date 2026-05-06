@@ -435,8 +435,8 @@ export default function DashboardShell({
               id="dashboard-scroll-container"
               className="relative flex-1 overflow-y-auto overflow-x-hidden pt-4"
               style={{
-                maskImage: 'linear-gradient(to bottom, transparent 0, black 24px, black calc(100% - 24px), transparent 100%)',
-                WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, black 24px, black calc(100% - 24px), transparent 100%)',
+                maskImage: 'linear-gradient(to bottom, transparent 0, black 40px, black calc(100% - 40px), transparent 100%)',
+                WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, black 40px, black calc(100% - 40px), transparent 100%)',
               }}
             >
               <div
