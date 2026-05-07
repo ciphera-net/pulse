@@ -135,7 +135,7 @@ export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPal
             value="action-settings"
             onSelect={() =>
               doAction(() => {
-                router.push(currentSiteId ? `/sites/${currentSiteId}/settings/general` : '/settings/profile')
+                router.push('/settings/site/general')
               })
             }
           >

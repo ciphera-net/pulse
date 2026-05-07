@@ -75,7 +75,7 @@ export function ShortcutHandler({
       // , — go to settings
       if (e.key === ',') {
         e.preventDefault()
-        router.push(siteId ? `/sites/${siteId}/settings/general` : '/settings/profile')
+        router.push('/settings/site/general')
         return
       }
 

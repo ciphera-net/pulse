@@ -66,7 +66,7 @@ const NAV_GROUPS: NavGroup[] = [
 ]
 
 const SETTINGS_ITEM: NavItem = {
-  label: 'Site Settings', href: (id) => `/sites/${id}/settings/general`, icon: SettingsIcon, matchPrefix: true,
+  label: 'Site Settings', href: () => '/settings/site/general', icon: SettingsIcon, matchPrefix: true,
 }
 
 // Label that fades with the sidebar — always in the DOM, never removed
@@ -325,7 +325,7 @@ function SidebarContent({
             <div className="space-y-0.5">
               <HomeNavLink href="/integrations" icon={PlugsIcon} label="Integrations" collapsed={c} onClick={isMobile ? onMobileClose : undefined} />
               <HomeNavLink href="/pricing" icon={TagIcon} label="Pricing" collapsed={c} onClick={isMobile ? onMobileClose : undefined} />
-              <HomeNavLink href="/settings/workspace" icon={SettingsIcon} label="Organization Settings" collapsed={c} onClick={isMobile ? onMobileClose : undefined} />
+              <HomeNavLink href="/settings/organization/general" icon={SettingsIcon} label="Organization Settings" collapsed={c} onClick={isMobile ? onMobileClose : undefined} />
             </div>
           </div>
 
@@ -474,8 +474,8 @@ export default function Sidebar({
           orgs={orgs}
           onSwitchOrganization={handleSwitchOrganization}
           onCreateOrganization={() => router.push('/setup/org?new=1')}
-          openSettings={() => router.push('/settings/profile')}
-          openOrgSettings={() => router.push('/settings/workspace')}
+          openSettings={() => router.push('/settings/account/profile')}
+          openOrgSettings={() => router.push('/settings/organization/general')}
         />
       </aside>
 

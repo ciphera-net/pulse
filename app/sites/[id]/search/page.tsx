@@ -213,7 +213,7 @@ export default function SearchConsolePage() {
             See how your site performs in Google Search. View top queries, pages, click-through rates, and average position data.
           </p>
           <Link
-            href={`/sites/${siteId}/settings/integrations`}
+            href="/settings/site/integrations"
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-brand-orange-button hover:bg-brand-orange-button-hover text-white text-sm font-medium transition-colors ease-apple"
           >
             Connect in Settings
