@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
@@ -97,10 +98,22 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
   const pathname = usePathname()
   const router = useRouter()
   const { title, subtitle } = resolvePageHeader(pathname)
+  const [search, setSearch] = useState('')
 
   // Mobile select options
   const mobileOptions = ALL_TABS.map((t) => ({ value: t.href, label: t.label }))
   const mobileValue = ALL_TABS.find((t) => pathname === t.href)?.href ?? ''
+
+  // Filtered nav groups for search
+  const filteredGroups = search.trim()
+    ? NAV_GROUPS.map(group => ({
+        ...group,
+        tabs: group.tabs.filter(tab =>
+          tab.label.toLowerCase().includes(search.toLowerCase()) ||
+          group.label.toLowerCase().includes(search.toLowerCase())
+        )
+      })).filter(group => group.tabs.length > 0)
+    : NAV_GROUPS
 
   return (
     <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
@@ -125,8 +138,21 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
       <div className="flex gap-8">
         {/* Left nav */}
         <nav className="w-52 shrink-0 hidden md:block">
+          <div className="relative mb-4">
+            <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
+            <input
+              type="text"
+              placeholder="Search settings..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full h-9 pl-9 pr-3 bg-transparent border border-neutral-800 rounded-lg text-sm text-white placeholder-neutral-500 focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/10 focus:outline-none transition-colors ease-apple"
+            />
+          </div>
           <div className="flex flex-col gap-6">
-            {NAV_GROUPS.map((group) => (
+            {filteredGroups.length === 0 && search.trim() && (
+              <p className="px-3 text-xs text-neutral-500">No settings found</p>
+            )}
+            {filteredGroups.map((group) => (
               <div key={group.label}>
                 <p className="px-3 mb-1 text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">
                   {group.label}
