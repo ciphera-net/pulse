@@ -421,6 +421,7 @@ export default function DashboardShell({
           mobileOpen={mobileOpen}
           onMobileClose={closeMobile}
           onMobileOpen={openMobile}
+          onOpenPalette={() => setPaletteOpen(true)}
         />
         <div className="flex-1 flex flex-col min-w-0">
           {/* Glass top bar — above content only, collapse icon reaches back into sidebar column */}

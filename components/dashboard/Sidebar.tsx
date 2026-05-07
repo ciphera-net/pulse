@@ -13,7 +13,7 @@ import { getUserOrganizations, switchContext, type OrganizationMember } from '@/
 import { setSessionAction } from '@/app/actions/auth'
 import { logger } from '@/lib/utils/logger'
 import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
-import { Gauge as GaugeIcon, Plugs as PlugsIcon, Tag as TagIcon } from '@phosphor-icons/react'
+import { Gauge as GaugeIcon, Plugs as PlugsIcon, Tag as TagIcon, MagnifyingGlass } from '@phosphor-icons/react'
 import {
   LayoutDashboardIcon,
   PathIcon,
@@ -243,12 +243,13 @@ interface SidebarContentProps {
   onCreateOrganization: () => void
   openSettings: () => void
   openOrgSettings: () => void
+  onOpenPalette: () => void
 }
 
 function SidebarContent({
   isMobile, collapsed, siteId, sites, canEdit, pendingHref,
   onNavigate, onMobileClose, onToggle,
-  auth, orgs, onSwitchOrganization, onCreateOrganization, openSettings, openOrgSettings,
+  auth, orgs, onSwitchOrganization, onCreateOrganization, openSettings, openOrgSettings, onOpenPalette,
 }: SidebarContentProps) {
   const c = isMobile ? false : collapsed
   const { user } = auth
@@ -264,6 +265,25 @@ function SidebarContent({
           Pulse
         </span>
       </Link>
+
+      {/* Search trigger — opens ⌘K command palette */}
+      <div className="px-2 mb-2 shrink-0">
+        <button
+          onClick={onOpenPalette}
+          className={`${c
+            ? 'w-9 h-9 flex items-center justify-center mx-auto'
+            : 'w-full h-9 flex items-center gap-2 px-3'
+          } rounded-lg border border-neutral-800 bg-neutral-900/50 text-neutral-500 hover:border-neutral-700 hover:text-neutral-400 transition-colors ease-apple cursor-pointer`}
+        >
+          <MagnifyingGlass className="w-4 h-4 shrink-0" />
+          {!c && (
+            <>
+              <span className="text-sm">Search...</span>
+              <span className="ml-auto text-[10px] font-medium text-neutral-600 bg-neutral-800 px-1.5 py-0.5 rounded">⌘K</span>
+            </>
+          )}
+        </button>
+      </div>
 
       {/* Nav Groups */}
       {siteId ? (
@@ -406,9 +426,9 @@ function SidebarContent({
 // ─── Main Sidebar ───────────────────────────────────────────
 
 export default function Sidebar({
-  siteId, mobileOpen, onMobileClose, onMobileOpen,
+  siteId, mobileOpen, onMobileClose, onMobileOpen, onOpenPalette,
 }: {
-  siteId: string | null; mobileOpen: boolean; onMobileClose: () => void; onMobileOpen: () => void
+  siteId: string | null; mobileOpen: boolean; onMobileClose: () => void; onMobileOpen: () => void; onOpenPalette: () => void
 }) {
   const auth = useAuth()
   const { user } = auth
@@ -476,6 +496,7 @@ export default function Sidebar({
           onCreateOrganization={() => router.push('/setup/org?new=1')}
           openSettings={() => router.push('/settings/account/profile')}
           openOrgSettings={() => router.push('/settings/organization/general')}
+          onOpenPalette={onOpenPalette}
         />
       </aside>
 
@@ -517,6 +538,7 @@ export default function Sidebar({
               onCreateOrganization={() => router.push('/setup/org?new=1')}
               openSettings={() => router.push('/settings/profile')}
               openOrgSettings={() => router.push('/settings/workspace')}
+              onOpenPalette={onOpenPalette}
             />
           </aside>
         </>
