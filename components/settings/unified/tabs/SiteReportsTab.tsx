@@ -19,6 +19,7 @@ import {
 } from '@/lib/api/report-schedules'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { formatDateTime } from '@/lib/utils/formatDate'
+import SettingsSections from '@/components/settings/SettingsSections'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -624,8 +625,13 @@ export default function SiteReportsTab({ siteId }: { siteId: string }) {
 
   return (
     <div className="space-y-6">
+      <SettingsSections sections={[
+        { id: 'section-reports', label: 'Scheduled Reports' },
+        { id: 'section-alerts', label: 'Alert Channels' },
+      ]} />
+
       {/* Scheduled Reports */}
-      <div className="space-y-3">
+      <div id="section-reports" className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-base font-semibold text-white mb-1">Scheduled Reports</h3>
@@ -653,7 +659,7 @@ export default function SiteReportsTab({ siteId }: { siteId: string }) {
       </div>
 
       {/* Alert Channels */}
-      <div className="pt-6 border-t border-neutral-800 space-y-3">
+      <div id="section-alerts" className="pt-6 border-t border-neutral-800 space-y-3">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-base font-semibold text-white mb-1">Alert Channels</h3>

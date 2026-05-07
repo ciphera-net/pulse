@@ -7,6 +7,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { useSite, useQuarantineStats, useSessions, useSiteDomainReputation } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
 import { quarantineSessions, restoreSessions, createDomainOverride, deleteDomainOverride } from '@/lib/api/quarantine'
+import SettingsSections from '@/components/settings/SettingsSections'
 
 export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }: { siteId: string; onDirtyChange?: (dirty: boolean) => void; onRegisterSave?: (fn: () => Promise<void>) => void }) {
   const { data: site, mutate } = useSite(siteId)
@@ -82,7 +83,13 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
 
   return (
     <div className="space-y-6">
-      <div>
+      <SettingsSections sections={[
+        { id: 'section-filtering', label: 'Filtering' },
+        { id: 'section-sessions', label: 'Bot Sessions' },
+        { id: 'section-reputation', label: 'Domain Reputation' },
+      ]} />
+
+      <div id="section-filtering">
         <h3 className="text-base font-semibold text-white mb-1">Bot & Spam Filtering</h3>
         <p className="text-sm text-neutral-400">Automatically filter bot traffic and referrer spam from your analytics.</p>
       </div>
@@ -118,7 +125,7 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
       )}
 
       {/* Session Review */}
-      <div className="space-y-3 pt-6 border-t border-neutral-800">
+      <div id="section-sessions" className="space-y-3 pt-6 border-t border-neutral-800">
         <div className="flex items-center justify-between">
           <h4 className="text-sm font-medium text-neutral-300">Session Review</h4>
           {/* Review/Blocked toggle */}
@@ -224,7 +231,7 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
       </div>
 
       {/* Domain Reputation */}
-      <div className="space-y-3 pt-6 border-t border-neutral-800">
+      <div id="section-reputation" className="space-y-3 pt-6 border-t border-neutral-800">
         <h4 className="text-sm font-medium text-neutral-300">Domain Reputation</h4>
         <p className="text-xs text-neutral-500">Referrer domains seen on your site and their global reputation. Override to allow or block specific domains.</p>
 

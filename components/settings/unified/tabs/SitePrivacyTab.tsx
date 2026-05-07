@@ -9,6 +9,7 @@ import { getRetentionOptionsForPlan, formatRetentionMonths } from '@/lib/plans'
 import { generatePrivacySnippet } from '@/lib/utils/privacySnippet'
 import { Copy, CheckCircle, EyeSlash, Trash, ArrowUp, ArrowDown, Plus } from '@phosphor-icons/react'
 import Link from 'next/link'
+import SettingsSections from '@/components/settings/SettingsSections'
 
 const GEO_OPTIONS = [
   { value: 'full', label: 'Full (country, region, city)' },
@@ -158,7 +159,15 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
 
   return (
     <div className="space-y-6">
-      <div>
+      <SettingsSections sections={[
+        { id: 'section-data-privacy', label: 'Data & Privacy' },
+        { id: 'section-geographic', label: 'Geographic' },
+        { id: 'section-path-grouping', label: 'Path Grouping' },
+        { id: 'section-query-params', label: 'Query Parameters' },
+        { id: 'section-exclude-self', label: 'Exclude Self' },
+      ]} />
+
+      <div id="section-data-privacy">
         <h3 className="text-base font-semibold text-white mb-1">Data & Privacy</h3>
         <p className="text-sm text-neutral-400">Control what data is collected from your visitors.</p>
       </div>
@@ -172,7 +181,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
         <PrivacyToggle label="Hide unknown locations" desc='Exclude "Unknown" from location stats.' checked={hideUnknownLocations} onToggle={() => setHideUnknownLocations(v => !v)} />
       </div>
 
-      <div className="p-4 rounded-xl border border-neutral-800 bg-neutral-800/30">
+      <div id="section-geographic" className="p-4 rounded-xl border border-neutral-800 bg-neutral-800/30">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-white">Geographic data</p>
@@ -227,7 +236,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
       </div>
 
       {/* Page Rules */}
-      <div className="space-y-3 pt-6 border-t border-neutral-800">
+      <div id="section-path-grouping" className="space-y-3 pt-6 border-t border-neutral-800">
         <div>
           <h4 className="text-sm font-medium text-neutral-300">Page Rules</h4>
           <p className="text-xs text-neutral-500 mt-1">Control how page paths are tracked, grouped, or excluded from analytics.</p>
@@ -314,7 +323,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
       </div>
 
       {/* Allowed Query Parameters */}
-      <div className="space-y-3 pt-6 border-t border-neutral-800">
+      <div id="section-query-params" className="space-y-3 pt-6 border-t border-neutral-800">
         <h4 className="text-sm font-medium text-neutral-300">Query Parameters</h4>
         <div>
           <label className="block text-sm font-medium text-neutral-300 mb-1.5">Parameters to keep in page stats</label>
@@ -330,7 +339,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
       </div>
 
       {/* Exclude My Visits */}
-      <div className="space-y-3 pt-6 border-t border-neutral-800">
+      <div id="section-exclude-self" className="space-y-3 pt-6 border-t border-neutral-800">
         <h4 className="text-sm font-medium text-neutral-300">Exclude My Visits</h4>
         <div className="p-4 rounded-xl border border-neutral-800 bg-neutral-800/30">
           <div className="flex items-start gap-4">
