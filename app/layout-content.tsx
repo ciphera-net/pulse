@@ -16,8 +16,6 @@ import { getUserOrganizations, switchContext, type OrganizationMember } from '@/
 import { setSessionAction } from '@/app/actions/auth'
 import { LoadingOverlay } from '@ciphera-net/ui'
 import { useRouter } from 'next/navigation'
-import { UnifiedSettingsProvider, useUnifiedSettings } from '@/lib/unified-settings-context'
-import UnifiedSettingsModal from '@/components/settings/unified/UnifiedSettingsModal'
 import DashboardShell from '@/components/dashboard/DashboardShell'
 import GettingStartedChecklist from '@/components/dashboard/GettingStartedChecklist'
 import { ErrorBoundary } from '@/components/error-boundary'
@@ -48,7 +46,6 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const isOnline = useOnlineStatus()
-  const { openUnifiedSettings } = useUnifiedSettings()
   const [orgs, setOrgs] = useState<OrganizationMember[]>([])
   const [isSwitchingOrg, setIsSwitchingOrg] = useState(() => {
     if (typeof window === 'undefined') return false
@@ -124,7 +121,6 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
       <>
         {showOfflineBar && <OfflineBanner isOnline={isOnline} />}
         {children}
-        <UnifiedSettingsModal />
       </>
     )
   }
@@ -135,7 +131,6 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
       <>
         {showOfflineBar && <OfflineBanner isOnline={isOnline} />}
         <DashboardShell siteId={null}>{children}</DashboardShell>
-        <UnifiedSettingsModal />
         <GettingStartedChecklist />
       </>
     )
@@ -174,12 +169,11 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
           rightSideActions={<NotificationCenter />}
           apps={CIPHERA_APPS}
           currentAppId="pulse"
-          onOpenSettings={() => openUnifiedSettings({ context: 'account', tab: 'profile' })}
+          onOpenSettings={() => router.push('/settings/profile')}
         />
         <main className="flex-1 pb-8">
           {children}
         </main>
-        <UnifiedSettingsModal />
       </div>
     )
   }
@@ -228,10 +222,8 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
 
 export default function LayoutContent({ children }: { children: React.ReactNode }) {
   return (
-    <UnifiedSettingsProvider>
-      <ErrorBoundary>
-        <LayoutInner>{children}</LayoutInner>
-      </ErrorBoundary>
-    </UnifiedSettingsProvider>
+    <ErrorBoundary>
+      <LayoutInner>{children}</LayoutInner>
+    </ErrorBoundary>
   )
 }
