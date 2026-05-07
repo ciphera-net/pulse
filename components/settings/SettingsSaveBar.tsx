@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Button } from '@ciphera-net/ui'
 import { Check } from '@phosphor-icons/react'
@@ -26,6 +26,30 @@ export default function SettingsSaveBar({ isDirty, onSave, onDiscard, saveLabel 
       setSaving(false)
     }
   }
+
+  const saveRef = useRef(handleSave)
+  saveRef.current = handleSave
+
+  useEffect(() => {
+    if (!isDirty) return
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [isDirty])
+
+  useEffect(() => {
+    if (!isDirty) return
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault()
+        saveRef.current()
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [isDirty])
 
   if (!isDirty && !saved) return null
 

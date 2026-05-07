@@ -54,6 +54,23 @@ const HOME_PAGE_META: Record<string, PageMeta> = {
 
 function useHomePageMeta(): PageMeta {
   const pathname = usePathname()
+
+  if (pathname.startsWith('/settings')) {
+    const parts = pathname.split('/').filter(Boolean)
+    // parts: ['settings', 'site'|'organization'|'account', tabSlug]
+    const TAB_LABELS: Record<string, string> = {
+      general: 'General', goals: 'Goals', visibility: 'Visibility',
+      privacy: 'Privacy', 'bot-spam': 'Bot & Spam', 'privacy-scan': 'Privacy Scan',
+      reports: 'Reports', integrations: 'Integrations',
+      workspace: 'General', members: 'Members', billing: 'Billing',
+      notifications: 'Notifications', audit: 'Audit Log',
+      profile: 'Profile', security: 'Security', devices: 'Devices',
+    }
+    const tabSlug = parts[2] ?? ''
+    const tabLabel = TAB_LABELS[tabSlug] ?? 'Settings'
+    return { title: `Settings · ${tabLabel}`, icon: SettingsIcon }
+  }
+
   const segment = pathname.split('/').filter(Boolean)[0] ?? ''
   return HOME_PAGE_META[segment] ?? { title: segment ? segment.charAt(0).toUpperCase() + segment.slice(1) : 'Your Sites', icon: GlobeIcon }
 }
