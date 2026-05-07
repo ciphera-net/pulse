@@ -29,31 +29,29 @@ export default function SettingsSaveBar({ isDirty, onSave, onDiscard, saveLabel 
   if (!isDirty && !saved) return null
 
   return (
-    <div
-      className={`sticky bottom-0 -mx-6 -mb-6 px-6 py-3 flex items-center justify-between rounded-b-2xl border-t border-white/[0.06] bg-neutral-950/90 backdrop-blur-sm transition-all duration-base ease-apple ${
-        isDirty || saved ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
-      }`}
-    >
-      <p className="text-sm text-neutral-400">
-        {saved ? (
-          <span className="flex items-center gap-1.5 text-green-400">
-            <Check className="w-4 h-4" weight="bold" />
-            Changes saved
-          </span>
-        ) : (
-          'Unsaved changes'
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-xl">
+      <div className="flex items-center justify-between px-5 py-3 rounded-xl border border-white/[0.08] bg-neutral-900/95 backdrop-blur-xl shadow-xl shadow-black/40">
+        <p className="text-sm text-neutral-400">
+          {saved ? (
+            <span className="flex items-center gap-1.5 text-green-400">
+              <Check className="w-4 h-4" weight="bold" />
+              Changes saved
+            </span>
+          ) : (
+            'Unsaved changes'
+          )}
+        </p>
+        {!saved && (
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" size="sm" onClick={onDiscard} disabled={saving}>
+              Discard
+            </Button>
+            <Button variant="primary" size="sm" onClick={handleSave} disabled={saving}>
+              {saving ? 'Saving...' : saveLabel}
+            </Button>
+          </div>
         )}
-      </p>
-      {!saved && (
-        <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" onClick={onDiscard} disabled={saving}>
-            Discard
-          </Button>
-          <Button variant="primary" size="sm" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : saveLabel}
-          </Button>
-        </div>
-      )}
+      </div>
     </div>
   )
 }

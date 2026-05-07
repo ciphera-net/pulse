@@ -438,8 +438,8 @@ export default function DashboardShell({
             >
               <div
                 key={pathname}
-                className={pathname.startsWith('/settings') ? 'animate-in fade-in slide-in-from-bottom-2' : 'animate-in fade-in slide-in-from-bottom-4'}
-                style={{ animationDuration: pathname.startsWith('/settings') ? '200ms' : '500ms', animationTimingFunction: 'var(--ease-apple)' }}
+                className="animate-in fade-in slide-in-from-bottom-4"
+                style={{ animationDuration: '500ms', animationTimingFunction: 'var(--ease-apple)' }}
               >
                 {children}
               </div>
