@@ -9,6 +9,7 @@ import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { listNotifications, markRead, markAllRead, dismiss } from '@/lib/api/notifications-v2'
 import type { Receipt } from '@/lib/notifications/types'
 import { renderNotification } from '@/lib/notifications/renderers'
@@ -16,7 +17,6 @@ import { useResolveSiteName, useResolveUserName } from '@/lib/notifications/reso
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { formatTimeAgo, getTypeIcon } from '@/lib/utils/notifications'
 import { SettingsIcon } from '@ciphera-net/ui'
-import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { SkeletonLine, SkeletonCircle } from '@/components/skeletons'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { BellSimple } from '@phosphor-icons/react'
@@ -56,6 +56,7 @@ interface NotificationCenterProps {
 }
 
 export default function NotificationCenter({ anchor = 'bottom', variant = 'default', children }: NotificationCenterProps) {
+  const router = useRouter()
   const [open, setOpen] = useState(false)
   const [receipts, setReceipts] = useState<Receipt[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
@@ -65,7 +66,6 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
   const panelRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const [fixedPos, setFixedPos] = useState<{ left: number; top?: number; bottom?: number } | null>(null)
-  const { openUnifiedSettings } = useUnifiedSettings()
 
   const resolveSiteName = useResolveSiteName()
   const resolveUserName = useResolveUserName()
@@ -362,7 +362,7 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
               <button
                 onClick={() => {
                   setOpen(false)
-                  openUnifiedSettings({ context: 'workspace', tab: 'notifications' })
+                  router.push('/settings/notifications')
                 }}
                 className="flex items-center gap-2 text-sm text-neutral-400 hover:text-brand-orange transition-colors cursor-pointer ease-apple"
               >

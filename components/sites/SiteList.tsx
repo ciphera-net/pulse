@@ -6,7 +6,6 @@ import { Site } from '@/lib/api/sites'
 import type { Stats } from '@/lib/api/stats'
 import { formatNumber } from '@ciphera-net/ui'
 import { BarChartIcon, SettingsIcon, BookOpenIcon, ExternalLinkIcon, Button } from '@ciphera-net/ui'
-import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
 import { PlusCircle } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -26,7 +25,6 @@ interface SiteCardProps {
 }
 
 function SiteCard({ site, stats, statsLoading }: SiteCardProps) {
-  const { openUnifiedSettings } = useUnifiedSettings()
   const visitors24h = stats?.visitors ?? 0
   const pageviews = stats?.pageviews ?? 0
 
@@ -104,14 +102,14 @@ function SiteCard({ site, stats, statsLoading }: SiteCardProps) {
             View Dashboard
           </Button>
         </Link>
-        <button
-          type="button"
-          onClick={() => openUnifiedSettings({ context: 'site', tab: 'general', siteId: site.id })}
-          className="flex items-center justify-center rounded-lg border border-neutral-700 px-3 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 cursor-pointer ease-apple"
+        <Link
+          href={`/sites/${site.id}/settings/general`}
+          className="flex items-center justify-center rounded-lg border border-neutral-700 px-3 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 ease-apple"
           title="Site Settings"
+          onClick={(e) => e.stopPropagation()}
         >
           <SettingsIcon className="h-4 w-4" />
-        </button>
+        </Link>
       </div>
     </div>
   )

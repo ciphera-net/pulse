@@ -66,7 +66,7 @@ export default function GettingStartedChecklist() {
   const items: ChecklistItem[] = [
     { key: 'org', label: 'Create workspace', check: () => !!user?.org_id },
     { key: 'site', label: 'Add your first site', href: '/sites/new', check: () => sites.length > 0 },
-    { key: 'teammate', label: 'Invite a teammate', href: '/org-settings', check: () => members.length > 1 },
+    { key: 'teammate', label: 'Invite a teammate', href: '/settings/members', check: () => members.length > 1 },
   ]
 
   const completedCount = items.filter(i => i.check()).length

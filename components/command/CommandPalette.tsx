@@ -17,7 +17,6 @@ import {
   GearSix,
 } from '@phosphor-icons/react'
 import { useSites } from '@/lib/swr/sites'
-import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
 import {
   CommandDialog,
@@ -54,7 +53,6 @@ interface CommandPaletteProps {
 export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPaletteProps) {
   const router = useRouter()
   const { sites } = useSites()
-  const { openUnifiedSettings } = useUnifiedSettings()
 
   const go = (path: string) => {
     router.push(path)
@@ -136,12 +134,9 @@ export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPal
           <CommandItem
             value="action-settings"
             onSelect={() =>
-              doAction(() =>
-                openUnifiedSettings({
-                  context: currentSiteId ? 'site' : 'account',
-                  tab: currentSiteId ? 'general' : 'profile',
-                }),
-              )
+              doAction(() => {
+                router.push(currentSiteId ? `/sites/${currentSiteId}/settings/general` : '/settings/profile')
+              })
             }
           >
             <GearSix size={16} weight="regular" className="opacity-60" aria-hidden="true" />

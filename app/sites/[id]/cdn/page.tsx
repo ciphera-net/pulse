@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
+import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
-import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import * as Flags from 'country-flag-icons/react/3x2'
 
 const MapView = dynamic(() => import('@/components/dashboard/MapView'), { ssr: false })
@@ -144,8 +144,6 @@ export default function CDNPage() {
   // For relative periods send the period name; for custom ranges send dates
   const apiPeriod = period !== 'custom' ? (PERIOD_TO_API[period] || undefined) : undefined
 
-  const { openUnifiedSettings } = useUnifiedSettings()
-
   // Data fetching
   const { data: bunnyStatus } = useBunnyStatus(siteId)
   const { data: dashboard } = useDashboard(siteId, dateRange.start, dateRange.end, undefined, undefined, apiPeriod)
@@ -214,13 +212,13 @@ export default function CDNPage() {
           <p className="text-sm text-neutral-400 max-w-md mb-6">
             Monitor your CDN performance including bandwidth usage, cache hit rates, request volumes, and geographic distribution.
           </p>
-          <button
-            onClick={() => openUnifiedSettings({ context: 'site', tab: 'integrations' })}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-brand-orange-button hover:bg-brand-orange-button-hover text-white text-sm font-medium transition-colors cursor-pointer ease-apple"
+          <Link
+            href={`/sites/${siteId}/settings/integrations`}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-brand-orange-button hover:bg-brand-orange-button-hover text-white text-sm font-medium transition-colors ease-apple"
           >
             Connect in Settings
             <ArrowSquareOut size={16} weight="bold" />
-          </button>
+          </Link>
         </div>
       </div>
     )

@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { useUnifiedSettings } from '@/lib/unified-settings-context'
 
 type SitePage = 'dashboard' | 'journeys' | 'funnels' | 'behavior' | 'search' | 'cdn' | 'uptime' | 'pagespeed'
 
@@ -42,7 +41,6 @@ export function ShortcutHandler({
 }) {
   const router = useRouter()
   const params = useParams()
-  const { openUnifiedSettings } = useUnifiedSettings()
   const gPressedAt = useRef<number | null>(null)
   const siteId = params?.id as string | undefined
 
@@ -74,10 +72,10 @@ export function ShortcutHandler({
         return
       }
 
-      // , — open settings
+      // , — go to settings
       if (e.key === ',') {
         e.preventDefault()
-        openUnifiedSettings({ context: siteId ? 'site' : 'account', tab: siteId ? 'general' : 'profile' })
+        router.push(siteId ? `/sites/${siteId}/settings/general` : '/settings/profile')
         return
       }
 
@@ -117,7 +115,7 @@ export function ShortcutHandler({
 
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [router, siteId, openUnifiedSettings, onShowOverlay, onOpenPalette])
+  }, [router, siteId, onShowOverlay, onOpenPalette])
 
   return null
 }
