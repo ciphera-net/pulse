@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { CircleCheck } from 'lucide-react'
+import { CheckCircle as CircleCheck } from '@phosphor-icons/react'
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
 import { toast, Button } from '@ciphera-net/ui'
