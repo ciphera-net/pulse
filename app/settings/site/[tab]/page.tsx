@@ -5,6 +5,7 @@ import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { useSites } from '@/lib/swr/sites'
 import { Select, toast } from '@ciphera-net/ui'
+import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
 
 const SiteGeneralTab      = dynamic(() => import('@/components/settings/unified/tabs/SiteGeneralTab'))
 const SiteGoalsTab        = dynamic(() => import('@/components/settings/unified/tabs/SiteGoalsTab'))
@@ -73,11 +74,19 @@ export default function SiteSettingsTabPage() {
   const TabComponent = TAB_COMPONENTS[tab]
 
   const siteOptions = sites.map((s) => ({ value: s.id, label: s.domain }))
+  const activeSite = sites.find((s) => s.id === activeSiteId) ?? sites[0]
 
   return (
     <>
-      {sites.length > 1 && (
-        <div className="mb-6">
+      {sites.length > 1 ? (
+        <div className="mb-6 flex items-center gap-3">
+          <img
+            src={`${FAVICON_SERVICE_URL}?domain=${activeSite.domain}&sz=32`}
+            alt=""
+            width={20}
+            height={20}
+            className="rounded-sm"
+          />
           <Select
             value={activeSiteId}
             onChange={(id: string) => {
@@ -85,10 +94,22 @@ export default function SiteSettingsTabPage() {
               if (typeof window !== 'undefined') sessionStorage.setItem('pulse_active_site', id)
             }}
             options={siteOptions}
-            variant="input"
+            variant="ghost"
+            className="text-white font-medium"
           />
         </div>
-      )}
+      ) : sites.length === 1 ? (
+        <div className="mb-6 flex items-center gap-3">
+          <img
+            src={`${FAVICON_SERVICE_URL}?domain=${sites[0].domain}&sz=32`}
+            alt=""
+            width={20}
+            height={20}
+            className="rounded-sm"
+          />
+          <span className="text-sm font-medium text-white">{sites[0].domain}</span>
+        </div>
+      ) : null}
 
       {TabComponent ? (
         <TabComponent siteId={activeSiteId} />
