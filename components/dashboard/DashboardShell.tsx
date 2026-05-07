@@ -26,7 +26,11 @@ const CIPHERA_APPS: CipheraApp[] = [
   { id: 'id', name: 'ID', description: 'Your Ciphera account settings', icon: 'https://ciphera.net/id_icon_no_margins.png', href: 'https://id.ciphera.net', isAvailable: true },
 ]
 
-type PageMeta = { title: string; icon: React.ComponentType<{ className?: string }> }
+type PageMeta = {
+  title: string
+  icon: React.ComponentType<{ className?: string }>
+  parent?: { title: string; icon: React.ComponentType<{ className?: string }>; href: string }
+}
 
 const PAGE_META: Record<string, PageMeta> = {
   '':         { title: 'Dashboard',     icon: LayoutDashboardIcon },
@@ -57,18 +61,31 @@ function useHomePageMeta(): PageMeta {
 
   if (pathname.startsWith('/settings')) {
     const parts = pathname.split('/').filter(Boolean)
-    // parts: ['settings', 'site'|'organization'|'account', tabSlug]
-    const TAB_LABELS: Record<string, string> = {
-      general: 'General', goals: 'Goals', visibility: 'Visibility',
-      privacy: 'Privacy', 'bot-spam': 'Bot & Spam', 'privacy-scan': 'Privacy Scan',
-      reports: 'Reports', integrations: 'Integrations',
-      workspace: 'General', members: 'Members', billing: 'Billing',
-      notifications: 'Notifications', audit: 'Audit Log',
-      profile: 'Profile', security: 'Security', devices: 'Devices',
+    const TAB_META: Record<string, { label: string; icon: React.ComponentType<{ className?: string }> }> = {
+      general: { label: 'General', icon: SettingsIcon },
+      goals: { label: 'Goals', icon: SettingsIcon },
+      visibility: { label: 'Visibility', icon: SettingsIcon },
+      privacy: { label: 'Privacy', icon: SettingsIcon },
+      'bot-spam': { label: 'Bot & Spam', icon: SettingsIcon },
+      'privacy-scan': { label: 'Privacy Scan', icon: SettingsIcon },
+      reports: { label: 'Reports', icon: SettingsIcon },
+      integrations: { label: 'Integrations', icon: PlugsIcon },
+      workspace: { label: 'General', icon: SettingsIcon },
+      members: { label: 'Members', icon: SettingsIcon },
+      billing: { label: 'Billing', icon: SettingsIcon },
+      notifications: { label: 'Notifications', icon: SettingsIcon },
+      audit: { label: 'Audit Log', icon: SettingsIcon },
+      profile: { label: 'Profile', icon: SettingsIcon },
+      security: { label: 'Security', icon: SettingsIcon },
+      devices: { label: 'Devices', icon: SettingsIcon },
     }
     const tabSlug = parts[2] ?? ''
-    const tabLabel = TAB_LABELS[tabSlug] ?? 'Settings'
-    return { title: `Settings · ${tabLabel}`, icon: SettingsIcon }
+    const meta = TAB_META[tabSlug] ?? { label: 'Settings', icon: SettingsIcon }
+    return {
+      title: meta.label,
+      icon: meta.icon,
+      parent: { title: 'Settings', icon: SettingsIcon, href: '/settings' },
+    }
   }
 
   const segment = pathname.split('/').filter(Boolean)[0] ?? ''
@@ -385,6 +402,18 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
                 </span>
               </>
             ) : null
+          ) : currentMeta.parent ? (
+            <>
+              <Link href={currentMeta.parent.href} className="inline-flex items-center gap-1 text-neutral-500 hover:text-neutral-300 transition-colors ease-apple">
+                <currentMeta.parent.icon className="w-3.5 h-3.5" />
+                {currentMeta.parent.title}
+              </Link>
+              <CaretRight className="w-3 h-3 text-neutral-600" />
+              <span className="inline-flex items-center gap-1 text-neutral-400">
+                <PageIcon className="w-3.5 h-3.5" />
+                {currentMeta.title}
+              </span>
+            </>
           ) : (
             <span className="inline-flex items-center gap-1 text-neutral-400">
               <PageIcon className="w-3.5 h-3.5" />
