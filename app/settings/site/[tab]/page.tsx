@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { useSites } from '@/lib/swr/sites'
-import { Select, toast } from '@ciphera-net/ui'
+import { toast } from '@ciphera-net/ui'
+import { CaretDown } from '@phosphor-icons/react'
 import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
 
 const SiteGeneralTab      = dynamic(() => import('@/components/settings/unified/tabs/SiteGeneralTab'))
@@ -43,6 +44,12 @@ export default function SiteSettingsTabPage() {
   const { sites } = useSites()
 
   const [activeSiteId, setActiveSiteId] = useState<string | null>(null)
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [siteSearch, setSiteSearch] = useState('')
+
+  const filteredSites = siteSearch.trim()
+    ? sites.filter(s => s.name.toLowerCase().includes(siteSearch.toLowerCase()) || s.domain.toLowerCase().includes(siteSearch.toLowerCase()))
+    : sites
 
   // Initialise site from sessionStorage, fall back to first site
   useEffect(() => {
@@ -67,49 +74,95 @@ export default function SiteSettingsTabPage() {
     window.history.replaceState({}, '', '/settings/site/integrations')
   }, [searchParams, tab])
 
+  // Close site picker on outside click
+  useEffect(() => {
+    if (!pickerOpen) return
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (!target.closest('[data-site-picker]')) {
+        setPickerOpen(false)
+        setSiteSearch('')
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [pickerOpen])
+
   if (sites.length === 0 || !activeSiteId) {
     return null
   }
 
   const TabComponent = TAB_COMPONENTS[tab]
 
-  const siteOptions = sites.map((s) => ({ value: s.id, label: s.domain }))
   const activeSite = sites.find((s) => s.id === activeSiteId) ?? sites[0]
 
   return (
     <>
-      {sites.length > 1 ? (
-        <div className="mb-6 flex items-center gap-3">
+      <div data-site-picker>
+        <button
+          onClick={() => setPickerOpen(!pickerOpen)}
+          className="w-full flex items-center gap-3 px-4 py-3 mb-6 rounded-xl border border-neutral-800 bg-neutral-800/30 hover:border-neutral-700 transition-colors ease-apple cursor-pointer"
+        >
           <img
-            src={`${FAVICON_SERVICE_URL}?domain=${activeSite.domain}&sz=32`}
+            src={`${FAVICON_SERVICE_URL}?domain=${activeSite.domain}&sz=64`}
             alt=""
-            width={20}
-            height={20}
-            className="rounded-sm"
+            className="w-6 h-6 rounded object-contain shrink-0"
           />
-          <Select
-            value={activeSiteId}
-            onChange={(id: string) => {
-              setActiveSiteId(id)
-              if (typeof window !== 'undefined') sessionStorage.setItem('pulse_active_site', id)
-            }}
-            options={siteOptions}
-            variant="ghost"
-            className="text-white font-medium"
-          />
-        </div>
-      ) : sites.length === 1 ? (
-        <div className="mb-6 flex items-center gap-3">
-          <img
-            src={`${FAVICON_SERVICE_URL}?domain=${sites[0].domain}&sz=32`}
-            alt=""
-            width={20}
-            height={20}
-            className="rounded-sm"
-          />
-          <span className="text-sm font-medium text-white">{sites[0].domain}</span>
-        </div>
-      ) : null}
+          <div className="flex flex-col items-start min-w-0">
+            <span className="text-sm font-medium text-white truncate">{activeSite.name}</span>
+            <span className="text-xs text-neutral-500 truncate">{activeSite.domain}</span>
+          </div>
+          {sites.length > 1 && (
+            <CaretDown className="w-4 h-4 text-neutral-500 ml-auto shrink-0" weight="bold" />
+          )}
+        </button>
+
+        {pickerOpen && sites.length > 1 && (
+          <div className="mb-6 -mt-4 rounded-xl border border-neutral-800 bg-neutral-900/95 overflow-hidden">
+            <div className="p-2">
+              <input
+                type="text"
+                placeholder="Search sites..."
+                value={siteSearch}
+                onChange={(e) => setSiteSearch(e.target.value)}
+                className="w-full px-3 py-1.5 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg outline-none focus:ring-2 focus:ring-brand-orange/40 text-white placeholder:text-neutral-400"
+                autoFocus
+              />
+            </div>
+            <div className="max-h-48 overflow-y-auto">
+              {filteredSites.map((site) => (
+                <button
+                  key={site.id}
+                  onClick={() => {
+                    setActiveSiteId(site.id)
+                    sessionStorage.setItem('pulse_active_site', site.id)
+                    setPickerOpen(false)
+                    setSiteSearch('')
+                  }}
+                  className={`w-full flex items-center gap-2.5 px-4 py-2 text-sm text-left transition-colors ease-apple ${
+                    site.id === activeSiteId
+                      ? 'bg-brand-orange/10 text-brand-orange font-medium'
+                      : 'text-neutral-300 hover:bg-white/[0.06]'
+                  }`}
+                >
+                  <img
+                    src={`${FAVICON_SERVICE_URL}?domain=${site.domain}&sz=64`}
+                    alt=""
+                    className="w-5 h-5 rounded object-contain shrink-0"
+                  />
+                  <span className="flex flex-col min-w-0">
+                    <span className="truncate">{site.name}</span>
+                    <span className="text-xs text-neutral-400 truncate">{site.domain}</span>
+                  </span>
+                </button>
+              ))}
+              {filteredSites.length === 0 && (
+                <p className="text-sm text-neutral-500 text-center py-4">No sites found</p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
 
       {TabComponent ? (
         <TabComponent siteId={activeSiteId} />
