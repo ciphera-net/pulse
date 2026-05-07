@@ -7,6 +7,7 @@ import { updateDisplayName } from '@/lib/api/user'
 import { deleteAccount } from '@/lib/api/user'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { DangerZone } from '@/components/settings/unified/DangerZone'
+import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 
 export default function AccountProfileTab({ onDirtyChange, onRegisterSave }: { onDirtyChange?: (dirty: boolean) => void; onRegisterSave?: (fn: () => Promise<void>) => void }) {
   const { user, refresh, logout } = useAuth()
@@ -26,10 +27,17 @@ export default function AccountProfileTab({ onDirtyChange, onRegisterSave }: { o
   }, [user])
 
   // Track dirty state
+  const isDirty = hasInitialized.current
+    ? displayName !== initialRef.current
+    : false
+
   useEffect(() => {
-    if (!hasInitialized.current) return
-    onDirtyChange?.(displayName !== initialRef.current)
-  }, [displayName, onDirtyChange])
+    onDirtyChange?.(isDirty)
+  }, [isDirty, onDirtyChange])
+
+  const handleDiscard = () => {
+    setDisplayName(initialRef.current)
+  }
 
   const handleSave = useCallback(async () => {
     try {
@@ -139,6 +147,12 @@ export default function AccountProfileTab({ onDirtyChange, onRegisterSave }: { o
           </div>
         </div>
       )}
+
+      <SettingsSaveBar
+        isDirty={isDirty}
+        onSave={handleSave}
+        onDiscard={handleDiscard}
+      />
     </div>
   )
 }

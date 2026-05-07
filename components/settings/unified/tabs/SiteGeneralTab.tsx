@@ -11,6 +11,7 @@ import DeleteSiteModal from '@/components/sites/DeleteSiteModal'
 import ResetDataModal from '@/components/settings/unified/ResetDataModal'
 import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
 import VerificationModal from '@/components/sites/VerificationModal'
+import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 
 const ALL_TIMEZONES = (() => {
   try {
@@ -128,11 +129,21 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
   }, [site])
 
   // Track dirty state
+  const isDirty = initialRef.current
+    ? JSON.stringify({ name, timezone, scriptFeatures: JSON.stringify(scriptFeatures) }) !== initialRef.current
+    : false
+
   useEffect(() => {
+    onDirtyChange?.(isDirty)
+  }, [isDirty, onDirtyChange])
+
+  const handleDiscard = () => {
     if (!initialRef.current) return
-    const current = JSON.stringify({ name, timezone, scriptFeatures: JSON.stringify(scriptFeatures) })
-    onDirtyChange?.(current !== initialRef.current)
-  }, [name, timezone, scriptFeatures, onDirtyChange])
+    const snap = JSON.parse(initialRef.current)
+    setName(snap.name)
+    setTimezone(snap.timezone)
+    setScriptFeatures(JSON.parse(snap.scriptFeatures))
+  }
 
   const handleSave = useCallback(async () => {
     if (!site) return
@@ -275,6 +286,12 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
         onClose={() => setShowVerificationModal(false)}
         site={site}
         onVerified={() => mutate()}
+      />
+
+      <SettingsSaveBar
+        isDirty={isDirty}
+        onSave={handleSave}
+        onDiscard={handleDiscard}
       />
     </div>
   )

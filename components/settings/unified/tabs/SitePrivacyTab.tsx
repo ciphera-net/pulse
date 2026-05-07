@@ -10,6 +10,7 @@ import { generatePrivacySnippet } from '@/lib/utils/privacySnippet'
 import { Copy, CheckCircle, EyeSlash, Trash, ArrowUp, ArrowDown, Plus } from '@phosphor-icons/react'
 import Link from 'next/link'
 import SettingsSections from '@/components/settings/SettingsSections'
+import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 
 const GEO_OPTIONS = [
   { value: 'full', label: 'Full (country, region, city)' },
@@ -96,11 +97,30 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
   }, [psiConfig])
 
   // Track dirty state
+  const isDirty = initialRef.current
+    ? JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency }) !== initialRef.current
+    : false
+
   useEffect(() => {
+    onDirtyChange?.(isDirty)
+  }, [isDirty, onDirtyChange])
+
+  const handleDiscard = () => {
     if (!initialRef.current) return
-    const current = JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency })
-    onDirtyChange?.(current !== initialRef.current)
-  }, [collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency, onDirtyChange])
+    const snap = JSON.parse(initialRef.current)
+    setCollectPagePaths(snap.collectPagePaths)
+    setCollectReferrers(snap.collectReferrers)
+    setCollectDeviceInfo(snap.collectDeviceInfo)
+    setCollectScreenRes(snap.collectScreenRes)
+    setCollectAudienceData(snap.collectAudienceData)
+    setCollectGeoData(snap.collectGeoData)
+    setHideUnknownLocations(snap.hideUnknownLocations)
+    setDataRetention(snap.dataRetention)
+    setAutoGroupDynamic(snap.autoGroupDynamic)
+    setPageRules(snap.pageRules)
+    setAllowedQueryParams(snap.allowedQueryParams)
+    setPsiFrequency(snap.psiFrequency)
+  }
 
   const handleSave = useCallback(async () => {
     try {
@@ -421,6 +441,11 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
         </div>
       </div>
 
+      <SettingsSaveBar
+        isDirty={isDirty}
+        onSave={handleSave}
+        onDiscard={handleDiscard}
+      />
     </div>
   )
 }

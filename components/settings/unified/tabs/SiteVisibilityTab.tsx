@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useSite } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
 import { env } from '@/lib/env'
+import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 
 // Zod-validated URL, guaranteed to be a `string` at runtime.
 const APP_URL = env.NEXT_PUBLIC_APP_URL
@@ -29,12 +30,21 @@ export default function SiteVisibilityTab({ siteId, onDirtyChange, onRegisterSav
   }, [site])
 
   // Track dirty state
+  const isDirty = initialRef.current
+    ? JSON.stringify({ isPublic, passwordEnabled }) !== initialRef.current || password.length > 0
+    : false
+
   useEffect(() => {
+    onDirtyChange?.(isDirty)
+  }, [isDirty, onDirtyChange])
+
+  const handleDiscard = () => {
     if (!initialRef.current) return
-    const current = JSON.stringify({ isPublic, passwordEnabled })
-    const dirty = current !== initialRef.current || password.length > 0
-    onDirtyChange?.(dirty)
-  }, [isPublic, passwordEnabled, password, onDirtyChange])
+    const snap = JSON.parse(initialRef.current)
+    setIsPublic(snap.isPublic)
+    setPasswordEnabled(snap.passwordEnabled)
+    setPassword('')
+  }
 
   const handleSave = useCallback(async () => {
     try {
@@ -145,6 +155,11 @@ export default function SiteVisibilityTab({ siteId, onDirtyChange, onRegisterSav
         )}
       </AnimatePresence>
 
+      <SettingsSaveBar
+        isDirty={isDirty}
+        onSave={handleSave}
+        onDiscard={handleDiscard}
+      />
     </div>
   )
 }

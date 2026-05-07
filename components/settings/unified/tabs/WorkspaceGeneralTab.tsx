@@ -1,17 +1,16 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
-import { Input, Button, toast } from '@ciphera-net/ui'
+import { Input, toast } from '@ciphera-net/ui'
 import { Spinner } from '@ciphera-net/ui'
 import { useAuth } from '@/lib/auth/context'
 import { getOrganization, updateOrganization, deleteOrganization } from '@/lib/api/organization'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { DangerZone } from '@/components/settings/unified/DangerZone'
+import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 
 export default function WorkspaceGeneralTab({ onDirtyChange, onRegisterSave }: { onDirtyChange?: (dirty: boolean) => void; onRegisterSave?: (fn: () => Promise<void>) => void }) {
   const { user } = useAuth()
-  const router = useRouter()
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
   const [loading, setLoading] = useState(true)
@@ -38,10 +37,20 @@ export default function WorkspaceGeneralTab({ onDirtyChange, onRegisterSave }: {
   }, [user?.org_id])
 
   // Track dirty state
+  const isDirty = initialRef.current
+    ? JSON.stringify({ name, slug }) !== initialRef.current
+    : false
+
   useEffect(() => {
+    onDirtyChange?.(isDirty)
+  }, [isDirty, onDirtyChange])
+
+  const handleDiscard = () => {
     if (!initialRef.current) return
-    onDirtyChange?.(JSON.stringify({ name, slug }) !== initialRef.current)
-  }, [name, slug, onDirtyChange])
+    const snap = JSON.parse(initialRef.current)
+    setName(snap.name)
+    setSlug(snap.slug)
+  }
 
   const handleSave = useCallback(async () => {
     if (!user?.org_id) return
@@ -145,6 +154,12 @@ export default function WorkspaceGeneralTab({ onDirtyChange, onRegisterSave }: {
           </div>
         )}
       </DangerZone>
+
+      <SettingsSaveBar
+        isDirty={isDirty}
+        onSave={handleSave}
+        onDiscard={handleDiscard}
+      />
     </div>
   )
 }

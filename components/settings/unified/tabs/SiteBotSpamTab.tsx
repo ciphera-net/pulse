@@ -8,6 +8,7 @@ import { useSite, useQuarantineStats, useSessions, useSiteDomainReputation } fro
 import { updateSite } from '@/lib/api/sites'
 import { quarantineSessions, restoreSessions, createDomainOverride, deleteDomainOverride } from '@/lib/api/quarantine'
 import SettingsSections from '@/components/settings/SettingsSections'
+import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 
 export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }: { siteId: string; onDirtyChange?: (dirty: boolean) => void; onRegisterSave?: (fn: () => Promise<void>) => void }) {
   const { data: site, mutate } = useSite(siteId)
@@ -33,11 +34,18 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
   }, [site])
 
   // Track dirty state
+  const isDirty = initialFilterRef.current !== null
+    ? filterBots !== initialFilterRef.current
+    : false
+
   useEffect(() => {
+    onDirtyChange?.(isDirty)
+  }, [isDirty, onDirtyChange])
+
+  const handleDiscard = () => {
     if (initialFilterRef.current === null) return
-    const dirty = filterBots !== initialFilterRef.current
-    onDirtyChange?.(dirty)
-  }, [filterBots, onDirtyChange])
+    setFilterBots(initialFilterRef.current)
+  }
 
   const handleSave = useCallback(async () => {
     try {
@@ -328,6 +336,11 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
         </div>
       </div>
 
+      <SettingsSaveBar
+        isDirty={isDirty}
+        onSave={handleSave}
+        onDiscard={handleDiscard}
+      />
     </div>
   )
 }
