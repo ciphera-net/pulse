@@ -6,7 +6,6 @@ import { Input, Button, toast, Spinner, CheckIcon, ZapIcon } from '@ciphera-net/
 import { useSite } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
 import { useAuth } from '@/lib/auth/context'
-import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { DangerZone } from '@/components/settings/unified/DangerZone'
 import DeleteSiteModal from '@/components/sites/DeleteSiteModal'
 import ResetDataModal from '@/components/settings/unified/ResetDataModal'
@@ -108,7 +107,6 @@ function TimezoneCombobox({ value, onChange }: { value: string; onChange: (v: st
 export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }: { siteId: string; onDirtyChange?: (dirty: boolean) => void; onRegisterSave?: (fn: () => Promise<void>) => void }) {
   const router = useRouter()
   const { user } = useAuth()
-  const { closeUnifiedSettings: closeSettings } = useUnifiedSettings()
   const { data: site, mutate } = useSite(siteId)
   const [name, setName] = useState('')
   const [timezone, setTimezone] = useState('UTC')
@@ -266,7 +264,7 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
       <DeleteSiteModal
         open={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}
-        onDeleted={() => { router.push('/'); closeSettings(); }}
+        onDeleted={() => router.push('/')}
         siteName={site?.name || ''}
         siteDomain={site?.domain || ''}
         siteId={siteId}
