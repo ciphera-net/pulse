@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Button, toast, Spinner, Modal, Select } from '@ciphera-net/ui'
 import { Plus, Pencil, Trash, EnvelopeSimple, WebhooksLogo, PaperPlaneTilt, FileText, Bell } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { SiDiscord } from '@icons-pack/react-simple-icons'
+import { cdnUrl } from '@/lib/cdn'
 import { useReportSchedules, useAlertSchedules } from '@/lib/swr/dashboard'
 import { useSite } from '@/lib/swr/dashboard'
 import {
@@ -59,7 +59,7 @@ function SlackIcon({ size = 16 }: { size?: number }) {
 const CHANNEL_ICONS: Record<string, React.ReactNode> = {
   email: <EnvelopeSimple weight="bold" className="w-4 h-4" />,
   slack: <SlackIcon size={16} />,
-  discord: <SiDiscord size={16} color="#5865F2" />,
+  discord: <img src={cdnUrl('/icons/brands/discord.svg')} alt="Discord" width={16} height={16} className="inline-block" />,
   webhook: <WebhooksLogo weight="bold" className="w-4 h-4" />,
 }
 
