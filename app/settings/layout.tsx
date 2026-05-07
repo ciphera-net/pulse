@@ -6,10 +6,6 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 }
 
-export default function GlobalSettingsLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function SettingsLayout({ children }: { children: React.ReactNode }) {
   return <SettingsShell>{children}</SettingsShell>
 }

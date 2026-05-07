@@ -1,34 +1,36 @@
-import { redirect } from 'next/navigation'
+'use client'
+
+import { useParams, useSearchParams, useRouter } from 'next/navigation'
+import { useEffect } from 'react'
 
 const TAB_MAP: Record<string, string> = {
-  general: 'general',
-  visibility: 'visibility',
-  data: 'privacy',
-  privacy: 'privacy',
-  bot: 'bot-spam',
-  goals: 'goals',
+  general:       'general',
+  visibility:    'visibility',
+  data:          'privacy',
+  privacy:       'privacy',
+  bot:           'bot-spam',
+  goals:         'goals',
   notifications: 'reports',
-  integrations: 'integrations',
+  integrations:  'integrations',
 }
 
-export default async function SiteSettingsPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>
-  searchParams: Promise<Record<string, string | string[] | undefined>>
-}) {
-  const { id } = await params
-  const sp = await searchParams
+export default function SiteSettingsRedirect() {
+  const params = useParams()
+  const siteId = params.id as string
+  const searchParams = useSearchParams()
+  const router = useRouter()
 
-  // GSC OAuth callback — preserve the status param on the integrations tab
-  const gsc = typeof sp.gsc === 'string' ? sp.gsc : null
-  if (gsc) {
-    redirect(`/sites/${id}/settings/integrations?gsc=${gsc}`)
-  }
+  useEffect(() => {
+    sessionStorage.setItem('pulse_active_site', siteId)
+    const gsc = searchParams.get('gsc')
+    if (gsc) {
+      router.replace(`/settings/site/integrations?gsc=${gsc}`)
+      return
+    }
+    const tabParam = searchParams.get('tab')
+    const tab = tabParam ? (TAB_MAP[tabParam] ?? 'general') : 'general'
+    router.replace(`/settings/site/${tab}`)
+  }, [siteId, searchParams, router])
 
-  // Legacy ?tab= deep links
-  const tab = typeof sp.tab === 'string' ? sp.tab : null
-  const mappedTab = tab ? (TAB_MAP[tab] ?? 'general') : 'general'
-  redirect(`/sites/${id}/settings/${mappedTab}`)
+  return null
 }

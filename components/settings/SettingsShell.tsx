@@ -29,6 +29,7 @@ type IconWeight = 'regular' | 'fill'
 interface TabDef {
   id: string
   label: string
+  href: string
   Icon: React.ComponentType<{ className?: string; weight?: IconWeight }>
 }
 
@@ -37,95 +38,69 @@ interface NavGroup {
   tabs: TabDef[]
 }
 
-interface Props {
-  siteId?: string
-  children: React.ReactNode
-}
+// ─── Static nav ──────────────────────────────────────────────────
 
-// ─── Tab definitions ─────────────────────────────────────────────
-
-const SITE_TABS: TabDef[] = [
-  { id: 'general',      label: 'General',      Icon: GearSix },
-  { id: 'goals',        label: 'Goals',        Icon: Target },
-  { id: 'visibility',   label: 'Visibility',   Icon: Eye },
-  { id: 'privacy',      label: 'Privacy',      Icon: ShieldCheck },
-  { id: 'bot-spam',     label: 'Bot & Spam',   Icon: Robot },
-  { id: 'privacy-scan', label: 'Privacy Scan', Icon: MagnifyingGlass },
-  { id: 'reports',      label: 'Reports',      Icon: ChartBar },
-  { id: 'integrations', label: 'Integrations', Icon: Plugs },
+const NAV_GROUPS: NavGroup[] = [
+  {
+    label: 'Site',
+    tabs: [
+      { id: 'general',        label: 'General',       href: '/settings/site/general',        Icon: GearSix },
+      { id: 'goals',          label: 'Goals',         href: '/settings/site/goals',          Icon: Target },
+      { id: 'visibility',     label: 'Visibility',    href: '/settings/site/visibility',     Icon: Eye },
+      { id: 'privacy',        label: 'Privacy',       href: '/settings/site/privacy',        Icon: ShieldCheck },
+      { id: 'bot-spam',       label: 'Bot & Spam',    href: '/settings/site/bot-spam',       Icon: Robot },
+      { id: 'privacy-scan',   label: 'Privacy Scan',  href: '/settings/site/privacy-scan',   Icon: MagnifyingGlass },
+      { id: 'reports',        label: 'Reports',       href: '/settings/site/reports',        Icon: ChartBar },
+      { id: 'integrations',   label: 'Integrations',  href: '/settings/site/integrations',   Icon: Plugs },
+    ],
+  },
+  {
+    label: 'Organization',
+    tabs: [
+      { id: 'general',       label: 'General',       href: '/settings/organization/general',       Icon: Buildings },
+      { id: 'members',       label: 'Members',       href: '/settings/organization/members',       Icon: UsersThree },
+      { id: 'billing',       label: 'Billing',       href: '/settings/organization/billing',       Icon: CreditCard },
+      { id: 'notifications', label: 'Notifications', href: '/settings/organization/notifications', Icon: Bell },
+      { id: 'audit',         label: 'Audit Log',     href: '/settings/organization/audit',         Icon: ClockCounterClockwise },
+    ],
+  },
+  {
+    label: 'Account',
+    tabs: [
+      { id: 'profile',  label: 'Profile',  href: '/settings/account/profile',  Icon: User },
+      { id: 'security', label: 'Security', href: '/settings/account/security', Icon: Lock },
+      { id: 'devices',  label: 'Devices',  href: '/settings/account/devices',  Icon: DeviceMobile },
+    ],
+  },
 ]
 
-const WORKSPACE_TABS: TabDef[] = [
-  { id: 'workspace',     label: 'General',       Icon: Buildings },
-  { id: 'members',       label: 'Members',        Icon: UsersThree },
-  { id: 'billing',       label: 'Billing',        Icon: CreditCard },
-  { id: 'notifications', label: 'Notifications',  Icon: Bell },
-  { id: 'audit',         label: 'Audit Log',      Icon: ClockCounterClockwise },
-]
-
-const ACCOUNT_TABS: TabDef[] = [
-  { id: 'profile',  label: 'Profile',  Icon: User },
-  { id: 'security', label: 'Security', Icon: Lock },
-  { id: 'devices',  label: 'Devices',  Icon: DeviceMobile },
-]
-
-// ─── Helpers ─────────────────────────────────────────────────────
-
-function buildHref(tabId: string, siteId?: string): string {
-  if (siteId) return `/sites/${siteId}/settings/${tabId}`
-  return `/settings/${tabId}`
-}
-
-function buildGroups(siteId?: string): NavGroup[] {
-  const groups: NavGroup[] = []
-  if (siteId) {
-    groups.push({ label: 'Site', tabs: SITE_TABS })
-  }
-  groups.push({ label: 'Workspace', tabs: WORKSPACE_TABS })
-  groups.push({ label: 'Account',   tabs: ACCOUNT_TABS })
-  return groups
-}
-
-function buildAllTabs(siteId?: string): TabDef[] {
-  if (siteId) return [...SITE_TABS, ...WORKSPACE_TABS, ...ACCOUNT_TABS]
-  return [...WORKSPACE_TABS, ...ACCOUNT_TABS]
-}
+const ALL_TABS = NAV_GROUPS.flatMap((g) => g.tabs)
 
 // ─── Page header ──────────────────────────────────────────────────
 
-function resolvePageTitle(pathname: string, siteId?: string): { title: string; subtitle: string } {
-  const all = buildAllTabs(siteId)
-  const segment = pathname.split('/').pop() ?? ''
-  const match = all.find(t => t.id === segment)
-  if (!match) return { title: 'Settings', subtitle: '' }
-
-  if (siteId && SITE_TABS.some(t => t.id === match.id)) {
-    return { title: match.label, subtitle: 'Site settings' }
+function resolvePageHeader(pathname: string): { title: string; subtitle: string } {
+  if (pathname.startsWith('/settings/site')) {
+    return { title: 'Site Settings', subtitle: 'Manage your site configuration' }
   }
-  if (WORKSPACE_TABS.some(t => t.id === match.id)) {
-    return { title: match.label, subtitle: 'Workspace settings' }
+  if (pathname.startsWith('/settings/organization')) {
+    return { title: 'Organization Settings', subtitle: 'Manage your workspace' }
   }
-  return { title: match.label, subtitle: 'Account settings' }
+  if (pathname.startsWith('/settings/account')) {
+    return { title: 'Account Settings', subtitle: 'Manage your profile and security' }
+  }
+  return { title: 'Settings', subtitle: '' }
 }
 
 // ─── Component ───────────────────────────────────────────────────
 
-export default function SettingsShell({ siteId, children }: Props) {
+export default function SettingsShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
-  const groups = buildGroups(siteId)
-  const allTabs = buildAllTabs(siteId)
-  const { title, subtitle } = resolvePageTitle(pathname, siteId)
-
-  // Determine active tab by matching the last pathname segment
-  const activeSegment = pathname.split('/').pop() ?? ''
+  const { title, subtitle } = resolvePageHeader(pathname)
 
   // Mobile select options
-  const mobileOptions = allTabs.map(t => ({
-    value: buildHref(t.id, siteId),
-    label: t.label,
-  }))
-  const mobileValue = buildHref(activeSegment, siteId)
+  const mobileOptions = ALL_TABS.map((t) => ({ value: t.href, label: t.label }))
+  const mobileValue = ALL_TABS.find((t) => pathname === t.href)?.href ?? ''
 
   return (
     <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
@@ -151,19 +126,18 @@ export default function SettingsShell({ siteId, children }: Props) {
         {/* Left nav */}
         <nav className="w-52 shrink-0 hidden md:block">
           <div className="flex flex-col gap-6">
-            {groups.map(group => (
+            {NAV_GROUPS.map((group) => (
               <div key={group.label}>
                 <p className="px-3 mb-1 text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">
                   {group.label}
                 </p>
                 <ul className="flex flex-col gap-0.5">
-                  {group.tabs.map(tab => {
-                    const href = buildHref(tab.id, siteId)
-                    const active = activeSegment === tab.id
+                  {group.tabs.map((tab) => {
+                    const active = pathname === tab.href
                     return (
-                      <li key={tab.id}>
+                      <li key={tab.href}>
                         <Link
-                          href={href}
+                          href={tab.href}
                           className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-fast ease-apple ${
                             active
                               ? 'bg-brand-orange/10 text-brand-orange'
