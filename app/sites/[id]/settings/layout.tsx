@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import SettingsShell from '@/components/settings/SettingsShell'
 
 export const metadata: Metadata = {
   title: 'Site Settings | Pulse',
@@ -6,10 +7,13 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 }
 
-export default function SiteSettingsLayout({
+export default async function SiteSettingsLayout({
   children,
+  params,
 }: {
   children: React.ReactNode
+  params: Promise<{ id: string }>
 }) {
-  return children
+  const { id } = await params
+  return <SettingsShell siteId={id}>{children}</SettingsShell>
 }
