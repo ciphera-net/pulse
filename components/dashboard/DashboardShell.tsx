@@ -8,7 +8,11 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { formatUpdatedAgo, PlusIcon, ExternalLinkIcon, LayoutDashboardIcon, PathIcon, FunnelIcon, CursorClickIcon, SearchIcon, CloudUploadIcon, HeartbeatIcon, SettingsIcon, type CipheraApp } from '@ciphera-net/ui'
 import { cdnUrl } from '@/lib/cdn'
-import { CaretDown, CaretRight, SidebarSimple, Gauge as GaugeIcon, Plugs as PlugsIcon, Tag as TagIcon, Globe as GlobeIcon } from '@phosphor-icons/react'
+import {
+  CaretDown, CaretRight, SidebarSimple, Gauge as GaugeIcon, Plugs as PlugsIcon, Tag as TagIcon, Globe as GlobeIcon,
+  GearSix, Target, Eye, ShieldCheck, Robot, MagnifyingGlass, ChartBar,
+  Buildings, UsersThree, CreditCard, Bell, ClockCounterClockwise, User, Lock, DeviceMobile,
+} from '@phosphor-icons/react'
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { SidebarProvider, useSidebar } from '@/lib/sidebar-context'
@@ -62,22 +66,22 @@ function useHomePageMeta(): PageMeta {
   if (pathname.startsWith('/settings')) {
     const parts = pathname.split('/').filter(Boolean)
     const TAB_META: Record<string, { label: string; icon: React.ComponentType<{ className?: string }> }> = {
-      general: { label: 'General', icon: SettingsIcon },
-      goals: { label: 'Goals', icon: SettingsIcon },
-      visibility: { label: 'Visibility', icon: SettingsIcon },
-      privacy: { label: 'Privacy', icon: SettingsIcon },
-      'bot-spam': { label: 'Bot & Spam', icon: SettingsIcon },
-      'privacy-scan': { label: 'Privacy Scan', icon: SettingsIcon },
-      reports: { label: 'Reports', icon: SettingsIcon },
+      general: { label: 'General', icon: GearSix },
+      goals: { label: 'Goals', icon: Target },
+      visibility: { label: 'Visibility', icon: Eye },
+      privacy: { label: 'Privacy', icon: ShieldCheck },
+      'bot-spam': { label: 'Bot & Spam', icon: Robot },
+      'privacy-scan': { label: 'Privacy Scan', icon: MagnifyingGlass },
+      reports: { label: 'Reports', icon: ChartBar },
       integrations: { label: 'Integrations', icon: PlugsIcon },
-      workspace: { label: 'General', icon: SettingsIcon },
-      members: { label: 'Members', icon: SettingsIcon },
-      billing: { label: 'Billing', icon: SettingsIcon },
-      notifications: { label: 'Notifications', icon: SettingsIcon },
-      audit: { label: 'Audit Log', icon: SettingsIcon },
-      profile: { label: 'Profile', icon: SettingsIcon },
-      security: { label: 'Security', icon: SettingsIcon },
-      devices: { label: 'Devices', icon: SettingsIcon },
+      workspace: { label: 'General', icon: Buildings },
+      members: { label: 'Members', icon: UsersThree },
+      billing: { label: 'Billing', icon: CreditCard },
+      notifications: { label: 'Notifications', icon: Bell },
+      audit: { label: 'Audit Log', icon: ClockCounterClockwise },
+      profile: { label: 'Profile', icon: User },
+      security: { label: 'Security', icon: Lock },
+      devices: { label: 'Devices', icon: DeviceMobile },
     }
     const tabSlug = parts[2] ?? ''
     const meta = TAB_META[tabSlug] ?? { label: 'Settings', icon: SettingsIcon }
