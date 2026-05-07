@@ -164,15 +164,12 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
                       <li key={tab.href}>
                         <Link
                           href={tab.href}
-                          className={`relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-fast ease-apple ${
+                          className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-fast ease-apple ${
                             active
                               ? 'bg-brand-orange/10 text-brand-orange'
                               : 'text-neutral-400 hover:text-white hover:bg-white/[0.06]'
                           }`}
                         >
-                          {active && (
-                            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-brand-orange rounded-full" />
-                          )}
                           <tab.Icon
                             className="w-[18px] h-[18px] shrink-0"
                             weight={active ? 'fill' : 'regular'}
