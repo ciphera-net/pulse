@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Button } from '@ciphera-net/ui'
 import { Check } from '@phosphor-icons/react'
 
@@ -28,8 +29,8 @@ export default function SettingsSaveBar({ isDirty, onSave, onDiscard, saveLabel 
 
   if (!isDirty && !saved) return null
 
-  return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-xl">
+  return createPortal(
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-xl px-4">
       <div className="flex items-center justify-between px-5 py-3 rounded-xl border border-white/[0.08] bg-neutral-900/95 backdrop-blur-xl shadow-xl shadow-black/40">
         <p className="text-sm text-neutral-400">
           {saved ? (
@@ -52,6 +53,7 @@ export default function SettingsSaveBar({ isDirty, onSave, onDiscard, saveLabel 
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
