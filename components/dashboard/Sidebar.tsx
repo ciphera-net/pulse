@@ -154,8 +154,12 @@ function NavLink({
       </span>
       <Label collapsed={collapsed}>{item.label}</Label>
       {!collapsed && NAV_SHORTCUTS[item.label] && (
-        <span className="ml-auto text-[10px] font-medium text-neutral-600 opacity-0 group-hover/nav:opacity-100 transition-opacity duration-fast ease-apple">
-          {NAV_SHORTCUTS[item.label]}
+        <span className="ml-auto flex items-center gap-0.5 opacity-0 group-hover/nav:opacity-100 transition-opacity duration-fast ease-apple">
+          {NAV_SHORTCUTS[item.label].split(' ').map((key) => (
+            <kbd key={key} className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-medium text-neutral-500 bg-neutral-800/80 border border-neutral-700/50 rounded shadow-[0_1px_0_rgba(0,0,0,0.3)] leading-none">
+              {key}
+            </kbd>
+          ))}
         </span>
       )}
     </Link>
