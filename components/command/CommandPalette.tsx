@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   SquaresFour,
@@ -86,10 +86,30 @@ function HighlightMatch({ text, query }: { text: string; query: string }) {
   )
 }
 
+const PLACEHOLDERS = [
+  'Search sites...',
+  'Go to a page...',
+  'Open settings...',
+  'Find a command...',
+]
+
 export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPaletteProps) {
   const router = useRouter()
   const { sites } = useSites()
   const [search, setSearch] = useState('')
+  const [placeholderIdx, setPlaceholderIdx] = useState(0)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => {
+    if (open && !search) {
+      setPlaceholderIdx(0)
+      intervalRef.current = setInterval(() => setPlaceholderIdx((i) => (i + 1) % PLACEHOLDERS.length), 3000)
+    } else if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+      intervalRef.current = null
+    }
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
+  }, [open, search])
 
   const go = (path: string) => {
     router.push(path)
@@ -103,7 +123,7 @@ export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPal
 
   return (
     <CommandDialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) setSearch('') }}>
-      <CommandInput placeholder="Search sites, pages, actions..." value={search} onValueChange={setSearch} />
+      <CommandInput placeholder={PLACEHOLDERS[placeholderIdx]} value={search} onValueChange={setSearch} />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
 
