@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { Button, toast, Spinner, Modal } from '@ciphera-net/ui'
 import { CreditCard, DownloadSimple, ArrowRight, WarningCircle, PencilSimple } from '@phosphor-icons/react'
 import { useSubscription } from '@/lib/swr/dashboard'
-import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { updatePaymentMethod, cancelSubscription, resumeSubscription, getInvoices, downloadInvoicePDF, updateBillingSettings, type Invoice } from '@/lib/api/billing'
 import { formatDateLong, formatDate } from '@/lib/utils/formatDate'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
@@ -21,7 +20,6 @@ const PAYMENT_METHODS = [
 
 export default function WorkspaceBillingTab() {
   const router = useRouter()
-  const { closeUnifiedSettings } = useUnifiedSettings()
   const { data: subscription, isLoading, mutate } = useSubscription()
   const [cancelling, setCancelling] = useState(false)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
@@ -65,8 +63,7 @@ export default function WorkspaceBillingTab() {
     try {
       const result = await resumeSubscription()
       if (result.requires_checkout) {
-        closeUnifiedSettings()
-        router.push('/setup/plan')
+          router.push('/setup/plan')
         toast.success('Your subscription has expired. Please subscribe again.')
         return
       }
@@ -127,7 +124,7 @@ export default function WorkspaceBillingTab() {
         <CreditCard className="w-10 h-10 text-neutral-500 mx-auto mb-3" />
         <h3 className="text-base font-semibold text-white mb-1">No subscription</h3>
         <p className="text-sm text-neutral-400 mb-4">You're on the Hobby plan.</p>
-        <Button variant="primary" className="text-sm" onClick={() => { closeUnifiedSettings(); router.push('/switch'); }}>View Plans</Button>
+        <Button variant="primary" className="text-sm" onClick={() => router.push('/switch')}>View Plans</Button>
       </div>
     )
   }
@@ -170,7 +167,7 @@ export default function WorkspaceBillingTab() {
               </span>
             )}
           </div>
-          <Button variant="primary" className="text-sm" onClick={() => { closeUnifiedSettings(); router.push(isCanceled ? '/setup/plan' : '/switch'); }}>
+          <Button variant="primary" className="text-sm" onClick={() => router.push(isCanceled ? '/setup/plan' : '/switch')}>
             {isCanceled ? 'Resubscribe' : 'Change Plan'}
           </Button>
         </div>

@@ -14,6 +14,7 @@ import {
   type SecurityHeaders,
 } from '@/lib/api/privacy'
 import { formatRelativeTime } from '@/lib/utils/formatDate'
+import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 
 const SCAN_COOLDOWN_SECONDS = 300
 
@@ -62,11 +63,20 @@ export default function SitePrivacyScanTab({
   }, [siteId])
 
   // Track dirty state
+  const isDirty = initialRef.current
+    ? JSON.stringify({ enabled, frequency }) !== initialRef.current
+    : false
+
   useEffect(() => {
+    onDirtyChange?.(isDirty)
+  }, [isDirty, onDirtyChange])
+
+  const handleDiscard = () => {
     if (!initialRef.current) return
-    const current = JSON.stringify({ enabled, frequency })
-    onDirtyChange?.(current !== initialRef.current)
-  }, [enabled, frequency, onDirtyChange])
+    const snap = JSON.parse(initialRef.current)
+    setEnabled(snap.enabled)
+    setFrequency(snap.frequency)
+  }
 
   const handleSave = useCallback(async () => {
     try {
@@ -328,6 +338,12 @@ export default function SitePrivacyScanTab({
           )}
         </div>
       )}
+
+      <SettingsSaveBar
+        isDirty={isDirty}
+        onSave={handleSave}
+        onDiscard={handleDiscard}
+      />
     </div>
   )
 }

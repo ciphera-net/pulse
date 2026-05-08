@@ -7,15 +7,13 @@ import { usePathname, useRouter } from 'next/navigation'
 import { type Site } from '@/lib/api/sites'
 import { useAuth } from '@/lib/auth/context'
 import { useSites, FaviconPreloader } from '@/lib/swr/sites'
-import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { cdnUrl } from '@/lib/cdn'
 import { useSidebar } from '@/lib/sidebar-context'
-// `,` shortcut handled globally by UnifiedSettingsModal
 import { getUserOrganizations, switchContext, type OrganizationMember } from '@/lib/api/organization'
 import { setSessionAction } from '@/app/actions/auth'
 import { logger } from '@/lib/utils/logger'
 import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
-import { Gauge as GaugeIcon, Plugs as PlugsIcon, Tag as TagIcon } from '@phosphor-icons/react'
+import { Gauge as GaugeIcon, Plugs as PlugsIcon, Tag as TagIcon, MagnifyingGlass } from '@phosphor-icons/react'
 import {
   LayoutDashboardIcon,
   PathIcon,
@@ -68,7 +66,7 @@ const NAV_GROUPS: NavGroup[] = [
 ]
 
 const SETTINGS_ITEM: NavItem = {
-  label: 'Site Settings', href: (id) => `/sites/${id}/settings`, icon: SettingsIcon, matchPrefix: true,
+  label: 'Site Settings', href: () => '/settings/site/general', icon: SettingsIcon, matchPrefix: true,
 }
 
 // Label that fades with the sidebar — always in the DOM, never removed
@@ -157,33 +155,6 @@ function NavLink({
   return link
 }
 
-// ─── Settings Button (opens unified modal instead of navigating) ─────
-
-function SettingsButton({
-  item, collapsed, onClick, settingsContext = 'site',
-}: {
-  item: NavItem; collapsed: boolean; onClick?: () => void; settingsContext?: 'site' | 'workspace'
-}) {
-  const { openUnifiedSettings } = useUnifiedSettings()
-
-  const btn = (
-    <button
-      onClick={() => {
-        openUnifiedSettings({ context: settingsContext, tab: 'general' })
-        onClick?.()
-      }}
-      className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-fast text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5 w-full cursor-pointer ease-apple"
-    >
-      <span className="w-7 h-7 flex items-center justify-center shrink-0">
-        <item.icon className="w-[18px] h-[18px]" weight="regular" />
-      </span>
-      <Label collapsed={collapsed}>{item.label}</Label>
-    </button>
-  )
-
-  if (collapsed) return <SidebarTooltip label={item.label}>{btn}</SidebarTooltip>
-  return btn
-}
 
 // ─── Home Nav Link (static href, no siteId) ───────────────
 
@@ -272,12 +243,13 @@ interface SidebarContentProps {
   onCreateOrganization: () => void
   openSettings: () => void
   openOrgSettings: () => void
+  onOpenPalette: () => void
 }
 
 function SidebarContent({
   isMobile, collapsed, siteId, sites, canEdit, pendingHref,
   onNavigate, onMobileClose, onToggle,
-  auth, orgs, onSwitchOrganization, onCreateOrganization, openSettings, openOrgSettings,
+  auth, orgs, onSwitchOrganization, onCreateOrganization, openSettings, openOrgSettings, onOpenPalette,
 }: SidebarContentProps) {
   const c = isMobile ? false : collapsed
   const { user } = auth
@@ -293,6 +265,25 @@ function SidebarContent({
           Pulse
         </span>
       </Link>
+
+      {/* Search trigger — opens ⌘K command palette */}
+      <div className="px-2 mb-2 shrink-0">
+        <button
+          onClick={onOpenPalette}
+          className={`${c
+            ? 'w-9 h-9 flex items-center justify-center mx-auto'
+            : 'w-full h-9 flex items-center gap-2 px-3'
+          } rounded-lg border border-neutral-800 bg-neutral-900/50 text-neutral-500 hover:border-neutral-700 hover:text-neutral-400 transition-colors ease-apple cursor-pointer`}
+        >
+          <MagnifyingGlass className="w-4 h-4 shrink-0" />
+          {!c && (
+            <>
+              <span className="text-sm">Search...</span>
+              <span className="ml-auto text-[10px] font-medium text-neutral-600 bg-neutral-800 px-1.5 py-0.5 rounded">⌘K</span>
+            </>
+          )}
+        </button>
+      </div>
 
       {/* Nav Groups */}
       {siteId ? (
@@ -312,8 +303,8 @@ function SidebarContent({
                 {group.items.map((item) => (
                   <NavLink key={item.label} item={item} siteId={siteId} collapsed={c} onClick={isMobile ? onMobileClose : undefined} pendingHref={pendingHref} onNavigate={onNavigate} />
                 ))}
-                {group.label === 'Infrastructure' && canEdit && (
-                  <SettingsButton item={SETTINGS_ITEM} collapsed={c} onClick={isMobile ? onMobileClose : undefined} />
+                {group.label === 'Infrastructure' && canEdit && siteId && (
+                  <NavLink item={SETTINGS_ITEM} siteId={siteId} collapsed={c} onClick={isMobile ? onMobileClose : undefined} pendingHref={pendingHref} onNavigate={onNavigate} />
                 )}
               </div>
             </div>
@@ -354,7 +345,7 @@ function SidebarContent({
             <div className="space-y-0.5">
               <HomeNavLink href="/integrations" icon={PlugsIcon} label="Integrations" collapsed={c} onClick={isMobile ? onMobileClose : undefined} />
               <HomeNavLink href="/pricing" icon={TagIcon} label="Pricing" collapsed={c} onClick={isMobile ? onMobileClose : undefined} />
-              <SettingsButton item={{ label: 'Organization Settings', href: () => '', icon: SettingsIcon, matchPrefix: false }} collapsed={c} onClick={isMobile ? onMobileClose : undefined} settingsContext="workspace" />
+              <HomeNavLink href="/settings/organization/general" icon={SettingsIcon} label="Organization Settings" collapsed={c} onClick={isMobile ? onMobileClose : undefined} />
             </div>
           </div>
 
@@ -435,16 +426,15 @@ function SidebarContent({
 // ─── Main Sidebar ───────────────────────────────────────────
 
 export default function Sidebar({
-  siteId, mobileOpen, onMobileClose, onMobileOpen,
+  siteId, mobileOpen, onMobileClose, onMobileOpen, onOpenPalette,
 }: {
-  siteId: string | null; mobileOpen: boolean; onMobileClose: () => void; onMobileOpen: () => void
+  siteId: string | null; mobileOpen: boolean; onMobileClose: () => void; onMobileOpen: () => void; onOpenPalette: () => void
 }) {
   const auth = useAuth()
   const { user } = auth
   const canEdit = user?.role === 'owner' || user?.role === 'admin'
   const pathname = usePathname()
   const router = useRouter()
-  const { openUnifiedSettings } = useUnifiedSettings()
   const { sites } = useSites()
   const [orgs, setOrgs] = useState<OrganizationMember[]>([])
   const [pendingHref, setPendingHref] = useState<string | null>(null)
@@ -504,8 +494,9 @@ export default function Sidebar({
           orgs={orgs}
           onSwitchOrganization={handleSwitchOrganization}
           onCreateOrganization={() => router.push('/setup/org?new=1')}
-          openSettings={() => openUnifiedSettings({ context: 'account', tab: 'profile' })}
-          openOrgSettings={() => openUnifiedSettings({ context: 'workspace', tab: 'general' })}
+          openSettings={() => router.push('/settings/account/profile')}
+          openOrgSettings={() => router.push('/settings/organization/general')}
+          onOpenPalette={onOpenPalette}
         />
       </aside>
 
@@ -545,8 +536,9 @@ export default function Sidebar({
               orgs={orgs}
               onSwitchOrganization={handleSwitchOrganization}
               onCreateOrganization={() => router.push('/setup/org?new=1')}
-              openSettings={() => openUnifiedSettings({ context: 'account', tab: 'profile' })}
-              openOrgSettings={() => openUnifiedSettings({ context: 'workspace', tab: 'general' })}
+              openSettings={() => router.push('/settings/profile')}
+              openOrgSettings={() => router.push('/settings/workspace')}
+              onOpenPalette={onOpenPalette}
             />
           </aside>
         </>

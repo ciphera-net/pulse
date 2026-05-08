@@ -6,12 +6,12 @@ import { Input, Button, toast, Spinner, CheckIcon, ZapIcon } from '@ciphera-net/
 import { useSite } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
 import { useAuth } from '@/lib/auth/context'
-import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { DangerZone } from '@/components/settings/unified/DangerZone'
 import DeleteSiteModal from '@/components/sites/DeleteSiteModal'
 import ResetDataModal from '@/components/settings/unified/ResetDataModal'
 import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
 import VerificationModal from '@/components/sites/VerificationModal'
+import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 
 const ALL_TIMEZONES = (() => {
   try {
@@ -108,7 +108,6 @@ function TimezoneCombobox({ value, onChange }: { value: string; onChange: (v: st
 export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }: { siteId: string; onDirtyChange?: (dirty: boolean) => void; onRegisterSave?: (fn: () => Promise<void>) => void }) {
   const router = useRouter()
   const { user } = useAuth()
-  const { closeUnifiedSettings: closeSettings } = useUnifiedSettings()
   const { data: site, mutate } = useSite(siteId)
   const [name, setName] = useState('')
   const [timezone, setTimezone] = useState('UTC')
@@ -130,11 +129,21 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
   }, [site])
 
   // Track dirty state
+  const isDirty = initialRef.current
+    ? JSON.stringify({ name, timezone, scriptFeatures: JSON.stringify(scriptFeatures) }) !== initialRef.current
+    : false
+
   useEffect(() => {
+    onDirtyChange?.(isDirty)
+  }, [isDirty, onDirtyChange])
+
+  const handleDiscard = () => {
     if (!initialRef.current) return
-    const current = JSON.stringify({ name, timezone, scriptFeatures: JSON.stringify(scriptFeatures) })
-    onDirtyChange?.(current !== initialRef.current)
-  }, [name, timezone, scriptFeatures, onDirtyChange])
+    const snap = JSON.parse(initialRef.current)
+    setName(snap.name)
+    setTimezone(snap.timezone)
+    setScriptFeatures(JSON.parse(snap.scriptFeatures))
+  }
 
   const handleSave = useCallback(async () => {
     if (!site) return
@@ -266,7 +275,7 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
       <DeleteSiteModal
         open={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}
-        onDeleted={() => { router.push('/'); closeSettings(); }}
+        onDeleted={() => router.push('/')}
         siteName={site?.name || ''}
         siteDomain={site?.domain || ''}
         siteId={siteId}
@@ -277,6 +286,12 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
         onClose={() => setShowVerificationModal(false)}
         site={site}
         onVerified={() => mutate()}
+      />
+
+      <SettingsSaveBar
+        isDirty={isDirty}
+        onSave={handleSave}
+        onDiscard={handleDiscard}
       />
     </div>
   )

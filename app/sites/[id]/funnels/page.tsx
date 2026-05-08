@@ -52,7 +52,7 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete, onEdit }: {
   const [expandedStep, setExpandedStep] = useState<number | null>(null)
   const [visibleSteps, setVisibleSteps] = useState<Set<string>>(new Set())
 
-  const { data: stats } = useFunnelStats(siteId, funnel.id, expanded ? dateRange.start : '', expanded ? dateRange.end : '')
+  const { data: stats } = useFunnelStats(siteId, funnel.id, dateRange.start, dateRange.end)
 
   const prevRange = useMemo((): { start: string; end: string } | null => {
     if (!expanded) return null
@@ -107,9 +107,7 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete, onEdit }: {
             <div className="flex items-center gap-3">
               <h3 className="text-lg font-semibold text-white">{funnel.name}</h3>
               {stats && (
-                <span className={`text-sm font-medium tabular-nums ${
-                  overallConversion >= 50 ? 'text-green-400' : overallConversion >= 20 ? 'text-amber-400' : 'text-red-400'
-                }`}>{Math.round(overallConversion)}%</span>
+                <span className="text-sm font-medium tabular-nums text-green-400">{Math.round(overallConversion)}%</span>
               )}
             </div>
             <div className="flex items-center gap-2 mt-2">

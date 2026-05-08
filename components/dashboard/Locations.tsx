@@ -40,7 +40,7 @@ const TAB_TO_DIMENSION: Record<string, string> = { countries: 'country', regions
 function formatLanguage(locale: string): string {
   if (locale === 'Unknown') return 'Unknown'
   try {
-    const parts = locale.split('-')
+    const parts = locale.replace(/@.*$/, '').split('-')
     const langDisplay = new Intl.DisplayNames(['en'], { type: 'language' })
     const langName = langDisplay.of(parts[0]) || parts[0]
     if (parts[1]) {
@@ -119,8 +119,7 @@ function getItemFlagCode(item: { country?: string; language?: string; timezone?:
     case 'cities':
       return item.country ?? ''
     case 'languages': {
-      // Extract region from locale: en-US → US, nl-NL → NL
-      const locale = item.language ?? ''
+      const locale = (item.language ?? '').replace(/@.*$/, '')
       const parts = locale.split('-')
       return parts[1]?.toUpperCase() ?? ''
     }
@@ -197,8 +196,9 @@ export default function Audience({ countries, cities, regions, languages, timezo
     }
   }, [isModalOpen, activeTab, siteId, dateRange])
 
-  const getFlagComponent = (countryCode: string) => {
-    if (!countryCode || countryCode === 'Unknown') return null
+  const getFlagComponent = (countryCode: string, tab?: Tab) => {
+    if (!countryCode || countryCode === 'Unknown')
+      return tab === 'languages' ? <GlobeHemisphereWest className="w-5 h-5 text-neutral-400" /> : null
 
     switch (countryCode) {
       case 'T1':
@@ -437,7 +437,7 @@ export default function Audience({ countries, cities, regions, languages, timezo
                         style={{ width: `${barWidth}%` }}
                       />
                       <div className="relative flex-1 truncate text-white flex items-center gap-3">
-                        {showsFlag && <span className="shrink-0">{getFlagComponent(getItemFlagCode(item, activeTab))}</span>}
+                        {showsFlag && <span className="shrink-0">{getFlagComponent(getItemFlagCode(item, activeTab), activeTab)}</span>}
                         <span className="truncate">
                           {getItemLabel(item)}
                         </span>
@@ -513,7 +513,7 @@ export default function Audience({ countries, cities, regions, languages, timezo
                       className={`interactive-row flex items-center justify-between h-9 group rounded-lg px-2${canFilter ? ' cursor-pointer' : ''}`}
                     >
                       <div className="flex-1 truncate text-white flex items-center gap-3">
-                        {showsFlag && <span className="shrink-0">{getFlagComponent(getItemFlagCode(item, activeTab))}</span>}
+                        {showsFlag && <span className="shrink-0">{getFlagComponent(getItemFlagCode(item, activeTab), activeTab)}</span>}
                         <span className="truncate">
                           {getItemLabel(item)}
                         </span>

@@ -94,8 +94,11 @@ export default function SetupDonePage() {
       {/* Next steps cards */}
       <div className="space-y-3 mb-8">
         <Link
-          href={site ? `/sites/${site.id}/settings` : '/'}
+          href="/settings/site/goals"
           className="flex items-center gap-3 p-3 rounded-xl border border-neutral-800 hover:border-neutral-700 hover:bg-neutral-800/30 transition-all"
+          onClick={() => {
+            if (site) sessionStorage.setItem('pulse_active_site', site.id)
+          }}
         >
           <div className="h-9 w-9 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
             <FunnelIcon className="h-4.5 w-4.5 text-blue-400" />
@@ -107,7 +110,7 @@ export default function SetupDonePage() {
         </Link>
 
         <Link
-          href="/org-settings"
+          href="/settings/organization/members"
           className="flex items-center gap-3 p-3 rounded-xl border border-neutral-800 hover:border-neutral-700 hover:bg-neutral-800/30 transition-all"
         >
           <div className="h-9 w-9 rounded-lg bg-purple-500/10 flex items-center justify-center shrink-0">

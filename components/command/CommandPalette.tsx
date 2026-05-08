@@ -15,9 +15,20 @@ import {
   Plugs,
   Tag,
   GearSix,
+  Target,
+  Eye,
+  ShieldCheck,
+  Robot,
+  ChartBar,
+  Buildings,
+  UsersThree,
+  CreditCard,
+  ClockCounterClockwise,
+  User,
+  Lock,
+  DeviceMobile,
 } from '@phosphor-icons/react'
 import { useSites } from '@/lib/swr/sites'
-import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
 import {
   CommandDialog,
@@ -54,7 +65,6 @@ interface CommandPaletteProps {
 export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPaletteProps) {
   const router = useRouter()
   const { sites } = useSites()
-  const { openUnifiedSettings } = useUnifiedSettings()
 
   const go = (path: string) => {
     router.push(path)
@@ -133,19 +143,72 @@ export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPal
             <Tag size={16} weight="regular" className="opacity-60" aria-hidden="true" />
             <span>View pricing</span>
           </CommandItem>
-          <CommandItem
-            value="action-settings"
-            onSelect={() =>
-              doAction(() =>
-                openUnifiedSettings({
-                  context: currentSiteId ? 'site' : 'account',
-                  tab: currentSiteId ? 'general' : 'profile',
-                }),
-              )
-            }
-          >
+        </CommandGroup>
+        <CommandSeparator />
+        <CommandGroup heading="Settings">
+          <CommandItem value="settings-site-general" onSelect={() => go('/settings/site/general')}>
             <GearSix size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-            <span>Open settings</span>
+            <span>Site General Settings</span>
+          </CommandItem>
+          <CommandItem value="settings-site-goals" onSelect={() => go('/settings/site/goals')}>
+            <Target size={16} weight="regular" className="opacity-60" aria-hidden="true" />
+            <span>Goals</span>
+          </CommandItem>
+          <CommandItem value="settings-site-visibility" onSelect={() => go('/settings/site/visibility')}>
+            <Eye size={16} weight="regular" className="opacity-60" aria-hidden="true" />
+            <span>Visibility &amp; Sharing</span>
+          </CommandItem>
+          <CommandItem value="settings-site-privacy" onSelect={() => go('/settings/site/privacy')}>
+            <ShieldCheck size={16} weight="regular" className="opacity-60" aria-hidden="true" />
+            <span>Privacy Settings</span>
+          </CommandItem>
+          <CommandItem value="settings-site-bot-spam" onSelect={() => go('/settings/site/bot-spam')}>
+            <Robot size={16} weight="regular" className="opacity-60" aria-hidden="true" />
+            <span>Bot &amp; Spam Filtering</span>
+          </CommandItem>
+          <CommandItem value="settings-site-privacy-scan" onSelect={() => go('/settings/site/privacy-scan')}>
+            <MagnifyingGlass size={16} weight="regular" className="opacity-60" aria-hidden="true" />
+            <span>Privacy Scan</span>
+          </CommandItem>
+          <CommandItem value="settings-site-reports" onSelect={() => go('/settings/site/reports')}>
+            <ChartBar size={16} weight="regular" className="opacity-60" aria-hidden="true" />
+            <span>Reports &amp; Alerts</span>
+          </CommandItem>
+          <CommandItem value="settings-site-integrations" onSelect={() => go('/settings/site/integrations')}>
+            <Plugs size={16} weight="regular" className="opacity-60" aria-hidden="true" />
+            <span>Integrations</span>
+          </CommandItem>
+          <CommandItem value="settings-org-general" onSelect={() => go('/settings/organization/general')}>
+            <Buildings size={16} weight="regular" className="opacity-60" aria-hidden="true" />
+            <span>Organization Settings</span>
+          </CommandItem>
+          <CommandItem value="settings-org-members" onSelect={() => go('/settings/organization/members')}>
+            <UsersThree size={16} weight="regular" className="opacity-60" aria-hidden="true" />
+            <span>Team Members</span>
+          </CommandItem>
+          <CommandItem value="settings-org-billing" onSelect={() => go('/settings/organization/billing')}>
+            <CreditCard size={16} weight="regular" className="opacity-60" aria-hidden="true" />
+            <span>Billing &amp; Subscription</span>
+          </CommandItem>
+          <CommandItem value="settings-org-notifications" onSelect={() => go('/settings/organization/notifications')}>
+            <Bell size={16} weight="regular" className="opacity-60" aria-hidden="true" />
+            <span>Notification Preferences</span>
+          </CommandItem>
+          <CommandItem value="settings-org-audit" onSelect={() => go('/settings/organization/audit')}>
+            <ClockCounterClockwise size={16} weight="regular" className="opacity-60" aria-hidden="true" />
+            <span>Audit Log</span>
+          </CommandItem>
+          <CommandItem value="settings-account-profile" onSelect={() => go('/settings/account/profile')}>
+            <User size={16} weight="regular" className="opacity-60" aria-hidden="true" />
+            <span>Profile</span>
+          </CommandItem>
+          <CommandItem value="settings-account-security" onSelect={() => go('/settings/account/security')}>
+            <Lock size={16} weight="regular" className="opacity-60" aria-hidden="true" />
+            <span>Security &amp; Passkeys</span>
+          </CommandItem>
+          <CommandItem value="settings-account-devices" onSelect={() => go('/settings/account/devices')}>
+            <DeviceMobile size={16} weight="regular" className="opacity-60" aria-hidden="true" />
+            <span>Trusted Devices</span>
           </CommandItem>
         </CommandGroup>
       </CommandList>

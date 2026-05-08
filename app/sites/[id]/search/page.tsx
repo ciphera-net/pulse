@@ -4,8 +4,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DURATION_FAST, DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 import { cn } from '@/lib/utils'
+import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { useUnifiedSettings } from '@/lib/unified-settings-context'
 import { Select, DatePicker, ChevronLeftIcon, ChevronRightIcon } from '@ciphera-net/ui'
 import { getDateRange, formatDate, getThisWeekRange, getThisMonthRange, getYesterdayRange, getLast1HourRange, getLast24HoursRange, getThisYearRange } from '@/lib/utils/dateRanges'
 import { CaretDown, CaretUp, MagnifyingGlass, ArrowSquareOut, FileText } from '@phosphor-icons/react'
@@ -43,7 +43,6 @@ const PAGE_SIZE = 50
 export default function SearchConsolePage() {
   const params = useParams()
   const siteId = params.id as string
-  const { openUnifiedSettings } = useUnifiedSettings()
 
   // Date range
   const [period, setPeriod] = useState('30')
@@ -213,13 +212,13 @@ export default function SearchConsolePage() {
           <p className="text-sm text-neutral-400 max-w-md mb-6">
             See how your site performs in Google Search. View top queries, pages, click-through rates, and average position data.
           </p>
-          <button
-            onClick={() => openUnifiedSettings({ context: 'site', tab: 'integrations' })}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-brand-orange-button hover:bg-brand-orange-button-hover text-white text-sm font-medium transition-colors cursor-pointer ease-apple"
+          <Link
+            href="/settings/site/integrations"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-brand-orange-button hover:bg-brand-orange-button-hover text-white text-sm font-medium transition-colors ease-apple"
           >
             Connect in Settings
             <ArrowSquareOut size={16} weight="bold" />
-          </button>
+          </Link>
         </div>
       </div>
     )

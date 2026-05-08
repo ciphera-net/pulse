@@ -31,7 +31,7 @@ const NAVIGATION: ShortcutRow[] = [
 ]
 
 const ACTIONS: ShortcutRow[] = [
-  { keys: [','], label: 'Open settings' },
+  { keys: [','], label: 'Go to settings' },
   { keys: ['?'], label: 'Show this overlay' },
   { keys: ['Esc'], label: 'Close modal / dropdown' },
 ]

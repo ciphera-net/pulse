@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Button, toast, Spinner, Modal, Select } from '@ciphera-net/ui'
 import { Plus, Pencil, Trash, EnvelopeSimple, WebhooksLogo, PaperPlaneTilt, FileText, Bell } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { SiDiscord } from '@icons-pack/react-simple-icons'
+import { cdnUrl } from '@/lib/cdn'
 import { useReportSchedules, useAlertSchedules } from '@/lib/swr/dashboard'
 import { useSite } from '@/lib/swr/dashboard'
 import {
@@ -19,6 +19,7 @@ import {
 } from '@/lib/api/report-schedules'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { formatDateTime } from '@/lib/utils/formatDate'
+import SettingsSections from '@/components/settings/SettingsSections'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -59,7 +60,7 @@ function SlackIcon({ size = 16 }: { size?: number }) {
 const CHANNEL_ICONS: Record<string, React.ReactNode> = {
   email: <EnvelopeSimple weight="bold" className="w-4 h-4" />,
   slack: <SlackIcon size={16} />,
-  discord: <SiDiscord size={16} color="#5865F2" />,
+  discord: <img src={cdnUrl('/icons/brands/discord.svg')} alt="Discord" width={16} height={16} className="inline-block" />,
   webhook: <WebhooksLogo weight="bold" className="w-4 h-4" />,
 }
 
@@ -624,8 +625,13 @@ export default function SiteReportsTab({ siteId }: { siteId: string }) {
 
   return (
     <div className="space-y-6">
+      <SettingsSections sections={[
+        { id: 'section-reports', label: 'Scheduled Reports' },
+        { id: 'section-alerts', label: 'Alert Channels' },
+      ]} />
+
       {/* Scheduled Reports */}
-      <div className="space-y-3">
+      <div id="section-reports" className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-base font-semibold text-white mb-1">Scheduled Reports</h3>
@@ -653,7 +659,7 @@ export default function SiteReportsTab({ siteId }: { siteId: string }) {
       </div>
 
       {/* Alert Channels */}
-      <div className="pt-6 border-t border-neutral-800 space-y-3">
+      <div id="section-alerts" className="pt-6 border-t border-neutral-800 space-y-3">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-base font-semibold text-white mb-1">Alert Channels</h3>

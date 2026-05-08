@@ -8,7 +8,11 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { formatUpdatedAgo, PlusIcon, ExternalLinkIcon, LayoutDashboardIcon, PathIcon, FunnelIcon, CursorClickIcon, SearchIcon, CloudUploadIcon, HeartbeatIcon, SettingsIcon, type CipheraApp } from '@ciphera-net/ui'
 import { cdnUrl } from '@/lib/cdn'
-import { CaretDown, CaretRight, SidebarSimple, Gauge as GaugeIcon, Plugs as PlugsIcon, Tag as TagIcon, Globe as GlobeIcon } from '@phosphor-icons/react'
+import {
+  CaretDown, CaretRight, SidebarSimple, Gauge as GaugeIcon, Plugs as PlugsIcon, Tag as TagIcon, Globe as GlobeIcon,
+  GearSix, Target, Eye, ShieldCheck, Robot, MagnifyingGlass, ChartBar,
+  Buildings, UsersThree, CreditCard, Bell, ClockCounterClockwise, User, Lock, DeviceMobile,
+} from '@phosphor-icons/react'
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { SidebarProvider, useSidebar } from '@/lib/sidebar-context'
@@ -26,7 +30,11 @@ const CIPHERA_APPS: CipheraApp[] = [
   { id: 'id', name: 'ID', description: 'Your Ciphera account settings', icon: 'https://ciphera.net/id_icon_no_margins.png', href: 'https://id.ciphera.net', isAvailable: true },
 ]
 
-type PageMeta = { title: string; icon: React.ComponentType<{ className?: string }> }
+type PageMeta = {
+  title: string
+  icon: React.ComponentType<{ className?: string }>
+  parent?: { title: string; icon: React.ComponentType<{ className?: string }>; href: string }
+}
 
 const PAGE_META: Record<string, PageMeta> = {
   '':         { title: 'Dashboard',     icon: LayoutDashboardIcon },
@@ -54,6 +62,36 @@ const HOME_PAGE_META: Record<string, PageMeta> = {
 
 function useHomePageMeta(): PageMeta {
   const pathname = usePathname()
+
+  if (pathname.startsWith('/settings')) {
+    const parts = pathname.split('/').filter(Boolean)
+    const TAB_META: Record<string, { label: string; icon: React.ComponentType<{ className?: string }> }> = {
+      general: { label: 'General', icon: GearSix },
+      goals: { label: 'Goals', icon: Target },
+      visibility: { label: 'Visibility', icon: Eye },
+      privacy: { label: 'Privacy', icon: ShieldCheck },
+      'bot-spam': { label: 'Bot & Spam', icon: Robot },
+      'privacy-scan': { label: 'Privacy Scan', icon: MagnifyingGlass },
+      reports: { label: 'Reports', icon: ChartBar },
+      integrations: { label: 'Integrations', icon: PlugsIcon },
+      workspace: { label: 'General', icon: Buildings },
+      members: { label: 'Members', icon: UsersThree },
+      billing: { label: 'Billing', icon: CreditCard },
+      notifications: { label: 'Notifications', icon: Bell },
+      audit: { label: 'Audit Log', icon: ClockCounterClockwise },
+      profile: { label: 'Profile', icon: User },
+      security: { label: 'Security', icon: Lock },
+      devices: { label: 'Devices', icon: DeviceMobile },
+    }
+    const tabSlug = parts[2] ?? ''
+    const meta = TAB_META[tabSlug] ?? { label: 'Settings', icon: SettingsIcon }
+    return {
+      title: meta.label,
+      icon: meta.icon,
+      parent: { title: 'Settings', icon: SettingsIcon, href: '/settings' },
+    }
+  }
+
   const segment = pathname.split('/').filter(Boolean)[0] ?? ''
   return HOME_PAGE_META[segment] ?? { title: segment ? segment.charAt(0).toUpperCase() + segment.slice(1) : 'Your Sites', icon: GlobeIcon }
 }
@@ -368,6 +406,18 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
                 </span>
               </>
             ) : null
+          ) : currentMeta.parent ? (
+            <>
+              <Link href={currentMeta.parent.href} className="inline-flex items-center gap-1 text-neutral-500 hover:text-neutral-300 transition-colors ease-apple">
+                <currentMeta.parent.icon className="w-3.5 h-3.5" />
+                {currentMeta.parent.title}
+              </Link>
+              <CaretRight className="w-3 h-3 text-neutral-600" />
+              <span className="inline-flex items-center gap-1 text-neutral-400">
+                <PageIcon className="w-3.5 h-3.5" />
+                {currentMeta.title}
+              </span>
+            </>
           ) : (
             <span className="inline-flex items-center gap-1 text-neutral-400">
               <PageIcon className="w-3.5 h-3.5" />
@@ -421,6 +471,7 @@ export default function DashboardShell({
           mobileOpen={mobileOpen}
           onMobileClose={closeMobile}
           onMobileOpen={openMobile}
+          onOpenPalette={() => setPaletteOpen(true)}
         />
         <div className="flex-1 flex flex-col min-w-0">
           {/* Glass top bar — above content only, collapse icon reaches back into sidebar column */}
@@ -434,10 +485,6 @@ export default function DashboardShell({
             <main
               id="dashboard-scroll-container"
               className="relative flex-1 overflow-y-auto overflow-x-hidden pt-4"
-              style={{
-                maskImage: 'linear-gradient(to bottom, transparent 0, black 24px, black calc(100% - 24px), transparent 100%)',
-                WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, black 24px, black calc(100% - 24px), transparent 100%)',
-              }}
             >
               <div
                 key={pathname}
@@ -447,6 +494,8 @@ export default function DashboardShell({
                 {children}
               </div>
             </main>
+            <div className="absolute inset-x-0 top-0 h-10 pointer-events-none z-10 bg-gradient-to-b from-neutral-950 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 h-10 pointer-events-none z-10 bg-gradient-to-t from-neutral-950 to-transparent" />
           </div>
         </div>
       </div>
