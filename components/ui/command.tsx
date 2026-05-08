@@ -127,15 +127,16 @@ const CommandItem = React.forwardRef<
 
 CommandItem.displayName = CommandPrimitive.Item.displayName;
 
-const CommandShortcut = ({ className, ...props }: React.HTMLAttributes<HTMLSpanElement>) => {
+const CommandShortcut = ({ className, children, ...props }: React.HTMLAttributes<HTMLSpanElement>) => {
+  const keys = typeof children === 'string' ? children.split(' ').filter(Boolean) : [children]
   return (
-    <kbd
-      className={cn(
-        "-me-1 ms-auto inline-flex h-5 max-h-full items-center rounded border border-white/[0.08] bg-neutral-800/60 px-1 font-[inherit] text-[0.625rem] font-medium text-muted-foreground/70",
-        className,
-      )}
-      {...props}
-    />
+    <span className={cn("-me-1 ms-auto inline-flex items-center gap-0.5", className)} {...props}>
+      {keys.map((key, i) => (
+        <kbd key={i} className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-medium text-neutral-500 bg-neutral-800/80 border border-neutral-700/50 rounded-[3px] shadow-[0_1px_0_rgba(0,0,0,0.3)] leading-none">
+          {key}
+        </kbd>
+      ))}
+    </span>
   );
 };
 CommandShortcut.displayName = "CommandShortcut";
