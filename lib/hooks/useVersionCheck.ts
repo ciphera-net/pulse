@@ -20,7 +20,7 @@ export function useVersionCheck(onNewVersion: () => void) {
 
     async function check() {
       try {
-        const res = await fetch('/api/version', { cache: 'no-store' })
+        const res = await fetch('/build-id.json', { cache: 'no-store' })
         if (!res.ok) return
         const data = await res.json()
         if (data.buildId && data.buildId !== CLIENT_BUILD_ID) {
