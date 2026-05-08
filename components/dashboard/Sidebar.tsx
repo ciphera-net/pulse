@@ -69,6 +69,11 @@ const SETTINGS_ITEM: NavItem = {
   label: 'Site Settings', href: () => '/settings/site/general', icon: SettingsIcon, matchPrefix: true,
 }
 
+const NAV_SHORTCUTS: Record<string, string> = {
+  Dashboard: 'G D', Journeys: 'G J', Funnels: 'G F', Behavior: 'G B', Search: 'G S',
+  CDN: 'G C', Uptime: 'G U', PageSpeed: 'G P', 'Site Settings': ',',
+}
+
 // Label that fades with the sidebar — always in the DOM, never removed
 function Label({ children, collapsed }: { children: React.ReactNode; collapsed: boolean }) {
   return (
@@ -138,7 +143,7 @@ function NavLink({
     <Link
       href={href}
       onClick={() => { onNavigate(href); onClick?.() }}
-      className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-fast ${
+      className={`group/nav flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-fast ${
         active
           ? 'bg-brand-orange/10 text-brand-orange'
           : 'text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5'
@@ -148,6 +153,11 @@ function NavLink({
         <item.icon className="w-[18px] h-[18px]" weight={active ? 'fill' : 'regular'} />
       </span>
       <Label collapsed={collapsed}>{item.label}</Label>
+      {!collapsed && NAV_SHORTCUTS[item.label] && (
+        <span className="ml-auto text-[10px] font-medium text-neutral-600 opacity-0 group-hover/nav:opacity-100 transition-opacity duration-fast ease-apple">
+          {NAV_SHORTCUTS[item.label]}
+        </span>
+      )}
     </Link>
   )
 
