@@ -24,6 +24,9 @@ const cspDirectives = [
 ].join('; ')
 
 const nextConfig: NextConfig = {
+  env: {
+    NEXT_PUBLIC_BUILD_ID: Date.now().toString(),
+  },
   reactStrictMode: true,
   // * Enable standalone output for production deployment
   output: 'standalone',

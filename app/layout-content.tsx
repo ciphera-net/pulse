@@ -19,6 +19,7 @@ import { useRouter } from 'next/navigation'
 import DashboardShell from '@/components/dashboard/DashboardShell'
 import GettingStartedChecklist from '@/components/dashboard/GettingStartedChecklist'
 import { ErrorBoundary } from '@/components/error-boundary'
+import VersionToast from '@/components/VersionToast'
 
 const ORG_SWITCH_KEY = 'pulse_switching_org'
 
@@ -223,6 +224,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
 export default function LayoutContent({ children }: { children: React.ReactNode }) {
   return (
     <ErrorBoundary>
+      <VersionToast />
       <LayoutInner>{children}</LayoutInner>
     </ErrorBoundary>
   )
