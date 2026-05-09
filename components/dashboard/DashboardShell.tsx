@@ -478,8 +478,7 @@ export default function DashboardShell({
           <GlassTopBar siteId={siteId} />
           {/* Content panel — elevated: inset top highlight + outer shadow for perceived depth */}
           <div
-            className="flex-1 flex flex-col min-w-0 mr-3 mb-3 rounded-2xl bg-neutral-950 border border-white/[0.08] overflow-hidden relative shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_8px_32px_rgba(0,0,0,0.8)]"
-            style={{ backgroundImage: 'linear-gradient(to bottom, rgba(255,255,255,0.02), transparent 240px)' }}
+            className="flex-1 flex flex-col min-w-0 mr-3 mb-3 rounded-xl bg-neutral-950 border border-neutral-800 overflow-hidden relative"
           >
             <ContentHeader onMobileMenuOpen={openMobile} />
             <main
@@ -494,8 +493,6 @@ export default function DashboardShell({
                 {children}
               </div>
             </main>
-            <div className="absolute inset-x-0 top-0 h-10 pointer-events-none z-10 bg-gradient-to-b from-neutral-950 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 h-10 pointer-events-none z-10 bg-gradient-to-t from-neutral-950 to-transparent" />
           </div>
         </div>
       </div>

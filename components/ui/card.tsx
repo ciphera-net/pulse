@@ -26,8 +26,8 @@ const useCardContext = () => {
 const cardVariants = cva('flex flex-col items-stretch text-card-foreground rounded-xl', {
   variants: {
     variant: {
-      default: 'glass-surface shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_2px_12px_rgba(0,0,0,0.5)]',
-      interactive: 'glass-surface shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_2px_12px_rgba(0,0,0,0.5)] transition-all duration-base ease-apple hover:border-white/[0.12] hover:-translate-y-0.5 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_6px_20px_rgba(0,0,0,0.7)] active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none cursor-pointer',
+      default: 'glass-surface',
+      interactive: 'glass-surface transition-all duration-base ease-apple hover:border-neutral-700 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none cursor-pointer',
       accent: 'bg-muted shadow-xs p-1',
     },
   },
