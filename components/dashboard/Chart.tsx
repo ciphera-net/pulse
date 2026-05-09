@@ -164,15 +164,6 @@ export default function Chart({
 
   useEffect(() => { setHasMounted(true) }, [])
 
-  // Tick every 1s so "Live · Xs ago" counts in real time (scoped to Chart only)
-  const [, setTick] = useState(0)
-  useEffect(() => {
-    if (lastUpdatedAt == null) return
-    const timer = setInterval(() => setTick((t) => t + 1), 1000)
-    return () => clearInterval(timer)
-  }, [lastUpdatedAt])
-
-
   // ─── Data ──────────────────────────────────────────────────────────
 
   const chartData = useMemo(() => data.map((item) => {

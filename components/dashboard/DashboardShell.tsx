@@ -353,18 +353,19 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
 
 // ─── Glass Top Bar ─────────────────────────────────────────
 
+function LiveAgo({ lastUpdatedAt }: { lastUpdatedAt: number }) {
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const timer = setInterval(() => setTick((t) => t + 1), 1000)
+    return () => clearInterval(timer)
+  }, [])
+  return <>{formatUpdatedAgo(lastUpdatedAt)}</>
+}
+
 function GlassTopBar({ siteId }: { siteId: string | null }) {
   const { collapsed, toggle } = useSidebar()
   const { lastUpdatedAt } = useLiveIndicator()
-  const [, setTick] = useState(0)
   const [siteName, setSiteName] = useState<string | null>(null)
-
-  // * Tick every second to keep the "Live · Xs ago" display current
-  useEffect(() => {
-    if (lastUpdatedAt == null) return
-    const timer = setInterval(() => setTick((t) => t + 1), 1000)
-    return () => clearInterval(timer)
-  }, [lastUpdatedAt])
 
   useEffect(() => {
     if (!siteId) { setSiteName(null); return }
@@ -434,7 +435,7 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
             </span>
-            Live · {formatUpdatedAgo(lastUpdatedAt)}
+            Live · <LiveAgo lastUpdatedAt={lastUpdatedAt} />
           </div>
         )}
       </div>
