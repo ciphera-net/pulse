@@ -385,7 +385,7 @@ function SidebarContent({
       )}
 
       {/* Bottom — utility items */}
-      <div className="border-t border-white/[0.06] px-2 py-3 shrink-0">
+      <div className="border-t border-neutral-800/60 px-2 py-3 shrink-0">
         {/* Notifications, Profile — same layout as nav items */}
         <div className="space-y-0.5 mb-1">
           {c ? (
@@ -533,7 +533,7 @@ export default function Sidebar({
                 : 'animate-in slide-in-from-left duration-base'
             }`}
           >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-800/60">
               <span className="text-sm font-semibold text-white">Navigation</span>
               <button onClick={handleMobileClose} className="p-1.5 text-neutral-400 hover:text-neutral-300">
                 <XIcon className="w-5 h-5" />

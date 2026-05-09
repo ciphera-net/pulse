@@ -55,7 +55,7 @@ export default function SettingsSaveBar({ isDirty, onSave, onDiscard, saveLabel 
 
   return createPortal(
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-xl px-4">
-      <div className="flex items-center justify-between px-5 py-3 rounded-xl border border-white/[0.08] bg-neutral-900/95 backdrop-blur-xl shadow-xl shadow-black/40">
+      <div className="flex items-center justify-between px-5 py-3 rounded-xl border border-neutral-800 bg-neutral-900/95 backdrop-blur-xl shadow-xl shadow-black/40">
         <p className="text-sm text-neutral-400">
           {saved ? (
             <span className="flex items-center gap-1.5 text-green-400">

@@ -179,7 +179,7 @@ export default function SearchConsolePage() {
           <StatCardSkeleton />
           <StatCardSkeleton />
         </div>
-        <div className="glass-surface rounded-2xl p-6">
+        <div className="glass-surface rounded-xl p-6">
           <SkeletonLine className="h-9 w-48 rounded-lg mb-6" />
           {Array.from({ length: 10 }).map((_, i) => (
             <div key={i} className="flex items-center justify-between py-3">
@@ -249,7 +249,7 @@ export default function SearchConsolePage() {
             Google Search performance, queries, and page rankings
           </p>
         </div>
-        <div className="flex items-center h-10 rounded-lg border border-white/[0.08] bg-neutral-900/80 shadow-sm">
+        <div className="flex items-center h-10 rounded-lg border border-neutral-800 bg-neutral-900/80">
           <button onClick={() => shiftPeriod(-1)} className="px-2 h-full text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors rounded-l-lg ease-apple" aria-label="Previous period">
             <ChevronLeftIcon className="w-4 h-4" weight="bold" />
           </button>
@@ -361,7 +361,7 @@ export default function SearchConsolePage() {
           className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-6"
         >
           {topQueries.queries.slice(0, 5).map((q) => (
-            <div key={q.query} className="glass-surface rounded-2xl p-3">
+            <div key={q.query} className="glass-surface rounded-xl p-3">
               <p className="text-xs text-neutral-400 truncate mb-1">{q.query}</p>
               <div className="flex items-baseline gap-1.5">
                 <p className="text-lg font-semibold text-white">{q.position.toFixed(1)}</p>
@@ -414,7 +414,7 @@ export default function SearchConsolePage() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0.15 }}
-          className="glass-surface rounded-2xl overflow-hidden"
+          className="glass-surface rounded-xl overflow-hidden"
         >
           <table className="w-full text-sm">
             <thead>
@@ -493,7 +493,7 @@ export default function SearchConsolePage() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0.15 }}
-          className="glass-surface rounded-2xl overflow-hidden"
+          className="glass-surface rounded-xl overflow-hidden"
         >
           <table className="w-full text-sm">
             <thead>
@@ -598,7 +598,7 @@ function OverviewCard({
   const isNegative = change ? (invertChange ? change.value > 0 : change.value < 0) : false
 
   return (
-    <div className="glass-surface p-6 rounded-2xl">
+    <div className="glass-surface p-6 rounded-xl">
       <p className="text-xs font-medium text-neutral-400 mb-1">{label}</p>
       <p className="text-2xl font-semibold tabular-nums text-white">{value}</p>
       {change && (

@@ -286,7 +286,7 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Escape') closePicker() }}
-              className="w-full px-3 py-1.5 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg outline-none focus:ring-2 focus:ring-brand-orange/40 text-white placeholder:text-neutral-400"
+              className="w-full px-3 py-1.5 text-sm bg-white/[0.04] border border-neutral-800 rounded-lg outline-none focus:ring-2 focus:ring-brand-orange/40 text-white placeholder:text-neutral-400"
               autoFocus
             />
           </div>
@@ -316,7 +316,7 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
               <p className="text-sm text-neutral-500 text-center py-4">No sites match your search</p>
             )}
           </div>
-          <div className="border-t border-white/[0.06] p-2">
+          <div className="border-t border-neutral-800/60 p-2">
             <Link href="/sites/new" onClick={() => closePicker()} className="flex items-center gap-2 px-3 py-1.5 text-sm text-brand-orange hover:bg-white/[0.06] rounded-lg">
               <PlusIcon className="w-4 h-4" />
               Add new site

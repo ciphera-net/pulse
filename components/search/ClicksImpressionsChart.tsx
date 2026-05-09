@@ -29,7 +29,7 @@ export default function ClicksImpressionsChart({ siteId, startDate, endDate }: C
   // Loading skeleton
   if (isLoading) {
     return (
-      <div className="glass-surface rounded-2xl p-4 mb-6">
+      <div className="glass-surface rounded-xl p-4 mb-6">
         <SkeletonLine className="h-4 w-36 mb-3" />
         <SkeletonLine className="h-64 w-full rounded-lg" />
       </div>
@@ -40,7 +40,7 @@ export default function ClicksImpressionsChart({ siteId, startDate, endDate }: C
   if (!chartData.length) return null
 
   return (
-    <div className="glass-surface rounded-2xl p-4 mb-6">
+    <div className="glass-surface rounded-xl p-4 mb-6">
       <p className="text-sm font-medium text-neutral-300 mb-3">
         Clicks &amp; Impressions
       </p>

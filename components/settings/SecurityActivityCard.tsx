@@ -132,11 +132,11 @@ export default function SecurityActivityCard() {
           <Spinner />
         </div>
       ) : error ? (
-        <div className="rounded-2xl border border-red-900/50 bg-red-950/20 p-6 text-center">
+        <div className="rounded-xl border border-red-900/50 bg-red-950/20 p-6 text-center">
           <p className="text-red-400">{error}</p>
         </div>
       ) : entries.length === 0 ? (
-        <div className="glass-surface rounded-2xl">
+        <div className="glass-surface rounded-xl">
           <EmptyState
             title="No security activity yet"
             description="Sign-ins, password changes, and device events will appear here over time."

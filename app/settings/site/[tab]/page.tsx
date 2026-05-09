@@ -125,7 +125,7 @@ export default function SiteSettingsTabPage() {
                 placeholder="Search sites..."
                 value={siteSearch}
                 onChange={(e) => setSiteSearch(e.target.value)}
-                className="w-full px-3 py-1.5 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg outline-none focus:ring-2 focus:ring-brand-orange/40 text-white placeholder:text-neutral-400"
+                className="w-full px-3 py-1.5 text-sm bg-white/[0.04] border border-neutral-800 rounded-lg outline-none focus:ring-2 focus:ring-brand-orange/40 text-white placeholder:text-neutral-400"
                 autoFocus
               />
             </div>

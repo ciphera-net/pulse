@@ -393,7 +393,7 @@ export default function FilterModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 12 }}
             transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
-            className="w-full max-w-md rounded-2xl border border-white/[0.08] bg-neutral-900 shadow-2xl shadow-black/60 p-6"
+            className="w-full max-w-md rounded-xl border border-neutral-800 bg-neutral-900 shadow-2xl shadow-black/60 p-6"
             style={{ backgroundImage: 'linear-gradient(to bottom, rgba(255,255,255,0.04), transparent 120px)' }}
           >
             {/* Header */}
@@ -452,7 +452,7 @@ export default function FilterModal({
             </div>
 
             {/* Actions */}
-            <div className="flex items-center justify-end gap-2 mt-5 pt-4 border-t border-white/[0.06]">
+            <div className="flex items-center justify-end gap-2 mt-5 pt-4 border-t border-neutral-800/60">
               <button
                 type="button"
                 onClick={onClose}

@@ -184,7 +184,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated && !auth.loading && auth.hadPriorSession && (isSitePage || isDashboardPage)) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-neutral-950">
-        <div className="w-full max-w-sm bg-neutral-900 border border-white/[0.08] rounded-2xl p-8 text-center shadow-2xl shadow-black/60"
+        <div className="w-full max-w-sm bg-neutral-900 border border-neutral-800 rounded-xl p-8 text-center shadow-2xl shadow-black/60"
           style={{ backgroundImage: 'linear-gradient(to bottom, rgba(255,255,255,0.03), transparent 120px)' }}
         >
           <div className="w-14 h-14 rounded-xl bg-red-500/10 flex items-center justify-center mx-auto mb-5">

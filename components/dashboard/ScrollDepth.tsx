@@ -24,7 +24,7 @@ export default function ScrollDepth({ scrollDepth }: ScrollDepthProps) {
   })
 
   return (
-    <div className="glass-surface rounded-2xl p-6 h-full flex flex-col">
+    <div className="glass-surface rounded-xl p-6 h-full flex flex-col">
       <div className="flex items-center justify-between mb-1">
         <h3 className="text-lg font-semibold text-white">
           Scroll Depth

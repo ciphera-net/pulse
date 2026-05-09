@@ -95,7 +95,7 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete, onEdit }: {
   }) : []
 
   return (
-    <div className="glass-surface rounded-2xl overflow-hidden transition-colors ease-apple">
+    <div className="glass-surface rounded-xl overflow-hidden transition-colors ease-apple">
       {/* Header — always visible */}
       <button
         type="button"
@@ -151,7 +151,7 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete, onEdit }: {
             transition={TIMING}
             className="overflow-hidden"
           >
-            <div className="border-t border-white/[0.06]">
+            <div className="border-t border-neutral-800/60">
               {/* Stat cards */}
               {stats && (
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3 p-5">
@@ -280,7 +280,7 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete, onEdit }: {
 
               {/* Conversion Trends — only show when there's meaningful data */}
               {trends && trends.dates.length > 1 && trends.overall.some(v => v > 0) && (
-                <div className="p-5 border-t border-white/[0.06]">
+                <div className="p-5 border-t border-neutral-800/60">
                   <div className="flex items-center justify-between mb-4">
                     <h4 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Conversion Trends</h4>
                     <div className="flex flex-wrap gap-1.5">
@@ -391,7 +391,7 @@ export default function FunnelsPage() {
           <p className="text-sm text-neutral-400">Track user journeys and identify drop-off points</p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center h-10 rounded-lg border border-white/[0.08] bg-neutral-900/80 shadow-sm">
+          <div className="flex items-center h-10 rounded-lg border border-neutral-800 bg-neutral-900/80">
             <button onClick={() => shiftPeriod(-1)} className="px-2 h-full text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors rounded-l-lg ease-apple" aria-label="Previous period">
               <ChevronLeftIcon className="w-4 h-4" weight="bold" />
             </button>

@@ -102,7 +102,7 @@ export default function JourneysPage() {
             How visitors navigate through your site
           </p>
         </div>
-        <div className="flex items-center h-10 rounded-lg border border-white/[0.08] bg-neutral-900/80 shadow-sm">
+        <div className="flex items-center h-10 rounded-lg border border-neutral-800 bg-neutral-900/80">
           <button onClick={() => shiftPeriod(-1)} className="px-2 h-full text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors rounded-l-lg ease-apple" aria-label="Previous period">
             <ChevronLeftIcon className="w-4 h-4" weight="bold" />
           </button>
@@ -142,9 +142,9 @@ export default function JourneysPage() {
       </div>
 
       {/* Single card: toolbar + chart */}
-      <div className="glass-surface rounded-2xl overflow-hidden">
+      <div className="glass-surface rounded-xl overflow-hidden">
         {/* Toolbar */}
-        <div className="p-6 border-b border-white/[0.08]">
+        <div className="p-6 border-b border-neutral-800">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="flex flex-col gap-3">
               <div className="flex items-baseline justify-between">
@@ -208,7 +208,7 @@ export default function JourneysPage() {
           </div>
 
           {/* View toggle — matches dashboard tab pattern (CSS scale transition) */}
-          <div className="flex gap-1 mt-6 pt-4 border-t border-white/[0.08]" role="tablist" aria-label="Journey view tabs">
+          <div className="flex gap-1 mt-6 pt-4 border-t border-neutral-800" role="tablist" aria-label="Journey view tabs">
             {(['columns', 'flow'] as const).map((mode) => (
               <button
                 key={mode}

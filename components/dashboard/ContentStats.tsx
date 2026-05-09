@@ -194,7 +194,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
 
   return (
     <>
-      <div className="glass-surface rounded-2xl p-6 h-full flex flex-col">
+      <div className="glass-surface rounded-xl p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-4">
           <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-1" role="tablist" aria-label="Pages view tabs" onKeyDown={handleTabKeyDown}>
             {(['top_pages', 'entry_pages', 'exit_pages', 'engagement'] as Tab[]).map((tab) => (
@@ -314,7 +314,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
         isOpen={isModalOpen}
         onClose={() => { setIsModalOpen(false); setModalSearch('') }}
         title={getTabLabel(activeTab)}
-        className="max-w-2xl max-h-[90vh] flex flex-col !bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:!bg-neutral-900/60 !border-white/[0.08]"
+        className="max-w-2xl max-h-[90vh] flex flex-col !bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:!bg-neutral-900/60 !border-neutral-800"
       >
         <div>
           <input

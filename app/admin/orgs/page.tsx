@@ -47,7 +47,7 @@ export default function AdminOrgsPage() {
         <h2 className="text-xl font-semibold text-white">Organizations</h2>
       </div>
 
-      <div className="glass-surface rounded-2xl p-6 shadow-sm">
+      <div className="glass-surface rounded-xl p-6">
         <h3 className="text-lg font-semibold text-white mb-4">All Organizations</h3>
         <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">

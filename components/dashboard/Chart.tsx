@@ -251,7 +251,7 @@ export default function Chart({
 
   return (
     <div ref={chartContainerRef} className="relative">
-      <Card className="w-full overflow-hidden rounded-2xl">
+      <Card className="w-full overflow-hidden rounded-xl">
         <CardHeader className="p-0 mb-0">
           {/* Metrics Grid - 21st.dev style */}
           <div className="grid grid-cols-2 md:grid-cols-6 grow w-full">

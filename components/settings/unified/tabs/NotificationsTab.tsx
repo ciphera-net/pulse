@@ -17,7 +17,7 @@ export default function NotificationsTab() {
   return (
     <div>
       {/* Segmented control */}
-      <div className="flex gap-1 mb-6 border-b border-white/[0.06]">
+      <div className="flex gap-1 mb-6 border-b border-neutral-800/60">
         <SubTab id="mine" label="My preferences" active={sub === 'mine'} onClick={() => setSub('mine')} />
         {isAdminOrOwner && (
           <SubTab id="workspace" label="Workspace" active={sub === 'workspace'} onClick={() => setSub('workspace')} />

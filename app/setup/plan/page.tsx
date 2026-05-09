@@ -198,7 +198,7 @@ export default function SetupPlanPage() {
 
             {/* Billing toggle */}
             <div className="flex flex-col items-center gap-2 mb-6">
-              <div className="bg-neutral-800/80 border border-white/[0.08] p-1 rounded-xl flex">
+              <div className="bg-neutral-800/80 border border-neutral-800 p-1 rounded-xl flex">
                 <button
                   onClick={() => setIsYearly(false)}
                   className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ease-apple ${
@@ -229,7 +229,7 @@ export default function SetupPlanPage() {
               <select
                 value={selectedLimit}
                 onChange={(e) => setSelectedLimit(Number(e.target.value))}
-                className="w-full py-2 px-3 bg-neutral-800/80 border border-white/[0.08] rounded-xl text-white text-sm outline-none focus-visible:border-brand-orange"
+                className="w-full py-2 px-3 bg-neutral-800/80 border border-neutral-800 rounded-xl text-white text-sm outline-none focus-visible:border-brand-orange"
               >
                 {TRAFFIC_TIERS.map((tier) => (
                   <option key={tier.value} value={tier.value}>

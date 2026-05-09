@@ -179,16 +179,16 @@ export default function CDNPage() {
           <StatCardSkeleton />
           <StatCardSkeleton />
         </div>
-        <div className="glass-surface rounded-2xl p-6 mb-6">
+        <div className="glass-surface rounded-xl p-6 mb-6">
           <SkeletonLine className="h-6 w-40 mb-4" />
           <SkeletonLine className="h-64 w-full rounded-lg" />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="glass-surface rounded-2xl p-6">
+          <div className="glass-surface rounded-xl p-6">
             <SkeletonLine className="h-6 w-32 mb-4" />
             <SkeletonLine className="h-48 w-full rounded-lg" />
           </div>
-          <div className="glass-surface rounded-2xl p-6">
+          <div className="glass-surface rounded-xl p-6">
             <SkeletonLine className="h-6 w-32 mb-4" />
             <SkeletonLine className="h-48 w-full rounded-lg" />
           </div>
@@ -248,7 +248,7 @@ export default function CDNPage() {
             BunnyCDN performance, bandwidth, and cache metrics
           </p>
         </div>
-        <div className="flex items-center h-10 rounded-lg border border-white/[0.08] bg-neutral-900/80 shadow-sm">
+        <div className="flex items-center h-10 rounded-lg border border-neutral-800 bg-neutral-900/80">
           <button onClick={() => shiftPeriod(-1)} className="px-2 h-full text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors rounded-l-lg ease-apple" aria-label="Previous period">
             <ChevronLeftIcon className="w-4 h-4" weight="bold" />
           </button>
@@ -354,7 +354,7 @@ export default function CDNPage() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0.05 }}
-        className="glass-surface rounded-2xl p-6 mb-6"
+        className="glass-surface rounded-xl p-6 mb-6"
       >
         <h2 className="text-sm font-semibold text-white mb-4">Bandwidth</h2>
         {daily.length > 0 ? (
@@ -411,7 +411,7 @@ export default function CDNPage() {
         className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6"
       >
         {/* Requests chart */}
-        <div className="glass-surface rounded-2xl p-6">
+        <div className="glass-surface rounded-xl p-6">
           <h2 className="text-sm font-semibold text-white mb-4">Requests</h2>
           {daily.length > 0 ? (
             <BarChart
@@ -446,7 +446,7 @@ export default function CDNPage() {
         </div>
 
         {/* Errors chart */}
-        <div className="glass-surface rounded-2xl p-6">
+        <div className="glass-surface rounded-xl p-6">
           <h2 className="text-sm font-semibold text-white mb-4">Errors</h2>
           {daily.length > 0 ? (
             <BarChart
@@ -515,7 +515,7 @@ export default function CDNPage() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0.15 }}
-        className="glass-surface rounded-2xl p-6"
+        className="glass-surface rounded-xl p-6"
       >
         <h2 className="text-sm font-semibold text-white mb-4">Traffic Distribution</h2>
         {countries.length > 0 ? (
@@ -592,7 +592,7 @@ function OverviewCard({
   const changeLabel = change ? (change.positive ? '+' : '') + change.value.toFixed(1) + '%' : null
 
   return (
-    <div className="glass-surface p-6 rounded-2xl">
+    <div className="glass-surface p-6 rounded-xl">
       <p className="text-xs font-medium text-neutral-400 mb-1">{label}</p>
       <p className="text-2xl font-semibold tabular-nums text-white">{value}</p>
       {changeLabel && (

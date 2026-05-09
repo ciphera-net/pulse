@@ -305,7 +305,7 @@ export default function ScriptSetupBlock({
       )}
 
       {/* ── Script snippet ──────────────────────────────────────────────── */}
-      <div className="rounded-2xl border border-white/[0.08] overflow-hidden">
+      <div className="rounded-xl border border-neutral-800 overflow-hidden">
         {/* * Orange accent bar */}
         <div className="h-1 bg-gradient-to-r from-brand-orange via-brand-orange/60 to-transparent" />
         <div className="bg-neutral-950">

@@ -237,7 +237,7 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
             }`}
             style={anchor === 'right' && fixedPos ? { left: fixedPos.left, top: fixedPos.top, bottom: fixedPos.bottom } : undefined}
           >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-800/60">
               <h3 className="font-semibold text-white">Notifications</h3>
               {unreadCount > 0 && (
                 <button
@@ -351,7 +351,7 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
               )}
             </div>
 
-            <div className="border-t border-white/[0.06] px-4 py-3 flex items-center justify-between gap-2">
+            <div className="border-t border-neutral-800/60 px-4 py-3 flex items-center justify-between gap-2">
               <Link
                 href="/notifications"
                 onClick={() => setOpen(false)}

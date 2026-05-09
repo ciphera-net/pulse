@@ -82,7 +82,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId, bus
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-2xl glass-surface p-6">
+    <form onSubmit={handleSubmit} className="rounded-xl glass-surface p-6">
       <h2 className="text-lg font-semibold text-white mb-4">Payment method</h2>
 
       <div className="grid grid-cols-3 gap-2 mb-5">

@@ -101,7 +101,7 @@ function OverviewTab({ stats, loading }: { stats: QuarantineStats | null; loadin
         {statCards.map((card) => (
           <div
             key={card.label}
-            className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5 shadow-sm"
+            className="rounded-xl border border-neutral-800 bg-neutral-900 p-5"
           >
             <p className="text-sm text-neutral-400">{card.label}</p>
             <p className="mt-1 text-2xl font-semibold text-white tabular-nums">
@@ -113,7 +113,7 @@ function OverviewTab({ stats, loading }: { stats: QuarantineStats | null; loadin
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* By reason */}
-        <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 shadow-sm">
+        <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-6">
           <h3 className="text-lg font-semibold text-white mb-4">By Reason</h3>
           {Object.keys(stats.by_reason).length === 0 ? (
             <EmptyState title="No quarantine reasons yet" icon={<Shield weight="regular" />} className="py-4" />
@@ -132,7 +132,7 @@ function OverviewTab({ stats, loading }: { stats: QuarantineStats | null; loadin
         </div>
 
         {/* By method */}
-        <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 shadow-sm">
+        <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-6">
           <h3 className="text-lg font-semibold text-white mb-4">By Method</h3>
           {Object.keys(stats.by_method).length === 0 ? (
             <EmptyState title="No detection methods yet" icon={<Shield weight="regular" />} className="py-4" />
@@ -243,7 +243,7 @@ function EventsTab() {
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl border border-neutral-800 bg-neutral-900 shadow-sm overflow-hidden">
+      <div className="rounded-xl border border-neutral-800 bg-neutral-900 overflow-hidden">
         {loading ? (
           <div className="p-12 text-center text-neutral-400">Loading events...</div>
         ) : events.length === 0 ? (
@@ -434,7 +434,7 @@ function ReputationTab() {
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl border border-neutral-800 bg-neutral-900 shadow-sm overflow-hidden">
+      <div className="rounded-xl border border-neutral-800 bg-neutral-900 overflow-hidden">
         {loading ? (
           <div className="p-12 text-center text-neutral-400">Loading domains...</div>
         ) : domains.length === 0 ? (
