@@ -432,7 +432,7 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
         {siteId && lastUpdatedAt != null && (
           <div className="flex items-center gap-1.5 text-xs text-neutral-500 shrink-0">
             <span className="relative flex h-1.5 w-1.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
+              <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
             </span>
             Live · <LiveAgo lastUpdatedAt={lastUpdatedAt} />
