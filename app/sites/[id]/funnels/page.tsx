@@ -4,8 +4,8 @@ import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DURATION_BASE, EASE_APPLE, TIMING } from '@/lib/motion'
-import { deleteFunnel, createFunnel, updateFunnel, type Funnel, type FunnelStats, type FunnelTrends, type CreateFunnelRequest } from '@/lib/api/funnels'
-import { useSite, useFunnels, useFunnelStats, useFunnelTrends } from '@/lib/swr/dashboard'
+import { deleteFunnel, createFunnel, updateFunnel, type Funnel, type FunnelStats, type CreateFunnelRequest } from '@/lib/api/funnels'
+import { useSite, useFunnels, useFunnelStats } from '@/lib/swr/dashboard'
 import { toast, PlusIcon, ArrowRightIcon, ChevronLeftIcon, ChevronRightIcon, TrashIcon, Button, formatNumber, Select, DatePicker } from '@ciphera-net/ui'
 import { FunnelsListSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -15,9 +15,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import FunnelModal from '@/components/funnels/FunnelModal'
 import { getDateRange, formatDate, getYesterdayRange, getLast1HourRange, getLast24HoursRange, getThisWeekRange, getThisMonthRange, getThisYearRange } from '@/lib/utils/dateRanges'
 import { pctChange, type PctChangeResult } from '@/lib/utils/pctChange'
-import { LineChart, Line, Grid, XAxis, YAxis, ChartTooltip } from '@/components/ui/line-chart'
-
-const STEP_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16']
 const DAY_MS = 86400000
 
 function formatConvertTime(seconds: number): string {
@@ -50,7 +47,6 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete, onEdit }: {
 }) {
   const [expanded, setExpanded] = useState(false)
   const [expandedStep, setExpandedStep] = useState<number | null>(null)
-  const [visibleSteps, setVisibleSteps] = useState<Set<string>>(new Set())
 
   const { data: stats } = useFunnelStats(siteId, funnel.id, dateRange.start, dateRange.end)
 
@@ -67,8 +63,6 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete, onEdit }: {
   }, [dateRange, expanded])
 
   const { data: prevStats } = useFunnelStats(siteId, funnel.id, prevRange?.start ?? '', prevRange?.end ?? '')
-  const { data: trends } = useFunnelTrends(siteId, funnel.id, expanded ? dateRange.start : '', expanded ? dateRange.end : '')
-
   const totalVisitors = stats?.steps[0]?.visitors ?? 0
   const convertedVisitors = stats?.steps.length ? stats.steps[stats.steps.length - 1].visitors : 0
   const overallConversion = stats?.steps.length ? stats.steps[stats.steps.length - 1].conversion : 0
@@ -80,19 +74,6 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete, onEdit }: {
     if (!worst || step.dropoff > worst.dropoff) return { name: step.step.name, dropoff: step.dropoff }
     return worst
   }, null)
-
-  const trendsChartData = trends ? trends.dates.map((date, idx) => {
-    const point: Record<string, any> = {
-      date: new Date(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
-      overall: Math.round(trends.overall[idx] * 10) / 10,
-    }
-    for (const [stepKey, values] of Object.entries(trends.steps)) {
-      if (visibleSteps.has(stepKey)) {
-        point[`step_${stepKey}`] = Math.round(values[idx] * 10) / 10
-      }
-    }
-    return point
-  }) : []
 
   return (
     <div className="glass-surface rounded-xl overflow-hidden transition-colors ease-apple">
@@ -278,51 +259,6 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete, onEdit }: {
                 </div>
               )}
 
-              {/* Conversion Trends — only show when there's meaningful data */}
-              {trends && trends.dates.length > 1 && trends.overall.some(v => v > 0) && (
-                <div className="p-5 border-t border-neutral-800/60">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Conversion Trends</h4>
-                    <div className="flex flex-wrap gap-1.5">
-                      {stats?.steps.map((s, i) => (
-                        <button
-                          key={i}
-                          type="button"
-                          onClick={() => setVisibleSteps(prev => { const next = new Set(prev); if (next.has(String(i))) next.delete(String(i)); else next.add(String(i)); return next })}
-                          className={`px-2 py-0.5 text-xs rounded-md transition-colors ${
-                            visibleSteps.has(String(i)) ? 'bg-brand-orange/10 text-brand-orange border border-brand-orange/30' : 'bg-neutral-800 text-neutral-500 border border-transparent'
-                          } ease-apple`}
-                        >
-                          {s.step.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <LineChart data={trendsChartData} xDataKey="date" aspectRatio="5 / 1">
-                    <Grid />
-                    <XAxis />
-                    <YAxis numTicks={4} formatValue={(v) => `${Math.round(v)}%`} />
-                    <Line dataKey="overall" stroke="#FD5E0F" />
-                    {Array.from(visibleSteps).map((stepKey) => (
-                      <Line key={stepKey} dataKey={`step_${stepKey}`} stroke={STEP_COLORS[Number(stepKey) % STEP_COLORS.length]} />
-                    ))}
-                    <ChartTooltip
-                      rows={(point) => {
-                        const rows: { color: string; label: string; value: string | number }[] = [
-                          { color: '#FD5E0F', label: 'Overall', value: `${point.overall ?? 0}%` },
-                        ]
-                        for (const stepKey of Array.from(visibleSteps)) {
-                          const key = `step_${stepKey}`
-                          if (point[key] !== undefined) {
-                            rows.push({ color: STEP_COLORS[Number(stepKey) % STEP_COLORS.length]!, label: stats?.steps[Number(stepKey)]?.step.name || `Step ${stepKey}`, value: `${point[key]}%` })
-                          }
-                        }
-                        return rows
-                      }}
-                    />
-                  </LineChart>
-                </div>
-              )}
             </div>
           </motion.div>
         )}
