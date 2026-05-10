@@ -136,25 +136,25 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete, onEdit }: {
               {/* Stat cards */}
               {stats && (
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3 p-5">
-                  <div className="bg-neutral-800/30 rounded-xl p-4">
+                  <div className="bg-neutral-800/30 border border-neutral-800/60 rounded-xl p-4">
                     <div className="flex items-start justify-between mb-1.5">
                       <span className="text-xs font-medium text-neutral-500">Conversion</span>
                       <ChangeIndicator change={pctChange(overallConversion, prevConversion)} />
                     </div>
                     <AnimatedNumber value={overallConversion} format={(v: number) => `${Math.round(v)}%`} className="text-xl font-bold text-white tabular-nums" />
                   </div>
-                  <div className="bg-neutral-800/30 rounded-xl p-4">
+                  <div className="bg-neutral-800/30 border border-neutral-800/60 rounded-xl p-4">
                     <div className="flex items-start justify-between mb-1.5">
                       <span className="text-xs font-medium text-neutral-500">Visitors</span>
                       <ChangeIndicator change={pctChange(totalVisitors, prevTotalVisitors)} />
                     </div>
                     <AnimatedNumber value={totalVisitors} format={(v: number) => formatNumber(Math.round(v))} className="text-xl font-bold text-white tabular-nums" />
                   </div>
-                  <div className="bg-neutral-800/30 rounded-xl p-4">
+                  <div className="bg-neutral-800/30 border border-neutral-800/60 rounded-xl p-4">
                     <span className="text-xs font-medium text-neutral-500 block mb-1.5">Converted</span>
                     <AnimatedNumber value={convertedVisitors} format={(v: number) => formatNumber(Math.round(v))} className="text-xl font-bold text-white tabular-nums" />
                   </div>
-                  <div className="bg-neutral-800/30 rounded-xl p-4">
+                  <div className="bg-neutral-800/30 border border-neutral-800/60 rounded-xl p-4">
                     <span className="text-xs font-medium text-neutral-500 block mb-1.5">Biggest Dropoff</span>
                     {biggestDropoff ? (
                       <>
@@ -165,7 +165,7 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete, onEdit }: {
                       <span className="text-xl font-bold text-green-400">0%</span>
                     )}
                   </div>
-                  <div className="bg-neutral-800/30 rounded-xl p-4">
+                  <div className="bg-neutral-800/30 border border-neutral-800/60 rounded-xl p-4">
                     <span className="text-xs font-medium text-neutral-500 block mb-1.5">Median Time</span>
                     <span className="text-xl font-bold text-white tabular-nums">
                       {stats.median_convert_seconds != null
@@ -321,7 +321,7 @@ export default function FunnelsPage() {
 
   return (
     <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-lg font-semibold text-neutral-200 mb-1">Funnels</h1>
           <p className="text-sm text-neutral-400">Track user journeys and identify drop-off points</p>
@@ -369,9 +369,9 @@ export default function FunnelsPage() {
               <ChevronRightIcon className="w-4 h-4" weight="bold" />
             </button>
           </div>
-          <Button variant="primary" className="inline-flex items-center gap-2" onClick={() => { setEditingFunnel(null); setModalOpen(true) }}>
+          <Button variant="primary" onClick={() => { setEditingFunnel(null); setModalOpen(true) }}>
             <PlusIcon className="w-4 h-4" />
-            <span>Create Funnel</span>
+            Create Funnel
           </Button>
         </div>
       </div>
@@ -405,8 +405,8 @@ export default function FunnelsPage() {
             <DialogDescription>Are you sure you want to delete &ldquo;{deletingFunnel?.name}&rdquo;? This cannot be undone.</DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <button onClick={() => setDeletingFunnel(null)} className="glass-surface rounded-lg px-4 py-2 text-sm font-medium text-neutral-300 hover:text-white transition-colors ease-apple">Cancel</button>
-            <button onClick={handleDelete} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-500 transition-colors ease-apple">Delete</button>
+            <Button variant="secondary" onClick={() => setDeletingFunnel(null)}>Cancel</Button>
+            <Button variant="primary" className="bg-red-600 hover:bg-red-500 shadow-none" onClick={handleDelete}>Delete</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
