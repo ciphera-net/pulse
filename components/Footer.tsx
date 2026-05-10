@@ -44,7 +44,7 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
   // * Simple footer for authenticated users
   if (isAuthenticated) {
     return (
-      <footer className="w-full py-8 mt-auto border-t border-neutral-800 bg-neutral-900/50 backdrop-blur-sm">
+      <footer className="w-full py-8 mt-auto border-t border-neutral-800 bg-neutral-900">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="text-sm text-neutral-400">
@@ -72,7 +72,7 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
 
   // * Comprehensive footer for unauthenticated users
   return (
-    <footer className="w-full mt-auto border-t border-neutral-800 bg-neutral-900/50 backdrop-blur-sm">
+    <footer className="w-full mt-auto border-t border-neutral-800 bg-neutral-900">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12 lg:py-16">
         {/* * Main footer content */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6 sm:gap-8 lg:gap-12">

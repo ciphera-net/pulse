@@ -81,7 +81,7 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
-            className="w-full max-w-sm bg-neutral-900/80 p-6 rounded-xl border border-red-900 shadow-xl pointer-events-auto"
+            className="w-full max-w-sm bg-neutral-900 p-6 rounded-xl border border-red-900 shadow-xl pointer-events-auto"
           >
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-red-500">Delete {siteName || 'Site'}?</h3>

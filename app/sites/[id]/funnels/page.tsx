@@ -327,7 +327,7 @@ export default function FunnelsPage() {
           <p className="text-sm text-neutral-400">Track user journeys and identify drop-off points</p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center h-10 rounded-lg border border-neutral-800 bg-neutral-900/80">
+          <div className="flex items-center h-10 rounded-lg border border-neutral-800 bg-neutral-900">
             <button onClick={() => shiftPeriod(-1)} className="px-2 h-full text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors rounded-l-lg ease-apple" aria-label="Previous period">
               <ChevronLeftIcon className="w-4 h-4" weight="bold" />
             </button>

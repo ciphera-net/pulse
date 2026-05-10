@@ -316,7 +316,7 @@ export default function PublicDashboardPage() {
             <div className="flex gap-2">
               <button
                 onClick={() => setIsExportModalOpen(true)}
-                className="hidden md:flex items-center gap-2 px-3 py-2 bg-neutral-900/80 border border-neutral-800 rounded-lg text-sm text-neutral-400 hover:text-brand-orange transition-colors ease-apple"
+                className="hidden md:flex items-center gap-2 px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-sm text-neutral-400 hover:text-brand-orange transition-colors ease-apple"
               >
                 <DownloadIcon className="w-4 h-4" />
                 <span>Export</span>
@@ -351,7 +351,7 @@ export default function PublicDashboardPage() {
                 href="https://ciphera.net" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="hidden md:flex items-center gap-2 px-3 py-2 bg-neutral-900/80 border border-neutral-800 rounded-lg text-sm text-neutral-400 hover:text-brand-orange transition-colors ease-apple"
+                className="hidden md:flex items-center gap-2 px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-sm text-neutral-400 hover:text-brand-orange transition-colors ease-apple"
               >
                 <ZapIcon className="w-4 h-4" />
                 <span>Powered by Ciphera</span>

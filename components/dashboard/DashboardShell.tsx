@@ -182,7 +182,7 @@ function BreadcrumbAppSwitcher() {
                 )
               })}
             </div>
-            <div className="h-px bg-white/[0.06] my-3" />
+            <div className="h-px bg-neutral-800 my-3" />
             <a href="https://ciphera.net/products" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1 text-xs text-brand-orange hover:underline">
               View all products
               <ExternalLinkIcon className="h-3 w-3" />

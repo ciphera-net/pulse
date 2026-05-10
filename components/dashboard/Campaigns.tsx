@@ -247,7 +247,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
         isOpen={isModalOpen}
         onClose={() => { setIsModalOpen(false); setModalSearch('') }}
         title="Campaigns"
-        className="max-w-2xl max-h-[90vh] flex flex-col !bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:!bg-neutral-900/60 !border-neutral-800"
+        className="max-w-2xl max-h-[90vh] flex flex-col !bg-neutral-900/65 backdrop-blur-xl backdrop-saturate-150 supports-[backdrop-filter]:!bg-neutral-900/60 !border-neutral-800"
       >
         <div>
           <input

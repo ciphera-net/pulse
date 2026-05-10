@@ -33,7 +33,7 @@ const CommandDialog = ({ children, ...props }: DialogProps) => {
     <Dialog {...props}>
       <DialogTitle className="sr-only">Command Palette</DialogTitle>
       <DialogDescription className="sr-only">Search sites, pages, and actions</DialogDescription>
-      <DialogContent className="overflow-hidden p-0 sm:max-w-2xl bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/60 border border-neutral-800 shadow-2xl shadow-black/50 [&>button:last-child]:hidden">
+      <DialogContent className="overflow-hidden p-0 sm:max-w-2xl bg-neutral-900/65 backdrop-blur-xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/60 border border-neutral-800 shadow-2xl shadow-black/50 [&>button:last-child]:hidden">
         <Command className="bg-transparent [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]]:px-2 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-3 [&_[cmdk-item]]:py-2">
           {children}
         </Command>

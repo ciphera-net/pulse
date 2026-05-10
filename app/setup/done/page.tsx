@@ -74,7 +74,7 @@ export default function SetupDonePage() {
 
       {/* Live data indicator */}
       {site && (
-        <div className="mb-6 p-4 rounded-xl border border-neutral-800 bg-neutral-900/50">
+        <div className="mb-6 p-4 rounded-xl border border-neutral-800 bg-neutral-900">
           <div className="flex items-center gap-3">
             {dataReceived ? (
               <>

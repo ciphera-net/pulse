@@ -118,7 +118,7 @@ export default function SiteSettingsTabPage() {
         </button>
 
         {pickerOpen && sites.length > 1 && (
-          <div className="mb-6 -mt-4 rounded-xl border border-neutral-800 bg-neutral-900/95 overflow-hidden">
+          <div className="mb-6 -mt-4 rounded-xl border border-neutral-800 bg-neutral-900 overflow-hidden">
             <div className="p-2">
               <input
                 type="text"

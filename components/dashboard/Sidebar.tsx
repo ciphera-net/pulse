@@ -287,7 +287,7 @@ function SidebarContent({
           className={`${c
             ? 'w-9 h-9 flex items-center justify-center mx-auto'
             : 'w-full h-9 flex items-center gap-2 px-3'
-          } rounded-lg border border-neutral-800 bg-neutral-900/50 text-neutral-500 hover:border-neutral-700 hover:text-neutral-400 transition-colors ease-apple cursor-pointer`}
+          } rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-500 hover:border-neutral-700 hover:text-neutral-400 transition-colors ease-apple cursor-pointer`}
         >
           <MagnifyingGlass className="w-4 h-4 shrink-0" />
           {!c && (
@@ -309,7 +309,7 @@ function SidebarContent({
             <div key={group.label}>
               <div className="h-5 flex items-center overflow-hidden">
                 {c ? (
-                  <div className="mx-1 w-full border-t border-white/[0.04]" />
+                  <div className="mx-1 w-full border-t border-neutral-800" />
                 ) : (
                   <p className="px-2.5 text-caption font-semibold text-neutral-500 uppercase tracking-wider whitespace-nowrap">
                     {group.label}
@@ -332,7 +332,7 @@ function SidebarContent({
           {/* Your Sites */}
           <div>
             {c ? (
-              <div className="mx-3 my-2 border-t border-white/[0.04]" />
+              <div className="mx-3 my-2 border-t border-neutral-800" />
             ) : (
               <div className="h-5 flex items-center overflow-hidden">
                 <p className="px-2.5 text-caption font-semibold text-neutral-500 uppercase tracking-wider whitespace-nowrap">
@@ -351,7 +351,7 @@ function SidebarContent({
           {/* Organization */}
           <div>
             {c ? (
-              <div className="mx-3 my-2 border-t border-white/[0.04]" />
+              <div className="mx-3 my-2 border-t border-neutral-800" />
             ) : (
               <div className="h-5 flex items-center overflow-hidden">
                 <p className="px-2.5 text-caption font-semibold text-neutral-500 uppercase tracking-wider whitespace-nowrap">
@@ -369,7 +369,7 @@ function SidebarContent({
           {/* Resources */}
           <div>
             {c ? (
-              <div className="mx-3 my-2 border-t border-white/[0.04]" />
+              <div className="mx-3 my-2 border-t border-neutral-800" />
             ) : (
               <div className="h-5 flex items-center overflow-hidden">
                 <p className="px-2.5 text-caption font-semibold text-neutral-500 uppercase tracking-wider whitespace-nowrap">
