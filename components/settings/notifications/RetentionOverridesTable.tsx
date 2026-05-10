@@ -41,7 +41,7 @@ export default function RetentionOverridesTable({ prefs, onChange }: Props) {
             const allowedOpts = OVERRIDE_OPTIONS_DAYS.filter(d => d <= def)
             const current = prefs.retention_overrides?.[c.id]?.read_ttl_days ?? null
             return (
-              <tr key={c.id} className="border-t border-white/[0.05]">
+              <tr key={c.id} className="border-t border-neutral-800/60">
                 <td className="py-3 text-neutral-200">{c.label}</td>
                 <td className="py-3 text-neutral-400">{def} days</td>
                 <td className="py-3">

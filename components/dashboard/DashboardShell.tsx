@@ -182,7 +182,7 @@ function BreadcrumbAppSwitcher() {
                 )
               })}
             </div>
-            <div className="h-px bg-white/[0.06] my-3" />
+            <div className="h-px bg-neutral-800 my-3" />
             <a href="https://ciphera.net/products" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1 text-xs text-brand-orange hover:underline">
               View all products
               <ExternalLinkIcon className="h-3 w-3" />
@@ -286,7 +286,7 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Escape') closePicker() }}
-              className="w-full px-3 py-1.5 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg outline-none focus:ring-2 focus:ring-brand-orange/40 text-white placeholder:text-neutral-400"
+              className="w-full px-3 py-1.5 text-sm bg-white/[0.04] border border-neutral-800 rounded-lg outline-none focus:ring-2 focus:ring-brand-orange/40 text-white placeholder:text-neutral-400"
               autoFocus
             />
           </div>
@@ -316,7 +316,7 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
               <p className="text-sm text-neutral-500 text-center py-4">No sites match your search</p>
             )}
           </div>
-          <div className="border-t border-white/[0.06] p-2">
+          <div className="border-t border-neutral-800/60 p-2">
             <Link href="/sites/new" onClick={() => closePicker()} className="flex items-center gap-2 px-3 py-1.5 text-sm text-brand-orange hover:bg-white/[0.06] rounded-lg">
               <PlusIcon className="w-4 h-4" />
               Add new site
@@ -353,18 +353,19 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
 
 // ─── Glass Top Bar ─────────────────────────────────────────
 
+function LiveAgo({ lastUpdatedAt }: { lastUpdatedAt: number }) {
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const timer = setInterval(() => setTick((t) => t + 1), 1000)
+    return () => clearInterval(timer)
+  }, [])
+  return <>{formatUpdatedAgo(lastUpdatedAt)}</>
+}
+
 function GlassTopBar({ siteId }: { siteId: string | null }) {
   const { collapsed, toggle } = useSidebar()
   const { lastUpdatedAt } = useLiveIndicator()
-  const [, setTick] = useState(0)
   const [siteName, setSiteName] = useState<string | null>(null)
-
-  // * Tick every second to keep the "Live · Xs ago" display current
-  useEffect(() => {
-    if (lastUpdatedAt == null) return
-    const timer = setInterval(() => setTick((t) => t + 1), 1000)
-    return () => clearInterval(timer)
-  }, [lastUpdatedAt])
 
   useEffect(() => {
     if (!siteId) { setSiteName(null); return }
@@ -431,10 +432,10 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
         {siteId && lastUpdatedAt != null && (
           <div className="flex items-center gap-1.5 text-xs text-neutral-500 shrink-0">
             <span className="relative flex h-1.5 w-1.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
+              <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
             </span>
-            Live · {formatUpdatedAgo(lastUpdatedAt)}
+            Live · <LiveAgo lastUpdatedAt={lastUpdatedAt} />
           </div>
         )}
       </div>
@@ -478,8 +479,7 @@ export default function DashboardShell({
           <GlassTopBar siteId={siteId} />
           {/* Content panel — elevated: inset top highlight + outer shadow for perceived depth */}
           <div
-            className="flex-1 flex flex-col min-w-0 mr-3 mb-3 rounded-2xl bg-neutral-950 border border-white/[0.08] overflow-hidden relative shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_8px_32px_rgba(0,0,0,0.8)]"
-            style={{ backgroundImage: 'linear-gradient(to bottom, rgba(255,255,255,0.02), transparent 240px)' }}
+            className="flex-1 flex flex-col min-w-0 mr-3 mb-3 rounded-xl bg-neutral-950 border border-neutral-800 overflow-hidden relative"
           >
             <ContentHeader onMobileMenuOpen={openMobile} />
             <main
@@ -494,8 +494,6 @@ export default function DashboardShell({
                 {children}
               </div>
             </main>
-            <div className="absolute inset-x-0 top-0 h-10 pointer-events-none z-10 bg-gradient-to-b from-neutral-950 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 h-10 pointer-events-none z-10 bg-gradient-to-t from-neutral-950 to-transparent" />
           </div>
         </div>
       </div>

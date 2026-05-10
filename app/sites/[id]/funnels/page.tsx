@@ -4,8 +4,8 @@ import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DURATION_BASE, EASE_APPLE, TIMING } from '@/lib/motion'
-import { deleteFunnel, createFunnel, updateFunnel, type Funnel, type FunnelStats, type FunnelTrends, type CreateFunnelRequest } from '@/lib/api/funnels'
-import { useSite, useFunnels, useFunnelStats, useFunnelTrends } from '@/lib/swr/dashboard'
+import { deleteFunnel, createFunnel, updateFunnel, type Funnel, type FunnelStats, type CreateFunnelRequest } from '@/lib/api/funnels'
+import { useSite, useFunnels, useFunnelStats } from '@/lib/swr/dashboard'
 import { toast, PlusIcon, ArrowRightIcon, ChevronLeftIcon, ChevronRightIcon, TrashIcon, Button, formatNumber, Select, DatePicker } from '@ciphera-net/ui'
 import { FunnelsListSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -15,9 +15,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import FunnelModal from '@/components/funnels/FunnelModal'
 import { getDateRange, formatDate, getYesterdayRange, getLast1HourRange, getLast24HoursRange, getThisWeekRange, getThisMonthRange, getThisYearRange } from '@/lib/utils/dateRanges'
 import { pctChange, type PctChangeResult } from '@/lib/utils/pctChange'
-import { LineChart, Line, Grid, XAxis, YAxis, ChartTooltip } from '@/components/ui/line-chart'
-
-const STEP_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16']
 const DAY_MS = 86400000
 
 function formatConvertTime(seconds: number): string {
@@ -50,7 +47,6 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete, onEdit }: {
 }) {
   const [expanded, setExpanded] = useState(false)
   const [expandedStep, setExpandedStep] = useState<number | null>(null)
-  const [visibleSteps, setVisibleSteps] = useState<Set<string>>(new Set())
 
   const { data: stats } = useFunnelStats(siteId, funnel.id, dateRange.start, dateRange.end)
 
@@ -67,8 +63,6 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete, onEdit }: {
   }, [dateRange, expanded])
 
   const { data: prevStats } = useFunnelStats(siteId, funnel.id, prevRange?.start ?? '', prevRange?.end ?? '')
-  const { data: trends } = useFunnelTrends(siteId, funnel.id, expanded ? dateRange.start : '', expanded ? dateRange.end : '')
-
   const totalVisitors = stats?.steps[0]?.visitors ?? 0
   const convertedVisitors = stats?.steps.length ? stats.steps[stats.steps.length - 1].visitors : 0
   const overallConversion = stats?.steps.length ? stats.steps[stats.steps.length - 1].conversion : 0
@@ -81,21 +75,8 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete, onEdit }: {
     return worst
   }, null)
 
-  const trendsChartData = trends ? trends.dates.map((date, idx) => {
-    const point: Record<string, any> = {
-      date: new Date(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
-      overall: Math.round(trends.overall[idx] * 10) / 10,
-    }
-    for (const [stepKey, values] of Object.entries(trends.steps)) {
-      if (visibleSteps.has(stepKey)) {
-        point[`step_${stepKey}`] = Math.round(values[idx] * 10) / 10
-      }
-    }
-    return point
-  }) : []
-
   return (
-    <div className="glass-surface rounded-2xl overflow-hidden transition-colors ease-apple">
+    <div className="glass-surface rounded-xl overflow-hidden transition-colors ease-apple">
       {/* Header — always visible */}
       <button
         type="button"
@@ -151,29 +132,29 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete, onEdit }: {
             transition={TIMING}
             className="overflow-hidden"
           >
-            <div className="border-t border-white/[0.06]">
+            <div className="border-t border-neutral-800/60">
               {/* Stat cards */}
               {stats && (
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3 p-5">
-                  <div className="bg-neutral-800/30 rounded-xl p-4">
+                  <div className="bg-neutral-800/30 border border-neutral-800/60 rounded-xl p-4">
                     <div className="flex items-start justify-between mb-1.5">
                       <span className="text-xs font-medium text-neutral-500">Conversion</span>
                       <ChangeIndicator change={pctChange(overallConversion, prevConversion)} />
                     </div>
                     <AnimatedNumber value={overallConversion} format={(v: number) => `${Math.round(v)}%`} className="text-xl font-bold text-white tabular-nums" />
                   </div>
-                  <div className="bg-neutral-800/30 rounded-xl p-4">
+                  <div className="bg-neutral-800/30 border border-neutral-800/60 rounded-xl p-4">
                     <div className="flex items-start justify-between mb-1.5">
                       <span className="text-xs font-medium text-neutral-500">Visitors</span>
                       <ChangeIndicator change={pctChange(totalVisitors, prevTotalVisitors)} />
                     </div>
                     <AnimatedNumber value={totalVisitors} format={(v: number) => formatNumber(Math.round(v))} className="text-xl font-bold text-white tabular-nums" />
                   </div>
-                  <div className="bg-neutral-800/30 rounded-xl p-4">
+                  <div className="bg-neutral-800/30 border border-neutral-800/60 rounded-xl p-4">
                     <span className="text-xs font-medium text-neutral-500 block mb-1.5">Converted</span>
                     <AnimatedNumber value={convertedVisitors} format={(v: number) => formatNumber(Math.round(v))} className="text-xl font-bold text-white tabular-nums" />
                   </div>
-                  <div className="bg-neutral-800/30 rounded-xl p-4">
+                  <div className="bg-neutral-800/30 border border-neutral-800/60 rounded-xl p-4">
                     <span className="text-xs font-medium text-neutral-500 block mb-1.5">Biggest Dropoff</span>
                     {biggestDropoff ? (
                       <>
@@ -184,7 +165,7 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete, onEdit }: {
                       <span className="text-xl font-bold text-green-400">0%</span>
                     )}
                   </div>
-                  <div className="bg-neutral-800/30 rounded-xl p-4">
+                  <div className="bg-neutral-800/30 border border-neutral-800/60 rounded-xl p-4">
                     <span className="text-xs font-medium text-neutral-500 block mb-1.5">Median Time</span>
                     <span className="text-xl font-bold text-white tabular-nums">
                       {stats.median_convert_seconds != null
@@ -278,51 +259,6 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete, onEdit }: {
                 </div>
               )}
 
-              {/* Conversion Trends — only show when there's meaningful data */}
-              {trends && trends.dates.length > 1 && trends.overall.some(v => v > 0) && (
-                <div className="p-5 border-t border-white/[0.06]">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Conversion Trends</h4>
-                    <div className="flex flex-wrap gap-1.5">
-                      {stats?.steps.map((s, i) => (
-                        <button
-                          key={i}
-                          type="button"
-                          onClick={() => setVisibleSteps(prev => { const next = new Set(prev); if (next.has(String(i))) next.delete(String(i)); else next.add(String(i)); return next })}
-                          className={`px-2 py-0.5 text-xs rounded-md transition-colors ${
-                            visibleSteps.has(String(i)) ? 'bg-brand-orange/10 text-brand-orange border border-brand-orange/30' : 'bg-neutral-800 text-neutral-500 border border-transparent'
-                          } ease-apple`}
-                        >
-                          {s.step.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <LineChart data={trendsChartData} xDataKey="date" aspectRatio="5 / 1">
-                    <Grid />
-                    <XAxis />
-                    <YAxis numTicks={4} formatValue={(v) => `${Math.round(v)}%`} />
-                    <Line dataKey="overall" stroke="#FD5E0F" />
-                    {Array.from(visibleSteps).map((stepKey) => (
-                      <Line key={stepKey} dataKey={`step_${stepKey}`} stroke={STEP_COLORS[Number(stepKey) % STEP_COLORS.length]} />
-                    ))}
-                    <ChartTooltip
-                      rows={(point) => {
-                        const rows: { color: string; label: string; value: string | number }[] = [
-                          { color: '#FD5E0F', label: 'Overall', value: `${point.overall ?? 0}%` },
-                        ]
-                        for (const stepKey of Array.from(visibleSteps)) {
-                          const key = `step_${stepKey}`
-                          if (point[key] !== undefined) {
-                            rows.push({ color: STEP_COLORS[Number(stepKey) % STEP_COLORS.length]!, label: stats?.steps[Number(stepKey)]?.step.name || `Step ${stepKey}`, value: `${point[key]}%` })
-                          }
-                        }
-                        return rows
-                      }}
-                    />
-                  </LineChart>
-                </div>
-              )}
             </div>
           </motion.div>
         )}
@@ -385,13 +321,13 @@ export default function FunnelsPage() {
 
   return (
     <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-lg font-semibold text-neutral-200 mb-1">Funnels</h1>
           <p className="text-sm text-neutral-400">Track user journeys and identify drop-off points</p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center h-10 rounded-lg border border-white/[0.08] bg-neutral-900/80 shadow-sm">
+          <div className="flex items-center h-10 rounded-lg border border-neutral-800 bg-neutral-900">
             <button onClick={() => shiftPeriod(-1)} className="px-2 h-full text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors rounded-l-lg ease-apple" aria-label="Previous period">
               <ChevronLeftIcon className="w-4 h-4" weight="bold" />
             </button>
@@ -433,9 +369,9 @@ export default function FunnelsPage() {
               <ChevronRightIcon className="w-4 h-4" weight="bold" />
             </button>
           </div>
-          <Button variant="primary" className="inline-flex items-center gap-2" onClick={() => { setEditingFunnel(null); setModalOpen(true) }}>
+          <Button variant="primary" onClick={() => { setEditingFunnel(null); setModalOpen(true) }}>
             <PlusIcon className="w-4 h-4" />
-            <span>Create Funnel</span>
+            Create Funnel
           </Button>
         </div>
       </div>
@@ -469,8 +405,8 @@ export default function FunnelsPage() {
             <DialogDescription>Are you sure you want to delete &ldquo;{deletingFunnel?.name}&rdquo;? This cannot be undone.</DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <button onClick={() => setDeletingFunnel(null)} className="glass-surface rounded-lg px-4 py-2 text-sm font-medium text-neutral-300 hover:text-white transition-colors ease-apple">Cancel</button>
-            <button onClick={handleDelete} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-500 transition-colors ease-apple">Delete</button>
+            <Button variant="secondary" onClick={() => setDeletingFunnel(null)}>Cancel</Button>
+            <Button variant="primary" className="bg-red-600 hover:bg-red-500 shadow-none" onClick={handleDelete}>Delete</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -76,7 +76,7 @@ export default function GoalStats({ goalCounts, siteId, dateRange }: GoalStatsPr
   }, [propertyCache, siteId, dateRange.start, dateRange.end])
 
   return (
-    <div className="glass-surface rounded-2xl p-6 h-full flex flex-col">
+    <div className="glass-surface rounded-xl p-6 h-full flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <div className="flex gap-1">
           <span className="relative px-2.5 py-1 text-xs font-medium text-white">

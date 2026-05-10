@@ -33,7 +33,7 @@ const CommandDialog = ({ children, ...props }: DialogProps) => {
     <Dialog {...props}>
       <DialogTitle className="sr-only">Command Palette</DialogTitle>
       <DialogDescription className="sr-only">Search sites, pages, and actions</DialogDescription>
-      <DialogContent className="overflow-hidden p-0 sm:max-w-2xl bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/60 border border-white/[0.08] shadow-2xl shadow-black/50 [&>button:last-child]:hidden">
+      <DialogContent className="overflow-hidden p-0 sm:max-w-2xl bg-neutral-900/65 backdrop-blur-xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/60 border border-neutral-800 shadow-2xl shadow-black/50 [&>button:last-child]:hidden">
         <Command className="bg-transparent [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]]:px-2 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-3 [&_[cmdk-item]]:py-2">
           {children}
         </Command>
@@ -46,7 +46,7 @@ const CommandInput = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.Input>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
 >(({ className, ...props }, ref) => (
-  <div className="flex items-center border-b border-white/[0.08] px-5" cmdk-input-wrapper="">
+  <div className="flex items-center border-b border-neutral-800 px-5" cmdk-input-wrapper="">
     <MagnifyingGlass size={18} weight="bold" className="me-3 text-muted-foreground/80" />
     <CommandPrimitive.Input
       ref={ref}
@@ -127,15 +127,16 @@ const CommandItem = React.forwardRef<
 
 CommandItem.displayName = CommandPrimitive.Item.displayName;
 
-const CommandShortcut = ({ className, ...props }: React.HTMLAttributes<HTMLSpanElement>) => {
+const CommandShortcut = ({ className, children, ...props }: React.HTMLAttributes<HTMLSpanElement>) => {
+  const keys = typeof children === 'string' ? children.split(' ').filter(Boolean) : [children]
   return (
-    <kbd
-      className={cn(
-        "-me-1 ms-auto inline-flex h-5 max-h-full items-center rounded border border-white/[0.08] bg-neutral-800/60 px-1 font-[inherit] text-[0.625rem] font-medium text-muted-foreground/70",
-        className,
-      )}
-      {...props}
-    />
+    <span className={cn("-me-1 ms-auto inline-flex items-center gap-0.5", className)} {...props}>
+      {keys.map((key, i) => (
+        <kbd key={i} className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-medium text-neutral-500 bg-neutral-800/80 border border-neutral-700/50 rounded-[3px] shadow-[0_1px_0_rgba(0,0,0,0.3)] leading-none">
+          {key}
+        </kbd>
+      ))}
+    </span>
   );
 };
 CommandShortcut.displayName = "CommandShortcut";

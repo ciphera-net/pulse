@@ -36,7 +36,7 @@ export default function DeliveryModesTable({ prefs, onChange }: Props) {
         </thead>
         <tbody>
           {CATEGORIES.map(c => (
-            <tr key={c.id} className="border-t border-white/[0.05]">
+            <tr key={c.id} className="border-t border-neutral-800/60">
               <td className="py-3 text-neutral-200">{c.label}</td>
               {MODES.map(m => (
                 <td key={m.value} className="text-center">

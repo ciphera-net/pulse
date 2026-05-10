@@ -150,7 +150,7 @@ export default function HomeDashboard() {
       {showSkeleton ? (
         <SitesListSkeleton rows={3} />
       ) : sites.length === 0 ? (
-        <div className="mb-8 flex flex-col items-center justify-center gap-4 py-16 px-6 text-center rounded-2xl border-2 border-dashed border-brand-orange/30 bg-brand-orange/10">
+        <div className="mb-8 flex flex-col items-center justify-center gap-4 py-16 px-6 text-center rounded-xl border-2 border-dashed border-brand-orange/30 bg-brand-orange/10">
           <img
             src={cdnUrl('/illustrations/no-sites.png')}
             alt=""

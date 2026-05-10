@@ -164,15 +164,6 @@ export default function Chart({
 
   useEffect(() => { setHasMounted(true) }, [])
 
-  // Tick every 1s so "Live · Xs ago" counts in real time (scoped to Chart only)
-  const [, setTick] = useState(0)
-  useEffect(() => {
-    if (lastUpdatedAt == null) return
-    const timer = setInterval(() => setTick((t) => t + 1), 1000)
-    return () => clearInterval(timer)
-  }, [lastUpdatedAt])
-
-
   // ─── Data ──────────────────────────────────────────────────────────
 
   const chartData = useMemo(() => data.map((item) => {
@@ -251,7 +242,7 @@ export default function Chart({
 
   return (
     <div ref={chartContainerRef} className="relative">
-      <Card className="w-full overflow-hidden rounded-2xl">
+      <Card className="w-full overflow-hidden rounded-xl">
         <CardHeader className="p-0 mb-0">
           {/* Metrics Grid - 21st.dev style */}
           <div className="grid grid-cols-2 md:grid-cols-6 grow w-full">

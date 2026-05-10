@@ -60,7 +60,7 @@ export default function SetupInstallPage() {
   return (
     <>
       <div className="text-center mb-8">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-400 mb-5">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 mb-5">
           <CheckCircleIcon className="h-7 w-7" />
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-white">

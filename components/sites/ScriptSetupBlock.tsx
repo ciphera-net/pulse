@@ -305,7 +305,7 @@ export default function ScriptSetupBlock({
       )}
 
       {/* ── Script snippet ──────────────────────────────────────────────── */}
-      <div className="rounded-2xl border border-white/[0.08] overflow-hidden">
+      <div className="rounded-xl border border-neutral-800 overflow-hidden">
         {/* * Orange accent bar */}
         <div className="h-1 bg-gradient-to-r from-brand-orange via-brand-orange/60 to-transparent" />
         <div className="bg-neutral-950">
@@ -372,7 +372,7 @@ export default function ScriptSetupBlock({
           ))}
         </div>
         {/* * Frustration — full-width, visually distinct as add-on */}
-        <div className="mt-3 flex items-center justify-between rounded-xl border border-dashed border-neutral-700 bg-neutral-900/50 px-4 py-3">
+        <div className="mt-3 flex items-center justify-between rounded-xl border border-dashed border-neutral-700 bg-neutral-900 px-4 py-3">
           <div className="min-w-0 mr-3">
             <span className="text-sm font-medium text-white block">
               Frustration tracking
@@ -384,7 +384,7 @@ export default function ScriptSetupBlock({
           <Toggle checked={features.frustration} onChange={() => toggleFeature('frustration')} />
         </div>
         {/* * Interactions — copy, print, video tracking add-on */}
-        <div className="mt-2 flex items-center justify-between rounded-xl border border-dashed border-neutral-700 bg-neutral-900/50 px-4 py-3">
+        <div className="mt-2 flex items-center justify-between rounded-xl border border-dashed border-neutral-700 bg-neutral-900 px-4 py-3">
           <div className="min-w-0 mr-3">
             <span className="text-sm font-medium text-white block">
               Interaction tracking
@@ -396,7 +396,7 @@ export default function ScriptSetupBlock({
           <Toggle checked={features.interactions} onChange={() => toggleFeature('interactions')} />
         </div>
         {/* * SRI — security option, opt-in only */}
-        <div className="mt-3 flex items-center justify-between rounded-xl border border-dashed border-neutral-700 bg-neutral-900/50 px-4 py-3">
+        <div className="mt-3 flex items-center justify-between rounded-xl border border-dashed border-neutral-700 bg-neutral-900 px-4 py-3">
           <div className="min-w-0 mr-3">
             <span className="text-sm font-medium text-white block">
               Subresource Integrity (SRI)

@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   SquaresFour,
@@ -62,9 +63,53 @@ interface CommandPaletteProps {
  * ⌘K command palette — global search across sites, pages, and actions.
  * Uses the shared CommandDialog primitive (glass-overlay + cmdk).
  */
+function HighlightMatch({ text, query }: { text: string; query: string }) {
+  if (!query.trim()) return <>{text}</>
+  const lower = text.toLowerCase()
+  const q = query.toLowerCase()
+  let qi = 0
+  const parts: { char: string; match: boolean }[] = []
+  for (let i = 0; i < text.length; i++) {
+    if (qi < q.length && lower[i] === q[qi]) {
+      parts.push({ char: text[i], match: true })
+      qi++
+    } else {
+      parts.push({ char: text[i], match: false })
+    }
+  }
+  return (
+    <>
+      {parts.map((p, i) =>
+        p.match ? <span key={i} className="text-brand-orange">{p.char}</span> : p.char
+      )}
+    </>
+  )
+}
+
+const PLACEHOLDERS = [
+  'Search sites...',
+  'Go to a page...',
+  'Open settings...',
+  'Find a command...',
+]
+
 export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPaletteProps) {
   const router = useRouter()
   const { sites } = useSites()
+  const [search, setSearch] = useState('')
+  const [placeholderIdx, setPlaceholderIdx] = useState(0)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => {
+    if (open && !search) {
+      setPlaceholderIdx(0)
+      intervalRef.current = setInterval(() => setPlaceholderIdx((i) => (i + 1) % PLACEHOLDERS.length), 3000)
+    } else if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+      intervalRef.current = null
+    }
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
+  }, [open, search])
 
   const go = (path: string) => {
     router.push(path)
@@ -77,8 +122,8 @@ export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPal
   }
 
   return (
-    <CommandDialog open={open} onOpenChange={onOpenChange}>
-      <CommandInput placeholder="Search sites, pages, actions..." />
+    <CommandDialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) setSearch('') }}>
+      <CommandInput placeholder={PLACEHOLDERS[placeholderIdx]} value={search} onValueChange={setSearch} />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
 
@@ -94,14 +139,14 @@ export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPal
                     onSelect={() => go(`/sites/${currentSiteId}${page.path}`)}
                   >
                     <Icon size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-                    <span>{page.label}</span>
+                    <span><HighlightMatch text={page.label} query={search} /></span>
                     <CommandShortcut>{page.shortcut}</CommandShortcut>
                   </CommandItem>
                 )
               })}
               <CommandItem value="page-notifications" onSelect={() => go('/notifications')}>
                 <Bell size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-                <span>Notifications</span>
+                <span><HighlightMatch text="Notifications" query={search} /></span>
                 <CommandShortcut>g n</CommandShortcut>
               </CommandItem>
             </CommandGroup>
@@ -123,7 +168,7 @@ export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPal
                 className="w-4 h-4 rounded-sm object-contain shrink-0"
                 aria-hidden="true"
               />
-              <span className="truncate">{site.name}</span>
+              <span className="truncate"><HighlightMatch text={site.name} query={search} /></span>
               <span className="ms-auto text-xs text-muted-foreground truncate">{site.domain}</span>
             </CommandItem>
           ))}
@@ -133,82 +178,82 @@ export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPal
         <CommandGroup heading="Actions">
           <CommandItem value="action-new-site" onSelect={() => go('/sites/new')}>
             <Plus size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-            <span>New site</span>
+            <span><HighlightMatch text="New site" query={search} /></span>
           </CommandItem>
           <CommandItem value="action-integrations" onSelect={() => go('/integrations')}>
             <Plugs size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-            <span>Browse integrations</span>
+            <span><HighlightMatch text="Browse integrations" query={search} /></span>
           </CommandItem>
           <CommandItem value="action-pricing" onSelect={() => go('/pricing')}>
             <Tag size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-            <span>View pricing</span>
+            <span><HighlightMatch text="View pricing" query={search} /></span>
           </CommandItem>
         </CommandGroup>
         <CommandSeparator />
         <CommandGroup heading="Settings">
           <CommandItem value="settings-site-general" onSelect={() => go('/settings/site/general')}>
             <GearSix size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-            <span>Site General Settings</span>
+            <span><HighlightMatch text="Site General Settings" query={search} /></span>
           </CommandItem>
           <CommandItem value="settings-site-goals" onSelect={() => go('/settings/site/goals')}>
             <Target size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-            <span>Goals</span>
+            <span><HighlightMatch text="Goals" query={search} /></span>
           </CommandItem>
           <CommandItem value="settings-site-visibility" onSelect={() => go('/settings/site/visibility')}>
             <Eye size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-            <span>Visibility &amp; Sharing</span>
+            <span><HighlightMatch text="Visibility & Sharing" query={search} /></span>
           </CommandItem>
           <CommandItem value="settings-site-privacy" onSelect={() => go('/settings/site/privacy')}>
             <ShieldCheck size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-            <span>Privacy Settings</span>
+            <span><HighlightMatch text="Privacy Settings" query={search} /></span>
           </CommandItem>
           <CommandItem value="settings-site-bot-spam" onSelect={() => go('/settings/site/bot-spam')}>
             <Robot size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-            <span>Bot &amp; Spam Filtering</span>
+            <span><HighlightMatch text="Bot & Spam Filtering" query={search} /></span>
           </CommandItem>
           <CommandItem value="settings-site-privacy-scan" onSelect={() => go('/settings/site/privacy-scan')}>
             <MagnifyingGlass size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-            <span>Privacy Scan</span>
+            <span><HighlightMatch text="Privacy Scan" query={search} /></span>
           </CommandItem>
           <CommandItem value="settings-site-reports" onSelect={() => go('/settings/site/reports')}>
             <ChartBar size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-            <span>Reports &amp; Alerts</span>
+            <span><HighlightMatch text="Reports & Alerts" query={search} /></span>
           </CommandItem>
           <CommandItem value="settings-site-integrations" onSelect={() => go('/settings/site/integrations')}>
             <Plugs size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-            <span>Integrations</span>
+            <span><HighlightMatch text="Integrations" query={search} /></span>
           </CommandItem>
           <CommandItem value="settings-org-general" onSelect={() => go('/settings/organization/general')}>
             <Buildings size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-            <span>Organization Settings</span>
+            <span><HighlightMatch text="Organization Settings" query={search} /></span>
           </CommandItem>
           <CommandItem value="settings-org-members" onSelect={() => go('/settings/organization/members')}>
             <UsersThree size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-            <span>Team Members</span>
+            <span><HighlightMatch text="Team Members" query={search} /></span>
           </CommandItem>
           <CommandItem value="settings-org-billing" onSelect={() => go('/settings/organization/billing')}>
             <CreditCard size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-            <span>Billing &amp; Subscription</span>
+            <span><HighlightMatch text="Billing & Subscription" query={search} /></span>
           </CommandItem>
           <CommandItem value="settings-org-notifications" onSelect={() => go('/settings/organization/notifications')}>
             <Bell size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-            <span>Notification Preferences</span>
+            <span><HighlightMatch text="Notification Preferences" query={search} /></span>
           </CommandItem>
           <CommandItem value="settings-org-audit" onSelect={() => go('/settings/organization/audit')}>
             <ClockCounterClockwise size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-            <span>Audit Log</span>
+            <span><HighlightMatch text="Audit Log" query={search} /></span>
           </CommandItem>
           <CommandItem value="settings-account-profile" onSelect={() => go('/settings/account/profile')}>
             <User size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-            <span>Profile</span>
+            <span><HighlightMatch text="Profile" query={search} /></span>
           </CommandItem>
           <CommandItem value="settings-account-security" onSelect={() => go('/settings/account/security')}>
             <Lock size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-            <span>Security &amp; Passkeys</span>
+            <span><HighlightMatch text="Security & Passkeys" query={search} /></span>
           </CommandItem>
           <CommandItem value="settings-account-devices" onSelect={() => go('/settings/account/devices')}>
             <DeviceMobile size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-            <span>Trusted Devices</span>
+            <span><HighlightMatch text="Trusted Devices" query={search} /></span>
           </CommandItem>
         </CommandGroup>
       </CommandList>

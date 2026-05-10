@@ -68,11 +68,11 @@ export default function TrustedDevicesCard() {
           <Spinner />
         </div>
       ) : error ? (
-        <div className="rounded-2xl border border-red-900/50 bg-red-950/20 p-6 text-center">
+        <div className="rounded-xl border border-red-900/50 bg-red-950/20 p-6 text-center">
           <p className="text-red-400">{error}</p>
         </div>
       ) : devices.length === 0 ? (
-        <div className="glass-surface rounded-2xl">
+        <div className="glass-surface rounded-xl">
           <EmptyState
             title="No trusted devices yet"
             description="Devices are added automatically the first time you sign in and verify your session."

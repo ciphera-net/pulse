@@ -118,14 +118,14 @@ export default function SiteSettingsTabPage() {
         </button>
 
         {pickerOpen && sites.length > 1 && (
-          <div className="mb-6 -mt-4 rounded-xl border border-neutral-800 bg-neutral-900/95 overflow-hidden">
+          <div className="mb-6 -mt-4 rounded-xl border border-neutral-800 bg-neutral-900 overflow-hidden">
             <div className="p-2">
               <input
                 type="text"
                 placeholder="Search sites..."
                 value={siteSearch}
                 onChange={(e) => setSiteSearch(e.target.value)}
-                className="w-full px-3 py-1.5 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg outline-none focus:ring-2 focus:ring-brand-orange/40 text-white placeholder:text-neutral-400"
+                className="w-full px-3 py-1.5 text-sm bg-white/[0.04] border border-neutral-800 rounded-lg outline-none focus:ring-2 focus:ring-brand-orange/40 text-white placeholder:text-neutral-400"
                 autoFocus
               />
             </div>

@@ -65,6 +65,6 @@ export const config = {
      * - favicon.ico, manifest.json, icons, images (static assets)
      * - api routes (handled by their own auth)
      */
-    '/((?!_next/static|_next/image|favicon\\.ico|manifest\\.json|sitemap\\.xml|robots\\.txt|llms\\.txt|.*\\.png$|.*\\.svg$|.*\\.ico$|api/).*)',
+    '/((?!_next/static|_next/image|favicon\\.ico|manifest\\.json|sitemap\\.xml|robots\\.txt|llms\\.txt|build-id\\.json|.*\\.png$|.*\\.svg$|.*\\.ico$|api/).*)',
   ],
 }

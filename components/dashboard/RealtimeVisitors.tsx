@@ -9,7 +9,7 @@ interface RealtimeVisitorsProps {
 export default function RealtimeVisitors({ count }: RealtimeVisitorsProps) {
   return (
     <div
-      className="glass-surface rounded-2xl p-6"
+      className="glass-surface rounded-xl p-6"
     >
       <div className="flex items-center justify-between mb-2">
         <div className="text-sm text-neutral-400">

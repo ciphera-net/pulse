@@ -291,7 +291,7 @@ export default function IntegrationsPage() {
                         transition={{ duration: 0.5, delay: i * 0.05 }}
                       >
                         <div
-                          className="relative p-6 glass-surface rounded-2xl block h-full"
+                          className="relative p-6 glass-surface rounded-xl block h-full"
                         >
                           <div className="flex items-start mb-6">
                             <div className="p-3 bg-neutral-800 rounded-xl">
@@ -320,7 +320,7 @@ export default function IntegrationsPage() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.3 }}
-              className="max-w-md mx-auto mt-8 p-10 border border-dashed border-neutral-700 rounded-2xl flex flex-col items-center justify-center text-center"
+              className="max-w-md mx-auto mt-8 p-10 border border-dashed border-neutral-700 rounded-xl flex flex-col items-center justify-center text-center"
             >
               <div className="p-4 bg-neutral-800 rounded-full mb-4">
                 <svg className="w-8 h-8 text-neutral-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -353,7 +353,7 @@ export default function IntegrationsPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
-            className="max-w-md mx-auto mt-12 p-6 border border-dashed border-neutral-700 rounded-2xl flex flex-col items-center justify-center text-center"
+            className="max-w-md mx-auto mt-12 p-6 border border-dashed border-neutral-700 rounded-xl flex flex-col items-center justify-center text-center"
           >
             <h3 className="text-xl font-bold text-white mb-2">
               Missing something?

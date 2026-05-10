@@ -245,10 +245,10 @@ export default function PricingSection() {
             <div
               key={plan.id}
               className={cn(
-                'relative flex flex-col rounded-2xl border p-6 transition-all',
+                'relative flex flex-col rounded-xl border p-6 transition-all',
                 isTeam
-                  ? 'border-brand-orange bg-neutral-900/50 shadow-lg shadow-brand-orange/5 lg:scale-105 lg:z-10'
-                  : 'border-neutral-800 bg-neutral-900/50',
+                  ? 'border-brand-orange bg-neutral-900 shadow-lg shadow-brand-orange/5 lg:scale-105 lg:z-10'
+                  : 'border-neutral-800 bg-neutral-900',
               )}
             >
               {/* Badge + plan name */}
@@ -367,7 +367,7 @@ export default function PricingSection() {
       </div>
 
       {/* All plans include row */}
-      <div className="rounded-2xl border border-neutral-800 bg-neutral-900/30 px-6 py-5 mb-4">
+      <div className="rounded-xl border border-neutral-800 bg-neutral-900/30 px-6 py-5 mb-4">
         <p className="text-neutral-400 text-sm font-semibold text-center uppercase tracking-wider mb-4">
           All plans include
         </p>

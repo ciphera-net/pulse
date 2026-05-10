@@ -66,10 +66,10 @@
 @layer components {
   /* * Glass tiers (Phase 2 — premium UI pass) */
   .glass-surface {
-    @apply bg-neutral-900/80 backdrop-blur-sm border border-white/[0.08];
+    @apply bg-neutral-900 border border-neutral-800;
   }
   .glass-overlay {
-    @apply bg-neutral-900/65 backdrop-blur-3xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/60 border border-white/[0.08];
+    @apply bg-neutral-900/70 backdrop-blur-xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/65 border border-neutral-800;
   }
 
   /* * Interactive row — shared hover/active/focus treatment for list rows
@@ -134,15 +134,6 @@
 
   .animate-float {
     animation: float 6s ease-in-out infinite;
-  }
-
-  @keyframes ring-pulse {
-    0%, 100% { box-shadow: 0 0 0 1px rgba(253, 94, 15, 0.08); }
-    50% { box-shadow: 0 0 0 1px rgba(253, 94, 15, 0.20); }
-  }
-
-  .animate-ring-pulse {
-    animation: ring-pulse 3s ease-in-out infinite;
   }
 
   @keyframes fadeIn {

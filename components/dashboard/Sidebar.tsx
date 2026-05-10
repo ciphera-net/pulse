@@ -69,6 +69,11 @@ const SETTINGS_ITEM: NavItem = {
   label: 'Site Settings', href: () => '/settings/site/general', icon: SettingsIcon, matchPrefix: true,
 }
 
+const NAV_SHORTCUTS: Record<string, string> = {
+  Dashboard: 'G D', Journeys: 'G J', Funnels: 'G F', Behavior: 'G B', Search: 'G S',
+  CDN: 'G C', Uptime: 'G U', PageSpeed: 'G P', 'Site Settings': ',',
+}
+
 // Label that fades with the sidebar — always in the DOM, never removed
 function Label({ children, collapsed }: { children: React.ReactNode; collapsed: boolean }) {
   return (
@@ -138,7 +143,7 @@ function NavLink({
     <Link
       href={href}
       onClick={() => { onNavigate(href); onClick?.() }}
-      className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-fast ${
+      className={`group/nav flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-fast ${
         active
           ? 'bg-brand-orange/10 text-brand-orange'
           : 'text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5'
@@ -148,6 +153,15 @@ function NavLink({
         <item.icon className="w-[18px] h-[18px]" weight={active ? 'fill' : 'regular'} />
       </span>
       <Label collapsed={collapsed}>{item.label}</Label>
+      {!collapsed && NAV_SHORTCUTS[item.label] && (
+        <span className="ml-auto flex items-center gap-0.5 opacity-0 group-hover/nav:opacity-100 transition-opacity duration-fast ease-apple">
+          {NAV_SHORTCUTS[item.label].split(' ').map((key) => (
+            <kbd key={key} className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-medium text-neutral-500 bg-neutral-800/80 border border-neutral-700/50 rounded-[3px] shadow-[0_1px_0_rgba(0,0,0,0.3)] leading-none">
+              {key}
+            </kbd>
+          ))}
+        </span>
+      )}
     </Link>
   )
 
@@ -273,13 +287,16 @@ function SidebarContent({
           className={`${c
             ? 'w-9 h-9 flex items-center justify-center mx-auto'
             : 'w-full h-9 flex items-center gap-2 px-3'
-          } rounded-lg border border-neutral-800 bg-neutral-900/50 text-neutral-500 hover:border-neutral-700 hover:text-neutral-400 transition-colors ease-apple cursor-pointer`}
+          } rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-500 hover:border-neutral-700 hover:text-neutral-400 transition-colors ease-apple cursor-pointer`}
         >
           <MagnifyingGlass className="w-4 h-4 shrink-0" />
           {!c && (
             <>
               <span className="text-sm">Search...</span>
-              <span className="ml-auto text-[10px] font-medium text-neutral-600 bg-neutral-800 px-1.5 py-0.5 rounded">⌘K</span>
+              <span className="ml-auto flex items-center gap-0.5">
+                <kbd className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-medium text-neutral-500 bg-neutral-800/80 border border-neutral-700/50 rounded-[3px] shadow-[0_1px_0_rgba(0,0,0,0.3)] leading-none">⌘</kbd>
+                <kbd className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-medium text-neutral-500 bg-neutral-800/80 border border-neutral-700/50 rounded-[3px] shadow-[0_1px_0_rgba(0,0,0,0.3)] leading-none">K</kbd>
+              </span>
             </>
           )}
         </button>
@@ -292,7 +309,7 @@ function SidebarContent({
             <div key={group.label}>
               <div className="h-5 flex items-center overflow-hidden">
                 {c ? (
-                  <div className="mx-1 w-full border-t border-white/[0.04]" />
+                  <div className="mx-1 w-full border-t border-neutral-800" />
                 ) : (
                   <p className="px-2.5 text-caption font-semibold text-neutral-500 uppercase tracking-wider whitespace-nowrap">
                     {group.label}
@@ -315,7 +332,7 @@ function SidebarContent({
           {/* Your Sites */}
           <div>
             {c ? (
-              <div className="mx-3 my-2 border-t border-white/[0.04]" />
+              <div className="mx-3 my-2 border-t border-neutral-800" />
             ) : (
               <div className="h-5 flex items-center overflow-hidden">
                 <p className="px-2.5 text-caption font-semibold text-neutral-500 uppercase tracking-wider whitespace-nowrap">
@@ -334,7 +351,7 @@ function SidebarContent({
           {/* Organization */}
           <div>
             {c ? (
-              <div className="mx-3 my-2 border-t border-white/[0.04]" />
+              <div className="mx-3 my-2 border-t border-neutral-800" />
             ) : (
               <div className="h-5 flex items-center overflow-hidden">
                 <p className="px-2.5 text-caption font-semibold text-neutral-500 uppercase tracking-wider whitespace-nowrap">
@@ -352,7 +369,7 @@ function SidebarContent({
           {/* Resources */}
           <div>
             {c ? (
-              <div className="mx-3 my-2 border-t border-white/[0.04]" />
+              <div className="mx-3 my-2 border-t border-neutral-800" />
             ) : (
               <div className="h-5 flex items-center overflow-hidden">
                 <p className="px-2.5 text-caption font-semibold text-neutral-500 uppercase tracking-wider whitespace-nowrap">
@@ -368,7 +385,7 @@ function SidebarContent({
       )}
 
       {/* Bottom — utility items */}
-      <div className="border-t border-white/[0.06] px-2 py-3 shrink-0">
+      <div className="border-t border-neutral-800/60 px-2 py-3 shrink-0">
         {/* Notifications, Profile — same layout as nav items */}
         <div className="space-y-0.5 mb-1">
           {c ? (
@@ -516,7 +533,7 @@ export default function Sidebar({
                 : 'animate-in slide-in-from-left duration-base'
             }`}
           >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-800/60">
               <span className="text-sm font-semibold text-white">Navigation</span>
               <button onClick={handleMobileClose} className="p-1.5 text-neutral-400 hover:text-neutral-300">
                 <XIcon className="w-5 h-5" />

@@ -183,7 +183,7 @@ export default function UtmBuilder({ initialSiteId }: UtmBuilderProps) {
       </div>
 
       {generatedUrl && (
-        <div className="glass-surface mt-6 p-4 rounded-2xl flex items-center justify-between group">
+        <div className="glass-surface mt-6 p-4 rounded-xl flex items-center justify-between group">
           <code className="text-sm break-all text-brand-orange font-mono">{generatedUrl}</code>
           <Button
             variant="secondary"

@@ -149,7 +149,7 @@ function PageRow({
           ? 'bg-brand-orange/10'
           : isOther
             ? ''
-            : 'hover:bg-neutral-800/50 hover:-translate-y-px hover:shadow-sm'
+            : 'hover:bg-neutral-800'
         }
        ease-apple`}
     >

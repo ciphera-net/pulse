@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next'
+import { writeFileSync } from 'fs'
 import withPWAInit from "@ducanh2912/next-pwa"
 
 const withPWA = withPWAInit({
@@ -23,7 +24,13 @@ const cspDirectives = [
   "form-action 'self' https://*.ciphera.net",
 ].join('; ')
 
+const BUILD_ID = Date.now().toString()
+writeFileSync('public/build-id.json', JSON.stringify({ buildId: BUILD_ID }))
+
 const nextConfig: NextConfig = {
+  env: {
+    NEXT_PUBLIC_BUILD_ID: BUILD_ID,
+  },
   reactStrictMode: true,
   // * Enable standalone output for production deployment
   output: 'standalone',

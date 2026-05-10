@@ -38,7 +38,7 @@ const ACTIONS: ShortcutRow[] = [
 
 function Kbd({ label }: { label: string }) {
   return (
-    <kbd className="inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-md bg-neutral-800/70 border border-white/[0.08] text-xs font-medium text-neutral-300 font-mono">
+    <kbd className="inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-md bg-neutral-800/70 border border-neutral-800 text-xs font-medium text-neutral-300 font-mono">
       {label}
     </kbd>
   )
@@ -98,8 +98,8 @@ export function ShortcutsOverlay({ open, onClose }: ShortcutsOverlayProps) {
             transition={SPRING}
             className="fixed inset-0 z-[101] flex items-center justify-center p-4 pointer-events-none"
           >
-            <div className="pointer-events-auto w-full max-w-2xl glass-overlay rounded-2xl shadow-2xl overflow-hidden">
-              <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.08]">
+            <div className="pointer-events-auto w-full max-w-2xl glass-overlay rounded-xl shadow-2xl overflow-hidden">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-800">
                 <h2 className="text-title-2 font-semibold text-white">Keyboard shortcuts</h2>
                 <button
                   type="button"
@@ -126,7 +126,7 @@ export function ShortcutsOverlay({ open, onClose }: ShortcutsOverlayProps) {
                 </div>
               </div>
 
-              <div className="px-6 py-3 border-t border-white/[0.08] text-xs text-neutral-500 text-center">
+              <div className="px-6 py-3 border-t border-neutral-800 text-xs text-neutral-500 text-center">
                 Press <Kbd label="Esc" /> to close
               </div>
             </div>

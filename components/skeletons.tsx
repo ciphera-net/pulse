@@ -19,7 +19,7 @@ export function SkeletonCircle({ className = '' }: { className?: string }) {
 }
 
 export function SkeletonCard({ className = '' }: { className?: string }) {
-  return <div className={`${SK} rounded-2xl ${className}`} />
+  return <div className={`${SK} rounded-xl ${className}`} />
 }
 
 // ─── List skeleton (icon + two text lines per row) ───────────
@@ -71,7 +71,7 @@ export function TableSkeleton({ rows = 7, cols = 5 }: { rows?: number; cols?: nu
 
 export function WidgetSkeleton() {
   return (
-    <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 h-full flex flex-col">
+    <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6 h-full flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <SkeletonLine className="h-6 w-32" />
         <div className="flex gap-1">
@@ -101,7 +101,7 @@ export function StatCardSkeleton() {
 
 export function ChartSkeleton() {
   return (
-    <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+    <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6">
       <div className="flex items-center justify-between mb-6">
         <div className="flex gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -157,7 +157,7 @@ export function DashboardSkeleton() {
 
       {/* Campaigns table */}
       <div className="mb-8">
-        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+        <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6">
           <SkeletonLine className="h-6 w-32 mb-4" />
           <TableSkeleton rows={7} cols={5} />
         </div>
@@ -187,7 +187,7 @@ export function JourneysSkeleton() {
       {/* Sankey area */}
       <SkeletonCard className="h-[400px] mb-6" />
       {/* Top paths table */}
-      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+      <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6">
         <SkeletonLine className="h-6 w-24 mb-4" />
         <TableSkeleton rows={5} cols={4} />
       </div>
@@ -209,7 +209,7 @@ export function UptimeSkeleton() {
         <SkeletonLine className="h-9 w-36 rounded-lg" />
       </div>
       {/* Overall status card */}
-      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 mb-6">
+      <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-5 mb-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <SkeletonCircle className="w-3.5 h-3.5" />
@@ -223,7 +223,7 @@ export function UptimeSkeleton() {
         </div>
       </div>
       {/* 90-day uptime bar */}
-      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 mb-6">
+      <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-5 mb-6">
         <SkeletonLine className="h-3 w-28 mb-3" />
         <SkeletonLine className="h-6 w-full rounded-sm" />
         <div className="flex justify-between mt-1.5">
@@ -232,7 +232,7 @@ export function UptimeSkeleton() {
         </div>
       </div>
       {/* Monitor details + chart + checks */}
-      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5">
+      <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-5">
         {/* 4-col detail grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -284,7 +284,7 @@ export function FunnelsListSkeleton() {
         </div>
         <div className="grid gap-4">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+            <div key={i} className="bg-neutral-900 border border-neutral-800 rounded-xl p-6">
               <SkeletonLine className="h-6 w-40 mb-2" />
               <SkeletonLine className="h-4 w-64 mb-4" />
               <div className="flex items-center gap-2">
@@ -332,7 +332,7 @@ export function SitesListSkeleton({ rows = 3 }: { rows?: number }) {
       {Array.from({ length: rows }).map((_, i) => (
         <div
           key={i}
-          className="flex flex-col rounded-2xl border border-neutral-800 bg-neutral-900 p-6"
+          className="flex flex-col rounded-xl border border-neutral-800 bg-neutral-900 p-6"
         >
           <div className="flex items-start justify-between mb-6">
             <div className="flex items-center gap-4">
@@ -402,7 +402,7 @@ export function GoalsListSkeleton() {
   return (
     <div className="space-y-2">
       {Array.from({ length: 3 }).map((_, i) => (
-        <div key={i} className="flex items-center justify-between py-3 px-4 rounded-2xl border border-neutral-800">
+        <div key={i} className="flex items-center justify-between py-3 px-4 rounded-xl border border-neutral-800">
           <div className="flex items-center gap-2">
             <SkeletonLine className="h-4 w-24" />
             <SkeletonLine className="h-3 w-20" />
@@ -446,7 +446,7 @@ export function BehaviorSkeleton() {
       {/* Summary cards (3 cols) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 space-y-3">
+          <div key={i} className="bg-neutral-900 border border-neutral-800 rounded-xl p-6 space-y-3">
             <SkeletonLine className="h-4 w-24" />
             <SkeletonLine className="h-8 w-16" />
             <SkeletonLine className="h-3 w-32" />
@@ -462,7 +462,7 @@ export function BehaviorSkeleton() {
 
       {/* By-page table */}
       <div className="mb-8">
-        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+        <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6">
           <SkeletonLine className="h-6 w-40 mb-2" />
           <SkeletonLine className="h-4 w-64 mb-4" />
           <TableSkeleton rows={5} cols={4} />

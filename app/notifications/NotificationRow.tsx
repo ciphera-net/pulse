@@ -114,7 +114,7 @@ export default function NotificationRow({ receipt, onChange }: NotificationRowPr
             <div className="px-4 pb-4 text-sm text-neutral-300 space-y-3">
               {body && <p>{body}</p>}
 
-              <div className="rounded border border-white/[0.06] bg-white/[0.02] p-3 text-xs text-neutral-400 space-y-1">
+              <div className="rounded border border-neutral-800/60 bg-white/[0.02] p-3 text-xs text-neutral-400 space-y-1">
                 <div><span className="text-neutral-500">Type:</span> {receipt.event.type}</div>
                 <div><span className="text-neutral-500">Created:</span> {new Date(receipt.event.created_at).toLocaleString()}</div>
                 <div><span className="text-neutral-500">Expires:</span> {new Date(receipt.event.expires_at).toLocaleString()}</div>

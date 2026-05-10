@@ -29,7 +29,7 @@ function SiteCard({ site, stats, statsLoading }: SiteCardProps) {
   const pageviews = stats?.pageviews ?? 0
 
   return (
-    <div className="group relative flex flex-col rounded-2xl border border-neutral-800 bg-neutral-900 p-6 shadow-sm transition-all duration-base hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99] ease-apple">
+    <div className="group relative flex flex-col rounded-xl border border-neutral-800 bg-neutral-900 p-6 transition-all duration-base hover:border-neutral-700 active:scale-[0.99] ease-apple">
       {/* Header: Icon + Name + Live Status */}
       <div className="flex items-start justify-between mb-6">
         <div className="flex items-center gap-4">
@@ -63,7 +63,7 @@ function SiteCard({ site, stats, statsLoading }: SiteCardProps) {
         {site.is_verified ? (
           <div className="flex items-center gap-2 rounded-full bg-green-900/20 px-2 py-1 text-xs font-medium text-green-400">
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
             </span>
             Active
@@ -124,7 +124,7 @@ export default function SiteList({ sites, siteStats, loading }: SiteListProps) {
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-48 animate-skeleton-fade rounded-2xl bg-neutral-800" />
+          <div key={i} className="h-48 animate-skeleton-fade rounded-xl bg-neutral-800" />
         ))}
       </div>
     )
@@ -132,7 +132,7 @@ export default function SiteList({ sites, siteStats, loading }: SiteListProps) {
 
   if (sites.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-neutral-700">
+      <div className="rounded-xl border border-dashed border-neutral-700">
         <EmptyState
           icon={<PlusCircle />}
           title="No sites yet"
@@ -158,7 +158,7 @@ export default function SiteList({ sites, siteStats, loading }: SiteListProps) {
       })}
 
       {/* Resources Card */}
-      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-neutral-700 bg-neutral-900 p-6 text-center">
+      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-neutral-700 bg-neutral-900 p-6 text-center">
         <div className="mb-3 rounded-full bg-neutral-800 p-3">
           <BookOpenIcon className="h-6 w-6 text-neutral-500" />
         </div>

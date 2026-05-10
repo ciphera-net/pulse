@@ -428,14 +428,14 @@ export default function SiteDashboardPage() {
           className="flex items-center gap-2 hover:opacity-80 transition-opacity"
         >
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
+            <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
             <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
           </span>
           <span className="text-sm text-neutral-400 tabular-nums">{realtime} current visitors</span>
         </button>
         {realtimePagesOpen && realtimePages && realtimePages.length > 0 && (
           <div className="absolute top-full left-0 mt-2 w-72 z-50">
-            <div className="rounded-xl border border-neutral-800 bg-neutral-900/95 backdrop-blur-lg shadow-xl shadow-black/30 p-3 space-y-1">
+            <div className="rounded-xl border border-neutral-800 bg-neutral-900 shadow-xl shadow-black/30 p-3 space-y-1">
               <p className="text-xs font-medium text-neutral-500 mb-2">Active pages</p>
               {realtimePages.slice(0, 10).map(p => (
                 <div key={p.path} className="flex justify-between items-center text-sm py-0.5">
@@ -450,7 +450,7 @@ export default function SiteDashboardPage() {
       <div className="flex-1" />
       <FilterPills filters={filters} onEdit={handleEditFilter} onRemove={handleRemoveFilter} onClear={handleClearFilters} />
       <FilterButton hasActiveFilters={filters.length > 0} onSelectDimension={handleOpenFilterForDimension} />
-      <div className="flex items-center h-10 rounded-lg border border-white/[0.08] bg-neutral-900/80 shadow-sm">
+      <div className="flex items-center h-10 rounded-lg border border-neutral-800 bg-neutral-900">
         <button onClick={() => shiftPeriod(-1)} className="px-2 h-full text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors rounded-l-lg ease-apple" aria-label="Previous period">
           <ChevronLeftIcon className="w-4 h-4" weight="bold" />
         </button>

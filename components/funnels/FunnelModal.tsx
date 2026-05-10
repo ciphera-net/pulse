@@ -94,7 +94,7 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData }: 
       >
         {/* Glass panel — static, not animated. Identical class to UnifiedSettingsModal. */}
         <div
-          className="relative w-full max-w-2xl h-[85vh] glass-overlay rounded-2xl shadow-xl shadow-black/20 flex flex-col overflow-hidden"
+          className="relative w-full max-w-2xl h-[85vh] glass-overlay rounded-xl shadow-xl shadow-black/20 flex flex-col overflow-hidden"
           onClick={e => e.stopPropagation()}
         >
           {/* Content animates inside the static panel — identical to UnifiedSettingsModal */}
@@ -108,7 +108,7 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData }: 
                 transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
               >
                 {/* Header — matches UnifiedSettingsModal */}
-                <div className="shrink-0 px-6 pt-5 pb-4 border-b border-white/[0.06]">
+                <div className="shrink-0 px-6 pt-5 pb-4 border-b border-neutral-800/60">
                   <div className="flex items-center justify-between">
                     <h2 className="text-lg font-semibold text-white">{initialData ? 'Edit Funnel' : 'Create Funnel'}</h2>
                     <button
@@ -214,7 +214,7 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData }: 
                 </div>
 
                 {/* Footer — matches UnifiedSettingsModal save bar border */}
-                <div className="shrink-0 px-6 py-3 border-t border-white/[0.06] flex justify-end gap-2">
+                <div className="shrink-0 px-6 py-3 border-t border-neutral-800/60 flex justify-end gap-2">
                   <Button variant="secondary" onClick={onClose} disabled={saving}>Cancel</Button>
                   <Button variant="primary" onClick={handleSubmit} disabled={saving}>
                     {saving && <Spinner className="w-4 h-4" />}

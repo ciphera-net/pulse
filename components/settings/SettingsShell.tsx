@@ -187,7 +187,7 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <div className="glass-surface rounded-2xl p-6">
+          <div className="glass-surface rounded-xl p-6">
             {children}
           </div>
         </div>

@@ -40,7 +40,7 @@ export default function FilterButton({ hasActiveFilters, onSelectDimension }: Fi
         className={`inline-flex items-center gap-2 h-10 px-4 text-sm font-medium rounded-lg border shadow-sm transition-[color,background-color,border-color,transform] active:scale-[0.97] cursor-pointer ${
           hasActiveFilters || open
             ? 'bg-brand-orange/10 text-brand-orange border-brand-orange/30'
-            : 'bg-neutral-900/80 text-neutral-300 hover:bg-neutral-800 hover:text-white border-white/[0.08]'
+            : 'bg-neutral-900 text-neutral-300 hover:bg-neutral-800 hover:text-white border-neutral-800'
         } ease-apple`}
       >
         <MagnifyingGlass className="w-3.5 h-3.5" weight="bold" />

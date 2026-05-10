@@ -47,14 +47,14 @@ export default function WebhooksSection() {
       {error && <div className="text-red-400 text-sm">{error}</div>}
       {webhooks === null && <div className="text-neutral-500 text-sm">Loading…</div>}
       {webhooks && webhooks.length === 0 && (
-        <div className="text-neutral-500 text-sm py-6 text-center border border-white/[0.06] rounded">
+        <div className="text-neutral-500 text-sm py-6 text-center border border-neutral-800/60 rounded">
           No webhooks configured.
         </div>
       )}
       {webhooks && webhooks.length > 0 && (
         <ul className="space-y-2">
           {webhooks.map(w => (
-            <li key={w.id} className="flex items-center justify-between p-3 rounded border border-white/[0.06] bg-white/[0.02]">
+            <li key={w.id} className="flex items-center justify-between p-3 rounded border border-neutral-800/60 bg-white/[0.02]">
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-white">{w.label || '(no label)'}</p>
                 <p className="text-xs text-neutral-500 font-mono truncate">{w.url_masked}</p>

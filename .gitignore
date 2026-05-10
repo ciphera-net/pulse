@@ -2,6 +2,7 @@
 
 # auto-generated
 /lib/integration-guides.gen.ts
+/public/build-id.json
 
 # dependencies
 /node_modules
