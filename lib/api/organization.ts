@@ -100,10 +100,12 @@ export async function sendInvitation(
   role: string = 'member',
   captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string },
   role_id?: string,
+  site_ids?: string[],
 ): Promise<OrganizationInvitation> {
-  const body: Record<string, string> = { email, role }
+  const body: Record<string, unknown> = { email, role }
 
   if (role_id) body.role_id = role_id
+  if (site_ids && site_ids.length > 0) body.site_ids = site_ids
 
   if (captcha?.captcha_id) body.captcha_id = captcha.captcha_id
   if (captcha?.captcha_solution) body.captcha_solution = captcha.captcha_solution
@@ -125,5 +127,14 @@ export async function getInvitations(organizationId: string): Promise<Organizati
 export async function revokeInvitation(organizationId: string, inviteId: string): Promise<void> {
   await authFetch(`/auth/organizations/${organizationId}/invites/${inviteId}`, {
     method: 'DELETE',
+  })
+}
+
+// Transfer ownership of an organization to another member.
+// After a successful transfer the caller becomes a regular member.
+export async function transferOwnership(organizationId: string, targetUserId: string): Promise<void> {
+  await authFetch(`/auth/organizations/${organizationId}/transfer-ownership`, {
+    method: 'POST',
+    body: JSON.stringify({ target_user_id: targetUserId }),
   })
 }

@@ -9,6 +9,7 @@ import { useCan } from '@/lib/auth/permissions'
 import { getOrganizationMembers, removeOrganizationMember, sendInvitation, getInvitations, revokeInvitation, type OrganizationMember, type OrganizationInvitation } from '@/lib/api/organization'
 import { listRoles, type Role } from '@/lib/api/roles'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
+import { useSites } from '@/lib/swr/sites'
 
 function RoleBadge({ role, roles }: { role: string; roles: Role[] }) {
   if (role === 'owner') return (
@@ -39,8 +40,10 @@ export default function WorkspaceMembersTab() {
   const [loading, setLoading] = useState(true)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRoleId, setInviteRoleId] = useState('')
+  const [inviteSiteIds, setInviteSiteIds] = useState<string[]>([])
   const [inviting, setInviting] = useState(false)
   const [showInvite, setShowInvite] = useState(false)
+  const { sites } = useSites()
 
   const canManage = useCan('team.manage')
 
@@ -48,6 +51,20 @@ export default function WorkspaceMembersTab() {
   const inviteRoleOptions = roles
     .filter(r => r.slug !== 'owner')
     .map(r => ({ value: r.id, label: r.name }))
+
+  const selectedRole = roles.find(r => r.id === inviteRoleId) ?? null
+  const inviteRoleIsSiteScoped = selectedRole?.site_scoped === true
+
+  const handleInviteRoleChange = (roleId: string) => {
+    setInviteRoleId(roleId)
+    setInviteSiteIds([])
+  }
+
+  const toggleInviteSiteId = (siteId: string) => {
+    setInviteSiteIds(prev =>
+      prev.includes(siteId) ? prev.filter(id => id !== siteId) : [...prev, siteId]
+    )
+  }
 
   const loadMembers = async () => {
     if (!user?.org_id) return
@@ -75,11 +92,12 @@ export default function WorkspaceMembersTab() {
     if (!user?.org_id || !inviteEmail.trim() || !inviteRoleId) return
     setInviting(true)
     try {
-      const selectedRole = roles.find(r => r.id === inviteRoleId)
       const roleSlug = selectedRole?.slug ?? 'member'
-      await sendInvitation(user.org_id, inviteEmail.trim(), roleSlug, undefined, inviteRoleId)
+      const siteIdsPayload = inviteRoleIsSiteScoped ? inviteSiteIds : undefined
+      await sendInvitation(user.org_id, inviteEmail.trim(), roleSlug, undefined, inviteRoleId, siteIdsPayload)
       toast.success(`Invitation sent to ${inviteEmail}`)
       setInviteEmail('')
+      setInviteSiteIds([])
       setShowInvite(false)
       loadMembers()
     } catch (err) {
@@ -143,12 +161,35 @@ export default function WorkspaceMembersTab() {
             </div>
             <Select
               value={inviteRoleId}
-              onChange={setInviteRoleId}
+              onChange={handleInviteRoleChange}
               variant="input"
               className="w-32"
               options={inviteRoleOptions}
             />
           </div>
+          {inviteRoleIsSiteScoped && sites.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-xs text-neutral-500 font-medium">
+                This role is site-scoped — select the sites this member can access:
+              </p>
+              <ul className="space-y-1 max-h-40 overflow-y-auto">
+                {sites.map(site => (
+                  <li key={site.id} className="flex items-center gap-2.5">
+                    <input
+                      id={`invite-site-${site.id}`}
+                      type="checkbox"
+                      checked={inviteSiteIds.includes(site.id)}
+                      onChange={() => toggleInviteSiteId(site.id)}
+                      className="w-4 h-4 rounded border-neutral-600 bg-neutral-800 accent-brand-orange cursor-pointer"
+                    />
+                    <label htmlFor={`invite-site-${site.id}`} className="text-sm text-white cursor-pointer truncate">
+                      {site.name || site.domain}
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <div className="flex gap-2 justify-end">
             <Button onClick={() => setShowInvite(false)} variant="secondary" className="text-sm">Cancel</Button>
             <Button onClick={handleInvite} variant="primary" className="text-sm gap-1.5" disabled={inviting || !inviteRoleId}>

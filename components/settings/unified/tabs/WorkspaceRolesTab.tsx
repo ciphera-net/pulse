@@ -29,6 +29,7 @@ import {
   type Role,
   type PermissionGroup,
 } from '@/lib/api/roles'
+import { useSites } from '@/lib/swr/sites'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -260,30 +261,40 @@ function RoleCard({
   const [editingName, setEditingName] = useState(false)
   const [nameValue, setNameValue] = useState(role.name)
   const [permissions, setPermissions] = useState<string[]>(role.permissions)
+  const [siteScoped, setSiteScoped] = useState(role.site_scoped ?? false)
+  const [siteIds, setSiteIds] = useState<string[]>(role.site_ids ?? [])
   const [saving, setSaving] = useState(false)
   const [savingIndicator, setSavingIndicator] = useState(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const { sites } = useSites()
 
   const isOwner = role.slug === 'owner'
 
-  // Auto-save permissions with debounce
+  // Auto-save permissions (and site-scoping) with debounce
   const scheduleSave = useCallback(
-    (nextPerms: string[]) => {
+    (nextPerms: string[], nextSiteScoped: boolean, nextSiteIds: string[]) => {
       if (saveTimer.current) clearTimeout(saveTimer.current)
       saveTimer.current = setTimeout(async () => {
         setSavingIndicator(true)
         try {
-          await updateRole(role.id, { name: role.name, permissions: nextPerms })
+          await updateRole(role.id, {
+            name: role.name,
+            permissions: nextPerms,
+            site_scoped: nextSiteScoped,
+            site_ids: nextSiteScoped ? nextSiteIds : [],
+          })
         } catch (err) {
           toast.error(getAuthErrorMessage(err as Error) || 'Failed to save permissions')
           // Revert
           setPermissions(role.permissions)
+          setSiteScoped(role.site_scoped ?? false)
+          setSiteIds(role.site_ids ?? [])
         } finally {
           setSavingIndicator(false)
         }
       }, 400)
     },
-    [role.id, role.name, role.permissions]
+    [role.id, role.name, role.permissions, role.site_scoped, role.site_ids]
   )
 
   const togglePerm = (perm: string) => {
@@ -293,7 +304,27 @@ function RoleCard({
       : [...permissions, perm]
     setPermissions(next)
     onUpdated({ ...role, permissions: next })
-    scheduleSave(next)
+    scheduleSave(next, siteScoped, siteIds)
+  }
+
+  const toggleSiteScoped = () => {
+    if (!canManage || role.is_builtin) return
+    const next = !siteScoped
+    const nextIds = next ? siteIds : []
+    setSiteScoped(next)
+    if (!next) setSiteIds([])
+    onUpdated({ ...role, site_scoped: next, site_ids: nextIds })
+    scheduleSave(permissions, next, nextIds)
+  }
+
+  const toggleSiteId = (siteId: string) => {
+    if (!canManage || role.is_builtin) return
+    const next = siteIds.includes(siteId)
+      ? siteIds.filter((id) => id !== siteId)
+      : [...siteIds, siteId]
+    setSiteIds(next)
+    onUpdated({ ...role, site_ids: next })
+    scheduleSave(permissions, siteScoped, next)
   }
 
   const handleSaveName = async () => {
@@ -304,7 +335,12 @@ function RoleCard({
     }
     setSaving(true)
     try {
-      await updateRole(role.id, { name: nameValue.trim(), permissions })
+      await updateRole(role.id, {
+        name: nameValue.trim(),
+        permissions,
+        site_scoped: siteScoped,
+        site_ids: siteScoped ? siteIds : [],
+      })
       onUpdated({ ...role, name: nameValue.trim() })
       setEditingName(false)
       toast.success('Role name updated')
@@ -441,6 +477,58 @@ function RoleCard({
               {/* Auto-save indicator */}
               {savingIndicator && (
                 <p className="text-xs text-neutral-500">Saving…</p>
+              )}
+
+              {/* Site-scoped toggle */}
+              {!isOwner && (
+                <div className="space-y-2 pb-1 border-b border-neutral-800">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-white">Site-scoped</p>
+                      {role.is_builtin ? (
+                        <p className="text-xs text-neutral-500 mt-0.5">
+                          Built-in roles always have access to all sites.
+                        </p>
+                      ) : (
+                        <p className="text-xs text-neutral-500 mt-0.5">
+                          When enabled, this role only has access to the selected sites.
+                        </p>
+                      )}
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={siteScoped}
+                      disabled={!canManage || role.is_builtin}
+                      onChange={toggleSiteScoped}
+                      className="w-4 h-4 rounded border-neutral-600 bg-neutral-800 accent-brand-orange cursor-pointer disabled:cursor-not-allowed shrink-0"
+                    />
+                  </div>
+                  {siteScoped && !role.is_builtin && sites.length > 0 && (
+                    <div className="space-y-1 pl-1">
+                      <p className="text-xs text-neutral-500 font-medium mb-1.5">Allowed sites</p>
+                      <ul className="space-y-1 max-h-40 overflow-y-auto pr-1">
+                        {sites.map((site) => (
+                          <li key={site.id} className="flex items-center gap-2.5">
+                            <input
+                              id={`${role.id}-site-${site.id}`}
+                              type="checkbox"
+                              checked={siteIds.includes(site.id)}
+                              disabled={!canManage}
+                              onChange={() => toggleSiteId(site.id)}
+                              className="w-4 h-4 rounded border-neutral-600 bg-neutral-800 accent-brand-orange cursor-pointer disabled:cursor-not-allowed"
+                            />
+                            <label
+                              htmlFor={`${role.id}-site-${site.id}`}
+                              className="text-sm text-white cursor-pointer truncate"
+                            >
+                              {site.name || site.domain}
+                            </label>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
               )}
 
               {permissionGroups.map((group) => (

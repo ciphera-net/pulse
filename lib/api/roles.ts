@@ -8,6 +8,8 @@ export interface Role {
   is_builtin: boolean
   color: string | null
   permissions: string[]
+  site_scoped: boolean
+  site_ids?: string[]
   created_at: string
   updated_at: string
 }
@@ -35,6 +37,8 @@ export const createRole = (data: {
   slug: string
   color?: string
   permissions: string[]
+  site_scoped?: boolean
+  site_ids?: string[]
 }) =>
   apiRequest<Role>('/roles', {
     method: 'POST',
@@ -43,7 +47,7 @@ export const createRole = (data: {
 
 export const updateRole = (
   roleId: string,
-  data: { name: string; color?: string; permissions: string[] }
+  data: { name: string; color?: string; permissions: string[]; site_scoped?: boolean; site_ids?: string[] }
 ) =>
   apiRequest<void>(`/roles/${roleId}`, {
     method: 'PATCH',
@@ -57,4 +61,4 @@ export const listPermissionGroups = () =>
   apiRequest<{ groups: PermissionGroup[] }>('/roles/permissions')
 
 export const getMyPermissions = () =>
-  apiRequest<{ permissions: string[] }>('/roles/my-permissions')
+  apiRequest<{ permissions: string[]; site_scoped: boolean; site_ids?: string[] }>('/roles/my-permissions')

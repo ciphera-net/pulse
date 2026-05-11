@@ -54,11 +54,23 @@ export function usePermissions(): Set<Permission> {
   const { user } = useAuth()
   const { data } = useSWR(
     user ? 'permissions' : null,
-    () => getMyPermissions().then(r => r.permissions),
-    { revalidateOnFocus: false, dedupingInterval: 300_000, fallbackData: [] }
+    () => getMyPermissions(),
+    { revalidateOnFocus: false, dedupingInterval: 300_000 }
   )
-  if (data && data.length > 0) return new Set(data as Permission[])
+  const permissions = data?.permissions ?? []
+  if (permissions.length > 0) return new Set(permissions as Permission[])
   return getDefaultPermissions(user?.role)
+}
+
+export function useSiteAccess(): { siteScoped: boolean; siteIds: string[] | null } {
+  const { user } = useAuth()
+  const { data } = useSWR(
+    user ? 'permissions' : null,
+    () => getMyPermissions(),
+    { revalidateOnFocus: false, dedupingInterval: 300_000 }
+  )
+  if (data?.site_scoped) return { siteScoped: true, siteIds: data.site_ids ?? [] }
+  return { siteScoped: false, siteIds: null }
 }
 
 export function useCan(perm: Permission): boolean {
