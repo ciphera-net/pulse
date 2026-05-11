@@ -60,6 +60,9 @@ export default function SiteSettingsTabPage() {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [siteSearch, setSiteSearch] = useState('')
 
+  const requiredPerm = SITE_TAB_PERMISSIONS[tab]
+  const hasAccess = useCan(requiredPerm as Permission)
+
   const filteredSites = siteSearch.trim()
     ? sites.filter(s => s.name.toLowerCase().includes(siteSearch.toLowerCase()) || s.domain.toLowerCase().includes(siteSearch.toLowerCase()))
     : sites
@@ -105,8 +108,6 @@ export default function SiteSettingsTabPage() {
     return null
   }
 
-  const requiredPerm = SITE_TAB_PERMISSIONS[tab]
-  const hasAccess = useCan(requiredPerm as Permission)
 
   const TabComponent = TAB_COMPONENTS[tab]
 
