@@ -288,8 +288,10 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
                             onClick={() => handleNotificationClick(r)}
                             className={`block px-4 py-3 hover:bg-white/[0.06] transition-colors ${isUnread ? 'bg-brand-orange/10' : ''} ease-apple`}
                           >
-                            <div className="flex gap-3">
-                              {getTypeIcon(r.event.type)}
+                            <div className="flex gap-3 items-start">
+                              <span className="w-8 h-8 rounded-lg bg-neutral-800/60 flex items-center justify-center shrink-0 mt-0.5">
+                                {getTypeIcon(r.event.type)}
+                              </span>
                               <div className="min-w-0 flex-1">
                                 <p className={`text-sm ${isUnread ? 'font-medium' : ''} text-white`}>
                                   {title}
@@ -314,8 +316,10 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
                             onClick={() => handleNotificationClick(r)}
                             className={`w-full text-left block px-4 py-3 hover:bg-white/[0.06] cursor-pointer ${isUnread ? 'bg-brand-orange/10' : ''}`}
                           >
-                            <div className="flex gap-3">
-                              {getTypeIcon(r.event.type)}
+                            <div className="flex gap-3 items-start">
+                              <span className="w-8 h-8 rounded-lg bg-neutral-800/60 flex items-center justify-center shrink-0 mt-0.5">
+                                {getTypeIcon(r.event.type)}
+                              </span>
                               <div className="min-w-0 flex-1">
                                 <p className={`text-sm ${isUnread ? 'font-medium' : ''} text-white`}>
                                   {title}
