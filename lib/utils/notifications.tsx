@@ -22,6 +22,7 @@ import {
   Heartbeat,
   ArrowFatLineDown,
 } from '@phosphor-icons/react'
+import type { ReactElement } from 'react'
 import { formatRelativeTime } from './formatDate'
 
 /**
@@ -36,7 +37,7 @@ export function formatTimeAgo(dateStr: string): string {
  * icon and colour. Falls back to a lightning bolt for unknown types.
  */
 export function getTypeIcon(type: string) {
-  const iconMap: Record<string, JSX.Element> = {
+  const iconMap: Record<string, ReactElement> = {
     billing_payment_failed:        <Warning          className="w-4 h-4 shrink-0 text-red-400"      aria-hidden="true" />,
     billing_plan_renewed:          <CreditCard       className="w-4 h-4 shrink-0 text-green-400"    aria-hidden="true" />,
     billing_usage_limit:           <Warning          className="w-4 h-4 shrink-0 text-amber-400"    aria-hidden="true" />,
