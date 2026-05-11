@@ -425,7 +425,9 @@ function RoleCard({
             <p className="text-xs text-neutral-500 mt-0.5">
               {role.slug === 'owner' && 'Full access to everything. Cannot be modified.'}
               {role.slug === 'admin' && 'Manage sites, team, and settings. Cannot access billing or delete the workspace.'}
+              {role.slug === 'analyst' && 'Create and manage goals, funnels, and reports. Cannot manage sites, team, or billing.'}
               {role.slug === 'member' && 'Read-only access to dashboards, analytics, and team. Cannot create, edit, or delete anything.'}
+              {role.slug === 'viewer' && 'View dashboards and analytics only. Cannot export data or change anything.'}
             </p>
           )}
         </div>

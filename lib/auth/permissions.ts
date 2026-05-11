@@ -31,12 +31,25 @@ const DEFAULT_ADMIN_PERMS: Permission[] = [
   'audit.view',
 ]
 
+const DEFAULT_ANALYST_PERMS: Permission[] = [
+  'sites.view',
+  'analytics.view', 'analytics.export',
+  'goals.manage', 'funnels.manage', 'reports.manage',
+  'quarantine.view',
+  'team.view',
+]
+
 const DEFAULT_MEMBER_PERMS: Permission[] = [
   'sites.view',
   'analytics.view', 'analytics.export',
   'quarantine.view',
   'billing.view',
   'team.view',
+]
+
+const DEFAULT_VIEWER_PERMS: Permission[] = [
+  'sites.view',
+  'analytics.view',
 ]
 
 function getDefaultPermissions(role?: string): Set<Permission> {
@@ -46,7 +59,9 @@ function getDefaultPermissions(role?: string): Set<Permission> {
     'sites.reset_data', 'billing.manage', 'roles.manage', 'org.delete',
   ] as Permission[])
   if (role === 'admin') return new Set(DEFAULT_ADMIN_PERMS)
+  if (role === 'analyst') return new Set(DEFAULT_ANALYST_PERMS)
   if (role === 'member') return new Set(DEFAULT_MEMBER_PERMS)
+  if (role === 'viewer') return new Set(DEFAULT_VIEWER_PERMS)
   return new Set()
 }
 
