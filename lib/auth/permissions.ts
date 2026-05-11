@@ -1,6 +1,8 @@
 'use client'
 
 import { useAuth } from '@/lib/auth/context'
+import { getMyPermissions } from '@/lib/api/roles'
+import useSWR from 'swr'
 
 export type Permission =
   | 'sites.view' | 'sites.create' | 'sites.edit' | 'sites.delete' | 'sites.reset_data'
@@ -50,9 +52,12 @@ function getDefaultPermissions(role?: string): Set<Permission> {
 
 export function usePermissions(): Set<Permission> {
   const { user } = useAuth()
-  // For now, resolve from the role slug in the JWT.
-  // When the backend adds GET /api/v1/roles/my-permissions,
-  // this will switch to an SWR fetch for custom role support.
+  const { data } = useSWR(
+    user ? 'permissions' : null,
+    () => getMyPermissions().then(r => r.permissions),
+    { revalidateOnFocus: false, dedupingInterval: 300_000, fallbackData: [] }
+  )
+  if (data && data.length > 0) return new Set(data as Permission[])
   return getDefaultPermissions(user?.role)
 }
 

@@ -56,6 +56,9 @@ export default function CategoryTogglesSection() {
                   {critical && <span className="text-micro-label uppercase tracking-wider text-brand-orange border border-brand-orange/30 rounded px-1.5 py-0.5">Always on</span>}
                 </p>
                 <p className="text-xs text-neutral-500 mt-0.5">{c.description}</p>
+                {(c.id === 'security' || c.id === 'team' || c.id === 'system') && (
+                  <p className="text-xs text-neutral-600 mt-0.5 italic">No notifications of this type are being generated yet.</p>
+                )}
               </div>
               <label className={`relative inline-flex items-center ${critical ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
                 <input
