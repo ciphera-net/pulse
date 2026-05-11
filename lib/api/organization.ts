@@ -95,17 +95,20 @@ export async function removeOrganizationMember(organizationId: string, userId: s
 
 // Send an invitation
 export async function sendInvitation(
-  organizationId: string, 
-  email: string, 
+  organizationId: string,
+  email: string,
   role: string = 'member',
-  captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
+  captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string },
+  role_id?: string,
 ): Promise<OrganizationInvitation> {
   const body: Record<string, string> = { email, role }
+
+  if (role_id) body.role_id = role_id
 
   if (captcha?.captcha_id) body.captcha_id = captcha.captcha_id
   if (captcha?.captcha_solution) body.captcha_solution = captcha.captcha_solution
   if (captcha?.captcha_token) body.captcha_token = captcha.captcha_token
-  
+
   return await authFetch<OrganizationInvitation>(`/auth/organizations/${organizationId}/invites`, {
     method: 'POST',
     body: JSON.stringify(body),
