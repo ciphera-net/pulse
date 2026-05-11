@@ -67,14 +67,14 @@ function getDefaultPermissions(role?: string): Set<Permission> {
 
 export function usePermissions(): Set<Permission> {
   const { user } = useAuth()
-  const { data } = useSWR(
+  const { data, error } = useSWR(
     user ? 'permissions' : null,
     () => getMyPermissions(),
     { revalidateOnFocus: false, dedupingInterval: 300_000 }
   )
-  const permissions = data?.permissions ?? []
-  if (permissions.length > 0) return new Set(permissions as Permission[])
-  return getDefaultPermissions(user?.role)
+  if (data?.permissions) return new Set(data.permissions as Permission[])
+  if (error) return getDefaultPermissions(user?.role)
+  return new Set()
 }
 
 export function useSiteAccess(): { siteScoped: boolean; siteIds: string[] | null } {
