@@ -58,7 +58,8 @@ function InviteContent() {
     setAccepting(true)
     try {
       await acceptInvitation(token)
-      router.push('/')
+      // Hard reload to force JWT refresh with new org context
+      window.location.href = '/'
     } catch (err: unknown) {
       const apiErr = err as { status?: number }
       if (apiErr.status === 401) {
