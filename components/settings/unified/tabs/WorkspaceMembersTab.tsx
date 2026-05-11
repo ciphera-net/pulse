@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Button, Input, Select, toast, Spinner } from '@ciphera-net/ui'
+import { Button, Input, Select, toast, Spinner, Captcha } from '@ciphera-net/ui'
 import { Plus, Trash, EnvelopeSimple, Crown, UserCircle, Users } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useAuth } from '@/lib/auth/context'
@@ -43,6 +43,8 @@ export default function WorkspaceMembersTab() {
   const [inviteSiteIds, setInviteSiteIds] = useState<string[]>([])
   const [inviting, setInviting] = useState(false)
   const [showInvite, setShowInvite] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState('')
+  const [captchaNonce, setCaptchaNonce] = useState(0)
   const { sites } = useSites()
 
   const canManage = useCan('team.manage')
@@ -90,18 +92,26 @@ export default function WorkspaceMembersTab() {
 
   const handleInvite = async () => {
     if (!user?.org_id || !inviteEmail.trim() || !inviteRoleId) return
+    if (!captchaToken) {
+      toast.error('Please complete the captcha')
+      return
+    }
     setInviting(true)
     try {
       const roleSlug = selectedRole?.slug ?? 'member'
       const siteIdsPayload = inviteRoleIsSiteScoped ? inviteSiteIds : undefined
-      await sendInvitation(user.org_id, inviteEmail.trim(), roleSlug, undefined, inviteRoleId, siteIdsPayload)
+      await sendInvitation(user.org_id, inviteEmail.trim(), roleSlug, { captcha_token: captchaToken }, inviteRoleId, siteIdsPayload)
       toast.success(`Invitation sent to ${inviteEmail}`)
       setInviteEmail('')
       setInviteSiteIds([])
+      setCaptchaToken('')
+      setCaptchaNonce((n) => n + 1)
       setShowInvite(false)
       loadMembers()
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to invite member')
+      setCaptchaToken('')
+      setCaptchaNonce((n) => n + 1)
     } finally {
       setInviting(false)
     }
@@ -190,9 +200,13 @@ export default function WorkspaceMembersTab() {
               </ul>
             </div>
           )}
+          <Captcha
+            key={captchaNonce}
+            onVerify={(_id, _solution, token) => setCaptchaToken(token || '')}
+          />
           <div className="flex gap-2 justify-end">
             <Button onClick={() => setShowInvite(false)} variant="secondary" className="text-sm">Cancel</Button>
-            <Button onClick={handleInvite} variant="primary" className="text-sm gap-1.5" disabled={inviting || !inviteRoleId}>
+            <Button onClick={handleInvite} variant="primary" className="text-sm gap-1.5" disabled={inviting || !inviteEmail.trim() || !captchaToken}>
               <EnvelopeSimple weight="bold" className="w-3.5 h-3.5" />
               {inviting ? 'Sending...' : 'Send Invite'}
             </Button>
