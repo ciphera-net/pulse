@@ -228,7 +228,7 @@ export default function WorkspaceGeneralTab({ onDirtyChange, onRegisterSave }: {
             </div>
           </div>
         )}
-      </DangerZone>
+      </DangerZone>}
 
       <SettingsSaveBar
         isDirty={isDirty}
