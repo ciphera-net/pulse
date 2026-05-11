@@ -7,6 +7,7 @@ import { renderNotification } from '@/lib/notifications/renderers'
 import { useResolveSiteName, useResolveUserName } from '@/lib/notifications/resolvers'
 import { formatTimeAgo } from '@/lib/utils/notifications'
 import { markRead, markUnread, dismiss, listDeliveries, type Delivery } from '@/lib/api/notifications-v2'
+import Link from 'next/link'
 
 interface NotificationRowProps {
   receipt: Receipt
@@ -105,15 +106,13 @@ export default function NotificationRow({ receipt, onChange }: NotificationRowPr
               {body && <p>{body}</p>}
 
               {linkUrl && (
-                <a
+                <Link
                   href={linkUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
                   className="inline-flex items-center gap-1 rounded px-3 py-1.5 text-xs font-medium bg-brand-orange/10 text-brand-orange border border-brand-orange/30 hover:bg-brand-orange/20 transition-colors"
                 >
                   {linkLabel ?? 'View details'} →
-                </a>
+                </Link>
               )}
 
               <div className="flex items-center gap-4 text-xs">
