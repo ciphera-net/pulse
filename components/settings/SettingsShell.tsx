@@ -103,6 +103,8 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
   const { title, subtitle } = resolvePageHeader(pathname)
   const [search, setSearch] = useState('')
 
+  const canGoalsManage      = useCan('goals.manage')
+  const canReportsManage    = useCan('reports.manage')
   const canSitesEdit        = useCan('sites.edit')
   const canQuarantineManage = useCan('quarantine.manage')
   const canPrivacyScan      = useCan('privacy_scan.manage')
@@ -113,6 +115,8 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
   const canAuditView        = useCan('audit.view')
 
   const permMap: Record<string, boolean> = {
+    'goals.manage':        canGoalsManage,
+    'reports.manage':      canReportsManage,
     'sites.edit':          canSitesEdit,
     'quarantine.manage':   canQuarantineManage,
     'privacy_scan.manage': canPrivacyScan,
