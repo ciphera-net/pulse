@@ -373,8 +373,9 @@ function RoleCard({
         <RoleIcon slug={role.slug} />
         <ColorDot color={role.color} />
 
-        {/* Name */}
-        <div className="flex-1 min-w-0 flex items-center gap-2">
+        {/* Name + description */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
           {editingName && !role.is_builtin ? (
             <div
               className="flex items-center gap-1.5"
@@ -418,6 +419,14 @@ function RoleCard({
             <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-neutral-500 border border-neutral-700 rounded px-1.5 py-0.5">
               Built-in
             </span>
+          )}
+          </div>
+          {role.is_builtin && (
+            <p className="text-xs text-neutral-500 mt-0.5">
+              {role.slug === 'owner' && 'Full access to everything. Cannot be modified.'}
+              {role.slug === 'admin' && 'Manage sites, team, and settings. Cannot access billing or delete the workspace.'}
+              {role.slug === 'member' && 'Read-only access to dashboards, analytics, and team. Cannot create, edit, or delete anything.'}
+            </p>
           )}
         </div>
 
