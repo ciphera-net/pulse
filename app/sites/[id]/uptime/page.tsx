@@ -1,6 +1,6 @@
 'use client'
 
-import { useAuth } from '@/lib/auth/context'
+import { useCan } from '@/lib/auth/permissions'
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { useSite, useUptimeStatus } from '@/lib/swr/dashboard'
@@ -331,8 +331,7 @@ function ResponseTimeChart({ checks }: { checks: UptimeCheck[] }) {
 
 // * Main uptime page
 export default function UptimePage() {
-  const { user } = useAuth()
-  const canEdit = user?.role === 'owner' || user?.role === 'admin'
+  const canEdit = useCan('uptime.manage')
   const params = useParams()
   const siteId = params.id as string
 

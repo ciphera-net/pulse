@@ -6,6 +6,7 @@ import { Input, Button, toast, Spinner, CheckIcon, ZapIcon } from '@ciphera-net/
 import { useSite } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
 import { useAuth } from '@/lib/auth/context'
+import { useCan } from '@/lib/auth/permissions'
 import { DangerZone } from '@/components/settings/unified/DangerZone'
 import DeleteSiteModal from '@/components/sites/DeleteSiteModal'
 import ResetDataModal from '@/components/settings/unified/ResetDataModal'
@@ -115,7 +116,7 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showVerificationModal, setShowVerificationModal] = useState(false)
 
-  const canEdit = user?.role === 'owner' || user?.role === 'admin'
+  const canEdit = useCan('sites.edit')
   const initialRef = useRef('')
   const hasInitialized = useRef(false)
 

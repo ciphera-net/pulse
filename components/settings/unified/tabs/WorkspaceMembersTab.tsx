@@ -5,6 +5,7 @@ import { Button, Input, Select, toast, Spinner } from '@ciphera-net/ui'
 import { Plus, Trash, EnvelopeSimple, Crown, UserCircle, Users } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useAuth } from '@/lib/auth/context'
+import { useCan } from '@/lib/auth/permissions'
 import { getOrganizationMembers, removeOrganizationMember, sendInvitation, getInvitations, revokeInvitation, type OrganizationMember, type OrganizationInvitation } from '@/lib/api/organization'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 
@@ -41,7 +42,7 @@ export default function WorkspaceMembersTab() {
   const [inviting, setInviting] = useState(false)
   const [showInvite, setShowInvite] = useState(false)
 
-  const canManage = user?.role === 'owner' || user?.role === 'admin'
+  const canManage = useCan('team.manage')
 
   const loadMembers = async () => {
     if (!user?.org_id) return

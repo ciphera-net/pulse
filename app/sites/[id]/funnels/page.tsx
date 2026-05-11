@@ -14,6 +14,7 @@ import { FunnelSimple, PencilSimple } from '@phosphor-icons/react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import FunnelModal from '@/components/funnels/FunnelModal'
 import { getDateRange, formatDate, getYesterdayRange, getLast1HourRange, getLast24HoursRange, getThisWeekRange, getThisMonthRange, getThisYearRange } from '@/lib/utils/dateRanges'
+import { useCan } from '@/lib/auth/permissions'
 import { pctChange, type PctChangeResult } from '@/lib/utils/pctChange'
 const DAY_MS = 86400000
 
@@ -38,12 +39,13 @@ function ChangeIndicator({ change }: { change: PctChangeResult }) {
   )
 }
 
-function FunnelCard({ funnel, siteId, dateRange, onDelete, onEdit }: {
+function FunnelCard({ funnel, siteId, dateRange, onDelete, onEdit, canManage }: {
   funnel: Funnel
   siteId: string
   dateRange: { start: string; end: string }
   onDelete: (funnel: { id: string; name: string }) => void
   onEdit: (funnel: Funnel) => void
+  canManage: boolean
 }) {
   const [expanded, setExpanded] = useState(false)
   const [expandedStep, setExpandedStep] = useState<number | null>(null)
@@ -101,20 +103,24 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete, onEdit }: {
             </div>
           </div>
           <div className="flex items-center gap-2 ml-4">
-            <button
-              onClick={(e) => { e.stopPropagation(); onEdit(funnel) }}
-              className="p-2 text-neutral-400 hover:text-brand-orange hover:bg-orange-900/20 rounded-xl transition-colors ease-apple"
-              aria-label="Edit funnel"
-            >
-              <PencilSimple className="w-4 h-4" />
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); onDelete({ id: funnel.id, name: funnel.name }) }}
-              className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-900/20 rounded-xl transition-colors ease-apple"
-              aria-label="Delete funnel"
-            >
-              <TrashIcon className="w-4 h-4" />
-            </button>
+            {canManage && (
+              <>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onEdit(funnel) }}
+                  className="p-2 text-neutral-400 hover:text-brand-orange hover:bg-orange-900/20 rounded-xl transition-colors ease-apple"
+                  aria-label="Edit funnel"
+                >
+                  <PencilSimple className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onDelete({ id: funnel.id, name: funnel.name }) }}
+                  className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-900/20 rounded-xl transition-colors ease-apple"
+                  aria-label="Delete funnel"
+                >
+                  <TrashIcon className="w-4 h-4" />
+                </button>
+              </>
+            )}
             <svg className={`w-4 h-4 text-neutral-500 transition-transform duration-base ${expanded ? 'rotate-180' : ''} ease-apple`} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
             </svg>
@@ -270,6 +276,7 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete, onEdit }: {
 export default function FunnelsPage() {
   const params = useParams()
   const siteId = params.id as string
+  const canManageFunnels = useCan('funnels.manage')
 
   const { data: site } = useSite(siteId)
   const { data: funnels = [], isLoading, mutate } = useFunnels(siteId)
@@ -369,10 +376,12 @@ export default function FunnelsPage() {
               <ChevronRightIcon className="w-4 h-4" weight="bold" />
             </button>
           </div>
-          <Button variant="primary" onClick={() => { setEditingFunnel(null); setModalOpen(true) }}>
-            <PlusIcon className="w-4 h-4" />
-            Create Funnel
-          </Button>
+          {canManageFunnels && (
+            <Button variant="primary" onClick={() => { setEditingFunnel(null); setModalOpen(true) }}>
+              <PlusIcon className="w-4 h-4" />
+              Create Funnel
+            </Button>
+          )}
         </div>
       </div>
 
@@ -381,7 +390,7 @@ export default function FunnelsPage() {
           icon={<FunnelSimple />}
           title="No funnels yet"
           description="Create a funnel to track how visitors move through your site and where they drop off."
-          action={{ label: 'Create funnel', onClick: () => { setEditingFunnel(null); setModalOpen(true) } }}
+          action={canManageFunnels ? { label: 'Create funnel', onClick: () => { setEditingFunnel(null); setModalOpen(true) } } : undefined}
         />
       ) : (
         <div className="grid gap-4">
@@ -392,7 +401,7 @@ export default function FunnelsPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: index * 0.05 }}
             >
-              <FunnelCard funnel={funnel} siteId={siteId} dateRange={dateRange} onDelete={setDeletingFunnel} onEdit={(f) => { setEditingFunnel(f); setModalOpen(true) }} />
+              <FunnelCard funnel={funnel} siteId={siteId} dateRange={dateRange} onDelete={setDeletingFunnel} onEdit={(f) => { setEditingFunnel(f); setModalOpen(true) }} canManage={canManageFunnels} />
             </motion.div>
           ))}
         </div>
@@ -413,7 +422,7 @@ export default function FunnelsPage() {
 
       <DatePicker isOpen={isDatePickerOpen} onClose={() => setIsDatePickerOpen(false)} onApply={(range) => { setDateRange(range); setDatePreset('custom'); setIsDatePickerOpen(false) }} initialRange={dateRange} />
 
-      {modalOpen && (
+      {modalOpen && canManageFunnels && (
         <FunnelModal
           isOpen={modalOpen}
           onClose={() => { setModalOpen(false); setEditingFunnel(null) }}

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { type Site } from '@/lib/api/sites'
 import { useAuth } from '@/lib/auth/context'
+import { useCan } from '@/lib/auth/permissions'
 import { useSites, FaviconPreloader } from '@/lib/swr/sites'
 import { cdnUrl } from '@/lib/cdn'
 import { useSidebar } from '@/lib/sidebar-context'
@@ -449,7 +450,7 @@ export default function Sidebar({
 }) {
   const auth = useAuth()
   const { user } = auth
-  const canEdit = user?.role === 'owner' || user?.role === 'admin'
+  const canEdit = useCan('sites.edit')
   const pathname = usePathname()
   const router = useRouter()
   const { sites } = useSites()

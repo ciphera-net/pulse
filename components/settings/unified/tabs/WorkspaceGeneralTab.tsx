@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Input, toast } from '@ciphera-net/ui'
 import { Spinner } from '@ciphera-net/ui'
 import { useAuth } from '@/lib/auth/context'
+import { useCan } from '@/lib/auth/permissions'
 import { getOrganization, updateOrganization, deleteOrganization } from '@/lib/api/organization'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { DangerZone } from '@/components/settings/unified/DangerZone'
@@ -11,6 +12,7 @@ import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 
 export default function WorkspaceGeneralTab({ onDirtyChange, onRegisterSave }: { onDirtyChange?: (dirty: boolean) => void; onRegisterSave?: (fn: () => Promise<void>) => void }) {
   const { user } = useAuth()
+  const canDeleteOrg = useCan('org.delete')
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
   const [loading, setLoading] = useState(true)
@@ -113,7 +115,7 @@ export default function WorkspaceGeneralTab({ onDirtyChange, onRegisterSave }: {
       </div>
 
       {/* Danger Zone */}
-      <DangerZone
+      {canDeleteOrg && <DangerZone
         items={[{
           title: 'Delete Organization',
           description: 'Permanently delete this organization and all its data.',

@@ -9,6 +9,7 @@ import { updatePaymentMethod, cancelSubscription, resumeSubscription, getInvoice
 import { formatDateLong, formatDate } from '@/lib/utils/formatDate'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { cdnUrl } from '@/lib/cdn'
+import { useCan } from '@/lib/auth/permissions'
 
 const PAYMENT_METHODS = [
   { id: 'creditcard', label: 'Cards', icons: ['/icons/payment/visa.svg', '/icons/payment/mastercard.svg'] },
@@ -20,6 +21,7 @@ const PAYMENT_METHODS = [
 
 export default function WorkspaceBillingTab() {
   const router = useRouter()
+  const canManageBilling = useCan('billing.manage')
   const { data: subscription, isLoading, mutate } = useSubscription()
   const [cancelling, setCancelling] = useState(false)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
@@ -167,9 +169,13 @@ export default function WorkspaceBillingTab() {
               </span>
             )}
           </div>
-          <Button variant="primary" className="text-sm" onClick={() => router.push(isCanceled ? '/setup/plan' : '/switch')}>
-            {isCanceled ? 'Resubscribe' : 'Change Plan'}
-          </Button>
+          {canManageBilling ? (
+            <Button variant="primary" className="text-sm" onClick={() => router.push(isCanceled ? '/setup/plan' : '/switch')}>
+              {isCanceled ? 'Resubscribe' : 'Change Plan'}
+            </Button>
+          ) : (
+            <p className="text-xs text-neutral-500">Only the workspace owner can modify billing.</p>
+          )}
         </div>
 
         {isCanceled ? (
@@ -248,7 +254,7 @@ export default function WorkspaceBillingTab() {
       )}
 
       {/* Actions */}
-      {!isCanceled && (
+      {!isCanceled && canManageBilling && (
         <div className="flex flex-wrap gap-3">
           <Button onClick={() => { setSelectedPaymentMethod(''); setShowPaymentMethodModal(true) }} variant="secondary" className="text-sm gap-1.5">
             <CreditCard weight="bold" className="w-3.5 h-3.5" />
@@ -335,7 +341,7 @@ export default function WorkspaceBillingTab() {
         <div className="space-y-3 pt-6 border-t border-neutral-800">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-medium text-neutral-300">Billing Details</h4>
-            {!editingBilling && (
+            {!editingBilling && canManageBilling && (
               <button
                 onClick={handleEditBilling}
                 className="p-1.5 rounded-md hover:bg-neutral-800 text-neutral-500 hover:text-neutral-300 transition-colors"

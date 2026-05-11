@@ -1,6 +1,6 @@
 'use client'
 
-import { useAuth } from '@/lib/auth/context'
+import { useCan } from '@/lib/auth/permissions'
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useParams } from 'next/navigation'
 import { useSite, usePageSpeedConfig, usePageSpeedLatest, usePageSpeedHistory } from '@/lib/swr/dashboard'
@@ -61,8 +61,7 @@ function getAuditDotColor(score: number | null): string {
 
 // * Main PageSpeed page
 export default function PageSpeedPage() {
-  const { user } = useAuth()
-  const canEdit = user?.role === 'owner' || user?.role === 'admin'
+  const canEdit = useCan('pagespeed.manage')
   const params = useParams()
   const siteId = params.id as string
 

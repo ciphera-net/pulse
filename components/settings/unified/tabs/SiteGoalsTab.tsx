@@ -8,8 +8,10 @@ import { Spinner } from '@ciphera-net/ui'
 import { useGoals } from '@/lib/swr/dashboard'
 import { createGoal, updateGoal, deleteGoal } from '@/lib/api/goals'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
+import { useCan } from '@/lib/auth/permissions'
 
 export default function SiteGoalsTab({ siteId }: { siteId: string }) {
+  const canManageGoals = useCan('goals.manage')
   const { data: goals = [], mutate, isLoading } = useGoals(siteId)
   const [editing, setEditing] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
@@ -91,7 +93,7 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
           <h3 className="text-base font-semibold text-white mb-1">Goals</h3>
           <p className="text-sm text-neutral-400">Track custom events as conversion goals.</p>
         </div>
-        {!creating && !editing && (
+        {!creating && !editing && canManageGoals && (
           <Button onClick={startCreate} variant="primary" className="text-sm gap-1.5">
             <Plus weight="bold" className="w-3.5 h-3.5" /> Add Goal
           </Button>
@@ -134,7 +136,7 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
         <EmptyState
           title="No goals yet"
           description="Track custom events like signups, purchases, or button clicks."
-          action={{ label: 'Add your first goal', onClick: startCreate }}
+          action={canManageGoals ? { label: 'Add your first goal', onClick: startCreate } : undefined}
           icon={<Target weight="regular" />}
           className="py-8"
         />
@@ -149,20 +151,22 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
                 <p className="text-sm font-medium text-white">{goal.name}</p>
                 <p className="text-xs text-neutral-500 font-mono">{goal.event_name}</p>
               </div>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => startEdit(goal)}
-                  className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors ease-apple"
-                >
-                  <Pencil weight="bold" className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => handleDelete(goal.id)}
-                  className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-red-900/20 transition-colors ease-apple"
-                >
-                  <Trash weight="bold" className="w-3.5 h-3.5" />
-                </button>
-              </div>
+              {canManageGoals && (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => startEdit(goal)}
+                    className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors ease-apple"
+                  >
+                    <Pencil weight="bold" className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(goal.id)}
+                    className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-red-900/20 transition-colors ease-apple"
+                  >
+                    <Trash weight="bold" className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>
