@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic'
 
 const WorkspaceGeneralTab = dynamic(() => import('@/components/settings/unified/tabs/WorkspaceGeneralTab'))
 const WorkspaceMembersTab = dynamic(() => import('@/components/settings/unified/tabs/WorkspaceMembersTab'))
+const WorkspaceRolesTab   = dynamic(() => import('@/components/settings/unified/tabs/WorkspaceRolesTab'))
 const WorkspaceBillingTab = dynamic(() => import('@/components/settings/unified/tabs/WorkspaceBillingTab'))
 const NotificationsTab    = dynamic(() => import('@/components/settings/unified/tabs/NotificationsTab'))
 const WorkspaceAuditTab   = dynamic(() => import('@/components/settings/unified/tabs/WorkspaceAuditTab'))
@@ -12,6 +13,7 @@ const WorkspaceAuditTab   = dynamic(() => import('@/components/settings/unified/
 const TAB_COMPONENTS: Record<string, React.ComponentType> = {
   general:       WorkspaceGeneralTab,
   members:       WorkspaceMembersTab,
+  roles:         WorkspaceRolesTab,
   billing:       WorkspaceBillingTab,
   notifications: NotificationsTab,
   audit:         WorkspaceAuditTab,

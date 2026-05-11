@@ -14,6 +14,7 @@ import {
   Plugs,
   Buildings,
   UsersThree,
+  Key,
   CreditCard,
   Bell,
   ClockCounterClockwise,
@@ -22,6 +23,7 @@ import {
   DeviceMobile,
 } from '@phosphor-icons/react'
 import { Select } from '@ciphera-net/ui'
+import { useCan } from '@/lib/auth/permissions'
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -32,6 +34,8 @@ interface TabDef {
   label: string
   href: string
   Icon: React.ComponentType<{ className?: string; weight?: IconWeight }>
+  /** When set, the tab is only visible when this permission is held. */
+  requires?: string
 }
 
 interface NavGroup {
@@ -58,11 +62,12 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Organization',
     tabs: [
-      { id: 'general',       label: 'General',       href: '/settings/organization/general',       Icon: Buildings },
-      { id: 'members',       label: 'Members',       href: '/settings/organization/members',       Icon: UsersThree },
-      { id: 'billing',       label: 'Billing',       href: '/settings/organization/billing',       Icon: CreditCard },
-      { id: 'notifications', label: 'Notifications', href: '/settings/organization/notifications', Icon: Bell },
-      { id: 'audit',         label: 'Audit Log',     href: '/settings/organization/audit',         Icon: ClockCounterClockwise },
+      { id: 'general',       label: 'General',            href: '/settings/organization/general',       Icon: Buildings },
+      { id: 'members',       label: 'Members',            href: '/settings/organization/members',       Icon: UsersThree },
+      { id: 'roles',         label: 'Roles & Permissions', href: '/settings/organization/roles',         Icon: Key, requires: 'roles.manage' },
+      { id: 'billing',       label: 'Billing',            href: '/settings/organization/billing',       Icon: CreditCard },
+      { id: 'notifications', label: 'Notifications',      href: '/settings/organization/notifications', Icon: Bell },
+      { id: 'audit',         label: 'Audit Log',          href: '/settings/organization/audit',         Icon: ClockCounterClockwise },
     ],
   },
   {
@@ -74,8 +79,6 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
 ]
-
-const ALL_TABS = NAV_GROUPS.flatMap((g) => g.tabs)
 
 // ─── Page header ──────────────────────────────────────────────────
 
@@ -99,21 +102,33 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
   const router = useRouter()
   const { title, subtitle } = resolvePageHeader(pathname)
   const [search, setSearch] = useState('')
+  const canManageRoles = useCan('roles.manage')
+
+  // Filter tabs based on permission requirements
+  const visibleGroups = NAV_GROUPS.map((group) => ({
+    ...group,
+    tabs: group.tabs.filter((tab) => {
+      if (tab.requires === 'roles.manage') return canManageRoles
+      return true
+    }),
+  }))
+
+  const allVisibleTabs = visibleGroups.flatMap((g) => g.tabs)
 
   // Mobile select options
-  const mobileOptions = ALL_TABS.map((t) => ({ value: t.href, label: t.label }))
-  const mobileValue = ALL_TABS.find((t) => pathname === t.href)?.href ?? ''
+  const mobileOptions = allVisibleTabs.map((t) => ({ value: t.href, label: t.label }))
+  const mobileValue = allVisibleTabs.find((t) => pathname === t.href)?.href ?? ''
 
   // Filtered nav groups for search
   const filteredGroups = search.trim()
-    ? NAV_GROUPS.map(group => ({
+    ? visibleGroups.map(group => ({
         ...group,
         tabs: group.tabs.filter(tab =>
           tab.label.toLowerCase().includes(search.toLowerCase()) ||
           group.label.toLowerCase().includes(search.toLowerCase())
         )
       })).filter(group => group.tabs.length > 0)
-    : NAV_GROUPS
+    : visibleGroups
 
   return (
     <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
