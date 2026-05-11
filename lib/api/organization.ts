@@ -101,6 +101,7 @@ export async function sendInvitation(
   captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string },
   role_id?: string,
   site_ids?: string[],
+  app_url?: string,
 ): Promise<OrganizationInvitation> {
   const body: Record<string, unknown> = { email, role }
 
@@ -111,9 +112,19 @@ export async function sendInvitation(
   if (captcha?.captcha_solution) body.captcha_solution = captcha.captcha_solution
   if (captcha?.captcha_token) body.captcha_token = captcha.captcha_token
 
+  if (app_url) body.app_url = app_url
+
   return await authFetch<OrganizationInvitation>(`/auth/organizations/${organizationId}/invites`, {
     method: 'POST',
     body: JSON.stringify(body),
+  })
+}
+
+// Accept an invitation by token (requires authentication)
+export async function acceptInvitation(token: string): Promise<{ message: string; organization_id: string }> {
+  return await authFetch<{ message: string; organization_id: string }>('/auth/invites/accept', {
+    method: 'POST',
+    body: JSON.stringify({ token }),
   })
 }
 

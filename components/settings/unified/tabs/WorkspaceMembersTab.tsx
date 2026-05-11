@@ -101,7 +101,7 @@ export default function WorkspaceMembersTab() {
     try {
       const roleSlug = selectedRole?.slug ?? 'member'
       const siteIdsPayload = inviteRoleIsSiteScoped ? inviteSiteIds : undefined
-      await sendInvitation(user.org_id, inviteEmail.trim(), roleSlug, { captcha_token: captchaToken }, inviteRoleId, siteIdsPayload)
+      await sendInvitation(user.org_id, inviteEmail.trim(), roleSlug, { captcha_token: captchaToken }, inviteRoleId, siteIdsPayload, window.location.origin)
       toast.success(`Invitation sent to ${inviteEmail}`)
       setInviteEmail('')
       setInviteSiteIds([])
