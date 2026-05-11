@@ -151,7 +151,7 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
           group.label.toLowerCase().includes(search.toLowerCase())
         )
       })).filter(group => group.tabs.length > 0)
-    : visibleGroups
+    : visibleGroups.filter(group => group.tabs.length > 0)
 
   return (
     <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
