@@ -6,6 +6,7 @@ import { Plus, Trash, EnvelopeSimple, Crown, UserCircle, Users } from '@phosphor
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useAuth } from '@/lib/auth/context'
 import { useCan } from '@/lib/auth/permissions'
+import { env } from '@/lib/env'
 import { getOrganizationMembers, removeOrganizationMember, sendInvitation, getInvitations, revokeInvitation, type OrganizationMember, type OrganizationInvitation } from '@/lib/api/organization'
 import { listRoles, type Role } from '@/lib/api/roles'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
@@ -202,6 +203,9 @@ export default function WorkspaceMembersTab() {
           )}
           <Captcha
             key={captchaNonce}
+            apiUrl={env.NEXT_PUBLIC_CAPTCHA_API_URL}
+            action="invite"
+            logoUrl="https://cdn.ciphera.net/id/captcha_icon_no_margins.png"
             onVerify={(_id, _solution, token) => setCaptchaToken(token || '')}
           />
           <div className="flex gap-2 justify-end">
