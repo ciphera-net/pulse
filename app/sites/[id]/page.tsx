@@ -49,6 +49,7 @@ import {
   useCampaigns,
 } from '@/lib/swr/dashboard'
 import { useLiveIndicator } from '@/lib/live-indicator-context'
+import { useCan } from '@/lib/auth/permissions'
 
 function loadSavedSettings(): {
   type?: string
@@ -354,6 +355,8 @@ export default function SiteDashboardPage() {
     }
   }, [dashboardError])
 
+  const canExport = useCan('analytics.export')
+
   // Track when dashboard data was last updated (drives the Live indicator in GlassTopBar)
   const { markUpdated } = useLiveIndicator()
   useEffect(() => {
@@ -558,7 +561,7 @@ export default function SiteDashboardPage() {
           setMultiDayInterval={setMultiDayInterval}
           lastUpdatedAt={lastUpdatedAtRef.current}
           engagementData={engagementData}
-          onExport={() => setIsExportModalOpen(true)}
+          onExport={canExport ? () => setIsExportModalOpen(true) : undefined}
         />
       </div>
 
