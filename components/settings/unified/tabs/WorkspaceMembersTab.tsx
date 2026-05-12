@@ -2,15 +2,17 @@
 
 import { useState, useEffect } from 'react'
 import { Button, Input, Select, toast, Spinner, Captcha } from '@ciphera-net/ui'
-import { Plus, Trash, EnvelopeSimple, Crown, UserCircle, Users } from '@phosphor-icons/react'
+import { Plus, Trash, EnvelopeSimple, Crown, UserCircle, Users, Link as LinkIcon, CaretDown } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useAuth } from '@/lib/auth/context'
 import { useCan } from '@/lib/auth/permissions'
 import { env } from '@/lib/env'
-import { getOrganizationMembers, removeOrganizationMember, sendInvitation, getInvitations, revokeInvitation, type OrganizationMember, type OrganizationInvitation } from '@/lib/api/organization'
+import { getOrganizationMembers, removeOrganizationMember, sendInvitation, getInvitations, revokeInvitation, getInviteLinks, type OrganizationMember, type OrganizationInvitation, type InviteLink } from '@/lib/api/organization'
 import { listRoles, type Role } from '@/lib/api/roles'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { useSites } from '@/lib/swr/sites'
+import CreateInviteLinkModal from './CreateInviteLinkModal'
+import InviteLinksSection from './InviteLinksSection'
 
 function RoleBadge({ role, roles }: { role: string; roles: Role[] }) {
   if (role === 'owner') return (
@@ -46,6 +48,9 @@ export default function WorkspaceMembersTab() {
   const [showInvite, setShowInvite] = useState(false)
   const [captchaToken, setCaptchaToken] = useState('')
   const [captchaNonce, setCaptchaNonce] = useState(0)
+  const [inviteLinks, setInviteLinks] = useState<InviteLink[]>([])
+  const [showLinkModal, setShowLinkModal] = useState(false)
+  const [showDropdown, setShowDropdown] = useState(false)
   const { sites } = useSites()
 
   const canManage = useCan('team.manage')
@@ -72,14 +77,16 @@ export default function WorkspaceMembersTab() {
   const loadMembers = async () => {
     if (!user?.org_id) return
     try {
-      const [membersData, invitationsData, rolesData] = await Promise.all([
+      const [membersData, invitationsData, rolesData, linksData] = await Promise.all([
         getOrganizationMembers(user.org_id),
         getInvitations(user.org_id).catch(() => [] as OrganizationInvitation[]),
         listRoles().then(res => res.roles).catch(() => [] as Role[]),
+        getInviteLinks(user.org_id).catch(() => [] as InviteLink[]),
       ])
       setMembers(membersData)
       setInvitations(invitationsData)
       setRoles(rolesData)
+      setInviteLinks(linksData)
       // Default the invite selector to the first non-owner role (usually member)
       if (rolesData.length > 0) {
         const defaultRole = rolesData.find(r => r.slug !== 'owner') ?? rolesData[0]
@@ -90,6 +97,13 @@ export default function WorkspaceMembersTab() {
   }
 
   useEffect(() => { loadMembers() }, [user?.org_id])
+
+  useEffect(() => {
+    if (!showDropdown) return
+    const close = () => setShowDropdown(false)
+    document.addEventListener('click', close)
+    return () => document.removeEventListener('click', close)
+  }, [showDropdown])
 
   const handleInvite = async () => {
     if (!user?.org_id || !inviteEmail.trim() || !inviteRoleId) return
@@ -152,9 +166,40 @@ export default function WorkspaceMembersTab() {
           <p className="text-sm text-neutral-400">{members.length} member{members.length !== 1 ? 's' : ''} in your organization.</p>
         </div>
         {canManage && !showInvite && (
-          <Button onClick={() => setShowInvite(true)} variant="primary" className="text-sm gap-1.5">
-            <Plus weight="bold" className="w-3.5 h-3.5" /> Invite
-          </Button>
+          <div className="relative flex items-center">
+            <Button
+              onClick={() => setShowInvite(true)}
+              variant="primary"
+              className="text-sm gap-1.5 rounded-r-none border-r border-brand-orange/40"
+            >
+              <Plus weight="bold" className="w-3.5 h-3.5" /> Invite
+            </Button>
+            <button
+              onClick={e => { e.stopPropagation(); setShowDropdown(v => !v) }}
+              className="flex items-center justify-center h-full px-2 py-1.5 bg-brand-orange text-white rounded-r-lg hover:bg-brand-orange/90 transition-colors border-l border-brand-orange/40"
+              aria-label="More invite options"
+            >
+              <CaretDown weight="bold" className="w-3 h-3" />
+            </button>
+            {showDropdown && (
+              <div className="absolute right-0 top-full mt-1 w-48 rounded-xl border border-neutral-700 bg-neutral-900 shadow-xl z-10 overflow-hidden">
+                <button
+                  onClick={e => { e.stopPropagation(); setShowDropdown(false); setShowInvite(true) }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-white hover:bg-neutral-800 transition-colors"
+                >
+                  <EnvelopeSimple weight="bold" className="w-4 h-4 text-neutral-400" />
+                  Invite by email
+                </button>
+                <button
+                  onClick={e => { e.stopPropagation(); setShowDropdown(false); setShowLinkModal(true) }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-white hover:bg-neutral-800 transition-colors"
+                >
+                  <LinkIcon weight="bold" className="w-4 h-4 text-neutral-400" />
+                  Create invite link
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
@@ -280,6 +325,9 @@ export default function WorkspaceMembersTab() {
           ))}
         </div>
       )}
+
+      <InviteLinksSection orgId={user.org_id!} links={inviteLinks} roles={roles} loading={loading} onRevoked={loadMembers} />
+      <CreateInviteLinkModal orgId={user.org_id!} roles={roles} open={showLinkModal} onOpenChange={setShowLinkModal} onCreated={loadMembers} />
     </div>
   )
 }
