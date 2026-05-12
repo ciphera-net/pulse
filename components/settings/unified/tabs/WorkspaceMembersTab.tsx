@@ -326,8 +326,12 @@ export default function WorkspaceMembersTab() {
         </div>
       )}
 
-      <InviteLinksSection orgId={user.org_id!} links={inviteLinks} roles={roles} loading={loading} onRevoked={loadMembers} />
-      <CreateInviteLinkModal orgId={user.org_id!} roles={roles} open={showLinkModal} onOpenChange={setShowLinkModal} onCreated={loadMembers} />
+      {user?.org_id && (
+        <>
+          <InviteLinksSection orgId={user.org_id} links={inviteLinks} roles={roles} loading={loading} onRevoked={loadMembers} />
+          <CreateInviteLinkModal orgId={user.org_id} roles={roles} open={showLinkModal} onOpenChange={setShowLinkModal} onCreated={loadMembers} />
+        </>
+      )}
     </div>
   )
 }
