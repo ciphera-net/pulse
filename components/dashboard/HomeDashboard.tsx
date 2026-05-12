@@ -141,11 +141,11 @@ export default function HomeDashboard() {
           </div>
         ) : null
         })() ?? (
-          {canCreateSite && <Link href="/sites/new">
+          canCreateSite ? <Link href="/sites/new">
             <Button variant="primary" className="text-sm whitespace-nowrap">
               Add New Site
             </Button>
-          </Link>}
+          </Link> : null
         )}
       </div>
 
