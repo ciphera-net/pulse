@@ -5,7 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Spinner } from '@ciphera-net/ui'
 import { ID_API_URL } from '@/lib/api/client'
 import { useAuth } from '@/lib/auth/context'
-import { acceptInvitation } from '@/lib/api/organization'
+import { acceptInvitation, switchContext } from '@/lib/api/organization'
+import { setSessionAction } from '@/app/actions/auth'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
 
 /** Fetches public invitation details by token (unauthenticated). */
@@ -25,7 +26,7 @@ function InviteContent() {
   const { user, loading: authLoading } = useAuth()
 
   const [loading, setLoading] = useState(true)
-  const [invite, setInvite] = useState<{ organization_name: string; email: string; role: string } | null>(null)
+  const [invite, setInvite] = useState<{ organization_name: string; organization_id: string; email: string; role: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [accepting, setAccepting] = useState(false)
 
@@ -58,7 +59,14 @@ function InviteContent() {
     setAccepting(true)
     try {
       await acceptInvitation(token)
-      // Hard reload to force JWT refresh with new org context
+      // Switch to the new org context before redirecting so the JWT
+      // carries the correct org_id — eliminates the stale-token delay
+      if (invite?.organization_id) {
+        try {
+          const { access_token } = await switchContext(invite.organization_id)
+          await setSessionAction(access_token)
+        } catch {}
+      }
       window.location.href = '/'
     } catch (err: unknown) {
       const apiErr = err as { status?: number }
