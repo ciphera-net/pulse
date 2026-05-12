@@ -22,6 +22,7 @@ const PUBLIC_PREFIXES = [
   '/integrations',
   '/docs',
   '/invite/',
+  '/join/',
 ]
 
 function isPublicRoute(pathname: string): boolean {
