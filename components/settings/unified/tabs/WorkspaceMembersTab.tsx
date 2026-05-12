@@ -1,16 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Button, Input, Select, toast, Spinner, Captcha } from '@ciphera-net/ui'
-import { Plus, Trash, EnvelopeSimple, Crown, UserCircle, Users, Link as LinkIcon, CaretDown } from '@phosphor-icons/react'
+import { Button, toast, Spinner } from '@ciphera-net/ui'
+import { Plus, Trash, Crown, UserCircle, Users } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useAuth } from '@/lib/auth/context'
 import { useCan } from '@/lib/auth/permissions'
-import { env } from '@/lib/env'
-import { getOrganizationMembers, removeOrganizationMember, sendInvitation, getInvitations, revokeInvitation, getInviteLinks, type OrganizationMember, type OrganizationInvitation, type InviteLink } from '@/lib/api/organization'
+import { getOrganizationMembers, removeOrganizationMember, getInviteLinks, type OrganizationMember, type InviteLink } from '@/lib/api/organization'
 import { listRoles, type Role } from '@/lib/api/roles'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
-import { useSites } from '@/lib/swr/sites'
 import CreateInviteLinkModal from './CreateInviteLinkModal'
 import InviteLinksSection from './InviteLinksSection'
 
@@ -38,99 +36,29 @@ function RoleBadge({ role, roles }: { role: string; roles: Role[] }) {
 export default function WorkspaceMembersTab() {
   const { user } = useAuth()
   const [members, setMembers] = useState<OrganizationMember[]>([])
-  const [invitations, setInvitations] = useState<OrganizationInvitation[]>([])
   const [roles, setRoles] = useState<Role[]>([])
   const [loading, setLoading] = useState(true)
-  const [inviteEmail, setInviteEmail] = useState('')
-  const [inviteRoleId, setInviteRoleId] = useState('')
-  const [inviteSiteIds, setInviteSiteIds] = useState<string[]>([])
-  const [inviting, setInviting] = useState(false)
-  const [showInvite, setShowInvite] = useState(false)
-  const [captchaToken, setCaptchaToken] = useState('')
-  const [captchaNonce, setCaptchaNonce] = useState(0)
   const [inviteLinks, setInviteLinks] = useState<InviteLink[]>([])
   const [showLinkModal, setShowLinkModal] = useState(false)
-  const [showDropdown, setShowDropdown] = useState(false)
-  const { sites } = useSites()
 
   const canManage = useCan('team.manage')
-
-  // Roles excluding owner — displayed as options in the invite dropdown
-  const inviteRoleOptions = roles
-    .filter(r => r.slug !== 'owner')
-    .map(r => ({ value: r.id, label: r.name }))
-
-  const selectedRole = roles.find(r => r.id === inviteRoleId) ?? null
-  const inviteRoleIsSiteScoped = selectedRole?.site_scoped === true
-
-  const handleInviteRoleChange = (roleId: string) => {
-    setInviteRoleId(roleId)
-    setInviteSiteIds([])
-  }
-
-  const toggleInviteSiteId = (siteId: string) => {
-    setInviteSiteIds(prev =>
-      prev.includes(siteId) ? prev.filter(id => id !== siteId) : [...prev, siteId]
-    )
-  }
 
   const loadMembers = async () => {
     if (!user?.org_id) return
     try {
-      const [membersData, invitationsData, rolesData, linksData] = await Promise.all([
+      const [membersData, rolesData, linksData] = await Promise.all([
         getOrganizationMembers(user.org_id),
-        getInvitations(user.org_id).catch(() => [] as OrganizationInvitation[]),
         listRoles().then(res => res.roles).catch(() => [] as Role[]),
         getInviteLinks(user.org_id).catch(() => [] as InviteLink[]),
       ])
       setMembers(membersData)
-      setInvitations(invitationsData)
       setRoles(rolesData)
       setInviteLinks(linksData)
-      // Default the invite selector to the first non-owner role (usually member)
-      if (rolesData.length > 0) {
-        const defaultRole = rolesData.find(r => r.slug !== 'owner') ?? rolesData[0]
-        setInviteRoleId(defaultRole.id)
-      }
     } catch { }
     finally { setLoading(false) }
   }
 
   useEffect(() => { loadMembers() }, [user?.org_id])
-
-  useEffect(() => {
-    if (!showDropdown) return
-    const close = () => setShowDropdown(false)
-    document.addEventListener('click', close)
-    return () => document.removeEventListener('click', close)
-  }, [showDropdown])
-
-  const handleInvite = async () => {
-    if (!user?.org_id || !inviteEmail.trim() || !inviteRoleId) return
-    if (!captchaToken) {
-      toast.error('Please complete the captcha')
-      return
-    }
-    setInviting(true)
-    try {
-      const roleSlug = selectedRole?.slug ?? 'member'
-      const siteIdsPayload = inviteRoleIsSiteScoped ? inviteSiteIds : undefined
-      await sendInvitation(user.org_id, inviteEmail.trim(), roleSlug, { captcha_token: captchaToken }, inviteRoleId, siteIdsPayload, window.location.origin)
-      toast.success(`Invitation sent to ${inviteEmail}`)
-      setInviteEmail('')
-      setInviteSiteIds([])
-      setCaptchaToken('')
-      setCaptchaNonce((n) => n + 1)
-      setShowInvite(false)
-      loadMembers()
-    } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to invite member')
-      setCaptchaToken('')
-      setCaptchaNonce((n) => n + 1)
-    } finally {
-      setInviting(false)
-    }
-  }
 
   const handleRemove = async (memberId: string, email: string) => {
     if (!user?.org_id) return
@@ -144,18 +72,6 @@ export default function WorkspaceMembersTab() {
     }
   }
 
-  const handleRevokeInvitation = async (inviteId: string) => {
-    if (!user?.org_id) return
-    if (!confirm('Revoke this invitation?')) return
-    try {
-      await revokeInvitation(user.org_id, inviteId)
-      toast.success('Invitation revoked')
-      loadMembers()
-    } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to revoke invitation')
-    }
-  }
-
   if (loading) return <div className="flex items-center justify-center py-12"><Spinner className="w-6 h-6 text-neutral-500" /></div>
 
   return (
@@ -165,103 +81,12 @@ export default function WorkspaceMembersTab() {
           <h3 className="text-base font-semibold text-white mb-1">Members</h3>
           <p className="text-sm text-neutral-400">{members.length} member{members.length !== 1 ? 's' : ''} in your organization.</p>
         </div>
-        {canManage && !showInvite && (
-          <div className="relative flex items-center">
-            <Button
-              onClick={() => setShowInvite(true)}
-              variant="primary"
-              className="text-sm gap-1.5 rounded-r-none border-r border-brand-orange/40"
-            >
-              <Plus weight="bold" className="w-3.5 h-3.5" /> Invite
-            </Button>
-            <button
-              onClick={e => { e.stopPropagation(); setShowDropdown(v => !v) }}
-              className="flex items-center justify-center h-full px-2 py-1.5 bg-brand-orange text-white rounded-r-lg hover:bg-brand-orange/90 transition-colors border-l border-brand-orange/40"
-              aria-label="More invite options"
-            >
-              <CaretDown weight="bold" className="w-3 h-3" />
-            </button>
-            {showDropdown && (
-              <div className="absolute right-0 top-full mt-1 w-48 rounded-xl border border-neutral-700 bg-neutral-900 shadow-xl z-10 overflow-hidden">
-                <button
-                  onClick={e => { e.stopPropagation(); setShowDropdown(false); setShowInvite(true) }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-white hover:bg-neutral-800 transition-colors"
-                >
-                  <EnvelopeSimple weight="bold" className="w-4 h-4 text-neutral-400" />
-                  Invite by email
-                </button>
-                <button
-                  onClick={e => { e.stopPropagation(); setShowDropdown(false); setShowLinkModal(true) }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-white hover:bg-neutral-800 transition-colors"
-                >
-                  <LinkIcon weight="bold" className="w-4 h-4 text-neutral-400" />
-                  Create invite link
-                </button>
-              </div>
-            )}
-          </div>
+        {canManage && (
+          <Button onClick={() => setShowLinkModal(true)} variant="primary" className="text-sm gap-1.5">
+            <Plus weight="bold" className="w-3.5 h-3.5" /> Invite
+          </Button>
         )}
       </div>
-
-      {/* Invite form */}
-      {showInvite && (
-        <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 p-4 space-y-3">
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <Input
-                value={inviteEmail}
-                onChange={e => setInviteEmail(e.target.value)}
-                placeholder="email@example.com"
-                type="email"
-              />
-            </div>
-            <Select
-              value={inviteRoleId}
-              onChange={handleInviteRoleChange}
-              variant="input"
-              className="w-32"
-              options={inviteRoleOptions}
-            />
-          </div>
-          {inviteRoleIsSiteScoped && sites.length > 0 && (
-            <div className="space-y-1.5">
-              <p className="text-xs text-neutral-500 font-medium">
-                This role is site-scoped — select the sites this member can access:
-              </p>
-              <ul className="space-y-1 max-h-40 overflow-y-auto">
-                {sites.map(site => (
-                  <li key={site.id} className="flex items-center gap-2.5">
-                    <input
-                      id={`invite-site-${site.id}`}
-                      type="checkbox"
-                      checked={inviteSiteIds.includes(site.id)}
-                      onChange={() => toggleInviteSiteId(site.id)}
-                      className="w-4 h-4 rounded border-neutral-600 bg-neutral-800 accent-brand-orange cursor-pointer"
-                    />
-                    <label htmlFor={`invite-site-${site.id}`} className="text-sm text-white cursor-pointer truncate">
-                      {site.name || site.domain}
-                    </label>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          <Captcha
-            key={captchaNonce}
-            apiUrl={env.NEXT_PUBLIC_CAPTCHA_API_URL}
-            action="invite"
-            logoUrl="https://cdn.ciphera.net/id/captcha_icon_no_margins.png"
-            onVerify={(_id, _solution, token) => setCaptchaToken(token || '')}
-          />
-          <div className="flex gap-2 justify-end">
-            <Button onClick={() => setShowInvite(false)} variant="secondary" className="text-sm">Cancel</Button>
-            <Button onClick={handleInvite} variant="primary" className="text-sm gap-1.5" disabled={inviting || !inviteEmail.trim() || !captchaToken}>
-              <EnvelopeSimple weight="bold" className="w-3.5 h-3.5" />
-              {inviting ? 'Sending...' : 'Send Invite'}
-            </Button>
-          </div>
-        </div>
-      )}
 
       {/* Members list */}
       <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
@@ -295,36 +120,6 @@ export default function WorkspaceMembersTab() {
           />
         )}
       </div>
-
-      {/* Pending Invitations */}
-      {invitations.length > 0 && (
-        <div className="space-y-2 pt-6 border-t border-neutral-800">
-          <h4 className="text-sm font-medium text-neutral-300">Pending Invitations</h4>
-          {invitations.map(inv => (
-            <div key={inv.id} className="flex items-center justify-between p-3 rounded-xl border border-neutral-800">
-              <div className="flex items-center gap-3">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400" />
-                </span>
-                <div>
-                  <span className="text-sm text-white">{inv.email}</span>
-                  <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-neutral-800 text-neutral-400">{roles.find(r => r.slug === inv.role)?.name ?? inv.role}</span>
-                  <span className="ml-2 text-xs text-neutral-500">expires {new Date(inv.expires_at).toLocaleDateString('en-GB')}</span>
-                </div>
-              </div>
-              {canManage && (
-                <button
-                  onClick={() => handleRevokeInvitation(inv.id)}
-                  className="text-xs text-red-400 hover:text-red-300 font-medium"
-                >
-                  Revoke
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
 
       {user?.org_id && (
         <>
