@@ -16,7 +16,7 @@ async function getPublicInvitation(token: string) {
     const data = await res.json().catch(() => ({}))
     throw new Error(data.message || data.error || 'Invalid or expired invitation')
   }
-  return res.json() as Promise<{ organization_name: string; email: string; role: string }>
+  return res.json() as Promise<{ organization_name: string; organization_id: string; email: string; role: string }>
 }
 
 function InviteContent() {
