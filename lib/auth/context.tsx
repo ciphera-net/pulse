@@ -295,7 +295,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const organizations = await getUserOrganizations()
 
           if (organizations.length === 0) {
-            if (pathname?.startsWith('/setup') || pathname?.startsWith('/invite') || pathname?.startsWith('/join')) return
+            if (pathname?.startsWith('/setup') || pathname?.startsWith('/join')) return
             router.push('/setup/org')
             return
           }

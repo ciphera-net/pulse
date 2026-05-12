@@ -21,7 +21,6 @@ const PUBLIC_PREFIXES = [
   '/share/',
   '/integrations',
   '/docs',
-  '/invite/',
   '/join/',
 ]
 
