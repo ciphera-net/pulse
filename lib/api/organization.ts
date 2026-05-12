@@ -29,6 +29,29 @@ export interface OrganizationInvitation {
   created_at: string
 }
 
+export interface InviteLink {
+  id: string
+  organization_id: string
+  name: string
+  role: string
+  metadata?: { app?: string; role_id?: string; site_ids?: string[] }
+  max_uses: number | null
+  use_count: number
+  expires_at: string
+  created_by: string
+  created_at: string
+  code?: string
+  url?: string
+}
+
+export interface InviteLinkInfo {
+  organization_name: string
+  organization_id: string
+  role: string
+  name: string
+  metadata?: { app?: string; role_id?: string; site_ids?: string[] }
+}
+
 // Create a new organization
 export async function createOrganization(name: string, slug: string): Promise<Organization> {
   // Use authFetch (Authenticated via Ciphera ID)
@@ -147,5 +170,30 @@ export async function transferOwnership(organizationId: string, targetUserId: st
   await authFetch(`/auth/organizations/${organizationId}/transfer-ownership`, {
     method: 'POST',
     body: JSON.stringify({ target_user_id: targetUserId }),
+  })
+}
+
+export async function createInviteLink(
+  orgId: string,
+  params: { name: string; role: string; metadata?: object; max_uses?: number; expires_in: string }
+): Promise<InviteLink> {
+  return await authFetch<InviteLink>(`/auth/organizations/${orgId}/invite-links`, {
+    method: 'POST',
+    body: JSON.stringify(params),
+  })
+}
+
+export async function getInviteLinks(orgId: string): Promise<InviteLink[]> {
+  const data = await authFetch<{ invite_links: InviteLink[] }>(`/auth/organizations/${orgId}/invite-links`)
+  return data.invite_links ?? []
+}
+
+export async function revokeInviteLink(orgId: string, linkId: string): Promise<void> {
+  await authFetch(`/auth/organizations/${orgId}/invite-links/${linkId}`, { method: 'DELETE' })
+}
+
+export async function acceptInviteLink(code: string): Promise<{ organization_id: string; metadata?: object }> {
+  return await authFetch<{ organization_id: string; metadata?: object }>(`/auth/invite-links/${code}/accept`, {
+    method: 'POST',
   })
 }
