@@ -155,6 +155,9 @@ export default function CreateInviteLinkModal({ orgId, roles, open, onOpenChange
                 }
               </button>
             </div>
+            <p className="text-xs text-neutral-500 text-center">
+              You can re-copy this link from the Invite Links section below.
+            </p>
             <div className="flex justify-end">
               <Button onClick={() => handleOpenChange(false)} variant="secondary" className="text-sm">
                 Done
