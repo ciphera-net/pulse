@@ -10,6 +10,7 @@ import SiteList from '@/components/sites/SiteList'
 import DeleteSiteModal from '@/components/sites/DeleteSiteModal'
 import { Button, toast, getAuthErrorMessage } from '@ciphera-net/ui'
 import { cdnUrl } from '@/lib/cdn'
+import { useCan } from '@/lib/auth/permissions'
 import { getSitesLimitForPlan } from '@/lib/plans'
 import { SitesListSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 
@@ -106,6 +107,7 @@ export default function HomeDashboard() {
   // * Match the skeleton-with-minimum-display-time pattern used across site
   // * pages (behavior, journeys, funnels, etc.). useMinimumLoading keeps the
   // * skeleton visible for >=300ms once shown to prevent flicker on fast loads.
+  const canCreateSite = useCan('sites.create')
   const showSkeleton = useMinimumLoading(sitesLoading && sites.length === 0)
   const fadeClass = useSkeletonFade(showSkeleton)
 
@@ -139,11 +141,11 @@ export default function HomeDashboard() {
           </div>
         ) : null
         })() ?? (
-          <Link href="/sites/new">
+          {canCreateSite && <Link href="/sites/new">
             <Button variant="primary" className="text-sm whitespace-nowrap">
               Add New Site
             </Button>
-          </Link>
+          </Link>}
         )}
       </div>
 
@@ -160,12 +162,12 @@ export default function HomeDashboard() {
           <p className="max-w-sm text-caption text-neutral-400">
             Connect a domain to start collecting privacy-friendly analytics. You can add more sites later from the dashboard.
           </p>
-          <Link
+          {canCreateSite && <Link
             href="/sites/new"
             className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-orange text-white text-sm font-medium hover:bg-brand-orange-hover transition-colors duration-fast ease-apple active:scale-[0.97]"
           >
             New site
-          </Link>
+          </Link>}
         </div>
       ) : (
         <SiteList sites={sites} siteStats={siteStats} loading={false} />
