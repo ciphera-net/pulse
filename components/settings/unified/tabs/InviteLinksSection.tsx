@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { toast } from '@ciphera-net/ui'
+import { Button, toast } from '@ciphera-net/ui'
 import { Copy, Check } from '@phosphor-icons/react'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -53,15 +53,17 @@ function CopyLinkButton({ url }: { url?: string }) {
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
             onClick={handleCopy}
-            className="p-1.5 rounded-md text-neutral-500 hover:text-white hover:bg-neutral-700 transition-colors"
           >
             {copied
               ? <Check weight="bold" className="w-3.5 h-3.5 text-green-400" />
               : <Copy weight="bold" className="w-3.5 h-3.5" />
             }
-          </button>
+          </Button>
         </TooltipTrigger>
         <TooltipContent>Copy invite link</TooltipContent>
       </Tooltip>
@@ -140,12 +142,14 @@ export default function InviteLinksSection({ orgId, links, roles, loading, onRev
               <div className="flex items-center gap-1 flex-shrink-0 ml-3">
                 <CopyLinkButton url={link.url} />
                 {canManage && (
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-400 hover:text-red-300"
                     onClick={() => handleRevoke(link)}
-                    className="text-xs text-red-400 hover:text-red-300 font-medium px-1.5 py-1 rounded transition-colors"
                   >
                     Revoke
-                  </button>
+                  </Button>
                 )}
               </div>
             )}

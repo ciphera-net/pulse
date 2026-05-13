@@ -103,12 +103,14 @@ export default function WorkspaceMembersTab() {
             <div className="flex items-center gap-2">
               <RoleBadge role={member.role} roles={roles} />
               {canManage && member.role !== 'owner' && member.user_id !== user?.id && (
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100"
                   onClick={() => handleRemove(member.user_id, member.user_email || member.user_id)}
-                  className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-red-900/20 transition-colors opacity-0 group-hover:opacity-100 ease-apple"
                 >
                   <Trash weight="bold" className="w-3.5 h-3.5" />
-                </button>
+                </Button>
               )}
             </div>
           </div>

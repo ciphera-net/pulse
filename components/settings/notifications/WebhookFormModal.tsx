@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { Checkbox, Input } from '@ciphera-net/ui'
+import { Button, Checkbox, Input } from '@ciphera-net/ui'
 import { createWebhook, testWebhook } from '@/lib/api/notifications-webhooks'
 
 const TYPE_OPTIONS = [
@@ -115,30 +115,28 @@ export default function WebhookFormModal({ onClose, onCreated }: Props) {
         </div>
 
         <div className="mt-6 flex justify-between items-center">
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={handleTest}
             disabled={busy || !url}
-            className="text-xs text-neutral-400 hover:text-white disabled:opacity-50"
           >
             Test endpoint
-          </button>
+          </Button>
           <div className="flex gap-2">
-            <button
-              type="button"
+            <Button
+              variant="secondary"
               onClick={onClose}
-              className="px-4 py-2 text-sm text-neutral-400 hover:text-white"
             >
               Cancel
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="primary"
               onClick={handleSave}
               disabled={busy || !url || selected.length === 0}
-              className="px-4 py-2 text-sm rounded bg-brand-orange hover:bg-brand-orange/90 text-white disabled:opacity-50"
             >
               {busy ? 'Saving…' : 'Save webhook'}
-            </button>
+            </Button>
           </div>
         </div>
       </div>

@@ -219,14 +219,10 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
         />
 
         {/* Verify Installation */}
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          className={site.is_verified ? 'bg-green-900/10 border-green-900/30 text-green-400 hover:bg-green-900/20' : ''}
           onClick={() => setShowVerificationModal(true)}
-          className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl border transition-colors ${
-            site.is_verified
-              ? 'bg-green-900/10 border-green-900/30 text-green-400'
-              : 'bg-neutral-800 border-neutral-700 text-neutral-300 hover:bg-neutral-700'
-          } ease-apple`}
         >
           {site.is_verified ? (
             <>
@@ -239,7 +235,7 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
               Verify Installation
             </>
           )}
-        </button>
+        </Button>
         <p className="text-xs text-neutral-500">
           {site.is_verified ? 'Your site is sending data correctly.' : 'Check if your site is sending data correctly.'}
         </p>

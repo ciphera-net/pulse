@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/lib/auth/context'
 import { getUserDevices, removeDevice, type TrustedDevice } from '@/lib/api/devices'
-import { Spinner, toast } from '@ciphera-net/ui'
+import { Button, Spinner, toast } from '@ciphera-net/ui'
 import { Laptop } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -117,14 +117,15 @@ export default function TrustedDevicesCard() {
               </div>
 
               {!device.is_current && (
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="flex-shrink-0 text-red-400 hover:text-red-300"
                   onClick={() => setConfirmDevice(device)}
                   disabled={removingId === device.id}
-                  className="flex-shrink-0 text-xs font-medium text-red-400 hover:text-red-300 transition-colors disabled:opacity-50 ease-apple"
                 >
                   {removingId === device.id ? 'Removing...' : 'Remove'}
-                </button>
+                </Button>
               )}
             </div>
           ))}

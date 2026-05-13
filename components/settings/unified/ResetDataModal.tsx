@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Input, toast, getAuthErrorMessage, AlertTriangleIcon, XIcon, Spinner } from '@ciphera-net/ui'
+import { Button, Input, toast, getAuthErrorMessage, AlertTriangleIcon, XIcon, Spinner } from '@ciphera-net/ui'
 import { resetSiteData, type ResetModule } from '@/lib/api/sites'
 import { ChartBar, Path, Funnel, Heartbeat, Gauge, Cloud, MagnifyingGlass } from '@phosphor-icons/react'
 
@@ -153,13 +153,14 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
             {/* Header */}
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-red-500">Reset Data</h3>
-              <button
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={handleClose}
                 disabled={isResetting}
-                className="text-neutral-400 hover:text-white disabled:opacity-50"
               >
                 <XIcon className="w-5 h-5" />
-              </button>
+              </Button>
             </div>
 
             <p className="text-sm text-neutral-400 mb-4">
@@ -167,14 +168,15 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
             </p>
 
             {/* Select All */}
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={toggleAll}
               disabled={isResetting}
-              className="w-full text-left mb-3 text-xs font-medium text-neutral-400 hover:text-white transition-colors disabled:opacity-50 ease-apple"
+              className="w-full justify-start mb-3 text-xs"
             >
               {allSelected ? 'Deselect all' : 'Select all'}
-            </button>
+            </Button>
 
             {/* Module checkboxes */}
             <div className="space-y-2 mb-5">
@@ -182,16 +184,17 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
                 const Icon = mod.icon
                 const checked = selected.has(mod.id)
                 return (
-                  <button
+                  <Button
                     key={mod.id}
-                    type="button"
+                    variant={checked ? 'primary' : 'secondary'}
+                    size="sm"
                     onClick={() => toggleModule(mod.id)}
                     disabled={isResetting}
-                    className={`w-full flex items-start gap-3 p-3 rounded-xl border transition-all text-left disabled:opacity-50 ${
+                    className={`w-full flex items-start gap-3 p-3 rounded-xl text-left h-auto ${
                       checked
-                        ? 'border-red-500/50 bg-red-900/15'
+                        ? 'border-red-500/50 bg-red-900/15 hover:bg-red-900/20'
                         : 'border-neutral-800 bg-neutral-800/30 hover:border-neutral-700'
-                    } ease-apple`}
+                    }`}
                   >
                     <div className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
                       checked
@@ -209,7 +212,7 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
                       <p className={`text-sm font-medium ${checked ? 'text-red-300' : 'text-white'}`}>{mod.label}</p>
                       <p className="text-xs text-neutral-500 mt-0.5">{mod.description}</p>
                     </div>
-                  </button>
+                  </Button>
                 )
               })}
             </div>
@@ -241,18 +244,19 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
                 </div>
 
                 <div className="flex gap-3">
-                  <button
-                    type="button"
+                  <Button
+                    variant="secondary"
                     onClick={handleClose}
                     disabled={isResetting}
-                    className="flex-1 px-4 py-2 text-sm font-medium text-neutral-300 hover:bg-neutral-800 rounded-xl transition-colors disabled:opacity-50 ease-apple"
+                    className="flex-1"
                   >
                     Cancel
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="secondary"
                     onClick={handleReset}
                     disabled={!isConfirmed || isResetting}
-                    className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ease-apple"
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white border-red-600 gap-2"
                   >
                     {isResetting ? (
                       <>
@@ -262,7 +266,7 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
                     ) : (
                       `Reset ${selected.size} Module${selected.size > 1 ? 's' : ''}`
                     )}
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}

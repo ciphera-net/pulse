@@ -42,13 +42,14 @@ export function DangerZone({ items, children }: DangerZoneProps) {
                 {item.buttonLabel}
               </Button>
             ) : (
-              <button
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium disabled:opacity-50"
+              <Button
+                variant="secondary"
+                className="bg-red-600 hover:bg-red-700 text-white border-red-600"
                 onClick={item.onClick}
                 disabled={item.disabled}
               >
                 {item.buttonLabel}
-              </button>
+              </Button>
             )}
           </div>
         </div>

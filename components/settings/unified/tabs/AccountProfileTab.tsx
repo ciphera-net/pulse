@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Input, toast, Spinner } from '@ciphera-net/ui'
+import { Button, Input, toast, Spinner } from '@ciphera-net/ui'
 import { useAuth } from '@/lib/auth/context'
 import { updateDisplayName } from '@/lib/api/user'
 import { deleteAccount } from '@/lib/api/user'
@@ -137,16 +137,20 @@ export default function AccountProfileTab({ onDirtyChange, onRegisterSave }: { o
             />
           </div>
           <div className="flex gap-2">
-            <button
+            <Button
+              variant="secondary"
+              className="bg-red-600 hover:bg-red-700 text-white border-red-600"
               onClick={handleDelete}
               disabled={deleteText !== 'DELETE' || !deletePassword || deleting}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium disabled:opacity-50"
             >
               {deleting ? 'Deleting...' : 'Delete Account'}
-            </button>
-            <button onClick={() => { setShowDeleteConfirm(false); setDeleteText(''); setDeletePassword('') }} className="px-4 py-2 text-neutral-400 hover:text-white text-sm">
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => { setShowDeleteConfirm(false); setDeleteText(''); setDeletePassword('') }}
+            >
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       )}

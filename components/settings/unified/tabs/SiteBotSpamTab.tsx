@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Checkbox, Toggle, toast, Spinner, getDateRange } from '@ciphera-net/ui'
+import { Button, Checkbox, Toggle, toast, Spinner, getDateRange } from '@ciphera-net/ui'
 import { ShieldCheck, Shield } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useSite, useQuarantineStats, useSessions, useSiteDomainReputation } from '@/lib/swr/dashboard'
@@ -139,19 +139,21 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
         <div className="flex items-center justify-between">
           <h4 className="text-sm font-medium text-neutral-300">Session Review</h4>
           {/* Review/Blocked toggle */}
-          <div className="flex items-center rounded-lg border border-neutral-700 overflow-hidden text-sm">
-            <button
+          <div className="flex items-center gap-1">
+            <Button
+              variant={botView === 'review' ? 'primary' : 'ghost'}
+              size="sm"
               onClick={() => { setBotView('review'); setSelectedSessions(new Set()) }}
-              className={`px-3 py-1.5 text-xs font-medium transition-colors ${botView === 'review' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'} ease-apple`}
             >
               Suspicious
-            </button>
-            <button
+            </Button>
+            <Button
+              variant={botView === 'blocked' ? 'primary' : 'ghost'}
+              size="sm"
               onClick={() => { setBotView('blocked'); setSelectedSessions(new Set()) }}
-              className={`px-3 py-1.5 text-xs font-medium transition-colors ${botView === 'blocked' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'} ease-apple`}
             >
               Quarantined
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -171,11 +173,11 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
           <div className="flex items-center gap-3 p-2 bg-brand-orange/10 border border-brand-orange/20 rounded-lg text-sm">
             <span className="text-neutral-300">{selectedSessions.size} selected</span>
             {botView === 'review' ? (
-              <button onClick={() => handleBotFilter(Array.from(selectedSessions))} disabled={!canManage} className="text-red-400 hover:text-red-300 font-medium disabled:opacity-40 disabled:cursor-not-allowed">Flag as bot</button>
+              <Button variant="secondary" size="sm" onClick={() => handleBotFilter(Array.from(selectedSessions))} disabled={!canManage} className="text-red-400 border-red-900/50 hover:bg-red-900/20">Flag as bot</Button>
             ) : (
-              <button onClick={() => handleBotUnfilter(Array.from(selectedSessions))} disabled={!canManage} className="text-green-400 hover:text-green-300 font-medium disabled:opacity-40 disabled:cursor-not-allowed">Unblock</button>
+              <Button variant="secondary" size="sm" onClick={() => handleBotUnfilter(Array.from(selectedSessions))} disabled={!canManage}>Unblock</Button>
             )}
-            <button onClick={() => setSelectedSessions(new Set())} className="text-neutral-500 hover:text-neutral-300 ml-auto">Clear</button>
+            <Button variant="secondary" size="sm" onClick={() => setSelectedSessions(new Set())} className="ml-auto">Clear</Button>
           </div>
         )}
 
@@ -214,17 +216,15 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
                     <span>{session.referrer || 'Direct'}</span>
                   </div>
                 </div>
-                <button
+                <Button
+                  variant="secondary"
+                  size="sm"
                   onClick={() => botView === 'review' ? handleBotFilter([session.session_id]) : handleBotUnfilter([session.session_id])}
                   disabled={!canManage}
-                  className={`shrink-0 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                    botView === 'review'
-                      ? 'text-red-400 border-red-500/20 hover:bg-red-900/20'
-                      : 'text-green-400 border-green-500/20 hover:bg-green-900/20'
-                  } ease-apple`}
+                  className={`shrink-0 ${botView === 'review' ? 'text-red-400 border-red-900/50 hover:bg-red-900/20' : ''}`}
                 >
                   {botView === 'review' ? 'Flag as bot' : 'Unblock'}
-                </button>
+                </Button>
               </div>
             ))}
           {(!sessions || sessions.filter(s => botView === 'blocked' ? s.quarantined : !s.quarantined).length === 0) && (
@@ -276,7 +276,9 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
                 </div>
               </div>
               <div className="flex gap-1.5 shrink-0">
-                <button
+                <Button
+                  variant="secondary"
+                  size="sm"
                   onClick={async () => {
                     try {
                       await createDomainOverride(siteId, domain.domain, 'allow')
@@ -285,15 +287,13 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
                     } catch { toast.error('Failed') }
                   }}
                   disabled={!canManage}
-                  className={`px-2.5 py-1 text-xs rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                    domain.override === 'allow'
-                      ? 'bg-green-900/20 text-green-400 border-green-500/30'
-                      : 'text-neutral-400 border-neutral-700 hover:text-green-400 hover:border-green-500/30'
-                  } ease-apple`}
+                  className={domain.override === 'allow' ? 'bg-green-900/20 text-green-400 border-green-500/30' : ''}
                 >
                   Allow
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
                   onClick={async () => {
                     try {
                       await createDomainOverride(siteId, domain.domain, 'quarantine')
@@ -302,16 +302,14 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
                     } catch { toast.error('Failed') }
                   }}
                   disabled={!canManage}
-                  className={`px-2.5 py-1 text-xs rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                    domain.override === 'quarantine'
-                      ? 'bg-red-900/20 text-red-400 border-red-500/30'
-                      : 'text-neutral-400 border-neutral-700 hover:text-red-400 hover:border-red-500/30'
-                  } ease-apple`}
+                  className={`text-red-400 border-red-900/50 hover:bg-red-900/20${domain.override === 'quarantine' ? ' bg-red-900/20' : ''}`}
                 >
                   Block
-                </button>
+                </Button>
                 {domain.override && (
-                  <button
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     onClick={async () => {
                       try {
                         await deleteDomainOverride(siteId, domain.domain)
@@ -320,10 +318,9 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
                       } catch { toast.error('Failed') }
                     }}
                     disabled={!canManage}
-                    className="px-2.5 py-1 text-xs rounded-lg border border-neutral-700 text-neutral-400 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed ease-apple"
                   >
                     Reset
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>

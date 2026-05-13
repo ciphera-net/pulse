@@ -141,13 +141,14 @@ export default function SiteVisibilityTab({ siteId, onDirtyChange, onRegisterSav
                     placeholder={site.has_password ? 'Leave empty to keep current password' : 'Set a password'}
                   />
                   {site.has_password && (
-                    <button
-                      type="button"
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mt-2 text-red-400 hover:text-red-300"
                       onClick={() => { setPasswordEnabled(false); setPassword('') }}
-                      className="mt-2 text-xs font-medium text-red-400 hover:text-red-300 transition-colors ease-apple"
                     >
                       Remove password protection
-                    </button>
+                    </Button>
                   )}
                 </motion.div>
               )}

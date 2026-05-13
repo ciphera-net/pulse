@@ -155,18 +155,22 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
               </div>
               {canManageGoals && (
                 <div className="flex items-center gap-1">
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
                     onClick={() => startEdit(goal)}
-                    className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors ease-apple"
                   >
                     <Pencil weight="bold" className="w-3.5 h-3.5" />
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-red-400 hover:text-red-300"
                     onClick={() => setConfirmDeleteId(goal.id)}
-                    className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-red-900/20 transition-colors ease-apple"
                   >
                     <Trash weight="bold" className="w-3.5 h-3.5" />
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>

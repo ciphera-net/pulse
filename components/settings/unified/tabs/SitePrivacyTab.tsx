@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Input, Select, Toggle, toast, Spinner } from '@ciphera-net/ui'
+import { Button, Input, Select, Toggle, toast, Spinner } from '@ciphera-net/ui'
 import { useSite, useSubscription, usePageSpeedConfig } from '@/lib/swr/dashboard'
 import { updateSite, type PageRule } from '@/lib/api/sites'
 import { updatePageSpeedConfig } from '@/lib/api/pagespeed'
@@ -226,7 +226,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
         {subscriptionError && (
           <div className="p-3 rounded-xl border border-amber-800 bg-amber-900/20 flex items-center justify-between">
             <p className="text-xs text-amber-200">Plan limits could not be loaded.</p>
-            <button onClick={() => mutateSubscription()} className="text-xs font-medium text-amber-400 hover:text-amber-300">Retry</button>
+            <Button variant="secondary" size="sm" onClick={() => mutateSubscription()}>Retry</Button>
           </div>
         )}
 
@@ -312,39 +312,47 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
                   )}
                 </div>
                 <div className="flex items-center gap-1 pt-1">
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
                     onClick={() => moveRule(index, -1)}
                     disabled={index === 0}
-                    className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors disabled:opacity-30 disabled:hover:text-neutral-400 disabled:hover:bg-transparent ease-apple"
                   >
                     <ArrowUp weight="bold" className="w-4 h-4" />
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
                     onClick={() => moveRule(index, 1)}
                     disabled={index === pageRules.length - 1}
-                    className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors disabled:opacity-30 disabled:hover:text-neutral-400 disabled:hover:bg-transparent ease-apple"
                   >
                     <ArrowDown weight="bold" className="w-4 h-4" />
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 hover:text-red-400 hover:bg-neutral-700"
                     onClick={() => removeRule(index)}
-                    className="p-1.5 rounded-lg text-neutral-400 hover:text-red-400 hover:bg-neutral-700 transition-colors ease-apple"
                   >
                     <Trash weight="bold" className="w-4 h-4" />
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
           ))}
         </div>
 
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => setPageRules([...pageRules, { type: 'exclude', pattern: '' }])}
-          className="flex items-center gap-2 text-sm font-medium text-brand-orange hover:text-brand-orange/80 transition-colors ease-apple"
+          className="gap-2 text-brand-orange hover:text-brand-orange/80"
         >
           <Plus weight="bold" className="w-4 h-4" />
           Add Rule
-        </button>
+        </Button>
       </div>
 
       {/* Allowed Query Parameters */}
@@ -432,18 +440,19 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
             value={generatePrivacySnippet(site)}
             className="w-full px-4 py-3 pr-12 border border-neutral-800 rounded-xl bg-neutral-800/30 text-neutral-300 text-xs font-mono"
           />
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute top-3 right-3"
             onClick={() => {
               navigator.clipboard.writeText(generatePrivacySnippet(site))
               setSnippetCopied(true)
               toast.success('Privacy snippet copied')
               setTimeout(() => setSnippetCopied(false), 2000)
             }}
-            className="absolute top-3 right-3 p-2 rounded-lg bg-neutral-700 hover:bg-neutral-600 text-neutral-300 transition-colors ease-apple"
           >
             {snippetCopied ? <CheckCircle weight="bold" className="w-4 h-4" /> : <Copy weight="bold" className="w-4 h-4" />}
-          </button>
+          </Button>
         </div>
       </div>
 

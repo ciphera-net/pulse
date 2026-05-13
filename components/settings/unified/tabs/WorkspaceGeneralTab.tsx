@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Input, Select, toast } from '@ciphera-net/ui'
+import { Button, Input, Select, toast } from '@ciphera-net/ui'
 import { Spinner } from '@ciphera-net/ui'
 import { useAuth } from '@/lib/auth/context'
 import { useCan } from '@/lib/auth/permissions'
@@ -180,16 +180,20 @@ export default function WorkspaceGeneralTab({ onDirtyChange, onRegisterSave }: {
                   />
                 </div>
                 <div className="flex gap-2">
-                  <button
+                  <Button
+                    variant="secondary"
                     onClick={handleTransfer}
                     disabled={!transferTargetId || transferring}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium disabled:opacity-50"
+                    className="bg-red-600 hover:bg-red-700 text-white border-red-600"
                   >
                     {transferring ? 'Transferring…' : 'Transfer Ownership'}
-                  </button>
-                  <button onClick={() => { setShowTransferConfirm(false); setTransferTargetId('') }} className="px-4 py-2 text-neutral-400 hover:text-white text-sm">
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() => { setShowTransferConfirm(false); setTransferTargetId('') }}
+                  >
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               </>
             )}
@@ -213,16 +217,20 @@ export default function WorkspaceGeneralTab({ onDirtyChange, onRegisterSave }: {
               />
             </div>
             <div className="flex gap-2">
-              <button
+              <Button
+                variant="secondary"
                 onClick={handleDelete}
                 disabled={deleteText !== 'DELETE' || deleting}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium disabled:opacity-50"
+                className="bg-red-600 hover:bg-red-700 text-white border-red-600"
               >
                 {deleting ? 'Deleting...' : 'Delete Organization'}
-              </button>
-              <button onClick={() => { setShowDeleteConfirm(false); setDeleteText('') }} className="px-4 py-2 text-neutral-400 hover:text-white text-sm">
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => { setShowDeleteConfirm(false); setDeleteText('') }}
+              >
                 Cancel
-              </button>
+              </Button>
             </div>
           </div>
         )}

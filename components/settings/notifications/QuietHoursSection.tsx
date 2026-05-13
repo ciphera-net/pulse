@@ -1,5 +1,5 @@
 'use client'
-import { Input } from '@ciphera-net/ui'
+import { Button, Input } from '@ciphera-net/ui'
 import type { Preferences } from '@/lib/api/notifications-preferences'
 
 interface Props {
@@ -28,13 +28,13 @@ export default function QuietHoursSection({ prefs, onChange }: Props) {
           aria-label="Quiet hours end"
         />
         {(prefs.quiet_hours_start || prefs.quiet_hours_end) && (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => onChange({ ...prefs, quiet_hours_start: null, quiet_hours_end: null })}
-            className="text-xs text-neutral-400 hover:text-white"
           >
             Clear
-          </button>
+          </Button>
         )}
       </div>
     </div>

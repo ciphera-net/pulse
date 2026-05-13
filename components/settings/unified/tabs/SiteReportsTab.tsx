@@ -160,28 +160,28 @@ function ScheduleRow({
           <div className="flex items-center gap-1 flex-shrink-0">
             <Tooltip>
               <TooltipTrigger asChild>
-                <button onClick={() => onEdit(schedule)} className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors ease-apple">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(schedule)}>
                   <Pencil weight="bold" className="w-3.5 h-3.5" />
-                </button>
+                </Button>
               </TooltipTrigger>
               <TooltipContent>Edit</TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <button onClick={handleTest} disabled={testing} className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors ease-apple">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleTest} disabled={testing}>
                   <PaperPlaneTilt weight="bold" className="w-3.5 h-3.5" />
-                </button>
+                </Button>
               </TooltipTrigger>
               <TooltipContent>Send test</TooltipContent>
             </Tooltip>
-            <button onClick={handleToggle} className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors ease-apple">
+            <Button variant="ghost" size="sm" onClick={handleToggle}>
               {schedule.enabled ? 'Pause' : 'Enable'}
-            </button>
+            </Button>
             <Tooltip>
               <TooltipTrigger asChild>
-                <button onClick={() => setConfirmDelete(true)} className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-red-900/20 transition-colors ease-apple">
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-neutral-500 hover:text-red-400 hover:bg-red-900/20" onClick={() => setConfirmDelete(true)}>
                   <Trash weight="bold" className="w-3.5 h-3.5" />
-                </button>
+                </Button>
               </TooltipTrigger>
               <TooltipContent>Delete</TooltipContent>
             </Tooltip>

@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { Button } from '@ciphera-net/ui'
 import { listWebhooks, deleteWebhook, type Webhook } from '@/lib/api/notifications-webhooks'
 import WebhookFormModal from './WebhookFormModal'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -37,13 +38,13 @@ export default function WebhooksSection() {
         <p className="text-xs text-neutral-500">
           Webhook URLs are stored encrypted at rest. Payload contains event ID and timestamp only — no event content.
         </p>
-        <button
-          type="button"
+        <Button
+          variant="primary"
+          size="sm"
           onClick={() => setShowForm(true)}
-          className="px-3 py-1.5 text-sm rounded bg-brand-orange hover:bg-brand-orange/90 text-white"
         >
           Add webhook
-        </button>
+        </Button>
       </div>
 
       {error && <div className="text-red-400 text-sm">{error}</div>}
@@ -65,13 +66,14 @@ export default function WebhooksSection() {
                   {!w.enabled && <span className="ml-2 text-red-400">disabled</span>}
                 </p>
               </div>
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-red-400 ml-3"
                 onClick={() => handleDelete(w.id)}
-                className="text-xs text-red-400 hover:underline ml-3"
               >
                 Delete
-              </button>
+              </Button>
             </li>
           ))}
         </ul>
