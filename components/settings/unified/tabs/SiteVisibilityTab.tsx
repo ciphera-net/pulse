@@ -49,7 +49,6 @@ export default function SiteVisibilityTab({ siteId, onDirtyChange, onRegisterSav
   const handleSave = useCallback(async () => {
     try {
       await updateSite(siteId, {
-        name: site?.name || '',
         is_public: isPublic,
         password: passwordEnabled ? password : undefined,
         clear_password: !passwordEnabled,
@@ -62,7 +61,7 @@ export default function SiteVisibilityTab({ siteId, onDirtyChange, onRegisterSav
     } catch {
       toast.error('Failed to save')
     }
-  }, [siteId, site?.name, isPublic, passwordEnabled, password, mutate, onDirtyChange])
+  }, [siteId, isPublic, passwordEnabled, password, mutate, onDirtyChange])
 
   useEffect(() => {
     onRegisterSave?.(handleSave)

@@ -20,6 +20,7 @@ export default function CategoryTogglesSection() {
 
   const toggle = (id: string) => {
     if (!settings) return
+    const prev = { ...settings }
     const next = { ...settings, [id]: !settings[id] }
     setSettings(next)
     if (saveTimer.current) clearTimeout(saveTimer.current)
@@ -29,6 +30,7 @@ export default function CategoryTogglesSection() {
         await updateCategorySettings({ [id]: next[id] })
         setError(null)
       } catch (e) {
+        setSettings(prev)
         setError((e as Error).message ?? 'Failed to save')
       } finally {
         setSaving(false)

@@ -65,8 +65,8 @@ export default function WorkspaceBillingTab() {
     try {
       const result = await resumeSubscription()
       if (result.requires_checkout) {
-          router.push('/setup/plan')
-        toast.success('Your subscription has expired. Please subscribe again.')
+        toast.warning('Your subscription has expired. Please subscribe again.')
+        router.push('/setup/plan')
         return
       }
       if (subscription) {

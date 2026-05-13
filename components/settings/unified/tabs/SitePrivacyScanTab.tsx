@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Select, Toggle, Button, toast, Spinner } from '@ciphera-net/ui'
+import { Select, Toggle, Button, toast, Spinner, getAuthErrorMessage } from '@ciphera-net/ui'
 import { CheckCircle, XCircle } from '@phosphor-icons/react'
 import {
   getPrivacyScanConfig,
@@ -30,6 +30,7 @@ export default function SitePrivacyScanTab({
   const [enabled, setEnabled] = useState(false)
   const [frequency, setFrequency] = useState('weekly')
   const [configLoaded, setConfigLoaded] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [scanning, setScanning] = useState(false)
   const [cooldown, setCooldown] = useState(0)
   const [lastScan, setLastScan] = useState<PrivacyScanResult | null>(null)
@@ -42,21 +43,25 @@ export default function SitePrivacyScanTab({
     if (hasInitialized.current) return
 
     async function load() {
-      const [config, scan] = await Promise.all([
-        getPrivacyScanConfig(siteId),
-        getLatestPrivacyScan(siteId),
-      ])
+      try {
+        const [config, scan] = await Promise.all([
+          getPrivacyScanConfig(siteId),
+          getLatestPrivacyScan(siteId),
+        ])
 
-      const resolvedEnabled = config?.enabled ?? false
-      const resolvedFrequency = config?.frequency ?? 'weekly'
+        const resolvedEnabled = config?.enabled ?? false
+        const resolvedFrequency = config?.frequency ?? 'weekly'
 
-      setEnabled(resolvedEnabled)
-      setFrequency(resolvedFrequency)
-      setLastScan(scan)
+        setEnabled(resolvedEnabled)
+        setFrequency(resolvedFrequency)
+        setLastScan(scan)
 
-      initialRef.current = JSON.stringify({ enabled: resolvedEnabled, frequency: resolvedFrequency })
-      hasInitialized.current = true
-      setConfigLoaded(true)
+        initialRef.current = JSON.stringify({ enabled: resolvedEnabled, frequency: resolvedFrequency })
+        hasInitialized.current = true
+        setConfigLoaded(true)
+      } catch (err) {
+        setError(getAuthErrorMessage(err))
+      }
     }
 
     load()
@@ -120,6 +125,26 @@ export default function SitePrivacyScanTab({
       setScanning(false)
     }
   }, [siteId])
+
+  if (error) {
+    const retry = () => {
+      setError(null)
+      hasInitialized.current = false
+    }
+    return (
+      <div className="rounded-xl border border-red-900/50 bg-red-950/20 p-6 text-center">
+        <p className="text-red-400 text-sm">{error}</p>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={retry}
+          className="mt-4"
+        >
+          Retry
+        </Button>
+      </div>
+    )
+  }
 
   if (!configLoaded) {
     return (

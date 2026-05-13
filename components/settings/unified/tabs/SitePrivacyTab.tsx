@@ -125,7 +125,6 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
   const handleSave = useCallback(async () => {
     try {
       await updateSite(siteId, {
-        name: site?.name || '',
         collect_page_paths: collectPagePaths,
         collect_referrers: collectReferrers,
         collect_device_info: collectDeviceInfo,
@@ -141,7 +140,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
       // Save PSI frequency separately if it changed
       if (psiConfig?.enabled && psiFrequency !== (psiConfig.frequency || 'weekly')) {
         await updatePageSpeedConfig(siteId, { enabled: psiConfig.enabled, frequency: psiFrequency })
-        mutatePSIConfig()
+        await mutatePSIConfig()
       }
       await mutate()
       initialRef.current = JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency })
@@ -150,7 +149,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
     } catch {
       toast.error('Failed to save')
     }
-  }, [siteId, site?.name, collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency, psiConfig, mutatePSIConfig, mutate, onDirtyChange])
+  }, [siteId, collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency, psiConfig, mutatePSIConfig, mutate, onDirtyChange])
 
   // Register save handler with modal
   useEffect(() => {

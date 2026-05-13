@@ -51,7 +51,7 @@ export interface CreateSiteRequest {
 }
 
 export interface UpdateSiteRequest {
-  name: string
+  name?: string
   timezone?: string
   is_public?: boolean
   password?: string

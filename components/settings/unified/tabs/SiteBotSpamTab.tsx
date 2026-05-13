@@ -49,7 +49,7 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
 
   const handleSave = useCallback(async () => {
     try {
-      await updateSite(siteId, { name: site?.name || '', filter_bots: filterBots })
+      await updateSite(siteId, { filter_bots: filterBots })
       await mutate()
       initialFilterRef.current = filterBots
       onDirtyChange?.(false)
@@ -57,7 +57,7 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
     } catch {
       toast.error('Failed to save')
     }
-  }, [siteId, site?.name, filterBots, mutate, onDirtyChange])
+  }, [siteId, filterBots, mutate, onDirtyChange])
 
   useEffect(() => {
     onRegisterSave?.(handleSave)

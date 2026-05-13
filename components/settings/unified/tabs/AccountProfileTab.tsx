@@ -102,7 +102,10 @@ export default function AccountProfileTab({ onDirtyChange, onRegisterSave }: { o
             description: 'Permanently delete your account and all associated data.',
             buttonLabel: 'Delete',
             variant: 'solid',
-            onClick: () => setShowDeleteConfirm(prev => !prev),
+            onClick: () => setShowDeleteConfirm(prev => {
+              if (prev) { setDeleteText(''); setDeletePassword('') }
+              return !prev
+            }),
           },
         ]}
       />
