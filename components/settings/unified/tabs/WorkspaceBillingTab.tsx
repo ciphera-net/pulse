@@ -368,9 +368,9 @@ export default function WorkspaceBillingTab() {
 
           {editingBilling ? (
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs text-neutral-500">Business name</label>
+                  <label className="text-xs font-medium text-neutral-400">Business name</label>
                   <Input
                     type="text"
                     value={billingForm.business_name}
@@ -379,7 +379,7 @@ export default function WorkspaceBillingTab() {
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs text-neutral-500">Billing email</label>
+                  <label className="text-xs font-medium text-neutral-400">Billing email</label>
                   <Input
                     type="email"
                     value={billingForm.billing_email}
@@ -388,7 +388,7 @@ export default function WorkspaceBillingTab() {
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs text-neutral-500">Address</label>
+                  <label className="text-xs font-medium text-neutral-400">Address</label>
                   <Input
                     type="text"
                     value={billingForm.address}
@@ -397,7 +397,7 @@ export default function WorkspaceBillingTab() {
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs text-neutral-500">City</label>
+                  <label className="text-xs font-medium text-neutral-400">City</label>
                   <Input
                     type="text"
                     value={billingForm.city}
@@ -406,7 +406,7 @@ export default function WorkspaceBillingTab() {
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs text-neutral-500">Postal code</label>
+                  <label className="text-xs font-medium text-neutral-400">Postal code</label>
                   <Input
                     type="text"
                     value={billingForm.postal_code}

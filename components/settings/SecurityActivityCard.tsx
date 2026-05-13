@@ -122,7 +122,7 @@ export default function SecurityActivityCard() {
 
   return (
     <div>
-      <h2 className="text-xl font-semibold text-white mb-1">Security Activity</h2>
+      <h2 className="text-base font-semibold text-white mb-1">Security Activity</h2>
       <p className="text-neutral-400 text-sm mb-6">
         Recent security events on your account{totalCount > 0 ? ` (${totalCount})` : ''}
       </p>

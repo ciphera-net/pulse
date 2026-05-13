@@ -105,7 +105,7 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
       {/* Create/Edit form */}
       {(creating || editing) && (
         <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 p-4 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-neutral-400 mb-1">Display Name</label>
               <Input

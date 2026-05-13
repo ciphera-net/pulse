@@ -126,12 +126,12 @@ export default function WorkspaceGeneralTab({ onDirtyChange, onRegisterSave }: {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-neutral-300 mb-1.5">Organization Name</label>
+          <label className="block text-xs font-medium text-neutral-400 mb-1.5">Organization Name</label>
           <Input value={name} onChange={e => setName(e.target.value)} placeholder="Acme Corp" disabled={!canDeleteOrg} />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-neutral-300 mb-1.5">Organization Slug</label>
+          <label className="block text-xs font-medium text-neutral-400 mb-1.5">Organization Slug</label>
           <div className="flex items-center gap-2">
             <span className="text-sm text-neutral-500">pulse.ciphera.net/</span>
             <Input value={slug} onChange={e => setSlug(e.target.value)} placeholder="acme-corp" disabled={!canDeleteOrg} />

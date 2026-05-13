@@ -79,7 +79,7 @@ export default function AccountProfileTab({ onDirtyChange, onRegisterSave }: { o
       {/* Display Name */}
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-neutral-300 mb-1.5">Display Name</label>
+          <label className="block text-xs font-medium text-neutral-400 mb-1.5">Display Name</label>
           <Input
             value={displayName}
             onChange={e => setDisplayName(e.target.value)}
@@ -88,7 +88,7 @@ export default function AccountProfileTab({ onDirtyChange, onRegisterSave }: { o
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-neutral-300 mb-1.5">Email Address</label>
+          <label className="block text-xs font-medium text-neutral-400 mb-1.5">Email Address</label>
           <Input value={user.email} disabled className="opacity-60" />
           <p className="text-xs text-neutral-500 mt-1">Email changes require password verification. Use <a href="https://id.ciphera.net/settings" target="_blank" rel="noopener noreferrer" className="text-brand-orange hover:underline">Ciphera ID</a> to change your email.</p>
         </div>
@@ -119,7 +119,7 @@ export default function AccountProfileTab({ onDirtyChange, onRegisterSave }: { o
             <li>You will be removed from all organizations</li>
           </ul>
           <div>
-            <label className="block text-xs text-neutral-400 mb-1">Your password</label>
+            <label className="block text-xs font-medium text-neutral-400 mb-1">Your password</label>
             <Input
               type="password"
               value={deletePassword}
@@ -128,7 +128,7 @@ export default function AccountProfileTab({ onDirtyChange, onRegisterSave }: { o
             />
           </div>
           <div>
-            <label className="block text-xs text-neutral-400 mb-1">Type DELETE to confirm</label>
+            <label className="block text-xs font-medium text-neutral-400 mb-1">Type DELETE to confirm</label>
             <Input
               type="text"
               value={deleteText}

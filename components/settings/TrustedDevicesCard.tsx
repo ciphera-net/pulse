@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/lib/auth/context'
 import { getUserDevices, removeDevice, type TrustedDevice } from '@/lib/api/devices'
-import { Button, Spinner, toast } from '@ciphera-net/ui'
+import { Button, Spinner, toast, getAuthErrorMessage } from '@ciphera-net/ui'
 import { Laptop } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -52,7 +52,7 @@ export default function TrustedDevicesCard() {
       setDevices(prev => prev.filter(d => d.id !== device.id))
       toast.success('Device removed. A new sign-in from it will trigger an alert.')
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to remove device')
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to remove device')
     } finally {
       setRemovingId(null)
     }
@@ -60,7 +60,7 @@ export default function TrustedDevicesCard() {
 
   return (
     <div>
-      <h2 className="text-xl font-semibold text-white mb-1">Trusted Devices</h2>
+      <h2 className="text-base font-semibold text-white mb-1">Trusted Devices</h2>
       <p className="text-neutral-400 text-sm mb-6">
         Devices that have signed in to your account. Removing a device means the next sign-in from it will trigger a new device alert.
       </p>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Button, Checkbox, Toggle, toast, Spinner, getDateRange } from '@ciphera-net/ui'
+import { Button, Checkbox, Toggle, toast, Spinner, getDateRange, getAuthErrorMessage } from '@ciphera-net/ui'
 import { ShieldCheck, Shield } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useSite, useQuarantineStats, useSessions, useSiteDomainReputation } from '@/lib/swr/dashboard'
@@ -56,8 +56,8 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
       initialFilterRef.current = filterBots
       onDirtyChange?.(false)
       toast.success('Bot filtering updated')
-    } catch {
-      toast.error('Failed to save')
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to save settings')
     }
   }, [siteId, filterBots, mutate, onDirtyChange])
 
@@ -72,8 +72,8 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
       setSelectedSessions(new Set())
       mutateSessions()
       mutateBotStats()
-    } catch {
-      toast.error('Failed to flag sessions')
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to flag sessions')
     }
   }
 
@@ -84,8 +84,8 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
       setSelectedSessions(new Set())
       mutateSessions()
       mutateBotStats()
-    } catch {
-      toast.error('Failed to unblock sessions')
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to unblock sessions')
     }
   }
 
@@ -137,7 +137,7 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
       {/* Session Review */}
       <div id="section-sessions" className="space-y-3 pt-6 border-t border-neutral-800">
         <div className="flex items-center justify-between">
-          <h4 className="text-sm font-medium text-neutral-300">Session Review</h4>
+          <h4 className="text-sm font-semibold text-white mb-2">Session Review</h4>
           {/* Review/Blocked toggle */}
           <div className="flex items-center gap-1">
             <Button
@@ -232,7 +232,7 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
               title={botView === 'blocked' ? 'No quarantined sessions' : 'No suspicious sessions found'}
               description={botView === 'blocked' ? 'Suspicious and blocked sessions will appear here once traffic flows through your site.' : undefined}
               icon={<Shield weight="regular" />}
-              className="py-4"
+              className="py-8"
             />
           )}
         </div>
@@ -240,7 +240,7 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
 
       {/* Domain Reputation */}
       <div id="section-reputation" className="space-y-3 pt-6 border-t border-neutral-800">
-        <h4 className="text-sm font-medium text-neutral-300">Domain Reputation</h4>
+        <h4 className="text-sm font-semibold text-white mb-2">Domain Reputation</h4>
         <p className="text-xs text-neutral-500">Referrer domains seen on your site and their global reputation. Override to allow or block specific domains.</p>
 
         <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -284,7 +284,7 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
                       await createDomainOverride(siteId, domain.domain, 'allow')
                       toast.success(`${domain.domain} allowed`)
                       mutateDomains()
-                    } catch { toast.error('Failed') }
+                    } catch { toast.error('Failed to update domain') }
                   }}
                   disabled={!canManage}
                   className={domain.override === 'allow' ? 'bg-green-900/20 text-green-400 border-green-500/30' : ''}
@@ -299,7 +299,7 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
                       await createDomainOverride(siteId, domain.domain, 'quarantine')
                       toast.success(`${domain.domain} quarantined`)
                       mutateDomains()
-                    } catch { toast.error('Failed') }
+                    } catch { toast.error('Failed to quarantine domain') }
                   }}
                   disabled={!canManage}
                   className={`text-red-400 border-red-900/50 hover:bg-red-900/20${domain.override === 'quarantine' ? ' bg-red-900/20' : ''}`}
@@ -315,7 +315,7 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
                         await deleteDomainOverride(siteId, domain.domain)
                         toast.success('Override removed')
                         mutateDomains()
-                      } catch { toast.error('Failed') }
+                      } catch { toast.error('Failed to reset override') }
                     }}
                     disabled={!canManage}
                   >
@@ -330,7 +330,7 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
               title="No domain data yet"
               description="Referrer domain reputation scores will appear once traffic flows through your site."
               icon={<Shield weight="regular" />}
-              className="py-4"
+              className="py-8"
             />
           )}
         </div>

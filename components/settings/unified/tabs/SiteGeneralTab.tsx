@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Input, Button, toast, Spinner, CheckIcon, ZapIcon } from '@ciphera-net/ui'
+import { Input, Button, toast, Spinner, CheckIcon, ZapIcon, getAuthErrorMessage } from '@ciphera-net/ui'
 import { useSite } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
 import { useAuth } from '@/lib/auth/context'
@@ -155,8 +155,8 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
       initialRef.current = JSON.stringify({ name, timezone, scriptFeatures: JSON.stringify(scriptFeatures) })
       onDirtyChange?.(false)
       toast.success('Site updated')
-    } catch {
-      toast.error('Failed to save')
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to save settings')
     }
   }, [site, siteId, name, timezone, scriptFeatures, mutate, onDirtyChange])
 
@@ -184,20 +184,20 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
         </div>
 
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-neutral-300 mb-1.5">Site Name</label>
+              <label className="block text-xs font-medium text-neutral-400 mb-1.5">Site Name</label>
               <Input value={name} onChange={e => setName(e.target.value)} placeholder="My Website" disabled={!canEdit} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-neutral-300 mb-1.5">Domain</label>
+              <label className="block text-xs font-medium text-neutral-400 mb-1.5">Domain</label>
               <Input value={site.domain} disabled className="opacity-60" />
               <p className="text-xs text-neutral-500 mt-1">Cannot be changed.</p>
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-neutral-300 mb-1.5">Timezone</label>
+            <label className="block text-xs font-medium text-neutral-400 mb-1.5">Timezone</label>
             <TimezoneCombobox value={timezone} onChange={setTimezone} disabled={!canEdit} />
           </div>
         </div>

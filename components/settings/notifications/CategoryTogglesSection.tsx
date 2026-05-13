@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
 import { Toggle } from '@ciphera-net/ui'
+import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { getCategorySettings, updateCategorySettings, type CategorySetting } from '@/lib/api/notifications-webhooks'
 
 export default function CategoryTogglesSection() {
@@ -40,7 +41,7 @@ export default function CategoryTogglesSection() {
   }
 
   if (error && !settings) return <div className="text-red-400 text-sm">{error}</div>
-  if (!settings) return <div className="text-neutral-500 text-sm">Loading…</div>
+  if (!settings) return <SettingsLoadingState />
 
   return (
     <div className="space-y-2">

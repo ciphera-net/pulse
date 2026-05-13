@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { Button } from '@ciphera-net/ui'
+import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { listWebhooks, deleteWebhook, type Webhook } from '@/lib/api/notifications-webhooks'
 import WebhookFormModal from './WebhookFormModal'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -48,7 +49,7 @@ export default function WebhooksSection() {
       </div>
 
       {error && <div className="text-red-400 text-sm">{error}</div>}
-      {webhooks === null && <div className="text-neutral-500 text-sm">Loading…</div>}
+      {webhooks === null && <SettingsLoadingState />}
       {webhooks && webhooks.length === 0 && (
         <div className="text-neutral-500 text-sm py-6 text-center border border-neutral-800/60 rounded">
           No webhooks configured.

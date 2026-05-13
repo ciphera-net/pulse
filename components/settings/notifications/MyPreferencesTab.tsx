@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
 import { Input, Select } from '@ciphera-net/ui'
+import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { getPrefs, updatePrefs, type Preferences } from '@/lib/api/notifications-preferences'
 import { purgeMine } from '@/lib/api/notifications-v2'
 import DeliveryModesTable from './DeliveryModesTable'
@@ -36,7 +37,7 @@ export default function MyPreferencesTab() {
   }
 
   if (error && !prefs) return <div className="text-red-400 text-sm">{error}</div>
-  if (!prefs) return <div className="text-neutral-500 text-sm">Loading…</div>
+  if (!prefs) return <SettingsLoadingState />
 
   // Detect IANA timezones available in this browser.
   const timezones = (() => {

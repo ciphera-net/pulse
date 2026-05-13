@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Button, Input, Toggle, toast, Spinner } from '@ciphera-net/ui'
+import { Button, Input, Toggle, toast, Spinner, getAuthErrorMessage } from '@ciphera-net/ui'
 import { Copy, CheckCircle, Lock } from '@phosphor-icons/react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useSite } from '@/lib/swr/dashboard'
@@ -60,8 +60,8 @@ export default function SiteVisibilityTab({ siteId, onDirtyChange, onRegisterSav
       initialRef.current = JSON.stringify({ isPublic, passwordEnabled })
       onDirtyChange?.(false)
       toast.success('Visibility updated')
-    } catch {
-      toast.error('Failed to save')
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to save settings')
     }
   }, [siteId, isPublic, passwordEnabled, password, mutate, onDirtyChange])
 
@@ -104,7 +104,7 @@ export default function SiteVisibilityTab({ siteId, onDirtyChange, onRegisterSav
           >
             {/* Share link */}
             <div className="p-4 rounded-xl border border-neutral-800 bg-neutral-800/30">
-              <label className="block text-sm font-medium text-neutral-300 mb-1.5">Public Link</label>
+              <label className="block text-xs font-medium text-neutral-400 mb-1.5">Public Link</label>
               <div className="flex gap-2">
                 <Input value={`${APP_URL}/share/${siteId}`} readOnly className="font-mono text-xs" />
                 <Button onClick={copyLink} variant="secondary" className="shrink-0 text-sm gap-1.5">

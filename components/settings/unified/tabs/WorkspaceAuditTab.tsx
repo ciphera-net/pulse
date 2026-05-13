@@ -75,7 +75,7 @@ export default function WorkspaceAuditTab() {
 
       <div className="flex flex-wrap gap-2 items-end">
         <div>
-          <label className="block text-xs text-neutral-500 mb-1">Action</label>
+          <label className="block text-xs font-medium text-neutral-400 mb-1">Action</label>
           <Input
             value={actionFilter}
             onChange={e => { setActionFilter(e.target.value); setPage(1) }}
@@ -84,7 +84,7 @@ export default function WorkspaceAuditTab() {
           />
         </div>
         <div>
-          <label className="block text-xs text-neutral-500 mb-1">From</label>
+          <label className="block text-xs font-medium text-neutral-400 mb-1">From</label>
           <Input
             type="date"
             value={startDate}
@@ -92,7 +92,7 @@ export default function WorkspaceAuditTab() {
           />
         </div>
         <div>
-          <label className="block text-xs text-neutral-500 mb-1">To</label>
+          <label className="block text-xs font-medium text-neutral-400 mb-1">To</label>
           <Input
             type="date"
             value={endDate}

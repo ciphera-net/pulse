@@ -231,7 +231,7 @@ function ChannelPicker({ value, onChange }: { value: string; onChange: (v: strin
 // ── Shared form label ────────────────────────────────────────────────────────
 
 function FormLabel({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) {
-  return <label htmlFor={htmlFor} className="block text-sm font-medium text-neutral-300 mb-1.5">{children}</label>
+  return <label htmlFor={htmlFor} className="block text-xs font-medium text-neutral-400 mb-1.5">{children}</label>
 }
 
 function FormInput({ id, type = 'text', value, onChange, placeholder }: { id?: string; type?: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
