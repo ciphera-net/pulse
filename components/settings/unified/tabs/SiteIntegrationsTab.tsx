@@ -263,6 +263,13 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
     try {
       const data = await getGSCAuthURL(siteId)
       window.open(data.auth_url, '_blank')
+      const handleVisibility = () => {
+        if (document.visibilityState === 'visible') {
+          mutateGSC()
+          document.removeEventListener('visibilitychange', handleVisibility)
+        }
+      }
+      document.addEventListener('visibilitychange', handleVisibility)
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to start Google authorization')
     }

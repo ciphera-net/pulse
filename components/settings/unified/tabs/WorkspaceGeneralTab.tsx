@@ -10,12 +10,14 @@ import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { DangerZone } from '@/components/settings/unified/DangerZone'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 
-export default function WorkspaceGeneralTab({ onDirtyChange, onRegisterSave }: { onDirtyChange?: (dirty: boolean) => void; onRegisterSave?: (fn: () => Promise<void>) => void }) {
+export default function WorkspaceGeneralTab() {
   const { user } = useAuth()
   const canDeleteOrg = useCan('org.delete')
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteText, setDeleteText] = useState('')
   const [deleting, setDeleting] = useState(false)
@@ -31,6 +33,7 @@ export default function WorkspaceGeneralTab({ onDirtyChange, onRegisterSave }: {
   useEffect(() => {
     if (!user?.org_id) return
     setLoading(true)
+    setError(null)
     Promise.all([
       getOrganization(user.org_id),
       getOrganizationMembers(user.org_id).catch(() => [] as OrganizationMember[]),
@@ -45,18 +48,17 @@ export default function WorkspaceGeneralTab({ onDirtyChange, onRegisterSave }: {
         // Exclude the current owner (caller) from the transfer target list
         setMembers(membersData.filter(m => m.user_id !== user.id && m.role !== 'owner'))
       })
-      .catch(() => {})
+      .catch((err) => {
+        setError(getAuthErrorMessage(err as Error) || 'Failed to load organization')
+        setLoading(false)
+      })
       .finally(() => setLoading(false))
-  }, [user?.org_id, user?.id])
+  }, [user?.org_id, user?.id, retryCount])
 
   // Track dirty state
   const isDirty = initialRef.current
     ? JSON.stringify({ name, slug }) !== initialRef.current
     : false
-
-  useEffect(() => {
-    onDirtyChange?.(isDirty)
-  }, [isDirty, onDirtyChange])
 
   const handleDiscard = () => {
     if (!initialRef.current) return
@@ -70,16 +72,11 @@ export default function WorkspaceGeneralTab({ onDirtyChange, onRegisterSave }: {
     try {
       await updateOrganization(user.org_id, name, slug)
       initialRef.current = JSON.stringify({ name, slug })
-      onDirtyChange?.(false)
       toast.success('Organization updated')
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to update organization')
     }
-  }, [user?.org_id, name, slug, onDirtyChange])
-
-  useEffect(() => {
-    onRegisterSave?.(handleSave)
-  }, [handleSave, onRegisterSave])
+  }, [user?.org_id, name, slug])
 
   const handleDelete = async () => {
     if (!user?.org_id || deleteText !== 'DELETE') return
@@ -107,6 +104,15 @@ export default function WorkspaceGeneralTab({ onDirtyChange, onRegisterSave }: {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to transfer ownership')
       setTransferring(false)
     }
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-xl border border-red-900/50 bg-red-950/20 p-6 text-center">
+        <p className="text-red-400 text-sm mb-4">{error}</p>
+        <Button variant="secondary" onClick={() => { setError(null); hasInitialized.current = false; setRetryCount(c => c + 1) }}>Retry</Button>
+      </div>
+    )
   }
 
   if (loading) {

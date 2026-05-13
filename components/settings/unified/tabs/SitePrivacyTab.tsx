@@ -31,7 +31,7 @@ function PrivacyToggle({ label, desc, checked, onToggle, disabled }: { label: st
   )
 }
 
-export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }: { siteId: string; onDirtyChange?: (dirty: boolean) => void; onRegisterSave?: (fn: () => Promise<void>) => void }) {
+export default function SitePrivacyTab({ siteId }: { siteId: string }) {
   const canEdit = useCan('sites.edit')
   const { data: site, mutate } = useSite(siteId)
   const { data: subscription, error: subscriptionError, mutate: mutateSubscription } = useSubscription()
@@ -103,10 +103,6 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
     ? JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency }) !== initialRef.current
     : false
 
-  useEffect(() => {
-    onDirtyChange?.(isDirty)
-  }, [isDirty, onDirtyChange])
-
   const handleDiscard = () => {
     if (!initialRef.current) return
     const snap = JSON.parse(initialRef.current)
@@ -146,17 +142,11 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
       }
       await mutate()
       initialRef.current = JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency })
-      onDirtyChange?.(false)
       toast.success('Privacy settings updated')
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to save settings')
     }
-  }, [siteId, collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency, psiConfig, mutatePSIConfig, mutate, onDirtyChange])
-
-  // Register save handler with modal
-  useEffect(() => {
-    onRegisterSave?.(handleSave)
-  }, [handleSave, onRegisterSave])
+  }, [siteId, collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency, psiConfig, mutatePSIConfig, mutate])
 
   const updateRule = (index: number, updates: Partial<PageRule>) => {
     setPageRules(rules => rules.map((r, i) => i === index ? { ...r, ...updates } : r))

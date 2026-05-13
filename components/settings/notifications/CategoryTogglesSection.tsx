@@ -52,7 +52,7 @@ export default function CategoryTogglesSection() {
       <p className="text-xs text-neutral-500">
         Disable a category to prevent new notifications of that type from being created for the workspace. Billing and security alerts are always delivered and cannot be disabled.
       </p>
-      <ul className="divide-y divide-neutral-800/60 rounded-lg border border-neutral-800/60 bg-white/[0.02]">
+      <ul className="divide-y divide-neutral-800 rounded-xl border border-neutral-800 bg-neutral-800/30">
         {categories.map(c => {
           const critical = c.id === 'billing' || c.id === 'security'
           const enabled = settings[c.id] ?? true

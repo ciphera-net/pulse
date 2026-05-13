@@ -1,11 +1,12 @@
 'use client'
+import { cn } from '@/lib/utils'
 import type { Preferences, DeliveryMode } from '@/lib/api/notifications-preferences'
 import { NOTIFICATION_CATEGORIES } from '@/lib/notifications/categories'
 
 const MODES: { value: DeliveryMode; label: string }[] = [
-  { value: 'in_app_only', label: 'In-app only' },
-  { value: 'email_immediate', label: 'Email immediate' },
-  { value: 'email_digest', label: 'Email digest' },
+  { value: 'in_app_only', label: 'In-app' },
+  { value: 'email_immediate', label: 'Email' },
+  { value: 'email_digest', label: 'Digest' },
   { value: 'off', label: 'Off' },
 ]
 
@@ -16,39 +17,54 @@ interface Props {
 
 export default function DeliveryModesTable({ prefs, onChange }: Props) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-xs text-neutral-500 uppercase tracking-wider">
-            <th className="text-left py-2 font-normal">Category</th>
-            {MODES.map(m => (
-              <th key={m.value} className="text-center py-2 font-normal px-2 whitespace-nowrap">{m.label}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {NOTIFICATION_CATEGORIES.map(c => (
-            <tr key={c.id} className="border-t border-neutral-800/60">
-              <td className="py-3 text-neutral-200">{c.label}</td>
-              {MODES.map(m => (
-                <td key={m.value} className="text-center">
-                  <input
-                    type="radio"
-                    name={`mode-${c.id}`}
-                    checked={prefs.delivery_modes[c.id] === m.value}
-                    onChange={() => onChange({
-                      ...prefs,
-                      delivery_modes: { ...prefs.delivery_modes, [c.id]: m.value }
-                    })}
-                    className="accent-brand-orange cursor-pointer"
+    <div className="space-y-1">
+      {NOTIFICATION_CATEGORIES.map(c => {
+        const isCritical = c.critical
+        const current = prefs.delivery_modes[c.id]
+        return (
+          <div key={c.id} className="flex items-center justify-between py-2.5 px-1 border-t border-neutral-800 first:border-t-0">
+            <span className="text-sm text-neutral-200 flex items-center gap-2">
+              {c.label}
+              {isCritical && (
+                <span className="text-micro-label uppercase tracking-wider text-brand-orange border border-brand-orange/30 rounded px-1.5 py-0.5">
+                  Always on
+                </span>
+              )}
+            </span>
+            <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-neutral-900 border border-neutral-800">
+              {MODES.map(m => {
+                const isSelected = current === m.value
+                const isDisabledOff = isCritical && m.value === 'off'
+                return (
+                  <button
+                    key={m.value}
+                    type="button"
+                    onClick={() => {
+                      if (isDisabledOff) return
+                      onChange({
+                        ...prefs,
+                        delivery_modes: { ...prefs.delivery_modes, [c.id]: m.value },
+                      })
+                    }}
+                    disabled={isDisabledOff}
+                    className={cn(
+                      'px-2.5 py-1 text-xs rounded-md transition-colors',
+                      isSelected
+                        ? 'bg-brand-orange text-white font-medium'
+                        : 'text-neutral-400 hover:text-white hover:bg-neutral-800',
+                      isDisabledOff && 'opacity-40 cursor-not-allowed'
+                    )}
                     aria-label={`Set ${c.label} to ${m.label}`}
-                  />
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                    aria-pressed={isSelected}
+                  >
+                    {m.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }

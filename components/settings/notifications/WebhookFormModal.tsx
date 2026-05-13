@@ -2,6 +2,12 @@
 import { useState } from 'react'
 import { Button, Checkbox, Input } from '@ciphera-net/ui'
 import { createWebhook, testWebhook } from '@/lib/api/notifications-webhooks'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 const TYPE_OPTIONS = [
   { id: 'billing_', label: 'All billing events' },
@@ -61,15 +67,11 @@ export default function WebhookFormModal({ onClose, onCreated }: Props) {
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-      onClick={onClose}
-    >
-      <div
-        className="max-w-lg w-full mx-4 glass-overlay rounded-xl p-6"
-        onClick={e => e.stopPropagation()}
-      >
-        <h3 className="text-lg font-semibold text-white mb-3">Add webhook</h3>
+    <Dialog open={true} onOpenChange={(open) => { if (!open) onClose() }}>
+      <DialogContent className="sm:max-w-[480px]">
+        <DialogHeader>
+          <DialogTitle>Add webhook</DialogTitle>
+        </DialogHeader>
 
         <div className="space-y-4 text-sm">
           <div>
@@ -114,7 +116,7 @@ export default function WebhookFormModal({ onClose, onCreated }: Props) {
           {err && <p className="text-xs text-red-400">{err}</p>}
         </div>
 
-        <div className="mt-6 flex justify-between items-center">
+        <div className="flex justify-between items-center">
           <Button
             variant="ghost"
             size="sm"
@@ -139,7 +141,7 @@ export default function WebhookFormModal({ onClose, onCreated }: Props) {
             </Button>
           </div>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

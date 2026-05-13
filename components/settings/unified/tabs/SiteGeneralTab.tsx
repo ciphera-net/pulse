@@ -107,7 +107,7 @@ function TimezoneCombobox({ value, onChange, disabled }: { value: string; onChan
   )
 }
 
-export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }: { siteId: string; onDirtyChange?: (dirty: boolean) => void; onRegisterSave?: (fn: () => Promise<void>) => void }) {
+export default function SiteGeneralTab({ siteId }: { siteId: string }) {
   const router = useRouter()
   const { user } = useAuth()
   const { data: site, mutate } = useSite(siteId)
@@ -135,10 +135,6 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
     ? JSON.stringify({ name, timezone, scriptFeatures: JSON.stringify(scriptFeatures) }) !== initialRef.current
     : false
 
-  useEffect(() => {
-    onDirtyChange?.(isDirty)
-  }, [isDirty, onDirtyChange])
-
   const handleDiscard = () => {
     if (!initialRef.current) return
     const snap = JSON.parse(initialRef.current)
@@ -153,16 +149,11 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
       await updateSite(siteId, { name, timezone, script_features: scriptFeatures })
       await mutate()
       initialRef.current = JSON.stringify({ name, timezone, scriptFeatures: JSON.stringify(scriptFeatures) })
-      onDirtyChange?.(false)
       toast.success('Site updated')
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to save settings')
     }
-  }, [site, siteId, name, timezone, scriptFeatures, mutate, onDirtyChange])
-
-  useEffect(() => {
-    onRegisterSave?.(handleSave)
-  }, [handleSave, onRegisterSave])
+  }, [site, siteId, name, timezone, scriptFeatures, mutate])
 
   const [showResetModal, setShowResetModal] = useState(false)
 

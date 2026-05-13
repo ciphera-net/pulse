@@ -11,7 +11,7 @@ import SettingsSections from '@/components/settings/SettingsSections'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 import { useCan } from '@/lib/auth/permissions'
 
-export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }: { siteId: string; onDirtyChange?: (dirty: boolean) => void; onRegisterSave?: (fn: () => Promise<void>) => void }) {
+export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
   const canManage = useCan('quarantine.manage')
   const { data: site, mutate } = useSite(siteId)
   const { data: botStats, mutate: mutateBotStats } = useQuarantineStats(siteId)
@@ -40,10 +40,6 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
     ? filterBots !== initialFilterRef.current
     : false
 
-  useEffect(() => {
-    onDirtyChange?.(isDirty)
-  }, [isDirty, onDirtyChange])
-
   const handleDiscard = () => {
     if (initialFilterRef.current === null) return
     setFilterBots(initialFilterRef.current)
@@ -54,16 +50,11 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
       await updateSite(siteId, { filter_bots: filterBots })
       await mutate()
       initialFilterRef.current = filterBots
-      onDirtyChange?.(false)
       toast.success('Bot filtering updated')
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to save settings')
     }
-  }, [siteId, filterBots, mutate, onDirtyChange])
-
-  useEffect(() => {
-    onRegisterSave?.(handleSave)
-  }, [handleSave, onRegisterSave])
+  }, [siteId, filterBots, mutate])
 
   const handleBotFilter = async (sessionIds: string[]) => {
     try {

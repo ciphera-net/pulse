@@ -9,7 +9,7 @@ import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { DangerZone } from '@/components/settings/unified/DangerZone'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 
-export default function AccountProfileTab({ onDirtyChange, onRegisterSave }: { onDirtyChange?: (dirty: boolean) => void; onRegisterSave?: (fn: () => Promise<void>) => void }) {
+export default function AccountProfileTab() {
   const { user, refresh, logout } = useAuth()
   const [displayName, setDisplayName] = useState('')
   const initialRef = useRef('')
@@ -31,10 +31,6 @@ export default function AccountProfileTab({ onDirtyChange, onRegisterSave }: { o
     ? displayName !== initialRef.current
     : false
 
-  useEffect(() => {
-    onDirtyChange?.(isDirty)
-  }, [isDirty, onDirtyChange])
-
   const handleDiscard = () => {
     setDisplayName(initialRef.current)
   }
@@ -44,16 +40,11 @@ export default function AccountProfileTab({ onDirtyChange, onRegisterSave }: { o
       await updateDisplayName(displayName.trim())
       await refresh()
       initialRef.current = displayName.trim()
-      onDirtyChange?.(false)
       toast.success('Profile updated')
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to update profile')
     }
-  }, [displayName, refresh, onDirtyChange])
-
-  useEffect(() => {
-    onRegisterSave?.(handleSave)
-  }, [handleSave, onRegisterSave])
+  }, [displayName, refresh])
 
   const handleDelete = async () => {
     if (deleteText !== 'DELETE' || !deletePassword) return

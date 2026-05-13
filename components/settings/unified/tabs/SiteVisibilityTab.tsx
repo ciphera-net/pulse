@@ -13,7 +13,7 @@ import { useCan } from '@/lib/auth/permissions'
 // Zod-validated URL, guaranteed to be a `string` at runtime.
 const APP_URL = env.NEXT_PUBLIC_APP_URL
 
-export default function SiteVisibilityTab({ siteId, onDirtyChange, onRegisterSave }: { siteId: string; onDirtyChange?: (dirty: boolean) => void; onRegisterSave?: (fn: () => Promise<void>) => void }) {
+export default function SiteVisibilityTab({ siteId }: { siteId: string }) {
   const canEdit = useCan('sites.edit')
   const { data: site, mutate } = useSite(siteId)
   const [isPublic, setIsPublic] = useState(false)
@@ -36,10 +36,6 @@ export default function SiteVisibilityTab({ siteId, onDirtyChange, onRegisterSav
     ? JSON.stringify({ isPublic, passwordEnabled }) !== initialRef.current || password.length > 0
     : false
 
-  useEffect(() => {
-    onDirtyChange?.(isDirty)
-  }, [isDirty, onDirtyChange])
-
   const handleDiscard = () => {
     if (!initialRef.current) return
     const snap = JSON.parse(initialRef.current)
@@ -58,16 +54,11 @@ export default function SiteVisibilityTab({ siteId, onDirtyChange, onRegisterSav
       setPassword('')
       await mutate()
       initialRef.current = JSON.stringify({ isPublic, passwordEnabled })
-      onDirtyChange?.(false)
       toast.success('Visibility updated')
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to save settings')
     }
-  }, [siteId, isPublic, passwordEnabled, password, mutate, onDirtyChange])
-
-  useEffect(() => {
-    onRegisterSave?.(handleSave)
-  }, [handleSave, onRegisterSave])
+  }, [siteId, isPublic, passwordEnabled, password, mutate])
 
   const copyLink = () => {
     navigator.clipboard.writeText(`${APP_URL}/share/${siteId}`)

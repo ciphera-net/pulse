@@ -63,7 +63,7 @@ export default function WebhooksSection() {
       {webhooks && webhooks.length > 0 && (
         <ul className="space-y-2">
           {webhooks.map(w => (
-            <li key={w.id} className="flex items-center justify-between p-3 rounded border border-neutral-800/60 bg-white/[0.02]">
+            <li key={w.id} className="flex items-center justify-between p-3 rounded-xl border border-neutral-800 bg-neutral-800/30">
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-white">{w.label || '(no label)'}</p>
                 <p className="text-xs text-neutral-500 font-mono truncate">{w.url_masked}</p>

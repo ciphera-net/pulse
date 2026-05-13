@@ -29,13 +29,18 @@ export default function WorkspaceBillingTab() {
   const [showPaymentMethodModal, setShowPaymentMethodModal] = useState(false)
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('')
   const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [invoicesError, setInvoicesError] = useState<string | null>(null)
+  const [invoicesRetry, setInvoicesRetry] = useState(0)
   const [editingBilling, setEditingBilling] = useState(false)
   const [savingBilling, setSavingBilling] = useState(false)
   const [billingForm, setBillingForm] = useState({ business_name: '', billing_email: '', address: '', city: '', postal_code: '' })
 
   useEffect(() => {
-    getInvoices().then(setInvoices).catch(() => {})
-  }, [])
+    setInvoicesError(null)
+    getInvoices()
+      .then(setInvoices)
+      .catch((err) => setInvoicesError(getAuthErrorMessage(err as Error) || 'Failed to load invoices'))
+  }, [invoicesRetry])
 
   const handleUpdatePayment = async (method: string) => {
     try {
@@ -457,7 +462,12 @@ export default function WorkspaceBillingTab() {
       )}
 
       {/* Recent Invoices */}
-      {invoices.length > 0 && (
+      {invoicesError ? (
+        <div className="rounded-xl border border-red-900/50 bg-red-950/20 p-6 text-center pt-6 border-t border-neutral-800">
+          <p className="text-red-400 text-sm mb-4">{invoicesError}</p>
+          <Button variant="secondary" onClick={() => { setInvoicesError(null); setInvoicesRetry(c => c + 1) }}>Retry</Button>
+        </div>
+      ) : invoices.length > 0 && (
         <div className="space-y-2 pt-6 border-t border-neutral-800">
           <h4 className="text-sm font-medium text-neutral-300">Recent Invoices</h4>
           <div className="space-y-1">

@@ -364,7 +364,7 @@ function RoleCard({
   }
 
   return (
-    <div className="rounded-xl border border-neutral-800 bg-neutral-800/20 overflow-hidden">
+    <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 overflow-hidden">
       {/* Card header */}
       <div
         className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none hover:bg-neutral-800/40 transition-colors ease-apple"

@@ -19,15 +19,7 @@ import { useCan } from '@/lib/auth/permissions'
 
 const SCAN_COOLDOWN_SECONDS = 300
 
-export default function SitePrivacyScanTab({
-  siteId,
-  onDirtyChange,
-  onRegisterSave,
-}: {
-  siteId: string
-  onDirtyChange?: (dirty: boolean) => void
-  onRegisterSave?: (fn: () => Promise<void>) => void
-}) {
+export default function SitePrivacyScanTab({ siteId }: { siteId: string }) {
   const canManage = useCan('privacy_scan.manage')
   const [enabled, setEnabled] = useState(false)
   const [frequency, setFrequency] = useState('weekly')
@@ -74,10 +66,6 @@ export default function SitePrivacyScanTab({
     ? JSON.stringify({ enabled, frequency }) !== initialRef.current
     : false
 
-  useEffect(() => {
-    onDirtyChange?.(isDirty)
-  }, [isDirty, onDirtyChange])
-
   const handleDiscard = () => {
     if (!initialRef.current) return
     const snap = JSON.parse(initialRef.current)
@@ -89,16 +77,11 @@ export default function SitePrivacyScanTab({
     try {
       await updatePrivacyScanConfig(siteId, enabled, frequency)
       initialRef.current = JSON.stringify({ enabled, frequency })
-      onDirtyChange?.(false)
       toast.success('Privacy scan settings updated')
     } catch {
       toast.error('Failed to save')
     }
-  }, [siteId, enabled, frequency, onDirtyChange])
-
-  useEffect(() => {
-    onRegisterSave?.(handleSave)
-  }, [handleSave, onRegisterSave])
+  }, [siteId, enabled, frequency])
 
   // Cooldown countdown
   useEffect(() => {
@@ -334,7 +317,7 @@ export default function SitePrivacyScanTab({
               {HEADER_CHECKS.map(h => (
                 <div
                   key={h.key}
-                  className="flex items-center gap-2 p-2.5 rounded-lg border border-neutral-800 bg-neutral-800/20"
+                  className="flex items-center gap-2 p-2.5 rounded-xl border border-neutral-800 bg-neutral-800/30"
                 >
                   {headers[h.key] ? (
                     <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" weight="fill" />
