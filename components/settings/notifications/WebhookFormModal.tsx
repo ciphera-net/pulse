@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { Checkbox, Input } from '@ciphera-net/ui'
 import { createWebhook, testWebhook } from '@/lib/api/notifications-webhooks'
 
 const TYPE_OPTIONS = [
@@ -73,23 +74,21 @@ export default function WebhookFormModal({ onClose, onCreated }: Props) {
         <div className="space-y-4 text-sm">
           <div>
             <label className="block text-xs text-neutral-400 mb-1">URL</label>
-            <input
+            <Input
               type="url"
               value={url}
               onChange={e => setUrl(e.target.value)}
               placeholder="https://hooks.slack.com/services/..."
-              className="w-full rounded bg-white/5 border border-white/10 px-3 py-2 text-white focus:border-brand-orange focus:outline-none"
             />
           </div>
 
           <div>
             <label className="block text-xs text-neutral-400 mb-1">Label (optional)</label>
-            <input
+            <Input
               type="text"
               value={label}
               onChange={e => setLabel(e.target.value)}
               placeholder="e.g. #ops alerts"
-              className="w-full rounded bg-white/5 border border-white/10 px-3 py-2 text-white focus:border-brand-orange focus:outline-none"
             />
           </div>
 
@@ -97,15 +96,12 @@ export default function WebhookFormModal({ onClose, onCreated }: Props) {
             <label className="block text-xs text-neutral-400 mb-2">Subscribed event types</label>
             <div className="grid grid-cols-2 gap-2">
               {TYPE_OPTIONS.map(t => (
-                <label key={t.id} className="flex items-center gap-2 text-xs text-neutral-300 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={selected.includes(t.id)}
-                    onChange={() => toggle(t.id)}
-                    className="accent-brand-orange"
-                  />
-                  {t.label}
-                </label>
+                <Checkbox
+                  key={t.id}
+                  checked={selected.includes(t.id)}
+                  onCheckedChange={() => toggle(t.id)}
+                  label={t.label}
+                />
               ))}
             </div>
           </div>

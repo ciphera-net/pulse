@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
+import { Toggle } from '@ciphera-net/ui'
 import { getCategorySettings, updateCategorySettings, type CategorySetting } from '@/lib/api/notifications-webhooks'
 
 export default function CategoryTogglesSection() {
@@ -62,17 +63,12 @@ export default function CategoryTogglesSection() {
                   <p className="text-xs text-neutral-600 mt-0.5 italic">No notifications of this type are being generated yet.</p>
                 )}
               </div>
-              <label className={`relative inline-flex items-center ${critical ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
-                <input
-                  type="checkbox"
-                  className="sr-only peer"
-                  checked={critical ? true : enabled}
-                  disabled={critical}
-                  onChange={() => !critical && toggle(c.id)}
-                  aria-label={`Toggle ${c.label}`}
-                />
-                <div className="w-10 h-5 bg-white/10 peer-checked:bg-brand-orange/60 rounded-full peer-focus:ring-2 peer-focus:ring-brand-orange/30 transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:h-4 after:w-4 after:bg-white after:rounded-full after:transition-transform peer-checked:after:translate-x-5"></div>
-              </label>
+              <Toggle
+                checked={critical ? true : enabled}
+                onChange={() => !critical && toggle(c.id)}
+                disabled={critical}
+                aria-label={`Toggle ${c.label}`}
+              />
             </li>
           )
         })}

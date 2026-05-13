@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Select, Toggle, toast, Spinner } from '@ciphera-net/ui'
+import { Input, Select, Toggle, toast, Spinner } from '@ciphera-net/ui'
 import { useSite, useSubscription, usePageSpeedConfig } from '@/lib/swr/dashboard'
 import { updateSite, type PageRule } from '@/lib/api/sites'
 import { updatePageSpeedConfig } from '@/lib/api/pagespeed'
@@ -284,29 +284,30 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
               <div className="flex items-start gap-3">
                 <div className="flex-1 space-y-3">
                   <div className="flex items-center gap-3">
-                    <select
+                    <Select
+                      variant="input"
                       value={rule.type}
-                      onChange={e => updateRule(index, { type: e.target.value as 'exclude' | 'group' })}
-                      className="px-3 py-2 border border-neutral-800 rounded-lg bg-neutral-800/30 text-white text-sm focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all ease-apple"
-                    >
-                      <option value="exclude">Exclude</option>
-                      <option value="group">Group</option>
-                    </select>
-                    <input
+                      onChange={(v) => updateRule(index, { type: v as 'exclude' | 'group' })}
+                      options={[
+                        { value: 'exclude', label: 'Exclude' },
+                        { value: 'group', label: 'Group' },
+                      ]}
+                    />
+                    <Input
                       type="text"
                       value={rule.pattern}
                       onChange={e => updateRule(index, { pattern: e.target.value })}
                       placeholder="/admin/*"
-                      className="flex-1 px-3 py-2 border border-neutral-800 rounded-lg bg-neutral-800/30 text-white font-mono text-sm focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all ease-apple"
+                      className="flex-1 font-mono"
                     />
                   </div>
                   {rule.type === 'group' && (
-                    <input
+                    <Input
                       type="text"
                       value={rule.label || ''}
                       onChange={e => updateRule(index, { label: e.target.value })}
                       placeholder="/sites/:id"
-                      className="w-full px-3 py-2 border border-neutral-800 rounded-lg bg-neutral-800/30 text-white font-mono text-sm focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all ease-apple"
+                      className="font-mono"
                     />
                   )}
                 </div>
@@ -351,12 +352,12 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
         <h4 className="text-sm font-medium text-neutral-300">Query Parameters</h4>
         <div>
           <label className="block text-sm font-medium text-neutral-300 mb-1.5">Parameters to keep in page stats</label>
-          <input
+          <Input
             type="text"
             value={allowedQueryParams}
             onChange={e => setAllowedQueryParams(e.target.value)}
             placeholder="q, category, page"
-            className="w-full px-4 py-3 border border-neutral-800 rounded-lg bg-neutral-800/30 text-white font-mono text-sm focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all ease-apple"
+            className="font-mono"
           />
           <p className="text-xs text-neutral-500 mt-1">Comma-separated. All other query parameters are automatically stripped from page paths. Leave empty to strip everything.</p>
         </div>

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { toast } from '@ciphera-net/ui'
 import { Copy, Check } from '@phosphor-icons/react'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { revokeInviteLink, type InviteLink } from '@/lib/api/organization'
 import { type Role } from '@/lib/api/roles'
 import { useCan } from '@/lib/auth/permissions'
@@ -49,16 +50,22 @@ function CopyLinkButton({ url }: { url?: string }) {
   }
 
   return (
-    <button
-      onClick={handleCopy}
-      title="Copy invite link"
-      className="p-1.5 rounded-md text-neutral-500 hover:text-white hover:bg-neutral-700 transition-colors"
-    >
-      {copied
-        ? <Check weight="bold" className="w-3.5 h-3.5 text-green-400" />
-        : <Copy weight="bold" className="w-3.5 h-3.5" />
-      }
-    </button>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={handleCopy}
+            className="p-1.5 rounded-md text-neutral-500 hover:text-white hover:bg-neutral-700 transition-colors"
+          >
+            {copied
+              ? <Check weight="bold" className="w-3.5 h-3.5 text-green-400" />
+              : <Copy weight="bold" className="w-3.5 h-3.5" />
+            }
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>Copy invite link</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   )
 }
 

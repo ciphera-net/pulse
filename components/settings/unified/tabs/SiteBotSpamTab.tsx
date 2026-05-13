@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Toggle, toast, Spinner, getDateRange } from '@ciphera-net/ui'
+import { Checkbox, Toggle, toast, Spinner, getDateRange } from '@ciphera-net/ui'
 import { ShieldCheck, Shield } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useSite, useQuarantineStats, useSessions, useSiteDomainReputation } from '@/lib/swr/dashboard'
@@ -185,16 +185,13 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
             .filter(s => botView === 'blocked' ? s.quarantined : !s.quarantined)
             .map(session => (
               <div key={session.session_id} className="flex items-center gap-3 p-3 rounded-xl border border-neutral-800 hover:bg-neutral-800/40 hover:border-neutral-700 transition-colors ease-apple">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={selectedSessions.has(session.session_id)}
-                  onChange={e => {
+                  onCheckedChange={(checked) => {
                     const next = new Set(selectedSessions)
-                    e.target.checked ? next.add(session.session_id) : next.delete(session.session_id)
+                    checked ? next.add(session.session_id) : next.delete(session.session_id)
                     setSelectedSessions(next)
                   }}
-                  className="w-4 h-4 shrink-0 cursor-pointer"
-                  style={{ accentColor: '#FD5E0F' }}
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">

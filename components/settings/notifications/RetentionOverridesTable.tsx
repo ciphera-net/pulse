@@ -1,4 +1,5 @@
 'use client'
+import { Select } from '@ciphera-net/ui'
 import type { Preferences } from '@/lib/api/notifications-preferences'
 import type { Category } from '@/lib/notifications/types'
 import { RETENTION_DEFAULTS, OVERRIDE_OPTIONS_DAYS } from '@/lib/notifications/retention-policy'
@@ -45,17 +46,17 @@ export default function RetentionOverridesTable({ prefs, onChange }: Props) {
                 <td className="py-3 text-neutral-200">{c.label}</td>
                 <td className="py-3 text-neutral-400">{def} days</td>
                 <td className="py-3">
-                  <select
-                    value={current ?? ''}
-                    onChange={e => setOverride(c.id, e.target.value === '' ? null : Number(e.target.value))}
-                    className="bg-white/5 border border-white/10 rounded px-3 py-1.5 text-sm text-white focus:border-brand-orange focus:outline-none"
-                    aria-label={`Read retention override for ${c.label}`}
-                  >
-                    <option value="">Default ({def} days)</option>
-                    {allowedOpts.map(d => (
-                      <option key={d} value={d}>{d} days</option>
-                    ))}
-                  </select>
+                  <div aria-label={`Read retention override for ${c.label}`}>
+                    <Select
+                      variant="input"
+                      value={String(current ?? '')}
+                      onChange={(v) => setOverride(c.id, v === '' ? null : Number(v))}
+                      options={[
+                        { value: '', label: `Default (${def} days)` },
+                        ...allowedOpts.map(d => ({ value: String(d), label: `${d} days` })),
+                      ]}
+                    />
+                  </div>
                 </td>
               </tr>
             )

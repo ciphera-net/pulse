@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Button, Input, Select, toast } from '@ciphera-net/ui'
+import { Button, Checkbox, Input, Select, toast } from '@ciphera-net/ui'
 import { Copy, Check } from '@phosphor-icons/react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
@@ -196,17 +196,12 @@ export default function CreateInviteLinkModal({ orgId, roles, open, onOpenChange
                 </p>
                 <ul className="space-y-1 max-h-40 overflow-y-auto">
                   {sites.map(site => (
-                    <li key={site.id} className="flex items-center gap-2.5">
-                      <input
-                        id={`link-site-${site.id}`}
-                        type="checkbox"
+                    <li key={site.id}>
+                      <Checkbox
                         checked={siteIds.includes(site.id)}
-                        onChange={() => toggleSite(site.id)}
-                        className="w-4 h-4 rounded border-neutral-600 bg-neutral-800 accent-brand-orange cursor-pointer"
+                        onCheckedChange={() => toggleSite(site.id)}
+                        label={site.name || site.domain}
                       />
-                      <label htmlFor={`link-site-${site.id}`} className="text-sm text-white cursor-pointer truncate">
-                        {site.name || site.domain}
-                      </label>
                     </li>
                   ))}
                 </ul>

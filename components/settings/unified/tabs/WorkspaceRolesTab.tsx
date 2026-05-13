@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Button, Input, Spinner, toast, getAuthErrorMessage } from '@ciphera-net/ui'
+import { Button, Checkbox, Input, Spinner, toast, getAuthErrorMessage } from '@ciphera-net/ui'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   CaretDown,
   Plus,
@@ -195,13 +196,11 @@ function CreateRoleForm({
                     key={pi.permission}
                     className={`flex items-start gap-3 py-1 ${ownerOnly ? 'opacity-40' : ''}`}
                   >
-                    <input
+                    <Checkbox
                       id={`new-${pi.permission}`}
-                      type="checkbox"
                       checked={checked}
                       disabled={ownerOnly}
-                      onChange={() => togglePerm(pi.permission)}
-                      className="mt-0.5 w-4 h-4 rounded border-neutral-600 bg-neutral-800 accent-brand-orange cursor-pointer disabled:cursor-not-allowed"
+                      onCheckedChange={() => togglePerm(pi.permission)}
                     />
                     <label
                       htmlFor={`new-${pi.permission}`}
@@ -434,29 +433,39 @@ function RoleCard({
         </div>
 
         {/* Actions */}
-        <div
-          className="flex items-center gap-1.5 shrink-0"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {canManage && !role.is_builtin && !editingName && (
-            <button
-              onClick={() => setEditingName(true)}
-              className="p-1.5 rounded-lg text-neutral-500 hover:text-neutral-200 hover:bg-white/[0.06] transition-colors ease-apple"
-              title="Rename role"
-            >
-              <Pencil weight="bold" className="w-3.5 h-3.5" />
-            </button>
-          )}
-          {canManage && !role.is_builtin && (
-            <button
-              onClick={handleDelete}
-              className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-red-900/20 transition-colors ease-apple"
-              title="Delete role"
-            >
-              <Trash weight="bold" className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
+        <TooltipProvider>
+          <div
+            className="flex items-center gap-1.5 shrink-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {canManage && !role.is_builtin && !editingName && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setEditingName(true)}
+                    className="p-1.5 rounded-lg text-neutral-500 hover:text-neutral-200 hover:bg-white/[0.06] transition-colors ease-apple"
+                  >
+                    <Pencil weight="bold" className="w-3.5 h-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Rename</TooltipContent>
+              </Tooltip>
+            )}
+            {canManage && !role.is_builtin && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={handleDelete}
+                    className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-red-900/20 transition-colors ease-apple"
+                  >
+                    <Trash weight="bold" className="w-3.5 h-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Delete</TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+        </TooltipProvider>
 
         <motion.div
           animate={{ rotate: expanded ? 180 : 0 }}
@@ -517,12 +526,10 @@ function RoleCard({
                         </p>
                       )}
                     </div>
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={siteScoped}
                       disabled={!canManage || role.is_builtin}
-                      onChange={toggleSiteScoped}
-                      className="w-4 h-4 rounded border-neutral-600 bg-neutral-800 accent-brand-orange cursor-pointer disabled:cursor-not-allowed shrink-0"
+                      onCheckedChange={toggleSiteScoped}
                     />
                   </div>
                   {siteScoped && !role.is_builtin && sites.length > 0 && (
@@ -530,21 +537,14 @@ function RoleCard({
                       <p className="text-xs text-neutral-500 font-medium mb-1.5">Allowed sites</p>
                       <ul className="space-y-1 max-h-40 overflow-y-auto pr-1">
                         {sites.map((site) => (
-                          <li key={site.id} className="flex items-center gap-2.5">
-                            <input
+                          <li key={site.id}>
+                            <Checkbox
                               id={`${role.id}-site-${site.id}`}
-                              type="checkbox"
                               checked={siteIds.includes(site.id)}
                               disabled={!canManage}
-                              onChange={() => toggleSiteId(site.id)}
-                              className="w-4 h-4 rounded border-neutral-600 bg-neutral-800 accent-brand-orange cursor-pointer disabled:cursor-not-allowed"
+                              onCheckedChange={() => toggleSiteId(site.id)}
+                              label={site.name || site.domain}
                             />
-                            <label
-                              htmlFor={`${role.id}-site-${site.id}`}
-                              className="text-sm text-white cursor-pointer truncate"
-                            >
-                              {site.name || site.domain}
-                            </label>
                           </li>
                         ))}
                       </ul>
@@ -567,13 +567,11 @@ function RoleCard({
 
                       return (
                         <li key={pi.permission} className="flex items-start gap-3">
-                          <input
+                          <Checkbox
                             id={`${role.id}-${pi.permission}`}
-                            type="checkbox"
                             checked={checked}
                             disabled={!editable}
-                            onChange={() => togglePerm(pi.permission)}
-                            className="mt-0.5 w-4 h-4 rounded border-neutral-600 bg-neutral-800 accent-brand-orange cursor-pointer disabled:cursor-not-allowed"
+                            onCheckedChange={() => togglePerm(pi.permission)}
                           />
                           <label
                             htmlFor={`${role.id}-${pi.permission}`}

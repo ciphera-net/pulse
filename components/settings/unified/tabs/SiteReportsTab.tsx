@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Button, toast, Spinner, Modal, Select } from '@ciphera-net/ui'
 import { Plus, Pencil, Trash, EnvelopeSimple, WebhooksLogo, PaperPlaneTilt, FileText, Bell } from '@phosphor-icons/react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { cdnUrl } from '@/lib/cdn'
@@ -155,20 +156,37 @@ function ScheduleRow({
         </div>
       </div>
       {canManage && (
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <button onClick={() => onEdit(schedule)} className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors ease-apple" title="Edit">
-            <Pencil weight="bold" className="w-3.5 h-3.5" />
-          </button>
-          <button onClick={handleTest} disabled={testing} className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors ease-apple" title="Send test">
-            <PaperPlaneTilt weight="bold" className="w-3.5 h-3.5" />
-          </button>
-          <button onClick={handleToggle} className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors ease-apple">
-            {schedule.enabled ? 'Pause' : 'Enable'}
-          </button>
-          <button onClick={() => setConfirmDelete(true)} className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-red-900/20 transition-colors ease-apple" title="Delete">
-            <Trash weight="bold" className="w-3.5 h-3.5" />
-          </button>
-        </div>
+        <TooltipProvider>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button onClick={() => onEdit(schedule)} className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors ease-apple">
+                  <Pencil weight="bold" className="w-3.5 h-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Edit</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button onClick={handleTest} disabled={testing} className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors ease-apple">
+                  <PaperPlaneTilt weight="bold" className="w-3.5 h-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Send test</TooltipContent>
+            </Tooltip>
+            <button onClick={handleToggle} className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors ease-apple">
+              {schedule.enabled ? 'Pause' : 'Enable'}
+            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button onClick={() => setConfirmDelete(true)} className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-red-900/20 transition-colors ease-apple">
+                  <Trash weight="bold" className="w-3.5 h-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Delete</TooltipContent>
+            </Tooltip>
+          </div>
+        </TooltipProvider>
       )}
 
       <ConfirmDialog

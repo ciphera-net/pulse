@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast, getAuthErrorMessage, AlertTriangleIcon, XIcon, Spinner } from '@ciphera-net/ui'
+import { Input, toast, getAuthErrorMessage, AlertTriangleIcon, XIcon, Spinner } from '@ciphera-net/ui'
 import { resetSiteData, type ResetModule } from '@/lib/api/sites'
 import { ChartBar, Path, Funnel, Heartbeat, Gauge, Cloud, MagnifyingGlass } from '@phosphor-icons/react'
 
@@ -230,13 +230,12 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
                   <label className="block text-xs font-medium text-neutral-300 mb-1">
                     Type <span className="font-mono font-bold text-red-400">{allSelected ? siteDomain : 'RESET'}</span> to confirm
                   </label>
-                  <input
+                  <Input
                     type="text"
                     value={confirmInput}
                     onChange={(e) => setConfirmInput(e.target.value)}
                     autoComplete="off"
                     disabled={isResetting}
-                    className="w-full px-3 py-2 text-sm border border-neutral-700 rounded-lg bg-neutral-800 text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-red-400 disabled:opacity-50"
                     placeholder={allSelected ? siteDomain : 'RESET'}
                   />
                 </div>

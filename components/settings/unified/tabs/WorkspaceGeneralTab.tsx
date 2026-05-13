@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Input, toast } from '@ciphera-net/ui'
+import { Input, Select, toast } from '@ciphera-net/ui'
 import { Spinner } from '@ciphera-net/ui'
 import { useAuth } from '@/lib/auth/context'
 import { useCan } from '@/lib/auth/permissions'
@@ -168,18 +168,16 @@ export default function WorkspaceGeneralTab({ onDirtyChange, onRegisterSave }: {
               <>
                 <div>
                   <label className="block text-xs text-neutral-400 mb-1">New owner</label>
-                  <select
+                  <Select
+                    variant="input"
                     value={transferTargetId}
-                    onChange={e => setTransferTargetId(e.target.value)}
-                    className="w-full rounded-lg bg-neutral-900 border border-neutral-700 text-white text-sm px-3 py-2 focus:outline-none focus:border-neutral-500"
-                  >
-                    <option value="">Select a member…</option>
-                    {members.map(m => (
-                      <option key={m.user_id} value={m.user_id}>
-                        {m.user_id} ({m.role})
-                      </option>
-                    ))}
-                  </select>
+                    onChange={setTransferTargetId}
+                    options={[
+                      { value: '', label: 'Select a member…' },
+                      ...members.map(m => ({ value: m.user_id, label: `${m.user_id} (${m.role})` })),
+                    ]}
+                    fullWidth
+                  />
                 </div>
                 <div className="flex gap-2">
                   <button

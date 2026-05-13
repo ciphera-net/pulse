@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button, toast, Spinner, Modal } from '@ciphera-net/ui'
+import { Button, Input, toast, Spinner, Modal } from '@ciphera-net/ui'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { CreditCard, DownloadSimple, ArrowRight, WarningCircle, PencilSimple } from '@phosphor-icons/react'
 import { useSubscription } from '@/lib/swr/dashboard'
 import { updatePaymentMethod, cancelSubscription, resumeSubscription, getInvoices, downloadInvoicePDF, updateBillingSettings, type Invoice } from '@/lib/api/billing'
@@ -349,13 +350,19 @@ export default function WorkspaceBillingTab() {
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-medium text-neutral-300">Billing Details</h4>
             {!editingBilling && canManageBilling && (
-              <button
-                onClick={handleEditBilling}
-                className="p-1.5 rounded-md hover:bg-neutral-800 text-neutral-500 hover:text-neutral-300 transition-colors"
-                title="Edit billing details"
-              >
-                <PencilSimple size={14} />
-              </button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={handleEditBilling}
+                      className="p-1.5 rounded-md hover:bg-neutral-800 text-neutral-500 hover:text-neutral-300 transition-colors"
+                    >
+                      <PencilSimple size={14} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Edit billing</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
           </div>
 
@@ -364,51 +371,46 @@ export default function WorkspaceBillingTab() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs text-neutral-500">Business name</label>
-                  <input
+                  <Input
                     type="text"
                     value={billingForm.business_name}
                     onChange={e => setBillingForm(f => ({ ...f, business_name: e.target.value }))}
-                    className="bg-neutral-800/50 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-brand-orange"
                     placeholder="Business name"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs text-neutral-500">Billing email</label>
-                  <input
+                  <Input
                     type="email"
                     value={billingForm.billing_email}
                     onChange={e => setBillingForm(f => ({ ...f, billing_email: e.target.value }))}
-                    className="bg-neutral-800/50 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-brand-orange"
                     placeholder="billing@example.com"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs text-neutral-500">Address</label>
-                  <input
+                  <Input
                     type="text"
                     value={billingForm.address}
                     onChange={e => setBillingForm(f => ({ ...f, address: e.target.value }))}
-                    className="bg-neutral-800/50 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-brand-orange"
                     placeholder="Street address"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs text-neutral-500">City</label>
-                  <input
+                  <Input
                     type="text"
                     value={billingForm.city}
                     onChange={e => setBillingForm(f => ({ ...f, city: e.target.value }))}
-                    className="bg-neutral-800/50 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-brand-orange"
                     placeholder="City"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs text-neutral-500">Postal code</label>
-                  <input
+                  <Input
                     type="text"
                     value={billingForm.postal_code}
                     onChange={e => setBillingForm(f => ({ ...f, postal_code: e.target.value }))}
-                    className="bg-neutral-800/50 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-brand-orange"
                     placeholder="Postal code"
                   />
                 </div>
@@ -484,13 +486,19 @@ export default function WorkspaceBillingTab() {
                         {invoice.status === 'sent' ? 'Paid' : invoice.status}
                       </span>
                     )}
-                    <button
-                      onClick={() => downloadInvoicePDF(invoice.id).catch(() => toast.error('PDF not available yet'))}
-                      className="p-1.5 rounded-md hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors ease-apple"
-                      title="Download PDF"
-                    >
-                      <DownloadSimple size={16} />
-                    </button>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={() => downloadInvoicePDF(invoice.id).catch(() => toast.error('PDF not available yet'))}
+                            className="p-1.5 rounded-md hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors ease-apple"
+                          >
+                            <DownloadSimple size={16} />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>Download PDF</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                 </div>
               )
