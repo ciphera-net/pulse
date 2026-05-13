@@ -37,7 +37,7 @@ const ALL_TIMEZONES = (() => {
   }
 })()
 
-function TimezoneCombobox({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function TimezoneCombobox({ value, onChange, disabled }: { value: string; onChange: (v: string) => void; disabled?: boolean }) {
   const [search, setSearch] = useState('')
   const [open, setOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -73,10 +73,11 @@ function TimezoneCombobox({ value, onChange }: { value: string; onChange: (v: st
       <input
         ref={inputRef}
         value={open ? search : (selected ? `${selected.label} (${selected.offset})` : value)}
-        onChange={e => { setSearch(e.target.value); if (!open) setOpen(true) }}
-        onFocus={() => { setOpen(true); setSearch('') }}
+        onChange={e => { if (disabled) return; setSearch(e.target.value); if (!open) setOpen(true) }}
+        onFocus={() => { if (disabled) return; setOpen(true); setSearch('') }}
         placeholder="Search timezone..."
-        className="w-full h-10 px-4 bg-transparent border border-neutral-800 rounded-lg text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 transition-colors"
+        disabled={disabled}
+        className="w-full h-10 px-4 bg-transparent border border-neutral-800 rounded-lg text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       />
       {open && (
         <div
@@ -186,7 +187,7 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-neutral-300 mb-1.5">Site Name</label>
-              <Input value={name} onChange={e => setName(e.target.value)} placeholder="My Website" />
+              <Input value={name} onChange={e => setName(e.target.value)} placeholder="My Website" disabled={!canEdit} />
             </div>
             <div>
               <label className="block text-sm font-medium text-neutral-300 mb-1.5">Domain</label>
@@ -197,7 +198,7 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
 
           <div>
             <label className="block text-sm font-medium text-neutral-300 mb-1.5">Timezone</label>
-            <TimezoneCombobox value={timezone} onChange={setTimezone} />
+            <TimezoneCombobox value={timezone} onChange={setTimezone} disabled={!canEdit} />
           </div>
         </div>
       </div>
@@ -214,6 +215,7 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
           showFrameworkPicker
           className="mb-4"
           onFeaturesChange={(features) => setScriptFeatures(features)}
+          disabled={!canEdit}
         />
 
         {/* Verify Installation */}
@@ -289,11 +291,13 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
         onVerified={() => mutate()}
       />
 
-      <SettingsSaveBar
-        isDirty={isDirty}
-        onSave={handleSave}
-        onDiscard={handleDiscard}
-      />
+      {canEdit && (
+        <SettingsSaveBar
+          isDirty={isDirty}
+          onSave={handleSave}
+          onDiscard={handleDiscard}
+        />
+      )}
     </div>
   )
 }

@@ -11,6 +11,7 @@ import { Copy, CheckCircle, EyeSlash, Trash, ArrowUp, ArrowDown, Plus } from '@p
 import Link from 'next/link'
 import SettingsSections from '@/components/settings/SettingsSections'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
+import { useCan } from '@/lib/auth/permissions'
 
 const GEO_OPTIONS = [
   { value: 'full', label: 'Full (country, region, city)' },
@@ -18,19 +19,20 @@ const GEO_OPTIONS = [
   { value: 'none', label: 'Disabled' },
 ]
 
-function PrivacyToggle({ label, desc, checked, onToggle }: { label: string; desc: string; checked: boolean; onToggle: () => void }) {
+function PrivacyToggle({ label, desc, checked, onToggle, disabled }: { label: string; desc: string; checked: boolean; onToggle: () => void; disabled?: boolean }) {
   return (
     <div className="flex items-center justify-between p-4 rounded-xl border border-neutral-800 bg-neutral-800/30">
       <div>
         <p className="text-sm font-medium text-white">{label}</p>
         <p className="text-xs text-neutral-500">{desc}</p>
       </div>
-      <Toggle checked={checked} onChange={onToggle} />
+      <Toggle checked={checked} onChange={onToggle} disabled={disabled} />
     </div>
   )
 }
 
 export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }: { siteId: string; onDirtyChange?: (dirty: boolean) => void; onRegisterSave?: (fn: () => Promise<void>) => void }) {
+  const canEdit = useCan('sites.edit')
   const { data: site, mutate } = useSite(siteId)
   const { data: subscription, error: subscriptionError, mutate: mutateSubscription } = useSubscription()
   const { data: psiConfig, mutate: mutatePSIConfig } = usePageSpeedConfig(siteId)
@@ -192,12 +194,12 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
       </div>
 
       <div className="space-y-3">
-        <PrivacyToggle label="Page paths" desc="Track which pages visitors view." checked={collectPagePaths} onToggle={() => setCollectPagePaths(v => !v)} />
-        <PrivacyToggle label="Referrers" desc="Track where visitors come from." checked={collectReferrers} onToggle={() => setCollectReferrers(v => !v)} />
-        <PrivacyToggle label="Device info" desc="Track browser, OS, and device type." checked={collectDeviceInfo} onToggle={() => setCollectDeviceInfo(v => !v)} />
-        <PrivacyToggle label="Screen resolution" desc="Track visitor screen dimensions." checked={collectScreenRes} onToggle={() => setCollectScreenRes(v => !v)} />
-        <PrivacyToggle label="Audience data" desc="Track visitor language and timezone." checked={collectAudienceData} onToggle={() => setCollectAudienceData(v => !v)} />
-        <PrivacyToggle label="Hide unknown locations" desc='Exclude "Unknown" from location stats.' checked={hideUnknownLocations} onToggle={() => setHideUnknownLocations(v => !v)} />
+        <PrivacyToggle label="Page paths" desc="Track which pages visitors view." checked={collectPagePaths} onToggle={() => setCollectPagePaths(v => !v)} disabled={!canEdit} />
+        <PrivacyToggle label="Referrers" desc="Track where visitors come from." checked={collectReferrers} onToggle={() => setCollectReferrers(v => !v)} disabled={!canEdit} />
+        <PrivacyToggle label="Device info" desc="Track browser, OS, and device type." checked={collectDeviceInfo} onToggle={() => setCollectDeviceInfo(v => !v)} disabled={!canEdit} />
+        <PrivacyToggle label="Screen resolution" desc="Track visitor screen dimensions." checked={collectScreenRes} onToggle={() => setCollectScreenRes(v => !v)} disabled={!canEdit} />
+        <PrivacyToggle label="Audience data" desc="Track visitor language and timezone." checked={collectAudienceData} onToggle={() => setCollectAudienceData(v => !v)} disabled={!canEdit} />
+        <PrivacyToggle label="Hide unknown locations" desc='Exclude "Unknown" from location stats.' checked={hideUnknownLocations} onToggle={() => setHideUnknownLocations(v => !v)} disabled={!canEdit} />
       </div>
 
       <div id="section-geographic" className="p-4 rounded-xl border border-neutral-800 bg-neutral-800/30">
@@ -212,6 +214,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
             variant="input"
             options={GEO_OPTIONS}
             className="min-w-[200px]"
+            disabled={!canEdit}
           />
         </div>
       </div>
@@ -239,6 +242,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
               options={getRetentionOptionsForPlan(subscription?.plan_id).map(o => ({ value: String(o.value), label: o.label }))}
               variant="input"
               className="min-w-[160px]"
+              disabled={!canEdit}
             />
           </div>
           {subscription && (
@@ -266,6 +270,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
           desc="Automatically replace UUIDs, numeric IDs, and tokens with :id in page stats."
           checked={autoGroupDynamic}
           onToggle={() => setAutoGroupDynamic(v => !v)}
+          disabled={!canEdit}
         />
 
         <div className="pt-3">
@@ -405,6 +410,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
                 ]}
                 variant="input"
                 className="min-w-[140px]"
+                disabled={!canEdit}
               />
             ) : (
               <span className="text-sm text-neutral-400">Not enabled</span>
@@ -440,11 +446,13 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
         </div>
       </div>
 
-      <SettingsSaveBar
-        isDirty={isDirty}
-        onSave={handleSave}
-        onDiscard={handleDiscard}
-      />
+      {canEdit && (
+        <SettingsSaveBar
+          isDirty={isDirty}
+          onSave={handleSave}
+          onDiscard={handleDiscard}
+        />
+      )}
     </div>
   )
 }

@@ -15,6 +15,7 @@ import {
 } from '@/lib/api/privacy'
 import { formatRelativeTime } from '@/lib/utils/formatDate'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
+import { useCan } from '@/lib/auth/permissions'
 
 const SCAN_COOLDOWN_SECONDS = 300
 
@@ -27,6 +28,7 @@ export default function SitePrivacyScanTab({
   onDirtyChange?: (dirty: boolean) => void
   onRegisterSave?: (fn: () => Promise<void>) => void
 }) {
+  const canManage = useCan('privacy_scan.manage')
   const [enabled, setEnabled] = useState(false)
   const [frequency, setFrequency] = useState('weekly')
   const [configLoaded, setConfigLoaded] = useState(false)
@@ -181,7 +183,7 @@ export default function SitePrivacyScanTab({
           <p className="text-sm font-medium text-white">Enable privacy scanning</p>
           <p className="text-xs text-neutral-500">Automatically scan for trackers and security issues</p>
         </div>
-        <Toggle checked={enabled} onChange={() => setEnabled(v => !v)} />
+        <Toggle checked={enabled} onChange={() => setEnabled(v => !v)} disabled={!canManage} />
       </div>
 
       {/* Frequency selector — revealed when enabled */}
@@ -208,6 +210,7 @@ export default function SitePrivacyScanTab({
                     { value: 'weekly', label: 'Weekly' },
                     { value: 'monthly', label: 'Monthly' },
                   ]}
+                  disabled={!canManage}
                 />
               </div>
             </div>
@@ -220,7 +223,7 @@ export default function SitePrivacyScanTab({
         <Button
           variant="secondary"
           onClick={handleScan}
-          disabled={scanning || cooldown > 0}
+          disabled={!canManage || scanning || cooldown > 0}
         >
           {scanning ? (
             <>
@@ -364,11 +367,13 @@ export default function SitePrivacyScanTab({
         </div>
       )}
 
-      <SettingsSaveBar
-        isDirty={isDirty}
-        onSave={handleSave}
-        onDiscard={handleDiscard}
-      />
+      {canManage && (
+        <SettingsSaveBar
+          isDirty={isDirty}
+          onSave={handleSave}
+          onDiscard={handleDiscard}
+        />
+      )}
     </div>
   )
 }

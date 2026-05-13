@@ -5,6 +5,7 @@ import { Spinner, Input, Button } from '@ciphera-net/ui'
 import { ListChecks } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useAuth } from '@/lib/auth/context'
+import { useCan } from '@/lib/auth/permissions'
 import { getAuditLog, type AuditLogEntry } from '@/lib/api/audit'
 import { formatDateTimeShort } from '@/lib/utils/formatDate'
 
@@ -36,6 +37,7 @@ const PAGE_SIZE = 20
 
 export default function WorkspaceAuditTab() {
   const { user } = useAuth()
+  const canView = useCan('audit.view')
   const [entries, setEntries] = useState<AuditLogEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)

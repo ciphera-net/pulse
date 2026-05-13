@@ -8,6 +8,7 @@ import { disconnectGSC, getGSCAuthURL } from '@/lib/api/gsc'
 import { disconnectBunny, getBunnyPullZones, connectBunny, type BunnyPullZone } from '@/lib/api/bunny'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { formatDateTime } from '@/lib/utils/formatDate'
+import { useCan } from '@/lib/auth/permissions'
 
 function GoogleIcon() {
   return (
@@ -54,6 +55,7 @@ function IntegrationCard({
   onConnect,
   onDisconnect,
   connectLabel = 'Connect',
+  canManage = true,
   children,
 }: {
   icon: React.ReactNode
@@ -64,6 +66,7 @@ function IntegrationCard({
   onConnect: () => void
   onDisconnect: () => void
   connectLabel?: string
+  canManage?: boolean
   children?: React.ReactNode
 }) {
   return (
@@ -84,7 +87,7 @@ function IntegrationCard({
             <p className="text-xs text-neutral-400">{detail || description}</p>
           </div>
         </div>
-        {connected ? (
+        {canManage && (connected ? (
           <Button onClick={onDisconnect} variant="secondary" className="text-sm text-red-400 border-red-900/50 hover:bg-red-900/20 gap-1.5">
             <LinkBreak weight="bold" className="w-3.5 h-3.5" /> Disconnect
           </Button>
@@ -92,7 +95,7 @@ function IntegrationCard({
           <Button onClick={onConnect} variant="primary" className="text-sm gap-1.5">
             <Plugs weight="bold" className="w-3.5 h-3.5" /> {connectLabel}
           </Button>
-        )}
+        ))}
       </div>
       {children}
     </div>
@@ -262,6 +265,7 @@ function BunnySetupForm({ siteId, onConnected }: { siteId: string; onConnected: 
 }
 
 export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
+  const canManage = useCan('integrations.manage')
   const { data: gscStatus, isLoading: gscLoading, mutate: mutateGSC } = useGSCStatus(siteId)
   const { data: bunnyStatus, isLoading: bunnyLoading, mutate: mutateBunny } = useBunnyStatus(siteId)
   const [showBunnySetup, setShowBunnySetup] = useState(false)
@@ -329,6 +333,7 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
           onConnect={handleConnectGSC}
           onDisconnect={handleDisconnectGSC}
           connectLabel="Connect with Google"
+          canManage={canManage}
         >
           {gscStatus?.connected && <GSCDetails gscStatus={gscStatus} />}
           <SecurityNote text="Pulse only requests read-only access. Your tokens are encrypted at rest." />
@@ -342,6 +347,7 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
           detail={undefined}
           onConnect={handleConnectBunny}
           onDisconnect={handleDisconnectBunny}
+          canManage={canManage}
         >
           {bunnyConnected && (
             <div className="px-4 pb-4 space-y-3">
@@ -366,7 +372,7 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
               )}
             </div>
           )}
-          {!bunnyConnected && showBunnySetup && (
+          {!bunnyConnected && showBunnySetup && canManage && (
             <BunnySetupForm
               siteId={siteId}
               onConnected={() => {

@@ -9,8 +9,10 @@ import { updateSite } from '@/lib/api/sites'
 import { quarantineSessions, restoreSessions, createDomainOverride, deleteDomainOverride } from '@/lib/api/quarantine'
 import SettingsSections from '@/components/settings/SettingsSections'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
+import { useCan } from '@/lib/auth/permissions'
 
 export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }: { siteId: string; onDirtyChange?: (dirty: boolean) => void; onRegisterSave?: (fn: () => Promise<void>) => void }) {
+  const canManage = useCan('quarantine.manage')
   const { data: site, mutate } = useSite(siteId)
   const { data: botStats, mutate: mutateBotStats } = useQuarantineStats(siteId)
   const { data: domainReputation, mutate: mutateDomains } = useSiteDomainReputation(siteId)
@@ -111,7 +113,7 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
             <p className="text-xs text-neutral-500">Filter known bots, crawlers, referrer spam, and suspicious traffic.</p>
           </div>
         </div>
-        <Toggle checked={filterBots} onChange={() => setFilterBots(p => !p)} />
+        <Toggle checked={filterBots} onChange={() => setFilterBots(p => !p)} disabled={!canManage} />
       </div>
 
       {/* Stats */}
@@ -169,9 +171,9 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
           <div className="flex items-center gap-3 p-2 bg-brand-orange/10 border border-brand-orange/20 rounded-lg text-sm">
             <span className="text-neutral-300">{selectedSessions.size} selected</span>
             {botView === 'review' ? (
-              <button onClick={() => handleBotFilter(Array.from(selectedSessions))} className="text-red-400 hover:text-red-300 font-medium">Flag as bot</button>
+              <button onClick={() => handleBotFilter(Array.from(selectedSessions))} disabled={!canManage} className="text-red-400 hover:text-red-300 font-medium disabled:opacity-40 disabled:cursor-not-allowed">Flag as bot</button>
             ) : (
-              <button onClick={() => handleBotUnfilter(Array.from(selectedSessions))} className="text-green-400 hover:text-green-300 font-medium">Unblock</button>
+              <button onClick={() => handleBotUnfilter(Array.from(selectedSessions))} disabled={!canManage} className="text-green-400 hover:text-green-300 font-medium disabled:opacity-40 disabled:cursor-not-allowed">Unblock</button>
             )}
             <button onClick={() => setSelectedSessions(new Set())} className="text-neutral-500 hover:text-neutral-300 ml-auto">Clear</button>
           </div>
@@ -217,7 +219,8 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
                 </div>
                 <button
                   onClick={() => botView === 'review' ? handleBotFilter([session.session_id]) : handleBotUnfilter([session.session_id])}
-                  className={`shrink-0 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+                  disabled={!canManage}
+                  className={`shrink-0 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                     botView === 'review'
                       ? 'text-red-400 border-red-500/20 hover:bg-red-900/20'
                       : 'text-green-400 border-green-500/20 hover:bg-green-900/20'
@@ -284,7 +287,8 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
                       mutateDomains()
                     } catch { toast.error('Failed') }
                   }}
-                  className={`px-2.5 py-1 text-xs rounded-lg border transition-colors ${
+                  disabled={!canManage}
+                  className={`px-2.5 py-1 text-xs rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                     domain.override === 'allow'
                       ? 'bg-green-900/20 text-green-400 border-green-500/30'
                       : 'text-neutral-400 border-neutral-700 hover:text-green-400 hover:border-green-500/30'
@@ -300,7 +304,8 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
                       mutateDomains()
                     } catch { toast.error('Failed') }
                   }}
-                  className={`px-2.5 py-1 text-xs rounded-lg border transition-colors ${
+                  disabled={!canManage}
+                  className={`px-2.5 py-1 text-xs rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                     domain.override === 'quarantine'
                       ? 'bg-red-900/20 text-red-400 border-red-500/30'
                       : 'text-neutral-400 border-neutral-700 hover:text-red-400 hover:border-red-500/30'
@@ -317,7 +322,8 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
                         mutateDomains()
                       } catch { toast.error('Failed') }
                     }}
-                    className="px-2.5 py-1 text-xs rounded-lg border border-neutral-700 text-neutral-400 hover:text-white transition-colors ease-apple"
+                    disabled={!canManage}
+                    className="px-2.5 py-1 text-xs rounded-lg border border-neutral-700 text-neutral-400 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed ease-apple"
                   >
                     Reset
                   </button>
@@ -336,11 +342,13 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
         </div>
       </div>
 
-      <SettingsSaveBar
-        isDirty={isDirty}
-        onSave={handleSave}
-        onDiscard={handleDiscard}
-      />
+      {canManage && (
+        <SettingsSaveBar
+          isDirty={isDirty}
+          onSave={handleSave}
+          onDiscard={handleDiscard}
+        />
+      )}
     </div>
   )
 }

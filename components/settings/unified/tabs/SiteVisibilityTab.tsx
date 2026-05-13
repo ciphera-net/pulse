@@ -8,11 +8,13 @@ import { useSite } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
 import { env } from '@/lib/env'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
+import { useCan } from '@/lib/auth/permissions'
 
 // Zod-validated URL, guaranteed to be a `string` at runtime.
 const APP_URL = env.NEXT_PUBLIC_APP_URL
 
 export default function SiteVisibilityTab({ siteId, onDirtyChange, onRegisterSave }: { siteId: string; onDirtyChange?: (dirty: boolean) => void; onRegisterSave?: (fn: () => Promise<void>) => void }) {
+  const canEdit = useCan('sites.edit')
   const { data: site, mutate } = useSite(siteId)
   const [isPublic, setIsPublic] = useState(false)
   const [password, setPassword] = useState('')
@@ -89,7 +91,7 @@ export default function SiteVisibilityTab({ siteId, onDirtyChange, onRegisterSav
           <p className="text-sm font-medium text-white">Public Dashboard</p>
           <p className="text-xs text-neutral-500">Allow anyone with the link to view this dashboard.</p>
         </div>
-        <Toggle checked={isPublic} onChange={() => setIsPublic(p => !p)} />
+        <Toggle checked={isPublic} onChange={() => setIsPublic(p => !p)} disabled={!canEdit} />
       </div>
 
       <AnimatePresence>
@@ -121,7 +123,7 @@ export default function SiteVisibilityTab({ siteId, onDirtyChange, onRegisterSav
                   <p className="text-xs text-neutral-500">Require a password to view the public dashboard.</p>
                 </div>
               </div>
-              <Toggle checked={passwordEnabled} onChange={() => setPasswordEnabled(p => !p)} />
+              <Toggle checked={passwordEnabled} onChange={() => setPasswordEnabled(p => !p)} disabled={!canEdit} />
             </div>
 
             <AnimatePresence>
@@ -154,11 +156,13 @@ export default function SiteVisibilityTab({ siteId, onDirtyChange, onRegisterSav
         )}
       </AnimatePresence>
 
-      <SettingsSaveBar
-        isDirty={isDirty}
-        onSave={handleSave}
-        onDiscard={handleDiscard}
-      />
+      {canEdit && (
+        <SettingsSaveBar
+          isDirty={isDirty}
+          onSave={handleSave}
+          onDiscard={handleDiscard}
+        />
+      )}
     </div>
   )
 }

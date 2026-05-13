@@ -244,11 +244,18 @@ export default function WorkspaceBillingTab() {
         <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-900/20 border border-amber-900/40 text-sm mt-4">
           <WarningCircle size={16} weight="fill" className="text-amber-400 shrink-0 mt-0.5" />
           <p className="text-amber-300">
-            Your last payment could not be processed. Please{' '}
-            <button onClick={() => { setSelectedPaymentMethod(''); setShowPaymentMethodModal(true) }} className="underline font-medium text-amber-200 hover:text-white">
-              update your payment method
-            </button>{' '}
-            to avoid service interruption.
+            Your last payment could not be processed.{' '}
+            {canManageBilling ? (
+              <>
+                Please{' '}
+                <button onClick={() => { setSelectedPaymentMethod(''); setShowPaymentMethodModal(true) }} className="underline font-medium text-amber-200 hover:text-white">
+                  update your payment method
+                </button>{' '}
+                to avoid service interruption.
+              </>
+            ) : (
+              'Please contact your workspace owner to update the payment method.'
+            )}
           </p>
         </div>
       )}

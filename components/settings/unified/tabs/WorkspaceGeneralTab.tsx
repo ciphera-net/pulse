@@ -127,14 +127,14 @@ export default function WorkspaceGeneralTab({ onDirtyChange, onRegisterSave }: {
 
         <div>
           <label className="block text-sm font-medium text-neutral-300 mb-1.5">Organization Name</label>
-          <Input value={name} onChange={e => setName(e.target.value)} placeholder="Acme Corp" />
+          <Input value={name} onChange={e => setName(e.target.value)} placeholder="Acme Corp" disabled={!canDeleteOrg} />
         </div>
 
         <div>
           <label className="block text-sm font-medium text-neutral-300 mb-1.5">Organization Slug</label>
           <div className="flex items-center gap-2">
             <span className="text-sm text-neutral-500">pulse.ciphera.net/</span>
-            <Input value={slug} onChange={e => setSlug(e.target.value)} placeholder="acme-corp" />
+            <Input value={slug} onChange={e => setSlug(e.target.value)} placeholder="acme-corp" disabled={!canDeleteOrg} />
           </div>
           <p className="text-xs text-neutral-500 mt-1">Changing the slug will change your organization&apos;s URL.</p>
         </div>
@@ -230,11 +230,13 @@ export default function WorkspaceGeneralTab({ onDirtyChange, onRegisterSave }: {
         )}
       </DangerZone>}
 
-      <SettingsSaveBar
-        isDirty={isDirty}
-        onSave={handleSave}
-        onDiscard={handleDiscard}
-      />
+      {canDeleteOrg && (
+        <SettingsSaveBar
+          isDirty={isDirty}
+          onSave={handleSave}
+          onDiscard={handleDiscard}
+        />
+      )}
     </div>
   )
 }
