@@ -11,6 +11,7 @@ import { listRoles, type Role } from '@/lib/api/roles'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import CreateInviteLinkModal from './CreateInviteLinkModal'
 import InviteLinksSection from './InviteLinksSection'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 function RoleBadge({ role, roles }: { role: string; roles: Role[] }) {
   if (role === 'owner') return (
@@ -40,6 +41,7 @@ export default function WorkspaceMembersTab() {
   const [loading, setLoading] = useState(true)
   const [inviteLinks, setInviteLinks] = useState<InviteLink[]>([])
   const [showLinkModal, setShowLinkModal] = useState(false)
+  const [confirmRemove, setConfirmRemove] = useState<{ userId: string; email: string } | null>(null)
 
   const canManage = useCan('team.manage')
 
@@ -60,16 +62,16 @@ export default function WorkspaceMembersTab() {
 
   useEffect(() => { loadMembers() }, [user?.org_id])
 
-  const handleRemove = async (memberId: string, email: string) => {
+  const handleRemove = (memberId: string, email: string) => {
     if (!user?.org_id) return
-    if (!confirm(`Remove ${email} from the organization?`)) return
-    try {
-      await removeOrganizationMember(user.org_id, memberId)
-      toast.success(`${email} has been removed`)
-      loadMembers()
-    } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to remove member')
-    }
+    setConfirmRemove({ userId: memberId, email })
+  }
+
+  const doRemove = async () => {
+    if (!user?.org_id || !confirmRemove) return
+    await removeOrganizationMember(user.org_id, confirmRemove.userId)
+    toast.success(`${confirmRemove.email} has been removed`)
+    loadMembers()
   }
 
   if (loading) return <div className="flex items-center justify-center py-12"><Spinner className="w-6 h-6 text-neutral-500" /></div>
@@ -127,6 +129,16 @@ export default function WorkspaceMembersTab() {
           <CreateInviteLinkModal orgId={user.org_id} roles={roles} open={showLinkModal} onOpenChange={setShowLinkModal} onCreated={loadMembers} />
         </>
       )}
+
+      <ConfirmDialog
+        open={confirmRemove !== null}
+        onOpenChange={(open) => { if (!open) setConfirmRemove(null) }}
+        title="Remove member"
+        description={confirmRemove ? `Remove ${confirmRemove.email} from the organization? They will lose access to all workspace resources.` : ''}
+        confirmLabel="Remove"
+        variant="danger"
+        onConfirm={doRemove}
+      />
     </div>
   )
 }

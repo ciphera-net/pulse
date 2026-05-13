@@ -7,6 +7,7 @@ import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { revokeInviteLink, type InviteLink } from '@/lib/api/organization'
 import { type Role } from '@/lib/api/roles'
 import { useCan } from '@/lib/auth/permissions'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 interface Props {
   orgId: string
@@ -63,16 +64,17 @@ function CopyLinkButton({ url }: { url?: string }) {
 
 export default function InviteLinksSection({ orgId, links, roles, loading, onRevoked }: Props) {
   const canManage = useCan('team.manage')
+  const [confirmRevoke, setConfirmRevoke] = useState<InviteLink | null>(null)
 
-  const handleRevoke = async (link: InviteLink) => {
-    if (!confirm(`Revoke the invite link "${link.name}"? Anyone with the link will no longer be able to join.`)) return
-    try {
-      await revokeInviteLink(orgId, link.id)
-      toast.success('Invite link revoked')
-      onRevoked()
-    } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to revoke invite link')
-    }
+  const handleRevoke = (link: InviteLink) => {
+    setConfirmRevoke(link)
+  }
+
+  const doRevoke = async () => {
+    if (!confirmRevoke) return
+    await revokeInviteLink(orgId, confirmRevoke.id)
+    toast.success('Invite link revoked')
+    onRevoked()
   }
 
   if (links.length === 0) return null
@@ -143,6 +145,16 @@ export default function InviteLinksSection({ orgId, links, roles, loading, onRev
           </div>
         )
       })}
+
+      <ConfirmDialog
+        open={confirmRevoke !== null}
+        onOpenChange={(open) => { if (!open) setConfirmRevoke(null) }}
+        title="Revoke invite link"
+        description={confirmRevoke ? `Revoke "${confirmRevoke.name}"? Anyone with this link will no longer be able to join.` : ''}
+        confirmLabel="Revoke"
+        variant="danger"
+        onConfirm={doRevoke}
+      />
     </div>
   )
 }

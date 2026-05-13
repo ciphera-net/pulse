@@ -6,6 +6,7 @@ import { getUserDevices, removeDevice, type TrustedDevice } from '@/lib/api/devi
 import { Spinner, toast } from '@ciphera-net/ui'
 import { Laptop } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { formatRelativeTime, formatDateTimeFull } from '@/lib/utils/formatDate'
 
 function getDeviceIcon(hint: string): string {
@@ -22,6 +23,7 @@ export default function TrustedDevicesCard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [removingId, setRemovingId] = useState<string | null>(null)
+  const [confirmDevice, setConfirmDevice] = useState<TrustedDevice | null>(null)
 
   const fetchDevices = useCallback(async () => {
     try {
@@ -117,7 +119,7 @@ export default function TrustedDevicesCard() {
               {!device.is_current && (
                 <button
                   type="button"
-                  onClick={() => handleRemove(device)}
+                  onClick={() => setConfirmDevice(device)}
                   disabled={removingId === device.id}
                   className="flex-shrink-0 text-xs font-medium text-red-400 hover:text-red-300 transition-colors disabled:opacity-50 ease-apple"
                 >
@@ -128,6 +130,18 @@ export default function TrustedDevicesCard() {
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmDevice !== null}
+        onOpenChange={(open) => { if (!open) setConfirmDevice(null) }}
+        title="Remove device"
+        description="A new sign-in from this device will trigger a security alert."
+        confirmLabel="Remove"
+        variant="danger"
+        onConfirm={async () => {
+          if (confirmDevice) await handleRemove(confirmDevice)
+        }}
+      />
     </div>
   )
 }

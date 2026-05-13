@@ -17,6 +17,7 @@ import {
   X,
 } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useAuth } from '@/lib/auth/context'
 import { useCan } from '@/lib/auth/permissions'
 import { SPRING } from '@/lib/motion'
@@ -258,6 +259,7 @@ function RoleCard({
   onDeleted,
 }: RoleCardProps) {
   const [expanded, setExpanded] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const [editingName, setEditingName] = useState(false)
   const [nameValue, setNameValue] = useState(role.name)
   const [permissions, setPermissions] = useState<string[]>(role.permissions)
@@ -352,15 +354,14 @@ function RoleCard({
     }
   }
 
-  const handleDelete = async () => {
-    if (!confirm(`Delete the "${role.name}" role? Members with this role will revert to Member.`)) return
-    try {
-      await deleteRole(role.id)
-      onDeleted(role.id)
-      toast.success(`"${role.name}" deleted`)
-    } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to delete role')
-    }
+  const handleDelete = () => {
+    setConfirmDelete(true)
+  }
+
+  const doDelete = async () => {
+    await deleteRole(role.id)
+    onDeleted(role.id)
+    toast.success(`"${role.name}" deleted`)
   }
 
   return (
@@ -465,6 +466,16 @@ function RoleCard({
           <CaretDown weight="bold" className="w-4 h-4" />
         </motion.div>
       </div>
+
+      <ConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title="Delete role"
+        description={`Delete the "${role.name}" role? Members with this role will revert to Member.`}
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={doDelete}
+      />
 
       {/* Expanded permissions panel */}
       <AnimatePresence initial={false}>

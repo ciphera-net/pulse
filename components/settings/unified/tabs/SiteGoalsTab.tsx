@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Input, Button, toast } from '@ciphera-net/ui'
 import { Plus, Pencil, Trash, X, Target } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Spinner } from '@ciphera-net/ui'
 import { useGoals } from '@/lib/swr/dashboard'
 import { createGoal, updateGoal, deleteGoal } from '@/lib/api/goals'
@@ -18,6 +19,7 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
   const [name, setName] = useState('')
   const [eventName, setEventName] = useState('')
   const [saving, setSaving] = useState(false)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   const startCreate = () => {
     setCreating(true)
@@ -160,7 +162,7 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
                     <Pencil weight="bold" className="w-3.5 h-3.5" />
                   </button>
                   <button
-                    onClick={() => handleDelete(goal.id)}
+                    onClick={() => setConfirmDeleteId(goal.id)}
                     className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-red-900/20 transition-colors ease-apple"
                   >
                     <Trash weight="bold" className="w-3.5 h-3.5" />
@@ -171,6 +173,18 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmDeleteId !== null}
+        onOpenChange={(open) => { if (!open) setConfirmDeleteId(null) }}
+        title="Delete goal"
+        description="This goal and all its associated data will be permanently deleted."
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={async () => {
+          if (confirmDeleteId) await handleDelete(confirmDeleteId)
+        }}
+      />
     </div>
   )
 }

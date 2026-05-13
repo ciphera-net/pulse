@@ -2,11 +2,13 @@
 import { useEffect, useState } from 'react'
 import { listWebhooks, deleteWebhook, type Webhook } from '@/lib/api/notifications-webhooks'
 import WebhookFormModal from './WebhookFormModal'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 export default function WebhooksSection() {
   const [webhooks, setWebhooks] = useState<Webhook[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   const load = async () => {
     try {
@@ -19,14 +21,14 @@ export default function WebhooksSection() {
 
   useEffect(() => { load() }, [])
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this webhook? Future events will not be delivered to this URL.')) return
-    try {
-      await deleteWebhook(id)
-      load()
-    } catch (e) {
-      setError((e as Error).message ?? 'Delete failed')
-    }
+  const handleDelete = (id: string) => {
+    setConfirmDeleteId(id)
+  }
+
+  const doDelete = async () => {
+    if (!confirmDeleteId) return
+    await deleteWebhook(confirmDeleteId)
+    load()
   }
 
   return (
@@ -78,6 +80,16 @@ export default function WebhooksSection() {
       {showForm && (
         <WebhookFormModal onClose={() => setShowForm(false)} onCreated={load} />
       )}
+
+      <ConfirmDialog
+        open={confirmDeleteId !== null}
+        onOpenChange={(open) => { if (!open) setConfirmDeleteId(null) }}
+        title="Delete webhook"
+        description="Future events will not be delivered to this URL."
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={doDelete}
+      />
     </div>
   )
 }

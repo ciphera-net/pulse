@@ -9,6 +9,7 @@ import { disconnectBunny, getBunnyPullZones, connectBunny, type BunnyPullZone } 
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { formatDateTime } from '@/lib/utils/formatDate'
 import { useCan } from '@/lib/auth/permissions'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 function GoogleIcon() {
   return (
@@ -269,6 +270,7 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
   const { data: gscStatus, isLoading: gscLoading, mutate: mutateGSC } = useGSCStatus(siteId)
   const { data: bunnyStatus, isLoading: bunnyLoading, mutate: mutateBunny } = useBunnyStatus(siteId)
   const [showBunnySetup, setShowBunnySetup] = useState(false)
+  const [confirmDisconnect, setConfirmDisconnect] = useState<'gsc' | 'bunny' | null>(null)
 
   if (gscLoading || bunnyLoading) {
     return (
@@ -287,31 +289,29 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
     }
   }
 
-  const handleDisconnectGSC = async () => {
-    if (!confirm('Disconnect Google Search Console? This will remove all synced data.')) return
-    try {
-      await disconnectGSC(siteId)
-      await mutateGSC()
-      toast.success('Google Search Console disconnected')
-    } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to disconnect')
-    }
+  const handleDisconnectGSC = () => {
+    setConfirmDisconnect('gsc')
+  }
+
+  const doDisconnectGSC = async () => {
+    await disconnectGSC(siteId)
+    await mutateGSC()
+    toast.success('Google Search Console disconnected')
   }
 
   const handleConnectBunny = () => {
     setShowBunnySetup(true)
   }
 
-  const handleDisconnectBunny = async () => {
-    if (!confirm('Disconnect BunnyCDN? This will remove all synced CDN data.')) return
-    try {
-      await disconnectBunny(siteId)
-      await mutateBunny()
-      setShowBunnySetup(false)
-      toast.success('BunnyCDN disconnected')
-    } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to disconnect')
-    }
+  const handleDisconnectBunny = () => {
+    setConfirmDisconnect('bunny')
+  }
+
+  const doDisconnectBunny = async () => {
+    await disconnectBunny(siteId)
+    await mutateBunny()
+    setShowBunnySetup(false)
+    toast.success('BunnyCDN disconnected')
   }
 
   const bunnyConnected = bunnyStatus?.connected ?? false
@@ -384,6 +384,26 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
           <SecurityNote text="Your API key is encrypted at rest and only used to fetch read-only statistics." />
         </IntegrationCard>
       </div>
+
+      <ConfirmDialog
+        open={confirmDisconnect === 'gsc'}
+        onOpenChange={(open) => { if (!open) setConfirmDisconnect(null) }}
+        title="Disconnect Google Search Console"
+        description="This will remove all synced search data."
+        confirmLabel="Disconnect"
+        variant="danger"
+        onConfirm={doDisconnectGSC}
+      />
+
+      <ConfirmDialog
+        open={confirmDisconnect === 'bunny'}
+        onOpenChange={(open) => { if (!open) setConfirmDisconnect(null) }}
+        title="Disconnect BunnyCDN"
+        description="This will remove all synced CDN data."
+        confirmLabel="Disconnect"
+        variant="danger"
+        onConfirm={doDisconnectBunny}
+      />
     </div>
   )
 }

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Button, toast, Spinner, Modal, Select } from '@ciphera-net/ui'
 import { Plus, Pencil, Trash, EnvelopeSimple, WebhooksLogo, PaperPlaneTilt, FileText, Bell } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { cdnUrl } from '@/lib/cdn'
 import { useReportSchedules, useAlertSchedules } from '@/lib/swr/dashboard'
 import { useSite } from '@/lib/swr/dashboard'
@@ -85,6 +86,7 @@ function ScheduleRow({
   canManage: boolean
 }) {
   const [testing, setTesting] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const handleTest = async () => {
     setTesting(true)
@@ -163,11 +165,21 @@ function ScheduleRow({
           <button onClick={handleToggle} className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors ease-apple">
             {schedule.enabled ? 'Pause' : 'Enable'}
           </button>
-          <button onClick={handleDelete} className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-red-900/20 transition-colors ease-apple" title="Delete">
+          <button onClick={() => setConfirmDelete(true)} className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-red-900/20 transition-colors ease-apple" title="Delete">
             <Trash weight="bold" className="w-3.5 h-3.5" />
           </button>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title="Delete schedule"
+        description="This report schedule will be permanently removed."
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={handleDelete}
+      />
     </div>
   )
 }
