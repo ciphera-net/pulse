@@ -75,7 +75,7 @@ export default function InviteLinksSection({ orgId, links, roles, loading, onRev
     }
   }
 
-  if (loading || links.length === 0) return null
+  if (links.length === 0) return null
 
   return (
     <div className="space-y-2 pt-6 border-t border-neutral-800">
@@ -100,7 +100,7 @@ export default function InviteLinksSection({ orgId, links, roles, loading, onRev
           >
             <div className="flex items-center gap-3 min-w-0">
               {/* Status dot */}
-              {isExhausted ? (
+              {(isExhausted || isExpired) ? (
                 <span className="relative flex h-2 w-2 flex-shrink-0">
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-neutral-600" />
                 </span>

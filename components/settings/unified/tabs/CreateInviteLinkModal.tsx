@@ -89,7 +89,7 @@ export default function CreateInviteLinkModal({ orgId, roles, open, onOpenChange
         max_uses: maxUses ? parseInt(maxUses, 10) : undefined,
         expires_in: expiresIn,
       })
-      if (link.code) {
+      if (!link.url && link.code) {
         link.url = `${window.location.origin}/join/${link.code}`
       }
       setCreated(link)
