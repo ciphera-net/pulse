@@ -7,8 +7,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { cdnUrl } from '@/lib/cdn'
-import { useReportSchedules, useAlertSchedules } from '@/lib/swr/dashboard'
-import { useSite } from '@/lib/swr/dashboard'
+import { useReportSchedules, useAlertSchedules, useSite } from '@/lib/swr/dashboard'
 import { useCan } from '@/lib/auth/permissions'
 import {
   createReportSchedule,

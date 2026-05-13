@@ -1,11 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { Input, Button, toast } from '@ciphera-net/ui'
+import { Input, Button, toast, Spinner } from '@ciphera-net/ui'
 import { Plus, Pencil, Trash, X, Target } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
-import { Spinner } from '@ciphera-net/ui'
 import { useGoals } from '@/lib/swr/dashboard'
 import { createGoal, updateGoal, deleteGoal } from '@/lib/api/goals'
 import { getAuthErrorMessage } from '@ciphera-net/ui'

@@ -1,7 +1,9 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { Button } from '@ciphera-net/ui'
+import { Plugs } from '@phosphor-icons/react'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { listWebhooks, deleteWebhook, type Webhook } from '@/lib/api/notifications-webhooks'
 import WebhookFormModal from './WebhookFormModal'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -51,9 +53,12 @@ export default function WebhooksSection() {
       {error && <div className="text-red-400 text-sm">{error}</div>}
       {webhooks === null && <SettingsLoadingState />}
       {webhooks && webhooks.length === 0 && (
-        <div className="text-neutral-500 text-sm py-6 text-center border border-neutral-800/60 rounded">
-          No webhooks configured.
-        </div>
+        <EmptyState
+          title="No webhooks configured"
+          description="Add a webhook to receive event notifications via HTTP."
+          icon={<Plugs weight="regular" />}
+          className="py-8"
+        />
       )}
       {webhooks && webhooks.length > 0 && (
         <ul className="space-y-2">

@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
-import { Input, Select } from '@ciphera-net/ui'
+import { Input, Select, toast, getAuthErrorMessage } from '@ciphera-net/ui'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { getPrefs, updatePrefs, type Preferences } from '@/lib/api/notifications-preferences'
 import { purgeMine } from '@/lib/api/notifications-v2'
@@ -15,6 +15,10 @@ export default function MyPreferencesTab() {
   const [error, setError] = useState<string | null>(null)
   const [purging, setPurging] = useState(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
+  }, [])
 
   useEffect(() => {
     getPrefs().then(setPrefs).catch(e => setError(e.message ?? 'Failed to load'))
@@ -100,11 +104,15 @@ export default function MyPreferencesTab() {
         </button>
         {purging && (
           <PurgeConfirmDialog
-            count={-1}
+            count={null}
             onCancel={() => setPurging(false)}
             onConfirm={async () => {
-              await purgeMine()
-              setPurging(false)
+              try {
+                await purgeMine()
+                setPurging(false)
+              } catch (err) {
+                toast.error(getAuthErrorMessage(err as Error) || 'Failed to purge notifications')
+              }
             }}
           />
         )}

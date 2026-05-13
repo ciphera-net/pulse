@@ -2,7 +2,7 @@
 import { useState } from 'react'
 
 interface PurgeConfirmDialogProps {
-  count: number
+  count: number | null
   onConfirm: () => Promise<void>
   onCancel: () => void
 }
@@ -23,7 +23,7 @@ export default function PurgeConfirmDialog({ count, onConfirm, onCancel }: Purge
       >
         <h3 className="text-lg font-semibold text-white mb-2">Delete all my notification history</h3>
         <p className="text-sm text-neutral-300 mb-4">
-          {count < 0
+          {count == null
             ? "This permanently deletes all of your notification history from this account."
             : `This permanently deletes all ${count} notification${count === 1 ? '' : 's'} from your account.`
           }{' '}

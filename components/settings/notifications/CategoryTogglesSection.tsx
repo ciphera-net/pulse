@@ -12,6 +12,10 @@ export default function CategoryTogglesSection() {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
+    return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
+  }, [])
+
+  useEffect(() => {
     getCategorySettings()
       .then(r => {
         setSettings(r.settings ?? {})

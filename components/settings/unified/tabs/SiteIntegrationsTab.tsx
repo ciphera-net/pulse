@@ -112,27 +112,6 @@ function SecurityNote({ text }: { text: string }) {
   )
 }
 
-function StatusDot({ status }: { status?: string }) {
-  const color =
-    status === 'active' ? 'bg-green-400' :
-    status === 'syncing' ? 'bg-yellow-400 animate-pulse' :
-    status === 'error' ? 'bg-red-400' :
-    'bg-neutral-500'
-
-  const label =
-    status === 'active' ? 'Connected' :
-    status === 'syncing' ? 'Syncing' :
-    status === 'error' ? 'Error' :
-    'Unknown'
-
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <span className={`w-2 h-2 rounded-full ${color}`} />
-      <span className="text-sm text-white">{label}</span>
-    </span>
-  )
-}
-
 function GSCDetails({ gscStatus }: { gscStatus: { connected: boolean; google_email?: string; gsc_property?: string; status?: string; last_synced_at?: string | null; error_message?: string | null } }) {
   if (!gscStatus.connected) return null
 
@@ -329,7 +308,6 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
           name="Google Search Console"
           description="View search queries, clicks, impressions, and ranking data."
           connected={gscStatus?.connected ?? false}
-          detail={undefined}
           onConnect={handleConnectGSC}
           onDisconnect={handleDisconnectGSC}
           connectLabel="Connect with Google"
@@ -344,7 +322,6 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
           name="BunnyCDN"
           description="Monitor bandwidth, cache hit rates, and CDN performance."
           connected={bunnyConnected}
-          detail={undefined}
           onConnect={handleConnectBunny}
           onDisconnect={handleDisconnectBunny}
           canManage={canManage}

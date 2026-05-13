@@ -1,14 +1,6 @@
 'use client'
 import type { Preferences, DeliveryMode } from '@/lib/api/notifications-preferences'
-
-const CATEGORIES = [
-  { id: 'billing', label: 'Billing', critical: true },
-  { id: 'security', label: 'Security', critical: true },
-  { id: 'uptime', label: 'Uptime monitoring', critical: false },
-  { id: 'site', label: 'Site events', critical: false },
-  { id: 'team', label: 'Team activity', critical: false },
-  { id: 'system', label: 'Platform announcements', critical: false },
-] as const
+import { NOTIFICATION_CATEGORIES } from '@/lib/notifications/categories'
 
 const MODES: { value: DeliveryMode; label: string }[] = [
   { value: 'in_app_only', label: 'In-app only' },
@@ -35,7 +27,7 @@ export default function DeliveryModesTable({ prefs, onChange }: Props) {
           </tr>
         </thead>
         <tbody>
-          {CATEGORIES.map(c => (
+          {NOTIFICATION_CATEGORIES.map(c => (
             <tr key={c.id} className="border-t border-neutral-800/60">
               <td className="py-3 text-neutral-200">{c.label}</td>
               {MODES.map(m => (

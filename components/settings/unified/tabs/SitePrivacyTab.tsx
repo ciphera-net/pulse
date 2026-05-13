@@ -183,9 +183,11 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
       <SettingsSections sections={[
         { id: 'section-data-privacy', label: 'Data & Privacy' },
         { id: 'section-geographic', label: 'Geographic' },
+        { id: 'section-data-retention', label: 'Data Retention' },
         { id: 'section-path-grouping', label: 'Path Grouping' },
         { id: 'section-query-params', label: 'Query Parameters' },
         { id: 'section-exclude-self', label: 'Exclude Self' },
+        { id: 'section-pagespeed', label: 'PageSpeed' },
       ]} />
 
       <div id="section-data-privacy">
@@ -220,7 +222,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
       </div>
 
       {/* Data Retention */}
-      <div className="space-y-3 pt-6 border-t border-neutral-800">
+      <div id="section-data-retention" className="space-y-3 pt-6 border-t border-neutral-800">
         <h4 className="text-sm font-medium text-neutral-300">Data Retention</h4>
 
         {subscriptionError && (
@@ -400,7 +402,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
       </div>
 
       {/* PageSpeed Monitoring */}
-      <div className="space-y-3 pt-6 border-t border-neutral-800">
+      <div id="section-pagespeed" className="space-y-3 pt-6 border-t border-neutral-800">
         <h4 className="text-sm font-medium text-neutral-300">PageSpeed Monitoring</h4>
         <div className="p-4 bg-neutral-800/30 rounded-xl border border-neutral-800">
           <div className="flex items-center justify-between">
