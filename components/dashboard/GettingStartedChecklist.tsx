@@ -16,7 +16,7 @@ interface ChecklistItem {
   check: () => boolean
 }
 
-const DISMISSED_KEY = 'pulse_checklist_dismissed'
+const DISMISSED_PREFIX = 'pulse_checklist_dismissed_'
 
 function ProgressRing({ progress, size = 32 }: { progress: number; size?: number }) {
   const strokeWidth = 3
@@ -59,9 +59,9 @@ export default function GettingStartedChecklist() {
   const [expanded, setExpanded] = useState(false)
 
   useEffect(() => {
-    if (typeof window === 'undefined') return
-    setDismissed(localStorage.getItem(DISMISSED_KEY) === 'true')
-  }, [])
+    if (typeof window === 'undefined' || !user?.org_id) return
+    setDismissed(localStorage.getItem(`${DISMISSED_PREFIX}${user.org_id}`) === 'true')
+  }, [user?.org_id])
 
   const items: ChecklistItem[] = [
     { key: 'org', label: 'Create workspace', check: () => !!user?.org_id },
@@ -76,7 +76,7 @@ export default function GettingStartedChecklist() {
 
   const handleDismiss = (e: React.MouseEvent) => {
     e.stopPropagation()
-    localStorage.setItem(DISMISSED_KEY, 'true')
+    localStorage.setItem(`${DISMISSED_PREFIX}${user!.org_id}`, 'true')
     setDismissed(true)
   }
 

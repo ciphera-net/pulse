@@ -9,18 +9,19 @@ import { useMembers } from '@/lib/swr/members'
 import { useGoals, useReportSchedules } from '@/lib/swr/dashboard'
 import { XIcon } from '@ciphera-net/ui'
 
-const DISMISSED_KEY = 'pulse_onboarding_checklist_dismissed'
+const DISMISSED_PREFIX = 'pulse_onboarding_checklist_dismissed_'
 
 export default function OnboardingChecklist() {
+  const { user } = useAuth()
+  const orgId = user?.org_id
   const [dismissed, setDismissed] = useState(true)
 
   useEffect(() => {
-    if (localStorage.getItem(DISMISSED_KEY) !== 'true') {
+    if (!orgId) return
+    if (localStorage.getItem(`${DISMISSED_PREFIX}${orgId}`) !== 'true') {
       setDismissed(false)
     }
-  }, [])
-
-  const { user } = useAuth()
+  }, [orgId])
   const { sites } = useSites()
   const { members } = useMembers()
   const firstSiteId = sites[0]?.id ?? ''
@@ -78,7 +79,7 @@ export default function OnboardingChecklist() {
   if (dismissed || !user?.org_id || allComplete) return null
 
   function dismiss() {
-    localStorage.setItem(DISMISSED_KEY, 'true')
+    localStorage.setItem(`${DISMISSED_PREFIX}${user!.org_id}`, 'true')
     setDismissed(true)
   }
 
