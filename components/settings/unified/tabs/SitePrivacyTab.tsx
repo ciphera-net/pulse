@@ -123,6 +123,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
   const handleSave = useCallback(async () => {
     try {
       await updateSite(siteId, {
+        name: site!.name,
         collect_page_paths: collectPagePaths,
         collect_referrers: collectReferrers,
         collect_device_info: collectDeviceInfo,

@@ -47,6 +47,7 @@ export default function SiteVisibilityTab({ siteId }: { siteId: string }) {
   const handleSave = useCallback(async () => {
     try {
       await updateSite(siteId, {
+        name: site!.name,
         is_public: isPublic,
         password: passwordEnabled ? password : undefined,
         clear_password: !passwordEnabled,

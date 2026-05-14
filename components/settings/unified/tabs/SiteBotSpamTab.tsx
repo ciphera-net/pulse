@@ -47,7 +47,7 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
 
   const handleSave = useCallback(async () => {
     try {
-      await updateSite(siteId, { filter_bots: filterBots })
+      await updateSite(siteId, { name: site!.name, filter_bots: filterBots })
       initialFilterRef.current = filterBots
       await mutate()
       toast.success('Bot filtering updated')
