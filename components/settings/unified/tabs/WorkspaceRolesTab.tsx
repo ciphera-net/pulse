@@ -144,7 +144,7 @@ function CreateRoleForm({
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
-          <label className="text-xs text-neutral-500">Name</label>
+          <label className="text-xs font-medium text-neutral-400">Name</label>
           <Input
             value={name}
             onChange={(e) => handleNameChange(e.target.value)}
@@ -152,7 +152,7 @@ function CreateRoleForm({
           />
         </div>
         <div className="space-y-1">
-          <label className="text-xs text-neutral-500">Slug</label>
+          <label className="text-xs font-medium text-neutral-400">Slug</label>
           <Input
             value={slug}
             onChange={(e) => handleSlugChange(e.target.value)}
@@ -162,7 +162,7 @@ function CreateRoleForm({
       </div>
 
       <div className="space-y-1">
-        <label className="text-xs text-neutral-500">Copy permissions from</label>
+        <label className="text-xs font-medium text-neutral-400">Copy permissions from</label>
         <div className="flex gap-2 flex-wrap">
           {templateOptions.map((opt) => (
             <button

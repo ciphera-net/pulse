@@ -78,8 +78,8 @@ export default function SitePrivacyScanTab({ siteId }: { siteId: string }) {
       await updatePrivacyScanConfig(siteId, enabled, frequency)
       initialRef.current = JSON.stringify({ enabled, frequency })
       toast.success('Privacy scan settings updated')
-    } catch {
-      toast.error('Failed to save')
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to save settings')
     }
   }, [siteId, enabled, frequency])
 
@@ -104,8 +104,8 @@ export default function SitePrivacyScanTab({ siteId }: { siteId: string }) {
       await triggerPrivacyScan(siteId)
       toast.success('Privacy scan triggered — results will appear shortly')
       setCooldown(SCAN_COOLDOWN_SECONDS)
-    } catch {
-      toast.error('Failed to trigger scan')
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to trigger scan')
     } finally {
       setScanning(false)
     }

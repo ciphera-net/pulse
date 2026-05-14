@@ -75,7 +75,7 @@ export default function WebhookFormModal({ onClose, onCreated }: Props) {
 
         <div className="space-y-4 text-sm">
           <div>
-            <label className="block text-xs text-neutral-400 mb-1">URL</label>
+            <label className="block text-xs font-medium text-neutral-400 mb-1">URL</label>
             <Input
               type="url"
               value={url}
@@ -85,7 +85,7 @@ export default function WebhookFormModal({ onClose, onCreated }: Props) {
           </div>
 
           <div>
-            <label className="block text-xs text-neutral-400 mb-1">Label (optional)</label>
+            <label className="block text-xs font-medium text-neutral-400 mb-1">Label (optional)</label>
             <Input
               type="text"
               value={label}
@@ -95,7 +95,7 @@ export default function WebhookFormModal({ onClose, onCreated }: Props) {
           </div>
 
           <div>
-            <label className="block text-xs text-neutral-400 mb-2">Subscribed event types</label>
+            <label className="block text-xs font-medium text-neutral-400 mb-2">Subscribed event types</label>
             <div className="grid grid-cols-2 gap-2">
               {TYPE_OPTIONS.map(t => (
                 <Checkbox

@@ -46,8 +46,8 @@ export default function WorkspaceBillingTab() {
     try {
       const { url } = await updatePaymentMethod(method)
       window.location.href = url
-    } catch {
-      toast.error('Failed to open payment portal')
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to open payment portal')
     }
   }
 

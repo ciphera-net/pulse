@@ -351,7 +351,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
       <div id="section-query-params" className="space-y-3 pt-6 border-t border-neutral-800">
         <h4 className="text-sm font-medium text-neutral-300">Query Parameters</h4>
         <div>
-          <label className="block text-sm font-medium text-neutral-300 mb-1.5">Parameters to keep in page stats</label>
+          <label className="block text-xs font-medium text-neutral-400 mb-1.5">Parameters to keep in page stats</label>
           <Input
             type="text"
             value={allowedQueryParams}

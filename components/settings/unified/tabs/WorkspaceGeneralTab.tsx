@@ -173,7 +173,7 @@ export default function WorkspaceGeneralTab() {
             ) : (
               <>
                 <div>
-                  <label className="block text-xs text-neutral-400 mb-1">New owner</label>
+                  <label className="block text-xs font-medium text-neutral-400 mb-1">New owner</label>
                   <Select
                     variant="input"
                     value={transferTargetId}
@@ -215,7 +215,7 @@ export default function WorkspaceGeneralTab() {
               <li>All notifications and settings</li>
             </ul>
             <div>
-              <label className="block text-xs text-neutral-400 mb-1">Type DELETE to confirm</label>
+              <label className="block text-xs font-medium text-neutral-400 mb-1">Type DELETE to confirm</label>
               <Input
                 value={deleteText}
                 onChange={e => setDeleteText(e.target.value)}

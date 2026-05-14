@@ -275,7 +275,7 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
                       await createDomainOverride(siteId, domain.domain, 'allow')
                       toast.success(`${domain.domain} allowed`)
                       mutateDomains()
-                    } catch { toast.error('Failed to update domain') }
+                    } catch (err) { toast.error(getAuthErrorMessage(err as Error) || 'Failed to update domain') }
                   }}
                   disabled={!canManage}
                   className={domain.override === 'allow' ? 'bg-green-900/20 text-green-400 border-green-500/30' : ''}
@@ -290,7 +290,7 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
                       await createDomainOverride(siteId, domain.domain, 'quarantine')
                       toast.success(`${domain.domain} quarantined`)
                       mutateDomains()
-                    } catch { toast.error('Failed to quarantine domain') }
+                    } catch (err) { toast.error(getAuthErrorMessage(err as Error) || 'Failed to quarantine domain') }
                   }}
                   disabled={!canManage}
                   className={`text-red-400 border-red-900/50 hover:bg-red-900/20${domain.override === 'quarantine' ? ' bg-red-900/20' : ''}`}
@@ -306,7 +306,7 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
                         await deleteDomainOverride(siteId, domain.domain)
                         toast.success('Override removed')
                         mutateDomains()
-                      } catch { toast.error('Failed to reset override') }
+                      } catch (err) { toast.error(getAuthErrorMessage(err as Error) || 'Failed to reset override') }
                     }}
                     disabled={!canManage}
                   >
