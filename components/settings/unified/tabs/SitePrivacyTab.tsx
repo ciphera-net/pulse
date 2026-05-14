@@ -206,7 +206,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
             onChange={setCollectGeoData}
             variant="input"
             options={GEO_OPTIONS}
-            className="min-w-[200px]"
+            className="shrink-0 min-w-[200px]"
             disabled={!canEdit}
           />
         </div>
@@ -232,9 +232,15 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
             <Select
               value={String(dataRetention)}
               onChange={(v) => setDataRetention(Number(v))}
-              options={getRetentionOptionsForPlan(subscription?.plan_id).map(o => ({ value: String(o.value), label: o.label }))}
+              options={(() => {
+                const planOpts = getRetentionOptionsForPlan(subscription?.plan_id).map(o => ({ value: String(o.value), label: o.label }))
+                if (!planOpts.some(o => o.value === String(dataRetention))) {
+                  planOpts.push({ value: String(dataRetention), label: `${formatRetentionMonths(dataRetention)} (current)` })
+                }
+                return planOpts
+              })()}
               variant="input"
-              className="min-w-[200px]"
+              className="shrink-0 min-w-[200px]"
               disabled={!canEdit}
             />
           </div>
@@ -411,7 +417,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
                   { value: 'monthly', label: 'Monthly' },
                 ]}
                 variant="input"
-                className="min-w-[200px]"
+                className="shrink-0 min-w-[200px]"
                 disabled={!canEdit}
               />
             ) : (

@@ -193,7 +193,7 @@ export default function SitePrivacyScanTab({ siteId }: { siteId: string }) {
                     { value: 'weekly', label: 'Weekly' },
                     { value: 'monthly', label: 'Monthly' },
                   ]}
-                  className="min-w-[200px]"
+                  className="shrink-0 min-w-[200px]"
                   disabled={!canManage}
                 />
               </div>
