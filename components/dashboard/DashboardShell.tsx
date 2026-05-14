@@ -6,7 +6,12 @@ import { motion, AnimatePresence } from 'framer-motion'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { formatUpdatedAgo, PlusIcon, ExternalLinkIcon, LayoutDashboardIcon, PathIcon, FunnelIcon, CursorClickIcon, SearchIcon, CloudUploadIcon, HeartbeatIcon, SettingsIcon, type CipheraApp } from '@ciphera-net/ui'
+import { formatUpdatedAgo, PlusIcon, ExternalLinkIcon, LayoutDashboardIcon, PathIcon, FunnelIcon, CursorClickIcon, SearchIcon, CloudUploadIcon, HeartbeatIcon, SettingsIcon, UserMenu, type CipheraApp } from '@ciphera-net/ui'
+import { useAuth } from '@/lib/auth/context'
+import NotificationCenter from '@/components/notifications/NotificationCenter'
+import { getUserOrganizations, switchContext, type OrganizationMember } from '@/lib/api/organization'
+import { setSessionAction } from '@/app/actions/auth'
+import { logger } from '@/lib/utils/logger'
 import { cdnUrl } from '@/lib/cdn'
 import {
   CaretDown, CaretRight, SidebarSimple, Gauge as GaugeIcon, Plugs as PlugsIcon, Tag as TagIcon, Globe as GlobeIcon,
@@ -366,11 +371,34 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
   const { collapsed, toggle } = useSidebar()
   const { lastUpdatedAt } = useLiveIndicator()
   const [siteName, setSiteName] = useState<string | null>(null)
+  const auth = useAuth()
+  const router = useRouter()
+  const [orgs, setOrgs] = useState<OrganizationMember[]>([])
 
   useEffect(() => {
     if (!siteId) { setSiteName(null); return }
     getSite(siteId).then((s) => setSiteName(s.name)).catch(() => {})
   }, [siteId])
+
+  useEffect(() => {
+    if (auth.user) {
+      getUserOrganizations()
+        .then((organizations) => setOrgs(Array.isArray(organizations) ? organizations : []))
+        .catch(err => logger.error('Failed to fetch orgs', err))
+    }
+  }, [auth.user])
+
+  const handleSwitchOrganization = useCallback(async (orgId: string | null) => {
+    if (!orgId) return
+    try {
+      const { access_token } = await switchContext(orgId)
+      await setSessionAction(access_token)
+      await auth.refresh()
+      router.push('/')
+    } catch (err) {
+      logger.error('Failed to switch organization', err)
+    }
+  }, [auth, router])
 
   const pageMeta = usePageMeta()
   const homeMeta = useHomePageMeta()
@@ -428,9 +456,9 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
         </nav>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1">
         {siteId && lastUpdatedAt != null && (
-          <div className="flex items-center gap-1.5 text-xs text-neutral-500 shrink-0">
+          <div className="flex items-center gap-1.5 text-xs text-neutral-500 shrink-0 mr-2">
             <span className="relative flex h-1.5 w-1.5">
               <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
@@ -438,6 +466,20 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
             Live · <LiveAgo lastUpdatedAt={lastUpdatedAt} />
           </div>
         )}
+        <NotificationCenter anchor="bottom" variant="default" />
+        <UserMenu
+          auth={auth}
+          LinkComponent={Link}
+          orgs={orgs}
+          activeOrgId={auth.user?.org_id}
+          onSwitchOrganization={handleSwitchOrganization}
+          onCreateOrganization={() => router.push('/setup/org?new=1')}
+          allowPersonalOrganization={false}
+          onOpenSettings={() => router.push('/settings/account/profile')}
+          onOpenOrgSettings={() => router.push('/settings/organization/general')}
+          compact
+          anchor="bottom"
+        />
       </div>
     </div>
   )
