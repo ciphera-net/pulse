@@ -234,7 +234,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
               onChange={(v) => setDataRetention(Number(v))}
               options={getRetentionOptionsForPlan(subscription?.plan_id).map(o => ({ value: String(o.value), label: o.label }))}
               variant="input"
-              className="min-w-[160px]"
+              className="min-w-[200px]"
               disabled={!canEdit}
             />
           </div>
@@ -411,7 +411,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
                   { value: 'monthly', label: 'Monthly' },
                 ]}
                 variant="input"
-                className="min-w-[140px]"
+                className="min-w-[200px]"
                 disabled={!canEdit}
               />
             ) : (
