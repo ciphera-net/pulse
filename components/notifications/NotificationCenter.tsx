@@ -71,14 +71,24 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
   const resolveUserName = useResolveUserName()
 
   const updatePosition = useCallback(() => {
-    if (anchor === 'right' && buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect()
+    if (!buttonRef.current) return
+    const rect = buttonRef.current.getBoundingClientRect()
+    if (anchor === 'right') {
       const left = rect.right + 8
       if (rect.top > window.innerHeight / 2) {
         setFixedPos({ left, bottom: window.innerHeight - rect.bottom })
       } else {
         setFixedPos({ left, top: rect.top })
       }
+    } else {
+      const panelWidth = 384
+      const left = Math.max(8, rect.right - panelWidth)
+      let top = rect.bottom + 8
+      if (panelRef.current) {
+        const maxTop = window.innerHeight - panelRef.current.offsetHeight - 8
+        top = Math.min(top, Math.max(8, maxTop))
+      }
+      setFixedPos({ left, top })
     }
   }, [anchor])
 
@@ -230,12 +240,12 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
             transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
-            className={`glass-overlay rounded-xl shadow-xl shadow-black/20 overflow-hidden z-[100] ${
+            className={`glass-overlay rounded-xl shadow-xl shadow-black/20 overflow-hidden z-[100] fixed w-96 ${
               anchor === 'right'
-                ? `fixed w-96 ${fixedPos?.bottom !== undefined ? 'origin-bottom-left' : 'origin-top-left'}`
-                : 'fixed left-4 right-4 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96'
+                ? fixedPos?.bottom !== undefined ? 'origin-bottom-left' : 'origin-top-left'
+                : 'origin-top-right'
             }`}
-            style={anchor === 'right' && fixedPos ? { left: fixedPos.left, top: fixedPos.top, bottom: fixedPos.bottom } : undefined}
+            style={fixedPos ? { left: fixedPos.left, top: fixedPos.top, bottom: fixedPos.bottom } : undefined}
           >
             <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-800/60">
               <h3 className="font-semibold text-white">Notifications</h3>
@@ -379,7 +389,7 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
           </AnimatePresence>
         )
 
-        return anchor === 'right' && typeof document !== 'undefined'
+        return typeof document !== 'undefined'
           ? createPortal(panel, document.body)
           : panel
       })()}
