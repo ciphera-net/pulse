@@ -142,18 +142,18 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
           className="py-8"
         />
       ) : (
-        <div className="space-y-1">
+        <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
           {goals.map(goal => (
             <div
               key={goal.id}
-              className="flex items-center justify-between px-4 py-3 rounded-xl hover:bg-neutral-800/40 transition-colors group ease-apple"
+              className="flex items-center justify-between px-4 py-3 group"
             >
               <div>
                 <p className="text-sm font-medium text-white">{goal.name}</p>
                 <p className="text-xs text-neutral-500 font-mono">{goal.event_name}</p>
               </div>
               {canManageGoals && (
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ease-apple">
                   <Button
                     variant="ghost"
                     size="icon"
