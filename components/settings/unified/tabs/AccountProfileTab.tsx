@@ -38,8 +38,8 @@ export default function AccountProfileTab() {
   const handleSave = useCallback(async () => {
     try {
       await updateDisplayName(displayName.trim())
-      await refresh()
       initialRef.current = displayName.trim()
+      await refresh()
       toast.success('Profile updated')
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to update profile')

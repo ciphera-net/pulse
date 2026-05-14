@@ -140,8 +140,8 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
         await updatePageSpeedConfig(siteId, { enabled: psiConfig.enabled, frequency: psiFrequency })
         await mutatePSIConfig()
       }
-      await mutate()
       initialRef.current = JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency })
+      await mutate()
       toast.success('Privacy settings updated')
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to save settings')

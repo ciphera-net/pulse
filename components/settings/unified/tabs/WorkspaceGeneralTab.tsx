@@ -72,6 +72,7 @@ export default function WorkspaceGeneralTab() {
     try {
       await updateOrganization(user.org_id, name, slug)
       initialRef.current = JSON.stringify({ name, slug })
+      // ref update must precede any async re-render (no mutate call here)
       toast.success('Organization updated')
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to update organization')

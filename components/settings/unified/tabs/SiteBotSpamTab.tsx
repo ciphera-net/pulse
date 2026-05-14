@@ -48,8 +48,8 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
   const handleSave = useCallback(async () => {
     try {
       await updateSite(siteId, { filter_bots: filterBots })
-      await mutate()
       initialFilterRef.current = filterBots
+      await mutate()
       toast.success('Bot filtering updated')
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to save settings')

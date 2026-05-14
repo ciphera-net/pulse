@@ -147,8 +147,8 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
     if (!site) return
     try {
       await updateSite(siteId, { name, timezone, script_features: scriptFeatures })
-      await mutate()
       initialRef.current = JSON.stringify({ name, timezone, scriptFeatures: JSON.stringify(scriptFeatures) })
+      await mutate()
       toast.success('Site updated')
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to save settings')

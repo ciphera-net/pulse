@@ -51,9 +51,9 @@ export default function SiteVisibilityTab({ siteId }: { siteId: string }) {
         password: passwordEnabled ? password : undefined,
         clear_password: !passwordEnabled,
       })
+      initialRef.current = JSON.stringify({ isPublic, passwordEnabled })
       setPassword('')
       await mutate()
-      initialRef.current = JSON.stringify({ isPublic, passwordEnabled })
       toast.success('Visibility updated')
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to save settings')
