@@ -57,7 +57,7 @@ export default function CategoryTogglesSection() {
           const critical = c.id === 'billing' || c.id === 'security'
           const enabled = settings[c.id] ?? true
           return (
-            <li key={c.id} className="flex items-center justify-between p-3">
+            <li key={c.id} className="flex items-center justify-between px-4 py-3">
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-white flex items-center gap-2">
                   {c.label}

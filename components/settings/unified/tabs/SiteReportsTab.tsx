@@ -131,7 +131,7 @@ function ScheduleRow({
   }
 
   return (
-    <div className="flex items-center justify-between px-4 py-3 rounded-xl hover:bg-neutral-800/40 transition-colors group ease-apple">
+    <div className="flex items-center justify-between px-4 py-3 group">
       <div className="flex items-center gap-3 min-w-0">
         <div className={`p-1.5 rounded-lg flex-shrink-0 ${schedule.enabled ? 'bg-brand-orange/10 text-brand-orange' : 'bg-neutral-800 text-neutral-500'}`}>
           <ChannelIcon channel={schedule.channel} />
@@ -156,7 +156,7 @@ function ScheduleRow({
       </div>
       {canManage && (
         <TooltipProvider>
-          <div className="flex items-center gap-1 flex-shrink-0">
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity ease-apple flex items-center gap-1">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(schedule)}>
@@ -687,7 +687,7 @@ export default function SiteReportsTab({ siteId }: { siteId: string }) {
             className="py-8"
           />
         ) : (
-          <div className="space-y-1">
+          <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
             {reports.map((r) => (
               <ScheduleRow key={r.id} schedule={r} siteId={siteId} onMutate={() => mutateReports()} onEdit={openEditReport} canManage={canManage} />
             ))}
@@ -717,7 +717,7 @@ export default function SiteReportsTab({ siteId }: { siteId: string }) {
             className="py-8"
           />
         ) : (
-          <div className="space-y-1">
+          <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
             {alerts.map((a) => (
               <ScheduleRow key={a.id} schedule={a} siteId={siteId} onMutate={() => mutateAlerts()} onEdit={openEditAlert} canManage={canManage} />
             ))}

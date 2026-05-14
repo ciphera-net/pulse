@@ -89,73 +89,77 @@ export default function InviteLinksSection({ orgId, links, roles, loading, onRev
   if (links.length === 0) return null
 
   return (
-    <div className="space-y-2 pt-6 border-t border-neutral-800">
+    <div className="pt-6 border-t border-neutral-800 space-y-2">
       <h4 className="text-sm font-medium text-neutral-300">Invite Links</h4>
-      {links.map(link => {
-        const isExhausted = link.max_uses !== null && link.use_count >= link.max_uses
-        const roleId = link.metadata?.role_id
-        const expiresAt = new Date(link.expires_at)
-        const isExpired = expiresAt < new Date()
-        const isDimmed = isExhausted || isExpired
+      <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
+        {links.map(link => {
+          const isExhausted = link.max_uses !== null && link.use_count >= link.max_uses
+          const roleId = link.metadata?.role_id
+          const expiresAt = new Date(link.expires_at)
+          const isExpired = expiresAt < new Date()
+          const isDimmed = isExhausted || isExpired
 
-        const usageLabel = link.max_uses !== null
-          ? `${link.use_count} / ${link.max_uses} uses`
-          : link.use_count === 1
-            ? '1 use'
-            : `${link.use_count} uses`
+          const usageLabel = link.max_uses !== null
+            ? `${link.use_count} / ${link.max_uses} uses`
+            : link.use_count === 1
+              ? '1 use'
+              : `${link.use_count} uses`
 
-        return (
-          <div
-            key={link.id}
-            className={`flex items-center justify-between p-3 rounded-xl border border-neutral-800 transition-opacity ${isDimmed ? 'opacity-50' : ''}`}
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              {/* Status dot */}
-              {(isExhausted || isExpired) ? (
-                <span className="relative flex h-2 w-2 flex-shrink-0">
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-neutral-600" />
-                </span>
-              ) : (
-                <span className="relative flex h-2 w-2 flex-shrink-0">
-                  <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400" />
-                </span>
-              )}
+          return (
+            <div
+              key={link.id}
+              className={`flex items-center justify-between px-4 py-3 group transition-opacity ${isDimmed ? 'opacity-50' : ''}`}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                {/* Status dot */}
+                {(isExhausted || isExpired) ? (
+                  <span className="relative flex h-2 w-2 flex-shrink-0">
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-neutral-600" />
+                  </span>
+                ) : (
+                  <span className="relative flex h-2 w-2 flex-shrink-0">
+                    <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400" />
+                  </span>
+                )}
 
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-medium text-white truncate">{link.name}</span>
-                  <LinkRoleBadge roleId={roleId} roles={roles} />
-                  <span className="text-xs text-neutral-500">{usageLabel}</span>
-                  {isExhausted ? (
-                    <span className="text-xs text-red-400 font-medium">Exhausted</span>
-                  ) : (
-                    <span className="text-xs text-neutral-500">
-                      expires {expiresAt.toLocaleDateString('en-GB')}
-                    </span>
-                  )}
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-medium text-white truncate">{link.name}</span>
+                    <LinkRoleBadge roleId={roleId} roles={roles} />
+                    <span className="text-xs text-neutral-500">{usageLabel}</span>
+                    {isExhausted ? (
+                      <span className="text-xs text-red-400 font-medium">Exhausted</span>
+                    ) : (
+                      <span className="text-xs text-neutral-500">
+                        expires {expiresAt.toLocaleDateString('en-GB')}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {!isDimmed && (
-              <div className="flex items-center gap-1 flex-shrink-0 ml-3">
-                <CopyLinkButton url={link.url} />
-                {canManage && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-red-400 hover:text-red-300"
-                    onClick={() => handleRevoke(link)}
-                  >
-                    Revoke
-                  </Button>
-                )}
-              </div>
-            )}
-          </div>
-        )
-      })}
+              {!isDimmed && (
+                <div className="flex items-center gap-1 flex-shrink-0 ml-3">
+                  <CopyLinkButton url={link.url} />
+                  {canManage && (
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity ease-apple">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-400 hover:text-red-300"
+                        onClick={() => handleRevoke(link)}
+                      >
+                        Revoke
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
 
       <ConfirmDialog
         open={confirmRevoke !== null}

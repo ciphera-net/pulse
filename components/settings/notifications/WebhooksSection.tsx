@@ -61,9 +61,9 @@ export default function WebhooksSection() {
         />
       )}
       {webhooks && webhooks.length > 0 && (
-        <ul className="space-y-2">
+        <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
           {webhooks.map(w => (
-            <li key={w.id} className="flex items-center justify-between p-3 rounded-xl border border-neutral-800 bg-neutral-800/30">
+            <div key={w.id} className="flex items-center justify-between px-4 py-3 group">
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-white">{w.label || '(no label)'}</p>
                 <p className="text-xs text-neutral-500 font-mono truncate">{w.url_masked}</p>
@@ -72,17 +72,19 @@ export default function WebhooksSection() {
                   {!w.enabled && <span className="ml-2 text-red-400">disabled</span>}
                 </p>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-red-400 ml-3"
-                onClick={() => handleDelete(w.id)}
-              >
-                Delete
-              </Button>
-            </li>
+              <div className="opacity-0 group-hover:opacity-100 transition-opacity ease-apple">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-red-400 ml-3"
+                  onClick={() => handleDelete(w.id)}
+                >
+                  Delete
+                </Button>
+              </div>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
 
       {showForm && (

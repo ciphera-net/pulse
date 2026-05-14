@@ -82,11 +82,11 @@ export default function TrustedDevicesCard() {
           />
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
           {devices.map((device) => (
             <div
               key={device.id}
-              className="glass-surface flex items-center gap-3 rounded-xl px-4 py-3"
+              className="flex items-center gap-3 px-4 py-3 group"
             >
               <div className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center bg-neutral-800 text-neutral-400">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
@@ -117,15 +117,17 @@ export default function TrustedDevicesCard() {
               </div>
 
               {!device.is_current && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="flex-shrink-0 text-red-400 hover:text-red-300"
-                  onClick={() => setConfirmDevice(device)}
-                  disabled={removingId === device.id}
-                >
-                  {removingId === device.id ? 'Removing...' : 'Remove'}
-                </Button>
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity ease-apple">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="flex-shrink-0 text-red-400 hover:text-red-300"
+                    onClick={() => setConfirmDevice(device)}
+                    disabled={removingId === device.id}
+                  >
+                    {removingId === device.id ? 'Removing...' : 'Remove'}
+                  </Button>
+                </div>
               )}
             </div>
           ))}

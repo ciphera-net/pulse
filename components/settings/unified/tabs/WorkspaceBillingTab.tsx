@@ -468,14 +468,14 @@ export default function WorkspaceBillingTab() {
           <Button variant="secondary" onClick={() => { setInvoicesError(null); setInvoicesRetry(c => c + 1) }}>Retry</Button>
         </div>
       ) : invoices.length > 0 && (
-        <div className="space-y-2 pt-6 border-t border-neutral-800">
+        <div className="pt-6 border-t border-neutral-800 space-y-2">
           <h4 className="text-sm font-medium text-neutral-300">Recent Invoices</h4>
-          <div className="space-y-1">
+          <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
             {invoices.map(invoice => {
               const isCreditNote = invoice.document_type === 'credit_note'
               const fmt = new Intl.NumberFormat('en-GB', { style: 'currency', currency: invoice.currency || 'EUR' })
               return (
-                <div key={invoice.id} className="flex items-center justify-between p-3 rounded-lg border border-neutral-800 text-sm">
+                <div key={invoice.id} className="flex items-center justify-between px-4 py-3 group text-sm">
                   <div className="flex items-center gap-3">
                     <span className="text-neutral-400 font-mono text-xs">{invoice.invoice_number ?? '—'}</span>
                     <span className="text-neutral-300">{formatDate(new Date(invoice.created_at))}</span>
@@ -496,19 +496,21 @@ export default function WorkspaceBillingTab() {
                         {invoice.status === 'sent' ? 'Paid' : invoice.status}
                       </span>
                     )}
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            onClick={() => downloadInvoicePDF(invoice.id).catch(() => toast.error('PDF not available yet'))}
-                            className="p-1.5 rounded-md hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors ease-apple"
-                          >
-                            <DownloadSimple size={16} />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent>Download PDF</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity ease-apple">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              onClick={() => downloadInvoicePDF(invoice.id).catch(() => toast.error('PDF not available yet'))}
+                              className="p-1.5 rounded-md hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors ease-apple"
+                            >
+                              <DownloadSimple size={16} />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>Download PDF</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
                   </div>
                 </div>
               )
