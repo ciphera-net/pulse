@@ -24,6 +24,7 @@ import {
   XIcon,
   BookOpenIcon,
 } from '@ciphera-net/ui'
+import { ReportIssueButton } from '@/components/support/ReportIssueButton'
 
 const EXPANDED = 256
 const COLLAPSED = 64
@@ -371,6 +372,19 @@ function SidebarContent({
           </div>
         </nav>
       )}
+
+      {/* Report Issue — sidebar bottom */}
+      <div className="shrink-0 px-2 pb-3 pt-2 border-t border-neutral-800/60">
+        {c ? (
+          <SidebarTooltip label="Report Issue">
+            <div className="flex justify-center">
+              <ReportIssueButton siteId={siteId ?? undefined} collapsed />
+            </div>
+          </SidebarTooltip>
+        ) : (
+          <ReportIssueButton siteId={siteId ?? undefined} />
+        )}
+      </div>
 
     </div>
   )
