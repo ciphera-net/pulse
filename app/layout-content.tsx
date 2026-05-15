@@ -40,6 +40,14 @@ const CIPHERA_APPS: CipheraApp[] = [
     href: 'https://id.ciphera.net',
     isAvailable: true,
   },
+  {
+    id: 'help',
+    name: 'Help',
+    description: 'Documentation, support & status',
+    icon: 'https://cdn.ciphera.net/help/help_icon.png',
+    href: 'https://help.ciphera.net',
+    isAvailable: true,
+  },
 ]
 
 function LayoutInner({ children }: { children: React.ReactNode }) {

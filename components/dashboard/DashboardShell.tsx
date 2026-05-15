@@ -33,6 +33,7 @@ import { CommandPalette } from '@/components/command/CommandPalette'
 const CIPHERA_APPS: CipheraApp[] = [
   { id: 'pulse', name: 'Pulse', description: 'Your current app — Privacy-first analytics', icon: cdnUrl('/pulse_icon_no_margins.png'), href: 'https://pulse.ciphera.net', isAvailable: false },
   { id: 'id', name: 'ID', description: 'Your Ciphera account settings', icon: 'https://ciphera.net/id_icon_no_margins.png', href: 'https://id.ciphera.net', isAvailable: true },
+  { id: 'help', name: 'Help', description: 'Documentation, support & status', icon: 'https://cdn.ciphera.net/help/help_icon.png', href: 'https://help.ciphera.net', isAvailable: true },
 ]
 
 type PageMeta = {
