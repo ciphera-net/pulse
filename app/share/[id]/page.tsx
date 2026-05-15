@@ -14,7 +14,9 @@ import TopPages from '@/components/dashboard/ContentStats'
 import TopReferrers from '@/components/dashboard/TopReferrers'
 import Audience from '@/components/dashboard/Locations'
 import TechSpecs from '@/components/dashboard/TechSpecs'
-import { Select, DatePicker as DatePickerModal, Captcha, DownloadIcon, ZapIcon } from '@ciphera-net/ui'
+import { Captcha, DownloadIcon, ZapIcon } from '@ciphera-net/ui'
+import DateRangePicker from '@/components/ui/DateRangePicker'
+import { PERIOD_TO_API } from '@/lib/constants/periods'
 import { DashboardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import ExportModal from '@/components/dashboard/ExportModal'
 import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
@@ -49,22 +51,12 @@ export default function PublicDashboardPage() {
   const [captchaSolution, setCaptchaSolution] = useState('')
   const [captchaToken, setCaptchaToken] = useState('')
   
-  // Date range state
   const [period, setPeriod] = useState('30')
   const [dateRange, setDateRange] = useState(getDateRange(30))
-  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const [todayInterval, setTodayInterval] = useState<'minute' | 'hour'>('hour')
   const [multiDayInterval, setMultiDayInterval] = useState<'hour' | 'day'>('day')
 
-  // Map frontend period values to backend period names
-  const PERIOD_TO_API: Record<string, string> = {
-    'today': 'today',
-    '7': '7d',
-    '30': '30d',
-  }
-
-  // For relative periods send the period name; for custom ranges send dates
   const apiPeriod = period !== 'custom' ? (PERIOD_TO_API[period] || undefined) : undefined
 
   // Previous period data
@@ -322,29 +314,11 @@ export default function PublicDashboardPage() {
                 <span>Export</span>
               </button>
 
-              <Select
-                value={period}
-                onChange={(value) => {
-                  if (value === 'today') {
-                    const today = new Date().toISOString().split('T')[0]
-                    setDateRange({ start: today, end: today })
-                    setPeriod('today')
-                  } else if (value === '7') {
-                    setDateRange(getDateRange(7))
-                    setPeriod('7')
-                  } else if (value === '30') {
-                    setDateRange(getDateRange(30))
-                    setPeriod('30')
-                  } else if (value === 'custom') {
-                    setIsDatePickerOpen(true)
-                  }
-                }}
-                options={[
-                  { value: 'today', label: 'Today' },
-                  { value: '7', label: 'Last 7 days' },
-                  { value: '30', label: 'Last 30 days' },
-                  { value: 'custom', label: 'Custom' },
-                ]}
+              <DateRangePicker
+                period={period}
+                dateRange={dateRange}
+                onPeriodChange={setPeriod}
+                onDateRangeChange={setDateRange}
               />
               {/* Powered by Ciphera Badge */}
               <a 
@@ -433,17 +407,6 @@ export default function PublicDashboardPage() {
 
       </div>
 
-      <DatePickerModal
-        isOpen={isDatePickerOpen}
-        onClose={() => setIsDatePickerOpen(false)}
-        initialRange={dateRange}
-        onApply={(range) => {
-          setDateRange(range)
-          setPeriod('custom')
-          setIsDatePickerOpen(false)
-        }}
-      />
-      
       {data && (
         <ExportModal
           isOpen={isExportModalOpen}

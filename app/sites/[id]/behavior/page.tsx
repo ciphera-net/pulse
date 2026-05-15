@@ -4,8 +4,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
-import { getDateRange, formatDate, getThisWeekRange, getThisMonthRange } from '@/lib/utils/dateRanges'
-import { Select, DatePicker, ChevronLeftIcon, ChevronRightIcon } from '@ciphera-net/ui'
+import { getDateRange, formatDate } from '@/lib/utils/dateRanges'
+import DateRangePicker from '@/components/ui/DateRangePicker'
+import { PERIOD_TO_API } from '@/lib/constants/periods'
 import dynamic from 'next/dynamic'
 import { getRageClicks, getDeadClicks } from '@/lib/api/stats'
 import FrustrationSummaryCards from '@/components/behavior/FrustrationSummaryCards'
@@ -23,18 +24,7 @@ export default function BehaviorPage() {
 
   const [period, setPeriod] = useState('30')
   const [dateRange, setDateRange] = useState(() => getDateRange(30))
-  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
 
-  // Map frontend period values to backend period names
-  const PERIOD_TO_API: Record<string, string> = {
-    'today': 'today',
-    '7': '7d',
-    'week': 'week',
-    '30': '30d',
-    'month': 'month',
-  }
-
-  // For relative periods send the period name; for custom ranges send dates
   const apiPeriod = period !== 'custom' ? (PERIOD_TO_API[period] || undefined) : undefined
 
   // Single request for all frustration data
@@ -97,75 +87,13 @@ export default function BehaviorPage() {
             Frustration signals and user engagement patterns
           </p>
         </div>
-        <div className="flex items-center h-10 rounded-lg border border-neutral-800 bg-neutral-900">
-          <button onClick={() => shiftPeriod(-1)} className="px-2 h-full text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors rounded-l-lg ease-apple" aria-label="Previous period">
-            <ChevronLeftIcon className="w-4 h-4" weight="bold" />
-          </button>
-          <div className="w-px h-5 bg-white/[0.08]" />
-          <Select
-            variant="ghost"
-            className="min-w-[130px]"
-            value={period}
-            onChange={(value) => {
-              if (value === '1h') {
-                const now = new Date()
-                const end = formatDate(now)
-                const start = formatDate(now)
-                setDateRange({ start, end })
-                setPeriod('1h')
-              } else if (value === '24h') {
-                setDateRange(getDateRange(1))
-                setPeriod('24h')
-              } else if (value === 'today') {
-                const today = formatDate(new Date())
-                setDateRange({ start: today, end: today })
-                setPeriod('today')
-              } else if (value === 'yesterday') {
-                const d = new Date()
-                d.setDate(d.getDate() - 1)
-                const y = formatDate(d)
-                setDateRange({ start: y, end: y })
-                setPeriod('yesterday')
-              } else if (value === '7') {
-                setDateRange(getDateRange(7))
-                setPeriod('7')
-              } else if (value === '30') {
-                setDateRange(getDateRange(30))
-                setPeriod('30')
-              } else if (value === 'week') {
-                setDateRange(getThisWeekRange())
-                setPeriod('week')
-              } else if (value === 'month') {
-                setDateRange(getThisMonthRange())
-                setPeriod('month')
-              } else if (value === 'year') {
-                setDateRange(getDateRange(365))
-                setPeriod('year')
-              } else if (value === 'custom') {
-                setIsDatePickerOpen(true)
-              }
-            }}
-            options={[
-              { value: '1h', label: 'Last hour' },
-              { value: '24h', label: 'Last 24 hours' },
-              { value: 'divider-1', label: '', divider: true },
-              { value: 'today', label: 'Today' },
-              { value: 'yesterday', label: 'Yesterday' },
-              { value: '7', label: 'Last 7 days' },
-              { value: '30', label: 'Last 30 days' },
-              { value: 'divider-2', label: '', divider: true },
-              { value: 'week', label: 'This week' },
-              { value: 'month', label: 'This month' },
-              { value: 'year', label: 'This year' },
-              { value: 'divider-3', label: '', divider: true },
-              { value: 'custom', label: 'Custom' },
-            ]}
-          />
-          <div className="w-px h-5 bg-white/[0.08]" />
-          <button onClick={() => shiftPeriod(1)} className="px-2 h-full text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors rounded-r-lg ease-apple" aria-label="Next period">
-            <ChevronRightIcon className="w-4 h-4" weight="bold" />
-          </button>
-        </div>
+        <DateRangePicker
+          period={period}
+          dateRange={dateRange}
+          onPeriodChange={setPeriod}
+          onDateRangeChange={setDateRange}
+          onShift={shiftPeriod}
+        />
       </div>
 
       {/* Summary cards */}
@@ -227,16 +155,6 @@ export default function BehaviorPage() {
         </motion.div>
       )}
 
-      <DatePicker
-        isOpen={isDatePickerOpen}
-        onClose={() => setIsDatePickerOpen(false)}
-        onApply={(range) => {
-          setDateRange(range)
-          setPeriod('custom')
-          setIsDatePickerOpen(false)
-        }}
-        initialRange={dateRange}
-      />
     </div>
   )
 }
