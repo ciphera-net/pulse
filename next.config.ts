@@ -12,13 +12,13 @@ const withPWA = withPWAInit({
 const cspDirectives = [
   "default-src 'self'",
   // Next.js requires 'unsafe-inline' for its bootstrap scripts; 'unsafe-eval' only in dev (HMR)
-  `script-src 'self' 'unsafe-inline' https://js.ciphera.net${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''}`,
+  `script-src 'self' 'unsafe-inline' https://js.ciphera.net https://api.help.ciphera.net${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://www.google.com https://*.gstatic.com https://ciphera.net https://captcha.ciphera.net https://*.cartocdn.com https://cdn.ciphera.net",
   "font-src 'self'",
   `connect-src 'self' https://*.ciphera.net https://ciphera.net https://www.google.com https://*.gstatic.com https://cdn.jsdelivr.net https://*.cartocdn.com${process.env.NODE_ENV === 'development' ? ' http://localhost:*' : ''}`,
   "worker-src 'self' blob:",
-  "frame-src 'none'",
+  "frame-src https://api.help.ciphera.net",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self' https://*.ciphera.net",
