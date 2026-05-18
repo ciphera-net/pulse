@@ -63,6 +63,7 @@ export default function RootLayout({
           strategy="lazyOnload"
           dangerouslySetInnerHTML={{
             __html: `
+              window.chatwootSettings={darkMode:'auto',position:'right',type:'standard'};
               (function(d,t) {
                 var BASE_URL="https://api.help.ciphera.net";
                 var g=d.createElement(t),s=d.getElementsByTagName(t)[0];
