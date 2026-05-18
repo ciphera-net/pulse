@@ -63,7 +63,7 @@ export default function RootLayout({
           strategy="lazyOnload"
           dangerouslySetInnerHTML={{
             __html: `
-              window.chatwootSettings={darkMode:'auto',position:'right',type:'standard'};(function(){var o=window.matchMedia;window.matchMedia=function(q){if(q==='(prefers-color-scheme: dark)')return{matches:true,media:q,onchange:null,addListener:function(){},removeListener:function(){},addEventListener:function(){},removeEventListener:function(){},dispatchEvent:function(){return true}};return o.call(window,q)}})();
+              window.chatwootSettings={darkMode:'dark',position:'right',type:'standard'};
               (function(d,t) {
                 var BASE_URL="https://api.help.ciphera.net";
                 var g=d.createElement(t),s=d.getElementsByTagName(t)[0];
