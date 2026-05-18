@@ -194,6 +194,7 @@ jobs:
             http://127.0.0.1:4646/v1/job/$JOB_ID)
           echo "$JOB" | jq "
             .Meta.deploy_sha = \"$DEPLOY_SHA\" |
+            .TaskGroups[0].Tasks[0].Config.image = \"${{ env.REGISTRY }}/${{ steps.target.outputs.image_name }}:sha-$DEPLOY_SHA\" |
             .TaskGroups[0].Tasks[0].Config.force_pull = true
           " > /tmp/job.json
           curl -fsS -X POST \
