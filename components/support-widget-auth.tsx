@@ -24,8 +24,6 @@ export function SupportWidgetAuth() {
         setIdentity({
           identifier: data.identifier,
           identifierHash: data.identifier_hash,
-          email: user.email || undefined,
-          name: user.display_name || undefined,
         })
       })
       .catch(() => {
@@ -35,7 +33,7 @@ export function SupportWidgetAuth() {
     return () => {
       cancelled = true
     }
-  }, [user?.id, user?.email, user?.display_name])
+  }, [user?.id])
 
   return (
     <SupportWidget
