@@ -143,6 +143,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     document.cookie = 'csrf_token=; Max-Age=0; path=/; domain=.ciphera.net;'
     document.cookie = 'ciphera_pii=; Max-Age=0; path=/;'
     document.cookie = 'ciphera_pii=; Max-Age=0; path=/; domain=.ciphera.net;'
+    Object.keys(localStorage).forEach((key) => {
+      if (key.startsWith('cw_auth_') || key.startsWith('cw_pubsub_')) {
+        localStorage.removeItem(key)
+      }
+    })
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
       const channel = new BroadcastChannel('ciphera_session')
       channel.postMessage({ type: 'LOGOUT' })

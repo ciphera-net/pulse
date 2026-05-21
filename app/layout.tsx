@@ -1,6 +1,6 @@
 import Script from 'next/script'
 import { ThemeProvider, Toaster } from '@ciphera-net/ui'
-import { SupportWidget } from '@ciphera-net/support-widget'
+import { SupportWidgetAuth } from '@/components/support-widget-auth'
 import { AuthProvider } from '@/lib/auth/context'
 import SWRProvider from '@/components/SWRProvider'
 import type { Metadata, Viewport } from 'next'
@@ -64,14 +64,10 @@ export default function RootLayout({
             <AuthProvider>
               <LayoutContent>{children}</LayoutContent>
               <Toaster />
+              <SupportWidgetAuth />
             </AuthProvider>
           </ThemeProvider>
         </SWRProvider>
-        <SupportWidget
-          baseUrl="https://api.help.ciphera.net"
-          websiteToken="p7bUfxMSBmD3xR4T8v9JeUvL"
-          docsUrl="https://help.ciphera.net"
-        />
       </body>
     </html>
   )
