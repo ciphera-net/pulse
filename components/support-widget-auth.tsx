@@ -38,6 +38,7 @@ export function SupportWidgetAuth() {
   return (
     <SupportWidget
       baseUrl="https://api.help.ciphera.net"
+      wsUrl="https://ws.help.ciphera.net"
       websiteToken="p7bUfxMSBmD3xR4T8v9JeUvL"
       docsUrl="https://help.ciphera.net"
       user={identity}
