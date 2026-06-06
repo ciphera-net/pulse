@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button, toast, Spinner, Modal } from '@ciphera-net/ui'
+import { Button, Input, toast, Spinner, Modal } from '@ciphera-net/ui'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { CreditCard, DownloadSimple, ArrowRight, WarningCircle, PencilSimple } from '@phosphor-icons/react'
 import { useSubscription } from '@/lib/swr/dashboard'
 import { updatePaymentMethod, cancelSubscription, resumeSubscription, getInvoices, downloadInvoicePDF, updateBillingSettings, type Invoice } from '@/lib/api/billing'
 import { formatDateLong, formatDate } from '@/lib/utils/formatDate'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { cdnUrl } from '@/lib/cdn'
+import { useCan } from '@/lib/auth/permissions'
 
 const PAYMENT_METHODS = [
   { id: 'creditcard', label: 'Cards', icons: ['/icons/payment/visa.svg', '/icons/payment/mastercard.svg'] },
@@ -20,26 +22,32 @@ const PAYMENT_METHODS = [
 
 export default function WorkspaceBillingTab() {
   const router = useRouter()
+  const canManageBilling = useCan('billing.manage')
   const { data: subscription, isLoading, mutate } = useSubscription()
   const [cancelling, setCancelling] = useState(false)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [showPaymentMethodModal, setShowPaymentMethodModal] = useState(false)
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('')
   const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [invoicesError, setInvoicesError] = useState<string | null>(null)
+  const [invoicesRetry, setInvoicesRetry] = useState(0)
   const [editingBilling, setEditingBilling] = useState(false)
   const [savingBilling, setSavingBilling] = useState(false)
   const [billingForm, setBillingForm] = useState({ business_name: '', billing_email: '', address: '', city: '', postal_code: '' })
 
   useEffect(() => {
-    getInvoices().then(setInvoices).catch(() => {})
-  }, [])
+    setInvoicesError(null)
+    getInvoices()
+      .then(setInvoices)
+      .catch((err) => setInvoicesError(getAuthErrorMessage(err as Error) || 'Failed to load invoices'))
+  }, [invoicesRetry])
 
   const handleUpdatePayment = async (method: string) => {
     try {
       const { url } = await updatePaymentMethod(method)
       window.location.href = url
-    } catch {
-      toast.error('Failed to open payment portal')
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to open payment portal')
     }
   }
 
@@ -63,8 +71,8 @@ export default function WorkspaceBillingTab() {
     try {
       const result = await resumeSubscription()
       if (result.requires_checkout) {
-          router.push('/setup/plan')
-        toast.success('Your subscription has expired. Please subscribe again.')
+        toast.warning('Your subscription has expired. Please subscribe again.')
+        router.push('/setup/plan')
         return
       }
       if (subscription) {
@@ -167,9 +175,13 @@ export default function WorkspaceBillingTab() {
               </span>
             )}
           </div>
-          <Button variant="primary" className="text-sm" onClick={() => router.push(isCanceled ? '/setup/plan' : '/switch')}>
-            {isCanceled ? 'Resubscribe' : 'Change Plan'}
-          </Button>
+          {canManageBilling ? (
+            <Button variant="primary" className="text-sm" onClick={() => router.push(isCanceled ? '/setup/plan' : '/switch')}>
+              {isCanceled ? 'Resubscribe' : 'Change Plan'}
+            </Button>
+          ) : (
+            <p className="text-xs text-neutral-500">Only the workspace owner can modify billing.</p>
+          )}
         </div>
 
         {isCanceled ? (
@@ -238,17 +250,24 @@ export default function WorkspaceBillingTab() {
         <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-900/20 border border-amber-900/40 text-sm mt-4">
           <WarningCircle size={16} weight="fill" className="text-amber-400 shrink-0 mt-0.5" />
           <p className="text-amber-300">
-            Your last payment could not be processed. Please{' '}
-            <button onClick={() => { setSelectedPaymentMethod(''); setShowPaymentMethodModal(true) }} className="underline font-medium text-amber-200 hover:text-white">
-              update your payment method
-            </button>{' '}
-            to avoid service interruption.
+            Your last payment could not be processed.{' '}
+            {canManageBilling ? (
+              <>
+                Please{' '}
+                <button onClick={() => { setSelectedPaymentMethod(''); setShowPaymentMethodModal(true) }} className="underline font-medium text-amber-200 hover:text-white">
+                  update your payment method
+                </button>{' '}
+                to avoid service interruption.
+              </>
+            ) : (
+              'Please contact your workspace owner to update the payment method.'
+            )}
           </p>
         </div>
       )}
 
       {/* Actions */}
-      {!isCanceled && (
+      {!isCanceled && canManageBilling && (
         <div className="flex flex-wrap gap-3">
           <Button onClick={() => { setSelectedPaymentMethod(''); setShowPaymentMethodModal(true) }} variant="secondary" className="text-sm gap-1.5">
             <CreditCard weight="bold" className="w-3.5 h-3.5" />
@@ -335,67 +354,68 @@ export default function WorkspaceBillingTab() {
         <div className="space-y-3 pt-6 border-t border-neutral-800">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-medium text-neutral-300">Billing Details</h4>
-            {!editingBilling && (
-              <button
-                onClick={handleEditBilling}
-                className="p-1.5 rounded-md hover:bg-neutral-800 text-neutral-500 hover:text-neutral-300 transition-colors"
-                title="Edit billing details"
-              >
-                <PencilSimple size={14} />
-              </button>
+            {!editingBilling && canManageBilling && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={handleEditBilling}
+                      className="p-1.5 rounded-md hover:bg-neutral-800 text-neutral-500 hover:text-neutral-300 transition-colors"
+                    >
+                      <PencilSimple size={14} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Edit billing</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
           </div>
 
           {editingBilling ? (
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs text-neutral-500">Business name</label>
-                  <input
+                  <label className="text-xs font-medium text-neutral-400">Business name</label>
+                  <Input
                     type="text"
                     value={billingForm.business_name}
                     onChange={e => setBillingForm(f => ({ ...f, business_name: e.target.value }))}
-                    className="bg-neutral-800/50 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-brand-orange"
                     placeholder="Business name"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs text-neutral-500">Billing email</label>
-                  <input
+                  <label className="text-xs font-medium text-neutral-400">Billing email</label>
+                  <Input
                     type="email"
                     value={billingForm.billing_email}
                     onChange={e => setBillingForm(f => ({ ...f, billing_email: e.target.value }))}
-                    className="bg-neutral-800/50 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-brand-orange"
                     placeholder="billing@example.com"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs text-neutral-500">Address</label>
-                  <input
+                  <label className="text-xs font-medium text-neutral-400">Address</label>
+                  <Input
                     type="text"
                     value={billingForm.address}
                     onChange={e => setBillingForm(f => ({ ...f, address: e.target.value }))}
-                    className="bg-neutral-800/50 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-brand-orange"
                     placeholder="Street address"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs text-neutral-500">City</label>
-                  <input
+                  <label className="text-xs font-medium text-neutral-400">City</label>
+                  <Input
                     type="text"
                     value={billingForm.city}
                     onChange={e => setBillingForm(f => ({ ...f, city: e.target.value }))}
-                    className="bg-neutral-800/50 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-brand-orange"
                     placeholder="City"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs text-neutral-500">Postal code</label>
-                  <input
+                  <label className="text-xs font-medium text-neutral-400">Postal code</label>
+                  <Input
                     type="text"
                     value={billingForm.postal_code}
                     onChange={e => setBillingForm(f => ({ ...f, postal_code: e.target.value }))}
-                    className="bg-neutral-800/50 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-brand-orange"
                     placeholder="Postal code"
                   />
                 </div>
@@ -442,15 +462,20 @@ export default function WorkspaceBillingTab() {
       )}
 
       {/* Recent Invoices */}
-      {invoices.length > 0 && (
-        <div className="space-y-2 pt-6 border-t border-neutral-800">
+      {invoicesError ? (
+        <div className="rounded-xl border border-red-900/50 bg-red-950/20 p-6 text-center pt-6 border-t border-neutral-800">
+          <p className="text-red-400 text-sm mb-4">{invoicesError}</p>
+          <Button variant="secondary" onClick={() => { setInvoicesError(null); setInvoicesRetry(c => c + 1) }}>Retry</Button>
+        </div>
+      ) : invoices.length > 0 && (
+        <div className="pt-6 border-t border-neutral-800 space-y-2">
           <h4 className="text-sm font-medium text-neutral-300">Recent Invoices</h4>
-          <div className="space-y-1">
+          <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
             {invoices.map(invoice => {
               const isCreditNote = invoice.document_type === 'credit_note'
               const fmt = new Intl.NumberFormat('en-GB', { style: 'currency', currency: invoice.currency || 'EUR' })
               return (
-                <div key={invoice.id} className="flex items-center justify-between p-3 rounded-lg border border-neutral-800 text-sm">
+                <div key={invoice.id} className="flex items-center justify-between px-4 py-3 group text-sm">
                   <div className="flex items-center gap-3">
                     <span className="text-neutral-400 font-mono text-xs">{invoice.invoice_number ?? '—'}</span>
                     <span className="text-neutral-300">{formatDate(new Date(invoice.created_at))}</span>
@@ -471,13 +496,21 @@ export default function WorkspaceBillingTab() {
                         {invoice.status === 'sent' ? 'Paid' : invoice.status}
                       </span>
                     )}
-                    <button
-                      onClick={() => downloadInvoicePDF(invoice.id).catch(() => toast.error('PDF not available yet'))}
-                      className="p-1.5 rounded-md hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors ease-apple"
-                      title="Download PDF"
-                    >
-                      <DownloadSimple size={16} />
-                    </button>
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity ease-apple">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              onClick={() => downloadInvoicePDF(invoice.id).catch(() => toast.error('PDF not available yet'))}
+                              className="p-1.5 rounded-md hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors ease-apple"
+                            >
+                              <DownloadSimple size={16} />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>Download PDF</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
                   </div>
                 </div>
               )

@@ -35,4 +35,40 @@ export const billingRenderers = {
       linkLabel: 'See usage',
     }
   },
+  billing_subscription_canceled: (_r: Receipt, _resolvers?: Resolvers): Rendered => {
+    return {
+      title: 'Subscription canceled',
+      body: 'Your plan will end at the current billing period.',
+      linkLabel: 'View billing',
+    }
+  },
+  billing_invoice_sent: (r: Receipt, _resolvers?: Resolvers): Rendered => {
+    const p = r.event.payload as { invoice_number: string; amount: string; currency: string; plan_name: string }
+    return {
+      title: `Invoice #${p.invoice_number} — ${p.currency} ${p.amount}`,
+      body: `${p.plan_name} subscription`,
+      linkLabel: 'View billing',
+    }
+  },
+  billing_pageview_80: (_r: Receipt, _resolvers?: Resolvers): Rendered => {
+    return {
+      title: 'Approaching pageview limit',
+      body: "You've used 80% of your monthly pageviews.",
+      linkLabel: 'View billing',
+    }
+  },
+  billing_pageview_90: (_r: Receipt, _resolvers?: Resolvers): Rendered => {
+    return {
+      title: 'Nearing pageview limit',
+      body: "You've used 90% of your monthly pageviews. Consider upgrading.",
+      linkLabel: 'View billing',
+    }
+  },
+  billing_pageview_100: (_r: Receipt, _resolvers?: Resolvers): Rendered => {
+    return {
+      title: 'Pageview limit reached',
+      body: "You've hit your monthly pageview limit. New events are no longer being recorded.",
+      linkLabel: 'View billing',
+    }
+  },
 }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Select, Toggle, Button, toast, Spinner } from '@ciphera-net/ui'
+import { Select, Toggle, Button, toast, Spinner, getAuthErrorMessage } from '@ciphera-net/ui'
 import { CheckCircle, XCircle } from '@phosphor-icons/react'
 import {
   getPrivacyScanConfig,
@@ -15,21 +15,16 @@ import {
 } from '@/lib/api/privacy'
 import { formatRelativeTime } from '@/lib/utils/formatDate'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
+import { useCan } from '@/lib/auth/permissions'
 
 const SCAN_COOLDOWN_SECONDS = 300
 
-export default function SitePrivacyScanTab({
-  siteId,
-  onDirtyChange,
-  onRegisterSave,
-}: {
-  siteId: string
-  onDirtyChange?: (dirty: boolean) => void
-  onRegisterSave?: (fn: () => Promise<void>) => void
-}) {
+export default function SitePrivacyScanTab({ siteId }: { siteId: string }) {
+  const canManage = useCan('privacy_scan.manage')
   const [enabled, setEnabled] = useState(false)
   const [frequency, setFrequency] = useState('weekly')
   const [configLoaded, setConfigLoaded] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [scanning, setScanning] = useState(false)
   const [cooldown, setCooldown] = useState(0)
   const [lastScan, setLastScan] = useState<PrivacyScanResult | null>(null)
@@ -42,21 +37,25 @@ export default function SitePrivacyScanTab({
     if (hasInitialized.current) return
 
     async function load() {
-      const [config, scan] = await Promise.all([
-        getPrivacyScanConfig(siteId),
-        getLatestPrivacyScan(siteId),
-      ])
+      try {
+        const [config, scan] = await Promise.all([
+          getPrivacyScanConfig(siteId),
+          getLatestPrivacyScan(siteId),
+        ])
 
-      const resolvedEnabled = config?.enabled ?? false
-      const resolvedFrequency = config?.frequency ?? 'weekly'
+        const resolvedEnabled = config?.enabled ?? false
+        const resolvedFrequency = config?.frequency ?? 'weekly'
 
-      setEnabled(resolvedEnabled)
-      setFrequency(resolvedFrequency)
-      setLastScan(scan)
+        setEnabled(resolvedEnabled)
+        setFrequency(resolvedFrequency)
+        setLastScan(scan)
 
-      initialRef.current = JSON.stringify({ enabled: resolvedEnabled, frequency: resolvedFrequency })
-      hasInitialized.current = true
-      setConfigLoaded(true)
+        initialRef.current = JSON.stringify({ enabled: resolvedEnabled, frequency: resolvedFrequency })
+        hasInitialized.current = true
+        setConfigLoaded(true)
+      } catch (err) {
+        setError(getAuthErrorMessage(err))
+      }
     }
 
     load()
@@ -66,10 +65,6 @@ export default function SitePrivacyScanTab({
   const isDirty = initialRef.current
     ? JSON.stringify({ enabled, frequency }) !== initialRef.current
     : false
-
-  useEffect(() => {
-    onDirtyChange?.(isDirty)
-  }, [isDirty, onDirtyChange])
 
   const handleDiscard = () => {
     if (!initialRef.current) return
@@ -82,16 +77,11 @@ export default function SitePrivacyScanTab({
     try {
       await updatePrivacyScanConfig(siteId, enabled, frequency)
       initialRef.current = JSON.stringify({ enabled, frequency })
-      onDirtyChange?.(false)
       toast.success('Privacy scan settings updated')
-    } catch {
-      toast.error('Failed to save')
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to save settings')
     }
-  }, [siteId, enabled, frequency, onDirtyChange])
-
-  useEffect(() => {
-    onRegisterSave?.(handleSave)
-  }, [handleSave, onRegisterSave])
+  }, [siteId, enabled, frequency])
 
   // Cooldown countdown
   useEffect(() => {
@@ -114,12 +104,32 @@ export default function SitePrivacyScanTab({
       await triggerPrivacyScan(siteId)
       toast.success('Privacy scan triggered — results will appear shortly')
       setCooldown(SCAN_COOLDOWN_SECONDS)
-    } catch {
-      toast.error('Failed to trigger scan')
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to trigger scan')
     } finally {
       setScanning(false)
     }
   }, [siteId])
+
+  if (error) {
+    const retry = () => {
+      setError(null)
+      hasInitialized.current = false
+    }
+    return (
+      <div className="rounded-xl border border-red-900/50 bg-red-950/20 p-6 text-center">
+        <p className="text-red-400 text-sm">{error}</p>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={retry}
+          className="mt-4"
+        >
+          Retry
+        </Button>
+      </div>
+    )
+  }
 
   if (!configLoaded) {
     return (
@@ -156,7 +166,7 @@ export default function SitePrivacyScanTab({
           <p className="text-sm font-medium text-white">Enable privacy scanning</p>
           <p className="text-xs text-neutral-500">Automatically scan for trackers and security issues</p>
         </div>
-        <Toggle checked={enabled} onChange={() => setEnabled(v => !v)} />
+        <Toggle checked={enabled} onChange={() => setEnabled(v => !v)} disabled={!canManage} />
       </div>
 
       {/* Frequency selector — revealed when enabled */}
@@ -183,6 +193,8 @@ export default function SitePrivacyScanTab({
                     { value: 'weekly', label: 'Weekly' },
                     { value: 'monthly', label: 'Monthly' },
                   ]}
+                  className="shrink-0 min-w-[200px]"
+                  disabled={!canManage}
                 />
               </div>
             </div>
@@ -195,7 +207,7 @@ export default function SitePrivacyScanTab({
         <Button
           variant="secondary"
           onClick={handleScan}
-          disabled={scanning || cooldown > 0}
+          disabled={!canManage || scanning || cooldown > 0}
         >
           {scanning ? (
             <>
@@ -306,7 +318,7 @@ export default function SitePrivacyScanTab({
               {HEADER_CHECKS.map(h => (
                 <div
                   key={h.key}
-                  className="flex items-center gap-2 p-2.5 rounded-lg border border-neutral-800 bg-neutral-800/20"
+                  className="flex items-center gap-2 p-2.5 rounded-xl border border-neutral-800 bg-neutral-800/30"
                 >
                   {headers[h.key] ? (
                     <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" weight="fill" />
@@ -339,11 +351,13 @@ export default function SitePrivacyScanTab({
         </div>
       )}
 
-      <SettingsSaveBar
-        isDirty={isDirty}
-        onSave={handleSave}
-        onDiscard={handleDiscard}
-      />
+      {canManage && (
+        <SettingsSaveBar
+          isDirty={isDirty}
+          onSave={handleSave}
+          onDiscard={handleDiscard}
+        />
+      )}
     </div>
   )
 }

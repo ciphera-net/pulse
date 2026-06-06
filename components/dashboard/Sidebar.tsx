@@ -3,15 +3,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { type Site } from '@/lib/api/sites'
-import { useAuth } from '@/lib/auth/context'
+import { useCan } from '@/lib/auth/permissions'
 import { useSites, FaviconPreloader } from '@/lib/swr/sites'
 import { cdnUrl } from '@/lib/cdn'
 import { useSidebar } from '@/lib/sidebar-context'
-import { getUserOrganizations, switchContext, type OrganizationMember } from '@/lib/api/organization'
-import { setSessionAction } from '@/app/actions/auth'
-import { logger } from '@/lib/utils/logger'
 import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
 import { Gauge as GaugeIcon, Plugs as PlugsIcon, Tag as TagIcon, MagnifyingGlass } from '@phosphor-icons/react'
 import {
@@ -26,9 +23,8 @@ import {
   PlusIcon,
   XIcon,
   BookOpenIcon,
-  UserMenu,
 } from '@ciphera-net/ui'
-import NotificationCenter from '@/components/notifications/NotificationCenter'
+import { ReportIssueButton } from '@/components/support/ReportIssueButton'
 
 const EXPANDED = 256
 const COLLAPSED = 64
@@ -251,22 +247,15 @@ interface SidebarContentProps {
   onNavigate: (href: string) => void
   onMobileClose: () => void
   onToggle: () => void
-  auth: ReturnType<typeof useAuth>
-  orgs: OrganizationMember[]
-  onSwitchOrganization: (orgId: string | null) => Promise<void>
-  onCreateOrganization: () => void
-  openSettings: () => void
-  openOrgSettings: () => void
   onOpenPalette: () => void
 }
 
 function SidebarContent({
   isMobile, collapsed, siteId, sites, canEdit, pendingHref,
   onNavigate, onMobileClose, onToggle,
-  auth, orgs, onSwitchOrganization, onCreateOrganization, openSettings, openOrgSettings, onOpenPalette,
+  onOpenPalette,
 }: SidebarContentProps) {
   const c = isMobile ? false : collapsed
-  const { user } = auth
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -384,58 +373,19 @@ function SidebarContent({
         </nav>
       )}
 
-      {/* Bottom — utility items */}
-      <div className="border-t border-neutral-800/60 px-2 py-3 shrink-0">
-        {/* Notifications, Profile — same layout as nav items */}
-        <div className="space-y-0.5 mb-1">
-          {c ? (
-            <SidebarTooltip label="Notifications">
-              <NotificationCenter anchor="right" variant="sidebar">
-                <Label collapsed={c}>Notifications</Label>
-              </NotificationCenter>
-            </SidebarTooltip>
-          ) : (
-            <NotificationCenter anchor="right" variant="sidebar">
-              <Label collapsed={c}>Notifications</Label>
-            </NotificationCenter>
-          )}
-          {c ? (
-            <SidebarTooltip label={user?.display_name?.trim() || 'Profile'}>
-              <UserMenu
-                auth={auth}
-                LinkComponent={Link}
-                orgs={orgs}
-                activeOrgId={auth.user?.org_id}
-                onSwitchOrganization={onSwitchOrganization}
-                onCreateOrganization={onCreateOrganization}
-                allowPersonalOrganization={false}
-                onOpenSettings={openSettings}
-                onOpenOrgSettings={openOrgSettings}
-                compact
-                anchor="right"
-              >
-                <Label collapsed={c}>{user?.display_name?.trim() || 'Profile'}</Label>
-              </UserMenu>
-            </SidebarTooltip>
-          ) : (
-            <UserMenu
-              auth={auth}
-              LinkComponent={Link}
-              orgs={orgs}
-              activeOrgId={auth.user?.org_id}
-              onSwitchOrganization={onSwitchOrganization}
-              onCreateOrganization={onCreateOrganization}
-              allowPersonalOrganization={false}
-              onOpenSettings={openSettings}
-              onOpenOrgSettings={openOrgSettings}
-              compact
-              anchor="right"
-            >
-              <Label collapsed={c}>{user?.display_name?.trim() || 'Profile'}</Label>
-            </UserMenu>
-          )}
-        </div>
+      {/* Report Issue — sidebar bottom */}
+      <div className="shrink-0 px-2 pb-3 pt-2 border-t border-neutral-800/60">
+        {c ? (
+          <SidebarTooltip label="Report Issue">
+            <div className="flex justify-center">
+              <ReportIssueButton siteId={siteId ?? undefined} collapsed />
+            </div>
+          </SidebarTooltip>
+        ) : (
+          <ReportIssueButton siteId={siteId ?? undefined} />
+        )}
       </div>
+
     </div>
   )
 }
@@ -447,36 +397,13 @@ export default function Sidebar({
 }: {
   siteId: string | null; mobileOpen: boolean; onMobileClose: () => void; onMobileOpen: () => void; onOpenPalette: () => void
 }) {
-  const auth = useAuth()
-  const { user } = auth
-  const canEdit = user?.role === 'owner' || user?.role === 'admin'
+  const canEdit = useCan('sites.edit')
   const pathname = usePathname()
-  const router = useRouter()
   const { sites } = useSites()
-  const [orgs, setOrgs] = useState<OrganizationMember[]>([])
   const [pendingHref, setPendingHref] = useState<string | null>(null)
   const [mobileClosing, setMobileClosing] = useState(false)
   const { collapsed, toggle } = useSidebar()
 
-  useEffect(() => {
-    if (user) {
-      getUserOrganizations()
-        .then((organizations) => setOrgs(Array.isArray(organizations) ? organizations : []))
-        .catch(err => logger.error('Failed to fetch orgs', err))
-    }
-  }, [user])
-
-  const handleSwitchOrganization = async (orgId: string | null) => {
-    if (!orgId) return
-    try {
-      const { access_token } = await switchContext(orgId)
-      await setSessionAction(access_token)
-      await auth.refresh()
-      router.push('/')
-    } catch (err) {
-      logger.error('Failed to switch organization', err)
-    }
-  }
   useEffect(() => { setPendingHref(null); onMobileClose() }, [pathname, onMobileClose])
 
   const handleMobileClose = useCallback(() => {
@@ -507,12 +434,6 @@ export default function Sidebar({
           onNavigate={handleNavigate}
           onMobileClose={onMobileClose}
           onToggle={toggle}
-          auth={auth}
-          orgs={orgs}
-          onSwitchOrganization={handleSwitchOrganization}
-          onCreateOrganization={() => router.push('/setup/org?new=1')}
-          openSettings={() => router.push('/settings/account/profile')}
-          openOrgSettings={() => router.push('/settings/organization/general')}
           onOpenPalette={onOpenPalette}
         />
       </aside>
@@ -549,12 +470,6 @@ export default function Sidebar({
               onNavigate={handleNavigate}
               onMobileClose={handleMobileClose}
               onToggle={toggle}
-              auth={auth}
-              orgs={orgs}
-              onSwitchOrganization={handleSwitchOrganization}
-              onCreateOrganization={() => router.push('/setup/org?new=1')}
-              openSettings={() => router.push('/settings/profile')}
-              openOrgSettings={() => router.push('/settings/workspace')}
               onOpenPalette={onOpenPalette}
             />
           </aside>

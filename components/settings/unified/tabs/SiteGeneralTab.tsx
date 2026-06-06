@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Input, Button, toast, Spinner, CheckIcon, ZapIcon } from '@ciphera-net/ui'
+import { Input, Button, toast, Spinner, CheckIcon, ZapIcon, getAuthErrorMessage } from '@ciphera-net/ui'
 import { useSite } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
 import { useAuth } from '@/lib/auth/context'
+import { useCan } from '@/lib/auth/permissions'
 import { DangerZone } from '@/components/settings/unified/DangerZone'
 import DeleteSiteModal from '@/components/sites/DeleteSiteModal'
 import ResetDataModal from '@/components/settings/unified/ResetDataModal'
@@ -36,7 +37,7 @@ const ALL_TIMEZONES = (() => {
   }
 })()
 
-function TimezoneCombobox({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function TimezoneCombobox({ value, onChange, disabled }: { value: string; onChange: (v: string) => void; disabled?: boolean }) {
   const [search, setSearch] = useState('')
   const [open, setOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -72,10 +73,11 @@ function TimezoneCombobox({ value, onChange }: { value: string; onChange: (v: st
       <input
         ref={inputRef}
         value={open ? search : (selected ? `${selected.label} (${selected.offset})` : value)}
-        onChange={e => { setSearch(e.target.value); if (!open) setOpen(true) }}
-        onFocus={() => { setOpen(true); setSearch('') }}
+        onChange={e => { if (disabled) return; setSearch(e.target.value); if (!open) setOpen(true) }}
+        onFocus={() => { if (disabled) return; setOpen(true); setSearch('') }}
         placeholder="Search timezone..."
-        className="w-full h-10 px-4 bg-transparent border border-neutral-800 rounded-lg text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 transition-colors"
+        disabled={disabled}
+        className="w-full h-10 px-4 bg-transparent border border-neutral-800 rounded-lg text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       />
       {open && (
         <div
@@ -105,7 +107,7 @@ function TimezoneCombobox({ value, onChange }: { value: string; onChange: (v: st
   )
 }
 
-export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }: { siteId: string; onDirtyChange?: (dirty: boolean) => void; onRegisterSave?: (fn: () => Promise<void>) => void }) {
+export default function SiteGeneralTab({ siteId }: { siteId: string }) {
   const router = useRouter()
   const { user } = useAuth()
   const { data: site, mutate } = useSite(siteId)
@@ -115,7 +117,7 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showVerificationModal, setShowVerificationModal] = useState(false)
 
-  const canEdit = user?.role === 'owner' || user?.role === 'admin'
+  const canEdit = useCan('sites.edit')
   const initialRef = useRef('')
   const hasInitialized = useRef(false)
 
@@ -133,10 +135,6 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
     ? JSON.stringify({ name, timezone, scriptFeatures: JSON.stringify(scriptFeatures) }) !== initialRef.current
     : false
 
-  useEffect(() => {
-    onDirtyChange?.(isDirty)
-  }, [isDirty, onDirtyChange])
-
   const handleDiscard = () => {
     if (!initialRef.current) return
     const snap = JSON.parse(initialRef.current)
@@ -149,18 +147,13 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
     if (!site) return
     try {
       await updateSite(siteId, { name, timezone, script_features: scriptFeatures })
-      await mutate()
       initialRef.current = JSON.stringify({ name, timezone, scriptFeatures: JSON.stringify(scriptFeatures) })
-      onDirtyChange?.(false)
+      await mutate()
       toast.success('Site updated')
-    } catch {
-      toast.error('Failed to save')
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to save settings')
     }
-  }, [site, siteId, name, timezone, scriptFeatures, mutate, onDirtyChange])
-
-  useEffect(() => {
-    onRegisterSave?.(handleSave)
-  }, [handleSave, onRegisterSave])
+  }, [site, siteId, name, timezone, scriptFeatures, mutate])
 
   const [showResetModal, setShowResetModal] = useState(false)
 
@@ -182,21 +175,21 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
         </div>
 
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-neutral-300 mb-1.5">Site Name</label>
-              <Input value={name} onChange={e => setName(e.target.value)} placeholder="My Website" />
+              <label className="block text-xs font-medium text-neutral-400 mb-1.5">Site Name</label>
+              <Input value={name} onChange={e => setName(e.target.value)} placeholder="My Website" disabled={!canEdit} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-neutral-300 mb-1.5">Domain</label>
+              <label className="block text-xs font-medium text-neutral-400 mb-1.5">Domain</label>
               <Input value={site.domain} disabled className="opacity-60" />
               <p className="text-xs text-neutral-500 mt-1">Cannot be changed.</p>
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-neutral-300 mb-1.5">Timezone</label>
-            <TimezoneCombobox value={timezone} onChange={setTimezone} />
+            <label className="block text-xs font-medium text-neutral-400 mb-1.5">Timezone</label>
+            <TimezoneCombobox value={timezone} onChange={setTimezone} disabled={!canEdit} />
           </div>
         </div>
       </div>
@@ -213,17 +206,14 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
           showFrameworkPicker
           className="mb-4"
           onFeaturesChange={(features) => setScriptFeatures(features)}
+          disabled={!canEdit}
         />
 
         {/* Verify Installation */}
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          className={site.is_verified ? 'bg-green-900/10 border-green-900/30 text-green-400 hover:bg-green-900/20' : ''}
           onClick={() => setShowVerificationModal(true)}
-          className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl border transition-colors ${
-            site.is_verified
-              ? 'bg-green-900/10 border-green-900/30 text-green-400'
-              : 'bg-neutral-800 border-neutral-700 text-neutral-300 hover:bg-neutral-700'
-          } ease-apple`}
         >
           {site.is_verified ? (
             <>
@@ -236,7 +226,7 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
               Verify Installation
             </>
           )}
-        </button>
+        </Button>
         <p className="text-xs text-neutral-500">
           {site.is_verified ? 'Your site is sending data correctly.' : 'Check if your site is sending data correctly.'}
         </p>
@@ -288,11 +278,13 @@ export default function SiteGeneralTab({ siteId, onDirtyChange, onRegisterSave }
         onVerified={() => mutate()}
       />
 
-      <SettingsSaveBar
-        isDirty={isDirty}
-        onSave={handleSave}
-        onDiscard={handleDiscard}
-      />
+      {canEdit && (
+        <SettingsSaveBar
+          isDirty={isDirty}
+          onSave={handleSave}
+          onDiscard={handleDiscard}
+        />
+      )}
     </div>
   )
 }

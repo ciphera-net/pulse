@@ -1,9 +1,10 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import { Select, DatePicker, ChevronLeftIcon, ChevronRightIcon } from '@ciphera-net/ui'
+import { Select } from '@ciphera-net/ui'
 import { formatDate } from '@/lib/utils/dateRanges'
+import DateRangePicker from '@/components/ui/DateRangePicker'
 import ColumnJourney from '@/components/journeys/ColumnJourney'
 import SankeyJourney from '@/components/journeys/SankeyJourney'
 import { Slider } from '@/components/ui/slider'
@@ -30,7 +31,6 @@ export default function JourneysPage() {
   const siteId = params.id as string
 
   const filters = useJourneyFilters()
-  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
 
   const shiftPeriod = useCallback((direction: -1 | 1) => {
     const shift = (date: string, days: number) => {
@@ -102,43 +102,13 @@ export default function JourneysPage() {
             How visitors navigate through your site
           </p>
         </div>
-        <div className="flex items-center h-10 rounded-lg border border-neutral-800 bg-neutral-900">
-          <button onClick={() => shiftPeriod(-1)} className="px-2 h-full text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors rounded-l-lg ease-apple" aria-label="Previous period">
-            <ChevronLeftIcon className="w-4 h-4" weight="bold" />
-          </button>
-          <div className="w-px h-5 bg-white/[0.08]" />
-          <Select
-            variant="ghost"
-            className="min-w-[130px]"
-            value={filters.period}
-            onChange={(value) => {
-              if (value === 'custom') {
-                setIsDatePickerOpen(true)
-              } else {
-                filters.setPeriod(value as Period)
-              }
-            }}
-            options={[
-              { value: '1h', label: 'Last 1 hour' },
-              { value: '24h', label: 'Last 24 hours' },
-              { value: 'divider-0', label: '', divider: true },
-              { value: 'today', label: 'Today' },
-              { value: 'yesterday', label: 'Yesterday' },
-              { value: '7', label: 'Last 7 days' },
-              { value: '30', label: 'Last 30 days' },
-              { value: 'divider-1', label: '', divider: true },
-              { value: 'week', label: 'This week' },
-              { value: 'month', label: 'This month' },
-              { value: 'year', label: 'This year' },
-              { value: 'divider-2', label: '', divider: true },
-              { value: 'custom', label: 'Custom' },
-            ]}
-          />
-          <div className="w-px h-5 bg-white/[0.08]" />
-          <button onClick={() => shiftPeriod(1)} className="px-2 h-full text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors rounded-r-lg ease-apple" aria-label="Next period">
-            <ChevronRightIcon className="w-4 h-4" weight="bold" />
-          </button>
-        </div>
+        <DateRangePicker
+          period={filters.period}
+          dateRange={filters.dateRange}
+          onPeriodChange={(p) => filters.setPeriod(p as Period)}
+          onDateRangeChange={(range) => filters.setPeriod('custom', range)}
+          onShift={shiftPeriod}
+        />
       </div>
 
       {/* Single card: toolbar + chart */}
@@ -257,16 +227,6 @@ export default function JourneysPage() {
         )}
       </div>
 
-      {/* Date Picker Modal */}
-      <DatePicker
-        isOpen={isDatePickerOpen}
-        onClose={() => setIsDatePickerOpen(false)}
-        onApply={(range) => {
-          filters.setPeriod('custom', range)
-          setIsDatePickerOpen(false)
-        }}
-        initialRange={filters.dateRange}
-      />
     </div>
   )
 }

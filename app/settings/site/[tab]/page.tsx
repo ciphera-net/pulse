@@ -7,6 +7,8 @@ import { useSites } from '@/lib/swr/sites'
 import { toast } from '@ciphera-net/ui'
 import { CaretDown } from '@phosphor-icons/react'
 import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
+import { useCan, type Permission } from '@/lib/auth/permissions'
+import { ShieldWarning } from '@phosphor-icons/react'
 
 const SiteGeneralTab      = dynamic(() => import('@/components/settings/unified/tabs/SiteGeneralTab'))
 const SiteGoalsTab        = dynamic(() => import('@/components/settings/unified/tabs/SiteGoalsTab'))
@@ -16,6 +18,17 @@ const SiteBotSpamTab      = dynamic(() => import('@/components/settings/unified/
 const SitePrivacyScanTab  = dynamic(() => import('@/components/settings/unified/tabs/SitePrivacyScanTab'))
 const SiteReportsTab      = dynamic(() => import('@/components/settings/unified/tabs/SiteReportsTab'))
 const SiteIntegrationsTab = dynamic(() => import('@/components/settings/unified/tabs/SiteIntegrationsTab'))
+
+const SITE_TAB_PERMISSIONS: Record<string, Permission> = {
+  general: 'sites.edit',
+  goals: 'goals.manage',
+  visibility: 'sites.edit',
+  privacy: 'sites.edit',
+  'bot-spam': 'quarantine.manage',
+  'privacy-scan': 'privacy_scan.manage',
+  reports: 'reports.manage',
+  integrations: 'integrations.manage',
+}
 
 const TAB_COMPONENTS: Record<string, React.ComponentType<{ siteId: string }>> = {
   general:        SiteGeneralTab,
@@ -46,6 +59,9 @@ export default function SiteSettingsTabPage() {
   const [activeSiteId, setActiveSiteId] = useState<string | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [siteSearch, setSiteSearch] = useState('')
+
+  const requiredPerm = SITE_TAB_PERMISSIONS[tab]
+  const hasAccess = useCan(requiredPerm as Permission)
 
   const filteredSites = siteSearch.trim()
     ? sites.filter(s => s.name.toLowerCase().includes(siteSearch.toLowerCase()) || s.domain.toLowerCase().includes(siteSearch.toLowerCase()))
@@ -91,6 +107,7 @@ export default function SiteSettingsTabPage() {
   if (sites.length === 0 || !activeSiteId) {
     return null
   }
+
 
   const TabComponent = TAB_COMPONENTS[tab]
 
@@ -164,7 +181,13 @@ export default function SiteSettingsTabPage() {
         )}
       </div>
 
-      {TabComponent ? (
+      {requiredPerm && !hasAccess ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <ShieldWarning className="w-12 h-12 text-neutral-600 mb-4" />
+          <h3 className="text-base font-semibold text-neutral-300 mb-1">Access restricted</h3>
+          <p className="text-sm text-neutral-500 max-w-sm">You don&apos;t have permission to view this page. Contact your workspace owner to request access.</p>
+        </div>
+      ) : TabComponent ? (
         <TabComponent siteId={activeSiteId} />
       ) : (
         <p className="text-sm text-neutral-400">Unknown settings tab.</p>

@@ -6,17 +6,11 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useAuth } from '@/lib/auth/context'
 import { useSites } from '@/lib/swr/sites'
 import { useMembers } from '@/lib/swr/members'
+import { useGoals, useReportSchedules } from '@/lib/swr/dashboard'
 import { XIcon, CheckCircleIcon } from '@ciphera-net/ui'
 import { Circle as CircleIcon } from '@phosphor-icons/react'
 
-interface ChecklistItem {
-  key: string
-  label: string
-  href?: string
-  check: () => boolean
-}
-
-const DISMISSED_KEY = 'pulse_checklist_dismissed'
+const DISMISSED_PREFIX = 'pulse_checklist_dismissed_'
 
 function ProgressRing({ progress, size = 32 }: { progress: number; size?: number }) {
   const strokeWidth = 3
@@ -51,37 +45,50 @@ function ProgressRing({ progress, size = 32 }: { progress: number; size?: number
   )
 }
 
+interface ChecklistItem {
+  key: string
+  label: string
+  href?: string
+  completed: boolean
+}
+
 export default function GettingStartedChecklist() {
   const { user } = useAuth()
+  const orgId = user?.org_id
   const { sites } = useSites()
   const { members } = useMembers()
+  const firstSiteId = sites[0]?.id ?? ''
+  const { data: goals } = useGoals(firstSiteId || '')
+  const { data: schedules } = useReportSchedules(firstSiteId || '')
   const [dismissed, setDismissed] = useState(true)
   const [expanded, setExpanded] = useState(false)
 
   useEffect(() => {
-    if (typeof window === 'undefined') return
-    setDismissed(localStorage.getItem(DISMISSED_KEY) === 'true')
-  }, [])
+    if (typeof window === 'undefined' || !orgId) return
+    setDismissed(localStorage.getItem(`${DISMISSED_PREFIX}${orgId}`) === 'true')
+  }, [orgId])
 
   const items: ChecklistItem[] = [
-    { key: 'org', label: 'Create workspace', check: () => !!user?.org_id },
-    { key: 'site', label: 'Add your first site', href: '/sites/new', check: () => sites.length > 0 },
-    { key: 'teammate', label: 'Invite a teammate', href: '/settings/organization/members', check: () => members.length > 1 },
+    { key: 'site', label: 'Add your first site', href: '/sites/new', completed: sites.length > 0 },
+    { key: 'script', label: 'Install tracking script', href: firstSiteId ? `/sites/${firstSiteId}/settings` : undefined, completed: sites.some(s => s.is_verified) },
+    { key: 'teammate', label: 'Invite a teammate', href: '/settings/organization/members', completed: members.length > 1 },
+    { key: 'goal', label: 'Set up a goal', href: firstSiteId ? `/sites/${firstSiteId}/goals` : undefined, completed: (goals?.length ?? 0) > 0 },
+    { key: 'reports', label: 'Enable email reports', href: firstSiteId ? `/sites/${firstSiteId}/settings` : undefined, completed: schedules?.some(s => s.channel === 'email' && s.enabled) ?? false },
   ]
 
-  const completedCount = items.filter(i => i.check()).length
+  const completedCount = items.filter(i => i.completed).length
   const allDone = completedCount === items.length
 
-  if (dismissed || allDone) return null
+  if (dismissed || !orgId || allDone) return null
 
   const handleDismiss = (e: React.MouseEvent) => {
     e.stopPropagation()
-    localStorage.setItem(DISMISSED_KEY, 'true')
+    localStorage.setItem(`${DISMISSED_PREFIX}${orgId}`, 'true')
     setDismissed(true)
   }
 
   const progress = (completedCount / items.length) * 100
-  const nextItem = items.find(i => !i.check())
+  const nextItem = items.find(i => !i.completed)
 
   return (
     <div className="fixed bottom-5 right-5 z-[100]">
@@ -113,23 +120,22 @@ export default function GettingStartedChecklist() {
 
             <div className="p-3 space-y-1">
               {items.map((item) => {
-                const done = item.check()
                 const inner = (
                   <div className={`flex items-center gap-2.5 px-2 py-2 rounded-lg text-sm transition-colors ${
-                    done
+                    item.completed
                       ? 'text-neutral-500'
                       : 'text-neutral-300 hover:text-white hover:bg-neutral-800/50'
                   }`}>
-                    {done ? (
+                    {item.completed ? (
                       <CheckCircleIcon className="h-4 w-4 text-emerald-400 shrink-0" />
                     ) : (
                       <CircleIcon className="h-4 w-4 text-neutral-600 shrink-0" />
                     )}
-                    <span className={done ? 'line-through' : ''}>{item.label}</span>
+                    <span className={item.completed ? 'line-through' : ''}>{item.label}</span>
                   </div>
                 )
 
-                if (item.href && !done) {
+                if (item.href && !item.completed) {
                   return <Link key={item.key} href={item.href} onClick={() => setExpanded(false)}>{inner}</Link>
                 }
                 return <div key={item.key}>{inner}</div>
@@ -139,7 +145,6 @@ export default function GettingStartedChecklist() {
         )}
       </AnimatePresence>
 
-      {/* Floating pill */}
       <motion.button
         type="button"
         onClick={() => setExpanded(!expanded)}

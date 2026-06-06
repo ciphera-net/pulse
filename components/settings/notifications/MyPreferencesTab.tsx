@@ -1,5 +1,7 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
+import { Input, Select, toast, getAuthErrorMessage } from '@ciphera-net/ui'
+import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { getPrefs, updatePrefs, type Preferences } from '@/lib/api/notifications-preferences'
 import { purgeMine } from '@/lib/api/notifications-v2'
 import DeliveryModesTable from './DeliveryModesTable'
@@ -13,6 +15,10 @@ export default function MyPreferencesTab() {
   const [error, setError] = useState<string | null>(null)
   const [purging, setPurging] = useState(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
+  }, [])
 
   useEffect(() => {
     getPrefs().then(setPrefs).catch(e => setError(e.message ?? 'Failed to load'))
@@ -35,7 +41,7 @@ export default function MyPreferencesTab() {
   }
 
   if (error && !prefs) return <div className="text-red-400 text-sm">{error}</div>
-  if (!prefs) return <div className="text-neutral-500 text-sm">Loading…</div>
+  if (!prefs) return <SettingsLoadingState />
 
   // Detect IANA timezones available in this browser.
   const timezones = (() => {
@@ -54,21 +60,20 @@ export default function MyPreferencesTab() {
         <h3 className="font-medium text-white mb-1">Daily digest time</h3>
         <p className="text-xs text-neutral-500 mb-3">When your batched non-critical emails are sent.</p>
         <div className="flex items-center gap-3 text-sm">
-          <input
+          <Input
             type="time"
             value={prefs.digest_time ?? '09:00'}
             onChange={e => debouncedSave({ ...prefs, digest_time: e.target.value })}
-            className="bg-white/5 border border-white/10 rounded px-3 py-1.5 text-white focus:border-brand-orange focus:outline-none"
             aria-label="Digest send time"
           />
-          <select
-            value={prefs.timezone || 'UTC'}
-            onChange={e => debouncedSave({ ...prefs, timezone: e.target.value })}
-            className="bg-white/5 border border-white/10 rounded px-3 py-1.5 text-white focus:border-brand-orange focus:outline-none max-w-xs"
-            aria-label="Timezone"
-          >
-            {timezones.map(tz => <option key={tz} value={tz}>{tz}</option>)}
-          </select>
+          <div aria-label="Timezone" className="max-w-xs">
+            <Select
+              variant="input"
+              value={prefs.timezone || 'UTC'}
+              onChange={(v) => debouncedSave({ ...prefs, timezone: v })}
+              options={timezones.map(tz => ({ value: tz, label: tz }))}
+            />
+          </div>
         </div>
       </section>
 
@@ -99,11 +104,15 @@ export default function MyPreferencesTab() {
         </button>
         {purging && (
           <PurgeConfirmDialog
-            count={-1}
+            count={null}
             onCancel={() => setPurging(false)}
             onConfirm={async () => {
-              await purgeMine()
-              setPurging(false)
+              try {
+                await purgeMine()
+                setPurging(false)
+              } catch (err) {
+                toast.error(getAuthErrorMessage(err as Error) || 'Failed to purge notifications')
+              }
             }}
           />
         )}

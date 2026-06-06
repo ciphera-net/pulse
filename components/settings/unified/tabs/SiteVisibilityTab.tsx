@@ -1,18 +1,20 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Button, Input, Toggle, toast, Spinner } from '@ciphera-net/ui'
+import { Button, Input, Toggle, toast, Spinner, getAuthErrorMessage } from '@ciphera-net/ui'
 import { Copy, CheckCircle, Lock } from '@phosphor-icons/react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useSite } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
 import { env } from '@/lib/env'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
+import { useCan } from '@/lib/auth/permissions'
 
 // Zod-validated URL, guaranteed to be a `string` at runtime.
 const APP_URL = env.NEXT_PUBLIC_APP_URL
 
-export default function SiteVisibilityTab({ siteId, onDirtyChange, onRegisterSave }: { siteId: string; onDirtyChange?: (dirty: boolean) => void; onRegisterSave?: (fn: () => Promise<void>) => void }) {
+export default function SiteVisibilityTab({ siteId }: { siteId: string }) {
+  const canEdit = useCan('sites.edit')
   const { data: site, mutate } = useSite(siteId)
   const [isPublic, setIsPublic] = useState(false)
   const [password, setPassword] = useState('')
@@ -34,10 +36,6 @@ export default function SiteVisibilityTab({ siteId, onDirtyChange, onRegisterSav
     ? JSON.stringify({ isPublic, passwordEnabled }) !== initialRef.current || password.length > 0
     : false
 
-  useEffect(() => {
-    onDirtyChange?.(isDirty)
-  }, [isDirty, onDirtyChange])
-
   const handleDiscard = () => {
     if (!initialRef.current) return
     const snap = JSON.parse(initialRef.current)
@@ -49,24 +47,19 @@ export default function SiteVisibilityTab({ siteId, onDirtyChange, onRegisterSav
   const handleSave = useCallback(async () => {
     try {
       await updateSite(siteId, {
-        name: site?.name || '',
+        name: site!.name,
         is_public: isPublic,
         password: passwordEnabled ? password : undefined,
         clear_password: !passwordEnabled,
       })
+      initialRef.current = JSON.stringify({ isPublic, passwordEnabled })
       setPassword('')
       await mutate()
-      initialRef.current = JSON.stringify({ isPublic, passwordEnabled })
-      onDirtyChange?.(false)
       toast.success('Visibility updated')
-    } catch {
-      toast.error('Failed to save')
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to save settings')
     }
-  }, [siteId, site?.name, isPublic, passwordEnabled, password, mutate, onDirtyChange])
-
-  useEffect(() => {
-    onRegisterSave?.(handleSave)
-  }, [handleSave, onRegisterSave])
+  }, [siteId, isPublic, passwordEnabled, password, mutate])
 
   const copyLink = () => {
     navigator.clipboard.writeText(`${APP_URL}/share/${siteId}`)
@@ -90,7 +83,7 @@ export default function SiteVisibilityTab({ siteId, onDirtyChange, onRegisterSav
           <p className="text-sm font-medium text-white">Public Dashboard</p>
           <p className="text-xs text-neutral-500">Allow anyone with the link to view this dashboard.</p>
         </div>
-        <Toggle checked={isPublic} onChange={() => setIsPublic(p => !p)} />
+        <Toggle checked={isPublic} onChange={() => setIsPublic(p => !p)} disabled={!canEdit} />
       </div>
 
       <AnimatePresence>
@@ -103,7 +96,7 @@ export default function SiteVisibilityTab({ siteId, onDirtyChange, onRegisterSav
           >
             {/* Share link */}
             <div className="p-4 rounded-xl border border-neutral-800 bg-neutral-800/30">
-              <label className="block text-sm font-medium text-neutral-300 mb-1.5">Public Link</label>
+              <label className="block text-xs font-medium text-neutral-400 mb-1.5">Public Link</label>
               <div className="flex gap-2">
                 <Input value={`${APP_URL}/share/${siteId}`} readOnly className="font-mono text-xs" />
                 <Button onClick={copyLink} variant="secondary" className="shrink-0 text-sm gap-1.5">
@@ -122,7 +115,7 @@ export default function SiteVisibilityTab({ siteId, onDirtyChange, onRegisterSav
                   <p className="text-xs text-neutral-500">Require a password to view the public dashboard.</p>
                 </div>
               </div>
-              <Toggle checked={passwordEnabled} onChange={() => setPasswordEnabled(p => !p)} />
+              <Toggle checked={passwordEnabled} onChange={() => setPasswordEnabled(p => !p)} disabled={!canEdit} />
             </div>
 
             <AnimatePresence>
@@ -140,13 +133,14 @@ export default function SiteVisibilityTab({ siteId, onDirtyChange, onRegisterSav
                     placeholder={site.has_password ? 'Leave empty to keep current password' : 'Set a password'}
                   />
                   {site.has_password && (
-                    <button
-                      type="button"
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mt-2 text-red-400 hover:text-red-300"
                       onClick={() => { setPasswordEnabled(false); setPassword('') }}
-                      className="mt-2 text-xs font-medium text-red-400 hover:text-red-300 transition-colors ease-apple"
                     >
                       Remove password protection
-                    </button>
+                    </Button>
                   )}
                 </motion.div>
               )}
@@ -155,11 +149,13 @@ export default function SiteVisibilityTab({ siteId, onDirtyChange, onRegisterSav
         )}
       </AnimatePresence>
 
-      <SettingsSaveBar
-        isDirty={isDirty}
-        onSave={handleSave}
-        onDiscard={handleDiscard}
-      />
+      {canEdit && (
+        <SettingsSaveBar
+          isDirty={isDirty}
+          onSave={handleSave}
+          onDiscard={handleDiscard}
+        />
+      )}
     </div>
   )
 }

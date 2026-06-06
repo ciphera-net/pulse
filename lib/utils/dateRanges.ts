@@ -45,5 +45,48 @@ export function getThisYearRange(): { start: string; end: string } {
   return { start: formatDate(jan1), end: formatDate(today) }
 }
 
+export function getLastWeekRange(): { start: string; end: string } {
+  const now = new Date()
+  const day = now.getDay()
+  const diffToMonday = day === 0 ? 6 : day - 1
+  const thisMonday = new Date(now)
+  thisMonday.setDate(now.getDate() - diffToMonday)
+  const lastMonday = new Date(thisMonday)
+  lastMonday.setDate(thisMonday.getDate() - 7)
+  const lastSunday = new Date(lastMonday)
+  lastSunday.setDate(lastMonday.getDate() + 6)
+  return { start: formatDate(lastMonday), end: formatDate(lastSunday) }
+}
+
+export function getLastMonthRange(): { start: string; end: string } {
+  const now = new Date()
+  const firstOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+  const lastOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0)
+  return { start: formatDate(firstOfPrevMonth), end: formatDate(lastOfPrevMonth) }
+}
+
+export function getLastQuarterRange(): { start: string; end: string } {
+  const now = new Date()
+  const currentQuarter = Math.floor(now.getMonth() / 3)
+  const prevQuarterStart = currentQuarter === 0
+    ? new Date(now.getFullYear() - 1, 9, 1)
+    : new Date(now.getFullYear(), (currentQuarter - 1) * 3, 1)
+  const prevQuarterEnd = currentQuarter === 0
+    ? new Date(now.getFullYear() - 1, 12, 0)
+    : new Date(now.getFullYear(), currentQuarter * 3, 0)
+  return { start: formatDate(prevQuarterStart), end: formatDate(prevQuarterEnd) }
+}
+
+export function getLastYearRange(): { start: string; end: string } {
+  const prevYear = new Date().getFullYear() - 1
+  return { start: `${prevYear}-01-01`, end: `${prevYear}-12-31` }
+}
+
+export function getQuarterToDateRange(): { start: string; end: string } {
+  const now = new Date()
+  const quarterStart = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1)
+  return { start: formatDate(quarterStart), end: formatDate(now) }
+}
+
 // Re-export for convenience
 export { getDateRange, formatDate }

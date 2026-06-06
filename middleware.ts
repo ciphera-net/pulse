@@ -21,6 +21,7 @@ const PUBLIC_PREFIXES = [
   '/share/',
   '/integrations',
   '/docs',
+  '/join/',
 ]
 
 function isPublicRoute(pathname: string): boolean {

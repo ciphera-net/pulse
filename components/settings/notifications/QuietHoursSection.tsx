@@ -1,4 +1,5 @@
 'use client'
+import { Button, Input } from '@ciphera-net/ui'
 import type { Preferences } from '@/lib/api/notifications-preferences'
 
 interface Props {
@@ -13,29 +14,27 @@ export default function QuietHoursSection({ prefs, onChange }: Props) {
         Non-critical emails suppressed during these hours. Billing and security alerts always deliver.
       </p>
       <div className="flex items-center gap-3 text-sm">
-        <input
+        <Input
           type="time"
           value={prefs.quiet_hours_start ?? ''}
           onChange={e => onChange({ ...prefs, quiet_hours_start: e.target.value || null })}
-          className="bg-white/5 border border-white/10 rounded px-3 py-1.5 text-white focus:border-brand-orange focus:outline-none"
           aria-label="Quiet hours start"
         />
         <span className="text-neutral-500">to</span>
-        <input
+        <Input
           type="time"
           value={prefs.quiet_hours_end ?? ''}
           onChange={e => onChange({ ...prefs, quiet_hours_end: e.target.value || null })}
-          className="bg-white/5 border border-white/10 rounded px-3 py-1.5 text-white focus:border-brand-orange focus:outline-none"
           aria-label="Quiet hours end"
         />
         {(prefs.quiet_hours_start || prefs.quiet_hours_end) && (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => onChange({ ...prefs, quiet_hours_start: null, quiet_hours_end: null })}
-            className="text-xs text-neutral-400 hover:text-white"
           >
             Clear
-          </button>
+          </Button>
         )}
       </div>
     </div>

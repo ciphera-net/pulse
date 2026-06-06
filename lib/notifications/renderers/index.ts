@@ -27,17 +27,17 @@ export interface Resolvers {
 
 type Renderer = (r: Receipt, resolvers?: Resolvers) => Rendered
 
-const registry: Partial<Record<NotificationType, Renderer>> = {
+const registry = {
   ...billingRenderers,
   ...uptimeRenderers,
   ...securityRenderers,
   ...siteRenderers,
   ...teamRenderers,
   ...systemRenderers,
-}
+} satisfies Record<NotificationType, Renderer>
 
 export function renderNotification(r: Receipt, resolvers?: Resolvers): Rendered {
-  const renderer = registry[r.event.type]
+  const renderer = registry[r.event.type as NotificationType]
   if (!renderer) {
     return { title: r.event.type, body: '', linkLabel: null }
   }

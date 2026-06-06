@@ -19,14 +19,27 @@ export interface OrganizationMember {
   user_email?: string
 }
 
-export interface OrganizationInvitation {
+export interface InviteLink {
   id: string
   organization_id: string
-  email: string
-  role: 'owner' | 'admin' | 'member'
-  invited_by: string
+  name: string
+  role: string
+  metadata?: { app?: string; role_id?: string; site_ids?: string[] }
+  max_uses: number | null
+  use_count: number
   expires_at: string
+  created_by: string
   created_at: string
+  code?: string
+  url?: string
+}
+
+export interface InviteLinkInfo {
+  organization_name: string
+  organization_id: string
+  role: string
+  name: string
+  metadata?: { app?: string; role_id?: string; site_ids?: string[] }
 }
 
 // Create a new organization
@@ -93,34 +106,36 @@ export async function removeOrganizationMember(organizationId: string, userId: s
   })
 }
 
-// Send an invitation
-export async function sendInvitation(
-  organizationId: string, 
-  email: string, 
-  role: string = 'member',
-  captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
-): Promise<OrganizationInvitation> {
-  const body: Record<string, string> = { email, role }
-
-  if (captcha?.captcha_id) body.captcha_id = captcha.captcha_id
-  if (captcha?.captcha_solution) body.captcha_solution = captcha.captcha_solution
-  if (captcha?.captcha_token) body.captcha_token = captcha.captcha_token
-  
-  return await authFetch<OrganizationInvitation>(`/auth/organizations/${organizationId}/invites`, {
+// Transfer ownership of an organization to another member.
+// After a successful transfer the caller becomes a regular member.
+export async function transferOwnership(organizationId: string, targetUserId: string): Promise<void> {
+  await authFetch(`/auth/organizations/${organizationId}/transfer-ownership`, {
     method: 'POST',
-    body: JSON.stringify(body),
+    body: JSON.stringify({ target_user_id: targetUserId }),
   })
 }
 
-// List invitations
-export async function getInvitations(organizationId: string): Promise<OrganizationInvitation[]> {
-  const data = await authFetch<{ invitations: OrganizationInvitation[] }>(`/auth/organizations/${organizationId}/invites`)
-  return data.invitations || []
+export async function createInviteLink(
+  orgId: string,
+  params: { name: string; role: string; metadata?: object; max_uses?: number; expires_in: string }
+): Promise<InviteLink> {
+  return await authFetch<InviteLink>(`/auth/organizations/${orgId}/invite-links`, {
+    method: 'POST',
+    body: JSON.stringify(params),
+  })
 }
 
-// Revoke invitation
-export async function revokeInvitation(organizationId: string, inviteId: string): Promise<void> {
-  await authFetch(`/auth/organizations/${organizationId}/invites/${inviteId}`, {
-    method: 'DELETE',
+export async function getInviteLinks(orgId: string): Promise<InviteLink[]> {
+  const data = await authFetch<{ invite_links: InviteLink[] }>(`/auth/organizations/${orgId}/invite-links`)
+  return data.invite_links ?? []
+}
+
+export async function revokeInviteLink(orgId: string, linkId: string): Promise<void> {
+  await authFetch(`/auth/organizations/${orgId}/invite-links/${linkId}`, { method: 'DELETE' })
+}
+
+export async function acceptInviteLink(code: string): Promise<{ organization_id: string; metadata?: object }> {
+  return await authFetch<{ organization_id: string; metadata?: object }>(`/auth/invite-links/${code}/accept`, {
+    method: 'POST',
   })
 }

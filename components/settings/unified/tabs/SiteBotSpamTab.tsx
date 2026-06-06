@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Toggle, toast, Spinner, getDateRange } from '@ciphera-net/ui'
+import { Button, Checkbox, Toggle, toast, Spinner, getDateRange, getAuthErrorMessage } from '@ciphera-net/ui'
 import { ShieldCheck, Shield } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useSite, useQuarantineStats, useSessions, useSiteDomainReputation } from '@/lib/swr/dashboard'
@@ -9,8 +9,10 @@ import { updateSite } from '@/lib/api/sites'
 import { quarantineSessions, restoreSessions, createDomainOverride, deleteDomainOverride } from '@/lib/api/quarantine'
 import SettingsSections from '@/components/settings/SettingsSections'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
+import { useCan } from '@/lib/auth/permissions'
 
-export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }: { siteId: string; onDirtyChange?: (dirty: boolean) => void; onRegisterSave?: (fn: () => Promise<void>) => void }) {
+export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
+  const canManage = useCan('quarantine.manage')
   const { data: site, mutate } = useSite(siteId)
   const { data: botStats, mutate: mutateBotStats } = useQuarantineStats(siteId)
   const { data: domainReputation, mutate: mutateDomains } = useSiteDomainReputation(siteId)
@@ -38,10 +40,6 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
     ? filterBots !== initialFilterRef.current
     : false
 
-  useEffect(() => {
-    onDirtyChange?.(isDirty)
-  }, [isDirty, onDirtyChange])
-
   const handleDiscard = () => {
     if (initialFilterRef.current === null) return
     setFilterBots(initialFilterRef.current)
@@ -49,19 +47,14 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
 
   const handleSave = useCallback(async () => {
     try {
-      await updateSite(siteId, { name: site?.name || '', filter_bots: filterBots })
-      await mutate()
+      await updateSite(siteId, { name: site!.name, filter_bots: filterBots })
       initialFilterRef.current = filterBots
-      onDirtyChange?.(false)
+      await mutate()
       toast.success('Bot filtering updated')
-    } catch {
-      toast.error('Failed to save')
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to save settings')
     }
-  }, [siteId, site?.name, filterBots, mutate, onDirtyChange])
-
-  useEffect(() => {
-    onRegisterSave?.(handleSave)
-  }, [handleSave, onRegisterSave])
+  }, [siteId, filterBots, mutate])
 
   const handleBotFilter = async (sessionIds: string[]) => {
     try {
@@ -70,8 +63,8 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
       setSelectedSessions(new Set())
       mutateSessions()
       mutateBotStats()
-    } catch {
-      toast.error('Failed to flag sessions')
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to flag sessions')
     }
   }
 
@@ -82,8 +75,8 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
       setSelectedSessions(new Set())
       mutateSessions()
       mutateBotStats()
-    } catch {
-      toast.error('Failed to unblock sessions')
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to unblock sessions')
     }
   }
 
@@ -111,7 +104,7 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
             <p className="text-xs text-neutral-500">Filter known bots, crawlers, referrer spam, and suspicious traffic.</p>
           </div>
         </div>
-        <Toggle checked={filterBots} onChange={() => setFilterBots(p => !p)} />
+        <Toggle checked={filterBots} onChange={() => setFilterBots(p => !p)} disabled={!canManage} />
       </div>
 
       {/* Stats */}
@@ -135,21 +128,23 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
       {/* Session Review */}
       <div id="section-sessions" className="space-y-3 pt-6 border-t border-neutral-800">
         <div className="flex items-center justify-between">
-          <h4 className="text-sm font-medium text-neutral-300">Session Review</h4>
+          <h4 className="text-sm font-semibold text-white mb-2">Session Review</h4>
           {/* Review/Blocked toggle */}
-          <div className="flex items-center rounded-lg border border-neutral-700 overflow-hidden text-sm">
-            <button
+          <div className="flex items-center gap-1">
+            <Button
+              variant={botView === 'review' ? 'primary' : 'ghost'}
+              size="sm"
               onClick={() => { setBotView('review'); setSelectedSessions(new Set()) }}
-              className={`px-3 py-1.5 text-xs font-medium transition-colors ${botView === 'review' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'} ease-apple`}
             >
               Suspicious
-            </button>
-            <button
+            </Button>
+            <Button
+              variant={botView === 'blocked' ? 'primary' : 'ghost'}
+              size="sm"
               onClick={() => { setBotView('blocked'); setSelectedSessions(new Set()) }}
-              className={`px-3 py-1.5 text-xs font-medium transition-colors ${botView === 'blocked' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'} ease-apple`}
             >
               Quarantined
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -169,11 +164,11 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
           <div className="flex items-center gap-3 p-2 bg-brand-orange/10 border border-brand-orange/20 rounded-lg text-sm">
             <span className="text-neutral-300">{selectedSessions.size} selected</span>
             {botView === 'review' ? (
-              <button onClick={() => handleBotFilter(Array.from(selectedSessions))} className="text-red-400 hover:text-red-300 font-medium">Flag as bot</button>
+              <Button variant="secondary" size="sm" onClick={() => handleBotFilter(Array.from(selectedSessions))} disabled={!canManage} className="text-red-400 border-red-900/50 hover:bg-red-900/20">Flag as bot</Button>
             ) : (
-              <button onClick={() => handleBotUnfilter(Array.from(selectedSessions))} className="text-green-400 hover:text-green-300 font-medium">Unblock</button>
+              <Button variant="secondary" size="sm" onClick={() => handleBotUnfilter(Array.from(selectedSessions))} disabled={!canManage}>Unblock</Button>
             )}
-            <button onClick={() => setSelectedSessions(new Set())} className="text-neutral-500 hover:text-neutral-300 ml-auto">Clear</button>
+            <Button variant="secondary" size="sm" onClick={() => setSelectedSessions(new Set())} className="ml-auto">Clear</Button>
           </div>
         )}
 
@@ -183,16 +178,13 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
             .filter(s => botView === 'blocked' ? s.quarantined : !s.quarantined)
             .map(session => (
               <div key={session.session_id} className="flex items-center gap-3 p-3 rounded-xl border border-neutral-800 hover:bg-neutral-800/40 hover:border-neutral-700 transition-colors ease-apple">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={selectedSessions.has(session.session_id)}
-                  onChange={e => {
+                  onCheckedChange={(checked) => {
                     const next = new Set(selectedSessions)
-                    e.target.checked ? next.add(session.session_id) : next.delete(session.session_id)
+                    checked ? next.add(session.session_id) : next.delete(session.session_id)
                     setSelectedSessions(next)
                   }}
-                  className="w-4 h-4 shrink-0 cursor-pointer"
-                  style={{ accentColor: '#FD5E0F' }}
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -215,16 +207,15 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
                     <span>{session.referrer || 'Direct'}</span>
                   </div>
                 </div>
-                <button
+                <Button
+                  variant="secondary"
+                  size="sm"
                   onClick={() => botView === 'review' ? handleBotFilter([session.session_id]) : handleBotUnfilter([session.session_id])}
-                  className={`shrink-0 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
-                    botView === 'review'
-                      ? 'text-red-400 border-red-500/20 hover:bg-red-900/20'
-                      : 'text-green-400 border-green-500/20 hover:bg-green-900/20'
-                  } ease-apple`}
+                  disabled={!canManage}
+                  className={`shrink-0 ${botView === 'review' ? 'text-red-400 border-red-900/50 hover:bg-red-900/20' : ''}`}
                 >
                   {botView === 'review' ? 'Flag as bot' : 'Unblock'}
-                </button>
+                </Button>
               </div>
             ))}
           {(!sessions || sessions.filter(s => botView === 'blocked' ? s.quarantined : !s.quarantined).length === 0) && (
@@ -232,7 +223,7 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
               title={botView === 'blocked' ? 'No quarantined sessions' : 'No suspicious sessions found'}
               description={botView === 'blocked' ? 'Suspicious and blocked sessions will appear here once traffic flows through your site.' : undefined}
               icon={<Shield weight="regular" />}
-              className="py-4"
+              className="py-8"
             />
           )}
         </div>
@@ -240,7 +231,7 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
 
       {/* Domain Reputation */}
       <div id="section-reputation" className="space-y-3 pt-6 border-t border-neutral-800">
-        <h4 className="text-sm font-medium text-neutral-300">Domain Reputation</h4>
+        <h4 className="text-sm font-semibold text-white mb-2">Domain Reputation</h4>
         <p className="text-xs text-neutral-500">Referrer domains seen on your site and their global reputation. Override to allow or block specific domains.</p>
 
         <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -276,51 +267,51 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
                 </div>
               </div>
               <div className="flex gap-1.5 shrink-0">
-                <button
+                <Button
+                  variant="secondary"
+                  size="sm"
                   onClick={async () => {
                     try {
                       await createDomainOverride(siteId, domain.domain, 'allow')
                       toast.success(`${domain.domain} allowed`)
                       mutateDomains()
-                    } catch { toast.error('Failed') }
+                    } catch (err) { toast.error(getAuthErrorMessage(err as Error) || 'Failed to update domain') }
                   }}
-                  className={`px-2.5 py-1 text-xs rounded-lg border transition-colors ${
-                    domain.override === 'allow'
-                      ? 'bg-green-900/20 text-green-400 border-green-500/30'
-                      : 'text-neutral-400 border-neutral-700 hover:text-green-400 hover:border-green-500/30'
-                  } ease-apple`}
+                  disabled={!canManage}
+                  className={domain.override === 'allow' ? 'bg-green-900/20 text-green-400 border-green-500/30' : ''}
                 >
                   Allow
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
                   onClick={async () => {
                     try {
                       await createDomainOverride(siteId, domain.domain, 'quarantine')
                       toast.success(`${domain.domain} quarantined`)
                       mutateDomains()
-                    } catch { toast.error('Failed') }
+                    } catch (err) { toast.error(getAuthErrorMessage(err as Error) || 'Failed to quarantine domain') }
                   }}
-                  className={`px-2.5 py-1 text-xs rounded-lg border transition-colors ${
-                    domain.override === 'quarantine'
-                      ? 'bg-red-900/20 text-red-400 border-red-500/30'
-                      : 'text-neutral-400 border-neutral-700 hover:text-red-400 hover:border-red-500/30'
-                  } ease-apple`}
+                  disabled={!canManage}
+                  className={`text-red-400 border-red-900/50 hover:bg-red-900/20${domain.override === 'quarantine' ? ' bg-red-900/20' : ''}`}
                 >
                   Block
-                </button>
+                </Button>
                 {domain.override && (
-                  <button
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     onClick={async () => {
                       try {
                         await deleteDomainOverride(siteId, domain.domain)
                         toast.success('Override removed')
                         mutateDomains()
-                      } catch { toast.error('Failed') }
+                      } catch (err) { toast.error(getAuthErrorMessage(err as Error) || 'Failed to reset override') }
                     }}
-                    className="px-2.5 py-1 text-xs rounded-lg border border-neutral-700 text-neutral-400 hover:text-white transition-colors ease-apple"
+                    disabled={!canManage}
                   >
                     Reset
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
@@ -330,17 +321,19 @@ export default function SiteBotSpamTab({ siteId, onDirtyChange, onRegisterSave }
               title="No domain data yet"
               description="Referrer domain reputation scores will appear once traffic flows through your site."
               icon={<Shield weight="regular" />}
-              className="py-4"
+              className="py-8"
             />
           )}
         </div>
       </div>
 
-      <SettingsSaveBar
-        isDirty={isDirty}
-        onSave={handleSave}
-        onDiscard={handleDiscard}
-      />
+      {canManage && (
+        <SettingsSaveBar
+          isDirty={isDirty}
+          onSave={handleSave}
+          onDiscard={handleDiscard}
+        />
+      )}
     </div>
   )
 }

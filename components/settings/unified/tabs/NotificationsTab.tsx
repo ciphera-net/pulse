@@ -3,15 +3,14 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { SPRING } from '@/lib/motion'
-import { useAuth } from '@/lib/auth/context'
+import { useCan } from '@/lib/auth/permissions'
 import MyPreferencesTab from '@/components/settings/notifications/MyPreferencesTab'
 import WorkspaceNotificationsTab from '@/components/settings/notifications/WorkspaceNotificationsTab'
 
 type Sub = 'mine' | 'workspace'
 
 export default function NotificationsTab() {
-  const { user } = useAuth()
-  const isAdminOrOwner = user?.role === 'owner' || user?.role === 'admin'
+  const isAdminOrOwner = useCan('notification_settings.manage')
   const [sub, setSub] = useState<Sub>('mine')
 
   return (

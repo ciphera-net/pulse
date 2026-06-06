@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Input, toast, Spinner } from '@ciphera-net/ui'
+import { Button, Input, toast, Spinner } from '@ciphera-net/ui'
 import { useAuth } from '@/lib/auth/context'
 import { updateDisplayName } from '@/lib/api/user'
 import { deleteAccount } from '@/lib/api/user'
@@ -9,7 +9,7 @@ import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { DangerZone } from '@/components/settings/unified/DangerZone'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 
-export default function AccountProfileTab({ onDirtyChange, onRegisterSave }: { onDirtyChange?: (dirty: boolean) => void; onRegisterSave?: (fn: () => Promise<void>) => void }) {
+export default function AccountProfileTab() {
   const { user, refresh, logout } = useAuth()
   const [displayName, setDisplayName] = useState('')
   const initialRef = useRef('')
@@ -31,10 +31,6 @@ export default function AccountProfileTab({ onDirtyChange, onRegisterSave }: { o
     ? displayName !== initialRef.current
     : false
 
-  useEffect(() => {
-    onDirtyChange?.(isDirty)
-  }, [isDirty, onDirtyChange])
-
   const handleDiscard = () => {
     setDisplayName(initialRef.current)
   }
@@ -42,18 +38,13 @@ export default function AccountProfileTab({ onDirtyChange, onRegisterSave }: { o
   const handleSave = useCallback(async () => {
     try {
       await updateDisplayName(displayName.trim())
-      await refresh()
       initialRef.current = displayName.trim()
-      onDirtyChange?.(false)
+      await refresh()
       toast.success('Profile updated')
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to update profile')
     }
-  }, [displayName, refresh, onDirtyChange])
-
-  useEffect(() => {
-    onRegisterSave?.(handleSave)
-  }, [handleSave, onRegisterSave])
+  }, [displayName, refresh])
 
   const handleDelete = async () => {
     if (deleteText !== 'DELETE' || !deletePassword) return
@@ -79,7 +70,7 @@ export default function AccountProfileTab({ onDirtyChange, onRegisterSave }: { o
       {/* Display Name */}
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-neutral-300 mb-1.5">Display Name</label>
+          <label className="block text-xs font-medium text-neutral-400 mb-1.5">Display Name</label>
           <Input
             value={displayName}
             onChange={e => setDisplayName(e.target.value)}
@@ -88,7 +79,7 @@ export default function AccountProfileTab({ onDirtyChange, onRegisterSave }: { o
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-neutral-300 mb-1.5">Email Address</label>
+          <label className="block text-xs font-medium text-neutral-400 mb-1.5">Email Address</label>
           <Input value={user.email} disabled className="opacity-60" />
           <p className="text-xs text-neutral-500 mt-1">Email changes require password verification. Use <a href="https://id.ciphera.net/settings" target="_blank" rel="noopener noreferrer" className="text-brand-orange hover:underline">Ciphera ID</a> to change your email.</p>
         </div>
@@ -102,7 +93,10 @@ export default function AccountProfileTab({ onDirtyChange, onRegisterSave }: { o
             description: 'Permanently delete your account and all associated data.',
             buttonLabel: 'Delete',
             variant: 'solid',
-            onClick: () => setShowDeleteConfirm(prev => !prev),
+            onClick: () => setShowDeleteConfirm(prev => {
+              if (prev) { setDeleteText(''); setDeletePassword('') }
+              return !prev
+            }),
           },
         ]}
       />
@@ -116,7 +110,7 @@ export default function AccountProfileTab({ onDirtyChange, onRegisterSave }: { o
             <li>You will be removed from all organizations</li>
           </ul>
           <div>
-            <label className="block text-xs text-neutral-400 mb-1">Your password</label>
+            <label className="block text-xs font-medium text-neutral-400 mb-1">Your password</label>
             <Input
               type="password"
               value={deletePassword}
@@ -125,7 +119,7 @@ export default function AccountProfileTab({ onDirtyChange, onRegisterSave }: { o
             />
           </div>
           <div>
-            <label className="block text-xs text-neutral-400 mb-1">Type DELETE to confirm</label>
+            <label className="block text-xs font-medium text-neutral-400 mb-1">Type DELETE to confirm</label>
             <Input
               type="text"
               value={deleteText}
@@ -134,16 +128,20 @@ export default function AccountProfileTab({ onDirtyChange, onRegisterSave }: { o
             />
           </div>
           <div className="flex gap-2">
-            <button
+            <Button
+              variant="secondary"
+              className="bg-red-600 hover:bg-red-700 text-white border-red-600"
               onClick={handleDelete}
               disabled={deleteText !== 'DELETE' || !deletePassword || deleting}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium disabled:opacity-50"
             >
               {deleting ? 'Deleting...' : 'Delete Account'}
-            </button>
-            <button onClick={() => { setShowDeleteConfirm(false); setDeleteText(''); setDeletePassword('') }} className="px-4 py-2 text-neutral-400 hover:text-white text-sm">
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => { setShowDeleteConfirm(false); setDeleteText(''); setDeletePassword('') }}
+            >
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       )}

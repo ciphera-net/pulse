@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Spinner, Input, Button } from '@ciphera-net/ui'
+import { Spinner, Input, Button, Select, getAuthErrorMessage } from '@ciphera-net/ui'
 import { ListChecks } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useAuth } from '@/lib/auth/context'
+import { useCan } from '@/lib/auth/permissions'
 import { getAuditLog, type AuditLogEntry } from '@/lib/api/audit'
 import { formatDateTimeShort } from '@/lib/utils/formatDate'
 
@@ -36,8 +37,11 @@ const PAGE_SIZE = 20
 
 export default function WorkspaceAuditTab() {
   const { user } = useAuth()
+  const canView = useCan('audit.view')
   const [entries, setEntries] = useState<AuditLogEntry[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
   const [actionFilter, setActionFilter] = useState('')
@@ -47,6 +51,7 @@ export default function WorkspaceAuditTab() {
   useEffect(() => {
     if (!user?.org_id) return
     setLoading(true)
+    setError(null)
     getAuditLog({
       limit: PAGE_SIZE,
       offset: (page - 1) * PAGE_SIZE,
@@ -58,9 +63,21 @@ export default function WorkspaceAuditTab() {
         setEntries(data.entries)
         setTotal(data.total)
       })
-      .catch(() => {})
+      .catch((err) => {
+        setError(getAuthErrorMessage(err as Error) || 'Failed to load audit log')
+        setLoading(false)
+      })
       .finally(() => setLoading(false))
-  }, [user?.org_id, page, actionFilter, startDate, endDate])
+  }, [user?.org_id, page, actionFilter, startDate, endDate, retryCount])
+
+  if (error) {
+    return (
+      <div className="rounded-xl border border-red-900/50 bg-red-950/20 p-6 text-center">
+        <p className="text-red-400 text-sm mb-4">{error}</p>
+        <Button variant="secondary" onClick={() => { setError(null); setRetryCount(c => c + 1) }}>Retry</Button>
+      </div>
+    )
+  }
 
   if (loading) return <div className="flex items-center justify-center py-12"><Spinner className="w-6 h-6 text-neutral-500" /></div>
 
@@ -73,16 +90,19 @@ export default function WorkspaceAuditTab() {
 
       <div className="flex flex-wrap gap-2 items-end">
         <div>
-          <label className="block text-xs text-neutral-500 mb-1">Action</label>
-          <Input
+          <label className="block text-xs font-medium text-neutral-400 mb-1">Action</label>
+          <Select
+            variant="input"
             value={actionFilter}
-            onChange={e => { setActionFilter(e.target.value); setPage(1) }}
-            placeholder="e.g. site_created"
-            className="w-40"
+            onChange={(val) => { setActionFilter(val); setPage(1) }}
+            options={[
+              { value: '', label: 'All actions' },
+              ...Object.entries(ACTION_LABELS).map(([value, label]) => ({ value, label })),
+            ]}
           />
         </div>
         <div>
-          <label className="block text-xs text-neutral-500 mb-1">From</label>
+          <label className="block text-xs font-medium text-neutral-400 mb-1">From</label>
           <Input
             type="date"
             value={startDate}
@@ -90,7 +110,7 @@ export default function WorkspaceAuditTab() {
           />
         </div>
         <div>
-          <label className="block text-xs text-neutral-500 mb-1">To</label>
+          <label className="block text-xs font-medium text-neutral-400 mb-1">To</label>
           <Input
             type="date"
             value={endDate}

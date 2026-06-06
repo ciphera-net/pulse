@@ -1,4 +1,4 @@
-import { TrendUp, TrendDown } from '@phosphor-icons/react'
+import { TrendUp, TrendDown, ChartLineDown, ChartLineUp } from '@phosphor-icons/react'
 import type { Receipt } from '@/lib/notifications/types'
 import type { Rendered, Resolvers } from './index'
 
@@ -51,14 +51,45 @@ export const siteRenderers = {
     }
   },
   site_content_decay: (r: Receipt, resolvers?: Resolvers): Rendered => {
-    const p = r.event.payload as { site_id: string; domain: string; pages: Array<{ path: string; decay_pct: number }> }
+    const p = r.event.payload as { site_id: string; domain: string; pages: Array<{ path: string; peak_views: number; current_views: number; decay_pct: number }> }
     const name = resolvers?.resolveSiteName?.(p.site_id) ?? p.domain
-    const topPath = p.pages?.[0]?.path ?? ''
+    const count = p.pages?.length ?? 0
+    const countLabel = count === 1 ? '1 page is' : `${count} pages are`
+    const top = p.pages?.[0]
+    const topDetail = top
+      ? ` ${top.path} is down ${top.decay_pct}% (${top.current_views.toLocaleString()} vs ${top.peak_views.toLocaleString()} peak views).`
+      : ''
     return {
       icon: <TrendDown className="w-5 h-5" />,
       title: `Content decay on ${name}`,
-      body: `${p.pages?.length ?? 0} pages losing traffic. ${topPath} down ${p.pages?.[0]?.decay_pct ?? 0}%.`,
+      body: `${countLabel} losing traffic.${topDetail}`,
       linkLabel: 'View details',
+    }
+  },
+  site_pagespeed_drop: (r: Receipt, _resolvers?: Resolvers): Rendered => {
+    const p = r.event.payload as { site_id: string; category_slug: string; score_before: number; score_after: number }
+    const category = p.category_slug
+      .split('_')
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ')
+    return {
+      icon: <ChartLineDown className="w-5 h-5" />,
+      title: 'PageSpeed score dropped',
+      body: `${category} score fell from ${p.score_before} to ${p.score_after}.`,
+      linkLabel: 'View PageSpeed',
+    }
+  },
+  site_pagespeed_recovered: (r: Receipt, _resolvers?: Resolvers): Rendered => {
+    const p = r.event.payload as { site_id: string; category_slug: string; score_before: number; score_after: number }
+    const category = p.category_slug
+      .split('_')
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ')
+    return {
+      icon: <ChartLineUp className="w-5 h-5" />,
+      title: 'PageSpeed score recovered',
+      body: `${category} score improved from ${p.score_before} to ${p.score_after}.`,
+      linkLabel: 'View PageSpeed',
     }
   },
 }

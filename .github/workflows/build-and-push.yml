@@ -102,6 +102,7 @@ jobs:
             type=raw,value=latest
 
       - name: Build and push
+        id: build
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -192,7 +193,11 @@ jobs:
           JOB_ID="${{ steps.target.outputs.nomad_job_id }}"
           JOB=$(curl -sf -H "X-Nomad-Token: $NOMAD_TOKEN" \
             http://127.0.0.1:4646/v1/job/$JOB_ID)
-          echo "$JOB" | jq ".Meta.deploy_sha = \"$DEPLOY_SHA\"" > /tmp/job.json
+          echo "$JOB" | jq "
+            .Meta.deploy_sha = \"$DEPLOY_SHA\" |
+            .TaskGroups[0].Tasks[0].Config.image = \"${{ env.REGISTRY }}/${{ steps.target.outputs.image_name }}@${{ steps.build.outputs.digest }}\" |
+            .TaskGroups[0].Tasks[0].Config.force_pull = true
+          " > /tmp/job.json
           curl -fsS -X POST \
             -H "X-Nomad-Token: $NOMAD_TOKEN" \
             -H "Content-Type: application/json" \

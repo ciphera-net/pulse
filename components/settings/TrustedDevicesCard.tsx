@@ -3,9 +3,10 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/lib/auth/context'
 import { getUserDevices, removeDevice, type TrustedDevice } from '@/lib/api/devices'
-import { Spinner, toast } from '@ciphera-net/ui'
+import { Button, Spinner, toast, getAuthErrorMessage } from '@ciphera-net/ui'
 import { Laptop } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { formatRelativeTime, formatDateTimeFull } from '@/lib/utils/formatDate'
 
 function getDeviceIcon(hint: string): string {
@@ -22,6 +23,7 @@ export default function TrustedDevicesCard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [removingId, setRemovingId] = useState<string | null>(null)
+  const [confirmDevice, setConfirmDevice] = useState<TrustedDevice | null>(null)
 
   const fetchDevices = useCallback(async () => {
     try {
@@ -50,7 +52,7 @@ export default function TrustedDevicesCard() {
       setDevices(prev => prev.filter(d => d.id !== device.id))
       toast.success('Device removed. A new sign-in from it will trigger an alert.')
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to remove device')
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to remove device')
     } finally {
       setRemovingId(null)
     }
@@ -58,7 +60,7 @@ export default function TrustedDevicesCard() {
 
   return (
     <div>
-      <h2 className="text-xl font-semibold text-white mb-1">Trusted Devices</h2>
+      <h2 className="text-base font-semibold text-white mb-1">Trusted Devices</h2>
       <p className="text-neutral-400 text-sm mb-6">
         Devices that have signed in to your account. Removing a device means the next sign-in from it will trigger a new device alert.
       </p>
@@ -80,11 +82,11 @@ export default function TrustedDevicesCard() {
           />
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
           {devices.map((device) => (
             <div
               key={device.id}
-              className="glass-surface flex items-center gap-3 rounded-xl px-4 py-3"
+              className="flex items-center gap-3 px-4 py-3 group"
             >
               <div className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center bg-neutral-800 text-neutral-400">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
@@ -115,19 +117,34 @@ export default function TrustedDevicesCard() {
               </div>
 
               {!device.is_current && (
-                <button
-                  type="button"
-                  onClick={() => handleRemove(device)}
-                  disabled={removingId === device.id}
-                  className="flex-shrink-0 text-xs font-medium text-red-400 hover:text-red-300 transition-colors disabled:opacity-50 ease-apple"
-                >
-                  {removingId === device.id ? 'Removing...' : 'Remove'}
-                </button>
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity ease-apple">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="flex-shrink-0 text-red-400 hover:text-red-300"
+                    onClick={() => setConfirmDevice(device)}
+                    disabled={removingId === device.id}
+                  >
+                    {removingId === device.id ? 'Removing...' : 'Remove'}
+                  </Button>
+                </div>
               )}
             </div>
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmDevice !== null}
+        onOpenChange={(open) => { if (!open) setConfirmDevice(null) }}
+        title="Remove device"
+        description="A new sign-in from this device will trigger a security alert."
+        confirmLabel="Remove"
+        variant="danger"
+        onConfirm={async () => {
+          if (confirmDevice) await handleRemove(confirmDevice)
+        }}
+      />
     </div>
   )
 }

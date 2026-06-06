@@ -29,15 +29,14 @@ export default function TransparencyBanner() {
         </svg>
       </span>
       <div className="flex-1">
-        <strong className="text-white">Your notification history is scoped to your account.</strong>{' '}
-        Read items purge in 3–90 days depending on type. Dismiss permanently deletes your copy.{' '}
+        Your notifications are private to you and automatically cleaned up over time.{' '}
         <a
           href="https://ciphera.net/blog/what-we-see-about-you-what-we-dont"
           className="text-brand-orange underline underline-offset-2"
           target="_blank"
           rel="noopener noreferrer"
         >
-          See what we store ↗
+          Learn more ↗
         </a>
       </div>
       <button

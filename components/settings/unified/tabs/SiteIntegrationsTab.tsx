@@ -8,6 +8,8 @@ import { disconnectGSC, getGSCAuthURL } from '@/lib/api/gsc'
 import { disconnectBunny, getBunnyPullZones, connectBunny, type BunnyPullZone } from '@/lib/api/bunny'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
 import { formatDateTime } from '@/lib/utils/formatDate'
+import { useCan } from '@/lib/auth/permissions'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 function GoogleIcon() {
   return (
@@ -54,6 +56,7 @@ function IntegrationCard({
   onConnect,
   onDisconnect,
   connectLabel = 'Connect',
+  canManage = true,
   children,
 }: {
   icon: React.ReactNode
@@ -64,6 +67,7 @@ function IntegrationCard({
   onConnect: () => void
   onDisconnect: () => void
   connectLabel?: string
+  canManage?: boolean
   children?: React.ReactNode
 }) {
   return (
@@ -84,7 +88,7 @@ function IntegrationCard({
             <p className="text-xs text-neutral-400">{detail || description}</p>
           </div>
         </div>
-        {connected ? (
+        {canManage && (connected ? (
           <Button onClick={onDisconnect} variant="secondary" className="text-sm text-red-400 border-red-900/50 hover:bg-red-900/20 gap-1.5">
             <LinkBreak weight="bold" className="w-3.5 h-3.5" /> Disconnect
           </Button>
@@ -92,7 +96,7 @@ function IntegrationCard({
           <Button onClick={onConnect} variant="primary" className="text-sm gap-1.5">
             <Plugs weight="bold" className="w-3.5 h-3.5" /> {connectLabel}
           </Button>
-        )}
+        ))}
       </div>
       {children}
     </div>
@@ -105,27 +109,6 @@ function SecurityNote({ text }: { text: string }) {
       <ShieldCheck weight="bold" className="w-4 h-4 text-neutral-400 mt-0.5 shrink-0" />
       <p className="text-xs text-neutral-400 leading-relaxed">{text}</p>
     </div>
-  )
-}
-
-function StatusDot({ status }: { status?: string }) {
-  const color =
-    status === 'active' ? 'bg-green-400' :
-    status === 'syncing' ? 'bg-yellow-400 animate-pulse' :
-    status === 'error' ? 'bg-red-400' :
-    'bg-neutral-500'
-
-  const label =
-    status === 'active' ? 'Connected' :
-    status === 'syncing' ? 'Syncing' :
-    status === 'error' ? 'Error' :
-    'Unknown'
-
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <span className={`w-2 h-2 rounded-full ${color}`} />
-      <span className="text-sm text-white">{label}</span>
-    </span>
   )
 }
 
@@ -262,9 +245,11 @@ function BunnySetupForm({ siteId, onConnected }: { siteId: string; onConnected: 
 }
 
 export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
+  const canManage = useCan('integrations.manage')
   const { data: gscStatus, isLoading: gscLoading, mutate: mutateGSC } = useGSCStatus(siteId)
   const { data: bunnyStatus, isLoading: bunnyLoading, mutate: mutateBunny } = useBunnyStatus(siteId)
   const [showBunnySetup, setShowBunnySetup] = useState(false)
+  const [confirmDisconnect, setConfirmDisconnect] = useState<'gsc' | 'bunny' | null>(null)
 
   if (gscLoading || bunnyLoading) {
     return (
@@ -278,36 +263,41 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
     try {
       const data = await getGSCAuthURL(siteId)
       window.open(data.auth_url, '_blank')
+      const handleVisibility = () => {
+        if (document.visibilityState === 'visible') {
+          mutateGSC()
+          document.removeEventListener('visibilitychange', handleVisibility)
+        }
+      }
+      document.addEventListener('visibilitychange', handleVisibility)
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to start Google authorization')
     }
   }
 
-  const handleDisconnectGSC = async () => {
-    if (!confirm('Disconnect Google Search Console? This will remove all synced data.')) return
-    try {
-      await disconnectGSC(siteId)
-      await mutateGSC()
-      toast.success('Google Search Console disconnected')
-    } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to disconnect')
-    }
+  const handleDisconnectGSC = () => {
+    setConfirmDisconnect('gsc')
+  }
+
+  const doDisconnectGSC = async () => {
+    await disconnectGSC(siteId)
+    await mutateGSC()
+    toast.success('Google Search Console disconnected')
   }
 
   const handleConnectBunny = () => {
     setShowBunnySetup(true)
   }
 
-  const handleDisconnectBunny = async () => {
-    if (!confirm('Disconnect BunnyCDN? This will remove all synced CDN data.')) return
-    try {
-      await disconnectBunny(siteId)
-      await mutateBunny()
-      setShowBunnySetup(false)
-      toast.success('BunnyCDN disconnected')
-    } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to disconnect')
-    }
+  const handleDisconnectBunny = () => {
+    setConfirmDisconnect('bunny')
+  }
+
+  const doDisconnectBunny = async () => {
+    await disconnectBunny(siteId)
+    await mutateBunny()
+    setShowBunnySetup(false)
+    toast.success('BunnyCDN disconnected')
   }
 
   const bunnyConnected = bunnyStatus?.connected ?? false
@@ -325,10 +315,10 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
           name="Google Search Console"
           description="View search queries, clicks, impressions, and ranking data."
           connected={gscStatus?.connected ?? false}
-          detail={undefined}
           onConnect={handleConnectGSC}
           onDisconnect={handleDisconnectGSC}
           connectLabel="Connect with Google"
+          canManage={canManage}
         >
           {gscStatus?.connected && <GSCDetails gscStatus={gscStatus} />}
           <SecurityNote text="Pulse only requests read-only access. Your tokens are encrypted at rest." />
@@ -339,9 +329,9 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
           name="BunnyCDN"
           description="Monitor bandwidth, cache hit rates, and CDN performance."
           connected={bunnyConnected}
-          detail={undefined}
           onConnect={handleConnectBunny}
           onDisconnect={handleDisconnectBunny}
+          canManage={canManage}
         >
           {bunnyConnected && (
             <div className="px-4 pb-4 space-y-3">
@@ -366,7 +356,7 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
               )}
             </div>
           )}
-          {!bunnyConnected && showBunnySetup && (
+          {!bunnyConnected && showBunnySetup && canManage && (
             <BunnySetupForm
               siteId={siteId}
               onConnected={() => {
@@ -378,6 +368,26 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
           <SecurityNote text="Your API key is encrypted at rest and only used to fetch read-only statistics." />
         </IntegrationCard>
       </div>
+
+      <ConfirmDialog
+        open={confirmDisconnect === 'gsc'}
+        onOpenChange={(open) => { if (!open) setConfirmDisconnect(null) }}
+        title="Disconnect Google Search Console"
+        description="This will remove all synced search data."
+        confirmLabel="Disconnect"
+        variant="danger"
+        onConfirm={doDisconnectGSC}
+      />
+
+      <ConfirmDialog
+        open={confirmDisconnect === 'bunny'}
+        onOpenChange={(open) => { if (!open) setConfirmDisconnect(null) }}
+        title="Disconnect BunnyCDN"
+        description="This will remove all synced CDN data."
+        confirmLabel="Disconnect"
+        variant="danger"
+        onConfirm={doDisconnectBunny}
+      />
     </div>
   )
 }

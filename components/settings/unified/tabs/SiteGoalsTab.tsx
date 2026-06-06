@@ -1,21 +1,24 @@
 'use client'
 
 import { useState } from 'react'
-import { Input, Button, toast } from '@ciphera-net/ui'
+import { Input, Button, toast, Spinner } from '@ciphera-net/ui'
 import { Plus, Pencil, Trash, X, Target } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { Spinner } from '@ciphera-net/ui'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useGoals } from '@/lib/swr/dashboard'
 import { createGoal, updateGoal, deleteGoal } from '@/lib/api/goals'
 import { getAuthErrorMessage } from '@ciphera-net/ui'
+import { useCan } from '@/lib/auth/permissions'
 
 export default function SiteGoalsTab({ siteId }: { siteId: string }) {
+  const canManageGoals = useCan('goals.manage')
   const { data: goals = [], mutate, isLoading } = useGoals(siteId)
   const [editing, setEditing] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [name, setName] = useState('')
   const [eventName, setEventName] = useState('')
   const [saving, setSaving] = useState(false)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   const startCreate = () => {
     setCreating(true)
@@ -91,7 +94,7 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
           <h3 className="text-base font-semibold text-white mb-1">Goals</h3>
           <p className="text-sm text-neutral-400">Track custom events as conversion goals.</p>
         </div>
-        {!creating && !editing && (
+        {!creating && !editing && canManageGoals && (
           <Button onClick={startCreate} variant="primary" className="text-sm gap-1.5">
             <Plus weight="bold" className="w-3.5 h-3.5" /> Add Goal
           </Button>
@@ -101,7 +104,7 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
       {/* Create/Edit form */}
       {(creating || editing) && (
         <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 p-4 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-neutral-400 mb-1">Display Name</label>
               <Input
@@ -134,39 +137,57 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
         <EmptyState
           title="No goals yet"
           description="Track custom events like signups, purchases, or button clicks."
-          action={{ label: 'Add your first goal', onClick: startCreate }}
+          action={canManageGoals ? { label: 'Add your first goal', onClick: startCreate } : undefined}
           icon={<Target weight="regular" />}
           className="py-8"
         />
       ) : (
-        <div className="space-y-1">
+        <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
           {goals.map(goal => (
             <div
               key={goal.id}
-              className="flex items-center justify-between px-4 py-3 rounded-xl hover:bg-neutral-800/40 transition-colors group ease-apple"
+              className="flex items-center justify-between px-4 py-3 group"
             >
               <div>
                 <p className="text-sm font-medium text-white">{goal.name}</p>
                 <p className="text-xs text-neutral-500 font-mono">{goal.event_name}</p>
               </div>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => startEdit(goal)}
-                  className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors ease-apple"
-                >
-                  <Pencil weight="bold" className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => handleDelete(goal.id)}
-                  className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-red-900/20 transition-colors ease-apple"
-                >
-                  <Trash weight="bold" className="w-3.5 h-3.5" />
-                </button>
-              </div>
+              {canManageGoals && (
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ease-apple">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => startEdit(goal)}
+                  >
+                    <Pencil weight="bold" className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-red-400 hover:text-red-300"
+                    onClick={() => setConfirmDeleteId(goal.id)}
+                  >
+                    <Trash weight="bold" className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              )}
             </div>
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmDeleteId !== null}
+        onOpenChange={(open) => { if (!open) setConfirmDeleteId(null) }}
+        title="Delete goal"
+        description="This goal and all its associated data will be permanently deleted."
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={async () => {
+          if (confirmDeleteId) await handleDelete(confirmDeleteId)
+        }}
+      />
     </div>
   )
 }

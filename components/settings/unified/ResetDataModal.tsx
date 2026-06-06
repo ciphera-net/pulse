@@ -1,11 +1,17 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { createPortal } from 'react-dom'
-import { motion, AnimatePresence } from 'framer-motion'
-import { toast, getAuthErrorMessage, AlertTriangleIcon, XIcon, Spinner } from '@ciphera-net/ui'
+import { Button, Input, toast, getAuthErrorMessage, AlertTriangleIcon, Spinner } from '@ciphera-net/ui'
 import { resetSiteData, type ResetModule } from '@/lib/api/sites'
 import { ChartBar, Path, Funnel, Heartbeat, Gauge, Cloud, MagnifyingGlass } from '@phosphor-icons/react'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
 
 interface ResetModuleOption {
   id: ResetModule
@@ -131,146 +137,129 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
     }
   }
 
-  if (typeof document === 'undefined') return null
-
   const allSelected = selected.size === RESET_MODULES.length
 
-  return createPortal(
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[70] flex items-center justify-center bg-neutral-900/80 backdrop-blur-sm p-4 pointer-events-none"
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen && !isResetting) handleClose()
+      }}
+    >
+      <DialogContent className="sm:max-w-lg border-red-900">
+        <DialogHeader>
+          <DialogTitle className="text-red-500">Reset Data</DialogTitle>
+          <DialogDescription>
+            Select which data modules to permanently delete for{' '}
+            <span className="font-medium text-foreground">{siteDomain}</span>.
+            Configuration and integrations are preserved.
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* Select All */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={toggleAll}
+          disabled={isResetting}
+          className="w-full justify-start text-xs"
         >
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            className="w-full max-w-md bg-neutral-900 p-6 rounded-xl border border-red-900 shadow-xl pointer-events-auto max-h-[90vh] overflow-y-auto"
-          >
-            {/* Header */}
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-red-500">Reset Data</h3>
-              <button
+          {allSelected ? 'Deselect all' : 'Select all'}
+        </Button>
+
+        {/* Module checkboxes */}
+        <div className="space-y-2">
+          {RESET_MODULES.map((mod) => {
+            const Icon = mod.icon
+            const checked = selected.has(mod.id)
+            return (
+              <Button
+                key={mod.id}
+                variant={checked ? 'primary' : 'secondary'}
+                size="sm"
+                onClick={() => toggleModule(mod.id)}
+                disabled={isResetting}
+                className={`w-full flex items-start gap-3 p-3 rounded-xl text-left h-auto ${
+                  checked
+                    ? 'border-red-500/50 bg-red-900/15 hover:bg-red-900/20'
+                    : 'border-neutral-800 bg-neutral-800/30 hover:border-neutral-700'
+                }`}
+              >
+                <div className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                  checked
+                    ? 'border-red-500 bg-red-500'
+                    : 'border-neutral-600'
+                } ease-apple`}>
+                  {checked && (
+                    <svg viewBox="0 0 12 12" className="h-3 w-3 text-white" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M2 6l3 3 5-5" />
+                    </svg>
+                  )}
+                </div>
+                <Icon weight="bold" className={`w-4 h-4 mt-0.5 shrink-0 ${checked ? 'text-red-400' : 'text-neutral-500'}`} />
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-medium ${checked ? 'text-red-300' : 'text-white'}`}>{mod.label}</p>
+                  <p className="text-xs text-neutral-500 mt-0.5">{mod.description}</p>
+                </div>
+              </Button>
+            )
+          })}
+        </div>
+
+        {/* Confirmation */}
+        {selected.size > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 p-3 bg-red-900/10 border border-red-900/20 rounded-lg">
+              <AlertTriangleIcon className="h-4 w-4 text-red-500 shrink-0" />
+              <span className="text-xs font-medium text-red-300">
+                {selected.size === RESET_MODULES.length
+                  ? 'All data modules will be permanently deleted.'
+                  : `${selected.size} module${selected.size > 1 ? 's' : ''} will be permanently deleted.`}
+              </span>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-neutral-300 mb-1">
+                Type <span className="font-mono font-bold text-red-400">{allSelected ? siteDomain : 'RESET'}</span> to confirm
+              </label>
+              <Input
+                type="text"
+                value={confirmInput}
+                onChange={(e) => setConfirmInput(e.target.value)}
+                autoComplete="off"
+                disabled={isResetting}
+                placeholder={allSelected ? siteDomain : 'RESET'}
+              />
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="secondary"
                 onClick={handleClose}
                 disabled={isResetting}
-                className="text-neutral-400 hover:text-white disabled:opacity-50"
+                className="flex-1 sm:flex-none"
               >
-                <XIcon className="w-5 h-5" />
-              </button>
-            </div>
-
-            <p className="text-sm text-neutral-400 mb-4">
-              Select which data modules to permanently delete for <span className="font-medium text-white">{siteDomain}</span>. Configuration and integrations are preserved.
-            </p>
-
-            {/* Select All */}
-            <button
-              type="button"
-              onClick={toggleAll}
-              disabled={isResetting}
-              className="w-full text-left mb-3 text-xs font-medium text-neutral-400 hover:text-white transition-colors disabled:opacity-50 ease-apple"
-            >
-              {allSelected ? 'Deselect all' : 'Select all'}
-            </button>
-
-            {/* Module checkboxes */}
-            <div className="space-y-2 mb-5">
-              {RESET_MODULES.map((mod) => {
-                const Icon = mod.icon
-                const checked = selected.has(mod.id)
-                return (
-                  <button
-                    key={mod.id}
-                    type="button"
-                    onClick={() => toggleModule(mod.id)}
-                    disabled={isResetting}
-                    className={`w-full flex items-start gap-3 p-3 rounded-xl border transition-all text-left disabled:opacity-50 ${
-                      checked
-                        ? 'border-red-500/50 bg-red-900/15'
-                        : 'border-neutral-800 bg-neutral-800/30 hover:border-neutral-700'
-                    } ease-apple`}
-                  >
-                    <div className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
-                      checked
-                        ? 'border-red-500 bg-red-500'
-                        : 'border-neutral-600'
-                    } ease-apple`}>
-                      {checked && (
-                        <svg viewBox="0 0 12 12" className="h-3 w-3 text-white" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M2 6l3 3 5-5" />
-                        </svg>
-                      )}
-                    </div>
-                    <Icon weight="bold" className={`w-4 h-4 mt-0.5 shrink-0 ${checked ? 'text-red-400' : 'text-neutral-500'}`} />
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-medium ${checked ? 'text-red-300' : 'text-white'}`}>{mod.label}</p>
-                      <p className="text-xs text-neutral-500 mt-0.5">{mod.description}</p>
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-
-            {/* Confirmation */}
-            {selected.size > 0 && (
-              <div className="space-y-4">
-                <div className="flex items-center gap-3 p-3 bg-red-900/10 border border-red-900/20 rounded-lg">
-                  <AlertTriangleIcon className="h-4 w-4 text-red-500 shrink-0" />
-                  <span className="text-xs font-medium text-red-300">
-                    {selected.size === RESET_MODULES.length
-                      ? 'All data modules will be permanently deleted.'
-                      : `${selected.size} module${selected.size > 1 ? 's' : ''} will be permanently deleted.`}
-                  </span>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-neutral-300 mb-1">
-                    Type <span className="font-mono font-bold text-red-400">{allSelected ? siteDomain : 'RESET'}</span> to confirm
-                  </label>
-                  <input
-                    type="text"
-                    value={confirmInput}
-                    onChange={(e) => setConfirmInput(e.target.value)}
-                    autoComplete="off"
-                    disabled={isResetting}
-                    className="w-full px-3 py-2 text-sm border border-neutral-700 rounded-lg bg-neutral-800 text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-red-400 disabled:opacity-50"
-                    placeholder={allSelected ? siteDomain : 'RESET'}
-                  />
-                </div>
-
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={handleClose}
-                    disabled={isResetting}
-                    className="flex-1 px-4 py-2 text-sm font-medium text-neutral-300 hover:bg-neutral-800 rounded-xl transition-colors disabled:opacity-50 ease-apple"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleReset}
-                    disabled={!isConfirmed || isResetting}
-                    className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ease-apple"
-                  >
-                    {isResetting ? (
-                      <>
-                        <Spinner className="w-4 h-4" />
-                        Resetting...
-                      </>
-                    ) : (
-                      `Reset ${selected.size} Module${selected.size > 1 ? 's' : ''}`
-                    )}
-                  </button>
-                </div>
-              </div>
-            )}
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>,
-    document.body
+                Cancel
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={handleReset}
+                disabled={!isConfirmed || isResetting}
+                className="flex-1 sm:flex-none bg-red-600 hover:bg-red-700 text-white border-red-600 gap-2"
+              >
+                {isResetting ? (
+                  <>
+                    <Spinner className="w-4 h-4" />
+                    Resetting...
+                  </>
+                ) : (
+                  `Reset ${selected.size} Module${selected.size > 1 ? 's' : ''}`
+                )}
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   )
 }

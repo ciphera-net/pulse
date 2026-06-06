@@ -3,10 +3,12 @@
 import { useState } from 'react'
 import { Button, toast, Spinner, Modal, Select } from '@ciphera-net/ui'
 import { Plus, Pencil, Trash, EnvelopeSimple, WebhooksLogo, PaperPlaneTilt, FileText, Bell } from '@phosphor-icons/react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { cdnUrl } from '@/lib/cdn'
-import { useReportSchedules, useAlertSchedules } from '@/lib/swr/dashboard'
-import { useSite } from '@/lib/swr/dashboard'
+import { useReportSchedules, useAlertSchedules, useSite } from '@/lib/swr/dashboard'
+import { useCan } from '@/lib/auth/permissions'
 import {
   createReportSchedule,
   updateReportSchedule,
@@ -75,13 +77,16 @@ function ScheduleRow({
   siteId,
   onMutate,
   onEdit,
+  canManage,
 }: {
   schedule: ReportSchedule
   siteId: string
   onMutate: () => void
   onEdit: (schedule: ReportSchedule) => void
+  canManage: boolean
 }) {
   const [testing, setTesting] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const handleTest = async () => {
     setTesting(true)
@@ -126,7 +131,7 @@ function ScheduleRow({
   }
 
   return (
-    <div className="flex items-center justify-between px-4 py-3 rounded-xl hover:bg-neutral-800/40 transition-colors group ease-apple">
+    <div className="flex items-center justify-between px-4 py-3 group">
       <div className="flex items-center gap-3 min-w-0">
         <div className={`p-1.5 rounded-lg flex-shrink-0 ${schedule.enabled ? 'bg-brand-orange/10 text-brand-orange' : 'bg-neutral-800 text-neutral-500'}`}>
           <ChannelIcon channel={schedule.channel} />
@@ -149,20 +154,49 @@ function ScheduleRow({
           )}
         </div>
       </div>
-      <div className="flex items-center gap-1 flex-shrink-0">
-        <button onClick={() => onEdit(schedule)} className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors ease-apple" title="Edit">
-          <Pencil weight="bold" className="w-3.5 h-3.5" />
-        </button>
-        <button onClick={handleTest} disabled={testing} className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors ease-apple" title="Send test">
-          <PaperPlaneTilt weight="bold" className="w-3.5 h-3.5" />
-        </button>
-        <button onClick={handleToggle} className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors ease-apple">
-          {schedule.enabled ? 'Pause' : 'Enable'}
-        </button>
-        <button onClick={handleDelete} className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-red-900/20 transition-colors ease-apple" title="Delete">
-          <Trash weight="bold" className="w-3.5 h-3.5" />
-        </button>
-      </div>
+      {canManage && (
+        <TooltipProvider>
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity ease-apple flex items-center gap-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(schedule)}>
+                  <Pencil weight="bold" className="w-3.5 h-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Edit</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleTest} disabled={testing}>
+                  <PaperPlaneTilt weight="bold" className="w-3.5 h-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Send test</TooltipContent>
+            </Tooltip>
+            <Button variant="ghost" size="sm" onClick={handleToggle}>
+              {schedule.enabled ? 'Pause' : 'Enable'}
+            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-neutral-500 hover:text-red-400 hover:bg-red-900/20" onClick={() => setConfirmDelete(true)}>
+                  <Trash weight="bold" className="w-3.5 h-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Delete</TooltipContent>
+            </Tooltip>
+          </div>
+        </TooltipProvider>
+      )}
+
+      <ConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title="Delete schedule"
+        description="This report schedule will be permanently removed."
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={handleDelete}
+      />
     </div>
   )
 }
@@ -196,7 +230,7 @@ function ChannelPicker({ value, onChange }: { value: string; onChange: (v: strin
 // ── Shared form label ────────────────────────────────────────────────────────
 
 function FormLabel({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) {
-  return <label htmlFor={htmlFor} className="block text-sm font-medium text-neutral-300 mb-1.5">{children}</label>
+  return <label htmlFor={htmlFor} className="block text-xs font-medium text-neutral-400 mb-1.5">{children}</label>
 }
 
 function FormInput({ id, type = 'text', value, onChange, placeholder }: { id?: string; type?: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
@@ -601,6 +635,7 @@ function AlertChannelModal({
 // ── Main Tab ─────────────────────────────────────────────────────────────────
 
 export default function SiteReportsTab({ siteId }: { siteId: string }) {
+  const canManage = useCan('reports.manage')
   const { data: site } = useSite(siteId)
   const { data: reports = [], isLoading: reportsLoading, mutate: mutateReports } = useReportSchedules(siteId)
   const { data: alerts = [], isLoading: alertsLoading, mutate: mutateAlerts } = useAlertSchedules(siteId)
@@ -637,9 +672,11 @@ export default function SiteReportsTab({ siteId }: { siteId: string }) {
             <h3 className="text-base font-semibold text-white mb-1">Scheduled Reports</h3>
             <p className="text-sm text-neutral-400">Automated analytics summaries via email or webhook.</p>
           </div>
-          <Button variant="primary" className="text-sm gap-1.5" onClick={openNewReport}>
-            <Plus weight="bold" className="w-3.5 h-3.5" /> Add Report
-          </Button>
+          {canManage && (
+            <Button variant="primary" className="text-sm gap-1.5" onClick={openNewReport}>
+              <Plus weight="bold" className="w-3.5 h-3.5" /> Add Report
+            </Button>
+          )}
         </div>
 
         {reports.length === 0 ? (
@@ -650,9 +687,9 @@ export default function SiteReportsTab({ siteId }: { siteId: string }) {
             className="py-8"
           />
         ) : (
-          <div className="space-y-1">
+          <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
             {reports.map((r) => (
-              <ScheduleRow key={r.id} schedule={r} siteId={siteId} onMutate={() => mutateReports()} onEdit={openEditReport} />
+              <ScheduleRow key={r.id} schedule={r} siteId={siteId} onMutate={() => mutateReports()} onEdit={openEditReport} canManage={canManage} />
             ))}
           </div>
         )}
@@ -665,9 +702,11 @@ export default function SiteReportsTab({ siteId }: { siteId: string }) {
             <h3 className="text-base font-semibold text-white mb-1">Alert Channels</h3>
             <p className="text-sm text-neutral-400">Get notified when uptime monitors go down.</p>
           </div>
-          <Button variant="primary" className="text-sm gap-1.5" onClick={openNewAlert}>
-            <Plus weight="bold" className="w-3.5 h-3.5" /> Add Channel
-          </Button>
+          {canManage && (
+            <Button variant="primary" className="text-sm gap-1.5" onClick={openNewAlert}>
+              <Plus weight="bold" className="w-3.5 h-3.5" /> Add Channel
+            </Button>
+          )}
         </div>
 
         {alerts.length === 0 ? (
@@ -678,9 +717,9 @@ export default function SiteReportsTab({ siteId }: { siteId: string }) {
             className="py-8"
           />
         ) : (
-          <div className="space-y-1">
+          <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
             {alerts.map((a) => (
-              <ScheduleRow key={a.id} schedule={a} siteId={siteId} onMutate={() => mutateAlerts()} onEdit={openEditAlert} />
+              <ScheduleRow key={a.id} schedule={a} siteId={siteId} onMutate={() => mutateAlerts()} onEdit={openEditAlert} canManage={canManage} />
             ))}
           </div>
         )}

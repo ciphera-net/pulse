@@ -1,16 +1,9 @@
 'use client'
+import { Select } from '@ciphera-net/ui'
 import type { Preferences } from '@/lib/api/notifications-preferences'
 import type { Category } from '@/lib/notifications/types'
 import { RETENTION_DEFAULTS, OVERRIDE_OPTIONS_DAYS } from '@/lib/notifications/retention-policy'
-
-const CATEGORIES: { id: Category; label: string }[] = [
-  { id: 'billing', label: 'Billing' },
-  { id: 'security', label: 'Security' },
-  { id: 'uptime', label: 'Uptime' },
-  { id: 'site', label: 'Site events' },
-  { id: 'team', label: 'Team' },
-  { id: 'system', label: 'System' },
-]
+import { NOTIFICATION_CATEGORIES } from '@/lib/notifications/categories'
 
 interface Props {
   prefs: Preferences
@@ -36,7 +29,7 @@ export default function RetentionOverridesTable({ prefs, onChange }: Props) {
           </tr>
         </thead>
         <tbody>
-          {CATEGORIES.map(c => {
+          {NOTIFICATION_CATEGORIES.map(c => {
             const def = RETENTION_DEFAULTS[c.id].read_ttl_days
             const allowedOpts = OVERRIDE_OPTIONS_DAYS.filter(d => d <= def)
             const current = prefs.retention_overrides?.[c.id]?.read_ttl_days ?? null
@@ -45,17 +38,17 @@ export default function RetentionOverridesTable({ prefs, onChange }: Props) {
                 <td className="py-3 text-neutral-200">{c.label}</td>
                 <td className="py-3 text-neutral-400">{def} days</td>
                 <td className="py-3">
-                  <select
-                    value={current ?? ''}
-                    onChange={e => setOverride(c.id, e.target.value === '' ? null : Number(e.target.value))}
-                    className="bg-white/5 border border-white/10 rounded px-3 py-1.5 text-sm text-white focus:border-brand-orange focus:outline-none"
-                    aria-label={`Read retention override for ${c.label}`}
-                  >
-                    <option value="">Default ({def} days)</option>
-                    {allowedOpts.map(d => (
-                      <option key={d} value={d}>{d} days</option>
-                    ))}
-                  </select>
+                  <div aria-label={`Read retention override for ${c.label}`}>
+                    <Select
+                      variant="input"
+                      value={String(current ?? '')}
+                      onChange={(v) => setOverride(c.id, v === '' ? null : Number(v))}
+                      options={[
+                        { value: '', label: `Default (${def} days)` },
+                        ...allowedOpts.map(d => ({ value: String(d), label: `${d} days` })),
+                      ]}
+                    />
+                  </div>
                 </td>
               </tr>
             )

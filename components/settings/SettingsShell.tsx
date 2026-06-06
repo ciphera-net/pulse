@@ -14,6 +14,7 @@ import {
   Plugs,
   Buildings,
   UsersThree,
+  Key,
   CreditCard,
   Bell,
   ClockCounterClockwise,
@@ -22,6 +23,7 @@ import {
   DeviceMobile,
 } from '@phosphor-icons/react'
 import { Select } from '@ciphera-net/ui'
+import { useCan } from '@/lib/auth/permissions'
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -32,6 +34,8 @@ interface TabDef {
   label: string
   href: string
   Icon: React.ComponentType<{ className?: string; weight?: IconWeight }>
+  /** When set, the tab is only visible when this permission is held. */
+  requires?: string
 }
 
 interface NavGroup {
@@ -45,24 +49,25 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Site',
     tabs: [
-      { id: 'general',        label: 'General',       href: '/settings/site/general',        Icon: GearSix },
-      { id: 'goals',          label: 'Goals',         href: '/settings/site/goals',          Icon: Target },
-      { id: 'visibility',     label: 'Visibility',    href: '/settings/site/visibility',     Icon: Eye },
-      { id: 'privacy',        label: 'Privacy',       href: '/settings/site/privacy',        Icon: ShieldCheck },
-      { id: 'bot-spam',       label: 'Bot & Spam',    href: '/settings/site/bot-spam',       Icon: Robot },
-      { id: 'privacy-scan',   label: 'Privacy Scan',  href: '/settings/site/privacy-scan',   Icon: MagnifyingGlass },
-      { id: 'reports',        label: 'Reports',       href: '/settings/site/reports',        Icon: ChartBar },
-      { id: 'integrations',   label: 'Integrations',  href: '/settings/site/integrations',   Icon: Plugs },
+      { id: 'general',        label: 'General',       href: '/settings/site/general',        Icon: GearSix,          requires: 'sites.edit' },
+      { id: 'goals',          label: 'Goals',         href: '/settings/site/goals',          Icon: Target,           requires: 'goals.manage' },
+      { id: 'visibility',     label: 'Visibility',    href: '/settings/site/visibility',     Icon: Eye,              requires: 'sites.edit' },
+      { id: 'privacy',        label: 'Privacy',       href: '/settings/site/privacy',        Icon: ShieldCheck,      requires: 'sites.edit' },
+      { id: 'bot-spam',       label: 'Bot & Spam',    href: '/settings/site/bot-spam',       Icon: Robot,            requires: 'quarantine.manage' },
+      { id: 'privacy-scan',   label: 'Privacy Scan',  href: '/settings/site/privacy-scan',   Icon: MagnifyingGlass,  requires: 'privacy_scan.manage' },
+      { id: 'reports',        label: 'Reports',       href: '/settings/site/reports',        Icon: ChartBar,         requires: 'reports.manage' },
+      { id: 'integrations',   label: 'Integrations',  href: '/settings/site/integrations',   Icon: Plugs,            requires: 'integrations.manage' },
     ],
   },
   {
     label: 'Organization',
     tabs: [
-      { id: 'general',       label: 'General',       href: '/settings/organization/general',       Icon: Buildings },
-      { id: 'members',       label: 'Members',       href: '/settings/organization/members',       Icon: UsersThree },
-      { id: 'billing',       label: 'Billing',       href: '/settings/organization/billing',       Icon: CreditCard },
-      { id: 'notifications', label: 'Notifications', href: '/settings/organization/notifications', Icon: Bell },
-      { id: 'audit',         label: 'Audit Log',     href: '/settings/organization/audit',         Icon: ClockCounterClockwise },
+      { id: 'general',       label: 'General',            href: '/settings/organization/general',       Icon: Buildings },
+      { id: 'members',       label: 'Members',            href: '/settings/organization/members',       Icon: UsersThree,          requires: 'team.view' },
+      { id: 'roles',         label: 'Roles & Permissions', href: '/settings/organization/roles',         Icon: Key,                 requires: 'roles.manage' },
+      { id: 'billing',       label: 'Billing',            href: '/settings/organization/billing',       Icon: CreditCard,          requires: 'billing.view' },
+      { id: 'notifications', label: 'Notifications',      href: '/settings/organization/notifications', Icon: Bell },
+      { id: 'audit',         label: 'Audit Log',          href: '/settings/organization/audit',         Icon: ClockCounterClockwise, requires: 'audit.view' },
     ],
   },
   {
@@ -74,8 +79,6 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
 ]
-
-const ALL_TABS = NAV_GROUPS.flatMap((g) => g.tabs)
 
 // ─── Page header ──────────────────────────────────────────────────
 
@@ -100,20 +103,55 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
   const { title, subtitle } = resolvePageHeader(pathname)
   const [search, setSearch] = useState('')
 
+  const canGoalsManage      = useCan('goals.manage')
+  const canReportsManage    = useCan('reports.manage')
+  const canSitesEdit        = useCan('sites.edit')
+  const canQuarantineManage = useCan('quarantine.manage')
+  const canPrivacyScan      = useCan('privacy_scan.manage')
+  const canIntegrations     = useCan('integrations.manage')
+  const canTeamView         = useCan('team.view')
+  const canRolesManage      = useCan('roles.manage')
+  const canBillingView      = useCan('billing.view')
+  const canAuditView        = useCan('audit.view')
+
+  const permMap: Record<string, boolean> = {
+    'goals.manage':        canGoalsManage,
+    'reports.manage':      canReportsManage,
+    'sites.edit':          canSitesEdit,
+    'quarantine.manage':   canQuarantineManage,
+    'privacy_scan.manage': canPrivacyScan,
+    'integrations.manage': canIntegrations,
+    'team.view':           canTeamView,
+    'roles.manage':        canRolesManage,
+    'billing.view':        canBillingView,
+    'audit.view':          canAuditView,
+  }
+
+  // Filter tabs based on permission requirements
+  const visibleGroups = NAV_GROUPS.map((group) => ({
+    ...group,
+    tabs: group.tabs.filter((tab) => {
+      if (tab.requires) return permMap[tab.requires] ?? true
+      return true
+    }),
+  }))
+
+  const allVisibleTabs = visibleGroups.flatMap((g) => g.tabs)
+
   // Mobile select options
-  const mobileOptions = ALL_TABS.map((t) => ({ value: t.href, label: t.label }))
-  const mobileValue = ALL_TABS.find((t) => pathname === t.href)?.href ?? ''
+  const mobileOptions = allVisibleTabs.map((t) => ({ value: t.href, label: t.label }))
+  const mobileValue = allVisibleTabs.find((t) => pathname === t.href)?.href ?? ''
 
   // Filtered nav groups for search
   const filteredGroups = search.trim()
-    ? NAV_GROUPS.map(group => ({
+    ? visibleGroups.map(group => ({
         ...group,
         tabs: group.tabs.filter(tab =>
           tab.label.toLowerCase().includes(search.toLowerCase()) ||
           group.label.toLowerCase().includes(search.toLowerCase())
         )
       })).filter(group => group.tabs.length > 0)
-    : NAV_GROUPS
+    : visibleGroups.filter(group => group.tabs.length > 0)
 
   return (
     <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">

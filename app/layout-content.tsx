@@ -40,6 +40,14 @@ const CIPHERA_APPS: CipheraApp[] = [
     href: 'https://id.ciphera.net',
     isAvailable: true,
   },
+  {
+    id: 'help',
+    name: 'Help',
+    description: 'Documentation, support & status',
+    icon: 'https://cdn.ciphera.net/help/help_icon.png',
+    href: 'https://help.ciphera.net',
+    isAvailable: true,
+  },
 ]
 
 function LayoutInner({ children }: { children: React.ReactNode }) {
@@ -144,7 +152,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
 
   // Setup wizard: own layout with stepper — no app shell
   // Org-settings: redirect shim that opens unified settings modal — no shell needed
-  if (isAuthenticated && (pathname.startsWith('/setup') || pathname.startsWith('/org-settings') || pathname.startsWith('/switch'))) {
+  if (isAuthenticated && (pathname.startsWith('/setup') || pathname.startsWith('/org-settings') || pathname.startsWith('/switch') || pathname.startsWith('/join'))) {
     return <>{children}</>
   }
 
@@ -203,6 +211,11 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     )
+  }
+
+  // Join page: standalone, no app shell
+  if (pathname.startsWith('/join')) {
+    return <>{children}</>
   }
 
   // Public/marketing: sticky header + footer

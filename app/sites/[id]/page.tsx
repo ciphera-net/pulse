@@ -21,8 +21,8 @@ import {
 } from '@/lib/api/stats'
 import { getDateRange, formatDate, getThisWeekRange, getThisMonthRange, getYesterdayRange, getLast24HoursRange, getLast1HourRange, getThisYearRange } from '@/lib/utils/dateRanges'
 import { toast } from '@ciphera-net/ui'
-import { Button } from '@ciphera-net/ui'
-import { Select, DatePicker, DownloadIcon, ChevronLeftIcon, ChevronRightIcon } from '@ciphera-net/ui'
+import DateRangePicker from '@/components/ui/DateRangePicker'
+import { PERIOD_TO_API, findPreset } from '@/lib/constants/periods'
 import dynamic from 'next/dynamic'
 import { DashboardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import FilterButton from '@/components/dashboard/FilterButton'
@@ -49,6 +49,7 @@ import {
   useCampaigns,
 } from '@/lib/swr/dashboard'
 import { useLiveIndicator } from '@/lib/live-indicator-context'
+import { useCan } from '@/lib/auth/permissions'
 
 function loadSavedSettings(): {
   type?: string
@@ -66,27 +67,42 @@ function loadSavedSettings(): {
 }
 
 
+const LEGACY_PERIOD_MAP: Record<string, string> = {
+  'week': 'wtd',
+  'month': 'mtd',
+  'year': 'ytd',
+}
+
+function normalizePeriodKey(key: string | undefined): string | undefined {
+  if (!key) return undefined
+  return LEGACY_PERIOD_MAP[key] ?? key
+}
+
 function getInitialDateRange(): { start: string; end: string } {
   const settings = loadSavedSettings()
-  if (settings?.type === 'today') {
+  const type = normalizePeriodKey(settings?.type)
+  if (type === 'today') {
     const today = formatDate(new Date())
     return { start: today, end: today }
   }
-  if (settings?.type === 'yesterday') return getYesterdayRange()
-  if (settings?.type === '1h') return getLast1HourRange()
-  if (settings?.type === '24h') return getLast24HoursRange()
-  if (settings?.type === '7') return getDateRange(7)
-  if (settings?.type === '30') return getDateRange(30)
-  if (settings?.type === 'week') return getThisWeekRange()
-  if (settings?.type === 'month') return getThisMonthRange()
-  if (settings?.type === 'year') return getThisYearRange()
-  if (settings?.type === 'custom' && settings.dateRange) return settings.dateRange
+  if (type === 'yesterday') return getYesterdayRange()
+  if (type === '1h') return getLast1HourRange()
+  if (type === '24h') return getLast24HoursRange()
+  if (type === '7') return getDateRange(7)
+  if (type === '30') return getDateRange(30)
+  if (type === 'wtd') return getThisWeekRange()
+  if (type === 'mtd') return getThisMonthRange()
+  if (type === 'ytd') return getThisYearRange()
+  if (type === 'custom' && settings?.dateRange) return settings.dateRange
+  if (type && type !== 'alltime') {
+    const preset = findPreset(type)
+    if (preset) return preset.resolve()
+  }
   return getDateRange(30)
 }
 
 function getInitialPeriod(): string {
-  const saved = loadSavedSettings()?.type
-  // Migrate removed 'alltime' option → default 30 days (backend caps queries at 366 days)
+  const saved = normalizePeriodKey(loadSavedSettings()?.type)
   if (saved === 'alltime') return '30'
   return saved || '30'
 }
@@ -108,7 +124,6 @@ export default function SiteDashboardPage() {
   const [multiDayInterval, setMultiDayInterval] = useState<'hour' | 'day'>(
     () => loadSavedSettings()?.multiDayInterval || 'day'
   )
-  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const [realtimePagesOpen, setRealtimePagesOpen] = useState(false)
 
@@ -138,19 +153,6 @@ export default function SiteDashboardPage() {
     return raw ? parseFiltersFromURL(raw) : []
   })
   const filtersParam = useMemo(() => serializeFilters(filters), [filters])
-
-  // Map frontend period values to backend period names
-  const PERIOD_TO_API: Record<string, string> = {
-    'today': 'today',
-    'yesterday': 'yesterday',
-    '1h': '1h',
-    '24h': '24h',
-    '7': '7d',
-    '30': '30d',
-    'week': 'week',
-    'month': 'month',
-    'year': 'year',
-  }
 
   // For relative periods send the period name; for custom ranges send dates
   const apiPeriod = period !== 'custom' ? (PERIOD_TO_API[period] || undefined) : undefined
@@ -192,10 +194,6 @@ export default function SiteDashboardPage() {
 
   const handleClearFilters = useCallback(() => {
     setFilters([])
-  }, [])
-
-  const handleApplyFilters = useCallback((newFilters: DimensionFilter[]) => {
-    setFilters(newFilters)
   }, [])
 
   const handleOpenFilterForDimension = useCallback((dimension: string) => {
@@ -354,6 +352,8 @@ export default function SiteDashboardPage() {
     }
   }, [dashboardError])
 
+  const canExport = useCan('analytics.export')
+
   // Track when dashboard data was last updated (drives the Live indicator in GlassTopBar)
   const { markUpdated } = useLiveIndicator()
   useEffect(() => {
@@ -450,88 +450,27 @@ export default function SiteDashboardPage() {
       <div className="flex-1" />
       <FilterPills filters={filters} onEdit={handleEditFilter} onRemove={handleRemoveFilter} onClear={handleClearFilters} />
       <FilterButton hasActiveFilters={filters.length > 0} onSelectDimension={handleOpenFilterForDimension} />
-      <div className="flex items-center h-10 rounded-lg border border-neutral-800 bg-neutral-900">
-        <button onClick={() => shiftPeriod(-1)} className="px-2 h-full text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors rounded-l-lg ease-apple" aria-label="Previous period">
-          <ChevronLeftIcon className="w-4 h-4" weight="bold" />
-        </button>
-        <div className="w-px h-5 bg-white/[0.08]" />
-        <Select
-          variant="ghost"
-          className="min-w-[130px]"
-          value={period}
-          onChange={(value) => {
-            if (value === 'today') {
-              const today = formatDate(new Date())
-              const range = { start: today, end: today }
-              setDateRange(range)
-              setPeriod('today')
-              saveSettings('today', range)
-            } else if (value === 'yesterday') {
-              const range = getYesterdayRange()
-              setDateRange(range)
-              setPeriod('yesterday')
-              saveSettings('yesterday', range)
-            } else if (value === '1h') {
-              const range = getLast1HourRange()
-              setDateRange(range)
-              setTodayInterval('minute')
-              setPeriod('1h')
-              saveSettings('1h', range)
-            } else if (value === '24h') {
-              const range = getLast24HoursRange()
-              setDateRange(range)
-              setPeriod('24h')
-              saveSettings('24h', range)
-            } else if (value === '7') {
-              const range = getDateRange(7)
-              setDateRange(range)
-              setPeriod('7')
-              saveSettings('7', range)
-            } else if (value === 'week') {
-              const range = getThisWeekRange()
-              setDateRange(range)
-              setPeriod('week')
-              saveSettings('week', range)
-            } else if (value === '30') {
-              const range = getDateRange(30)
-              setDateRange(range)
-              setPeriod('30')
-              saveSettings('30', range)
-            } else if (value === 'month') {
-              const range = getThisMonthRange()
-              setDateRange(range)
-              setPeriod('month')
-              saveSettings('month', range)
-            } else if (value === 'year') {
-              const range = getThisYearRange()
-              setDateRange(range)
-              setPeriod('year')
-              saveSettings('year', range)
-            } else if (value === 'custom') {
-              setIsDatePickerOpen(true)
-            }
-          }}
-          options={[
-            { value: '1h', label: 'Last 1 hour' },
-            { value: '24h', label: 'Last 24 hours' },
-            { value: 'divider-0', label: '', divider: true },
-            { value: 'today', label: 'Today' },
-            { value: 'yesterday', label: 'Yesterday' },
-            { value: '7', label: 'Last 7 days' },
-            { value: '30', label: 'Last 30 days' },
-            { value: 'divider-1', label: '', divider: true },
-            { value: 'week', label: 'This week' },
-            { value: 'month', label: 'This month' },
-            { value: 'year', label: 'This year' },
-            { value: 'divider-2', label: '', divider: true },
-            { value: 'custom', label: 'Custom' },
-          ]}
-        />
-        <div className="w-px h-5 bg-white/[0.08]" />
-        <button onClick={() => shiftPeriod(1)} className="px-2 h-full text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors rounded-r-lg ease-apple" aria-label="Next period">
-          <ChevronRightIcon className="w-4 h-4" weight="bold" />
-        </button>
-      </div>
+      <DateRangePicker
+        period={period}
+        dateRange={dateRange}
+        onPeriodChange={(p) => {
+          const preset = findPreset(p)
+          if (preset) {
+            const range = preset.resolve()
+            setDateRange(range)
+            if (p === '1h') setTodayInterval('minute')
+            setPeriod(p)
+            saveSettings(p, range)
+          } else if (p === 'custom') {
+            setPeriod('custom')
+          }
+        }}
+        onDateRangeChange={(range) => {
+          setDateRange(range)
+          saveSettings('custom', range)
+        }}
+        onShift={shiftPeriod}
+      />
     </>
   )
 
@@ -558,7 +497,7 @@ export default function SiteDashboardPage() {
           setMultiDayInterval={setMultiDayInterval}
           lastUpdatedAt={lastUpdatedAtRef.current}
           engagementData={engagementData}
-          onExport={() => setIsExportModalOpen(true)}
+          onExport={canExport ? () => setIsExportModalOpen(true) : undefined}
         />
       </div>
 
@@ -621,18 +560,6 @@ export default function SiteDashboardPage() {
           dateRange={resolvedDateRange}
         />
       </div></>}
-
-      <DatePicker
-        isOpen={isDatePickerOpen}
-        onClose={() => setIsDatePickerOpen(false)}
-        onApply={(range) => {
-          setDateRange(range)
-          setPeriod('custom')
-          saveSettings('custom', range)
-          setIsDatePickerOpen(false)
-        }}
-        initialRange={dateRange}
-      />
 
       <ExportModal
         isOpen={isExportModalOpen}

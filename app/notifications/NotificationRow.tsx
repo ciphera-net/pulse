@@ -7,16 +7,7 @@ import { renderNotification } from '@/lib/notifications/renderers'
 import { useResolveSiteName, useResolveUserName } from '@/lib/notifications/resolvers'
 import { formatTimeAgo } from '@/lib/utils/notifications'
 import { markRead, markUnread, dismiss, listDeliveries, type Delivery } from '@/lib/api/notifications-v2'
-
-function formatChannel(c: string): string {
-  switch (c) {
-    case 'in_app': return 'in-app'
-    case 'email': return 'email'
-    case 'email_digest': return 'email digest'
-    case 'webhook': return 'webhook'
-    default: return c
-  }
-}
+import Link from 'next/link'
 
 interface NotificationRowProps {
   receipt: Receipt
@@ -25,7 +16,6 @@ interface NotificationRowProps {
 
 export default function NotificationRow({ receipt, onChange }: NotificationRowProps) {
   const [expanded, setExpanded] = useState(false)
-  const [payloadOpen, setPayloadOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [deliveries, setDeliveries] = useState<Delivery[] | null>(null)
 
@@ -40,7 +30,8 @@ export default function NotificationRow({ receipt, onChange }: NotificationRowPr
   const resolveSiteName = useResolveSiteName()
   const resolveUserName = useResolveUserName()
   const isUnread = !receipt.read_at
-  const { title, body } = renderNotification(receipt, { resolveSiteName, resolveUserName })
+  const { title, body, linkLabel } = renderNotification(receipt, { resolveSiteName, resolveUserName })
+  const linkUrl = receipt.event.link_url
 
   const onToggle = async () => {
     if (!expanded && isUnread && !busy) {
@@ -114,66 +105,35 @@ export default function NotificationRow({ receipt, onChange }: NotificationRowPr
             <div className="px-4 pb-4 text-sm text-neutral-300 space-y-3">
               {body && <p>{body}</p>}
 
-              <div className="rounded border border-neutral-800/60 bg-white/[0.02] p-3 text-xs text-neutral-400 space-y-1">
-                <div><span className="text-neutral-500">Type:</span> {receipt.event.type}</div>
-                <div><span className="text-neutral-500">Created:</span> {new Date(receipt.event.created_at).toLocaleString()}</div>
-                <div><span className="text-neutral-500">Expires:</span> {new Date(receipt.event.expires_at).toLocaleString()}</div>
-                {receipt.read_at && (
-                  <div><span className="text-neutral-500">Read:</span> {new Date(receipt.read_at).toLocaleString()}</div>
-                )}
-                <div>
-                  <span className="text-neutral-500">Delivered via:</span>{' '}
-                  {deliveries === null && <span className="text-neutral-500">Loading…</span>}
-                  {deliveries !== null && deliveries.length === 0 && (
-                    <span className="text-neutral-500">In-app only</span>
-                  )}
-                  {deliveries !== null && deliveries.length > 0 && (
-                    <span>
-                      {deliveries.map((d, i) => (
-                        <span key={d.id}>
-                          {i > 0 && ', '}
-                          {formatChannel(d.channel)}
-                          {d.status !== 'sent' && <span className="text-neutral-500"> ({d.status})</span>}
-                          {' at '}
-                          {new Date(d.sent_at).toLocaleTimeString()}
-                        </span>
-                      ))}
-                    </span>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); setPayloadOpen(o => !o) }}
-                  className="text-brand-orange hover:underline mt-1 text-caption"
+              {linkUrl && (
+                <Link
+                  href={linkUrl}
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1 rounded px-3 py-1.5 text-xs font-medium bg-brand-orange/10 text-brand-orange border border-brand-orange/30 hover:bg-brand-orange/20 transition-colors"
                 >
-                  {payloadOpen ? '▾' : '▸'} View raw payload
-                </button>
-                {payloadOpen && (
-                  <pre className="mt-2 p-2 bg-black/30 rounded text-caption text-neutral-300 overflow-auto">
-                    {JSON.stringify(receipt.event.payload, null, 2)}
-                  </pre>
-                )}
-              </div>
+                  {linkLabel ?? 'View details'} →
+                </Link>
+              )}
 
               <div className="flex items-center gap-4 text-xs">
-                <button
-                  type="button"
-                  onClick={onDismiss}
-                  disabled={busy}
-                  className="text-red-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Dismiss (delete my copy)
-                </button>
                 {receipt.read_at && (
                   <button
                     type="button"
                     onClick={onMarkUnread}
                     disabled={busy}
-                    className="text-neutral-400 hover:text-white disabled:opacity-50"
+                    className="text-neutral-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Mark unread
                   </button>
                 )}
+                <button
+                  type="button"
+                  onClick={onDismiss}
+                  disabled={busy}
+                  className="text-neutral-400 hover:text-red-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Dismiss
+                </button>
               </div>
             </div>
           </motion.div>

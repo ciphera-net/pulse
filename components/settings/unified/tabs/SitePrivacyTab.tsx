@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Select, Toggle, toast, Spinner } from '@ciphera-net/ui'
+import { Button, Input, Select, Toggle, toast, Spinner, getAuthErrorMessage } from '@ciphera-net/ui'
 import { useSite, useSubscription, usePageSpeedConfig } from '@/lib/swr/dashboard'
 import { updateSite, type PageRule } from '@/lib/api/sites'
 import { updatePageSpeedConfig } from '@/lib/api/pagespeed'
@@ -11,6 +11,7 @@ import { Copy, CheckCircle, EyeSlash, Trash, ArrowUp, ArrowDown, Plus } from '@p
 import Link from 'next/link'
 import SettingsSections from '@/components/settings/SettingsSections'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
+import { useCan } from '@/lib/auth/permissions'
 
 const GEO_OPTIONS = [
   { value: 'full', label: 'Full (country, region, city)' },
@@ -18,19 +19,20 @@ const GEO_OPTIONS = [
   { value: 'none', label: 'Disabled' },
 ]
 
-function PrivacyToggle({ label, desc, checked, onToggle }: { label: string; desc: string; checked: boolean; onToggle: () => void }) {
+function PrivacyToggle({ label, desc, checked, onToggle, disabled }: { label: string; desc: string; checked: boolean; onToggle: () => void; disabled?: boolean }) {
   return (
     <div className="flex items-center justify-between p-4 rounded-xl border border-neutral-800 bg-neutral-800/30">
       <div>
         <p className="text-sm font-medium text-white">{label}</p>
         <p className="text-xs text-neutral-500">{desc}</p>
       </div>
-      <Toggle checked={checked} onChange={onToggle} />
+      <Toggle checked={checked} onChange={onToggle} disabled={disabled} />
     </div>
   )
 }
 
-export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }: { siteId: string; onDirtyChange?: (dirty: boolean) => void; onRegisterSave?: (fn: () => Promise<void>) => void }) {
+export default function SitePrivacyTab({ siteId }: { siteId: string }) {
+  const canEdit = useCan('sites.edit')
   const { data: site, mutate } = useSite(siteId)
   const { data: subscription, error: subscriptionError, mutate: mutateSubscription } = useSubscription()
   const { data: psiConfig, mutate: mutatePSIConfig } = usePageSpeedConfig(siteId)
@@ -101,10 +103,6 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
     ? JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency }) !== initialRef.current
     : false
 
-  useEffect(() => {
-    onDirtyChange?.(isDirty)
-  }, [isDirty, onDirtyChange])
-
   const handleDiscard = () => {
     if (!initialRef.current) return
     const snap = JSON.parse(initialRef.current)
@@ -125,7 +123,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
   const handleSave = useCallback(async () => {
     try {
       await updateSite(siteId, {
-        name: site?.name || '',
+        name: site!.name,
         collect_page_paths: collectPagePaths,
         collect_referrers: collectReferrers,
         collect_device_info: collectDeviceInfo,
@@ -141,21 +139,15 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
       // Save PSI frequency separately if it changed
       if (psiConfig?.enabled && psiFrequency !== (psiConfig.frequency || 'weekly')) {
         await updatePageSpeedConfig(siteId, { enabled: psiConfig.enabled, frequency: psiFrequency })
-        mutatePSIConfig()
+        await mutatePSIConfig()
       }
-      await mutate()
       initialRef.current = JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency })
-      onDirtyChange?.(false)
+      await mutate()
       toast.success('Privacy settings updated')
-    } catch {
-      toast.error('Failed to save')
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to save settings')
     }
-  }, [siteId, site?.name, collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency, psiConfig, mutatePSIConfig, mutate, onDirtyChange])
-
-  // Register save handler with modal
-  useEffect(() => {
-    onRegisterSave?.(handleSave)
-  }, [handleSave, onRegisterSave])
+  }, [siteId, collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency, psiConfig, mutatePSIConfig, mutate])
 
   const updateRule = (index: number, updates: Partial<PageRule>) => {
     setPageRules(rules => rules.map((r, i) => i === index ? { ...r, ...updates } : r))
@@ -182,9 +174,11 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
       <SettingsSections sections={[
         { id: 'section-data-privacy', label: 'Data & Privacy' },
         { id: 'section-geographic', label: 'Geographic' },
+        { id: 'section-data-retention', label: 'Data Retention' },
         { id: 'section-path-grouping', label: 'Path Grouping' },
         { id: 'section-query-params', label: 'Query Parameters' },
         { id: 'section-exclude-self', label: 'Exclude Self' },
+        { id: 'section-pagespeed', label: 'PageSpeed' },
       ]} />
 
       <div id="section-data-privacy">
@@ -193,12 +187,12 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
       </div>
 
       <div className="space-y-3">
-        <PrivacyToggle label="Page paths" desc="Track which pages visitors view." checked={collectPagePaths} onToggle={() => setCollectPagePaths(v => !v)} />
-        <PrivacyToggle label="Referrers" desc="Track where visitors come from." checked={collectReferrers} onToggle={() => setCollectReferrers(v => !v)} />
-        <PrivacyToggle label="Device info" desc="Track browser, OS, and device type." checked={collectDeviceInfo} onToggle={() => setCollectDeviceInfo(v => !v)} />
-        <PrivacyToggle label="Screen resolution" desc="Track visitor screen dimensions." checked={collectScreenRes} onToggle={() => setCollectScreenRes(v => !v)} />
-        <PrivacyToggle label="Audience data" desc="Track visitor language and timezone." checked={collectAudienceData} onToggle={() => setCollectAudienceData(v => !v)} />
-        <PrivacyToggle label="Hide unknown locations" desc='Exclude "Unknown" from location stats.' checked={hideUnknownLocations} onToggle={() => setHideUnknownLocations(v => !v)} />
+        <PrivacyToggle label="Page paths" desc="Track which pages visitors view." checked={collectPagePaths} onToggle={() => setCollectPagePaths(v => !v)} disabled={!canEdit} />
+        <PrivacyToggle label="Referrers" desc="Track where visitors come from." checked={collectReferrers} onToggle={() => setCollectReferrers(v => !v)} disabled={!canEdit} />
+        <PrivacyToggle label="Device info" desc="Track browser, OS, and device type." checked={collectDeviceInfo} onToggle={() => setCollectDeviceInfo(v => !v)} disabled={!canEdit} />
+        <PrivacyToggle label="Screen resolution" desc="Track visitor screen dimensions." checked={collectScreenRes} onToggle={() => setCollectScreenRes(v => !v)} disabled={!canEdit} />
+        <PrivacyToggle label="Audience data" desc="Track visitor language and timezone." checked={collectAudienceData} onToggle={() => setCollectAudienceData(v => !v)} disabled={!canEdit} />
+        <PrivacyToggle label="Hide unknown locations" desc='Exclude "Unknown" from location stats.' checked={hideUnknownLocations} onToggle={() => setHideUnknownLocations(v => !v)} disabled={!canEdit} />
       </div>
 
       <div id="section-geographic" className="p-4 rounded-xl border border-neutral-800 bg-neutral-800/30">
@@ -212,19 +206,20 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
             onChange={setCollectGeoData}
             variant="input"
             options={GEO_OPTIONS}
-            className="min-w-[200px]"
+            className="shrink-0 min-w-[200px]"
+            disabled={!canEdit}
           />
         </div>
       </div>
 
       {/* Data Retention */}
-      <div className="space-y-3 pt-6 border-t border-neutral-800">
+      <div id="section-data-retention" className="space-y-3 pt-6 border-t border-neutral-800">
         <h4 className="text-sm font-medium text-neutral-300">Data Retention</h4>
 
         {subscriptionError && (
           <div className="p-3 rounded-xl border border-amber-800 bg-amber-900/20 flex items-center justify-between">
             <p className="text-xs text-amber-200">Plan limits could not be loaded.</p>
-            <button onClick={() => mutateSubscription()} className="text-xs font-medium text-amber-400 hover:text-amber-300">Retry</button>
+            <Button variant="secondary" size="sm" onClick={() => mutateSubscription()}>Retry</Button>
           </div>
         )}
 
@@ -237,9 +232,16 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
             <Select
               value={String(dataRetention)}
               onChange={(v) => setDataRetention(Number(v))}
-              options={getRetentionOptionsForPlan(subscription?.plan_id).map(o => ({ value: String(o.value), label: o.label }))}
+              options={(() => {
+                const planOpts = getRetentionOptionsForPlan(subscription?.plan_id).map(o => ({ value: String(o.value), label: o.label }))
+                if (!planOpts.some(o => o.value === String(dataRetention))) {
+                  planOpts.push({ value: String(dataRetention), label: `${formatRetentionMonths(dataRetention)} (current)` })
+                }
+                return planOpts
+              })()}
               variant="input"
-              className="min-w-[160px]"
+              className="shrink-0 min-w-[200px]"
+              disabled={!canEdit}
             />
           </div>
           {subscription && (
@@ -267,6 +269,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
           desc="Automatically replace UUIDs, numeric IDs, and tokens with :id in page stats."
           checked={autoGroupDynamic}
           onToggle={() => setAutoGroupDynamic(v => !v)}
+          disabled={!canEdit}
         />
 
         <div className="pt-3">
@@ -280,79 +283,88 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
               <div className="flex items-start gap-3">
                 <div className="flex-1 space-y-3">
                   <div className="flex items-center gap-3">
-                    <select
+                    <Select
+                      variant="input"
                       value={rule.type}
-                      onChange={e => updateRule(index, { type: e.target.value as 'exclude' | 'group' })}
-                      className="px-3 py-2 border border-neutral-800 rounded-lg bg-neutral-800/30 text-white text-sm focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all ease-apple"
-                    >
-                      <option value="exclude">Exclude</option>
-                      <option value="group">Group</option>
-                    </select>
-                    <input
+                      onChange={(v) => updateRule(index, { type: v as 'exclude' | 'group' })}
+                      options={[
+                        { value: 'exclude', label: 'Exclude' },
+                        { value: 'group', label: 'Group' },
+                      ]}
+                    />
+                    <Input
                       type="text"
                       value={rule.pattern}
                       onChange={e => updateRule(index, { pattern: e.target.value })}
                       placeholder="/admin/*"
-                      className="flex-1 px-3 py-2 border border-neutral-800 rounded-lg bg-neutral-800/30 text-white font-mono text-sm focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all ease-apple"
+                      className="flex-1 font-mono"
                     />
                   </div>
                   {rule.type === 'group' && (
-                    <input
+                    <Input
                       type="text"
                       value={rule.label || ''}
                       onChange={e => updateRule(index, { label: e.target.value })}
                       placeholder="/sites/:id"
-                      className="w-full px-3 py-2 border border-neutral-800 rounded-lg bg-neutral-800/30 text-white font-mono text-sm focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all ease-apple"
+                      className="font-mono"
                     />
                   )}
                 </div>
                 <div className="flex items-center gap-1 pt-1">
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
                     onClick={() => moveRule(index, -1)}
                     disabled={index === 0}
-                    className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors disabled:opacity-30 disabled:hover:text-neutral-400 disabled:hover:bg-transparent ease-apple"
                   >
                     <ArrowUp weight="bold" className="w-4 h-4" />
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
                     onClick={() => moveRule(index, 1)}
                     disabled={index === pageRules.length - 1}
-                    className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors disabled:opacity-30 disabled:hover:text-neutral-400 disabled:hover:bg-transparent ease-apple"
                   >
                     <ArrowDown weight="bold" className="w-4 h-4" />
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 hover:text-red-400 hover:bg-neutral-700"
                     onClick={() => removeRule(index)}
-                    className="p-1.5 rounded-lg text-neutral-400 hover:text-red-400 hover:bg-neutral-700 transition-colors ease-apple"
                   >
                     <Trash weight="bold" className="w-4 h-4" />
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
           ))}
         </div>
 
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => setPageRules([...pageRules, { type: 'exclude', pattern: '' }])}
-          className="flex items-center gap-2 text-sm font-medium text-brand-orange hover:text-brand-orange/80 transition-colors ease-apple"
+          className="gap-2 text-brand-orange hover:text-brand-orange/80"
         >
           <Plus weight="bold" className="w-4 h-4" />
           Add Rule
-        </button>
+        </Button>
       </div>
 
       {/* Allowed Query Parameters */}
       <div id="section-query-params" className="space-y-3 pt-6 border-t border-neutral-800">
         <h4 className="text-sm font-medium text-neutral-300">Query Parameters</h4>
         <div>
-          <label className="block text-sm font-medium text-neutral-300 mb-1.5">Parameters to keep in page stats</label>
-          <input
+          <label className="block text-xs font-medium text-neutral-400 mb-1.5">Parameters to keep in page stats</label>
+          <Input
             type="text"
             value={allowedQueryParams}
             onChange={e => setAllowedQueryParams(e.target.value)}
             placeholder="q, category, page"
-            className="w-full px-4 py-3 border border-neutral-800 rounded-lg bg-neutral-800/30 text-white font-mono text-sm focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all ease-apple"
+            className="font-mono"
           />
           <p className="text-xs text-neutral-500 mt-1">Comma-separated. All other query parameters are automatically stripped from page paths. Leave empty to strip everything.</p>
         </div>
@@ -387,7 +399,7 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
       </div>
 
       {/* PageSpeed Monitoring */}
-      <div className="space-y-3 pt-6 border-t border-neutral-800">
+      <div id="section-pagespeed" className="space-y-3 pt-6 border-t border-neutral-800">
         <h4 className="text-sm font-medium text-neutral-300">PageSpeed Monitoring</h4>
         <div className="p-4 bg-neutral-800/30 rounded-xl border border-neutral-800">
           <div className="flex items-center justify-between">
@@ -405,7 +417,8 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
                   { value: 'monthly', label: 'Monthly' },
                 ]}
                 variant="input"
-                className="min-w-[140px]"
+                className="shrink-0 min-w-[200px]"
+                disabled={!canEdit}
               />
             ) : (
               <span className="text-sm text-neutral-400">Not enabled</span>
@@ -426,26 +439,29 @@ export default function SitePrivacyTab({ siteId, onDirtyChange, onRegisterSave }
             value={generatePrivacySnippet(site)}
             className="w-full px-4 py-3 pr-12 border border-neutral-800 rounded-xl bg-neutral-800/30 text-neutral-300 text-xs font-mono"
           />
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute top-3 right-3"
             onClick={() => {
               navigator.clipboard.writeText(generatePrivacySnippet(site))
               setSnippetCopied(true)
               toast.success('Privacy snippet copied')
               setTimeout(() => setSnippetCopied(false), 2000)
             }}
-            className="absolute top-3 right-3 p-2 rounded-lg bg-neutral-700 hover:bg-neutral-600 text-neutral-300 transition-colors ease-apple"
           >
             {snippetCopied ? <CheckCircle weight="bold" className="w-4 h-4" /> : <Copy weight="bold" className="w-4 h-4" />}
-          </button>
+          </Button>
         </div>
       </div>
 
-      <SettingsSaveBar
-        isDirty={isDirty}
-        onSave={handleSave}
-        onDiscard={handleDiscard}
-      />
+      {canEdit && (
+        <SettingsSaveBar
+          isDirty={isDirty}
+          onSave={handleSave}
+          onDiscard={handleDiscard}
+        />
+      )}
     </div>
   )
 }

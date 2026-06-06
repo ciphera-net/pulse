@@ -187,6 +187,8 @@ interface ScriptSetupBlockProps {
   showFrameworkPicker?: boolean
   /** Optional class for the root wrapper. */
   className?: string
+  /** When true, all feature toggles and storage selects are read-only. */
+  disabled?: boolean
 }
 
 const DEFAULT_FEATURES: Record<FeatureKey, boolean> = {
@@ -204,6 +206,7 @@ export default function ScriptSetupBlock({
   onFeaturesChange,
   showFrameworkPicker = true,
   className = '',
+  disabled = false,
 }: ScriptSetupBlockProps) {
   const sf = site.script_features || {}
   const [features, setFeatures] = useState<Record<FeatureKey, boolean>>({
@@ -367,7 +370,7 @@ export default function ScriptSetupBlock({
                   {f.description}
                 </span>
               </div>
-              <Toggle checked={features[f.key]} onChange={() => toggleFeature(f.key)} />
+              <Toggle checked={features[f.key]} onChange={() => toggleFeature(f.key)} disabled={disabled} />
             </div>
           ))}
         </div>
@@ -381,7 +384,7 @@ export default function ScriptSetupBlock({
               Rage clicks &amp; dead clicks &middot; Loads separate add-on script
             </span>
           </div>
-          <Toggle checked={features.frustration} onChange={() => toggleFeature('frustration')} />
+          <Toggle checked={features.frustration} onChange={() => toggleFeature('frustration')} disabled={disabled} />
         </div>
         {/* * Interactions — copy, print, video tracking add-on */}
         <div className="mt-2 flex items-center justify-between rounded-xl border border-dashed border-neutral-700 bg-neutral-900 px-4 py-3">
@@ -393,7 +396,7 @@ export default function ScriptSetupBlock({
               Copy, print &amp; video events &middot; Loads separate add-on script
             </span>
           </div>
-          <Toggle checked={features.interactions} onChange={() => toggleFeature('interactions')} />
+          <Toggle checked={features.interactions} onChange={() => toggleFeature('interactions')} disabled={disabled} />
         </div>
         {/* * SRI — security option, opt-in only */}
         <div className="mt-3 flex items-center justify-between rounded-xl border border-dashed border-neutral-700 bg-neutral-900 px-4 py-3">
@@ -405,7 +408,7 @@ export default function ScriptSetupBlock({
               Verify script hasn&apos;t been tampered with &middot; Update snippet when script is updated
             </span>
           </div>
-          <Toggle checked={showSRI} onChange={() => setShowSRI((v) => !v)} />
+          <Toggle checked={showSRI} onChange={() => setShowSRI((v) => !v)} disabled={disabled} />
         </div>
       </div>
 
@@ -427,6 +430,7 @@ export default function ScriptSetupBlock({
               value={storage}
               onChange={(v: string) => { setStorage(v); onFeaturesChange?.({ ...features, storage: v, ttl }) }}
               options={STORAGE_OPTIONS}
+              disabled={disabled}
             />
           </div>
           {storage === 'local' && (
@@ -439,6 +443,7 @@ export default function ScriptSetupBlock({
                 value={ttl}
                 onChange={(v: string) => { setTtl(v); onFeaturesChange?.({ ...features, storage, ttl: v }) }}
                 options={TTL_OPTIONS}
+                disabled={disabled}
               />
             </div>
           )}

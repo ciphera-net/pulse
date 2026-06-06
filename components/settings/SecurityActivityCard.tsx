@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/lib/auth/context'
 import { getUserActivity, type AuditLogEntry } from '@/lib/api/activity'
-import { Spinner } from '@ciphera-net/ui'
+import { Button, Spinner } from '@ciphera-net/ui'
 import { Shield } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { formatRelativeTime, formatDateTimeFull } from '@/lib/utils/formatDate'
@@ -122,7 +122,7 @@ export default function SecurityActivityCard() {
 
   return (
     <div>
-      <h2 className="text-xl font-semibold text-white mb-1">Security Activity</h2>
+      <h2 className="text-base font-semibold text-white mb-1">Security Activity</h2>
       <p className="text-neutral-400 text-sm mb-6">
         Recent security events on your account{totalCount > 0 ? ` (${totalCount})` : ''}
       </p>
@@ -202,14 +202,13 @@ export default function SecurityActivityCard() {
 
           {hasMore && (
             <div className="pt-2 text-center">
-              <button
-                type="button"
+              <Button
+                variant="ghost"
                 onClick={handleLoadMore}
                 disabled={loadingMore}
-                className="text-sm font-medium text-neutral-400 hover:text-white transition-colors disabled:opacity-50 ease-apple"
               >
                 {loadingMore ? 'Loading...' : 'Load more'}
-              </button>
+              </Button>
             </div>
           )}
         </div>
