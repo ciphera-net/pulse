@@ -2,7 +2,8 @@
 
 import { OfflineBanner } from '@/components/OfflineBanner'
 import { Footer } from '@/components/Footer'
-import { Header, type CipheraApp } from '@ciphera-net/ui'
+import Header from '@/components/Header'
+ import { type CipheraApp } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
 import { Header as MarketingHeader } from '@/components/marketing/Header'
 import NotificationCenter from '@/components/notifications/NotificationCenter'
