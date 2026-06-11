@@ -11,7 +11,7 @@ import {
   getLastYearRange,
   getQuarterToDateRange,
 } from '@/lib/utils/dateRanges'
-import { getDateRange } from '@ciphera-net/ui'
+import { getDateRange } from '@/lib/utils/format'
 
 export interface PeriodPreset {
   key: string

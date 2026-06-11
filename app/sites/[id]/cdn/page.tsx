@@ -9,7 +9,7 @@ import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 import * as Flags from 'country-flag-icons/react/3x2'
 
 const MapView = dynamic(() => import('@/components/dashboard/MapView'), { ssr: false })
-import { getDateRange, formatDate } from '@ciphera-net/ui'
+import { getDateRange, formatDate } from '@/lib/utils/format'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import { PERIOD_TO_API } from '@/lib/constants/periods'
 import { ArrowSquareOut, CloudArrowUp, CloudArrowDown, ChartLine, Warning } from '@phosphor-icons/react'

@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Button, Checkbox, Toggle, toast, Spinner, getDateRange, getAuthErrorMessage } from '@ciphera-net/ui'
+import { Button, Checkbox, Toggle, toast, Spinner, getAuthErrorMessage } from '@ciphera-net/ui'
+import { getDateRange } from '@/lib/utils/format'
 import { ShieldCheck, Shield } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useSite, useQuarantineStats, useSessions, useSiteDomainReputation } from '@/lib/swr/dashboard'

@@ -1,6 +1,6 @@
 'use client'
 
-import { formatNumber } from '@ciphera-net/ui'
+import { formatNumber } from '@/lib/utils/format'
 import { Files } from '@phosphor-icons/react'
 import type { FrustrationByPage } from '@/lib/api/stats'
 import { TableSkeleton } from '@/components/skeletons'

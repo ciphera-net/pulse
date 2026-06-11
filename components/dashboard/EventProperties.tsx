@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { formatNumber } from '@ciphera-net/ui'
+import { formatNumber } from '@/lib/utils/format'
 import { getEventPropertyKeys, getEventPropertyValues, type EventPropertyKey, type EventPropertyValue } from '@/lib/api/stats'
 import { ListBullets } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'

@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { logger } from '@/lib/utils/logger'
-import { formatNumber, Spinner } from '@ciphera-net/ui'
+import { Spinner } from '@ciphera-net/ui'
+import { formatNumber } from '@/lib/utils/format'
 import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
 import { TopPage, getTopPages, getEntryPages, getExitPages, PageEngagement, getPageEngagement } from '@/lib/api/stats'
 import { FrameCornersIcon, FileText } from '@phosphor-icons/react'

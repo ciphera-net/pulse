@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { logger } from '@/lib/utils/logger'
-import { formatNumber } from '@ciphera-net/ui'
+import { formatNumber } from '@/lib/utils/format'
 import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
 import * as Flags from 'country-flag-icons/react/3x2'
 import iso3166 from 'iso-3166-2'

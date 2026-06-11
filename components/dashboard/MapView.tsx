@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback, memo } from 'react'
 import * as d3 from 'd3'
 import * as topojson from 'topojson-client'
-import { formatNumber } from '@ciphera-net/ui'
+import { formatNumber } from '@/lib/utils/format'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const worldJson = require('visionscarto-world-atlas/world/110m.json')
 

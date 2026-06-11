@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { logger } from '@/lib/utils/logger'
-import { formatNumber } from '@ciphera-net/ui'
+import { formatNumber } from '@/lib/utils/format'
 import { getReferrerDisplayName, getReferrerFavicon, getReferrerIcon, mergeReferrersByDisplayName } from '@/lib/utils/icons'
 import {
   ArrowSquareOut,

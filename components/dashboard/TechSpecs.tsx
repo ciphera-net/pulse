@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { logger } from '@/lib/utils/logger'
-import { formatNumber } from '@ciphera-net/ui'
+import { formatNumber } from '@/lib/utils/format'
 import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
 import { getBrowserIcon, getOSIcon, getDeviceIcon } from '@/lib/utils/icons'
 import { Monitor, FrameCornersIcon } from '@phosphor-icons/react'

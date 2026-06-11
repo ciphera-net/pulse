@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { logger } from '@/lib/utils/logger'
-import { formatNumber, Modal, Spinner } from '@ciphera-net/ui'
+import { Modal, Spinner } from '@ciphera-net/ui'
+import { formatNumber } from '@/lib/utils/format'
 import { FrameCornersIcon, Monitor, DeviceMobile, DeviceTablet, MagnifyingGlass } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import * as Flags from 'country-flag-icons/react/3x2'
