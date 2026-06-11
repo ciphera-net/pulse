@@ -1,79 +1,75 @@
 // Centralised date/time formatting for Pulse.
 // All functions use explicit European conventions:
-//   • Day-first ordering (14 Mar 2025)
+//   • Numeric day-first ordering (14/03/2025)
 //   • 24-hour clock (14:30)
-//   • en-GB locale for Intl consistency
+// Date parts are composed locally for a deterministic DD/MM/YYYY that does not
+// depend on runtime locale/ICU availability.
 
 const LOCALE = 'en-GB'
 
-/** 14 Mar 2025 — tables, lists, general display */
-export function formatDate(d: Date): string {
-  return d.toLocaleDateString(LOCALE, { day: 'numeric', month: 'short', year: 'numeric' })
+const pad = (n: number) => String(n).padStart(2, '0')
+
+/** DD/MM/YYYY */
+function dmy(d: Date): string {
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`
 }
 
-/** 14 Mar — charts, compact spaces. Adds year if different from current. */
+/** DD/MM */
+function dm(d: Date): string {
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`
+}
+
+/** HH:MM (24-hour) */
+function hm(d: Date): string {
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+/** 14/03/2025 — tables, lists, general display */
+export function formatDate(d: Date): string {
+  return dmy(d)
+}
+
+/** 14/03 — charts, compact spaces. Adds year if different from current. */
 export function formatDateShort(d: Date): string {
   const now = new Date()
-  return d.toLocaleDateString(LOCALE, {
-    day: 'numeric',
-    month: 'short',
-    year: d.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
-  })
+  return d.getFullYear() !== now.getFullYear() ? dmy(d) : dm(d)
 }
 
-/** 14 Mar 2025, 14:30 — logs, events, audit trails */
+/** 14/03/2025 14:30 — logs, events, audit trails */
 export function formatDateTime(d: Date): string {
-  return d.toLocaleDateString(LOCALE, {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  })
+  return `${dmy(d)} ${hm(d)}`
 }
 
 /** 14:30 — intraday charts, time-only contexts */
 export function formatTime(d: Date): string {
-  return d.toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit', hour12: false })
+  return hm(d)
 }
 
-/** March 2025 — monthly aggregations */
+/** March 2025 — monthly aggregations (period label; no day component) */
 export function formatMonth(d: Date): string {
   return d.toLocaleDateString(LOCALE, { month: 'long', year: 'numeric' })
 }
 
-/** 2025-03-14 — exports, filenames, API params */
+/** 2025-03-14 — exports, filenames, API params (machine ISO; unchanged) */
 export function formatDateISO(d: Date): string {
   return d.toISOString().split('T')[0]
 }
 
-/** Fri, 14 Mar 2025 — full date with weekday for tooltips */
+/** Fri, 14/03/2025 — full date with weekday for tooltips */
 export function formatDateFull(d: Date): string {
-  return d.toLocaleDateString(LOCALE, {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
+  const weekday = d.toLocaleDateString(LOCALE, { weekday: 'short' })
+  return `${weekday}, ${dmy(d)}`
 }
 
-/** Fri, 14 Mar 2025, 14:30 — full date+time with weekday */
+/** Fri, 14/03/2025 14:30 — full date+time with weekday */
 export function formatDateTimeFull(d: Date): string {
-  return d.toLocaleDateString(LOCALE, {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  })
+  const weekday = d.toLocaleDateString(LOCALE, { weekday: 'short' })
+  return `${weekday}, ${dmy(d)} ${hm(d)}`
 }
 
-/** 14 March 2025 — long-form display (invoices, billing) */
+/** 14/03/2025 — long-form display (invoices, billing) */
 export function formatDateLong(d: Date): string {
-  return d.toLocaleDateString(LOCALE, { day: 'numeric', month: 'long', year: 'numeric' })
+  return dmy(d)
 }
 
 /** "Just now", "5m ago", "2h ago", "3d ago", then falls back to formatDateShort */
@@ -93,13 +89,7 @@ export function formatRelativeTime(dateStr: string): string {
   return formatDateShort(date)
 }
 
-/** 14 Mar, 14:30 — compact date + time (uptime checks, recent activity) */
+/** 14/03 14:30 — compact date + time (uptime checks, recent activity) */
 export function formatDateTimeShort(d: Date): string {
-  return d.toLocaleDateString(LOCALE, {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  })
+  return `${dm(d)} ${hm(d)}`
 }

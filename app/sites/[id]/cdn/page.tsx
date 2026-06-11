@@ -89,7 +89,7 @@ function formatNumber(n: number): string {
 
 function formatDateShort(date: string): string {
   const d = new Date(date + 'T00:00:00')
-  return d.getDate() + ' ' + d.toLocaleString('en-US', { month: 'short' })
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
 function changePercent(
