@@ -2,14 +2,14 @@ import type { Config } from 'tailwindcss'
 
 const config: Config = {
   presets: [
-    require('@ciphera-net/ui/dist/tailwind-preset').default,
+    require('@ciphera-net/facet-tailwind').default,
   ],
   darkMode: 'class',
   content: [
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
     './app/**/*.{js,ts,jsx,tsx,mdx}',
-    './node_modules/@ciphera-net/ui/dist/**/*.{js,mjs}',
+    './node_modules/@ciphera-net/facet/dist/**/*.{js,mjs,cjs}',
   ],
   theme: {
     extend: {
@@ -39,7 +39,9 @@ const config: Config = {
         shimmer: 'shimmer 1.2s ease-in-out infinite',
       },
       fontFamily: {
-        sans: ['var(--font-plus-jakarta-sans)', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-geist-sans)', 'Geist', 'system-ui', 'sans-serif'],
+        display: ['var(--font-space-grotesk)', '"Space Grotesk"', 'sans-serif'],
+        mono: ['var(--font-jetbrains-mono)', '"JetBrains Mono"', 'monospace'],
       },
       colors: {
         background: 'rgb(var(--background) / <alpha-value>)',

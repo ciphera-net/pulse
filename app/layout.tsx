@@ -1,18 +1,30 @@
 import Script from 'next/script'
-import { ThemeProvider, Toaster } from '@ciphera-net/ui'
+import { Toaster } from '@ciphera-net/facet'
 import { SupportWidgetAuth } from '@/components/support-widget-auth'
 import { AuthProvider } from '@/lib/auth/context'
 import SWRProvider from '@/components/SWRProvider'
 import type { Metadata, Viewport } from 'next'
-import { Plus_Jakarta_Sans } from 'next/font/google'
+import { Space_Grotesk, Geist, JetBrains_Mono } from 'next/font/google'
 import LayoutContent from './layout-content'
+import '@ciphera-net/facet/styles'
 import '../styles/globals.css'
 
-const plusJakartaSans = Plus_Jakarta_Sans({
+const spaceGrotesk = Space_Grotesk({
   subsets: ['latin'],
-  variable: '--font-plus-jakarta-sans',
+  variable: '--font-space-grotesk',
   display: 'swap',
-  preload: false,
+})
+
+const geist = Geist({
+  subsets: ['latin'],
+  variable: '--font-geist-sans',
+  display: 'swap',
+})
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-jetbrains-mono',
+  display: 'swap',
 })
 
 export const viewport: Viewport = {
@@ -48,8 +60,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={`${plusJakartaSans.variable} dark`} suppressHydrationWarning>
-      <body className="antialiased min-h-screen flex flex-col bg-neutral-950 text-neutral-100">
+    <html lang="en" className={`${geist.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} dark`} suppressHydrationWarning>
+      <body className="antialiased min-h-screen flex flex-col bg-background text-foreground">
         <Script
           defer
           data-domain="pulse.ciphera.net"
@@ -60,13 +72,11 @@ export default function RootLayout({
           src="https://js.ciphera.net/script.frustration.js"
         />
         <SWRProvider>
-          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
-            <AuthProvider>
-              <LayoutContent>{children}</LayoutContent>
-              <Toaster />
-              <SupportWidgetAuth />
-            </AuthProvider>
-          </ThemeProvider>
+          <AuthProvider>
+            <LayoutContent>{children}</LayoutContent>
+            <Toaster />
+            <SupportWidgetAuth />
+          </AuthProvider>
         </SWRProvider>
       </body>
     </html>
