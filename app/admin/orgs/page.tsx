@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { listAdminOrgs, type AdminOrgSummary } from '@/lib/api/admin'
-import { Button, LoadingOverlay, toast } from '@ciphera-net/ui'
+import { Button, LoadingOverlay, toast } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
 import { formatDate } from '@/lib/utils/formatDate'
 

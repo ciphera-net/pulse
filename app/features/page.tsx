@@ -11,7 +11,7 @@
 
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { Button } from '@ciphera-net/ui'
+import { Button } from '@ciphera-net/facet'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
 import {
   BarChartIcon,
@@ -20,7 +20,7 @@ import {
   GlobeIcon,
   Share2Icon,
   ArrowRightIcon,
-} from '@ciphera-net/ui'
+} from '@ciphera-net/facet'
 
 // * Pillar features (top 3 cards — matches landing page)
 const pillars = [
@@ -398,7 +398,7 @@ export default function FeaturesPage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Button
               onClick={() => initiateOAuthFlow()}
-              variant="primary"
+              variant="default"
               className="px-8 py-4 text-lg shadow-lg shadow-brand-orange/20"
             >
               Get Started Free

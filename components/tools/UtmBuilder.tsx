@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Copy, Check } from '@phosphor-icons/react'
 import { useSites } from '@/lib/swr/sites'
-import { Input, Button } from '@ciphera-net/ui'
+import { Input, Button } from '@ciphera-net/facet'
 import Select from '@/components/ui/select'
 
 interface UtmBuilderProps {

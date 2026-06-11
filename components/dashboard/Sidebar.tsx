@@ -23,7 +23,7 @@ import {
   PlusIcon,
   XIcon,
   BookOpenIcon,
-} from '@ciphera-net/ui'
+} from '@ciphera-net/facet'
 import { ReportIssueButton } from '@/components/support/ReportIssueButton'
 
 const EXPANDED = 256

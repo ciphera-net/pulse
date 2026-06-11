@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/lib/auth/context'
 import { getUserActivity, type AuditLogEntry } from '@/lib/api/activity'
-import { Button, Spinner } from '@ciphera-net/ui'
+import { Button, Spinner } from '@ciphera-net/facet'
 import { Shield } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { formatRelativeTime, formatDateTimeFull } from '@/lib/utils/formatDate'

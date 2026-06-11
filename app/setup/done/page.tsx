@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/auth/context'
 import { useSetup } from '@/lib/setup/context'
 import { completeOnboarding } from '@/lib/api/organization'
 import { getRealtime } from '@/lib/api/stats'
-import { Button, Spinner, CheckCircleIcon, UsersIcon, BookOpenIcon, FunnelIcon } from '@ciphera-net/ui'
+import { Button, Spinner, CheckCircleIcon, UsersIcon, BookOpenIcon, FunnelIcon } from '@ciphera-net/facet'
 
 export default function SetupDonePage() {
   const router = useRouter()

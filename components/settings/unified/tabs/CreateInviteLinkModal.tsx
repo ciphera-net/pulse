@@ -1,12 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { Button, Input, toast } from '@ciphera-net/ui'
+import { Button, Input, toast } from '@ciphera-net/facet'
 import { Checkbox } from '@/components/ui/checkbox'
 import Select from '@/components/ui/select'
 import { Copy, Check } from '@phosphor-icons/react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { getAuthErrorMessage } from '@ciphera-net/ui'
+import { getAuthErrorMessage } from '@ciphera-net/facet'
 import { createInviteLink, type InviteLink } from '@/lib/api/organization'
 import { type Role } from '@/lib/api/roles'
 import { useSites } from '@/lib/swr/sites'
@@ -237,7 +237,7 @@ export default function CreateInviteLinkModal({ orgId, roles, open, onOpenChange
               </Button>
               <Button
                 onClick={handleCreate}
-                variant="primary"
+                variant="default"
                 className="text-sm"
                 disabled={submitting || !name.trim() || !roleId}
               >

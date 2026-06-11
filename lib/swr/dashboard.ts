@@ -3,7 +3,7 @@
 
 import useSWR from 'swr'
 import { useAuth } from '@/lib/auth/context'
-import { toast } from '@ciphera-net/ui'
+import { toast } from '@ciphera-net/facet'
 import {
   getDashboard,
   getDashboardOverview,

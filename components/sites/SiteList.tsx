@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { Site } from '@/lib/api/sites'
 import type { Stats } from '@/lib/api/stats'
 import { formatNumber } from '@/lib/utils/format'
-import { BarChartIcon, SettingsIcon, BookOpenIcon, ExternalLinkIcon, Button } from '@ciphera-net/ui'
+import { BarChartIcon, SettingsIcon, BookOpenIcon, ExternalLinkIcon, Button } from '@ciphera-net/facet'
 import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
 import { PlusCircle } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -97,7 +97,7 @@ function SiteCard({ site, stats, statsLoading }: SiteCardProps) {
       {/* Actions */}
       <div className="mt-auto flex gap-2">
         <Link href={`/sites/${site.id}`} className="flex-1">
-          <Button variant="primary" className="w-full justify-center text-sm">
+          <Button variant="default" className="w-full justify-center text-sm">
             <BarChartIcon className="w-4 h-4" />
             View Dashboard
           </Button>

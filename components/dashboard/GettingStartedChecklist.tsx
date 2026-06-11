@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/auth/context'
 import { useSites } from '@/lib/swr/sites'
 import { useMembers } from '@/lib/swr/members'
 import { useGoals, useReportSchedules } from '@/lib/swr/dashboard'
-import { XIcon, CheckCircleIcon } from '@ciphera-net/ui'
+import { XIcon, CheckCircleIcon } from '@ciphera-net/facet'
 import { Circle as CircleIcon } from '@phosphor-icons/react'
 
 const DISMISSED_PREFIX = 'pulse_checklist_dismissed_'

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { Button, Input, toast, getAuthErrorMessage, AlertTriangleIcon, Spinner } from '@ciphera-net/ui'
+import { Button, Input, toast, getAuthErrorMessage, AlertTriangleIcon, Spinner } from '@ciphera-net/facet'
 import { resetSiteData, type ResetModule } from '@/lib/api/sites'
 import { ChartBar, Path, Funnel, Heartbeat, Gauge, Cloud, MagnifyingGlass } from '@phosphor-icons/react'
 import {
@@ -175,7 +175,7 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
             return (
               <Button
                 key={mod.id}
-                variant={checked ? 'primary' : 'secondary'}
+                variant={checked ? 'default' : 'secondary'}
                 size="sm"
                 onClick={() => toggleModule(mod.id)}
                 disabled={isResetting}

@@ -9,10 +9,10 @@ import { useSites, mutateSites } from '@/lib/swr/sites'
 import { getSubscription } from '@/lib/api/billing'
 import { getSitesLimitForPlan } from '@/lib/plans'
 import { trackSiteCreatedFromDashboard, trackSiteCreatedScriptCopied } from '@/lib/welcomeAnalytics'
-import { toast } from '@ciphera-net/ui'
-import { getAuthErrorMessage } from '@ciphera-net/ui'
-import { Button, Input } from '@ciphera-net/ui'
-import { CheckCircleIcon } from '@ciphera-net/ui'
+import { toast } from '@ciphera-net/facet'
+import { getAuthErrorMessage } from '@ciphera-net/facet'
+import { Button, Input } from '@ciphera-net/facet'
+import { CheckCircleIcon } from '@ciphera-net/facet'
 import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
 import VerificationModal from '@/components/sites/VerificationModal'
 
@@ -153,7 +153,7 @@ export default function NewSitePage() {
           </div>
 
           <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-            <Button variant="primary" onClick={goToDashboard} className="min-w-40">
+            <Button variant="default" onClick={goToDashboard} className="min-w-40">
               Back to dashboard
             </Button>
             <Button variant="secondary" onClick={() => router.push(`/sites/${createdSite.id}`)} className="min-w-40">

@@ -4,17 +4,17 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { getPublicDashboard, getPublicStats, getPublicDailyStats, getPublicRealtime, authenticatePublicDashboard, type DashboardData, type Stats, type DailyStat } from '@/lib/api/stats'
-import { toast } from '@ciphera-net/ui'
-import { getAuthErrorMessage } from '@ciphera-net/ui'
+import { toast } from '@ciphera-net/facet'
+import { getAuthErrorMessage } from '@ciphera-net/facet'
 import { ApiError } from '@/lib/api/client'
 import { env } from '@/lib/env'
-import { LoadingOverlay, Button } from '@ciphera-net/ui'
+import { LoadingOverlay, Button } from '@ciphera-net/facet'
 import Chart from '@/components/dashboard/Chart'
 import TopPages from '@/components/dashboard/ContentStats'
 import TopReferrers from '@/components/dashboard/TopReferrers'
 import Audience from '@/components/dashboard/Locations'
 import TechSpecs from '@/components/dashboard/TechSpecs'
-import { Captcha, DownloadIcon, ZapIcon } from '@ciphera-net/ui'
+import { Captcha, DownloadIcon, ZapIcon } from '@ciphera-net/facet'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import { PERIOD_TO_API } from '@/lib/constants/periods'
 import { DashboardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
@@ -231,7 +231,7 @@ export default function PublicDashboardPage() {
             </div>
             <Button
               type="submit"
-              variant="primary"
+              variant="default"
               className="w-full"
             >
               Access Dashboard

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Spinner, Input, Button, getAuthErrorMessage } from '@ciphera-net/ui'
+import { Spinner, Input, Button, getAuthErrorMessage } from '@ciphera-net/facet'
 import Select from '@/components/ui/select'
 import { ListChecks } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'

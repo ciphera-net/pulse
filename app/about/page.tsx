@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { CheckCircleIcon, XIcon } from '@ciphera-net/ui'
+import { CheckCircleIcon, XIcon } from '@ciphera-net/facet'
 
 function ComparisonTable({ title, competitors }: { title: string, competitors: { name: string, isPulse: boolean, features: Record<string, boolean | string> }[] }) {
   const allFeatures = [

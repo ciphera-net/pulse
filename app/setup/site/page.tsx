@@ -5,9 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useSetup } from '@/lib/setup/context'
 import { preservePlanParams } from '@/lib/setup/utils'
 import { createSite, detectFramework } from '@/lib/api/sites'
-import { getAuthErrorMessage } from '@ciphera-net/ui'
-import { Button, Input, toast } from '@ciphera-net/ui'
-import { GlobeIcon } from '@ciphera-net/ui'
+import { getAuthErrorMessage } from '@ciphera-net/facet'
+import { Button, Input, toast } from '@ciphera-net/facet'
+import { GlobeIcon } from '@ciphera-net/facet'
 
 function domainFromUrl(input: string): string {
   let d = input.trim().toLowerCase()

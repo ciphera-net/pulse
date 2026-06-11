@@ -5,7 +5,7 @@ import { AreaChart as VisxAreaChart, Area as VisxArea, Grid as VisxGrid, XAxis a
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import type { EngagementPercentilesData } from '@/lib/api/stats'
 import { formatNumber, formatDuration } from '@/lib/utils/format'
-import { DownloadIcon } from '@ciphera-net/ui'
+import { DownloadIcon } from '@ciphera-net/facet'
 import Select from '@/components/ui/select'
 import { ArrowUpRight, ArrowDownRight, ChartLine } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'

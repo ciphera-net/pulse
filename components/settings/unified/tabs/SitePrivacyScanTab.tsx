@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Toggle, Button, toast, Spinner, getAuthErrorMessage } from '@ciphera-net/ui'
+import { Toggle, Button, toast, Spinner, getAuthErrorMessage } from '@ciphera-net/facet'
 import Select from '@/components/ui/select'
 import { CheckCircle, XCircle } from '@phosphor-icons/react'
 import {

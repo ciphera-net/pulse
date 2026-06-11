@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { Modal, Button, Input } from '@ciphera-net/ui'
+import { Modal, Button, Input } from '@ciphera-net/facet'
 import { Checkbox } from '@/components/ui/checkbox'
 import Select from '@/components/ui/select'
 import { cdnUrl } from '@/lib/cdn'
@@ -517,7 +517,7 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
           <Button variant="secondary" onClick={onClose} disabled={isExporting}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={handleExport} disabled={isExporting || exportDone}>
+          <Button variant="default" onClick={handleExport} disabled={isExporting || exportDone}>
             {exportDone ? '✓ Done' : isExporting ? 'Exporting...' : 'Export Data'}
           </Button>
         </div>

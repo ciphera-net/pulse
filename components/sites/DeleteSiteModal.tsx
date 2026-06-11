@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast, getAuthErrorMessage, AlertTriangleIcon, XIcon } from '@ciphera-net/ui'
+import { toast, getAuthErrorMessage, AlertTriangleIcon, XIcon } from '@ciphera-net/facet'
 import { deleteSite, permanentDeleteSite } from '@/lib/api/sites'
 
 interface DeleteSiteModalProps {

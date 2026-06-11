@@ -1,13 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { Button, Input, toast, Spinner } from '@ciphera-net/ui'
+import { Button, Input, toast, Spinner } from '@ciphera-net/facet'
 import Select from '@/components/ui/select'
 import { Plugs, LinkBreak, ShieldCheck } from '@phosphor-icons/react'
 import { useGSCStatus, useBunnyStatus } from '@/lib/swr/dashboard'
 import { disconnectGSC, getGSCAuthURL } from '@/lib/api/gsc'
 import { disconnectBunny, getBunnyPullZones, connectBunny, type BunnyPullZone } from '@/lib/api/bunny'
-import { getAuthErrorMessage } from '@ciphera-net/ui'
+import { getAuthErrorMessage } from '@ciphera-net/facet'
 import { formatDateTime } from '@/lib/utils/formatDate'
 import { useCan } from '@/lib/auth/permissions'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -94,7 +94,7 @@ function IntegrationCard({
             <LinkBreak weight="bold" className="w-3.5 h-3.5" /> Disconnect
           </Button>
         ) : (
-          <Button onClick={onConnect} variant="primary" className="text-sm gap-1.5">
+          <Button onClick={onConnect} variant="default" className="text-sm gap-1.5">
             <Plugs weight="bold" className="w-3.5 h-3.5" /> {connectLabel}
           </Button>
         ))}
@@ -233,7 +233,7 @@ function BunnySetupForm({ siteId, onConnected }: { siteId: string; onConnected: 
         {zonesLoaded && pullZones.length > 0 && (
           <Button
             onClick={handleConnect}
-            variant="primary"
+            variant="default"
             className="text-sm w-full"
             disabled={connecting || !selectedZone}
           >

@@ -9,7 +9,7 @@ import * as Flags from 'country-flag-icons/react/3x2'
 import iso3166 from 'iso-3166-2'
 
 const MapView = dynamic(() => import('./MapView'), { ssr: false })
-import { Modal, GlobeIcon } from '@ciphera-net/ui'
+import { Modal, GlobeIcon } from '@ciphera-net/facet'
 import { GlobeHemisphereWest } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ListSkeleton } from '@/components/skeletons'

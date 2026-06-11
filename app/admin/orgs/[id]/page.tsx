@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { getAdminOrg, grantPlan, type AdminOrgDetail } from '@/lib/api/admin'
-import { Button, LoadingOverlay, toast } from '@ciphera-net/ui'
+import { Button, LoadingOverlay, toast } from '@ciphera-net/facet'
 import Select from '@/components/ui/select'
 import { cdnUrl } from '@/lib/cdn'
 import { Globe } from '@phosphor-icons/react'
@@ -230,7 +230,7 @@ export default function AdminOrgDetailPage() {
             </div>
 
             <div className="pt-4 flex justify-end">
-              <Button type="submit" disabled={submitting} variant="primary">
+              <Button type="submit" disabled={submitting} variant="default">
                 {submitting ? 'Granting...' : 'Grant Plan'}
               </Button>
             </div>

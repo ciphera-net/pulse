@@ -11,7 +11,7 @@ import { getPrices } from '@/lib/api/billing'
 import { TRAFFIC_TIERS } from '@/lib/plans'
 import PlanSummary from '@/components/checkout/PlanSummary'
 import PaymentForm from '@/components/checkout/PaymentForm'
-import { Button, Spinner } from '@ciphera-net/ui'
+import { Button, Spinner } from '@ciphera-net/facet'
 import { TIMING } from '@/lib/motion'
 
 const PLANS = [

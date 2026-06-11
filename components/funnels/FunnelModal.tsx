@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DURATION_FAST, DURATION_BASE, EASE_APPLE } from '@/lib/motion'
-import { Button, Spinner, toast } from '@ciphera-net/ui'
+import { Button, Spinner, toast } from '@ciphera-net/facet'
 import { CaretUp, CaretDown, X, Plus, Trash } from '@phosphor-icons/react'
 import type { Funnel, FunnelStep, StepPropertyFilter, CreateFunnelRequest } from '@/lib/api/funnels'
 
@@ -216,7 +216,7 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData }: 
                 {/* Footer — matches UnifiedSettingsModal save bar border */}
                 <div className="shrink-0 px-6 py-3 border-t border-neutral-800/60 flex justify-end gap-2">
                   <Button variant="secondary" onClick={onClose} disabled={saving}>Cancel</Button>
-                  <Button variant="primary" onClick={handleSubmit} disabled={saving}>
+                  <Button variant="default" onClick={handleSubmit} disabled={saving}>
                     {saving && <Spinner className="w-4 h-4" />}
                     {initialData ? 'Save Changes' : 'Create Funnel'}
                   </Button>

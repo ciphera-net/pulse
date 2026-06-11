@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { MenuIcon, UserMenu } from '@ciphera-net/ui'
+import { MenuIcon, UserMenu } from '@ciphera-net/facet'
 import { useAuth } from '@/lib/auth/context'
 import NotificationCenter from '@/components/notifications/NotificationCenter'
 

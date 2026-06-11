@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { DURATION_BASE, EASE_APPLE, TIMING } from '@/lib/motion'
 import { deleteFunnel, createFunnel, updateFunnel, type Funnel, type FunnelStats, type CreateFunnelRequest } from '@/lib/api/funnels'
 import { useSite, useFunnels, useFunnelStats } from '@/lib/swr/dashboard'
-import { toast, PlusIcon, ArrowRightIcon, TrashIcon, Button } from '@ciphera-net/ui'
+import { toast, PlusIcon, ArrowRightIcon, TrashIcon, Button } from '@ciphera-net/facet'
 import { formatNumber } from '@/lib/utils/format'
 import { FunnelsListSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -343,7 +343,7 @@ export default function FunnelsPage() {
             onShift={shiftPeriod}
           />
           {canManageFunnels && (
-            <Button variant="primary" onClick={() => { setEditingFunnel(null); setModalOpen(true) }}>
+            <Button variant="default" onClick={() => { setEditingFunnel(null); setModalOpen(true) }}>
               <PlusIcon className="w-4 h-4" />
               Create Funnel
             </Button>
@@ -381,7 +381,7 @@ export default function FunnelsPage() {
           </DialogHeader>
           <DialogFooter>
             <Button variant="secondary" onClick={() => setDeletingFunnel(null)}>Cancel</Button>
-            <Button variant="primary" className="bg-red-600 hover:bg-red-500 shadow-none" onClick={handleDelete}>Delete</Button>
+            <Button variant="default" className="bg-red-600 hover:bg-red-500 shadow-none" onClick={handleDelete}>Delete</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

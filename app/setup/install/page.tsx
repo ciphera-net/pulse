@@ -6,7 +6,7 @@ import { useSetup } from '@/lib/setup/context'
 import { preservePlanParams } from '@/lib/setup/utils'
 import { verifySite } from '@/lib/api/sites'
 import { getRealtime } from '@/lib/api/stats'
-import { Button, Spinner, CheckCircleIcon } from '@ciphera-net/ui'
+import { Button, Spinner, CheckCircleIcon } from '@ciphera-net/facet'
 import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
 
 type VerificationState = 'idle' | 'checking' | 'success' | 'timeout'

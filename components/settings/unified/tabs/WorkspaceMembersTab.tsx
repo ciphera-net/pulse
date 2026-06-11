@@ -1,14 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Button, toast, Spinner } from '@ciphera-net/ui'
+import { Button, toast, Spinner } from '@ciphera-net/facet'
 import { Plus, Trash, Crown, UserCircle, Users } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useAuth } from '@/lib/auth/context'
 import { useCan } from '@/lib/auth/permissions'
 import { getOrganizationMembers, removeOrganizationMember, getInviteLinks, type OrganizationMember, type InviteLink } from '@/lib/api/organization'
 import { listRoles, type Role } from '@/lib/api/roles'
-import { getAuthErrorMessage } from '@ciphera-net/ui'
+import { getAuthErrorMessage } from '@ciphera-net/facet'
 import CreateInviteLinkModal from './CreateInviteLinkModal'
 import InviteLinksSection from './InviteLinksSection'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -84,7 +84,7 @@ export default function WorkspaceMembersTab() {
           <p className="text-sm text-neutral-400">{members.length} member{members.length !== 1 ? 's' : ''} in your organization.</p>
         </div>
         {canManage && (
-          <Button onClick={() => setShowLinkModal(true)} variant="primary" className="text-sm gap-1.5">
+          <Button onClick={() => setShowLinkModal(true)} variant="default" className="text-sm gap-1.5">
             <Plus weight="bold" className="w-3.5 h-3.5" /> Invite
           </Button>
         )}

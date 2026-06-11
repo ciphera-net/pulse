@@ -1,6 +1,6 @@
 'use client'
 
-import { Button } from '@ciphera-net/ui'
+import { Button } from '@ciphera-net/facet'
 
 interface DangerZoneItem {
   title: string

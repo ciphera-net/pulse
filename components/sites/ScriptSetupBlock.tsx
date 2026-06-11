@@ -8,7 +8,7 @@
 import { useState, useCallback, useMemo } from 'react'
 import { ArrowUpRight } from '@phosphor-icons/react'
 import { integrations, getIntegration } from '@/lib/integrations'
-import { toast, Toggle, CheckIcon } from '@ciphera-net/ui'
+import { toast, Toggle, CheckIcon } from '@ciphera-net/facet'
 import Select from '@/components/ui/select'
 import sriHashes from '@/public/script-sri.json'
 

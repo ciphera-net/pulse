@@ -1,5 +1,5 @@
 /**
- * Number / machine-date / duration formatting — re-homed from @ciphera-net/ui.
+ * Number / machine-date / duration formatting — re-homed from the legacy shared UI lib.
  *
  * NOTE: `formatDate` here is the MACHINE format (YYYY-MM-DD, built from LOCAL date
  * parts) used to construct analytics API query ranges. It is NOT a display format

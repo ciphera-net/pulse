@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { XIcon } from '@ciphera-net/ui'
+import { XIcon } from '@ciphera-net/facet'
 import { SPRING, TIMING } from '@/lib/motion'
 
 interface ShortcutsOverlayProps {

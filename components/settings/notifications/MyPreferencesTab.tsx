@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
-import { Input, toast, getAuthErrorMessage } from '@ciphera-net/ui'
+import { Input, toast, getAuthErrorMessage } from '@ciphera-net/facet'
 import Select from '@/components/ui/select'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { getPrefs, updatePrefs, type Preferences } from '@/lib/api/notifications-preferences'

@@ -12,8 +12,8 @@ import {
   type UptimeCheck,
   type UptimeDailyStat,
 } from '@/lib/api/uptime'
-import { toast } from '@ciphera-net/ui'
-import { Button } from '@ciphera-net/ui'
+import { toast } from '@ciphera-net/facet'
+import { Button } from '@ciphera-net/facet'
 import { UptimeSkeleton, ChecksSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import { formatDateFull, formatTime, formatDateTimeShort } from '@/lib/utils/formatDate'
 import {

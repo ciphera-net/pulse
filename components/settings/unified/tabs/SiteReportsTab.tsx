@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Button, toast, Spinner, Modal } from '@ciphera-net/ui'
+import { Button, toast, Spinner, Modal } from '@ciphera-net/facet'
 import Select from '@/components/ui/select'
 import { Plus, Pencil, Trash, EnvelopeSimple, WebhooksLogo, PaperPlaneTilt, FileText, Bell } from '@phosphor-icons/react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -20,7 +20,7 @@ import {
   type EmailConfig,
   type WebhookConfig,
 } from '@/lib/api/report-schedules'
-import { getAuthErrorMessage } from '@ciphera-net/ui'
+import { getAuthErrorMessage } from '@ciphera-net/facet'
 import { formatDateTime } from '@/lib/utils/formatDate'
 import SettingsSections from '@/components/settings/SettingsSections'
 
@@ -483,7 +483,7 @@ function ReportScheduleModal({
         {/* Actions */}
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" onClick={handleSubmit} disabled={saving}>
+          <Button variant="default" onClick={handleSubmit} disabled={saving}>
             {saving ? <Spinner className="w-4 h-4" /> : editing ? 'Save Changes' : 'Create Schedule'}
           </Button>
         </div>
@@ -624,7 +624,7 @@ function AlertChannelModal({
         {/* Actions */}
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" onClick={handleSubmit} disabled={saving}>
+          <Button variant="default" onClick={handleSubmit} disabled={saving}>
             {saving ? <Spinner className="w-4 h-4" /> : editing ? 'Save Changes' : 'Add Channel'}
           </Button>
         </div>
@@ -674,7 +674,7 @@ export default function SiteReportsTab({ siteId }: { siteId: string }) {
             <p className="text-sm text-neutral-400">Automated analytics summaries via email or webhook.</p>
           </div>
           {canManage && (
-            <Button variant="primary" className="text-sm gap-1.5" onClick={openNewReport}>
+            <Button variant="default" className="text-sm gap-1.5" onClick={openNewReport}>
               <Plus weight="bold" className="w-3.5 h-3.5" /> Add Report
             </Button>
           )}
@@ -704,7 +704,7 @@ export default function SiteReportsTab({ siteId }: { siteId: string }) {
             <p className="text-sm text-neutral-400">Get notified when uptime monitors go down.</p>
           </div>
           {canManage && (
-            <Button variant="primary" className="text-sm gap-1.5" onClick={openNewAlert}>
+            <Button variant="default" className="text-sm gap-1.5" onClick={openNewAlert}>
               <Plus weight="bold" className="w-3.5 h-3.5" /> Add Channel
             </Button>
           )}

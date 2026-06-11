@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Modal } from '@ciphera-net/ui'
+import { Modal } from '@ciphera-net/facet'
 import { formatNumber } from '@/lib/utils/format'
 import { FrameCornersIcon, Copy, Check, CursorClick } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { toast } from '@ciphera-net/ui'
+import { toast } from '@ciphera-net/facet'
 import type { FrustrationElement } from '@/lib/api/stats'
 import { ListSkeleton } from '@/components/skeletons'
 

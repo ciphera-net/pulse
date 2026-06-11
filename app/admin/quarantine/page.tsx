@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { LoadingOverlay, toast } from '@ciphera-net/ui'
+import { LoadingOverlay, toast } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
 import { Shield } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'

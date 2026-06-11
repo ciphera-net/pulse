@@ -6,9 +6,9 @@ import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth/context'
 import { ID_URL, default as apiRequest } from '@/lib/api/client'
 import { exchangeAuthCode } from '@/app/actions/auth'
-import { authMessageFromErrorType, type AuthErrorType } from '@ciphera-net/ui'
+import { authMessageFromErrorType, type AuthErrorType } from '@ciphera-net/facet'
 import { safeRedirectUrl } from '@/lib/utils/safe-redirect'
-import { LoadingOverlay } from '@ciphera-net/ui'
+import { LoadingOverlay } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
 
 function AuthCallbackContent() {

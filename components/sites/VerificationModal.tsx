@@ -8,10 +8,10 @@ import {
   CheckCircleIcon, 
   AlertTriangleIcon,
   ZapIcon 
-} from '@ciphera-net/ui'
+} from '@ciphera-net/facet'
 import { Site, verifySite } from '@/lib/api/sites'
 import { getRealtime } from '@/lib/api/stats'
-import { toast, Button } from '@ciphera-net/ui'
+import { toast, Button } from '@ciphera-net/facet'
 
 interface VerificationModalProps {
   isOpen: boolean

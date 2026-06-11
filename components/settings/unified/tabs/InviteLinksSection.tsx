@@ -1,9 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { Button, toast } from '@ciphera-net/ui'
+import { Button, toast } from '@ciphera-net/facet'
 import { Copy, Check } from '@phosphor-icons/react'
-import { getAuthErrorMessage } from '@ciphera-net/ui'
+import { getAuthErrorMessage } from '@ciphera-net/facet'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { revokeInviteLink, type InviteLink } from '@/lib/api/organization'
 import { type Role } from '@/lib/api/roles'

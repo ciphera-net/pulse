@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion'
 import { ArrowRight } from '@phosphor-icons/react'
-import { Button } from '@ciphera-net/ui'
+import { Button } from '@ciphera-net/facet'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
 import Link from 'next/link'
 
@@ -38,7 +38,7 @@ export default function CTASection({
               Join thousands of developers who respect their users&apos; privacy while getting the insights they need.
             </p>
             <div className="flex flex-row gap-3 justify-center flex-wrap">
-              <Button onClick={() => initiateOAuthFlow()} variant="primary" className="px-6 py-3 shadow-lg shadow-brand-orange/20 gap-2">
+              <Button onClick={() => initiateOAuthFlow()} variant="default" className="px-6 py-3 shadow-lg shadow-brand-orange/20 gap-2">
                 Try Pulse Free <ArrowRight weight="bold" className="w-4 h-4" />
               </Button>
               <Link href={secondaryHref}>

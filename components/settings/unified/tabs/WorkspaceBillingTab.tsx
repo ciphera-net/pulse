@@ -2,13 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button, Input, toast, Spinner, Modal } from '@ciphera-net/ui'
+import { Button, Input, toast, Spinner, Modal } from '@ciphera-net/facet'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { CreditCard, DownloadSimple, ArrowRight, WarningCircle, PencilSimple } from '@phosphor-icons/react'
 import { useSubscription } from '@/lib/swr/dashboard'
 import { updatePaymentMethod, cancelSubscription, resumeSubscription, getInvoices, downloadInvoicePDF, updateBillingSettings, type Invoice } from '@/lib/api/billing'
 import { formatDateLong, formatDate } from '@/lib/utils/formatDate'
-import { getAuthErrorMessage } from '@ciphera-net/ui'
+import { getAuthErrorMessage } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
 import { useCan } from '@/lib/auth/permissions'
 
@@ -132,7 +132,7 @@ export default function WorkspaceBillingTab() {
         <CreditCard className="w-10 h-10 text-neutral-500 mx-auto mb-3" />
         <h3 className="text-base font-semibold text-white mb-1">No subscription</h3>
         <p className="text-sm text-neutral-400 mb-4">You're on the Hobby plan.</p>
-        <Button variant="primary" className="text-sm" onClick={() => router.push('/switch')}>View Plans</Button>
+        <Button variant="default" className="text-sm" onClick={() => router.push('/switch')}>View Plans</Button>
       </div>
     )
   }
@@ -176,7 +176,7 @@ export default function WorkspaceBillingTab() {
             )}
           </div>
           {canManageBilling ? (
-            <Button variant="primary" className="text-sm" onClick={() => router.push(isCanceled ? '/setup/plan' : '/switch')}>
+            <Button variant="default" className="text-sm" onClick={() => router.push(isCanceled ? '/setup/plan' : '/switch')}>
               {isCanceled ? 'Resubscribe' : 'Change Plan'}
             </Button>
           ) : (
@@ -315,7 +315,7 @@ export default function WorkspaceBillingTab() {
           ))}
         </div>
         <Button
-          variant="primary"
+          variant="default"
           className="w-full text-sm"
           onClick={() => { setShowPaymentMethodModal(false); handleUpdatePayment(selectedPaymentMethod) }}
           disabled={!selectedPaymentMethod}
@@ -339,7 +339,7 @@ export default function WorkspaceBillingTab() {
             Keep plan
           </Button>
           <Button
-            variant="primary"
+            variant="default"
             className="text-sm bg-red-600 hover:bg-red-700 border-red-600 hover:border-red-700"
             onClick={handleCancel}
             disabled={cancelling}
@@ -428,7 +428,7 @@ export default function WorkspaceBillingTab() {
               )}
 
               <div className="flex gap-2">
-                <Button variant="primary" className="text-sm" onClick={handleSaveBilling} disabled={savingBilling}>
+                <Button variant="default" className="text-sm" onClick={handleSaveBilling} disabled={savingBilling}>
                   {savingBilling ? 'Saving...' : 'Save'}
                 </Button>
                 <Button variant="secondary" className="text-sm" onClick={() => setEditingBilling(false)} disabled={savingBilling}>

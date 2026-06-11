@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import { cn } from '@ciphera-net/ui'
+import { cn } from '@ciphera-net/facet'
 
 // ─── ChartConfig ────────────────────────────────────────────────────
 

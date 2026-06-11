@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Button, Input, Toggle, toast, Spinner, getAuthErrorMessage } from '@ciphera-net/ui'
+import { Button, Input, Toggle, toast, Spinner, getAuthErrorMessage } from '@ciphera-net/facet'
 import Select from '@/components/ui/select'
 import { useSite, useSubscription, usePageSpeedConfig } from '@/lib/swr/dashboard'
 import { updateSite, type PageRule } from '@/lib/api/sites'

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Button, Input, Toggle, toast, Spinner, getAuthErrorMessage } from '@ciphera-net/ui'
+import { Button, Input, Toggle, toast, Spinner, getAuthErrorMessage } from '@ciphera-net/facet'
 import { Copy, CheckCircle, Lock } from '@phosphor-icons/react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useSite } from '@/lib/swr/dashboard'

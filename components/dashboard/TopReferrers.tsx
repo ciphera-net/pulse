@@ -20,7 +20,7 @@ import {
   ChatCircle,
   Question,
 } from '@phosphor-icons/react'
-import { Modal } from '@ciphera-net/ui'
+import { Modal } from '@ciphera-net/facet'
 import { Globe } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ListSkeleton } from '@/components/skeletons'

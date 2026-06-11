@@ -20,7 +20,7 @@ import {
   type EngagementPercentilesData,
 } from '@/lib/api/stats'
 import { getDateRange, formatDate, getThisWeekRange, getThisMonthRange, getYesterdayRange, getLast24HoursRange, getLast1HourRange, getThisYearRange } from '@/lib/utils/dateRanges'
-import { toast } from '@ciphera-net/ui'
+import { toast } from '@ciphera-net/facet'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import { PERIOD_TO_API, findPreset } from '@/lib/constants/periods'
 import dynamic from 'next/dynamic'

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Button, Toggle, toast, Spinner, getAuthErrorMessage } from '@ciphera-net/ui'
+import { Button, Toggle, toast, Spinner, getAuthErrorMessage } from '@ciphera-net/facet'
 import { Checkbox } from '@/components/ui/checkbox'
 import { getDateRange } from '@/lib/utils/format'
 import { ShieldCheck, Shield } from '@phosphor-icons/react'
@@ -134,14 +134,14 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
           {/* Review/Blocked toggle */}
           <div className="flex items-center gap-1">
             <Button
-              variant={botView === 'review' ? 'primary' : 'ghost'}
+              variant={botView === 'review' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => { setBotView('review'); setSelectedSessions(new Set()) }}
             >
               Suspicious
             </Button>
             <Button
-              variant={botView === 'blocked' ? 'primary' : 'ghost'}
+              variant={botView === 'blocked' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => { setBotView('blocked'); setSelectedSessions(new Set()) }}
             >

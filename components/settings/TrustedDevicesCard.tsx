@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/lib/auth/context'
 import { getUserDevices, removeDevice, type TrustedDevice } from '@/lib/api/devices'
-import { Button, Spinner, toast, getAuthErrorMessage } from '@ciphera-net/ui'
+import { Button, Spinner, toast, getAuthErrorMessage } from '@ciphera-net/facet'
 import { Laptop } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'

@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { GithubIcon, TwitterIcon, SwissFlagIcon } from '@ciphera-net/ui'
+import { GithubIcon, TwitterIcon, SwissFlagIcon } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
 
 interface FooterProps {

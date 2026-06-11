@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { CheckCircle as CircleCheck } from '@phosphor-icons/react'
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
-import { toast, Button } from '@ciphera-net/ui'
+import { toast, Button } from '@ciphera-net/facet'
 import { useSubscription } from '@/lib/swr/dashboard'
 import { getUserOrganizations } from '@/lib/api/organization'
 import PricingFAQ from '@/components/marketing/PricingFAQ'
@@ -331,7 +331,7 @@ export default function PricingSection() {
 
               {/* CTA button */}
               <Button
-                variant={isTeam ? 'primary' : 'secondary'}
+                variant={isTeam ? 'default' : 'secondary'}
                 onClick={() => {
                   if (isCurrent) return
                   if (plan.isFree) {

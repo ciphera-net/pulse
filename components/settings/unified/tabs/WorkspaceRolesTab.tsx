@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Button, Input, Spinner, toast, getAuthErrorMessage } from '@ciphera-net/ui'
+import { Button, Input, Spinner, toast, getAuthErrorMessage } from '@ciphera-net/facet'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import {
@@ -229,7 +229,7 @@ function CreateRoleForm({
         </Button>
         <Button
           onClick={handleSave}
-          variant="primary"
+          variant="default"
           className="text-sm gap-1.5"
           disabled={saving || !name.trim() || !slug.trim()}
         >
@@ -666,7 +666,7 @@ export default function WorkspaceRolesTab() {
         {canManage && !showCreate && (
           <Button
             onClick={() => setShowCreate(true)}
-            variant="primary"
+            variant="default"
             className="text-sm gap-1.5 shrink-0"
           >
             <Plus weight="bold" className="w-3.5 h-3.5" />

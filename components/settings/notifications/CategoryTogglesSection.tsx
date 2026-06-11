@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
-import { Toggle } from '@ciphera-net/ui'
+import { Toggle } from '@ciphera-net/facet'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { getCategorySettings, updateCategorySettings, type CategorySetting } from '@/lib/api/notifications-webhooks'
 

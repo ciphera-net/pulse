@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { logger } from '@/lib/utils/logger'
-import { Modal, Spinner } from '@ciphera-net/ui'
+import { Modal, Spinner } from '@ciphera-net/facet'
 import { formatNumber } from '@/lib/utils/format'
 import { FrameCornersIcon, Monitor, DeviceMobile, DeviceTablet, MagnifyingGlass } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'

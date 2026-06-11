@@ -8,7 +8,7 @@ import { getStats, type Stats } from '@/lib/api/stats'
 import { getSubscription, type SubscriptionDetails } from '@/lib/api/billing'
 import SiteList from '@/components/sites/SiteList'
 import DeleteSiteModal from '@/components/sites/DeleteSiteModal'
-import { Button, toast, getAuthErrorMessage } from '@ciphera-net/ui'
+import { Button, toast, getAuthErrorMessage } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
 import { useCan } from '@/lib/auth/permissions'
 import { getSitesLimitForPlan } from '@/lib/plans'
@@ -128,7 +128,7 @@ export default function HomeDashboard() {
                 Limit reached ({sites.length}/{siteLimit})
               </span>
               <Link href="/pricing">
-                <Button variant="primary" className="text-sm">
+                <Button variant="default" className="text-sm">
                   Upgrade
                 </Button>
               </Link>
@@ -142,7 +142,7 @@ export default function HomeDashboard() {
         ) : null
         })() ?? (
           canCreateSite ? <Link href="/sites/new">
-            <Button variant="primary" className="text-sm whitespace-nowrap">
+            <Button variant="default" className="text-sm whitespace-nowrap">
               Add New Site
             </Button>
           </Link> : null

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Input, Button, toast, Spinner, CheckIcon, ZapIcon, getAuthErrorMessage } from '@ciphera-net/ui'
+import { Input, Button, toast, Spinner, CheckIcon, ZapIcon, getAuthErrorMessage } from '@ciphera-net/facet'
 import { useSite } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
 import { useAuth } from '@/lib/auth/context'

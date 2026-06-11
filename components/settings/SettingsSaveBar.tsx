@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { Button } from '@ciphera-net/ui'
+import { Button } from '@ciphera-net/facet'
 import { Check } from '@phosphor-icons/react'
 
 interface SettingsSaveBarProps {
@@ -71,7 +71,7 @@ export default function SettingsSaveBar({ isDirty, onSave, onDiscard, saveLabel 
             <Button variant="secondary" size="sm" onClick={onDiscard} disabled={saving}>
               Discard
             </Button>
-            <Button variant="primary" size="sm" onClick={handleSave} disabled={saving}>
+            <Button variant="default" size="sm" onClick={handleSave} disabled={saving}>
               {saving ? 'Saving...' : saveLabel}
             </Button>
           </div>

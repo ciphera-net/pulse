@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Button, Input, toast, Spinner } from '@ciphera-net/ui'
+import { Button, Input, toast, Spinner } from '@ciphera-net/facet'
 import { useAuth } from '@/lib/auth/context'
 import { updateDisplayName } from '@/lib/api/user'
 import { deleteAccount } from '@/lib/api/user'
-import { getAuthErrorMessage } from '@ciphera-net/ui'
+import { getAuthErrorMessage } from '@ciphera-net/facet'
 import { DangerZone } from '@/components/settings/unified/DangerZone'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 

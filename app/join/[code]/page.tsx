@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useParams } from 'next/navigation'
-import { Spinner } from '@ciphera-net/ui'
+import { Spinner } from '@ciphera-net/facet'
 import { ID_API_URL } from '@/lib/api/client'
 import { useAuth } from '@/lib/auth/context'
 import { acceptInviteLink, switchContext, InviteLinkInfo } from '@/lib/api/organization'
