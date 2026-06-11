@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Button, Checkbox, Input, Spinner, toast, getAuthErrorMessage } from '@ciphera-net/ui'
+import { Button, Input, Spinner, toast, getAuthErrorMessage } from '@ciphera-net/ui'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   CaretDown,

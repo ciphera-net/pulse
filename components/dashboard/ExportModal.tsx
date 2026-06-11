@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { Modal, Button, Checkbox, Input } from '@ciphera-net/ui'
+import { Modal, Button, Input } from '@ciphera-net/ui'
+import { Checkbox } from '@/components/ui/checkbox'
 import Select from '@/components/ui/select'
 import { cdnUrl } from '@/lib/cdn'
 import * as XLSX from 'xlsx'

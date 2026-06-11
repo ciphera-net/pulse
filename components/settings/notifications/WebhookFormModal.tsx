@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
-import { Button, Checkbox, Input } from '@ciphera-net/ui'
+import { Button, Input } from '@ciphera-net/ui'
+import { Checkbox } from '@/components/ui/checkbox'
 import { createWebhook, testWebhook } from '@/lib/api/notifications-webhooks'
 import {
   Dialog,
