@@ -4,6 +4,7 @@ import { curveMonotoneX } from "d3-shape";
 import { scaleLinear, scaleTime } from "d3-scale";
 import type { ScaleBand } from "d3-scale";
 import { localPoint, AreaClosed, LinePath, GridColumns, GridRows, ParentSize } from "@/lib/charts/primitives";
+import { formatDateShort, formatDateFull } from "@/lib/utils/formatDate";
 import { bisector } from "d3-array";
 import {
   AnimatePresence,
@@ -1051,11 +1052,7 @@ export function ChartTooltip({
     if (barXAccessor) {
       return barXAccessor(tooltipData.point);
     }
-    return xAccessor(tooltipData.point).toLocaleDateString("en-GB", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-    });
+    return formatDateFull(xAccessor(tooltipData.point));
   }, [tooltipData, barXAccessor, xAccessor]);
 
   const container = containerRef.current;
@@ -1426,7 +1423,7 @@ export function XAxis({ numTicks = 5, tickerHalfWidth = 50, formatLabel }: XAxis
       }
     }
 
-    const defaultFormat = (d: Date) => d.toLocaleDateString("en-GB", { month: "short", day: "numeric" });
+    const defaultFormat = (d: Date) => formatDateShort(d);
     const fmt = formatLabel ?? defaultFormat;
 
     return dates.map((date) => ({

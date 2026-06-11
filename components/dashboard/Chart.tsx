@@ -12,7 +12,7 @@ import { motion } from 'framer-motion'
 import { SPRING, EASE_APPLE } from '@/lib/motion'
 import { AnimatedNumber } from '@/components/ui/animated-number'
 import { cn } from '@/lib/utils'
-import { formatTime, formatDateShort } from '@/lib/utils/formatDate'
+import { formatTime, formatDateShort, formatDateFull } from '@/lib/utils/formatDate'
 import { EmptyState } from '@/components/ui/EmptyState'
 
 export interface DailyStat {
@@ -409,7 +409,7 @@ export default function Chart({
                       numTicks={Math.min(activeChartData.length, 10)}
                       formatLabel={!isEngagementDaily && (interval === 'minute' || interval === 'hour')
                         ? (d) => `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`
-                        : (d) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+                        : (d) => formatDateShort(d)
                       }
                     />
                     <VisxYAxis
@@ -426,7 +426,7 @@ export default function Chart({
                         const value = point[metric] as number
                         const title = !isEngagementDaily && (interval === 'minute' || interval === 'hour')
                           ? `${String(dateObj.getUTCHours()).padStart(2, '0')}:${String(dateObj.getUTCMinutes()).padStart(2, '0')}`
-                          : dateObj.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+                          : formatDateFull(dateObj)
                         return (
                           <div className="px-3 py-2.5">
                             <div className="mb-2 font-medium text-neutral-400 text-xs">{title}</div>
