@@ -38,7 +38,7 @@ describe('billing_plan_renewed renderer', () => {
     }
     const { title, body } = renderNotification(r)
     expect(title).toBe('Your plan renewed')
-    expect(body).toMatch(/May 15/)
+    expect(body).toMatch(/15\/05\/2026/)
   })
 })
 
