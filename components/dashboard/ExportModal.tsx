@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { Modal, Button, Checkbox, Input, Select } from '@ciphera-net/ui'
+import { Modal, Button, Checkbox, Input } from '@ciphera-net/ui'
+import Select from '@/components/ui/select'
 import { cdnUrl } from '@/lib/cdn'
 import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'

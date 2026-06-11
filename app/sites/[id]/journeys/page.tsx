@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import { Select } from '@ciphera-net/ui'
+import Select from '@/components/ui/select'
 import { formatDate } from '@/lib/utils/dateRanges'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import ColumnJourney from '@/components/journeys/ColumnJourney'

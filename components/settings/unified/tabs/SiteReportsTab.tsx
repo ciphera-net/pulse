@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Button, toast, Spinner, Modal, Select } from '@ciphera-net/ui'
+import { Button, toast, Spinner, Modal } from '@ciphera-net/ui'
+import Select from '@/components/ui/select'
 import { Plus, Pencil, Trash, EnvelopeSimple, WebhooksLogo, PaperPlaneTilt, FileText, Bell } from '@phosphor-icons/react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { EmptyState } from '@/components/ui/EmptyState'

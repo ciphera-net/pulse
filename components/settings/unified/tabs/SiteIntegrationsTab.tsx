@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Button, Input, Select, toast, Spinner } from '@ciphera-net/ui'
+import { Button, Input, toast, Spinner } from '@ciphera-net/ui'
+import Select from '@/components/ui/select'
 import { Plugs, LinkBreak, ShieldCheck } from '@phosphor-icons/react'
 import { useGSCStatus, useBunnyStatus } from '@/lib/swr/dashboard'
 import { disconnectGSC, getGSCAuthURL } from '@/lib/api/gsc'

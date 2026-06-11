@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Button, Checkbox, Input, Select, toast } from '@ciphera-net/ui'
+import { Button, Checkbox, Input, toast } from '@ciphera-net/ui'
+import Select from '@/components/ui/select'
 import { Copy, Check } from '@phosphor-icons/react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { getAuthErrorMessage } from '@ciphera-net/ui'

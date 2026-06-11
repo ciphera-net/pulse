@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Button, Input, Select, toast } from '@ciphera-net/ui'
+import { Button, Input, toast } from '@ciphera-net/ui'
+import Select from '@/components/ui/select'
 import { Spinner } from '@ciphera-net/ui'
 import { useAuth } from '@/lib/auth/context'
 import { useCan } from '@/lib/auth/permissions'

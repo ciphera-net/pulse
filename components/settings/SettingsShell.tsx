@@ -22,7 +22,7 @@ import {
   Lock,
   DeviceMobile,
 } from '@phosphor-icons/react'
-import { Select } from '@ciphera-net/ui'
+import Select from '@/components/ui/select'
 import { useCan } from '@/lib/auth/permissions'
 
 // ─── Types ──────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 'use client'
-import { Select } from '@ciphera-net/ui'
+import Select from '@/components/ui/select'
 import type { Preferences } from '@/lib/api/notifications-preferences'
 import type { Category } from '@/lib/notifications/types'
 import { RETENTION_DEFAULTS, OVERRIDE_OPTIONS_DAYS } from '@/lib/notifications/retention-policy'
