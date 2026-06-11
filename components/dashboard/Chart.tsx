@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
-import { useTheme } from '@ciphera-net/ui'
 import { AreaChart as VisxAreaChart, Area as VisxArea, Grid as VisxGrid, XAxis as VisxXAxis, YAxis as VisxYAxis, ChartTooltip as VisxChartTooltip, type TooltipRow } from '@/components/ui/area-chart'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import type { EngagementPercentilesData } from '@/lib/api/stats'
