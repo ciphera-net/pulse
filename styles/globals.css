@@ -59,17 +59,17 @@
   }
 
   body {
-    @apply bg-neutral-950 text-neutral-100 antialiased;
+    @apply bg-background text-foreground antialiased;
   }
 }
 
 @layer components {
-  /* * Glass tiers (Phase 2 — premium UI pass) */
+  /* * Sharp surfaces (Facet) — flat, border-driven. No glass/backdrop-blur. */
   .glass-surface {
-    @apply bg-neutral-900 border border-neutral-800;
+    @apply bg-card border border-border;
   }
   .glass-overlay {
-    @apply bg-neutral-900/70 backdrop-blur-xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/65 border border-neutral-800;
+    @apply bg-card border border-border;
   }
 
   /* * Interactive row — shared hover/active/focus treatment for list rows
@@ -111,7 +111,7 @@
   }
   *::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.08);
-    border-radius: 3px;
+    border-radius: 0;
   }
   *::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.15);
