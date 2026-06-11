@@ -73,7 +73,7 @@ function InlineDropdown({ value, options, grouped, placeholder, disabled, onChan
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setOpen(o => !o)}
-        className={`flex items-center justify-between gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border transition-colors cursor-pointer w-full ${
+        className={`flex items-center justify-between gap-1.5 px-3 py-2 text-sm font-medium rounded-none border transition-colors cursor-pointer w-full ${
           disabled
             ? 'bg-neutral-800/50 border-neutral-700/50 text-neutral-500 cursor-not-allowed'
             : open
@@ -90,7 +90,7 @@ function InlineDropdown({ value, options, grouped, placeholder, disabled, onChan
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 mt-1 z-[110] glass-overlay rounded-lg shadow-xl shadow-black/30 min-w-[200px] w-full max-h-72 overflow-y-auto">
+        <div className="absolute top-full left-0 mt-1 z-[110] bg-popover border border-border rounded-none min-w-[200px] w-full max-h-72 overflow-y-auto">
           {grouped ? (
             grouped.map(cat => (
               <div key={cat.label}>
@@ -215,7 +215,7 @@ function ValueMultiSelect({ dimension, values, disabled, onChange, onFetchSugges
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setOpen(o => !o)}
-        className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border transition-colors cursor-pointer w-full ${
+        className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-none border transition-colors cursor-pointer w-full ${
           disabled
             ? 'bg-neutral-800/50 border-neutral-700/50 text-neutral-500 cursor-not-allowed'
             : open
@@ -228,7 +228,7 @@ function ValueMultiSelect({ dimension, values, disabled, onChange, onFetchSugges
         ) : (
           <span className="flex items-center gap-1 flex-wrap min-w-0 flex-1">
             {values.slice(0, 3).map(v => (
-              <span key={v} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-brand-orange/15 text-brand-orange max-w-[140px] truncate">
+              <span key={v} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-none text-xs font-medium bg-brand-orange/15 text-brand-orange max-w-[140px] truncate">
                 {v}
               </span>
             ))}
@@ -243,7 +243,7 @@ function ValueMultiSelect({ dimension, values, disabled, onChange, onFetchSugges
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 mt-1 z-[110] glass-overlay rounded-lg shadow-xl shadow-black/30 w-full min-w-[260px]">
+        <div className="absolute top-full left-0 mt-1 z-[110] bg-popover border border-border rounded-none w-full min-w-[260px]">
           <div className="p-2">
             <input
               ref={inputRef}
@@ -261,7 +261,7 @@ function ValueMultiSelect({ dimension, values, disabled, onChange, onFetchSugges
                 }
               }}
               placeholder={`Search ${dimLabel.toLowerCase()}…`}
-              className="w-full px-2.5 py-1.5 text-sm bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:ring-1 focus:ring-brand-orange/40 focus:border-brand-orange/40 transition-colors ease-apple"
+              className="w-full px-2.5 py-1.5 text-sm bg-neutral-800 border border-neutral-700 rounded-none text-white placeholder-neutral-500 focus:outline-none focus:ring-1 focus:ring-brand-orange/40 focus:border-brand-orange/40 transition-colors ease-apple"
             />
           </div>
 
@@ -280,7 +280,7 @@ function ValueMultiSelect({ dimension, values, disabled, onChange, onFetchSugges
                     onClick={() => toggle(s.value)}
                     className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-neutral-800 transition-colors cursor-pointer ease-apple"
                   >
-                    <span className={`flex items-center justify-center w-3.5 h-3.5 rounded border flex-shrink-0 transition-colors ${
+                    <span className={`flex items-center justify-center w-3.5 h-3.5 rounded-none border flex-shrink-0 transition-colors ${
                       checked ? 'bg-brand-orange border-brand-orange' : 'border-neutral-600 bg-transparent'
                     } ease-apple`}>
                       {checked && (
@@ -304,7 +304,7 @@ function ValueMultiSelect({ dimension, values, disabled, onChange, onFetchSugges
               <button
                 type="button"
                 onClick={handleAddCustom}
-                className="w-full px-3 py-1.5 text-sm font-medium bg-neutral-800 text-white rounded-lg hover:bg-neutral-700 transition-colors cursor-pointer border border-neutral-700 ease-apple"
+                className="w-full px-3 py-1.5 text-sm font-medium bg-neutral-800 text-white rounded-none hover:bg-neutral-700 transition-colors cursor-pointer border border-neutral-700 ease-apple"
               >
                 Filter by &ldquo;{search.trim()}&rdquo;
               </button>
@@ -384,7 +384,7 @@ export default function FilterModal({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
-          className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh] bg-black/60 backdrop-blur-[2px]"
+          className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh] bg-black/60"
           onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
         >
           <motion.div
@@ -393,7 +393,7 @@ export default function FilterModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 12 }}
             transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
-            className="w-full max-w-md rounded-xl border border-neutral-800 bg-neutral-900 shadow-2xl shadow-black/60 p-6"
+            className="w-full max-w-md rounded-none border border-neutral-800 bg-neutral-900 p-6"
             style={{ backgroundImage: 'linear-gradient(to bottom, rgba(255,255,255,0.04), transparent 120px)' }}
           >
             {/* Header */}
@@ -404,7 +404,7 @@ export default function FilterModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1 rounded-md text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer ease-apple"
+                className="p-1 rounded-none text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer ease-apple"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -456,7 +456,7 @@ export default function FilterModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-3 py-1.5 text-xs font-medium text-neutral-400 hover:text-white rounded-lg hover:bg-neutral-800 transition-colors cursor-pointer ease-apple"
+                className="px-3 py-1.5 text-xs font-medium text-neutral-400 hover:text-white rounded-none hover:bg-neutral-800 transition-colors cursor-pointer ease-apple"
               >
                 Discard
               </button>
@@ -464,9 +464,9 @@ export default function FilterModal({
                 type="button"
                 onClick={handleSave}
                 disabled={!canSave}
-                className={`px-4 py-1.5 text-xs font-medium rounded-lg transition-[color,background-color,transform] duration-fast ease-apple active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 ${
+                className={`px-4 py-1.5 text-xs font-medium rounded-none transition-[color,background-color,transform] duration-fast ease-apple active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 ${
                   canSave
-                    ? 'bg-brand-orange text-white hover:bg-brand-orange-hover cursor-pointer shadow-sm'
+                    ? 'bg-brand-orange text-white hover:bg-brand-orange-hover cursor-pointer'
                     : 'bg-neutral-800 text-neutral-500 cursor-not-allowed'
                 }`}
               >

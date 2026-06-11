@@ -156,7 +156,7 @@ export default function SearchConsolePage() {
             <SkeletonLine className="h-8 w-48 mb-2" />
             <SkeletonLine className="h-4 w-64" />
           </div>
-          <SkeletonLine className="h-9 w-36 rounded-lg" />
+          <SkeletonLine className="h-9 w-36 rounded-none" />
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
           <StatCardSkeleton />
@@ -164,8 +164,8 @@ export default function SearchConsolePage() {
           <StatCardSkeleton />
           <StatCardSkeleton />
         </div>
-        <div className="glass-surface rounded-xl p-6">
-          <SkeletonLine className="h-9 w-48 rounded-lg mb-6" />
+        <div className="glass-surface rounded-none p-6">
+          <SkeletonLine className="h-9 w-48 rounded-none mb-6" />
           {Array.from({ length: 10 }).map((_, i) => (
             <div key={i} className="flex items-center justify-between py-3">
               <SkeletonLine className="h-4 w-1/3" />
@@ -188,7 +188,7 @@ export default function SearchConsolePage() {
     return (
       <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
         <div className="flex flex-col items-center justify-center py-24 text-center">
-          <div className="rounded-full bg-neutral-800 p-5 mb-6">
+          <div className="rounded-none bg-neutral-800 p-5 mb-6">
             <MagnifyingGlass size={40} className="text-neutral-500" />
           </div>
           <h2 className="text-xl font-semibold text-white mb-2">
@@ -199,7 +199,7 @@ export default function SearchConsolePage() {
           </p>
           <Link
             href="/settings/site/integrations"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-brand-orange-button hover:bg-brand-orange-button-hover text-white text-sm font-medium transition-colors ease-apple"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-none bg-brand-orange-button hover:bg-brand-orange-button-hover text-white text-sm font-medium transition-colors ease-apple"
           >
             Connect in Settings
             <ArrowSquareOut size={16} weight="bold" />
@@ -290,7 +290,7 @@ export default function SearchConsolePage() {
           className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-6"
         >
           {topQueries.queries.slice(0, 5).map((q) => (
-            <div key={q.query} className="glass-surface rounded-xl p-3">
+            <div key={q.query} className="glass-surface rounded-none p-3">
               <p className="text-xs text-neutral-400 truncate mb-1">{q.query}</p>
               <div className="flex items-baseline gap-1.5">
                 <p className="text-lg font-semibold text-white">{q.position.toFixed(1)}</p>
@@ -304,7 +304,7 @@ export default function SearchConsolePage() {
 
       {/* New queries badge */}
       {newQueries && newQueries.count > 0 && (
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-900/20 text-green-300 text-sm mb-4">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-none bg-green-900/20 text-green-300 text-sm mb-4">
           <span className="font-medium">{newQueries.count} new {newQueries.count === 1 ? 'query' : 'queries'}</span>
           <span className="text-green-400">appeared this period</span>
         </div>
@@ -321,7 +321,7 @@ export default function SearchConsolePage() {
               else { setExpandedPage(null); setExpandedData([]) }
             }}
             className={cn(
-              'relative px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-fast ease-apple cursor-pointer',
+              'relative px-4 py-2 text-sm font-medium rounded-none transition-colors duration-fast ease-apple cursor-pointer',
               activeView === tab ? 'text-white' : 'text-neutral-400 hover:text-white'
             )}
           >
@@ -329,7 +329,7 @@ export default function SearchConsolePage() {
             {activeView === tab && (
               <motion.div
                 layoutId="search-tab-indicator"
-                className="absolute inset-0 glass-surface rounded-lg -z-10"
+                className="absolute inset-0 glass-surface rounded-none -z-10"
                 transition={{ type: 'spring', stiffness: 400, damping: 35 }}
               />
             )}
@@ -343,7 +343,7 @@ export default function SearchConsolePage() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0.15 }}
-          className="glass-surface rounded-xl overflow-hidden"
+          className="glass-surface rounded-none overflow-hidden"
         >
           <table className="w-full text-sm">
             <thead>
@@ -399,14 +399,14 @@ export default function SearchConsolePage() {
                 <button
                   disabled={queryPage === 0}
                   onClick={() => { setQueryPage((p) => p - 1); setExpandedQuery(null); setExpandedData([]) }}
-                  className="px-3 py-1.5 text-sm rounded-lg border border-neutral-700 text-neutral-300 hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer ease-apple"
+                  className="px-3 py-1.5 text-sm rounded-none border border-neutral-700 text-neutral-300 hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer ease-apple"
                 >
                   Previous
                 </button>
                 <button
                   disabled={(queryPage + 1) * PAGE_SIZE >= queriesTotal}
                   onClick={() => { setQueryPage((p) => p + 1); setExpandedQuery(null); setExpandedData([]) }}
-                  className="px-3 py-1.5 text-sm rounded-lg border border-neutral-700 text-neutral-300 hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer ease-apple"
+                  className="px-3 py-1.5 text-sm rounded-none border border-neutral-700 text-neutral-300 hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer ease-apple"
                 >
                   Next
                 </button>
@@ -422,7 +422,7 @@ export default function SearchConsolePage() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0.15 }}
-          className="glass-surface rounded-xl overflow-hidden"
+          className="glass-surface rounded-none overflow-hidden"
         >
           <table className="w-full text-sm">
             <thead>
@@ -478,14 +478,14 @@ export default function SearchConsolePage() {
                 <button
                   disabled={pagePage === 0}
                   onClick={() => { setPagePage((p) => p - 1); setExpandedPage(null); setExpandedData([]) }}
-                  className="px-3 py-1.5 text-sm rounded-lg border border-neutral-700 text-neutral-300 hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer ease-apple"
+                  className="px-3 py-1.5 text-sm rounded-none border border-neutral-700 text-neutral-300 hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer ease-apple"
                 >
                   Previous
                 </button>
                 <button
                   disabled={(pagePage + 1) * PAGE_SIZE >= pagesTotal}
                   onClick={() => { setPagePage((p) => p + 1); setExpandedPage(null); setExpandedData([]) }}
-                  className="px-3 py-1.5 text-sm rounded-lg border border-neutral-700 text-neutral-300 hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer ease-apple"
+                  className="px-3 py-1.5 text-sm rounded-none border border-neutral-700 text-neutral-300 hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer ease-apple"
                 >
                   Next
                 </button>
@@ -517,7 +517,7 @@ function OverviewCard({
   const isNegative = change ? (invertChange ? change.value > 0 : change.value < 0) : false
 
   return (
-    <div className="glass-surface p-6 rounded-xl">
+    <div className="glass-surface p-6 rounded-none">
       <p className="text-xs font-medium text-neutral-400 mb-1">{label}</p>
       <p className="text-2xl font-semibold tabular-nums text-white">{value}</p>
       {change && (

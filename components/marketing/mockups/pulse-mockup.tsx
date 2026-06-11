@@ -3,7 +3,7 @@
 export function PulseMockup() {
   return (
     <div className="relative w-full max-w-[440px] mx-auto">
-      <div className="rounded-xl border border-white/[0.08] bg-neutral-900/80 px-5 py-4 shadow-2xl space-y-3">
+      <div className="rounded-none border border-white/[0.08] bg-neutral-900/80 px-5 py-4 space-y-3">
         {/* Header row */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -11,19 +11,19 @@ export function PulseMockup() {
               <h3 className="text-sm font-bold text-white">Ciphera</h3>
               <p className="text-[9px] text-neutral-500">ciphera.net</p>
             </div>
-            <div className="flex items-center gap-1.5 bg-green-500/10 border border-green-500/20 rounded-full px-2.5 py-0.5">
+            <div className="flex items-center gap-1.5 bg-green-500/10 border border-green-500/20 rounded-none px-2.5 py-0.5">
               <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
               <span className="text-[9px] text-green-400 font-medium">4 current visitors</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button className="flex items-center gap-1.5 rounded-lg bg-brand-orange px-2.5 py-1 text-[10px] font-medium text-white cursor-default">
+            <button className="flex items-center gap-1.5 rounded-none bg-brand-orange px-2.5 py-1 text-[10px] font-medium text-white cursor-default">
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
               Export
             </button>
-            <div className="flex items-center gap-1 rounded-lg border border-neutral-700 bg-neutral-900 px-2.5 py-1 text-[10px] text-neutral-300 cursor-default">
+            <div className="flex items-center gap-1 rounded-none border border-neutral-700 bg-neutral-900 px-2.5 py-1 text-[10px] text-neutral-300 cursor-default">
               Today
               <svg className="w-2.5 h-2.5 text-neutral-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -34,7 +34,7 @@ export function PulseMockup() {
 
         {/* Filter button */}
         <div>
-          <button className="flex items-center gap-1.5 rounded-lg border border-neutral-700 bg-neutral-800/50 px-2.5 py-1 text-[10px] text-neutral-400 cursor-default">
+          <button className="flex items-center gap-1.5 rounded-none border border-neutral-700 bg-neutral-800/50 px-2.5 py-1 text-[10px] text-neutral-400 cursor-default">
             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
             </svg>
@@ -45,8 +45,8 @@ export function PulseMockup() {
         {/* Stats row */}
         <div className="grid grid-cols-4 gap-2">
           {/* Unique Visitors — selected/highlighted */}
-          <div className="rounded-lg border border-neutral-700 bg-neutral-800/60 p-2.5 relative">
-            <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-brand-orange rounded-b-lg" />
+          <div className="rounded-none border border-neutral-700 bg-neutral-800/60 p-2.5 relative">
+            <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-brand-orange" />
             <p className="text-[7px] text-brand-orange font-semibold uppercase tracking-wider">Unique Visitors</p>
             <div className="flex items-baseline gap-1.5 mt-1">
               <p className="text-base font-bold text-white leading-none">247</p>
@@ -60,7 +60,7 @@ export function PulseMockup() {
           </div>
 
           {/* Total Pageviews */}
-          <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-2.5">
+          <div className="rounded-none border border-neutral-800 bg-neutral-900 p-2.5">
             <p className="text-[7px] text-neutral-500 font-semibold uppercase tracking-wider">Total Pageviews</p>
             <div className="flex items-baseline gap-1.5 mt-1">
               <p className="text-base font-bold text-white leading-none">512</p>
@@ -74,7 +74,7 @@ export function PulseMockup() {
           </div>
 
           {/* Bounce Rate */}
-          <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-2.5">
+          <div className="rounded-none border border-neutral-800 bg-neutral-900 p-2.5">
             <p className="text-[7px] text-neutral-500 font-semibold uppercase tracking-wider">Bounce Rate</p>
             <div className="flex items-baseline gap-1.5 mt-1">
               <p className="text-base font-bold text-white leading-none">68%</p>
@@ -88,7 +88,7 @@ export function PulseMockup() {
           </div>
 
           {/* Visit Duration */}
-          <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-2.5">
+          <div className="rounded-none border border-neutral-800 bg-neutral-900 p-2.5">
             <p className="text-[7px] text-neutral-500 font-semibold uppercase tracking-wider">Visit Duration</p>
             <div className="flex items-baseline gap-1.5 mt-1">
               <p className="text-base font-bold text-white leading-none">3m 18s</p>
@@ -103,19 +103,19 @@ export function PulseMockup() {
         </div>
 
         {/* Chart area */}
-        <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-3">
+        <div className="rounded-none border border-neutral-800 bg-neutral-900 p-3">
           {/* Chart header */}
           <div className="flex items-center justify-between mb-3">
             <span className="text-[10px] text-neutral-300 font-medium">Unique Visitors</span>
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 rounded-md border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-[9px] text-neutral-300 cursor-default">
+              <div className="flex items-center gap-1 rounded-none border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-[9px] text-neutral-300 cursor-default">
                 1 hour
                 <svg className="w-2 h-2 text-neutral-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded border border-neutral-700 bg-transparent" />
+                <div className="w-3 h-3 rounded-none border border-neutral-700 bg-transparent" />
                 <span className="text-[9px] text-neutral-500">Compare</span>
                 <svg className="w-3 h-3 text-neutral-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />

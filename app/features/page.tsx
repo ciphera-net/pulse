@@ -148,7 +148,7 @@ export default function FeaturesPage() {
               transition={{ duration: 0.5, delay: i * 0.1 }}
               className="card-glass p-6 hover:border-neutral-700 transition-all duration-slow group ease-apple"
             >
-              <div className="w-12 h-12 rounded-xl bg-brand-orange/10 flex items-center justify-center mb-6 text-brand-orange group-hover:scale-110 transition-transform duration-slow ease-apple">
+              <div className="w-12 h-12 rounded-none bg-brand-orange/10 flex items-center justify-center mb-6 text-brand-orange group-hover:scale-110 transition-transform duration-slow ease-apple">
                 <feature.icon className="w-6 h-6" />
               </div>
               <h3 className="text-xl font-bold text-white mb-3">
@@ -188,7 +188,7 @@ export default function FeaturesPage() {
                 transition={{ duration: 0.4, delay: i * 0.08 }}
                 className="flex gap-4"
               >
-                <div className="w-10 h-10 rounded-lg bg-brand-orange/10 flex items-center justify-center shrink-0 text-brand-orange mt-0.5">
+                <div className="w-10 h-10 rounded-none bg-brand-orange/10 flex items-center justify-center shrink-0 text-brand-orange mt-0.5">
                   {cap.icon}
                 </div>
                 <div>
@@ -210,7 +210,7 @@ export default function FeaturesPage() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
-          className="mb-28 p-10 md:p-14 glass-surface rounded-xl"
+          className="mb-28 p-10 md:p-14 glass-surface rounded-none"
         >
           <div className="grid md:grid-cols-2 gap-10 items-center">
             <div>
@@ -250,7 +250,7 @@ export default function FeaturesPage() {
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.4, delay: i * 0.1 }}
-                  className="p-4 bg-neutral-800/50 rounded-xl"
+                  className="p-4 bg-card rounded-none"
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-white truncate mr-4">
@@ -260,13 +260,13 @@ export default function FeaturesPage() {
                       {page.views} views
                     </span>
                   </div>
-                  <div className="h-1.5 bg-neutral-700 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-neutral-700 rounded-none overflow-hidden">
                     <motion.div
                       initial={{ width: 0 }}
                       whileInView={{ width: `${page.pct}%` }}
                       viewport={{ once: true }}
                       transition={{ duration: 0.8, delay: 0.2 + i * 0.1 }}
-                      className="h-full bg-brand-orange rounded-full"
+                      className="h-full bg-brand-orange rounded-none"
                     />
                   </div>
                 </motion.div>
@@ -362,7 +362,7 @@ export default function FeaturesPage() {
                 transition={{ duration: 0.4, delay: i * 0.15 }}
                 className="flex items-center gap-4 flex-1"
               >
-                <div className="w-10 h-10 rounded-full bg-brand-orange text-white font-bold text-lg flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-none bg-brand-orange text-white font-bold text-lg flex items-center justify-center shrink-0">
                   {s.step}
                 </div>
                 <div>
@@ -399,7 +399,7 @@ export default function FeaturesPage() {
             <Button
               onClick={() => initiateOAuthFlow()}
               variant="default"
-              className="px-8 py-4 text-lg shadow-lg shadow-brand-orange/20"
+              className="px-8 py-4 text-lg"
             >
               Get Started Free
             </Button>

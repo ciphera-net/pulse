@@ -242,7 +242,7 @@ export default function Chart({
 
   return (
     <div ref={chartContainerRef} className="relative">
-      <Card className="w-full overflow-hidden rounded-xl">
+      <Card className="w-full overflow-hidden rounded-none">
         <CardHeader className="p-0 mb-0">
           {/* Metrics Grid - 21st.dev style */}
           <div className="grid grid-cols-2 md:grid-cols-6 grow w-full">
@@ -285,7 +285,7 @@ export default function Chart({
                 {metric === m.key && (
                   <motion.div
                     layoutId="activeMetric"
-                    className="absolute bottom-0 left-0 right-0 h-[3px] bg-brand-orange rounded-full"
+                    className="absolute bottom-0 left-0 right-0 h-[3px] bg-brand-orange rounded-none"
                     transition={SPRING}
                   />
                 )}
@@ -306,7 +306,7 @@ export default function Chart({
               {onExport && (
                 <button
                   onClick={onExport}
-                  className="w-7 h-7 flex items-center justify-center text-neutral-500 hover:text-white hover:bg-white/[0.06] rounded-md transition-colors ease-apple"
+                  className="w-7 h-7 flex items-center justify-center text-neutral-500 hover:text-white hover:bg-white/[0.06] rounded-none transition-colors ease-apple"
                   aria-label="Export"
                 >
                   <DownloadIcon className="w-3.5 h-3.5" />

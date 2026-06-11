@@ -164,7 +164,7 @@ function BreadcrumbAppSwitcher() {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 10, scale: 0.95 }}
           transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
-          className="fixed z-50 w-72 glass-overlay rounded-xl shadow-xl shadow-black/20 overflow-hidden origin-top-left"
+          className="fixed z-50 w-72 bg-popover rounded-none border border-border overflow-hidden origin-top-left"
           style={fixedPos ? { left: fixedPos.left, top: fixedPos.top } : undefined}
         >
           <div className="p-4">
@@ -177,7 +177,7 @@ function BreadcrumbAppSwitcher() {
                     key={app.id}
                     href={app.href}
                     onClick={(e) => { if (isCurrent) { e.preventDefault(); setOpen(false) } else setOpen(false) }}
-                    className={`group flex flex-col items-center gap-2 p-3 rounded-xl transition-all ${
+                    className={`group flex flex-col items-center gap-2 p-3 rounded-none transition-all ${
                       isCurrent ? 'bg-neutral-800/50 cursor-default' : 'hover:bg-neutral-800/50'
                     } ease-apple`}
                   >
@@ -283,7 +283,7 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 10, scale: 0.95 }}
           transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
-          className="fixed z-50 w-[240px] glass-overlay rounded-xl shadow-xl shadow-black/20 overflow-hidden origin-top-left"
+          className="fixed z-50 w-[240px] bg-popover rounded-none border border-border overflow-hidden origin-top-left"
           style={fixedPos ? { left: fixedPos.left, top: fixedPos.top } : undefined}
         >
           <div className="p-2">
@@ -293,7 +293,7 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Escape') closePicker() }}
-              className="w-full px-3 py-1.5 text-sm bg-white/[0.04] border border-neutral-800 rounded-lg outline-none focus:ring-2 focus:ring-brand-orange/40 text-white placeholder:text-neutral-400"
+              className="w-full px-3 py-1.5 text-sm bg-white/[0.04] border border-neutral-800 rounded-none outline-none focus:ring-2 focus:ring-brand-orange/40 text-white placeholder:text-neutral-400"
               autoFocus
             />
           </div>
@@ -311,7 +311,7 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
                 <img
                   src={`${FAVICON_SERVICE_URL}?domain=${site.domain}&sz=64`}
                   alt=""
-                  className="w-5 h-5 rounded object-contain shrink-0"
+                  className="w-5 h-5 rounded-none object-contain shrink-0"
                 />
                 <span className="flex flex-col min-w-0">
                   <span className="truncate">{site.name}</span>
@@ -324,7 +324,7 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
             )}
           </div>
           <div className="border-t border-neutral-800/60 p-2">
-            <Link href="/sites/new" onClick={() => closePicker()} className="flex items-center gap-2 px-3 py-1.5 text-sm text-brand-orange hover:bg-white/[0.06] rounded-lg">
+            <Link href="/sites/new" onClick={() => closePicker()} className="flex items-center gap-2 px-3 py-1.5 text-sm text-brand-orange hover:bg-white/[0.06] rounded-none">
               <PlusIcon className="w-4 h-4" />
               Add new site
             </Link>
@@ -346,7 +346,7 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
           <img
             src={`${FAVICON_SERVICE_URL}?domain=${currentSite.domain}&sz=64`}
             alt=""
-            className="w-3.5 h-3.5 rounded-sm object-contain shrink-0"
+            className="w-3.5 h-3.5 rounded-none object-contain shrink-0"
             aria-hidden="true"
           />
         )}
@@ -413,7 +413,7 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
       <div className="flex items-center gap-1.5">
         <button
           onClick={toggle}
-          className="w-9 h-9 flex items-center justify-center text-neutral-400 hover:text-white rounded-lg hover:bg-white/[0.06] transition-colors ease-apple"
+          className="w-9 h-9 flex items-center justify-center text-neutral-400 hover:text-white rounded-none hover:bg-white/[0.06] transition-colors ease-apple"
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           <SidebarSimple className="size-5" weight={collapsed ? 'regular' : 'fill'} />
@@ -523,7 +523,7 @@ export default function DashboardShell({
           <GlassTopBar siteId={siteId} />
           {/* Content panel — elevated: inset top highlight + outer shadow for perceived depth */}
           <div
-            className="flex-1 flex flex-col min-w-0 mr-3 mb-3 rounded-xl bg-neutral-950 border border-neutral-800 overflow-hidden relative"
+            className="flex-1 flex flex-col min-w-0 mr-3 mb-3 rounded-none bg-neutral-950 border border-neutral-800 overflow-hidden relative"
           >
             <ContentHeader onMobileMenuOpen={openMobile} />
             <main

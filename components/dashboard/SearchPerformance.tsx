@@ -49,7 +49,7 @@ function countryName(alpha3: string): string {
 // Strip protocol + trailing slash for cleaner page URL display
 const stripProtocol = (url: string) => url.replace(/^https?:\/\//, '').replace(/\/$/, '')
 
-function CountryFlag({ alpha3, className = 'w-5 h-5 rounded-sm shadow-sm shrink-0' }: { alpha3: string; className?: string }) {
+function CountryFlag({ alpha3, className = 'w-5 h-5 rounded-none shrink-0' }: { alpha3: string; className?: string }) {
   const a2 = getAlpha2(alpha3)
   if (!a2) return null
   const FlagComponent = (Flags as Record<string, React.ComponentType<{ className?: string }>>)[a2]
@@ -171,11 +171,11 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
     return (
       <div
         key={label}
-        className={`interactive-row relative overflow-hidden flex items-center justify-between h-9 group rounded-lg px-2 -mx-2${onClick ? ' cursor-pointer' : ''}`}
+        className={`interactive-row relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2${onClick ? ' cursor-pointer' : ''}`}
         onClick={onClick}
       >
         <div
-          className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.07] border-l-2 border-brand-orange/70 rounded-md transition-[width,background-color] ease-apple"
+          className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.07] border-l-2 border-brand-orange/70 rounded-none transition-[width,background-color] ease-apple"
           style={{ width: `${barWidth}%` }}
         />
         <span className="relative text-sm text-white truncate flex-1 min-w-0" title={label}>
@@ -188,7 +188,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
           <span className="text-sm font-semibold text-neutral-400">
             {formatNumber(row.clicks)}
           </span>
-          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${getPositionBadgeClasses(row.position)}`}>
+          <span className={`text-xs px-1.5 py-0.5 rounded-none font-medium ${getPositionBadgeClasses(row.position)}`}>
             {row.position.toFixed(1)}
           </span>
           {onClick && (
@@ -208,10 +208,10 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
     return (
       <div
         key={row.country}
-        className="interactive-row relative overflow-hidden flex items-center justify-between h-9 group rounded-lg px-2 -mx-2"
+        className="interactive-row relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2"
       >
         <div
-          className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.07] border-l-2 border-brand-orange/70 rounded-md transition-[width,background-color] ease-apple"
+          className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.07] border-l-2 border-brand-orange/70 rounded-none transition-[width,background-color] ease-apple"
           style={{ width: `${barWidth}%` }}
         />
         <span className="relative text-sm text-white truncate flex-1 min-w-0 flex items-center gap-2" title={name}>
@@ -225,7 +225,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
           <span className="text-sm font-semibold text-neutral-400">
             {formatNumber(row.clicks)}
           </span>
-          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${getPositionBadgeClasses(row.position)}`}>
+          <span className={`text-xs px-1.5 py-0.5 rounded-none font-medium ${getPositionBadgeClasses(row.position)}`}>
             {row.position.toFixed(1)}
           </span>
         </div>
@@ -241,10 +241,10 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
     return (
       <div
         key={row.device}
-        className="interactive-row relative overflow-hidden flex items-center justify-between h-9 group rounded-lg px-2 -mx-2"
+        className="interactive-row relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2"
       >
         <div
-          className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.07] border-l-2 border-brand-orange/70 rounded-md transition-[width,background-color] ease-apple"
+          className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.07] border-l-2 border-brand-orange/70 rounded-none transition-[width,background-color] ease-apple"
           style={{ width: `${barWidth}%` }}
         />
         <span className="relative text-sm text-white truncate flex-1 min-w-0 flex items-center gap-2">
@@ -258,7 +258,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
           <span className="text-sm font-semibold text-neutral-400">
             {formatNumber(row.clicks)}
           </span>
-          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${getPositionBadgeClasses(row.position)}`}>
+          <span className={`text-xs px-1.5 py-0.5 rounded-none font-medium ${getPositionBadgeClasses(row.position)}`}>
             {row.position.toFixed(1)}
           </span>
         </div>
@@ -272,10 +272,10 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
     return (
       <div
         key={row.query}
-        className="interactive-row relative overflow-hidden flex items-center justify-between h-9 group rounded-lg px-2 -mx-2"
+        className="interactive-row relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2"
       >
         <div
-          className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.07] border-l-2 border-brand-orange/70 rounded-md transition-[width,background-color] ease-apple"
+          className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.07] border-l-2 border-brand-orange/70 rounded-none transition-[width,background-color] ease-apple"
           style={{ width: `${barWidth}%` }}
         />
         <span className="relative text-sm text-white truncate flex-1 min-w-0" title={row.query}>
@@ -285,7 +285,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
           <span className="text-sm font-semibold text-neutral-400">
             {formatNumber(row.clicks)}
           </span>
-          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${getPositionBadgeClasses(row.position)}`}>
+          <span className={`text-xs px-1.5 py-0.5 rounded-none font-medium ${getPositionBadgeClasses(row.position)}`}>
             {row.position.toFixed(1)}
           </span>
           <span className="text-xs font-medium text-emerald-500">
@@ -318,7 +318,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
         <div key={row.query}>
           {renderDataRow(row, maxImpressions, totalImpressions, () => handleQueryClick(row.query))}
           {expandedQuery === row.query && (
-            <div className="px-4 py-3 bg-neutral-800/30 border-t border-neutral-800 space-y-2 -mx-2 rounded-b-lg mb-1">
+            <div className="px-4 py-3 bg-neutral-800/30 border-t border-neutral-800 space-y-2 -mx-2 mb-1">
               {trendLoading ? (
                 <div className="flex items-center gap-2 text-sm text-neutral-500">
                   <Spinner className="w-3.5 h-3.5" /> Loading trend...
@@ -361,7 +361,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
                       return (
                         <div
                           key={i}
-                          className="flex-1 rounded-sm bg-brand-orange/60 hover:bg-brand-orange transition-colors"
+                          className="flex-1 rounded-none bg-brand-orange/60 hover:bg-brand-orange transition-colors"
                           style={{ height: `${height}px` }}
                           title={`${point.date}: Pos ${point.position.toFixed(1)}, ${point.clicks} clicks`}
                         />
@@ -415,7 +415,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
       return (
         <div
           key={label}
-          className="interactive-row flex items-center justify-between h-9 group rounded-lg px-2"
+          className="interactive-row flex items-center justify-between h-9 group rounded-none px-2"
         >
           <span className="flex-1 truncate text-sm text-white" title={label}>
             {label}
@@ -427,7 +427,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
             <span className="text-sm font-semibold text-neutral-400">
               {formatNumber(r.clicks)}
             </span>
-            <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${getPositionBadgeClasses(r.position)}`}>
+            <span className={`text-xs px-1.5 py-0.5 rounded-none font-medium ${getPositionBadgeClasses(r.position)}`}>
               {r.position.toFixed(1)}
             </span>
           </div>
@@ -439,7 +439,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
       return (
         <div
           key={r.country}
-          className="interactive-row flex items-center justify-between h-9 group rounded-lg px-2"
+          className="interactive-row flex items-center justify-between h-9 group rounded-none px-2"
         >
           <span className="flex-1 truncate text-sm text-white flex items-center gap-2" title={name}>
             <CountryFlag alpha3={r.country} />
@@ -452,7 +452,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
             <span className="text-sm font-semibold text-neutral-400">
               {formatNumber(r.clicks)}
             </span>
-            <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${getPositionBadgeClasses(r.position)}`}>
+            <span className={`text-xs px-1.5 py-0.5 rounded-none font-medium ${getPositionBadgeClasses(r.position)}`}>
               {r.position.toFixed(1)}
             </span>
           </div>
@@ -464,7 +464,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
       return (
         <div
           key={r.query}
-          className="interactive-row flex items-center justify-between h-9 group rounded-lg px-2"
+          className="interactive-row flex items-center justify-between h-9 group rounded-none px-2"
         >
           <span className="flex-1 truncate text-sm text-white" title={r.query}>
             {r.query}
@@ -473,7 +473,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
             <span className="text-sm font-semibold text-neutral-400">
               {formatNumber(r.clicks)}
             </span>
-            <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${getPositionBadgeClasses(r.position)}`}>
+            <span className={`text-xs px-1.5 py-0.5 rounded-none font-medium ${getPositionBadgeClasses(r.position)}`}>
               {r.position.toFixed(1)}
             </span>
             <span className="text-xs font-medium text-emerald-500">
@@ -523,7 +523,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
 
   return (
     <>
-      <div className="glass-surface rounded-xl p-6 h-full flex flex-col">
+      <div className="bg-card rounded-none p-6 h-full flex flex-col border border-border">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-1" role="tablist" aria-label="Search data tabs" onKeyDown={handleTabKeyDown}>
@@ -533,7 +533,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
                 onClick={() => setActiveTab(tab)}
                 role="tab"
                 aria-selected={activeTab === tab}
-                className={`relative px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded cursor-pointer ${
+                className={`relative px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded-none cursor-pointer ${
                   activeTab === tab
                     ? 'text-white'
                     : 'text-neutral-500 hover:text-neutral-300'
@@ -541,7 +541,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
               >
                 {tabLabels[tab]}
                 <span
-                  className={`absolute inset-x-0 -bottom-px h-[3px] rounded-full transition-[width,background-color] duration-base ${
+                  className={`absolute inset-x-0 -bottom-px h-[3px] rounded-none transition-[width,background-color] duration-base ${
                     activeTab === tab ? 'bg-brand-orange scale-x-100' : 'bg-transparent scale-x-0'
                   } ease-apple`}
                 />
@@ -551,7 +551,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
           {showViewAll && (
             <button
               onClick={() => setIsModalOpen(true)}
-              className="p-1.5 text-neutral-500 hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-lg ease-apple"
+              className="p-1.5 text-neutral-500 hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-none ease-apple"
               aria-label="View all search data"
             >
               <FrameCornersIcon className="w-4 h-4" weight="bold" />
@@ -578,7 +578,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
         isOpen={isModalOpen}
         onClose={() => { setIsModalOpen(false); setModalSearch('') }}
         title={`Search ${tabLabels[activeTab]}`}
-        className="max-w-2xl max-h-[90vh] flex flex-col !bg-neutral-900/65 backdrop-blur-xl backdrop-saturate-150 supports-[backdrop-filter]:!bg-neutral-900/60 !border-neutral-800"
+        className="max-w-2xl max-h-[90vh] flex flex-col !bg-card !border-neutral-800"
       >
         <div>
           <input
@@ -586,7 +586,7 @@ export default function SearchPerformance({ siteId, dateRange }: SearchPerforman
             value={modalSearch}
             onChange={(e) => setModalSearch(e.target.value)}
             placeholder={`Search ${activeTab}...`}
-            className="w-full px-3 py-2 mb-3 text-sm bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
+            className="w-full px-3 py-2 mb-3 text-sm bg-neutral-800 border border-neutral-700 rounded-none text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
           />
         </div>
         <div className="flex-1 overflow-y-auto min-h-0">

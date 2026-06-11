@@ -108,9 +108,9 @@ export default function NewSitePage() {
   if (createdSite) {
     return (
       <div className="w-full max-w-2xl mx-auto px-4 sm:px-6 py-8">
-        <div className="glass-surface rounded-xl p-6">
+        <div className="glass-surface rounded-none p-6">
           <div className="text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-500/10 text-green-400 mb-6">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-none bg-green-500/10 text-green-400 mb-6">
               <CheckCircleIcon className="h-7 w-7" />
             </div>
             <h2 className="text-2xl font-bold text-white">
@@ -133,7 +133,7 @@ export default function NewSitePage() {
             <button
               type="button"
               onClick={() => setShowVerificationModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-neutral-800 border border-neutral-700 text-neutral-300 rounded-xl hover:bg-neutral-700 transition-all text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 ease-apple"
+              className="flex items-center gap-2 px-4 py-2 bg-neutral-800 border border-neutral-700 text-neutral-300 rounded-none hover:bg-neutral-700 transition-all text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 ease-apple"
             >
               <span className="text-brand-orange">Verify installation</span>
             </button>
@@ -184,7 +184,7 @@ export default function NewSitePage() {
         </p>
       )}
 
-      <form onSubmit={handleSubmit} className="glass-surface rounded-xl p-6">
+      <form onSubmit={handleSubmit} className="glass-surface rounded-none p-6">
         <div className="mb-4">
           <label htmlFor="name" className="block text-sm font-medium mb-2 text-white">
             Site Name

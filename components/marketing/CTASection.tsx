@@ -23,7 +23,7 @@ export default function CTASection({
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
-          className="glass-surface relative overflow-hidden rounded-2xl px-6 py-20 sm:px-10 sm:py-24 max-w-6xl mx-auto"
+          className="glass-surface relative overflow-hidden rounded-none px-6 py-20 sm:px-10 sm:py-24 max-w-6xl mx-auto"
         >
           {/* Atmosphere inside card */}
           <div className="absolute inset-0 -z-10 pointer-events-none">
@@ -38,7 +38,7 @@ export default function CTASection({
               Join thousands of developers who respect their users&apos; privacy while getting the insights they need.
             </p>
             <div className="flex flex-row gap-3 justify-center flex-wrap">
-              <Button onClick={() => initiateOAuthFlow()} variant="default" className="px-6 py-3 shadow-lg shadow-brand-orange/20 gap-2">
+              <Button onClick={() => initiateOAuthFlow()} variant="default" className="px-6 py-3 gap-2">
                 Try Pulse Free <ArrowRight weight="bold" className="w-4 h-4" />
               </Button>
               <Link href={secondaryHref}>

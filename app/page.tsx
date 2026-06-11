@@ -57,7 +57,7 @@ export default function HomePage() {
               transition={{ duration: 0.5, delay: 0.2 }}
               className="flex flex-row gap-3 flex-wrap justify-center mb-8"
             >
-              <Button onClick={() => initiateOAuthFlow()} variant="default" className="px-6 py-3 shadow-lg shadow-brand-orange/20 gap-2">
+              <Button onClick={() => initiateOAuthFlow()} variant="default" className="px-6 py-3 gap-2">
                 Try Pulse Free <ArrowRight weight="bold" className="w-4 h-4" />
               </Button>
               <Button onClick={() => window.open('https://github.com/ciphera-net/pulse', '_blank')} variant="secondary" className="px-6 py-3 border border-white/10 gap-2">

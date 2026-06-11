@@ -48,7 +48,7 @@ function BarRow({
     <div className="flex items-center gap-3">
       <div className="relative flex-1 h-[30px] flex items-center">
         <div
-          className="absolute inset-y-0 left-0 rounded-md bg-brand-orange/25"
+          className="absolute inset-y-0 left-0 rounded-none bg-brand-orange/25"
           style={{ width: `${pct}%` }}
         />
         <div className="relative z-10 flex items-center gap-2 pl-2.5">
@@ -103,7 +103,7 @@ function getReferrerIcon(name: string, favicon?: string) {
   if (favicon) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
-      <img src={favicon} alt="" width={16} height={16} className="w-4 h-4 rounded object-contain" />
+      <img src={favicon} alt="" width={16} height={16} className="w-4 h-4 rounded-none object-contain" />
     )
   }
   const lower = name.toLowerCase()
@@ -171,7 +171,7 @@ export function LocationsCard() {
           <span className="text-neutral-500">Cities</span>
         </div>
       </div>
-      <div className="relative w-full aspect-[2.2/1] rounded-lg bg-neutral-900 overflow-hidden">
+      <div className="relative w-full aspect-[2.2/1] rounded-none bg-neutral-900 overflow-hidden">
         {MOCK_MARKERS.map((m, i) => (
           <div
             key={i}
@@ -330,7 +330,7 @@ export function PeakHoursCard() {
                 return (
                   <div
                     key={bucket}
-                    className={`aspect-square w-full rounded-[4px] border border-neutral-800 ${
+                    className={`aspect-square w-full rounded-none border border-neutral-800 ${
                       isBestCell ? 'ring-1 ring-brand-orange/40' : ''
                     }`}
                     style={{
@@ -372,7 +372,7 @@ export function PeakHoursCard() {
         {HIGHLIGHT_COLORS.map((color, i) => (
           <div
             key={i}
-            className="w-[10px] h-[10px] rounded-[2px] border border-neutral-800"
+            className="w-[10px] h-[10px] rounded-none border border-neutral-800"
             style={{ backgroundColor: color }}
           />
         ))}
@@ -421,7 +421,7 @@ export function PulseFeaturesCarousel() {
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      <div className="rounded-xl border border-white/[0.08] bg-neutral-900/80 px-6 py-5 shadow-2xl">
+      <div className="rounded-none border border-white/[0.08] bg-neutral-900/80 px-6 py-5">
         <div className="min-h-[280px]">
           <ActiveComponent />
         </div>
@@ -433,7 +433,7 @@ export function PulseFeaturesCarousel() {
           <button
             key={card.id}
             onClick={() => setActive(i)}
-            className={`h-2 rounded-full transition-all duration-300 ${
+            className={`h-2 rounded-none transition-all duration-300 ${
               i === active
                 ? 'w-7 bg-brand-orange'
                 : 'w-2 bg-neutral-600 hover:bg-neutral-500'

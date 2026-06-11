@@ -23,12 +23,12 @@ function LinkRoleBadge({ roleId, roles }: { roleId?: string; roles: Role[] }) {
   if (!matched) return null
   const isAdmin = matched.slug === 'admin'
   if (isAdmin) return (
-    <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-blue-900/30 text-blue-400">
+    <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-none bg-blue-900/30 text-blue-400">
       {matched.name}
     </span>
   )
   return (
-    <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-neutral-800 text-neutral-400">
+    <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-none bg-neutral-800 text-neutral-400">
       {matched.name}
     </span>
   )
@@ -91,7 +91,7 @@ export default function InviteLinksSection({ orgId, links, roles, loading, onRev
   return (
     <div className="pt-6 border-t border-neutral-800 space-y-2">
       <h4 className="text-sm font-medium text-neutral-300">Invite Links</h4>
-      <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
+      <div className="rounded-none border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
         {links.map(link => {
           const isExhausted = link.max_uses !== null && link.use_count >= link.max_uses
           const roleId = link.metadata?.role_id

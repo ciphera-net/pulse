@@ -72,15 +72,15 @@ function IntegrationCard({
   children?: React.ReactNode
 }) {
   return (
-    <div className="rounded-xl border border-neutral-800 bg-neutral-800/30">
+    <div className="rounded-none border border-neutral-800 bg-neutral-800/30">
       <div className="flex items-center justify-between py-4 px-4">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-neutral-800">{icon}</div>
+          <div className="p-2 rounded-none bg-neutral-800">{icon}</div>
           <div>
             <div className="flex items-center gap-2">
               <p className="text-sm font-medium text-white">{name}</p>
               {connected && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-green-900/30 text-green-400 border border-green-900/50">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-none bg-green-900/30 text-green-400 border border-green-900/50">
                   <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
                   Connected
                 </span>
@@ -106,7 +106,7 @@ function IntegrationCard({
 
 function SecurityNote({ text }: { text: string }) {
   return (
-    <div className="flex items-start gap-2 px-4 py-3 mx-4 mb-4 rounded-lg bg-neutral-800/40 border border-neutral-700/50">
+    <div className="flex items-start gap-2 px-4 py-3 mx-4 mb-4 rounded-none bg-neutral-800/40 border border-neutral-700/50">
       <ShieldCheck weight="bold" className="w-4 h-4 text-neutral-400 mt-0.5 shrink-0" />
       <p className="text-xs text-neutral-400 leading-relaxed">{text}</p>
     </div>
@@ -124,7 +124,7 @@ function GSCDetails({ gscStatus }: { gscStatus: { connected: boolean; google_ema
 
   return (
     <div className="px-4 pb-4 space-y-3">
-      <div className="grid grid-cols-2 gap-x-6 gap-y-3 px-4 py-3 rounded-lg bg-neutral-800/40 border border-neutral-700/50">
+      <div className="grid grid-cols-2 gap-x-6 gap-y-3 px-4 py-3 rounded-none bg-neutral-800/40 border border-neutral-700/50">
         {rows.map(row => (
           <div key={row.label} className="flex flex-col gap-0.5">
             <span className="text-xs text-neutral-500">{row.label}</span>
@@ -133,7 +133,7 @@ function GSCDetails({ gscStatus }: { gscStatus: { connected: boolean; google_ema
         ))}
       </div>
       {gscStatus.error_message && (
-        <div className="px-4 py-3 rounded-lg bg-red-900/20 border border-red-900/50">
+        <div className="px-4 py-3 rounded-none bg-red-900/20 border border-red-900/50">
           <p className="text-xs text-red-400">{gscStatus.error_message}</p>
         </div>
       )}
@@ -189,7 +189,7 @@ function BunnySetupForm({ siteId, onConnected }: { siteId: string; onConnected: 
 
   return (
     <div className="px-4 pb-4 space-y-3">
-      <div className="space-y-3 px-4 py-3 rounded-lg bg-neutral-800/40 border border-neutral-700/50">
+      <div className="space-y-3 px-4 py-3 rounded-none bg-neutral-800/40 border border-neutral-700/50">
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-neutral-400">API Key</label>
           <div className="flex gap-2">
@@ -336,7 +336,7 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
         >
           {bunnyConnected && (
             <div className="px-4 pb-4 space-y-3">
-              <div className="grid grid-cols-2 gap-x-6 gap-y-3 px-4 py-3 rounded-lg bg-neutral-800/40 border border-neutral-700/50">
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3 px-4 py-3 rounded-none bg-neutral-800/40 border border-neutral-700/50">
                 <div className="flex flex-col gap-0.5">
                   <span className="text-xs text-neutral-500">Pull Zone</span>
                   <span className="text-sm text-white">{bunnyStatus?.pull_zone_name || 'Unknown'}</span>
@@ -351,7 +351,7 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
                 </div>
               </div>
               {bunnyStatus?.error_message && (
-                <div className="px-4 py-3 rounded-lg bg-red-900/20 border border-red-900/50">
+                <div className="px-4 py-3 rounded-none bg-red-900/20 border border-red-900/50">
                   <p className="text-xs text-red-400">{bunnyStatus.error_message}</p>
                 </div>
               )}

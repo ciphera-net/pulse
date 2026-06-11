@@ -457,7 +457,7 @@ export default function SankeyJourney({
       .style('visibility', 'hidden')
       .style('background-color', '#0a0a0a')                       // bg-neutral-950
       .style('border', '1px solid rgba(38, 38, 38, 0.6)')         // border-neutral-800/60
-      .style('border-radius', '8px')                              // rounded-lg
+      .style('border-radius', '0')                              // rounded-none
       .style('padding', '8px 12px')                               // px-3 py-2
       .style('font-size', '14px')                                 // text-sm
       .style('font-weight', '500')                                // font-medium
@@ -465,7 +465,7 @@ export default function SankeyJourney({
       .style('white-space', 'nowrap')                             // whitespace-nowrap
       .style('pointer-events', 'none')
       .style('z-index', '100')
-      .style('box-shadow', '0 10px 15px -3px rgba(0, 0, 0, 0.2)') // shadow-lg shadow-black/20
+      .style('box-shadow', 'none') //
       .style('transform', 'translateY(-50%)')                     // -translate-y-1/2
 
     // ── Draw nodes ────────────────────────────────────────
@@ -627,7 +627,7 @@ export default function SankeyJourney({
   return (
     <div>
       {filterPath && (
-        <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-lg bg-brand-orange/10 text-sm">
+        <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-none bg-brand-orange/10 text-sm">
           <span className="text-neutral-300">
             Showing flows through{' '}
             <span className="font-medium text-white">

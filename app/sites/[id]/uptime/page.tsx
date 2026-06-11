@@ -167,7 +167,7 @@ function StatusBarTooltip({
       className="fixed z-[200] pointer-events-none"
       style={{ left: position.x, top: position.y - 10, transform: 'translate(-50%, -100%)' }}
     >
-      <div className="bg-neutral-800 border border-neutral-700 rounded-xl shadow-lg transition-shadow duration-slow px-3 py-2.5 text-xs min-w-40 ease-apple">
+      <div className="bg-neutral-800 border border-neutral-700 rounded-none transition-shadow duration-slow px-3 py-2.5 text-xs min-w-40 ease-apple">
         <div className="font-semibold text-white mb-1.5">{formattedDate}</div>
         {stat && stat.total_checks > 0 ? (
           <div className="space-y-1">
@@ -242,7 +242,7 @@ function UptimeStatusBar({
           return (
             <div
               key={date}
-              className={`flex-1 h-8 rounded-sm ${barColor} transition-all duration-fast hover:opacity-80 cursor-pointer min-w-[3px] ease-apple`}
+              className={`flex-1 h-8 rounded-none ${barColor} transition-all duration-fast hover:opacity-80 cursor-pointer min-w-[3px] ease-apple`}
               onMouseEnter={(e) => handleMouseEnter(e, date, stat)}
               onMouseLeave={() => setHoveredDay(null)}
             />
@@ -414,8 +414,8 @@ export default function UptimePage() {
         </div>
 
         {/* Empty state */}
-        <div className="glass-surface rounded-xl p-12 text-center">
-          <div className="rounded-full bg-neutral-800 p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+        <div className="glass-surface rounded-none p-12 text-center">
+          <div className="rounded-none bg-neutral-800 p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
             <svg className="w-8 h-8 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -465,7 +465,7 @@ export default function UptimePage() {
       </div>
 
       {/* Overall status card */}
-      <div className="glass-surface rounded-xl p-5 mb-6">
+      <div className="glass-surface rounded-none p-5 mb-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className={`w-3.5 h-3.5 rounded-full ${getStatusDotColor(overallStatus)}`} />
@@ -493,7 +493,7 @@ export default function UptimePage() {
 
       {/* 90-day uptime bar */}
       {monitor && (
-        <div className="glass-surface rounded-xl p-5 mb-6">
+        <div className="glass-surface rounded-none p-5 mb-6">
           <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">
             90-Day Availability
           </h3>
@@ -507,7 +507,7 @@ export default function UptimePage() {
 
       {/* Response time chart + Recent checks */}
       {monitor && (
-        <div className="glass-surface rounded-xl p-5">
+        <div className="glass-surface rounded-none p-5">
           {/* Monitor details grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
             <div>
@@ -565,7 +565,7 @@ export default function UptimePage() {
                   {checks.slice(0, 20).map((check) => (
                     <div
                       key={check.id}
-                      className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-neutral-800 text-sm"
+                      className="flex items-center justify-between py-1.5 px-2 rounded-none hover:bg-neutral-800 text-sm"
                     >
                       <div className="flex items-center gap-2">
                         <div className={`w-2 h-2 rounded-full ${getStatusDotColor(check.status)}`} />

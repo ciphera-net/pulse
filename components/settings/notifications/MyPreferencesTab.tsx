@@ -99,7 +99,7 @@ export default function MyPreferencesTab() {
         <button
           type="button"
           onClick={() => setPurging(true)}
-          className="px-4 py-2 text-sm rounded border border-red-500/30 text-red-400 hover:bg-red-500/10"
+          className="px-4 py-2 text-sm rounded-none border border-red-500/30 text-red-400 hover:bg-red-500/10"
         >
           Delete all my notification history
         </button>

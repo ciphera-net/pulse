@@ -29,11 +29,11 @@ function SiteCard({ site, stats, statsLoading }: SiteCardProps) {
   const pageviews = stats?.pageviews ?? 0
 
   return (
-    <div className="group relative flex flex-col rounded-xl border border-neutral-800 bg-neutral-900 p-6 transition-all duration-base hover:border-neutral-700 active:scale-[0.99] ease-apple">
+    <div className="group relative flex flex-col rounded-none border border-neutral-800 bg-neutral-900 p-6 transition-all duration-base hover:border-neutral-700 active:scale-[0.99] ease-apple">
       {/* Header: Icon + Name + Live Status */}
       <div className="flex items-start justify-between mb-6">
         <div className="flex items-center gap-4">
-          <div className="h-12 w-12 overflow-hidden rounded-lg border border-neutral-800 bg-neutral-800 p-1">
+          <div className="h-12 w-12 overflow-hidden rounded-none border border-neutral-800 bg-neutral-800 p-1">
             <Image
               src={`${FAVICON_SERVICE_URL}?domain=${site.domain}&sz=64`}
               alt={site.name}
@@ -61,7 +61,7 @@ function SiteCard({ site, stats, statsLoading }: SiteCardProps) {
         </div>
 
         {site.is_verified ? (
-          <div className="flex items-center gap-2 rounded-full bg-green-900/20 px-2 py-1 text-xs font-medium text-green-400">
+          <div className="flex items-center gap-2 rounded-none bg-green-900/20 px-2 py-1 text-xs font-medium text-green-400">
             <span className="relative flex h-2 w-2">
               <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
@@ -69,7 +69,7 @@ function SiteCard({ site, stats, statsLoading }: SiteCardProps) {
             Active
           </div>
         ) : (
-          <div className="flex items-center gap-2 rounded-full bg-amber-900/20 px-2 py-1 text-xs font-medium text-amber-400">
+          <div className="flex items-center gap-2 rounded-none bg-amber-900/20 px-2 py-1 text-xs font-medium text-amber-400">
             <span className="relative flex h-2 w-2">
               <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
             </span>
@@ -79,7 +79,7 @@ function SiteCard({ site, stats, statsLoading }: SiteCardProps) {
       </div>
 
       {/* Mini Stats Grid */}
-      <div className="mb-6 grid grid-cols-2 gap-4 rounded-lg bg-neutral-800/50 p-3">
+      <div className="mb-6 grid grid-cols-2 gap-4 rounded-none bg-neutral-800/50 p-3">
         <div>
           <p className="text-xs text-neutral-500">Visitors (24h)</p>
           <p className="font-mono text-lg font-medium text-white">
@@ -104,7 +104,7 @@ function SiteCard({ site, stats, statsLoading }: SiteCardProps) {
         </Link>
         <Link
           href="/settings/site/general"
-          className="flex items-center justify-center rounded-lg border border-neutral-700 px-3 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 ease-apple"
+          className="flex items-center justify-center rounded-none border border-neutral-700 px-3 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 ease-apple"
           title="Site Settings"
           onClick={(e) => {
             e.stopPropagation()
@@ -124,7 +124,7 @@ export default function SiteList({ sites, siteStats, loading }: SiteListProps) {
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-48 animate-skeleton-fade rounded-xl bg-neutral-800" />
+          <div key={i} className="h-48 animate-skeleton-fade rounded-none bg-neutral-800" />
         ))}
       </div>
     )
@@ -132,7 +132,7 @@ export default function SiteList({ sites, siteStats, loading }: SiteListProps) {
 
   if (sites.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-neutral-700">
+      <div className="rounded-none border border-dashed border-neutral-700">
         <EmptyState
           icon={<PlusCircle />}
           title="No sites yet"
@@ -158,8 +158,8 @@ export default function SiteList({ sites, siteStats, loading }: SiteListProps) {
       })}
 
       {/* Resources Card */}
-      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-neutral-700 bg-neutral-900 p-6 text-center">
-        <div className="mb-3 rounded-full bg-neutral-800 p-3">
+      <div className="flex flex-col items-center justify-center rounded-none border border-dashed border-neutral-700 bg-neutral-900 p-6 text-center">
+        <div className="mb-3 rounded-none bg-neutral-800 p-3">
           <BookOpenIcon className="h-6 w-6 text-neutral-500" />
         </div>
         <h3 className="font-semibold text-white">Need help setup?</h3>

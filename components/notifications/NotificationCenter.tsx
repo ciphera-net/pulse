@@ -202,8 +202,8 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
         aria-haspopup="true"
         aria-controls={open ? 'notification-dropdown' : undefined}
         className={isSidebar
-          ? 'relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-neutral-400 hover:text-white hover:bg-neutral-800 w-full overflow-hidden transition-colors'
-          : 'relative p-2 text-neutral-400 hover:text-white rounded-lg hover:bg-white/[0.06] transition-colors'
+          ? 'relative flex items-center gap-2.5 rounded-none px-2.5 py-2 text-sm font-medium text-neutral-400 hover:text-white hover:bg-neutral-800 w-full overflow-hidden transition-colors'
+          : 'relative p-2 text-neutral-400 hover:text-white rounded-none hover:bg-white/[0.06] transition-colors'
         }
         aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
       >
@@ -240,7 +240,7 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
             transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
-            className={`glass-overlay rounded-xl shadow-xl shadow-black/20 overflow-hidden z-[100] fixed w-96 ${
+            className={`bg-popover border border-border rounded-none overflow-hidden z-[100] fixed w-96 ${
               anchor === 'right'
                 ? fixedPos?.bottom !== undefined ? 'origin-bottom-left' : 'origin-top-left'
                 : 'origin-top-right'
@@ -299,7 +299,7 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
                             className={`block px-4 py-3 hover:bg-white/[0.06] transition-colors ${isUnread ? 'bg-brand-orange/10' : ''} ease-apple`}
                           >
                             <div className="flex gap-3 items-start">
-                              <span className="w-8 h-8 rounded-lg bg-neutral-800/60 flex items-center justify-center shrink-0 mt-0.5">
+                              <span className="w-8 h-8 rounded-none bg-neutral-800/60 flex items-center justify-center shrink-0 mt-0.5">
                                 {getTypeIcon(r.event.type)}
                               </span>
                               <div className="min-w-0 flex-1">
@@ -327,7 +327,7 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
                             className={`w-full text-left block px-4 py-3 hover:bg-white/[0.06] cursor-pointer ${isUnread ? 'bg-brand-orange/10' : ''}`}
                           >
                             <div className="flex gap-3 items-start">
-                              <span className="w-8 h-8 rounded-lg bg-neutral-800/60 flex items-center justify-center shrink-0 mt-0.5">
+                              <span className="w-8 h-8 rounded-none bg-neutral-800/60 flex items-center justify-center shrink-0 mt-0.5">
                                 {getTypeIcon(r.event.type)}
                               </span>
                               <div className="min-w-0 flex-1">

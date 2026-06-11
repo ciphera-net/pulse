@@ -118,7 +118,7 @@ export default function SitePrivacyScanTab({ siteId }: { siteId: string }) {
       hasInitialized.current = false
     }
     return (
-      <div className="rounded-xl border border-red-900/50 bg-red-950/20 p-6 text-center">
+      <div className="rounded-none border border-red-900/50 bg-red-950/20 p-6 text-center">
         <p className="text-red-400 text-sm">{error}</p>
         <Button
           type="button"
@@ -162,7 +162,7 @@ export default function SitePrivacyScanTab({ siteId }: { siteId: string }) {
       </div>
 
       {/* Enable toggle */}
-      <div className="flex items-center justify-between p-4 rounded-xl border border-neutral-800 bg-neutral-800/30">
+      <div className="flex items-center justify-between p-4 rounded-none border border-neutral-800 bg-neutral-800/30">
         <div>
           <p className="text-sm font-medium text-white">Enable privacy scanning</p>
           <p className="text-xs text-neutral-500">Automatically scan for trackers and security issues</p>
@@ -179,7 +179,7 @@ export default function SitePrivacyScanTab({ siteId }: { siteId: string }) {
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <div className="p-4 rounded-xl border border-neutral-800 bg-neutral-800/30">
+            <div className="p-4 rounded-none border border-neutral-800 bg-neutral-800/30">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-white">Scan frequency</p>
@@ -258,11 +258,11 @@ export default function SitePrivacyScanTab({ siteId }: { siteId: string }) {
                 {scripts.map(s => (
                   <div
                     key={s.host}
-                    className="flex items-center justify-between p-3 rounded-xl border border-neutral-800 bg-neutral-800/30"
+                    className="flex items-center justify-between p-3 rounded-none border border-neutral-800 bg-neutral-800/30"
                   >
                     <span className="text-sm text-white font-mono">{s.host}</span>
                     <span
-                      className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                      className={`text-[10px] font-medium px-2 py-0.5 rounded-none ${
                         s.category === 'analytics'
                           ? 'bg-blue-500/20 text-blue-400'
                           : s.category === 'advertising'
@@ -288,7 +288,7 @@ export default function SitePrivacyScanTab({ siteId }: { siteId: string }) {
                 {lastScan.cookies.map(c => (
                   <div
                     key={`${c.name}-${c.domain}`}
-                    className="flex items-center justify-between p-3 rounded-xl border border-neutral-800 bg-neutral-800/30"
+                    className="flex items-center justify-between p-3 rounded-none border border-neutral-800 bg-neutral-800/30"
                   >
                     <div>
                       <span className="text-sm text-white font-mono">{c.name}</span>
@@ -296,12 +296,12 @@ export default function SitePrivacyScanTab({ siteId }: { siteId: string }) {
                     </div>
                     <div className="flex items-center gap-2">
                       {c.secure && (
-                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">
+                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-none bg-green-500/20 text-green-400">
                           Secure
                         </span>
                       )}
                       {c.http_only && (
-                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400">
+                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-none bg-blue-500/20 text-blue-400">
                           HttpOnly
                         </span>
                       )}
@@ -319,7 +319,7 @@ export default function SitePrivacyScanTab({ siteId }: { siteId: string }) {
               {HEADER_CHECKS.map(h => (
                 <div
                   key={h.key}
-                  className="flex items-center gap-2 p-2.5 rounded-xl border border-neutral-800 bg-neutral-800/30"
+                  className="flex items-center gap-2 p-2.5 rounded-none border border-neutral-800 bg-neutral-800/30"
                 >
                   {headers[h.key] ? (
                     <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" weight="fill" />
@@ -340,7 +340,7 @@ export default function SitePrivacyScanTab({ siteId }: { siteId: string }) {
                 {lastScan.issues.map((issue, i) => (
                   <div
                     key={i}
-                    className="flex items-start gap-2 p-3 rounded-xl border border-neutral-800 bg-neutral-800/30"
+                    className="flex items-start gap-2 p-3 rounded-none border border-neutral-800 bg-neutral-800/30"
                   >
                     <XCircle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" weight="fill" />
                     <span className="text-sm text-neutral-300">{issue}</span>

@@ -119,7 +119,7 @@ export default function AdminOrgDetailPage() {
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* Current Status */}
-        <div className="glass-surface rounded-xl p-6">
+        <div className="bg-card border border-border rounded-none p-6">
           <h3 className="text-lg font-semibold text-white mb-4">Current Status</h3>
           <div className="grid grid-cols-2 gap-2 text-sm">
               <span className="text-neutral-500">Plan:</span>
@@ -148,11 +148,11 @@ export default function AdminOrgDetailPage() {
         </div>
 
         {/* Sites */}
-        <div className="glass-surface rounded-xl p-6">
+        <div className="bg-card border border-border rounded-none p-6">
           <h3 className="text-lg font-semibold text-white mb-4">Sites ({org.sites.length})</h3>
             <ul className="space-y-2 max-h-60 overflow-y-auto">
               {org.sites.map((site) => (
-                <li key={site.id} className="flex justify-between items-center text-sm p-2 bg-neutral-900 rounded">
+                <li key={site.id} className="flex justify-between items-center text-sm p-2 bg-neutral-900 rounded-none">
                   <span className="font-medium">{site.domain}</span>
                   <span className="text-neutral-500 text-xs">{formatDate(new Date(site.created_at))}</span>
                 </li>
@@ -163,7 +163,7 @@ export default function AdminOrgDetailPage() {
       </div>
 
       {/* Grant Plan Form */}
-      <div className="glass-surface rounded-xl p-6">
+      <div className="bg-card border border-border rounded-none p-6">
         <h3 className="text-lg font-semibold text-white mb-4">Grant Plan (Manual Override)</h3>
           <form onSubmit={handleGrantPlan} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -200,7 +200,7 @@ export default function AdminOrgDetailPage() {
                   type="datetime-local"
                   value={periodEnd}
                   onChange={(e) => setPeriodEnd(e.target.value)}
-                  className="w-full px-4 py-2 border border-neutral-800 rounded-lg bg-neutral-900 text-white focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2"
+                  className="w-full px-4 py-2 border border-neutral-800 rounded-none bg-neutral-900 text-white focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2"
                   required
                 />
                 <div className="flex gap-2 mt-1">

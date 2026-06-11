@@ -140,7 +140,7 @@ function CreateRoleForm({
     .map((r) => ({ value: r.slug, label: r.name }))
 
   return (
-    <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 p-5 space-y-5">
+    <div className="rounded-none border border-neutral-800 bg-neutral-800/30 p-5 space-y-5">
       <h4 className="text-sm font-semibold text-white">New custom role</h4>
 
       <div className="grid grid-cols-2 gap-4">
@@ -169,7 +169,7 @@ function CreateRoleForm({
             <button
               key={opt.value}
               onClick={() => setTemplateSlug(opt.value)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ease-apple ${
+              className={`px-3 py-1.5 rounded-none text-xs font-medium border transition-colors ease-apple ${
                 templateSlug === opt.value
                   ? 'border-brand-orange/60 bg-brand-orange/10 text-brand-orange'
                   : 'border-neutral-700 text-neutral-400 hover:text-white hover:border-neutral-600'
@@ -209,7 +209,7 @@ function CreateRoleForm({
                     >
                       <span className="text-sm text-white">{pi.label}</span>
                       {ownerOnly && (
-                        <span className="ml-2 text-[10px] font-semibold uppercase tracking-wider text-brand-orange border border-brand-orange/30 rounded px-1.5 py-0.5">
+                        <span className="ml-2 text-[10px] font-semibold uppercase tracking-wider text-brand-orange border border-brand-orange/30 rounded-none px-1.5 py-0.5">
                           Owner only
                         </span>
                       )}
@@ -365,7 +365,7 @@ function RoleCard({
   }
 
   return (
-    <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 overflow-hidden">
+    <div className="rounded-none border border-neutral-800 bg-neutral-800/30 overflow-hidden">
       {/* Card header */}
       <div
         className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none hover:bg-neutral-800/40 transition-colors ease-apple"
@@ -398,7 +398,7 @@ function RoleCard({
               <button
                 onClick={handleSaveName}
                 disabled={saving}
-                className="p-1 rounded text-green-400 hover:bg-green-900/20 transition-colors"
+                className="p-1 rounded-none text-green-400 hover:bg-green-900/20 transition-colors"
               >
                 <Check weight="bold" className="w-3.5 h-3.5" />
               </button>
@@ -407,7 +407,7 @@ function RoleCard({
                   setEditingName(false)
                   setNameValue(role.name)
                 }}
-                className="p-1 rounded text-neutral-500 hover:text-neutral-300 transition-colors"
+                className="p-1 rounded-none text-neutral-500 hover:text-neutral-300 transition-colors"
               >
                 <X weight="bold" className="w-3.5 h-3.5" />
               </button>
@@ -417,7 +417,7 @@ function RoleCard({
           )}
 
           {role.is_builtin && (
-            <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-neutral-500 border border-neutral-700 rounded px-1.5 py-0.5">
+            <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-neutral-500 border border-neutral-700 rounded-none px-1.5 py-0.5">
               Built-in
             </span>
           )}
@@ -444,7 +444,7 @@ function RoleCard({
                 <TooltipTrigger asChild>
                   <button
                     onClick={() => setEditingName(true)}
-                    className="p-1.5 rounded-lg text-neutral-500 hover:text-neutral-200 hover:bg-white/[0.06] transition-colors ease-apple"
+                    className="p-1.5 rounded-none text-neutral-500 hover:text-neutral-200 hover:bg-white/[0.06] transition-colors ease-apple"
                   >
                     <Pencil weight="bold" className="w-3.5 h-3.5" />
                   </button>
@@ -457,7 +457,7 @@ function RoleCard({
                 <TooltipTrigger asChild>
                   <button
                     onClick={handleDelete}
-                    className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-red-900/20 transition-colors ease-apple"
+                    className="p-1.5 rounded-none text-neutral-500 hover:text-red-400 hover:bg-red-900/20 transition-colors ease-apple"
                   >
                     <Trash weight="bold" className="w-3.5 h-3.5" />
                   </button>
@@ -582,7 +582,7 @@ function RoleCard({
                               {pi.label}
                             </span>
                             {ownerOnly && !isOwner && (
-                              <span className="ml-2 text-[10px] font-semibold uppercase tracking-wider text-brand-orange border border-brand-orange/30 rounded px-1.5 py-0.5">
+                              <span className="ml-2 text-[10px] font-semibold uppercase tracking-wider text-brand-orange border border-brand-orange/30 rounded-none px-1.5 py-0.5">
                                 Owner only
                               </span>
                             )}

@@ -26,7 +26,7 @@ export function EmptyState({ icon, title, description, action, className }: Empt
     action.href ? (
       <Link
         href={action.href}
-        className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-orange text-white text-sm font-medium hover:bg-brand-orange-hover transition-colors duration-fast ease-apple active:scale-[0.97]"
+        className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-none bg-brand-orange text-white text-sm font-medium hover:bg-brand-orange-hover transition-colors duration-fast ease-apple active:scale-[0.97]"
       >
         {action.label}
       </Link>
@@ -34,7 +34,7 @@ export function EmptyState({ icon, title, description, action, className }: Empt
       <button
         type="button"
         onClick={action.onClick}
-        className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-orange text-white text-sm font-medium hover:bg-brand-orange-hover transition-colors duration-fast ease-apple active:scale-[0.97]"
+        className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-none bg-brand-orange text-white text-sm font-medium hover:bg-brand-orange-hover transition-colors duration-fast ease-apple active:scale-[0.97]"
       >
         {action.label}
       </button>
@@ -44,7 +44,7 @@ export function EmptyState({ icon, title, description, action, className }: Empt
   return (
     <div className={cn('flex flex-col items-center justify-center gap-3 py-12 px-6 text-center', className)}>
       {icon && (
-        <div className="flex h-20 w-20 items-center justify-center rounded-xl bg-brand-orange/10 text-brand-orange [&_svg]:h-10 [&_svg]:w-10 ring-1 ring-brand-orange/10">
+        <div className="flex h-20 w-20 items-center justify-center rounded-none bg-brand-orange/10 text-brand-orange [&_svg]:h-10 [&_svg]:w-10 ring-1 ring-brand-orange/10">
           {icon}
         </div>
       )}

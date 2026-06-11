@@ -110,7 +110,7 @@ export default function IntegrationsPage() {
             <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white">
               Integrations
             </h1>
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-brand-orange/10 text-brand-orange border border-brand-orange/20">
+            <span className="inline-flex items-center px-3 py-1 rounded-none text-sm font-semibold bg-brand-orange/10 text-brand-orange border border-brand-orange/20">
               {integrations.length}+
             </span>
           </div>
@@ -121,7 +121,7 @@ export default function IntegrationsPage() {
             href="https://docs.ciphera.net/pulse/script-installation"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 mt-4 px-4 py-2 text-sm font-medium text-brand-orange border border-brand-orange/30 rounded-lg hover:bg-brand-orange/10 transition-colors ease-apple"
+            className="inline-flex items-center gap-2 mt-4 px-4 py-2 text-sm font-medium text-brand-orange border border-brand-orange/30 rounded-none hover:bg-brand-orange/10 transition-colors ease-apple"
           >
             Installation docs
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -152,7 +152,7 @@ export default function IntegrationsPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search integrations..."
-              className="w-full pl-12 pr-16 py-3 glass-surface rounded-xl text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-orange/50 focus:border-brand-orange/50 transition-all ease-apple"
+              className="w-full pl-12 pr-16 py-3 glass-surface rounded-none text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-orange/50 focus:border-brand-orange/50 transition-all ease-apple"
             />
             {query ? (
               <button
@@ -166,7 +166,7 @@ export default function IntegrationsPage() {
               </button>
             ) : (
               <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
-                <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono font-medium bg-neutral-700/80 text-neutral-400 border border-neutral-600">
+                <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded-none text-xs font-mono font-medium bg-neutral-700/80 text-neutral-400 border border-neutral-600">
                   /
                 </kbd>
               </div>
@@ -195,9 +195,9 @@ export default function IntegrationsPage() {
         >
           <button
             onClick={() => handleCategoryClick('all')}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+            className={`px-4 py-1.5 rounded-none text-sm font-medium transition-all ${
               activeCategory === 'all'
-                ? 'bg-brand-orange-button text-white shadow-sm'
+                ? 'bg-brand-orange-button text-white'
                 : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
             } ease-apple`}
           >
@@ -207,9 +207,9 @@ export default function IntegrationsPage() {
             <button
               key={cat}
               onClick={() => handleCategoryClick(cat)}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+              className={`px-4 py-1.5 rounded-none text-sm font-medium transition-all ${
                 activeCategory === cat
-                  ? 'bg-brand-orange-button text-white shadow-sm'
+                  ? 'bg-brand-orange-button text-white'
                   : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
               } ease-apple`}
             >
@@ -253,9 +253,9 @@ export default function IntegrationsPage() {
                         transition={{ duration: 0.4, delay: i * 0.05 }}
                       >
                         <div
-                          className="flex items-center gap-3 p-4 glass-surface rounded-xl h-full"
+                          className="flex items-center gap-3 p-4 glass-surface rounded-none h-full"
                         >
-                          <div className="p-2 bg-neutral-800 rounded-lg shrink-0 [&_svg]:w-6 [&_svg]:h-6">
+                          <div className="p-2 bg-neutral-800 rounded-none shrink-0 [&_svg]:w-6 [&_svg]:h-6">
                             {integration!.icon}
                           </div>
                           <span className="font-semibold text-white text-sm">
@@ -291,10 +291,10 @@ export default function IntegrationsPage() {
                         transition={{ duration: 0.5, delay: i * 0.05 }}
                       >
                         <div
-                          className="relative p-6 glass-surface rounded-xl block h-full"
+                          className="relative p-6 glass-surface rounded-none block h-full"
                         >
                           <div className="flex items-start mb-6">
-                            <div className="p-3 bg-neutral-800 rounded-xl">
+                            <div className="p-3 bg-neutral-800 rounded-none">
                               {integration.icon}
                             </div>
                           </div>
@@ -320,9 +320,9 @@ export default function IntegrationsPage() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.3 }}
-              className="max-w-md mx-auto mt-8 p-10 border border-dashed border-neutral-700 rounded-xl flex flex-col items-center justify-center text-center"
+              className="max-w-md mx-auto mt-8 p-10 border border-dashed border-neutral-700 rounded-none flex flex-col items-center justify-center text-center"
             >
-              <div className="p-4 bg-neutral-800 rounded-full mb-4">
+              <div className="p-4 bg-neutral-800 rounded-none mb-4">
                 <svg className="w-8 h-8 text-neutral-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
                 </svg>
@@ -338,7 +338,7 @@ export default function IntegrationsPage() {
               </p>
               <a
                 href="mailto:support@ciphera.net"
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-brand-orange-button text-white font-medium rounded-lg hover:bg-brand-orange/90 transition-[color,transform] duration-fast active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-brand-orange-button text-white font-medium rounded-none hover:bg-brand-orange/90 transition-[color,transform] duration-fast active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2"
               >
                 Request Integration
               </a>
@@ -353,7 +353,7 @@ export default function IntegrationsPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
-            className="max-w-md mx-auto mt-12 p-6 border border-dashed border-neutral-700 rounded-xl flex flex-col items-center justify-center text-center"
+            className="max-w-md mx-auto mt-12 p-6 border border-dashed border-neutral-700 rounded-none flex flex-col items-center justify-center text-center"
           >
             <h3 className="text-xl font-bold text-white mb-2">
               Missing something?
@@ -363,7 +363,7 @@ export default function IntegrationsPage() {
             </p>
             <a
               href="mailto:support@ciphera.net"
-              className="text-sm font-medium text-brand-orange hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:rounded"
+              className="text-sm font-medium text-brand-orange hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:rounded-none"
             >
               Request Integration
             </a>

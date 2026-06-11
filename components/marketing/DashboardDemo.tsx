@@ -181,12 +181,12 @@ export default function DashboardDemo() {
       <div className="absolute -inset-8 bg-brand-orange/8 rounded-[2.5rem] blur-3xl" />
 
       {/* Outer frame with showcase bg */}
-      <div className="relative rounded-3xl border border-white/[0.08] overflow-hidden p-5 sm:p-8 lg:p-10">
+      <div className="relative rounded-none border border-white/[0.08] overflow-hidden p-5 sm:p-8 lg:p-10">
         <img src={cdnUrl('/pulse-showcase-bg.png')} alt="" className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-black/40" />
 
         {/* Inner dashboard — solid background */}
-        <div className="relative rounded-2xl bg-neutral-950/80 backdrop-blur-sm p-4 sm:p-6">
+        <div className="relative rounded-none bg-card p-4 sm:p-6">
           {/* Dashboard header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
@@ -194,7 +194,7 @@ export default function DashboardDemo() {
                 <h2 className="text-xl font-bold text-white">Ciphera</h2>
                 <p className="text-sm text-neutral-400">ciphera.net</p>
               </div>
-              <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded-full border border-green-500/20">
+              <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded-none border border-green-500/20">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
@@ -202,7 +202,7 @@ export default function DashboardDemo() {
                 <span className="text-sm font-medium text-green-400">12 current visitors</span>
               </div>
             </div>
-            <div className="glass-surface px-4 py-2 rounded-lg text-sm text-neutral-300">
+            <div className="glass-surface px-4 py-2 rounded-none text-sm text-neutral-300">
               Today
             </div>
           </div>

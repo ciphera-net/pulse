@@ -71,7 +71,7 @@ export default function NotificationRow({ receipt, onChange }: NotificationRowPr
   }
 
   return (
-    <li className={`rounded-lg overflow-hidden transition-colors ${
+    <li className={`rounded-none overflow-hidden transition-colors ${
       isUnread ? 'border-l-2 border-brand-orange bg-brand-orange/[0.06]' : 'border-l-2 border-transparent'
     }`}>
       <button
@@ -109,7 +109,7 @@ export default function NotificationRow({ receipt, onChange }: NotificationRowPr
                 <Link
                   href={linkUrl}
                   onClick={(e) => e.stopPropagation()}
-                  className="inline-flex items-center gap-1 rounded px-3 py-1.5 text-xs font-medium bg-brand-orange/10 text-brand-orange border border-brand-orange/30 hover:bg-brand-orange/20 transition-colors"
+                  className="inline-flex items-center gap-1 rounded-none px-3 py-1.5 text-xs font-medium bg-brand-orange/10 text-brand-orange border border-brand-orange/30 hover:bg-brand-orange/20 transition-colors"
                 >
                   {linkLabel ?? 'View details'} →
                 </Link>

@@ -435,7 +435,7 @@ export default function SiteDashboardPage() {
         </button>
         {realtimePagesOpen && realtimePages && realtimePages.length > 0 && (
           <div className="absolute top-full left-0 mt-2 w-72 z-50">
-            <div className="rounded-xl border border-neutral-800 bg-neutral-900 shadow-xl shadow-black/30 p-3 space-y-1">
+            <div className="rounded-none border border-neutral-800 bg-neutral-900 p-3 space-y-1">
               <p className="text-xs font-medium text-neutral-500 mb-2">Active pages</p>
               {realtimePages.slice(0, 10).map(p => (
                 <div key={p.path} className="flex justify-between items-center text-sm py-0.5">

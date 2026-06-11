@@ -102,7 +102,7 @@ export default function AccountProfileTab() {
       />
 
       {showDeleteConfirm && (
-        <div className="p-4 border border-red-900/50 bg-red-900/10 rounded-xl space-y-3">
+        <div className="p-4 border border-red-900/50 bg-red-900/10 rounded-none space-y-3">
           <p className="text-sm text-red-300">This will permanently delete:</p>
           <ul className="text-xs text-neutral-400 list-disc list-inside space-y-1">
             <li>Your account and all personal data</li>

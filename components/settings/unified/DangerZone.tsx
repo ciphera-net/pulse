@@ -26,7 +26,7 @@ export function DangerZone({ items, children }: DangerZoneProps) {
       </div>
 
       {items.map((item) => (
-        <div key={item.title} className="rounded-xl border border-red-900/30 bg-red-900/10 p-4">
+        <div key={item.title} className="rounded-none border border-red-900/30 bg-red-900/10 p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-white">{item.title}</p>

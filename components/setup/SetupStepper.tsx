@@ -35,7 +35,7 @@ export default function SetupStepper({ completedSteps }: SetupStepperProps) {
           const isCurrent = i === currentIndex
 
           const circleClasses = [
-            'w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold shrink-0 transition-all ease-apple',
+            'w-7 h-7 sm:w-8 sm:h-8 rounded-none flex items-center justify-center text-xs sm:text-sm font-semibold shrink-0 transition-all ease-apple',
             isCompleted || isCurrent
               ? 'bg-brand-orange text-white'
               : 'bg-neutral-800 border border-neutral-700 text-neutral-400',

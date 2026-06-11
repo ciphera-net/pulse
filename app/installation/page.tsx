@@ -31,7 +31,7 @@ export default function InstallationPage() {
           <h2 className="text-2xl font-bold mb-8 text-white">Add the snippet</h2>
           <p className="text-neutral-500 mb-8">Just add this snippet to your &lt;head&gt; tag in your layout or index file.</p>
           
-          <div className="max-w-2xl mx-auto glass-surface rounded-xl overflow-hidden shadow-2xl text-left">
+          <div className="max-w-2xl mx-auto glass-surface rounded-none overflow-hidden border border-border text-left">
             <div className="flex items-center px-4 py-3 bg-neutral-800 border-b border-neutral-800">
               <div className="flex gap-2">
                 <div className="w-3 h-3 rounded-full bg-red-500/20" />
@@ -66,9 +66,9 @@ export default function InstallationPage() {
         <div className="w-full mt-16 text-center">
           <h2 className="text-2xl font-bold mb-4 text-white">Custom events (goals)</h2>
           <p className="text-neutral-500 mb-6 max-w-xl mx-auto">
-            Track custom events (e.g. signup, purchase) with <code className="px-1.5 py-0.5 rounded bg-neutral-700 text-sm font-mono">pulse.track(&apos;event_name&apos;)</code>. Use letters, numbers, and underscores only. Define goals in your site Settings → Goals & Events to see counts in the dashboard.
+            Track custom events (e.g. signup, purchase) with <code className="px-1.5 py-0.5 rounded-none bg-neutral-700 text-sm font-mono">pulse.track(&apos;event_name&apos;)</code>. Use letters, numbers, and underscores only. Define goals in your site Settings → Goals & Events to see counts in the dashboard.
           </p>
-          <div className="max-w-2xl mx-auto glass-surface rounded-xl overflow-hidden shadow-2xl text-left">
+          <div className="max-w-2xl mx-auto glass-surface rounded-none overflow-hidden border border-border text-left">
             <div className="flex items-center px-4 py-3 bg-neutral-800 border-b border-neutral-800">
               <div className="flex gap-2">
                 <div className="w-3 h-3 rounded-full bg-red-500/20" />

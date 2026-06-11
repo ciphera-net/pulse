@@ -48,7 +48,7 @@ export default function FilterChips({ unreadCount, totalCount }: FilterChipsProp
     <button
       type="button"
       onClick={onClick}
-      className={`px-3 py-1 rounded-full text-xs transition-colors ${
+      className={`px-3 py-1 rounded-none text-xs transition-colors ${
         active
           ? 'bg-brand-orange/15 text-brand-orange'
           : 'bg-white/[0.05] text-neutral-400 hover:text-white hover:bg-white/[0.08]'

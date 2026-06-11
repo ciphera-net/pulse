@@ -183,7 +183,7 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
               placeholder="Search settings..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full h-9 pl-9 pr-3 bg-transparent border border-neutral-800 rounded-lg text-sm text-white placeholder-neutral-500 focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/10 focus:outline-none transition-colors ease-apple"
+              className="w-full h-9 pl-9 pr-3 bg-transparent border border-neutral-800 rounded-none text-sm text-white placeholder-neutral-500 focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/10 focus:outline-none transition-colors ease-apple"
             />
           </div>
           <div className="flex flex-col gap-6">
@@ -202,7 +202,7 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
                       <li key={tab.href}>
                         <Link
                           href={tab.href}
-                          className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-fast ease-apple ${
+                          className={`flex items-center gap-2.5 px-3 py-2 rounded-none text-sm font-medium transition-colors duration-fast ease-apple ${
                             active
                               ? 'bg-brand-orange/10 text-brand-orange'
                               : 'text-neutral-400 hover:text-white hover:bg-white/[0.06]'
@@ -225,7 +225,7 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <div className="glass-surface rounded-xl p-6">
+          <div className="bg-card p-6 border border-border">
             {children}
           </div>
         </div>

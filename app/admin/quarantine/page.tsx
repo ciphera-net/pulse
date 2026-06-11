@@ -70,7 +70,7 @@ const SOURCE_LABELS: Record<string, string> = {
 function Badge({ label, colorClass }: { label: string; colorClass?: string }) {
   return (
     <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${colorClass || 'bg-neutral-800 text-neutral-400'}`}
+      className={`inline-flex items-center px-2 py-0.5 rounded-none text-xs font-medium ${colorClass || 'bg-neutral-800 text-neutral-400'}`}
     >
       {label}
     </span>
@@ -101,7 +101,7 @@ function OverviewTab({ stats, loading }: { stats: QuarantineStats | null; loadin
         {statCards.map((card) => (
           <div
             key={card.label}
-            className="rounded-xl border border-neutral-800 bg-neutral-900 p-5"
+            className="rounded-none border border-neutral-800 bg-neutral-900 p-5"
           >
             <p className="text-sm text-neutral-400">{card.label}</p>
             <p className="mt-1 text-2xl font-semibold text-white tabular-nums">
@@ -113,7 +113,7 @@ function OverviewTab({ stats, loading }: { stats: QuarantineStats | null; loadin
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* By reason */}
-        <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-6">
+        <div className="rounded-none border border-neutral-800 bg-neutral-900 p-6">
           <h3 className="text-lg font-semibold text-white mb-4">By Reason</h3>
           {Object.keys(stats.by_reason).length === 0 ? (
             <EmptyState title="No quarantine reasons yet" icon={<Shield weight="regular" />} className="py-4" />
@@ -132,7 +132,7 @@ function OverviewTab({ stats, loading }: { stats: QuarantineStats | null; loadin
         </div>
 
         {/* By method */}
-        <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-6">
+        <div className="rounded-none border border-neutral-800 bg-neutral-900 p-6">
           <h3 className="text-lg font-semibold text-white mb-4">By Method</h3>
           {Object.keys(stats.by_method).length === 0 ? (
             <EmptyState title="No detection methods yet" icon={<Shield weight="regular" />} className="py-4" />
@@ -198,7 +198,7 @@ function EventsTab() {
         <select
           value={reason}
           onChange={(e) => { setReason(e.target.value); setOffset(0) }}
-          className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-neutral-600"
+          className="rounded-none border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-neutral-600"
         >
           <option value="">All reasons</option>
           {['bot_ua', 'spam_keyword', 'reputation', 'heuristic', 'velocity', 'delayed_eval', 'manual'].map((r) => (
@@ -209,7 +209,7 @@ function EventsTab() {
         <select
           value={method}
           onChange={(e) => { setMethod(e.target.value); setOffset(0) }}
-          className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-neutral-600"
+          className="rounded-none border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-neutral-600"
         >
           <option value="">All methods</option>
           {['instant', 'learned', 'delayed', 'manual'].map((m) => (
@@ -222,7 +222,7 @@ function EventsTab() {
           placeholder="Filter by domain..."
           value={domain}
           onChange={(e) => { setDomain(e.target.value); setOffset(0) }}
-          className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-sm text-white placeholder-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-600"
+          className="rounded-none border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-sm text-white placeholder-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-600"
         />
 
         <div className="ml-auto flex gap-2">
@@ -230,7 +230,7 @@ function EventsTab() {
             <button
               key={d}
               onClick={() => { setDays(d); setOffset(0) }}
-              className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+              className={`px-3 py-1.5 text-sm rounded-none transition-colors ${
                 days === d
                   ? 'bg-white text-neutral-900'
                   : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
@@ -243,7 +243,7 @@ function EventsTab() {
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border border-neutral-800 bg-neutral-900 overflow-hidden">
+      <div className="rounded-none border border-neutral-800 bg-neutral-900 overflow-hidden">
         {loading ? (
           <div className="p-12 text-center text-neutral-400">Loading events...</div>
         ) : events.length === 0 ? (
@@ -302,14 +302,14 @@ function EventsTab() {
             <button
               onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
               disabled={offset === 0}
-              className="px-3 py-1.5 rounded-lg bg-neutral-800 text-neutral-400 hover:bg-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors ease-apple"
+              className="px-3 py-1.5 rounded-none bg-neutral-800 text-neutral-400 hover:bg-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors ease-apple"
             >
               Prev
             </button>
             <button
               onClick={() => setOffset(offset + PAGE_SIZE)}
               disabled={offset + PAGE_SIZE >= total}
-              className="px-3 py-1.5 rounded-lg bg-neutral-800 text-neutral-400 hover:bg-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors ease-apple"
+              className="px-3 py-1.5 rounded-none bg-neutral-800 text-neutral-400 hover:bg-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors ease-apple"
             >
               Next
             </button>
@@ -393,7 +393,7 @@ function ReputationTab() {
         <select
           value={action}
           onChange={(e) => { setAction(e.target.value); setOffset(0) }}
-          className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-neutral-600"
+          className="rounded-none border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-neutral-600"
         >
           <option value="">All actions</option>
           {['quarantine', 'monitor', 'allow'].map((a) => (
@@ -404,7 +404,7 @@ function ReputationTab() {
         <select
           value={source}
           onChange={(e) => { setSource(e.target.value); setOffset(0) }}
-          className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-neutral-600"
+          className="rounded-none border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-neutral-600"
         >
           <option value="">All sources</option>
           {['matomo_seed', 'learned', 'collaborative', 'manual'].map((s) => (
@@ -421,7 +421,7 @@ function ReputationTab() {
             <button
               key={s.key}
               onClick={() => { setSort(s.key); setOffset(0) }}
-              className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+              className={`px-3 py-1.5 text-sm rounded-none transition-colors ${
                 sort === s.key
                   ? 'bg-white text-neutral-900'
                   : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
@@ -434,7 +434,7 @@ function ReputationTab() {
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border border-neutral-800 bg-neutral-900 overflow-hidden">
+      <div className="rounded-none border border-neutral-800 bg-neutral-900 overflow-hidden">
         {loading ? (
           <div className="p-12 text-center text-neutral-400">Loading domains...</div>
         ) : domains.length === 0 ? (
@@ -486,7 +486,7 @@ function ReputationTab() {
                           <button
                             onClick={() => handleOverride(d.domain, 'allow')}
                             disabled={overrideLoading === d.domain}
-                            className="px-2 py-1 text-xs rounded-md bg-green-900/30 text-green-400 hover:bg-green-900/50 disabled:opacity-40 transition-colors ease-apple"
+                            className="px-2 py-1 text-xs rounded-none bg-green-900/30 text-green-400 hover:bg-green-900/50 disabled:opacity-40 transition-colors ease-apple"
                           >
                             Allow
                           </button>
@@ -495,7 +495,7 @@ function ReputationTab() {
                           <button
                             onClick={() => handleOverride(d.domain, 'quarantine')}
                             disabled={overrideLoading === d.domain}
-                            className="px-2 py-1 text-xs rounded-md bg-red-900/30 text-red-400 hover:bg-red-900/50 disabled:opacity-40 transition-colors ease-apple"
+                            className="px-2 py-1 text-xs rounded-none bg-red-900/30 text-red-400 hover:bg-red-900/50 disabled:opacity-40 transition-colors ease-apple"
                           >
                             Quarantine
                           </button>
@@ -518,14 +518,14 @@ function ReputationTab() {
             <button
               onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
               disabled={offset === 0}
-              className="px-3 py-1.5 rounded-lg bg-neutral-800 text-neutral-400 hover:bg-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors ease-apple"
+              className="px-3 py-1.5 rounded-none bg-neutral-800 text-neutral-400 hover:bg-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors ease-apple"
             >
               Prev
             </button>
             <button
               onClick={() => setOffset(offset + PAGE_SIZE)}
               disabled={offset + PAGE_SIZE >= total}
-              className="px-3 py-1.5 rounded-lg bg-neutral-800 text-neutral-400 hover:bg-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors ease-apple"
+              className="px-3 py-1.5 rounded-none bg-neutral-800 text-neutral-400 hover:bg-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors ease-apple"
             >
               Next
             </button>

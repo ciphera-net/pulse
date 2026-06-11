@@ -51,7 +51,7 @@ export default function SiteNav({ siteId }: SiteNavProps) {
             {isActive(tab.href) && (
               <motion.div
                 layoutId="activeTab"
-                className="absolute inset-x-0 -bottom-px h-[3px] bg-brand-orange rounded-full"
+                className="absolute inset-x-0 -bottom-px h-[3px] bg-brand-orange rounded-none"
                 transition={SPRING}
               />
             )}

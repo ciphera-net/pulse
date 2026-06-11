@@ -38,7 +38,7 @@ export default function EventProperties({ siteId, eventName, dateRange, onClose 
   const maxCount = values.length > 0 ? values[0].count : 1
 
   return (
-    <div className="glass-surface rounded-xl p-6">
+    <div className="bg-card rounded-none p-6 border border-border">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-white">
           Properties: <span className="text-brand-orange">{eventName.replace(/_/g, ' ')}</span>
@@ -56,7 +56,7 @@ export default function EventProperties({ siteId, eventName, dateRange, onClose 
       {loading ? (
         <div className="animate-skeleton-fade space-y-3">
           {[1, 2, 3].map(i => (
-            <div key={i} className="h-8 bg-neutral-800 rounded-lg" />
+            <div key={i} className="h-8 bg-neutral-800 rounded-none" />
           ))}
         </div>
       ) : keys.length === 0 ? (
@@ -73,7 +73,7 @@ export default function EventProperties({ siteId, eventName, dateRange, onClose 
               <button
                 key={k.key}
                 onClick={() => setSelectedKey(k.key)}
-                className={`px-3 py-1 text-xs font-medium rounded-full transition-colors cursor-pointer ${
+                className={`px-3 py-1 text-xs font-medium rounded-none transition-colors cursor-pointer ${
                   selectedKey === k.key
                     ? 'bg-brand-orange-button text-white'
                     : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
@@ -96,9 +96,9 @@ export default function EventProperties({ siteId, eventName, dateRange, onClose 
                       {formatNumber(v.count)}
                     </span>
                   </div>
-                  <div className="w-full h-1.5 bg-neutral-800 rounded-full overflow-hidden">
+                  <div className="w-full h-1.5 bg-neutral-800 rounded-none overflow-hidden">
                     <div
-                      className="h-full bg-brand-orange/60 rounded-full transition-[width] ease-apple"
+                      className="h-full bg-brand-orange/60 rounded-none transition-[width] ease-apple"
                       style={{ width: `${(v.count / maxCount) * 100}%` }}
                     />
                   </div>

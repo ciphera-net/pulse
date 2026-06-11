@@ -31,7 +31,7 @@ interface PlanSummaryProps {
 }
 
 const inputClass =
-  'w-full rounded-lg border border-neutral-700 bg-neutral-800/50 px-3 py-2.5 text-sm text-white placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-brand-orange focus:border-brand-orange transition-colors ease-apple'
+  'w-full rounded-none border border-neutral-700 bg-neutral-800/50 px-3 py-2.5 text-sm text-white placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-brand-orange focus:border-brand-orange transition-colors ease-apple'
 
 /** Convert VIES ALL-CAPS text to title case (e.g. "SA SODIMAS" → "Sa Sodimas") */
 function toTitleCase(s: string) {
@@ -100,26 +100,26 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
   const isVatValid = isVatChecked && !!vatResult?.company_name
 
   return (
-    <div className="rounded-xl glass-surface p-5 space-y-4 overflow-visible">
+    <div className="rounded-none bg-card border border-border p-5 space-y-4 overflow-visible">
       {/* Plan name + interval toggle */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-4">
         <div className="flex items-center gap-3">
           <h2 className="text-lg font-semibold text-white capitalize">{plan}</h2>
         </div>
-        <div className="flex items-center gap-1 p-1 bg-neutral-800/50 rounded-xl sm:ml-auto">
+        <div className="flex items-center gap-1 p-1 bg-neutral-800/50 rounded-none sm:ml-auto">
           {(['month', 'year'] as const).map((iv) => (
             <button
               key={iv}
               type="button"
               onClick={() => handleIntervalToggle(iv)}
-              className={`relative px-3.5 py-1.5 text-sm font-medium rounded-lg transition-colors duration-base ${
+              className={`relative px-3.5 py-1.5 text-sm font-medium rounded-none transition-colors duration-base ${
                 currentInterval === iv ? 'text-white' : 'text-neutral-400 hover:text-white'
               } ease-apple`}
             >
               {currentInterval === iv && (
                 <motion.div
                   layoutId="checkout-interval-bg"
-                  className="absolute inset-0 bg-neutral-700 rounded-lg shadow-sm"
+                  className="absolute inset-0 bg-neutral-700 rounded-none"
                   transition={SPRING}
                 />
               )}
@@ -218,7 +218,7 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
             type="button"
             onClick={handleVerifyVatId}
             disabled={!vatId || !country || vatLoading || isVatValid}
-            className="shrink-0 rounded-lg bg-neutral-700 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-neutral-600 disabled:opacity-40 disabled:cursor-not-allowed ease-apple"
+            className="shrink-0 rounded-none bg-neutral-700 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-neutral-600 disabled:opacity-40 disabled:cursor-not-allowed ease-apple"
           >
             {vatLoading && vatId ? 'Verifying...' : isVatValid ? 'Verified' : 'Verify'}
           </button>
@@ -233,7 +233,7 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
               transition={TIMING}
               className="overflow-hidden"
             >
-              <div className="mt-2 rounded-lg bg-green-500/5 border border-green-500/20 px-3 py-2 text-xs text-neutral-400">
+              <div className="mt-2 rounded-none bg-green-500/5 border border-green-500/20 px-3 py-2 text-xs text-neutral-400">
                 <p className="font-medium text-green-400">{toTitleCase(vatResult.company_name)}</p>
                 {vatResult.company_address && (
                   <p className="mt-0.5 whitespace-pre-line">{toTitleCase(vatResult.company_address)}</p>

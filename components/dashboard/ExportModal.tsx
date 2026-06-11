@@ -503,9 +503,9 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
               <span>{exportDone ? 'Export complete' : exportProgress.label}</span>
               <span>{exportDone ? '100%' : `${Math.round((exportProgress.step / exportProgress.total) * 100)}%`}</span>
             </div>
-            <div className="h-1.5 w-full rounded-full bg-neutral-800 overflow-hidden">
+            <div className="h-1.5 w-full rounded-none bg-neutral-800 overflow-hidden">
               <div
-                className={`h-full rounded-full transition-[width] duration-slow ease-apple ${exportDone ? 'bg-green-500' : 'bg-brand-orange'}`}
+                className={`h-full rounded-none transition-[width] duration-slow ease-apple ${exportDone ? 'bg-green-500' : 'bg-brand-orange'}`}
                 style={{ width: exportDone ? '100%' : `${(exportProgress.step / exportProgress.total) * 100}%` }}
               />
             </div>

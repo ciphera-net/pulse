@@ -61,7 +61,7 @@ export default function WebhooksSection() {
         />
       )}
       {webhooks && webhooks.length > 0 && (
-        <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
+        <div className="rounded-none border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
           {webhooks.map(w => (
             <div key={w.id} className="flex items-center justify-between px-4 py-3 group">
               <div className="min-w-0 flex-1">

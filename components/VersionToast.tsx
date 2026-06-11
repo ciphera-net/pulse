@@ -14,7 +14,7 @@ export default function VersionToast() {
 
   return createPortal(
     <div className="fixed top-4 right-4 z-50 max-w-sm animate-in fade-in slide-in-from-top-2" style={{ animationDuration: '300ms' }}>
-      <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-neutral-800 bg-neutral-900 shadow-xl shadow-black/40">
+      <div className="flex items-center gap-3 px-4 py-3 rounded-none border border-neutral-800 bg-neutral-900">
         <ArrowClockwise className="w-5 h-5 text-brand-orange shrink-0" weight="bold" />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-white">Update available</p>
@@ -22,7 +22,7 @@ export default function VersionToast() {
         </div>
         <button
           onClick={() => window.location.reload()}
-          className="px-3 py-1.5 text-xs font-medium text-white bg-brand-orange hover:bg-brand-orange-button-hover rounded-lg transition-colors ease-apple shrink-0"
+          className="px-3 py-1.5 text-xs font-medium text-white bg-brand-orange hover:bg-brand-orange-button-hover rounded-none transition-colors ease-apple shrink-0"
         >
           Refresh
         </button>

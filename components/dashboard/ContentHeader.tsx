@@ -15,7 +15,7 @@ export default function ContentHeader({
   const router = useRouter()
 
   return (
-    <div className="shrink-0 flex items-center justify-between border-b border-neutral-800/60 bg-neutral-900/90 backdrop-blur-xl px-4 py-3.5 md:hidden">
+    <div className="shrink-0 flex items-center justify-between border-b border-neutral-800/60 bg-card px-4 py-3.5 md:hidden">
       <button
         onClick={onMobileMenuOpen}
         className="p-2 -ml-2 text-neutral-400 hover:text-white"

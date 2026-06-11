@@ -47,7 +47,7 @@ export default function AdminOrgsPage() {
         <h2 className="text-xl font-semibold text-white">Organizations</h2>
       </div>
 
-      <div className="glass-surface rounded-xl p-6">
+      <div className="bg-card border border-border rounded-none p-6">
         <h3 className="text-lg font-semibold text-white mb-4">All Organizations</h3>
         <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
@@ -72,7 +72,7 @@ export default function AdminOrgsPage() {
                       <CopyableOrgId id={org.organization_id} />
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      <span className={`inline-flex items-center px-2 py-1 rounded-none text-xs font-medium ${
                         org.plan_id === 'business' ? 'bg-purple-900/30 text-purple-400' :
                         org.plan_id === 'team' ? 'bg-blue-900/30 text-blue-400' :
                         org.plan_id === 'solo' ? 'bg-green-900/30 text-green-400' :

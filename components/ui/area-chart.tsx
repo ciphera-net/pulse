@@ -532,7 +532,7 @@ function DateTicker({ currentIndex, labels, visible }: DateTickerProps) {
 
   return (
     <motion.div
-      className="overflow-hidden rounded-full bg-zinc-100 px-4 py-1 text-zinc-900"
+      className="overflow-hidden rounded-none bg-zinc-100 px-4 py-1 text-zinc-900"
       layout
       transition={{
         layout: SPRING,
@@ -949,7 +949,7 @@ function TooltipBox({
     >
       <motion.div
         animate={{ scale: 1, opacity: 1, x: 0 }}
-        className="min-w-[140px] overflow-hidden rounded-lg glass-overlay text-white shadow-lg"
+        className="min-w-[140px] overflow-hidden rounded-none bg-popover border border-border text-white"
         initial={{ scale: 0.85, opacity: 0, x: isFlipped ? 20 : -20 }}
         key={flipKey}
         style={{ transformOrigin }}

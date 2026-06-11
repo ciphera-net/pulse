@@ -292,14 +292,14 @@ export default function ScriptSetupBlock({
     <div className={className}>
       {/* ── Framework note / CTA (WordPress, Shopify, etc.) ────────────── */}
       {frameworkSnippet?.note && (
-        <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 p-4 mb-3">
+        <div className="rounded-none border border-neutral-800 bg-neutral-800/30 p-4 mb-3">
           <p className="text-sm text-neutral-300">{frameworkSnippet.note}</p>
           {frameworkSnippet.cta && (
             <a
               href={frameworkSnippet.cta.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 mt-3 px-4 py-2 rounded-lg bg-brand-orange text-white text-sm font-medium hover:bg-brand-orange/90 transition-colors"
+              className="inline-flex items-center gap-1.5 mt-3 px-4 py-2 rounded-none bg-brand-orange text-white text-sm font-medium hover:bg-brand-orange/90 transition-colors"
             >
               {frameworkSnippet.cta.text}
               <ArrowUpRight className="w-3.5 h-3.5" />
@@ -309,7 +309,7 @@ export default function ScriptSetupBlock({
       )}
 
       {/* ── Script snippet ──────────────────────────────────────────────── */}
-      <div className="rounded-xl border border-neutral-800 overflow-hidden">
+      <div className="rounded-none border border-neutral-800 overflow-hidden">
         {/* * Orange accent bar */}
         <div className="h-1 bg-gradient-to-r from-brand-orange via-brand-orange/60 to-transparent" />
         <div className="bg-neutral-950">
@@ -328,7 +328,7 @@ export default function ScriptSetupBlock({
             <button
               type="button"
               onClick={copyScript}
-              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-all cursor-pointer bg-brand-orange/10 hover:bg-brand-orange/20 text-brand-orange border border-brand-orange/20 ease-apple"
+              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-none transition-all cursor-pointer bg-brand-orange/10 hover:bg-brand-orange/20 text-brand-orange border border-brand-orange/20 ease-apple"
             >
               {copied ? (
                 <>
@@ -361,7 +361,7 @@ export default function ScriptSetupBlock({
           {FEATURES.map((f) => (
             <div
               key={f.key}
-              className="glass-surface flex items-center justify-between rounded-xl px-4 py-3"
+              className="glass-surface flex items-center justify-between rounded-none px-4 py-3"
             >
               <div className="min-w-0 mr-3">
                 <span className="text-sm font-medium text-white block">
@@ -376,7 +376,7 @@ export default function ScriptSetupBlock({
           ))}
         </div>
         {/* * Frustration — full-width, visually distinct as add-on */}
-        <div className="mt-3 flex items-center justify-between rounded-xl border border-dashed border-neutral-700 bg-neutral-900 px-4 py-3">
+        <div className="mt-3 flex items-center justify-between rounded-none border border-dashed border-neutral-700 bg-neutral-900 px-4 py-3">
           <div className="min-w-0 mr-3">
             <span className="text-sm font-medium text-white block">
               Frustration tracking
@@ -388,7 +388,7 @@ export default function ScriptSetupBlock({
           <Toggle checked={features.frustration} onChange={() => toggleFeature('frustration')} disabled={disabled} />
         </div>
         {/* * Interactions — copy, print, video tracking add-on */}
-        <div className="mt-2 flex items-center justify-between rounded-xl border border-dashed border-neutral-700 bg-neutral-900 px-4 py-3">
+        <div className="mt-2 flex items-center justify-between rounded-none border border-dashed border-neutral-700 bg-neutral-900 px-4 py-3">
           <div className="min-w-0 mr-3">
             <span className="text-sm font-medium text-white block">
               Interaction tracking
@@ -400,7 +400,7 @@ export default function ScriptSetupBlock({
           <Toggle checked={features.interactions} onChange={() => toggleFeature('interactions')} disabled={disabled} />
         </div>
         {/* * SRI — security option, opt-in only */}
-        <div className="mt-3 flex items-center justify-between rounded-xl border border-dashed border-neutral-700 bg-neutral-900 px-4 py-3">
+        <div className="mt-3 flex items-center justify-between rounded-none border border-dashed border-neutral-700 bg-neutral-900 px-4 py-3">
           <div className="min-w-0 mr-3">
             <span className="text-sm font-medium text-white block">
               Subresource Integrity (SRI)
@@ -473,7 +473,7 @@ export default function ScriptSetupBlock({
                 key={fw.id}
                 type="button"
                 onClick={() => setFramework(framework === fw.id ? '' : fw.id)}
-                className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-all cursor-pointer ${
+                className={`flex items-center gap-2 rounded-none border px-3 py-2 text-sm transition-all cursor-pointer ${
                   framework === fw.id
                     ? 'border-brand-orange bg-brand-orange/10 text-brand-orange'
                     : 'border-neutral-800 bg-neutral-900 text-neutral-400 hover:border-neutral-700 hover:text-white'
@@ -484,7 +484,7 @@ export default function ScriptSetupBlock({
                 </span>
                 <span className="font-medium">{fw.name}</span>
                 {site.detected_framework === fw.id && (
-                  <span className="text-[9px] font-medium bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-full ml-1">Detected</span>
+                  <span className="text-[9px] font-medium bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-none ml-1">Detected</span>
                 )}
               </button>
             ))}

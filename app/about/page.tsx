@@ -16,7 +16,7 @@ function ComparisonTable({ title, competitors }: { title: string, competitors: {
   return (
     <div className="mb-16">
       <h2 className="text-2xl font-bold mb-6 text-white">{title}</h2>
-      <div className="overflow-hidden rounded-xl glass-surface">
+      <div className="overflow-hidden rounded-none glass-surface">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-neutral-800">
@@ -162,7 +162,7 @@ export default function AboutPage() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
-          className="mt-8 p-6 bg-neutral-800/50 rounded-xl border border-neutral-800"
+          className="mt-8 p-6 bg-card rounded-none border border-neutral-800"
         >
           <h3 className="text-xl font-bold mb-2 text-white">What about Plausible?</h3>
           <p className="text-neutral-400 text-sm">

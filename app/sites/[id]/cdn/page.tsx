@@ -57,7 +57,7 @@ function extractCity(datacenter: string): string {
 function getFlagIcon(code: string) {
   if (!code) return null
   const FlagComponent = (Flags as Record<string, React.ComponentType<{ className?: string }>>)[code]
-  return FlagComponent ? <FlagComponent className="w-5 h-3.5 rounded-sm shadow-sm shrink-0" /> : null
+  return FlagComponent ? <FlagComponent className="w-5 h-3.5 rounded-none shrink-0" /> : null
 }
 
 /**
@@ -155,7 +155,7 @@ export default function CDNPage() {
             <SkeletonLine className="h-8 w-48 mb-2" />
             <SkeletonLine className="h-4 w-64" />
           </div>
-          <SkeletonLine className="h-9 w-36 rounded-lg" />
+          <SkeletonLine className="h-9 w-36 rounded-none" />
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
           <StatCardSkeleton />
@@ -164,18 +164,18 @@ export default function CDNPage() {
           <StatCardSkeleton />
           <StatCardSkeleton />
         </div>
-        <div className="glass-surface rounded-xl p-6 mb-6">
+        <div className="glass-surface rounded-none p-6 mb-6">
           <SkeletonLine className="h-6 w-40 mb-4" />
-          <SkeletonLine className="h-64 w-full rounded-lg" />
+          <SkeletonLine className="h-64 w-full rounded-none" />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="glass-surface rounded-xl p-6">
+          <div className="glass-surface rounded-none p-6">
             <SkeletonLine className="h-6 w-32 mb-4" />
-            <SkeletonLine className="h-48 w-full rounded-lg" />
+            <SkeletonLine className="h-48 w-full rounded-none" />
           </div>
-          <div className="glass-surface rounded-xl p-6">
+          <div className="glass-surface rounded-none p-6">
             <SkeletonLine className="h-6 w-32 mb-4" />
-            <SkeletonLine className="h-48 w-full rounded-lg" />
+            <SkeletonLine className="h-48 w-full rounded-none" />
           </div>
         </div>
       </div>
@@ -188,7 +188,7 @@ export default function CDNPage() {
     return (
       <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
         <div className="flex flex-col items-center justify-center py-24 text-center">
-          <div className="rounded-full bg-neutral-800 p-5 mb-6">
+          <div className="rounded-none bg-neutral-800 p-5 mb-6">
             <CloudArrowUp size={40} className="text-neutral-500" />
           </div>
           <h2 className="text-xl font-semibold text-white mb-2">
@@ -199,7 +199,7 @@ export default function CDNPage() {
           </p>
           <Link
             href="/settings/site/integrations"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-brand-orange-button hover:bg-brand-orange-button-hover text-white text-sm font-medium transition-colors ease-apple"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-none bg-brand-orange-button hover:bg-brand-orange-button-hover text-white text-sm font-medium transition-colors ease-apple"
           >
             Connect in Settings
             <ArrowSquareOut size={16} weight="bold" />
@@ -283,7 +283,7 @@ export default function CDNPage() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0.05 }}
-        className="glass-surface rounded-xl p-6 mb-6"
+        className="glass-surface rounded-none p-6 mb-6"
       >
         <h2 className="text-sm font-semibold text-white mb-4">Bandwidth</h2>
         {daily.length > 0 ? (
@@ -340,7 +340,7 @@ export default function CDNPage() {
         className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6"
       >
         {/* Requests chart */}
-        <div className="glass-surface rounded-xl p-6">
+        <div className="glass-surface rounded-none p-6">
           <h2 className="text-sm font-semibold text-white mb-4">Requests</h2>
           {daily.length > 0 ? (
             <BarChart
@@ -375,7 +375,7 @@ export default function CDNPage() {
         </div>
 
         {/* Errors chart */}
-        <div className="glass-surface rounded-xl p-6">
+        <div className="glass-surface rounded-none p-6">
           <h2 className="text-sm font-semibold text-white mb-4">Errors</h2>
           {daily.length > 0 ? (
             <BarChart
@@ -432,7 +432,7 @@ export default function CDNPage() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0.15 }}
-        className="glass-surface rounded-xl p-6"
+        className="glass-surface rounded-none p-6"
       >
         <h2 className="text-sm font-semibold text-white mb-4">Traffic Distribution</h2>
         {countries.length > 0 ? (
@@ -466,13 +466,13 @@ export default function CDNPage() {
                         {formatBytes(row.bandwidth)}
                       </span>
                     </div>
-                    <div className="relative h-1.5 bg-neutral-800 rounded-full overflow-hidden">
+                    <div className="relative h-1.5 bg-neutral-800 rounded-none overflow-hidden">
                       <div
-                        className="absolute inset-y-0 left-0 rounded-full bg-brand-orange transition-[width] ease-apple"
+                        className="absolute inset-y-0 left-0 rounded-none bg-brand-orange transition-[width] ease-apple"
                         style={{ width: `${Math.max(pct, 1)}%` }}
                       />
                     </div>
-                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-neutral-700 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 ease-apple">
+                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-neutral-700 text-white text-xs rounded-none border border-border opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 ease-apple">
                       {pct.toFixed(1)}% of total traffic
                     </div>
                   </motion.div>
@@ -509,7 +509,7 @@ function OverviewCard({
   const changeLabel = change ? (change.positive ? '+' : '') + change.value.toFixed(1) + '%' : null
 
   return (
-    <div className="glass-surface p-6 rounded-xl">
+    <div className="glass-surface p-6 rounded-none">
       <p className="text-xs font-medium text-neutral-400 mb-1">{label}</p>
       <p className="text-2xl font-semibold tabular-nums text-white">{value}</p>
       {changeLabel && (

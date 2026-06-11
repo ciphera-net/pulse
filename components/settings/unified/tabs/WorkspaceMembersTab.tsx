@@ -15,7 +15,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 function RoleBadge({ role, roles }: { role: string; roles: Role[] }) {
   if (role === 'owner') return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-brand-orange/10 text-brand-orange">
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-none bg-brand-orange/10 text-brand-orange">
       <Crown weight="bold" className="w-3 h-3" /> Owner
     </span>
   )
@@ -23,12 +23,12 @@ function RoleBadge({ role, roles }: { role: string; roles: Role[] }) {
   const label = matched?.name ?? role
   const isAdmin = role === 'admin' || matched?.slug === 'admin'
   if (isAdmin) return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-blue-900/30 text-blue-400">
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-none bg-blue-900/30 text-blue-400">
       {label}
     </span>
   )
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-neutral-800 text-neutral-400">
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-none bg-neutral-800 text-neutral-400">
       {label}
     </span>
   )
@@ -91,7 +91,7 @@ export default function WorkspaceMembersTab() {
       </div>
 
       {/* Members list */}
-      <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
+      <div className="rounded-none border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
         {members.map(member => (
           <div key={member.user_id} className="flex items-center justify-between px-4 py-3 group">
             <div className="flex items-center gap-3">

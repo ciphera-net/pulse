@@ -134,7 +134,7 @@ function ScheduleRow({
   return (
     <div className="flex items-center justify-between px-4 py-3 group">
       <div className="flex items-center gap-3 min-w-0">
-        <div className={`p-1.5 rounded-lg flex-shrink-0 ${schedule.enabled ? 'bg-brand-orange/10 text-brand-orange' : 'bg-neutral-800 text-neutral-500'}`}>
+        <div className={`p-1.5 rounded-none flex-shrink-0 ${schedule.enabled ? 'bg-brand-orange/10 text-brand-orange' : 'bg-neutral-800 text-neutral-500'}`}>
           <ChannelIcon channel={schedule.channel} />
         </div>
         <div className="min-w-0">
@@ -214,7 +214,7 @@ function ChannelPicker({ value, onChange }: { value: string; onChange: (v: strin
           key={ch}
           type="button"
           onClick={() => onChange(ch)}
-          className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border transition-colors ${
+          className={`flex flex-col items-center gap-1.5 p-3 rounded-none border transition-colors ${
             value === ch
               ? 'border-brand-orange bg-brand-orange/10 text-white'
               : 'border-neutral-800 text-neutral-400 hover:border-neutral-700 hover:text-white'
@@ -242,7 +242,7 @@ function FormInput({ id, type = 'text', value, onChange, placeholder }: { id?: s
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full h-10 px-4 bg-transparent border border-neutral-800 rounded-lg text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 transition-colors ease-apple"
+      className="w-full h-10 px-4 bg-transparent border border-neutral-800 rounded-none text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 transition-colors ease-apple"
     />
   )
 }
@@ -615,7 +615,7 @@ function AlertChannelModal({
         )}
 
         {/* Info box */}
-        <div className="rounded-lg border border-neutral-800 bg-neutral-800/30 p-3">
+        <div className="rounded-none border border-neutral-800 bg-neutral-800/30 p-3">
           <p className="text-xs text-neutral-400">
             Alerts are sent automatically when your site goes down or recovers.
           </p>
@@ -688,7 +688,7 @@ export default function SiteReportsTab({ siteId }: { siteId: string }) {
             className="py-8"
           />
         ) : (
-          <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
+          <div className="rounded-none border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
             {reports.map((r) => (
               <ScheduleRow key={r.id} schedule={r} siteId={siteId} onMutate={() => mutateReports()} onEdit={openEditReport} canManage={canManage} />
             ))}
@@ -718,7 +718,7 @@ export default function SiteReportsTab({ siteId }: { siteId: string }) {
             className="py-8"
           />
         ) : (
-          <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
+          <div className="rounded-none border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
             {alerts.map((a) => (
               <ScheduleRow key={a.id} schedule={a} siteId={siteId} onMutate={() => mutateAlerts()} onEdit={openEditAlert} canManage={canManage} />
             ))}

@@ -148,11 +148,11 @@ export default function CreateInviteLinkModal({ orgId, roles, open, onOpenChange
                 <p className="text-xs text-neutral-400 mt-0.5">Share this link with people you want to invite</p>
               </div>
             </div>
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-neutral-800/50 border border-neutral-700">
+            <div className="flex items-center gap-2 p-3 rounded-none bg-neutral-800/50 border border-neutral-700">
               <p className="flex-1 text-xs text-neutral-300 font-mono truncate">{created.url}</p>
               <button
                 onClick={handleCopy}
-                className="flex-shrink-0 p-1.5 rounded-md text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors"
+                className="flex-shrink-0 p-1.5 rounded-none text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors"
               >
                 {copied
                   ? <Check weight="bold" className="w-4 h-4 text-green-400" />

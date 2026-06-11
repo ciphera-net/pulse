@@ -99,7 +99,7 @@ export default function GettingStartedChecklist() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className="absolute bottom-full right-0 mb-3 w-72 rounded-xl border border-neutral-800 bg-neutral-900 shadow-2xl shadow-black/50"
+            className="absolute bottom-full right-0 mb-3 w-72 rounded-none border border-neutral-800 bg-neutral-900"
           >
             <div className="p-4 pb-3">
               <div className="flex items-center justify-between mb-1">
@@ -121,7 +121,7 @@ export default function GettingStartedChecklist() {
             <div className="p-3 space-y-1">
               {items.map((item) => {
                 const inner = (
-                  <div className={`flex items-center gap-2.5 px-2 py-2 rounded-lg text-sm transition-colors ${
+                  <div className={`flex items-center gap-2.5 px-2 py-2 rounded-none text-sm transition-colors ${
                     item.completed
                       ? 'text-neutral-500'
                       : 'text-neutral-300 hover:text-white hover:bg-neutral-800/50'
@@ -151,7 +151,7 @@ export default function GettingStartedChecklist() {
         initial={{ opacity: 0, scale: 0.8, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ delay: 0.5, type: 'spring', stiffness: 300, damping: 20 }}
-        className="flex items-center gap-3 pl-3 pr-5 py-2.5 rounded-full border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 shadow-xl shadow-black/40 transition-colors ease-apple"
+        className="flex items-center gap-3 pl-3 pr-5 py-2.5 rounded-none border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 transition-colors ease-apple"
       >
         <div className="relative flex items-center justify-center">
           <ProgressRing progress={progress} size={36} />

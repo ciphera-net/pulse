@@ -98,7 +98,7 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
       </div>
 
       {/* Bot filtering toggle */}
-      <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-neutral-800/30 border border-neutral-800">
+      <div className="flex items-center justify-between py-3 px-4 rounded-none bg-neutral-800/30 border border-neutral-800">
         <div className="flex items-center gap-3">
           <ShieldCheck weight="bold" className="w-5 h-5 text-brand-orange" />
           <div>
@@ -112,15 +112,15 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
       {/* Stats */}
       {botStats && (
         <div className="grid grid-cols-3 gap-3">
-          <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 p-4 text-center">
+          <div className="rounded-none border border-neutral-800 bg-neutral-800/30 p-4 text-center">
             <p className="text-2xl font-bold tabular-nums text-white">{botStats.total_quarantined ?? 0}</p>
             <p className="text-xs text-neutral-500 mt-1">Quarantined events</p>
           </div>
-          <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 p-4 text-center">
+          <div className="rounded-none border border-neutral-800 bg-neutral-800/30 p-4 text-center">
             <p className="text-2xl font-bold tabular-nums text-white">{botStats.last_24h ?? 0}</p>
             <p className="text-xs text-neutral-500 mt-1">Last 24h</p>
           </div>
-          <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 p-4 text-center">
+          <div className="rounded-none border border-neutral-800 bg-neutral-800/30 p-4 text-center">
             <p className="text-2xl font-bold tabular-nums text-white">{Object.keys(botStats.by_reason || {}).length}</p>
             <p className="text-xs text-neutral-500 mt-1">Detection types</p>
           </div>
@@ -152,7 +152,7 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
 
         {/* Suspicious only filter (review mode only) */}
         {botView === 'review' && (
-          <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-neutral-800/30 border border-neutral-800">
+          <div className="flex items-center justify-between py-3 px-4 rounded-none bg-neutral-800/30 border border-neutral-800">
             <div>
               <p className="text-sm font-medium text-white">Suspicious only</p>
               <p className="text-xs text-neutral-500">Show only sessions flagged as suspicious.</p>
@@ -163,7 +163,7 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
 
         {/* Bulk actions bar */}
         {selectedSessions.size > 0 && (
-          <div className="flex items-center gap-3 p-2 bg-brand-orange/10 border border-brand-orange/20 rounded-lg text-sm">
+          <div className="flex items-center gap-3 p-2 bg-brand-orange/10 border border-brand-orange/20 rounded-none text-sm">
             <span className="text-neutral-300">{selectedSessions.size} selected</span>
             {botView === 'review' ? (
               <Button variant="secondary" size="sm" onClick={() => handleBotFilter(Array.from(selectedSessions))} disabled={!canManage} className="text-red-400 border-red-900/50 hover:bg-red-900/20">Flag as bot</Button>
@@ -179,7 +179,7 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
           {(sessions || [])
             .filter(s => botView === 'blocked' ? s.quarantined : !s.quarantined)
             .map(session => (
-              <div key={session.session_id} className="flex items-center gap-3 p-3 rounded-xl border border-neutral-800 hover:bg-neutral-800/40 hover:border-neutral-700 transition-colors ease-apple">
+              <div key={session.session_id} className="flex items-center gap-3 p-3 rounded-none border border-neutral-800 hover:bg-neutral-800/40 hover:border-neutral-700 transition-colors ease-apple">
                 <Checkbox
                   checked={selectedSessions.has(session.session_id)}
                   onCheckedChange={(checked) => {
@@ -192,7 +192,7 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-white truncate">{session.first_page || '/'}</span>
                     {session.suspicion_score != null && (
-                      <span className={`px-1.5 py-0.5 rounded text-micro-label font-medium ${
+                      <span className={`px-1.5 py-0.5 rounded-none text-micro-label font-medium ${
                         session.suspicion_score >= 5 ? 'bg-red-900/30 text-red-400' :
                         session.suspicion_score >= 3 ? 'bg-yellow-900/30 text-yellow-400' :
                         'bg-neutral-800 text-neutral-400'
@@ -238,18 +238,18 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
 
         <div className="space-y-2 max-h-64 overflow-y-auto">
           {domainReputation?.domains?.map(domain => (
-            <div key={domain.domain} className="flex items-center justify-between p-3 rounded-xl border border-neutral-800 hover:bg-neutral-800/40 transition-colors ease-apple">
+            <div key={domain.domain} className="flex items-center justify-between p-3 rounded-none border border-neutral-800 hover:bg-neutral-800/40 transition-colors ease-apple">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-mono text-white truncate">{domain.domain}</span>
-                  <span className={`px-1.5 py-0.5 rounded text-micro-label font-medium ${
+                  <span className={`px-1.5 py-0.5 rounded-none text-micro-label font-medium ${
                     domain.action === 'quarantine' ? 'bg-red-900/30 text-red-400' :
                     domain.action === 'allow' ? 'bg-green-900/30 text-green-400' :
                     'bg-neutral-800 text-neutral-400'
                   }`}>
                     {domain.action}
                   </span>
-                  <span className={`px-1.5 py-0.5 rounded text-micro-label font-medium ${
+                  <span className={`px-1.5 py-0.5 rounded-none text-micro-label font-medium ${
                     domain.source === 'matomo_seed' || domain.source === 'legacy_blocklist' ? 'bg-blue-900/30 text-blue-400' :
                     domain.source === 'learned' ? 'bg-purple-900/30 text-purple-400' :
                     domain.source === 'collaborative' ? 'bg-purple-900/30 text-purple-400' :
@@ -258,7 +258,7 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
                     {domain.source === 'matomo_seed' ? 'seed' : domain.source === 'collaborative' ? 'Collaborative' : domain.source}
                   </span>
                   {domain.override && (
-                    <span className="px-1.5 py-0.5 rounded text-micro-label font-medium bg-amber-900/30 text-amber-400">
+                    <span className="px-1.5 py-0.5 rounded-none text-micro-label font-medium bg-amber-900/30 text-amber-400">
                       override: {domain.override}
                     </span>
                   )}

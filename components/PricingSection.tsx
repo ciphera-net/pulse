@@ -137,7 +137,7 @@ export default function PricingSection() {
       {/* Monthly/Yearly toggle */}
       <div className="flex flex-col items-center gap-2 mb-10">
         <div
-          className="bg-neutral-900 border border-neutral-800 p-1 rounded-xl flex"
+          className="bg-neutral-900 border border-neutral-800 p-1 rounded-none flex"
           role="radiogroup"
           aria-label="Billing interval"
         >
@@ -146,9 +146,9 @@ export default function PricingSection() {
             role="radio"
             aria-checked={!isYearly}
             className={cn(
-              'min-w-[96px] px-4 py-2 rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ease-apple',
+              'min-w-[96px] px-4 py-2 rounded-none text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ease-apple',
               !isYearly
-                ? 'bg-neutral-700 text-white shadow-sm'
+                ? 'bg-neutral-700 text-white'
                 : 'text-neutral-500 hover:text-white',
             )}
           >
@@ -159,9 +159,9 @@ export default function PricingSection() {
             role="radio"
             aria-checked={isYearly}
             className={cn(
-              'min-w-[96px] px-4 py-2 rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ease-apple',
+              'min-w-[96px] px-4 py-2 rounded-none text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ease-apple',
               isYearly
-                ? 'bg-neutral-700 text-white shadow-sm'
+                ? 'bg-neutral-700 text-white'
                 : 'text-neutral-500 hover:text-white',
             )}
           >
@@ -189,7 +189,7 @@ export default function PricingSection() {
                 onClick={() => setSliderIndex(i)}
                 aria-label={`Select ${tier.label} pageviews per month`}
                 className={cn(
-                  'text-xs font-medium tabular-nums whitespace-nowrap transition-colors rounded px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ease-apple',
+                  'text-xs font-medium tabular-nums whitespace-nowrap transition-colors rounded-none px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ease-apple',
                   i === sliderIndex
                     ? 'text-brand-orange font-semibold'
                     : 'text-neutral-500 hover:text-neutral-300',
@@ -215,7 +215,7 @@ export default function PricingSection() {
           <select
             value={sliderIndex}
             onChange={(e) => setSliderIndex(parseInt(e.target.value))}
-            className="w-full py-2.5 px-4 bg-neutral-900 border border-neutral-800 rounded-xl text-white text-sm outline-none focus:ring-2 focus:ring-brand-orange"
+            className="w-full py-2.5 px-4 bg-neutral-900 border border-neutral-800 rounded-none text-white text-sm outline-none focus:ring-2 focus:ring-brand-orange"
           >
             {ALL_SLIDER_TIERS.map((tier, i) => {
               const soloCents = prices?.['solo']?.[(tier as { value: number }).value]
@@ -245,9 +245,9 @@ export default function PricingSection() {
             <div
               key={plan.id}
               className={cn(
-                'relative flex flex-col rounded-xl border p-6 transition-all',
+                'relative flex flex-col rounded-none border p-6 transition-all',
                 isTeam
-                  ? 'border-brand-orange bg-neutral-900 shadow-lg shadow-brand-orange/5 lg:scale-105 lg:z-10'
+                  ? 'border-brand-orange bg-neutral-900 lg:scale-105 lg:z-10'
                   : 'border-neutral-800 bg-neutral-900',
               )}
             >
@@ -348,7 +348,7 @@ export default function PricingSection() {
                 disabled={isCurrent || (!plan.isFree && !isCustomTier && !priceDetails)}
                 className={cn(
                   'w-full justify-center',
-                  isTeam && 'shadow-md shadow-brand-orange/20',
+                  isTeam && '',
                 )}
               >
                 {isCurrent
@@ -367,7 +367,7 @@ export default function PricingSection() {
       </div>
 
       {/* All plans include row */}
-      <div className="rounded-xl border border-neutral-800 bg-neutral-900/30 px-6 py-5 mb-4">
+      <div className="rounded-none border border-neutral-800 bg-neutral-900/30 px-6 py-5 mb-4">
         <p className="text-neutral-400 text-sm font-semibold text-center uppercase tracking-wider mb-4">
           All plans include
         </p>

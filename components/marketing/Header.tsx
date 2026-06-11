@@ -103,10 +103,10 @@ export function Header() {
                 'border-white/[0.06]': scrolled,
             })}
         >
-            <div className={cn("absolute inset-0 -z-10 transition-opacity duration-base", scrolled ? "opacity-100 backdrop-blur-xl bg-neutral-950/60 supports-[backdrop-filter]:bg-neutral-950/50" : "opacity-0")} />
+            <div className={cn("absolute inset-0 -z-10 transition-opacity duration-base", scrolled ? "opacity-100 bg-neutral-950" : "opacity-0")} />
             <nav className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6 my-3">
                 <div className="flex items-center gap-5">
-                    <Link href="/" className="hover:bg-accent rounded-md p-2 flex items-center gap-2">
+                    <Link href="/" className="hover:bg-accent rounded-none p-2 flex items-center gap-2">
                         <Image
                             src={cdnUrl('/pulse_icon_no_margins.png')}
                             alt="Pulse"
@@ -126,7 +126,7 @@ export function Header() {
                             <NavigationMenuItem>
                                 <NavigationMenuTrigger className="bg-transparent">Features</NavigationMenuTrigger>
                                 <NavigationMenuContent className="bg-transparent p-1 pr-1.5">
-                                    <ul className="grid w-[32rem] grid-cols-2 gap-2 rounded-md border border-white/[0.06] bg-white/[0.04] p-2">
+                                    <ul className="grid w-[32rem] grid-cols-2 gap-2 rounded-none border border-white/[0.06] bg-white/[0.04] p-2">
                                         {featureLinks.map((item, i) => (
                                             <li key={i}>
                                                 <ListItem title={item.title} href={item.href} icon={item.icon} description={item.description} />
@@ -141,7 +141,7 @@ export function Header() {
                                 <NavigationMenuTrigger className="bg-transparent">Resources</NavigationMenuTrigger>
                                 <NavigationMenuContent className="bg-transparent p-1 pr-1.5 pb-1.5">
                                     <div className="grid w-[32rem] grid-cols-2 gap-2">
-                                        <ul className="space-y-2 rounded-md border border-white/[0.06] bg-white/[0.04] p-2">
+                                        <ul className="space-y-2 rounded-none border border-white/[0.06] bg-white/[0.04] p-2">
                                             {resourceLinks.map((item, i) => (
                                                 <li key={i}>
                                                     <ListItem {...item} />
@@ -164,7 +164,7 @@ export function Header() {
                             {/* Pricing standalone link */}
                             <NavigationMenuItem>
                                 <NavigationMenuLink asChild>
-                                    <Link href="/pricing" className="group inline-flex h-9 w-max items-center justify-center rounded-md bg-transparent px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none">
+                                    <Link href="/pricing" className="group inline-flex h-9 w-max items-center justify-center rounded-none bg-transparent px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none">
                                         Pricing
                                     </Link>
                                 </NavigationMenuLink>
@@ -202,9 +202,9 @@ export function Header() {
                         ))}
                         <Link
                             href="/pricing"
-                            className="flex flex-row gap-x-2 rounded-sm p-2 transition-colors hover:bg-white/[0.06]"
+                            className="flex flex-row gap-x-2 rounded-none p-2 transition-colors hover:bg-white/[0.06]"
                         >
-                            <div className="flex aspect-square size-12 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.05] shadow-sm p-2">
+                            <div className="flex aspect-square size-12 items-center justify-center rounded-none border border-white/[0.08] bg-white/[0.05] p-2">
                                 <ChartBar className="text-foreground size-5" />
                             </div>
                             <div className="flex flex-col items-start justify-center">
@@ -234,7 +234,7 @@ function MobileMenu({ open, children, className, ...props }: MobileMenuProps) {
         <div
             id="mobile-menu"
             className={cn(
-                'bg-background/95 supports-[backdrop-filter]:bg-background/50 backdrop-blur-lg',
+                'bg-background',
                 'fixed top-16 right-0 bottom-0 left-0 z-40 flex flex-col overflow-hidden border-y md:hidden',
             )}
         >
@@ -263,9 +263,9 @@ function ListItem({
     ...props
 }: React.ComponentProps<typeof NavigationMenuLink> & LinkItem) {
     return (
-        <NavigationMenuLink className={cn('w-full flex flex-row gap-x-2 data-[active=true]:focus:bg-white/[0.06] data-[active=true]:hover:bg-white/[0.06] data-[active=true]:text-accent-foreground hover:bg-white/[0.06] hover:text-accent-foreground focus:bg-white/[0.06] focus:text-accent-foreground rounded-sm p-2 transition-colors', className)} {...props} asChild>
+        <NavigationMenuLink className={cn('w-full flex flex-row gap-x-2 data-[active=true]:focus:bg-white/[0.06] data-[active=true]:hover:bg-white/[0.06] data-[active=true]:text-accent-foreground hover:bg-white/[0.06] hover:text-accent-foreground focus:bg-white/[0.06] focus:text-accent-foreground rounded-none p-2 transition-colors', className)} {...props} asChild>
             <Link href={href || '#'}>
-                <div className="flex aspect-square size-12 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.05] shadow-sm p-2">
+                <div className="flex aspect-square size-12 items-center justify-center rounded-none border border-white/[0.08] bg-white/[0.05] p-2">
                     {Icon ? (
                         <Icon className="text-foreground size-5" />
                     ) : null}

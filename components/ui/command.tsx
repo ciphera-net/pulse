@@ -20,7 +20,7 @@ const Command = React.forwardRef<
   <CommandPrimitive
     ref={ref}
     className={cn(
-      "flex h-full w-full flex-col overflow-hidden rounded-lg bg-popover text-popover-foreground",
+      "flex h-full w-full flex-col overflow-hidden rounded-none bg-popover text-popover-foreground",
       className,
     )}
     {...props}
@@ -33,7 +33,7 @@ const CommandDialog = ({ children, ...props }: DialogProps) => {
     <Dialog {...props}>
       <DialogTitle className="sr-only">Command Palette</DialogTitle>
       <DialogDescription className="sr-only">Search sites, pages, and actions</DialogDescription>
-      <DialogContent className="overflow-hidden p-0 sm:max-w-2xl bg-neutral-900/65 backdrop-blur-xl backdrop-saturate-150 supports-[backdrop-filter]:bg-neutral-900/60 border border-neutral-800 shadow-2xl shadow-black/50 [&>button:last-child]:hidden">
+      <DialogContent className="overflow-hidden p-0 sm:max-w-2xl bg-card border border-neutral-800 [&>button:last-child]:hidden">
         <Command className="bg-transparent [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]]:px-2 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-3 [&_[cmdk-item]]:py-2">
           {children}
         </Command>
@@ -51,7 +51,7 @@ const CommandInput = React.forwardRef<
     <CommandPrimitive.Input
       ref={ref}
       className={cn(
-        "flex h-10 w-full rounded-lg bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground/70 disabled:cursor-not-allowed disabled:opacity-50 caret-brand-orange",
+        "flex h-10 w-full rounded-none bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground/70 disabled:cursor-not-allowed disabled:opacity-50 caret-brand-orange",
         className,
       )}
       {...props}
@@ -118,7 +118,7 @@ const CommandItem = React.forwardRef<
   <CommandPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex cursor-pointer select-none items-center gap-3 rounded-md px-2 py-1.5 text-sm outline-none transition-colors duration-fast ease-apple data-[disabled=true]:pointer-events-none data-[selected=true]:bg-white/[0.05] data-[selected=true]:text-white data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+      "relative flex cursor-pointer select-none items-center gap-3 rounded-none px-2 py-1.5 text-sm outline-none transition-colors duration-fast ease-apple data-[disabled=true]:pointer-events-none data-[selected=true]:bg-white/[0.05] data-[selected=true]:text-white data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
       className,
     )}
     {...props}
@@ -132,7 +132,7 @@ const CommandShortcut = ({ className, children, ...props }: React.HTMLAttributes
   return (
     <span className={cn("-me-1 ms-auto inline-flex items-center gap-0.5", className)} {...props}>
       {keys.map((key, i) => (
-        <kbd key={i} className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-medium text-neutral-500 bg-neutral-800/80 border border-neutral-700/50 rounded-[3px] shadow-[0_1px_0_rgba(0,0,0,0.3)] leading-none">
+        <kbd key={i} className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-medium text-neutral-500 bg-neutral-800/80 border border-neutral-700/50 rounded-none leading-none">
           {key}
         </kbd>
       ))}

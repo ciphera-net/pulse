@@ -112,7 +112,7 @@ function AuthCallbackContent() {
     const isNetworkError = error.includes('Network error')
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
-        <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-4 text-red-500">
+        <div className="rounded-none bg-red-50 dark:bg-red-900/20 p-4 text-red-500">
           {error}
           <div className="mt-4 flex flex-col gap-2">
             {isNetworkError && (

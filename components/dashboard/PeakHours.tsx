@@ -183,7 +183,7 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
   }
 
   return (
-    <div className="glass-surface rounded-xl p-6 h-full flex flex-col">
+    <div className="bg-card rounded-none p-6 h-full flex flex-col border border-border">
       <div className="flex items-center justify-between mb-4">
         <div className="flex gap-1 flex-wrap">
           {METRICS.map((m) => (
@@ -191,13 +191,13 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
               key={m.key}
               type="button"
               onClick={() => setMetric(m.key)}
-              className={`relative px-2.5 py-1 text-xs font-medium transition-colors duration-fast rounded cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ${
+              className={`relative px-2.5 py-1 text-xs font-medium transition-colors duration-fast rounded-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ${
                 metric === m.key ? 'text-white' : 'text-neutral-400 hover:text-neutral-200'
               } ease-apple`}
             >
               {m.label}
               <span
-                className={`absolute inset-x-0 -bottom-px h-[3px] rounded-full transition-all duration-base ease-apple ${
+                className={`absolute inset-x-0 -bottom-px h-[3px] rounded-none transition-all duration-base ease-apple ${
                   metric === m.key ? 'bg-brand-orange scale-x-100' : 'bg-transparent scale-x-0'
                 }`}
               />
@@ -210,8 +210,8 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
         <div className="flex-1 min-h-[270px] flex flex-col justify-center gap-1.5">
           {Array.from({ length: 7 }).map((_, i) => (
             <div key={i} className="flex items-center gap-1">
-              <div className="w-7 h-3 rounded bg-neutral-800 animate-skeleton-fade" />
-              <div className="flex-1 h-5 rounded bg-neutral-800 animate-skeleton-fade" />
+              <div className="w-7 h-3 rounded-none bg-neutral-800 animate-skeleton-fade" />
+              <div className="flex-1 h-5 rounded-none bg-neutral-800 animate-skeleton-fade" />
             </div>
           ))}
         </div>
@@ -237,7 +237,7 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
                       <div
                         key={`${animKey}-${dayIdx}-${bucket}`}
                         className={[
-                          'aspect-square w-full rounded-[4px] border cursor-default transition-transform ease-apple duration-fast',
+                          'aspect-square w-full rounded-none border cursor-default transition-transform ease-apple duration-fast',
                           'border-neutral-800',
                           isActive ? 'animate-cell-highlight' : '',
                           isHoveredCell ? 'scale-110 z-10 relative' : '',
@@ -286,7 +286,7 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
               {HIGHLIGHT_COLORS.map((color, i) => (
                 <div
                   key={i}
-                  className="w-[10px] h-[10px] rounded-[2px] border border-neutral-800"
+                  className="w-[10px] h-[10px] rounded-none border border-neutral-800"
                   style={{ backgroundColor: color }}
                 />
               ))}
@@ -309,7 +309,7 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
                     transform: 'translate(-50%, -100%)',
                   }}
                 >
-                  <div className="bg-neutral-950 border border-neutral-800/60 text-white text-sm font-medium px-3 py-2 rounded-lg shadow-lg shadow-black/20 whitespace-nowrap">
+                  <div className="bg-neutral-950 border border-neutral-800/60 text-white text-sm font-medium px-3 py-2 rounded-none whitespace-nowrap">
                     <div className="mb-1">
                       {DAYS[hovered.day]} {formatBucket(hovered.bucket)}
                     </div>

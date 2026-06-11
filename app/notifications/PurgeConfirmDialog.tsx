@@ -18,7 +18,7 @@ export default function PurgeConfirmDialog({ count, onConfirm, onCancel }: Purge
       onClick={onCancel}
     >
       <div
-        className="max-w-md w-full mx-4 glass-overlay rounded-xl p-6"
+        className="max-w-md w-full mx-4 bg-popover border border-border rounded-none p-6"
         onClick={e => e.stopPropagation()}
       >
         <h3 className="text-lg font-semibold text-white mb-2">Delete all my notification history</h3>
@@ -30,13 +30,13 @@ export default function PurgeConfirmDialog({ count, onConfirm, onCancel }: Purge
           Other team members' copies are not affected. This cannot be undone.
         </p>
         <p className="text-xs text-neutral-400 mb-2">
-          Type <code className="font-mono px-1 py-0.5 bg-white/10 rounded text-white">DELETE</code> to confirm:
+          Type <code className="font-mono px-1 py-0.5 bg-white/10 rounded-none text-white">DELETE</code> to confirm:
         </p>
         <input
           autoFocus
           value={typed}
           onChange={e => setTyped(e.target.value)}
-          className="w-full rounded bg-white/5 border border-white/10 px-3 py-2 text-sm text-white focus:border-brand-orange focus:outline-none"
+          className="w-full rounded-none bg-white/5 border border-white/10 px-3 py-2 text-sm text-white focus:border-brand-orange focus:outline-none"
         />
         <div className="mt-4 flex justify-end gap-2">
           <button
@@ -57,7 +57,7 @@ export default function PurgeConfirmDialog({ count, onConfirm, onCancel }: Purge
                 setBusy(false)
               }
             }}
-            className="px-4 py-2 text-sm rounded bg-red-500 hover:bg-red-600 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-4 py-2 text-sm rounded-none bg-red-500 hover:bg-red-600 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {busy ? 'Deleting…' : 'Delete everything'}
           </button>

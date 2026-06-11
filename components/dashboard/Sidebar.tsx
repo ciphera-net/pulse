@@ -110,7 +110,7 @@ function SidebarTooltip({ children, label }: { children: React.ReactNode; label:
       {children}
       {show && typeof document !== 'undefined' && createPortal(
         <span
-          className="fixed z-[100] px-3 py-2 rounded-lg bg-neutral-950 border border-neutral-800/60 text-white text-sm font-medium whitespace-nowrap pointer-events-none shadow-lg shadow-black/20 -translate-y-1/2"
+          className="fixed z-[100] px-3 py-2 rounded-none bg-neutral-950 border border-neutral-800/60 text-white text-sm font-medium whitespace-nowrap pointer-events-none -translate-y-1/2"
           style={{ left: pos.x, top: pos.y }}
         >
           {label}
@@ -139,7 +139,7 @@ function NavLink({
     <Link
       href={href}
       onClick={() => { onNavigate(href); onClick?.() }}
-      className={`group/nav flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-fast ${
+      className={`group/nav flex items-center gap-2.5 rounded-none px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-fast ${
         active
           ? 'bg-brand-orange/10 text-brand-orange'
           : 'text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5'
@@ -152,7 +152,7 @@ function NavLink({
       {!collapsed && NAV_SHORTCUTS[item.label] && (
         <span className="ml-auto flex items-center gap-0.5 opacity-0 group-hover/nav:opacity-100 transition-opacity duration-fast ease-apple">
           {NAV_SHORTCUTS[item.label].split(' ').map((key) => (
-            <kbd key={key} className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-medium text-neutral-500 bg-neutral-800/80 border border-neutral-700/50 rounded-[3px] shadow-[0_1px_0_rgba(0,0,0,0.3)] leading-none">
+            <kbd key={key} className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-medium text-neutral-500 bg-neutral-800/80 border border-neutral-700/50 rounded-none leading-none">
               {key}
             </kbd>
           ))}
@@ -182,7 +182,7 @@ function HomeNavLink({
       href={href}
       onClick={onClick}
       {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-      className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-fast ${
+      className={`flex items-center gap-2.5 rounded-none px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-fast ${
         active
           ? 'bg-brand-orange/10 text-brand-orange'
           : 'text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5'
@@ -214,17 +214,17 @@ function HomeSiteLink({
     <Link
       href={href}
       onClick={onClick}
-      className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-fast ${
+      className={`flex items-center gap-2.5 rounded-none px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-fast ${
         active
           ? 'bg-brand-orange/10 text-brand-orange'
           : 'text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5'
       } ease-apple`}
     >
-      <span className="w-7 h-7 rounded-md bg-white/[0.04] flex items-center justify-center shrink-0 overflow-hidden">
+      <span className="w-7 h-7 rounded-none bg-white/[0.04] flex items-center justify-center shrink-0 overflow-hidden">
         <img
           src={`${FAVICON_SERVICE_URL}?domain=${site.domain}&sz=64`}
           alt=""
-          className="w-[18px] h-[18px] rounded object-contain"
+          className="w-[18px] h-[18px] rounded-none object-contain"
         />
       </span>
       <Label collapsed={collapsed}>{site.name}</Label>
@@ -276,15 +276,15 @@ function SidebarContent({
           className={`${c
             ? 'w-9 h-9 flex items-center justify-center mx-auto'
             : 'w-full h-9 flex items-center gap-2 px-3'
-          } rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-500 hover:border-neutral-700 hover:text-neutral-400 transition-colors ease-apple cursor-pointer`}
+          } rounded-none border border-neutral-800 bg-neutral-900 text-neutral-500 hover:border-neutral-700 hover:text-neutral-400 transition-colors ease-apple cursor-pointer`}
         >
           <MagnifyingGlass className="w-4 h-4 shrink-0" />
           {!c && (
             <>
               <span className="text-sm">Search...</span>
               <span className="ml-auto flex items-center gap-0.5">
-                <kbd className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-medium text-neutral-500 bg-neutral-800/80 border border-neutral-700/50 rounded-[3px] shadow-[0_1px_0_rgba(0,0,0,0.3)] leading-none">⌘</kbd>
-                <kbd className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-medium text-neutral-500 bg-neutral-800/80 border border-neutral-700/50 rounded-[3px] shadow-[0_1px_0_rgba(0,0,0,0.3)] leading-none">K</kbd>
+                <kbd className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-medium text-neutral-500 bg-neutral-800/80 border border-neutral-700/50 rounded-none leading-none">⌘</kbd>
+                <kbd className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-medium text-neutral-500 bg-neutral-800/80 border border-neutral-700/50 rounded-none leading-none">K</kbd>
               </span>
             </>
           )}
@@ -448,7 +448,7 @@ export default function Sidebar({
             onClick={handleMobileClose}
           />
           <aside
-            className={`fixed inset-y-0 left-0 z-50 w-72 glass-overlay border-r shadow-xl shadow-black/20 md:hidden ${
+            className={`fixed inset-y-0 left-0 z-50 w-72 bg-popover border-r md:hidden ${
               mobileClosing
                 ? 'animate-out slide-out-to-left duration-base fill-mode-forwards'
                 : 'animate-in slide-in-from-left duration-base'

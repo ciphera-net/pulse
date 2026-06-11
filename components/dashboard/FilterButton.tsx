@@ -37,7 +37,7 @@ export default function FilterButton({ hasActiveFilters, onSelectDimension }: Fi
       <button
         ref={buttonRef}
         onClick={() => setOpen(!open)}
-        className={`inline-flex items-center gap-2 h-10 px-4 text-sm font-medium rounded-lg border shadow-sm transition-[color,background-color,border-color,transform] active:scale-[0.97] cursor-pointer ${
+        className={`inline-flex items-center gap-2 h-10 px-4 text-sm font-medium rounded-none border transition-[color,background-color,border-color,transform] active:scale-[0.97] cursor-pointer ${
           hasActiveFilters || open
             ? 'bg-brand-orange/10 text-brand-orange border-brand-orange/30'
             : 'bg-neutral-900 text-neutral-300 hover:bg-neutral-800 hover:text-white border-neutral-800'
@@ -56,7 +56,7 @@ export default function FilterButton({ hasActiveFilters, onSelectDimension }: Fi
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 6, scale: 0.95 }}
               transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
-              className="fixed z-[100] glass-overlay rounded-xl shadow-2xl shadow-black/50 p-3 w-[280px] origin-top-left"
+              className="fixed z-[100] bg-popover border border-border rounded-none p-3 w-[280px] origin-top-left"
               style={{ left: pos.left, top: pos.top }}
             >
               <div className="grid grid-cols-2 gap-3">
@@ -67,7 +67,7 @@ export default function FilterButton({ hasActiveFilters, onSelectDimension }: Fi
                       <button
                         key={dim}
                         onClick={() => { onSelectDimension(dim); setOpen(false) }}
-                        className="w-full text-left px-2 py-1.5 text-sm text-neutral-300 hover:text-white hover:bg-white/[0.06] rounded-md transition-colors cursor-pointer"
+                        className="w-full text-left px-2 py-1.5 text-sm text-neutral-300 hover:text-white hover:bg-white/[0.06] rounded-none transition-colors cursor-pointer"
                       >
                         {DIMENSION_LABELS[dim]}
                       </button>

@@ -28,10 +28,10 @@ function SkeletonRows() {
       {Array.from({ length: DISPLAY_LIMIT }).map((_, i) => (
         <div key={i} className="animate-skeleton-fade flex items-center justify-between h-9 px-2">
           <div className="flex items-center gap-3 flex-1">
-            <div className="h-4 w-32 bg-neutral-700 rounded" />
-            <div className="h-3 w-20 bg-neutral-700 rounded" />
+            <div className="h-4 w-32 bg-neutral-700 rounded-none" />
+            <div className="h-3 w-20 bg-neutral-700 rounded-none" />
           </div>
-          <div className="h-4 w-10 bg-neutral-700 rounded" />
+          <div className="h-4 w-10 bg-neutral-700 rounded-none" />
         </div>
       ))}
     </div>
@@ -81,7 +81,7 @@ function Row({
   const pct = totalSignals > 0 ? `${Math.round((item.count / totalSignals) * 100)}%` : ''
 
   return (
-    <div className="flex items-center justify-between h-9 group hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors ease-apple">
+    <div className="flex items-center justify-between h-9 group hover:bg-neutral-800 rounded-none px-2 -mx-2 transition-colors ease-apple">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 min-w-0 overflow-hidden">
           <SelectorCell selector={item.selector} />
@@ -149,7 +149,7 @@ export default function FrustrationTable({
 
   return (
     <>
-      <div className="glass-surface rounded-xl p-6 h-full flex flex-col">
+      <div className="glass-surface rounded-none p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-2">
             <h3 className="text-lg font-semibold text-white">
@@ -158,7 +158,7 @@ export default function FrustrationTable({
             {showViewAll && (
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="p-1.5 text-neutral-500 hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-lg ease-apple"
+                className="p-1.5 text-neutral-500 hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-none ease-apple"
                 aria-label={`View all ${title.toLowerCase()}`}
               >
                 <FrameCornersIcon className="w-4 h-4" weight="bold" />
