@@ -91,7 +91,7 @@ export default function GettingStartedChecklist() {
   const nextItem = items.find(i => !i.completed)
 
   return (
-    <div className="fixed bottom-5 right-5 z-[100]">
+    <div className="fixed bottom-24 right-5 z-[100]">
       <AnimatePresence>
         {expanded && (
           <motion.div

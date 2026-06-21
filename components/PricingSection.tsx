@@ -11,7 +11,7 @@ import { getUserOrganizations } from '@/lib/api/organization'
 import PricingFAQ from '@/components/marketing/PricingFAQ'
 import CTASection from '@/components/marketing/CTASection'
 import { Slider } from '@/components/ui/slider'
-import { Badge } from '@/components/ui/badge-2'
+import { Badge } from '@ciphera-net/facet'
 import useSWR from 'swr'
 import { TRAFFIC_TIERS } from '@/lib/plans'
 import { getPrices } from '@/lib/api/billing'
@@ -254,8 +254,7 @@ export default function PricingSection() {
               {/* Badge + plan name */}
               <div className="flex items-center justify-between mb-4">
                 <Badge
-                  variant={isTeam ? 'primary' : 'secondary'}
-                  appearance={isTeam ? 'default' : 'light'}
+                  variant={isTeam ? 'brand' : 'neutral'}
                   size="md"
                   className={isTeam ? 'bg-brand-orange text-white border-transparent' : ''}
                 >

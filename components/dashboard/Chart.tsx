@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { AreaChart as VisxAreaChart, Area as VisxArea, Grid as VisxGrid, XAxis as VisxXAxis, YAxis as VisxYAxis, ChartTooltip as VisxChartTooltip, type TooltipRow } from '@/components/ui/area-chart'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@ciphera-net/facet'
 import type { EngagementPercentilesData } from '@/lib/api/stats'
 import { formatNumber, formatDuration } from '@/lib/utils/format'
 import { DownloadIcon } from '@ciphera-net/facet'
