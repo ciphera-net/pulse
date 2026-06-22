@@ -7,7 +7,7 @@ import { getUserOrganizations } from '@/lib/api/organization'
 import { listSites } from '@/lib/api/sites'
 import { SetupProvider, useSetup } from '@/lib/setup/context'
 import SetupStepper from '@/components/setup/SetupStepper'
-import { LoadingOverlay } from '@ciphera-net/ui'
+import { LoadingOverlay } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
 
 function SetupGuard({ children }: { children: React.ReactNode }) {

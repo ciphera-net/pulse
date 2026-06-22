@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { Button } from '@ciphera-net/ui'
+import { Button } from '@ciphera-net/facet'
 import { Check } from '@phosphor-icons/react'
 
 interface SettingsSaveBarProps {
@@ -55,7 +55,7 @@ export default function SettingsSaveBar({ isDirty, onSave, onDiscard, saveLabel 
 
   return createPortal(
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-xl px-4">
-      <div className="flex items-center justify-between px-5 py-3 rounded-xl border border-neutral-800 bg-neutral-900 shadow-xl shadow-black/40">
+      <div className="flex items-center justify-between px-5 py-3 rounded-none border border-neutral-800 bg-card border-border">
         <p className="text-sm text-neutral-400">
           {saved ? (
             <span className="flex items-center gap-1.5 text-green-400">
@@ -71,7 +71,7 @@ export default function SettingsSaveBar({ isDirty, onSave, onDiscard, saveLabel 
             <Button variant="secondary" size="sm" onClick={onDiscard} disabled={saving}>
               Discard
             </Button>
-            <Button variant="primary" size="sm" onClick={handleSave} disabled={saving}>
+            <Button variant="default" size="sm" onClick={handleSave} disabled={saving}>
               {saving ? 'Saving...' : saveLabel}
             </Button>
           </div>

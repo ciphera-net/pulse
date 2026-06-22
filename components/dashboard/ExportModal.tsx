@@ -1,13 +1,15 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { Modal, Button, Checkbox, Input, Select } from '@ciphera-net/ui'
+import { Modal, Button, Input } from '@ciphera-net/facet'
+import { Checkbox } from '@/components/ui/checkbox'
+import Select from '@/components/ui/select'
 import { cdnUrl } from '@/lib/cdn'
 import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import type { DailyStat } from './Chart'
-import { formatNumber, formatDuration } from '@ciphera-net/ui'
+import { formatNumber, formatDuration } from '@/lib/utils/format'
 import { formatDateISO, formatDate, formatDateTime } from '@/lib/utils/formatDate'
 import { getReferrerDisplayName, mergeReferrersByDisplayName } from '@/lib/utils/icons'
 import type { TopPage, TopReferrer, CampaignStat } from '@/lib/api/stats'
@@ -501,9 +503,9 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
               <span>{exportDone ? 'Export complete' : exportProgress.label}</span>
               <span>{exportDone ? '100%' : `${Math.round((exportProgress.step / exportProgress.total) * 100)}%`}</span>
             </div>
-            <div className="h-1.5 w-full rounded-full bg-neutral-800 overflow-hidden">
+            <div className="h-1.5 w-full rounded-none bg-neutral-800 overflow-hidden">
               <div
-                className={`h-full rounded-full transition-[width] duration-slow ease-apple ${exportDone ? 'bg-green-500' : 'bg-brand-orange'}`}
+                className={`h-full rounded-none transition-[width] duration-slow ease-apple ${exportDone ? 'bg-green-500' : 'bg-brand-orange'}`}
                 style={{ width: exportDone ? '100%' : `${(exportProgress.step / exportProgress.total) * 100}%` }}
               />
             </div>
@@ -515,7 +517,7 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
           <Button variant="secondary" onClick={onClose} disabled={isExporting}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={handleExport} disabled={isExporting || exportDone}>
+          <Button variant="default" onClick={handleExport} disabled={isExporting || exportDone}>
             {exportDone ? '✓ Done' : isExporting ? 'Exporting...' : 'Export Data'}
           </Button>
         </div>

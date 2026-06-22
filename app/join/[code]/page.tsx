@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useParams } from 'next/navigation'
-import { Spinner } from '@ciphera-net/ui'
+import { Spinner } from '@ciphera-net/facet'
 import { ID_API_URL } from '@/lib/api/client'
 import { useAuth } from '@/lib/auth/context'
 import { acceptInviteLink, switchContext, InviteLinkInfo } from '@/lib/api/organization'
@@ -124,8 +124,8 @@ function JoinContent() {
   if (pageState.type === 'not_found') {
     return (
       <div className="flex min-h-screen items-center justify-center bg-neutral-950 p-4">
-        <div className="w-full max-w-sm rounded-2xl border border-neutral-800 bg-neutral-900 p-8 space-y-5">
-          <div className="flex items-center justify-center w-12 h-12 rounded-full border bg-red-950 border-red-900 mx-auto">
+        <div className="w-full max-w-sm rounded-none border border-neutral-800 bg-neutral-900 p-8 space-y-5">
+          <div className="flex items-center justify-center w-12 h-12 rounded-none border bg-red-950 border-red-900 mx-auto">
             <svg className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -136,7 +136,7 @@ function JoinContent() {
           </div>
           <a
             href="/"
-            className="block w-full rounded-xl bg-neutral-800 px-4 py-2.5 text-center text-sm font-medium text-white hover:bg-neutral-700 transition-colors"
+            className="block w-full rounded-none bg-neutral-800 px-4 py-2.5 text-center text-sm font-medium text-white hover:bg-neutral-700 transition-colors"
           >
             Go to dashboard
           </a>
@@ -157,8 +157,8 @@ function JoinContent() {
     const message = reasonMap[reason] ?? reason
     return (
       <div className="flex min-h-screen items-center justify-center bg-neutral-950 p-4">
-        <div className="w-full max-w-sm rounded-2xl border border-neutral-800 bg-neutral-900 p-8 space-y-5">
-          <div className="flex items-center justify-center w-12 h-12 rounded-full border bg-amber-950 border-amber-900 mx-auto">
+        <div className="w-full max-w-sm rounded-none border border-neutral-800 bg-neutral-900 p-8 space-y-5">
+          <div className="flex items-center justify-center w-12 h-12 rounded-none border bg-amber-950 border-amber-900 mx-auto">
             <svg className="w-5 h-5 text-amber-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
             </svg>
@@ -169,7 +169,7 @@ function JoinContent() {
           </div>
           <a
             href="/"
-            className="block w-full rounded-xl bg-neutral-800 px-4 py-2.5 text-center text-sm font-medium text-white hover:bg-neutral-700 transition-colors"
+            className="block w-full rounded-none bg-neutral-800 px-4 py-2.5 text-center text-sm font-medium text-white hover:bg-neutral-700 transition-colors"
           >
             Go to dashboard
           </a>
@@ -183,8 +183,8 @@ function JoinContent() {
   if (pageState.type === 'already_member') {
     return (
       <div className="flex min-h-screen items-center justify-center bg-neutral-950 p-4">
-        <div className="w-full max-w-sm rounded-2xl border border-neutral-800 bg-neutral-900 p-8 space-y-5">
-          <div className="flex items-center justify-center w-12 h-12 rounded-full border bg-green-950 border-green-900 mx-auto">
+        <div className="w-full max-w-sm rounded-none border border-neutral-800 bg-neutral-900 p-8 space-y-5">
+          <div className="flex items-center justify-center w-12 h-12 rounded-none border bg-green-950 border-green-900 mx-auto">
             <svg className="w-5 h-5 text-green-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
             </svg>
@@ -197,7 +197,7 @@ function JoinContent() {
           </div>
           <a
             href="/"
-            className="block w-full rounded-xl bg-brand-orange px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-orange/90 transition-colors"
+            className="block w-full rounded-none bg-brand-orange px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-orange/90 transition-colors"
           >
             Go to dashboard
           </a>
@@ -212,7 +212,7 @@ function JoinContent() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-neutral-950 p-4">
-      <div className="w-full max-w-sm rounded-2xl border border-neutral-800 bg-neutral-900 p-8 space-y-6">
+      <div className="w-full max-w-sm rounded-none border border-neutral-800 bg-neutral-900 p-8 space-y-6">
         <div className="space-y-1">
           <h1 className="text-base font-semibold text-white">You&apos;ve been invited</h1>
           <p className="text-sm text-neutral-400">
@@ -220,14 +220,14 @@ function JoinContent() {
           </p>
         </div>
 
-        <div className="rounded-xl border border-neutral-800 bg-neutral-800/40 p-4 space-y-3">
+        <div className="rounded-none border border-neutral-800 bg-neutral-800/40 p-4 space-y-3">
           <div>
             <div className="text-xs text-neutral-500 mb-0.5">Organisation</div>
             <div className="text-sm font-medium text-white">{info.organization_name}</div>
           </div>
           <div>
             <div className="text-xs text-neutral-500 mb-1">Role</div>
-            <span className="inline-flex items-center rounded-full bg-brand-orange/10 text-brand-orange px-2.5 py-0.5 text-xs font-medium">
+            <span className="inline-flex items-center rounded-none bg-brand-orange/10 text-brand-orange px-2.5 py-0.5 text-xs font-medium">
               {roleLabel(info.role)}
             </span>
           </div>
@@ -243,7 +243,7 @@ function JoinContent() {
           <button
             onClick={handleJoin}
             disabled={joining}
-            className="w-full rounded-xl bg-brand-orange px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-orange/90 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            className="w-full rounded-none bg-brand-orange px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-orange/90 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
           >
             {joining
               ? 'Joining\u2026'

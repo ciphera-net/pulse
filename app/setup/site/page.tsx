@@ -5,9 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useSetup } from '@/lib/setup/context'
 import { preservePlanParams } from '@/lib/setup/utils'
 import { createSite, detectFramework } from '@/lib/api/sites'
-import { getAuthErrorMessage } from '@ciphera-net/ui'
-import { Button, Input, toast } from '@ciphera-net/ui'
-import { GlobeIcon } from '@ciphera-net/ui'
+import { getAuthErrorMessage } from '@ciphera-net/facet'
+import { Button, Input, toast } from '@ciphera-net/facet'
+import { GlobeIcon } from '@ciphera-net/facet'
 
 function domainFromUrl(input: string): string {
   let d = input.trim().toLowerCase()
@@ -59,7 +59,7 @@ export default function SetupSitePage() {
   return (
     <>
       <div className="text-center mb-8">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400 mb-5">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-none bg-blue-500/10 text-blue-400 mb-5">
           <GlobeIcon className="h-7 w-7" />
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-white">

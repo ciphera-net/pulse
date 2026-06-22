@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
-import { LoadingOverlay } from '@ciphera-net/ui'
+import { LoadingOverlay } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
 
 export default function LoginPage() {

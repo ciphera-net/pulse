@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/auth/context'
 import { useSetup } from '@/lib/setup/context'
 import { completeOnboarding } from '@/lib/api/organization'
 import { getRealtime } from '@/lib/api/stats'
-import { Button, Spinner, CheckCircleIcon, UsersIcon, BookOpenIcon, FunnelIcon } from '@ciphera-net/ui'
+import { Button, Spinner, CheckCircleIcon, UsersIcon, BookOpenIcon, FunnelIcon } from '@ciphera-net/facet'
 
 export default function SetupDonePage() {
   const router = useRouter()
@@ -60,7 +60,7 @@ export default function SetupDonePage() {
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-          className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/20 mb-5"
+          className="mx-auto flex h-16 w-16 items-center justify-center rounded-none bg-emerald-500/20 mb-5"
         >
           <CheckCircleIcon className="h-8 w-8 text-emerald-400" />
         </motion.div>
@@ -74,7 +74,7 @@ export default function SetupDonePage() {
 
       {/* Live data indicator */}
       {site && (
-        <div className="mb-6 p-4 rounded-xl border border-neutral-800 bg-neutral-900">
+        <div className="mb-6 p-4 rounded-none border border-neutral-800 bg-neutral-900">
           <div className="flex items-center gap-3">
             {dataReceived ? (
               <>
@@ -95,12 +95,12 @@ export default function SetupDonePage() {
       <div className="space-y-3 mb-8">
         <Link
           href="/settings/site/goals"
-          className="flex items-center gap-3 p-3 rounded-xl border border-neutral-800 hover:border-neutral-700 hover:bg-neutral-800/30 transition-all"
+          className="flex items-center gap-3 p-3 rounded-none border border-neutral-800 hover:border-neutral-700 hover:bg-neutral-800/30 transition-all"
           onClick={() => {
             if (site) sessionStorage.setItem('pulse_active_site', site.id)
           }}
         >
-          <div className="h-9 w-9 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
+          <div className="h-9 w-9 rounded-none bg-blue-500/10 flex items-center justify-center shrink-0">
             <FunnelIcon className="h-4.5 w-4.5 text-blue-400" />
           </div>
           <div>
@@ -111,9 +111,9 @@ export default function SetupDonePage() {
 
         <Link
           href="/settings/organization/members"
-          className="flex items-center gap-3 p-3 rounded-xl border border-neutral-800 hover:border-neutral-700 hover:bg-neutral-800/30 transition-all"
+          className="flex items-center gap-3 p-3 rounded-none border border-neutral-800 hover:border-neutral-700 hover:bg-neutral-800/30 transition-all"
         >
-          <div className="h-9 w-9 rounded-lg bg-purple-500/10 flex items-center justify-center shrink-0">
+          <div className="h-9 w-9 rounded-none bg-purple-500/10 flex items-center justify-center shrink-0">
             <UsersIcon className="h-4.5 w-4.5 text-purple-400" />
           </div>
           <div>
@@ -126,9 +126,9 @@ export default function SetupDonePage() {
           href="https://docs.ciphera.net/pulse"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-3 p-3 rounded-xl border border-neutral-800 hover:border-neutral-700 hover:bg-neutral-800/30 transition-all"
+          className="flex items-center gap-3 p-3 rounded-none border border-neutral-800 hover:border-neutral-700 hover:bg-neutral-800/30 transition-all"
         >
-          <div className="h-9 w-9 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
+          <div className="h-9 w-9 rounded-none bg-amber-500/10 flex items-center justify-center shrink-0">
             <BookOpenIcon className="h-4.5 w-4.5 text-amber-400" />
           </div>
           <div>

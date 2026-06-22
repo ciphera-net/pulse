@@ -6,9 +6,9 @@ import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth/context'
 import { ID_URL, default as apiRequest } from '@/lib/api/client'
 import { exchangeAuthCode } from '@/app/actions/auth'
-import { authMessageFromErrorType, type AuthErrorType } from '@ciphera-net/ui'
+import { authMessageFromErrorType, type AuthErrorType } from '@ciphera-net/facet'
 import { safeRedirectUrl } from '@/lib/utils/safe-redirect'
-import { LoadingOverlay } from '@ciphera-net/ui'
+import { LoadingOverlay } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
 
 function AuthCallbackContent() {
@@ -112,7 +112,7 @@ function AuthCallbackContent() {
     const isNetworkError = error.includes('Network error')
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
-        <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-4 text-red-500">
+        <div className="rounded-none bg-red-50 dark:bg-red-900/20 p-4 text-red-500">
           {error}
           <div className="mt-4 flex flex-col gap-2">
             {isNetworkError && (

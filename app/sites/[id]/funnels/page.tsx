@@ -6,7 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { DURATION_BASE, EASE_APPLE, TIMING } from '@/lib/motion'
 import { deleteFunnel, createFunnel, updateFunnel, type Funnel, type FunnelStats, type CreateFunnelRequest } from '@/lib/api/funnels'
 import { useSite, useFunnels, useFunnelStats } from '@/lib/swr/dashboard'
-import { toast, PlusIcon, ArrowRightIcon, TrashIcon, Button, formatNumber } from '@ciphera-net/ui'
+import { toast, PlusIcon, ArrowRightIcon, TrashIcon, Button } from '@ciphera-net/facet'
+import { formatNumber } from '@/lib/utils/format'
 import { FunnelsListSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { AnimatedNumber } from '@/components/ui/animated-number'
@@ -30,7 +31,7 @@ function formatConvertTime(seconds: number): string {
 function ChangeIndicator({ change }: { change: PctChangeResult }) {
   if (!change) return null
   if (change.type === 'new') return (
-    <span className="text-[10px] font-medium text-brand-orange bg-brand-orange/10 px-1.5 py-0.5 rounded-full">New</span>
+    <span className="text-[10px] font-medium text-brand-orange bg-brand-orange/10 px-1.5 py-0.5 rounded-none">New</span>
   )
   const isPositive = change.value > 0
   return (
@@ -79,7 +80,7 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete, onEdit, canManage }: 
   }, null)
 
   return (
-    <div className="glass-surface rounded-xl overflow-hidden transition-colors ease-apple">
+    <div className="glass-surface rounded-none overflow-hidden transition-colors ease-apple">
       {/* Header — always visible */}
       <button
         type="button"
@@ -97,7 +98,7 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete, onEdit, canManage }: 
             <div className="flex items-center gap-2 mt-2">
               {funnel.steps.map((step, i) => (
                 <div key={step.name} className="flex items-center text-sm text-neutral-500">
-                  <span className="px-2 py-0.5 bg-neutral-800 rounded-lg text-xs text-neutral-300">{step.name}</span>
+                  <span className="px-2 py-0.5 bg-neutral-800 rounded-none text-xs text-neutral-300">{step.name}</span>
                   {i < funnel.steps.length - 1 && <ArrowRightIcon className="w-3.5 h-3.5 mx-1.5 text-neutral-600" />}
                 </div>
               ))}
@@ -108,14 +109,14 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete, onEdit, canManage }: 
               <>
                 <button
                   onClick={(e) => { e.stopPropagation(); onEdit(funnel) }}
-                  className="p-2 text-neutral-400 hover:text-brand-orange hover:bg-orange-900/20 rounded-xl transition-colors ease-apple"
+                  className="p-2 text-neutral-400 hover:text-brand-orange hover:bg-orange-900/20 rounded-none transition-colors ease-apple"
                   aria-label="Edit funnel"
                 >
                   <PencilSimple className="w-4 h-4" />
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); onDelete({ id: funnel.id, name: funnel.name }) }}
-                  className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-900/20 rounded-xl transition-colors ease-apple"
+                  className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-900/20 rounded-none transition-colors ease-apple"
                   aria-label="Delete funnel"
                 >
                   <TrashIcon className="w-4 h-4" />
@@ -143,25 +144,25 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete, onEdit, canManage }: 
               {/* Stat cards */}
               {stats && (
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3 p-5">
-                  <div className="bg-neutral-800/30 border border-neutral-800/60 rounded-xl p-4">
+                  <div className="bg-neutral-800/30 border border-neutral-800/60 rounded-none p-4">
                     <div className="flex items-start justify-between mb-1.5">
                       <span className="text-xs font-medium text-neutral-500">Conversion</span>
                       <ChangeIndicator change={pctChange(overallConversion, prevConversion)} />
                     </div>
                     <AnimatedNumber value={overallConversion} format={(v: number) => `${Math.round(v)}%`} className="text-xl font-bold text-white tabular-nums" />
                   </div>
-                  <div className="bg-neutral-800/30 border border-neutral-800/60 rounded-xl p-4">
+                  <div className="bg-neutral-800/30 border border-neutral-800/60 rounded-none p-4">
                     <div className="flex items-start justify-between mb-1.5">
                       <span className="text-xs font-medium text-neutral-500">Visitors</span>
                       <ChangeIndicator change={pctChange(totalVisitors, prevTotalVisitors)} />
                     </div>
                     <AnimatedNumber value={totalVisitors} format={(v: number) => formatNumber(Math.round(v))} className="text-xl font-bold text-white tabular-nums" />
                   </div>
-                  <div className="bg-neutral-800/30 border border-neutral-800/60 rounded-xl p-4">
+                  <div className="bg-neutral-800/30 border border-neutral-800/60 rounded-none p-4">
                     <span className="text-xs font-medium text-neutral-500 block mb-1.5">Converted</span>
                     <AnimatedNumber value={convertedVisitors} format={(v: number) => formatNumber(Math.round(v))} className="text-xl font-bold text-white tabular-nums" />
                   </div>
-                  <div className="bg-neutral-800/30 border border-neutral-800/60 rounded-xl p-4">
+                  <div className="bg-neutral-800/30 border border-neutral-800/60 rounded-none p-4">
                     <span className="text-xs font-medium text-neutral-500 block mb-1.5">Biggest Dropoff</span>
                     {biggestDropoff ? (
                       <>
@@ -172,7 +173,7 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete, onEdit, canManage }: 
                       <span className="text-xl font-bold text-green-400">0%</span>
                     )}
                   </div>
-                  <div className="bg-neutral-800/30 border border-neutral-800/60 rounded-xl p-4">
+                  <div className="bg-neutral-800/30 border border-neutral-800/60 rounded-none p-4">
                     <span className="text-xs font-medium text-neutral-500 block mb-1.5">Median Time</span>
                     <span className="text-xl font-bold text-white tabular-nums">
                       {stats.median_convert_seconds != null
@@ -200,7 +201,7 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete, onEdit, canManage }: 
                           className="w-full text-left px-5 py-3 hover:bg-white/[0.02] transition-colors ease-apple"
                         >
                           <div className="flex items-center gap-3 mb-2">
-                            <span className="w-5 h-5 rounded-full bg-neutral-800 flex items-center justify-center text-[10px] font-medium text-neutral-400 flex-shrink-0">{i + 1}</span>
+                            <span className="w-5 h-5 rounded-none bg-neutral-800 flex items-center justify-center text-[10px] font-medium text-neutral-400 flex-shrink-0">{i + 1}</span>
                             <span className="text-xs text-neutral-500 uppercase tracking-wider">{step.step.category === 'event' ? 'Event' : 'Page'}</span>
                             <span className="text-sm font-medium text-white truncate">{step.step.value}</span>
                             <svg className={`w-3 h-3 text-neutral-600 flex-shrink-0 ml-auto transition-transform duration-base ${isStepExpanded ? 'rotate-90' : ''} ease-apple`} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -217,9 +218,9 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete, onEdit, canManage }: 
                               )}
                             </div>
                             <div className="flex-1 flex items-center gap-3">
-                              <div className="flex-1 h-6 bg-neutral-800/50 rounded overflow-hidden">
+                              <div className="flex-1 h-6 bg-neutral-800/50 rounded-none overflow-hidden">
                                 <motion.div
-                                  className="h-full bg-[#10B981] rounded"
+                                  className="h-full bg-[#10B981] rounded-none"
                                   initial={{ width: 0 }}
                                   animate={{ width: `${barWidth}%` }}
                                   transition={{ duration: 0.6, ease: EASE_APPLE, delay: i * 0.08 }}
@@ -242,8 +243,8 @@ function FunnelCard({ funnel, siteId, dateRange, onDelete, onEdit, canManage }: 
                                         const maxEp = step.exit_pages![0].visitors
                                         const epBar = maxEp > 0 ? (ep.visitors / maxEp) * 60 : 0
                                         return (
-                                          <div key={ep.path} className="relative overflow-hidden flex items-center justify-between h-7 rounded-md px-2 -mx-2">
-                                            <div className="absolute inset-y-0.5 left-0.5 bg-neutral-700/40 rounded-md" style={{ width: `${epBar}%` }} />
+                                          <div key={ep.path} className="relative overflow-hidden flex items-center justify-between h-7 rounded-none px-2 -mx-2">
+                                            <div className="absolute inset-y-0.5 left-0.5 bg-neutral-700/40 rounded-none" style={{ width: `${epBar}%` }} />
                                             <span className="relative text-xs font-mono text-neutral-300 truncate">{ep.path}</span>
                                             <span className="relative text-xs font-medium text-neutral-500 ml-4 tabular-nums">{formatNumber(ep.visitors)}</span>
                                           </div>
@@ -342,7 +343,7 @@ export default function FunnelsPage() {
             onShift={shiftPeriod}
           />
           {canManageFunnels && (
-            <Button variant="primary" onClick={() => { setEditingFunnel(null); setModalOpen(true) }}>
+            <Button variant="default" onClick={() => { setEditingFunnel(null); setModalOpen(true) }}>
               <PlusIcon className="w-4 h-4" />
               Create Funnel
             </Button>
@@ -380,7 +381,7 @@ export default function FunnelsPage() {
           </DialogHeader>
           <DialogFooter>
             <Button variant="secondary" onClick={() => setDeletingFunnel(null)}>Cancel</Button>
-            <Button variant="primary" className="bg-red-600 hover:bg-red-500 shadow-none" onClick={handleDelete}>Delete</Button>
+            <Button variant="default" className="bg-red-600 hover:bg-red-500 shadow-none" onClick={handleDelete}>Delete</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

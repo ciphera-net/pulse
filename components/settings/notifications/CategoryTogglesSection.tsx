@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
-import { Toggle } from '@ciphera-net/ui'
+import { Toggle } from '@ciphera-net/facet'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { getCategorySettings, updateCategorySettings, type CategorySetting } from '@/lib/api/notifications-webhooks'
 
@@ -52,7 +52,7 @@ export default function CategoryTogglesSection() {
       <p className="text-xs text-neutral-500">
         Disable a category to prevent new notifications of that type from being created for the workspace. Billing and security alerts are always delivered and cannot be disabled.
       </p>
-      <ul className="divide-y divide-neutral-800 rounded-xl border border-neutral-800 bg-neutral-800/30">
+      <ul className="divide-y divide-neutral-800 rounded-none border border-neutral-800 bg-neutral-800/30">
         {categories.map(c => {
           const critical = c.id === 'billing' || c.id === 'security'
           const enabled = settings[c.id] ?? true
@@ -61,7 +61,7 @@ export default function CategoryTogglesSection() {
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-white flex items-center gap-2">
                   {c.label}
-                  {critical && <span className="text-micro-label uppercase tracking-wider text-brand-orange border border-brand-orange/30 rounded px-1.5 py-0.5">Always on</span>}
+                  {critical && <span className="text-micro-label uppercase tracking-wider text-brand-orange border border-brand-orange/30 rounded-none px-1.5 py-0.5">Always on</span>}
                 </p>
                 <p className="text-xs text-neutral-500 mt-0.5">{c.description}</p>
                 {(c.id === 'security' || c.id === 'team' || c.id === 'system') && (

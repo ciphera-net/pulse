@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import { Select } from '@ciphera-net/ui'
+import Select from '@/components/ui/select'
 import { formatDate } from '@/lib/utils/dateRanges'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import ColumnJourney from '@/components/journeys/ColumnJourney'
@@ -112,7 +112,7 @@ export default function JourneysPage() {
       </div>
 
       {/* Single card: toolbar + chart */}
-      <div className="glass-surface rounded-xl overflow-hidden">
+      <div className="glass-surface rounded-none overflow-hidden">
         {/* Toolbar */}
         <div className="p-6 border-b border-neutral-800">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -185,7 +185,7 @@ export default function JourneysPage() {
                 onClick={() => filters.setViewMode(mode)}
                 role="tab"
                 aria-selected={filters.viewMode === mode}
-                className={`relative px-2.5 py-1 text-xs font-medium transition-colors capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded cursor-pointer ${
+                className={`relative px-2.5 py-1 text-xs font-medium transition-colors capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded-none cursor-pointer ${
                   filters.viewMode === mode
                     ? 'text-white'
                     : 'text-neutral-500 hover:text-neutral-300'
@@ -193,7 +193,7 @@ export default function JourneysPage() {
               >
                 {mode === 'columns' ? 'Columns' : 'Flow'}
                 <span
-                  className={`absolute inset-x-0 -bottom-px h-[3px] rounded-full transition-[width,background-color] duration-base ${
+                  className={`absolute inset-x-0 -bottom-px h-[3px] rounded-none transition-[width,background-color] duration-base ${
                     filters.viewMode === mode ? 'bg-brand-orange scale-x-100' : 'bg-transparent scale-x-0'
                   } ease-apple`}
                 />

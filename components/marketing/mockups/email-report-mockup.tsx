@@ -3,7 +3,7 @@
 export function EmailReportMockup() {
   return (
     <div className="relative w-full max-w-[460px] mx-auto">
-      <div className="rounded-xl border border-white/[0.08] bg-neutral-900/90 shadow-2xl overflow-hidden">
+      <div className="rounded-none border border-white/[0.08] bg-neutral-900/90 overflow-hidden">
         {/* Pulse logo header */}
         <div className="px-6 pt-5 pb-3">
           <div className="flex items-center gap-2.5 mb-3">
@@ -15,7 +15,7 @@ export function EmailReportMockup() {
 
         {/* Report content */}
         <div className="px-6 pb-5">
-          <div className="rounded-xl bg-neutral-800/50 border border-neutral-700/40 p-5">
+          <div className="rounded-none bg-card border border-neutral-700/40 p-5">
             <h3 className="text-lg font-bold text-white mb-0.5">ciphera.net</h3>
             <p className="text-xs text-neutral-500 mb-3">Daily summary report &middot; 19 Mar 2026</p>
 
@@ -29,7 +29,7 @@ export function EmailReportMockup() {
                 { label: 'BOUNCE', value: '97%', change: '0%', down: false },
                 { label: 'DURATION', value: '3m 18s', change: '7%', down: false },
               ].map((stat) => (
-                <div key={stat.label} className="rounded-lg bg-neutral-900/80 border border-neutral-700/30 px-1.5 py-2.5 text-center">
+                <div key={stat.label} className="rounded-none bg-neutral-900/80 border border-neutral-700/30 px-1.5 py-2.5 text-center">
                   <p className="text-[7px] text-neutral-500 uppercase tracking-wider mb-1">{stat.label}</p>
                   <p className="text-sm font-bold text-white leading-none mb-1">{stat.value}</p>
                   <p className={`text-[8px] font-semibold ${stat.down ? 'text-red-400' : 'text-green-400'}`}>
@@ -59,7 +59,7 @@ export function EmailReportMockup() {
                   <div className="flex items-center gap-3">
                     <div className="relative flex-1 h-[20px]">
                       <div
-                        className="absolute inset-y-0 left-0 rounded-md bg-brand-orange/20"
+                        className="absolute inset-y-0 left-0 rounded-none bg-brand-orange/20"
                         style={{ width: `${(row.views / 100) * 75}%` }}
                       />
                     </div>

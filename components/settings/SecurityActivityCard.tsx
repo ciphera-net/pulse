@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/lib/auth/context'
 import { getUserActivity, type AuditLogEntry } from '@/lib/api/activity'
-import { Button, Spinner } from '@ciphera-net/ui'
+import { Button, Spinner } from '@ciphera-net/facet'
 import { Shield } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { formatRelativeTime, formatDateTimeFull } from '@/lib/utils/formatDate'
@@ -132,11 +132,11 @@ export default function SecurityActivityCard() {
           <Spinner />
         </div>
       ) : error ? (
-        <div className="rounded-xl border border-red-900/50 bg-red-950/20 p-6 text-center">
+        <div className="rounded-none border border-red-900/50 bg-red-950/20 p-6 text-center">
           <p className="text-red-400">{error}</p>
         </div>
       ) : entries.length === 0 ? (
-        <div className="glass-surface rounded-xl">
+        <div className="bg-card border border-border">
           <EmptyState
             title="No security activity yet"
             description="Sign-ins, password changes, and device events will appear here over time."
@@ -158,9 +158,9 @@ export default function SecurityActivityCard() {
             return (
               <div
                 key={entry.id}
-                className="glass-surface flex items-start gap-3 rounded-xl px-4 py-3"
+                className="bg-card border border-border flex items-start gap-3 rounded-none px-4 py-3"
               >
-                <div className={`flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center mt-0.5 ${color}`}>
+                <div className={`flex-shrink-0 w-9 h-9 rounded-none flex items-center justify-center mt-0.5 ${color}`}>
                   <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d={iconPath} />
                   </svg>
@@ -172,12 +172,12 @@ export default function SecurityActivityCard() {
                       {label}
                     </span>
                     {method && (
-                      <span className="text-xs px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-400">
+                      <span className="text-xs px-1.5 py-0.5 rounded-none bg-neutral-800 text-neutral-400">
                         {method}
                       </span>
                     )}
                     {entry.outcome === 'failure' && (
-                      <span className="text-xs px-1.5 py-0.5 rounded bg-red-950/40 text-red-400">
+                      <span className="text-xs px-1.5 py-0.5 rounded-none bg-red-950/40 text-red-400">
                         Failed
                       </span>
                     )}

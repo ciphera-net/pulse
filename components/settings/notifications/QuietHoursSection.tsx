@@ -1,5 +1,5 @@
 'use client'
-import { Button, Input } from '@ciphera-net/ui'
+import { Button, Input } from '@ciphera-net/facet'
 import type { Preferences } from '@/lib/api/notifications-preferences'
 
 interface Props {

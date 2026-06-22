@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import useSWR from 'swr'
 import { Check, CheckCircle, ArrowRight } from '@phosphor-icons/react'
-import { toast, Spinner, LoadingOverlay } from '@ciphera-net/ui'
+import { toast, Spinner, LoadingOverlay } from '@ciphera-net/facet'
 import { useSubscription } from '@/lib/swr/dashboard'
 import { getPrices, changePlan, estimatePlanChange, type PlanChangeEstimate } from '@/lib/api/billing'
 import { TRAFFIC_TIERS } from '@/lib/plans'
@@ -64,7 +64,7 @@ function SwitchStepper({ currentStep }: { currentStep: number }) {
           const isCurrent = i === currentStep
 
           const circleClasses = [
-            'w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold shrink-0 transition-all ease-apple',
+            'w-7 h-7 sm:w-8 sm:h-8 rounded-none flex items-center justify-center text-xs sm:text-sm font-semibold shrink-0 transition-all ease-apple',
             isCompleted || isCurrent
               ? 'bg-brand-orange text-white'
               : 'bg-neutral-800 border border-neutral-700 text-neutral-400',
@@ -194,19 +194,19 @@ function SwitchPlanContent() {
 
               {/* Billing toggle */}
               <div className="flex flex-col items-center gap-2 mb-6">
-                <div className="bg-neutral-800/80 border border-neutral-800 p-1 rounded-xl flex">
+                <div className="bg-neutral-800/80 border border-neutral-800 p-1 rounded-none flex">
                   <button
                     onClick={() => setIsYearly(false)}
-                    className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ease-apple ${
-                      !isYearly ? 'bg-neutral-700 text-white shadow-sm' : 'text-neutral-500 hover:text-white'
+                    className={`px-4 py-1.5 rounded-none text-sm font-medium transition-all ease-apple ${
+                      !isYearly ? 'bg-neutral-700 text-white' : 'text-neutral-500 hover:text-white'
                     }`}
                   >
                     Monthly
                   </button>
                   <button
                     onClick={() => setIsYearly(true)}
-                    className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ease-apple ${
-                      isYearly ? 'bg-neutral-700 text-white shadow-sm' : 'text-neutral-500 hover:text-white'
+                    className={`px-4 py-1.5 rounded-none text-sm font-medium transition-all ease-apple ${
+                      isYearly ? 'bg-neutral-700 text-white' : 'text-neutral-500 hover:text-white'
                     }`}
                   >
                     Yearly
@@ -225,7 +225,7 @@ function SwitchPlanContent() {
                 <select
                   value={selectedLimit}
                   onChange={(e) => setSelectedLimit(Number(e.target.value))}
-                  className="w-full py-2 px-3 bg-neutral-800/80 border border-neutral-800 rounded-xl text-white text-sm outline-none focus-visible:border-brand-orange"
+                  className="w-full py-2 px-3 bg-neutral-800/80 border border-neutral-800 rounded-none text-white text-sm outline-none focus-visible:border-brand-orange"
                 >
                   {TRAFFIC_TIERS.map((tier) => (
                     <option key={tier.value} value={tier.value}>
@@ -246,7 +246,7 @@ function SwitchPlanContent() {
                       type="button"
                       onClick={() => !isCurrent && handleSelectPlan(plan.id)}
                       disabled={isCurrent}
-                      className={`w-full text-left p-4 rounded-xl border transition-all ${
+                      className={`w-full text-left p-4 rounded-none border transition-all ${
                         isCurrent
                           ? 'border-emerald-500/40 bg-emerald-500/5 opacity-60 cursor-not-allowed'
                           : plan.popular
@@ -259,12 +259,12 @@ function SwitchPlanContent() {
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-semibold text-white">{plan.name}</span>
                             {isCurrent && (
-                              <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                              <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-none">
                                 Current
                               </span>
                             )}
                             {!isCurrent && plan.popular && (
-                              <span className="text-[10px] font-semibold uppercase tracking-wider text-brand-orange bg-brand-orange/10 px-1.5 py-0.5 rounded">
+                              <span className="text-[10px] font-semibold uppercase tracking-wider text-brand-orange bg-brand-orange/10 px-1.5 py-0.5 rounded-none">
                                 Popular
                               </span>
                             )}
@@ -323,10 +323,10 @@ function SwitchPlanContent() {
                 </p>
               </div>
 
-              <div className="rounded-xl glass-surface p-6 space-y-6">
+              <div className="rounded-none bg-card border border-border p-6 space-y-6">
                 {/* Current → New comparison */}
                 <div className="flex items-center gap-4">
-                  <div className="flex-1 rounded-xl border border-neutral-700 bg-neutral-800/50 p-4">
+                  <div className="flex-1 rounded-none border border-neutral-700 bg-neutral-800/50 p-4">
                     <p className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-1">Current</p>
                     <p className="text-base font-semibold text-white">{currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)}</p>
                     <p className="text-sm text-neutral-400">{formatLimit(currentLimit)} pageviews</p>
@@ -335,7 +335,7 @@ function SwitchPlanContent() {
 
                   <ArrowRight weight="bold" className="w-5 h-5 text-neutral-500 shrink-0" />
 
-                  <div className="flex-1 rounded-xl border border-brand-orange/50 bg-brand-orange/5 p-4">
+                  <div className="flex-1 rounded-none border border-brand-orange/50 bg-brand-orange/5 p-4">
                     <p className="text-xs font-medium text-brand-orange uppercase tracking-wider mb-1">New</p>
                     <p className="text-base font-semibold text-white">{selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1)}</p>
                     <p className="text-sm text-neutral-400">{formatLimit(selectedLimit)} pageviews</p>
@@ -356,7 +356,7 @@ function SwitchPlanContent() {
                 )}
 
                 {estimate && !estimateLoading && estimate.direction === 'downgrade' && (
-                  <div className="rounded-xl border border-neutral-700 bg-neutral-800/30 p-4 space-y-3">
+                  <div className="rounded-none border border-neutral-700 bg-neutral-800/30 p-4 space-y-3">
                     <h3 className="text-sm font-medium text-neutral-300">Downgrade summary</h3>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
@@ -387,7 +387,7 @@ function SwitchPlanContent() {
                 )}
 
                 {estimate && !estimateLoading && estimate.direction === 'upgrade' && (
-                  <div className="rounded-xl border border-neutral-700 bg-neutral-800/30 p-4 space-y-3">
+                  <div className="rounded-none border border-neutral-700 bg-neutral-800/30 p-4 space-y-3">
                     <h3 className="text-sm font-medium text-neutral-300">Upgrade summary</h3>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
@@ -415,14 +415,14 @@ function SwitchPlanContent() {
                   <button
                     onClick={() => { setStep(0); setEstimate(null) }}
                     disabled={switching}
-                    className="flex-1 rounded-lg border border-neutral-700 px-4 py-3 text-sm font-medium text-neutral-300 hover:bg-neutral-800 transition-colors disabled:opacity-50 ease-apple"
+                    className="flex-1 rounded-none border border-neutral-700 px-4 py-3 text-sm font-medium text-neutral-300 hover:bg-neutral-800 transition-colors disabled:opacity-50 ease-apple"
                   >
                     Back
                   </button>
                   <button
                     onClick={handleSwitch}
                     disabled={switching || estimateLoading || estimateError}
-                    className="flex-1 rounded-lg bg-brand-orange-button px-4 py-3 text-sm font-semibold text-white hover:bg-brand-orange-button-hover transition-colors disabled:opacity-50 ease-apple"
+                    className="flex-1 rounded-none bg-brand-orange-button px-4 py-3 text-sm font-semibold text-white hover:bg-brand-orange-button-hover transition-colors disabled:opacity-50 ease-apple"
                   >
                     {switching ? 'Switching...'
                       : estimate?.direction === 'downgrade' ? 'Confirm downgrade'
@@ -448,7 +448,7 @@ function SwitchPlanContent() {
                 </h1>
               </div>
 
-              <div className="rounded-xl glass-surface p-8 text-center">
+              <div className="rounded-none bg-card border border-border p-8 text-center">
                 <CheckCircle weight="fill" className="w-12 h-12 text-green-500 mx-auto mb-4" />
                 <h2 className="text-xl font-semibold text-white mb-2">
                   You&apos;re now on {selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1)}

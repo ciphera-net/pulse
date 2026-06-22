@@ -3,14 +3,14 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DURATION_FAST, DURATION_BASE, EASE_APPLE } from '@/lib/motion'
-import { Button, Spinner, toast } from '@ciphera-net/ui'
+import { Button, Spinner, toast } from '@ciphera-net/facet'
 import { CaretUp, CaretDown, X, Plus, Trash } from '@phosphor-icons/react'
 import type { Funnel, FunnelStep, StepPropertyFilter, CreateFunnelRequest } from '@/lib/api/funnels'
 
 type StepWithoutOrder = Omit<FunnelStep, 'order'>
 
-const inputClass = 'w-full h-10 px-4 bg-transparent border border-neutral-800 rounded-lg text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 transition-colors ease-apple'
-const selectClass = 'h-10 px-3 bg-transparent border border-neutral-800 rounded-lg text-sm text-white focus:outline-none focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 transition-colors ease-apple appearance-none cursor-pointer'
+const inputClass = 'w-full h-10 px-4 bg-transparent border border-neutral-800 rounded-none text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 transition-colors ease-apple'
+const selectClass = 'h-10 px-3 bg-transparent border border-neutral-800 rounded-none text-sm text-white focus:outline-none focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 transition-colors ease-apple appearance-none cursor-pointer'
 const labelClass = 'block text-sm font-medium text-neutral-300 mb-1.5'
 
 const MAX_STEPS = 8
@@ -77,7 +77,7 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData }: 
     <>
       {/* Backdrop — identical to UnifiedSettingsModal */}
       <div
-        className={`fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm transition-opacity duration-base ${
+        className={`fixed inset-0 z-[60] bg-black/50 transition-opacity duration-base ${
           isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
         } ease-apple`}
         onClick={onClose}
@@ -94,7 +94,7 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData }: 
       >
         {/* Glass panel — static, not animated. Identical class to UnifiedSettingsModal. */}
         <div
-          className="relative w-full max-w-2xl h-[85vh] glass-overlay rounded-xl shadow-xl shadow-black/20 flex flex-col overflow-hidden"
+          className="relative w-full max-w-2xl h-[85vh] glass-overlay rounded-none flex flex-col overflow-hidden"
           onClick={e => e.stopPropagation()}
         >
           {/* Content animates inside the static panel — identical to UnifiedSettingsModal */}
@@ -113,7 +113,7 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData }: 
                     <h2 className="text-lg font-semibold text-white">{initialData ? 'Edit Funnel' : 'Create Funnel'}</h2>
                     <button
                       onClick={onClose}
-                      className="p-1.5 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors ease-apple"
+                      className="p-1.5 rounded-none text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors ease-apple"
                     >
                       <X weight="bold" className="w-4 h-4" />
                     </button>
@@ -139,7 +139,7 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData }: 
                         {steps.map((step, i) => {
                           const cat = step.category || 'page'
                           return (
-                            <div key={stepIds[i]} className="rounded-xl border border-neutral-800 bg-neutral-800/20 p-3">
+                            <div key={stepIds[i]} className="rounded-none border border-neutral-800 bg-neutral-800/20 p-3">
                               <div className="flex items-start gap-2">
                                 <div className="flex items-center gap-1 mt-1.5 flex-shrink-0">
                                   <span className="w-5 h-5 rounded-full bg-neutral-800 flex items-center justify-center text-[10px] font-medium text-neutral-400">{i + 1}</span>
@@ -152,8 +152,8 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData }: 
                                 <div className="flex-1 min-w-0 space-y-2">
                                   <div className="flex items-center gap-2">
                                     <div className="flex gap-0.5 flex-shrink-0">
-                                      <button type="button" onClick={() => updateStep(i, 'category', 'page')} className={`px-2 py-1 text-xs font-medium rounded-md transition-colors ${cat === 'page' ? 'bg-brand-orange text-white' : 'bg-neutral-800 text-neutral-500 hover:bg-neutral-700'} ease-apple`}>Page</button>
-                                      <button type="button" onClick={() => updateStep(i, 'category', 'event')} className={`px-2 py-1 text-xs font-medium rounded-md transition-colors ${cat === 'event' ? 'bg-brand-orange text-white' : 'bg-neutral-800 text-neutral-500 hover:bg-neutral-700'} ease-apple`}>Event</button>
+                                      <button type="button" onClick={() => updateStep(i, 'category', 'page')} className={`px-2 py-1 text-xs font-medium rounded-none transition-colors ${cat === 'page' ? 'bg-brand-orange text-white' : 'bg-neutral-800 text-neutral-500 hover:bg-neutral-700'} ease-apple`}>Page</button>
+                                      <button type="button" onClick={() => updateStep(i, 'category', 'event')} className={`px-2 py-1 text-xs font-medium rounded-none transition-colors ${cat === 'event' ? 'bg-brand-orange text-white' : 'bg-neutral-800 text-neutral-500 hover:bg-neutral-700'} ease-apple`}>Event</button>
                                     </div>
                                     <input value={step.name} onChange={e => updateStep(i, 'name', e.target.value)} placeholder="Step name" className={inputClass} />
                                   </div>
@@ -195,7 +195,7 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData }: 
                                   )}
                                 </div>
 
-                                <button type="button" onClick={() => removeStep(i)} disabled={steps.length <= 1} className="p-1.5 mt-1 text-neutral-500 hover:text-red-400 disabled:opacity-20 rounded-lg flex-shrink-0">
+                                <button type="button" onClick={() => removeStep(i)} disabled={steps.length <= 1} className="p-1.5 mt-1 text-neutral-500 hover:text-red-400 disabled:opacity-20 rounded-none flex-shrink-0">
                                   <Trash className="w-4 h-4" />
                                 </button>
                               </div>
@@ -204,7 +204,7 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData }: 
                         })}
 
                         {steps.length < MAX_STEPS && (
-                          <button type="button" onClick={addStep} className="w-full py-2.5 rounded-xl border border-dashed border-neutral-700 text-sm text-neutral-500 hover:text-white hover:border-neutral-500 transition-colors ease-apple flex items-center justify-center gap-2">
+                          <button type="button" onClick={addStep} className="w-full py-2.5 rounded-none border border-dashed border-neutral-700 text-sm text-neutral-500 hover:text-white hover:border-neutral-500 transition-colors ease-apple flex items-center justify-center gap-2">
                             <Plus className="w-3.5 h-3.5" /> Add Step
                           </button>
                         )}
@@ -216,7 +216,7 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData }: 
                 {/* Footer — matches UnifiedSettingsModal save bar border */}
                 <div className="shrink-0 px-6 py-3 border-t border-neutral-800/60 flex justify-end gap-2">
                   <Button variant="secondary" onClick={onClose} disabled={saving}>Cancel</Button>
-                  <Button variant="primary" onClick={handleSubmit} disabled={saving}>
+                  <Button variant="default" onClick={handleSubmit} disabled={saving}>
                     {saving && <Spinner className="w-4 h-4" />}
                     {initialData ? 'Save Changes' : 'Create Funnel'}
                   </Button>

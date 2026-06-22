@@ -1,1 +1,1 @@
-export { cn } from '@ciphera-net/ui'
+export { cn } from '@ciphera-net/facet'

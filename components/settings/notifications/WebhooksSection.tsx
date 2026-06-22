@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { Button } from '@ciphera-net/ui'
+import { Button } from '@ciphera-net/facet'
 import { Plugs } from '@phosphor-icons/react'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -42,7 +42,7 @@ export default function WebhooksSection() {
           Webhook URLs are stored encrypted at rest. Payload contains event ID and timestamp only — no event content.
         </p>
         <Button
-          variant="primary"
+          variant="default"
           size="sm"
           onClick={() => setShowForm(true)}
         >
@@ -61,7 +61,7 @@ export default function WebhooksSection() {
         />
       )}
       {webhooks && webhooks.length > 0 && (
-        <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
+        <div className="rounded-none border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
           {webhooks.map(w => (
             <div key={w.id} className="flex items-center justify-between px-4 py-3 group">
               <div className="min-w-0 flex-1">

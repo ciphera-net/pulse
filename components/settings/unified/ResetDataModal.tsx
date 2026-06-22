@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { Button, Input, toast, getAuthErrorMessage, AlertTriangleIcon, Spinner } from '@ciphera-net/ui'
+import { Button, Input, toast, getAuthErrorMessage, AlertTriangleIcon, Spinner } from '@ciphera-net/facet'
 import { resetSiteData, type ResetModule } from '@/lib/api/sites'
 import { ChartBar, Path, Funnel, Heartbeat, Gauge, Cloud, MagnifyingGlass } from '@phosphor-icons/react'
 import {
@@ -175,17 +175,17 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
             return (
               <Button
                 key={mod.id}
-                variant={checked ? 'primary' : 'secondary'}
+                variant={checked ? 'default' : 'secondary'}
                 size="sm"
                 onClick={() => toggleModule(mod.id)}
                 disabled={isResetting}
-                className={`w-full flex items-start gap-3 p-3 rounded-xl text-left h-auto ${
+                className={`w-full flex items-start gap-3 p-3 rounded-none text-left h-auto ${
                   checked
                     ? 'border-red-500/50 bg-red-900/15 hover:bg-red-900/20'
                     : 'border-neutral-800 bg-neutral-800/30 hover:border-neutral-700'
                 }`}
               >
-                <div className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                <div className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-none border transition-colors ${
                   checked
                     ? 'border-red-500 bg-red-500'
                     : 'border-neutral-600'
@@ -209,7 +209,7 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
         {/* Confirmation */}
         {selected.size > 0 && (
           <div className="space-y-4">
-            <div className="flex items-center gap-3 p-3 bg-red-900/10 border border-red-900/20 rounded-lg">
+            <div className="flex items-center gap-3 p-3 bg-red-900/10 border border-red-900/20 rounded-none">
               <AlertTriangleIcon className="h-4 w-4 text-red-500 shrink-0" />
               <span className="text-xs font-medium text-red-300">
                 {selected.size === RESET_MODULES.length

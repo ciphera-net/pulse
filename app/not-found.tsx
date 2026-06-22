@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Button } from '@ciphera-net/ui'
+import { Button } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
 
 export default function NotFound() {
@@ -31,7 +31,7 @@ export default function NotFound() {
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
           <Link href="/">
-            <Button variant="primary" className="px-8 py-3 shadow-lg shadow-brand-orange/20">
+            <Button variant="default" className="px-8 py-3">
               Go back home
             </Button>
           </Link>

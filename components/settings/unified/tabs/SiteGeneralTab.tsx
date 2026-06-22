@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Input, Button, toast, Spinner, CheckIcon, ZapIcon, getAuthErrorMessage } from '@ciphera-net/ui'
+import { Input, Button, toast, Spinner, CheckIcon, ZapIcon, getAuthErrorMessage } from '@ciphera-net/facet'
 import { useSite } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
 import { useAuth } from '@/lib/auth/context'
@@ -77,12 +77,12 @@ function TimezoneCombobox({ value, onChange, disabled }: { value: string; onChan
         onFocus={() => { if (disabled) return; setOpen(true); setSearch('') }}
         placeholder="Search timezone..."
         disabled={disabled}
-        className="w-full h-10 px-4 bg-transparent border border-neutral-800 rounded-lg text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full h-10 px-4 bg-transparent border border-neutral-800 rounded-none text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       />
       {open && (
         <div
           ref={listRef}
-          className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto rounded-xl border border-neutral-800 bg-neutral-900 shadow-xl shadow-black/30"
+          className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto rounded-none border border-neutral-800 bg-card border-border"
         >
           {filtered.length === 0 ? (
             <div className="px-4 py-3 text-sm text-neutral-500">No timezones found</div>

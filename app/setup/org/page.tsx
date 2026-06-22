@@ -8,9 +8,9 @@ import { preservePlanParams } from '@/lib/setup/utils'
 import { createOrganization, switchContext } from '@/lib/api/organization'
 import { setSessionAction } from '@/app/actions/auth'
 import apiRequest from '@/lib/api/client'
-import { getAuthErrorMessage } from '@ciphera-net/ui'
-import { Button, Input, toast } from '@ciphera-net/ui'
-import { PlusIcon } from '@ciphera-net/ui'
+import { getAuthErrorMessage } from '@ciphera-net/facet'
+import { Button, Input, toast } from '@ciphera-net/facet'
+import { PlusIcon } from '@ciphera-net/facet'
 
 function slugFromName(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'my-organization'
@@ -68,7 +68,7 @@ export default function SetupOrgPage() {
   return (
     <>
       <div className="text-center mb-8">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-brand-orange/10 text-brand-orange mb-5">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-none bg-brand-orange/10 text-brand-orange mb-5">
           <PlusIcon className="h-7 w-7" />
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-white">

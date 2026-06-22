@@ -202,10 +202,10 @@ export default function DateRangePicker({
     const isInRange = resolvedStart && resolvedEnd && date > resolvedStart && date < resolvedEnd
     const isToday = date === todayStr
 
-    if (isStart || isEnd) return 'bg-brand-orange text-white rounded-full'
-    if (isInRange) return 'bg-brand-orange/10 text-neutral-200 rounded-full'
-    if (isToday) return 'ring-1 ring-brand-orange/50 text-neutral-200 rounded-full'
-    return 'text-neutral-300 hover:bg-neutral-800 rounded-full'
+    if (isStart || isEnd) return 'bg-brand-orange text-white'
+    if (isInRange) return 'bg-brand-orange/10 text-neutral-200'
+    if (isToday) return 'ring-1 ring-brand-orange/50 text-neutral-200'
+    return 'text-neutral-300 hover:bg-neutral-800'
   }
 
   const days = getDaysForMonth(viewMonth.year, viewMonth.month)
@@ -226,7 +226,7 @@ export default function DateRangePicker({
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 4, scale: 0.98 }}
           transition={{ duration: 0.15 }}
-          className="fixed z-50 flex rounded-xl border border-neutral-800 bg-neutral-900 shadow-2xl shadow-black/50 overflow-hidden"
+          className="fixed z-50 flex rounded-none border border-neutral-800 bg-neutral-900 overflow-hidden"
           style={pos ? { left: pos.left, top: pos.top } : undefined}
         >
           <div className="w-44 border-r border-neutral-800 py-2 overflow-y-auto max-h-[400px]">
@@ -279,7 +279,7 @@ export default function DateRangePicker({
             <div className="flex items-center justify-between mb-3">
               <button
                 onClick={prevMonth}
-                className="p-1 rounded-md text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors"
+                className="p-1 rounded-none text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors"
               >
                 <CaretLeft weight="bold" className="w-3.5 h-3.5" />
               </button>
@@ -288,7 +288,7 @@ export default function DateRangePicker({
               </span>
               <button
                 onClick={nextMonth}
-                className="p-1 rounded-md text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors"
+                className="p-1 rounded-none text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors"
               >
                 <CaretRight weight="bold" className="w-3.5 h-3.5" />
               </button>
@@ -324,7 +324,7 @@ export default function DateRangePicker({
       {onShift && (
         <button
           onClick={() => onShift(-1)}
-          className="h-10 w-10 flex items-center justify-center rounded-lg border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors ease-apple disabled:opacity-30 disabled:cursor-not-allowed"
+          className="h-10 w-10 flex items-center justify-center rounded-none border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors ease-apple disabled:opacity-30 disabled:cursor-not-allowed"
         >
           <CaretLeft weight="bold" className="w-3.5 h-3.5" />
         </button>
@@ -333,7 +333,7 @@ export default function DateRangePicker({
       <button
         ref={triggerRef}
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 h-10 px-4 rounded-lg border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-sm text-neutral-300 transition-colors ease-apple"
+        className="flex items-center gap-2 h-10 px-4 rounded-none border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-sm text-neutral-300 transition-colors ease-apple"
       >
         <CalendarBlank className="w-4 h-4 text-neutral-500" />
         <span>{displayLabel}</span>
@@ -344,7 +344,7 @@ export default function DateRangePicker({
         <button
           onClick={() => onShift(1)}
           disabled={isForwardDisabled}
-          className="h-10 w-10 flex items-center justify-center rounded-lg border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors ease-apple disabled:opacity-30 disabled:cursor-not-allowed"
+          className="h-10 w-10 flex items-center justify-center rounded-none border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors ease-apple disabled:opacity-30 disabled:cursor-not-allowed"
         >
           <CaretRight weight="bold" className="w-3.5 h-3.5" />
         </button>

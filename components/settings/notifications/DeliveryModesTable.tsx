@@ -26,12 +26,12 @@ export default function DeliveryModesTable({ prefs, onChange }: Props) {
             <span className="text-sm text-neutral-200 flex items-center gap-2">
               {c.label}
               {isCritical && (
-                <span className="text-micro-label uppercase tracking-wider text-brand-orange border border-brand-orange/30 rounded px-1.5 py-0.5">
+                <span className="text-micro-label uppercase tracking-wider text-brand-orange border border-brand-orange/30 rounded-none px-1.5 py-0.5">
                   Always on
                 </span>
               )}
             </span>
-            <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-neutral-900 border border-neutral-800">
+            <div className="flex items-center gap-0.5 p-0.5 rounded-none bg-neutral-900 border border-neutral-800">
               {MODES.map(m => {
                 const isSelected = current === m.value
                 const isDisabledOff = isCritical && m.value === 'off'
@@ -48,7 +48,7 @@ export default function DeliveryModesTable({ prefs, onChange }: Props) {
                     }}
                     disabled={isDisabledOff}
                     className={cn(
-                      'px-2.5 py-1 text-xs rounded-md transition-colors',
+                      'px-2.5 py-1 text-xs rounded-none transition-colors',
                       isSelected
                         ? 'bg-brand-orange text-white font-medium'
                         : 'text-neutral-400 hover:text-white hover:bg-neutral-800',

@@ -4,6 +4,7 @@ import { curveMonotoneX } from "d3-shape";
 import { scaleLinear, scaleTime } from "d3-scale";
 import type { ScaleBand } from "d3-scale";
 import { localPoint, AreaClosed, LinePath, GridColumns, GridRows, ParentSize } from "@/lib/charts/primitives";
+import { formatDateShort, formatDateFull } from "@/lib/utils/formatDate";
 import { bisector } from "d3-array";
 import {
   AnimatePresence,
@@ -532,7 +533,7 @@ function DateTicker({ currentIndex, labels, visible }: DateTickerProps) {
 
   return (
     <motion.div
-      className="overflow-hidden rounded-full bg-zinc-100 px-4 py-1 text-zinc-900"
+      className="overflow-hidden rounded-none bg-zinc-100 px-4 py-1 text-zinc-900"
       layout
       transition={{
         layout: SPRING,
@@ -949,7 +950,7 @@ function TooltipBox({
     >
       <motion.div
         animate={{ scale: 1, opacity: 1, x: 0 }}
-        className="min-w-[140px] overflow-hidden rounded-lg glass-overlay text-white shadow-lg"
+        className="min-w-[140px] overflow-hidden rounded-none bg-popover border border-border text-white"
         initial={{ scale: 0.85, opacity: 0, x: isFlipped ? 20 : -20 }}
         key={flipKey}
         style={{ transformOrigin }}
@@ -1051,11 +1052,7 @@ export function ChartTooltip({
     if (barXAccessor) {
       return barXAccessor(tooltipData.point);
     }
-    return xAccessor(tooltipData.point).toLocaleDateString("en-GB", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-    });
+    return formatDateFull(xAccessor(tooltipData.point));
   }, [tooltipData, barXAccessor, xAccessor]);
 
   const container = containerRef.current;
@@ -1426,7 +1423,7 @@ export function XAxis({ numTicks = 5, tickerHalfWidth = 50, formatLabel }: XAxis
       }
     }
 
-    const defaultFormat = (d: Date) => d.toLocaleDateString("en-GB", { month: "short", day: "numeric" });
+    const defaultFormat = (d: Date) => formatDateShort(d);
     const fmt = formatLabel ?? defaultFormat;
 
     return dates.map((date) => ({

@@ -4,17 +4,17 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { getPublicDashboard, getPublicStats, getPublicDailyStats, getPublicRealtime, authenticatePublicDashboard, type DashboardData, type Stats, type DailyStat } from '@/lib/api/stats'
-import { toast } from '@ciphera-net/ui'
-import { getAuthErrorMessage } from '@ciphera-net/ui'
+import { toast } from '@ciphera-net/facet'
+import { getAuthErrorMessage } from '@ciphera-net/facet'
 import { ApiError } from '@/lib/api/client'
 import { env } from '@/lib/env'
-import { LoadingOverlay, Button } from '@ciphera-net/ui'
+import { LoadingOverlay, Button } from '@ciphera-net/facet'
 import Chart from '@/components/dashboard/Chart'
 import TopPages from '@/components/dashboard/ContentStats'
 import TopReferrers from '@/components/dashboard/TopReferrers'
 import Audience from '@/components/dashboard/Locations'
 import TechSpecs from '@/components/dashboard/TechSpecs'
-import { Captcha, DownloadIcon, ZapIcon } from '@ciphera-net/ui'
+import { Captcha, DownloadIcon, ZapIcon } from '@ciphera-net/facet'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import { PERIOD_TO_API } from '@/lib/constants/periods'
 import { DashboardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
@@ -194,9 +194,9 @@ export default function PublicDashboardPage() {
   if (isPasswordProtected && !data) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="glass-surface max-w-md w-full rounded-xl p-6 transition-shadow duration-slow ease-apple">
+        <div className="bg-card border border-border max-w-md w-full rounded-none p-6 transition-shadow duration-slow ease-apple">
           <div className="text-center mb-6">
-             <div className="w-12 h-12 bg-brand-orange/10 rounded-xl flex items-center justify-center mx-auto mb-4 text-brand-orange">
+             <div className="w-12 h-12 bg-brand-orange/10 rounded-none flex items-center justify-center mx-auto mb-4 text-brand-orange">
               <ZapIcon className="w-6 h-6" />
             </div>
             <h1 className="text-2xl font-bold text-white mb-2">
@@ -214,7 +214,7 @@ export default function PublicDashboardPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter password"
-                className="w-full px-4 py-2 border border-neutral-700 rounded-lg bg-neutral-800 text-white focus:ring-2 focus:ring-brand-orange focus:border-transparent"
+                className="w-full px-4 py-2 border border-neutral-700 rounded-none bg-neutral-800 text-white focus:ring-2 focus:ring-brand-orange focus:border-transparent"
                 autoFocus
               />
             </div>
@@ -231,7 +231,7 @@ export default function PublicDashboardPage() {
             </div>
             <Button
               type="submit"
-              variant="primary"
+              variant="default"
               className="w-full"
             >
               Access Dashboard
@@ -282,7 +282,7 @@ export default function PublicDashboardPage() {
                         alt={site.name}
                         width={32}
                         height={32}
-                        className="w-8 h-8 rounded-lg"
+                        className="w-8 h-8 rounded-none"
                         onError={(e) => {
                         (e.target as HTMLImageElement).src = '/globe.svg'
                         }}
@@ -293,7 +293,7 @@ export default function PublicDashboardPage() {
                  </div>
 
                  {/* Realtime Indicator - Desktop */}
-                 <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded-full border border-green-500/20 self-end mb-1">
+                 <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded-none border border-green-500/20 self-end mb-1">
                    <span className="relative flex h-2 w-2">
                      <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
                      <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
@@ -308,7 +308,7 @@ export default function PublicDashboardPage() {
             <div className="flex gap-2">
               <button
                 onClick={() => setIsExportModalOpen(true)}
-                className="hidden md:flex items-center gap-2 px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-sm text-neutral-400 hover:text-brand-orange transition-colors ease-apple"
+                className="hidden md:flex items-center gap-2 px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-none text-sm text-neutral-400 hover:text-brand-orange transition-colors ease-apple"
               >
                 <DownloadIcon className="w-4 h-4" />
                 <span>Export</span>
@@ -325,7 +325,7 @@ export default function PublicDashboardPage() {
                 href="https://ciphera.net" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="hidden md:flex items-center gap-2 px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-sm text-neutral-400 hover:text-brand-orange transition-colors ease-apple"
+                className="hidden md:flex items-center gap-2 px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-none text-sm text-neutral-400 hover:text-brand-orange transition-colors ease-apple"
               >
                 <ZapIcon className="w-4 h-4" />
                 <span>Powered by Ciphera</span>
@@ -334,7 +334,7 @@ export default function PublicDashboardPage() {
           </div>
           
            {/* Realtime Indicator - Mobile */}
-            <div className="md:hidden flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded-full border border-green-500/20 w-fit mt-4">
+            <div className="md:hidden flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded-none border border-green-500/20 w-fit mt-4">
                  <span className="relative flex h-2 w-2">
                     <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>

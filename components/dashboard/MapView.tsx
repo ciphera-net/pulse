@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback, memo } from 'react'
 import * as d3 from 'd3'
 import * as topojson from 'topojson-client'
-import { formatNumber } from '@ciphera-net/ui'
+import { formatNumber } from '@/lib/utils/format'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const worldJson = require('visionscarto-world-atlas/world/110m.json')
 
@@ -151,7 +151,7 @@ function MapView({ data, className, formatValue = formatNumber }: MapViewProps) 
         />
         {tooltip && (
           <div
-            className="absolute z-10 px-3 py-2 text-xs font-medium text-white bg-neutral-800 border border-neutral-700 rounded-lg shadow-lg pointer-events-none"
+            className="absolute z-10 px-3 py-2 text-xs font-medium text-white bg-neutral-800 border border-neutral-700 rounded-none pointer-events-none"
             style={{ left: tooltip.x, top: tooltip.y - 36 }}
           >
             <span>{tooltip.name}</span>

@@ -11,7 +11,7 @@ const funnelData = [
 export function FunnelMockup() {
   return (
     <div className="relative w-full max-w-[600px] mx-auto">
-      <div className="rounded-xl border border-white/[0.08] bg-neutral-900/80 px-10 py-6 shadow-2xl">
+      <div className="rounded-none border border-white/[0.08] bg-neutral-900/80 px-10 py-6">
         <h3 className="text-sm font-medium text-white mb-4">Funnel Visualization</h3>
         <FunnelChart
           data={funnelData}

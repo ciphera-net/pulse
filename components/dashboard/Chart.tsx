@@ -1,18 +1,18 @@
 'use client'
 
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
-import { useTheme } from '@ciphera-net/ui'
 import { AreaChart as VisxAreaChart, Area as VisxArea, Grid as VisxGrid, XAxis as VisxXAxis, YAxis as VisxYAxis, ChartTooltip as VisxChartTooltip, type TooltipRow } from '@/components/ui/area-chart'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@ciphera-net/facet'
 import type { EngagementPercentilesData } from '@/lib/api/stats'
-import { formatNumber, formatDuration } from '@ciphera-net/ui'
-import { Select, DownloadIcon } from '@ciphera-net/ui'
+import { formatNumber, formatDuration } from '@/lib/utils/format'
+import { DownloadIcon } from '@ciphera-net/facet'
+import Select from '@/components/ui/select'
 import { ArrowUpRight, ArrowDownRight, ChartLine } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { SPRING, EASE_APPLE } from '@/lib/motion'
 import { AnimatedNumber } from '@/components/ui/animated-number'
 import { cn } from '@/lib/utils'
-import { formatTime, formatDateShort } from '@/lib/utils/formatDate'
+import { formatTime, formatDateShort, formatDateFull } from '@/lib/utils/formatDate'
 import { EmptyState } from '@/components/ui/EmptyState'
 
 export interface DailyStat {
@@ -242,7 +242,7 @@ export default function Chart({
 
   return (
     <div ref={chartContainerRef} className="relative">
-      <Card className="w-full overflow-hidden rounded-xl">
+      <Card className="w-full overflow-hidden rounded-none">
         <CardHeader className="p-0 mb-0">
           {/* Metrics Grid - 21st.dev style */}
           <div className="grid grid-cols-2 md:grid-cols-6 grow w-full">
@@ -285,7 +285,7 @@ export default function Chart({
                 {metric === m.key && (
                   <motion.div
                     layoutId="activeMetric"
-                    className="absolute bottom-0 left-0 right-0 h-[3px] bg-brand-orange rounded-full"
+                    className="absolute bottom-0 left-0 right-0 h-[3px] bg-brand-orange rounded-none"
                     transition={SPRING}
                   />
                 )}
@@ -306,7 +306,7 @@ export default function Chart({
               {onExport && (
                 <button
                   onClick={onExport}
-                  className="w-7 h-7 flex items-center justify-center text-neutral-500 hover:text-white hover:bg-white/[0.06] rounded-md transition-colors ease-apple"
+                  className="w-7 h-7 flex items-center justify-center text-neutral-500 hover:text-white hover:bg-white/[0.06] rounded-none transition-colors ease-apple"
                   aria-label="Export"
                 >
                   <DownloadIcon className="w-3.5 h-3.5" />
@@ -409,7 +409,7 @@ export default function Chart({
                       numTicks={Math.min(activeChartData.length, 10)}
                       formatLabel={!isEngagementDaily && (interval === 'minute' || interval === 'hour')
                         ? (d) => `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`
-                        : (d) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+                        : (d) => formatDateShort(d)
                       }
                     />
                     <VisxYAxis
@@ -426,7 +426,7 @@ export default function Chart({
                         const value = point[metric] as number
                         const title = !isEngagementDaily && (interval === 'minute' || interval === 'hour')
                           ? `${String(dateObj.getUTCHours()).padStart(2, '0')}:${String(dateObj.getUTCMinutes()).padStart(2, '0')}`
-                          : dateObj.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+                          : formatDateFull(dateObj)
                         return (
                           <div className="px-3 py-2.5">
                             <div className="mb-2 font-medium text-neutral-400 text-xs">{title}</div>

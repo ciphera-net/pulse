@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Button, Input, Toggle, toast, Spinner, getAuthErrorMessage } from '@ciphera-net/ui'
+import { Button, Input, Toggle, toast, Spinner, getAuthErrorMessage } from '@ciphera-net/facet'
 import { Copy, CheckCircle, Lock } from '@phosphor-icons/react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useSite } from '@/lib/swr/dashboard'
@@ -78,7 +78,7 @@ export default function SiteVisibilityTab({ siteId }: { siteId: string }) {
       </div>
 
       {/* Public toggle */}
-      <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-neutral-800/30 border border-neutral-800">
+      <div className="flex items-center justify-between py-3 px-4 rounded-none bg-neutral-800/30 border border-neutral-800">
         <div>
           <p className="text-sm font-medium text-white">Public Dashboard</p>
           <p className="text-xs text-neutral-500">Allow anyone with the link to view this dashboard.</p>
@@ -95,7 +95,7 @@ export default function SiteVisibilityTab({ siteId }: { siteId: string }) {
             className="space-y-4 overflow-hidden"
           >
             {/* Share link */}
-            <div className="p-4 rounded-xl border border-neutral-800 bg-neutral-800/30">
+            <div className="p-4 rounded-none border border-neutral-800 bg-neutral-800/30">
               <label className="block text-xs font-medium text-neutral-400 mb-1.5">Public Link</label>
               <div className="flex gap-2">
                 <Input value={`${APP_URL}/share/${siteId}`} readOnly className="font-mono text-xs" />
@@ -107,7 +107,7 @@ export default function SiteVisibilityTab({ siteId }: { siteId: string }) {
             </div>
 
             {/* Password protection */}
-            <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-neutral-800/30 border border-neutral-800">
+            <div className="flex items-center justify-between py-3 px-4 rounded-none bg-neutral-800/30 border border-neutral-800">
               <div className="flex items-center gap-2">
                 <Lock weight="bold" className="w-4 h-4 text-neutral-500" />
                 <div>

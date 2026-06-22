@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Button, Input, Select, Toggle, toast, Spinner, getAuthErrorMessage } from '@ciphera-net/ui'
+import { Button, Input, Toggle, toast, Spinner, getAuthErrorMessage } from '@ciphera-net/facet'
+import Select from '@/components/ui/select'
 import { useSite, useSubscription, usePageSpeedConfig } from '@/lib/swr/dashboard'
 import { updateSite, type PageRule } from '@/lib/api/sites'
 import { updatePageSpeedConfig } from '@/lib/api/pagespeed'
@@ -21,7 +22,7 @@ const GEO_OPTIONS = [
 
 function PrivacyToggle({ label, desc, checked, onToggle, disabled }: { label: string; desc: string; checked: boolean; onToggle: () => void; disabled?: boolean }) {
   return (
-    <div className="flex items-center justify-between p-4 rounded-xl border border-neutral-800 bg-neutral-800/30">
+    <div className="flex items-center justify-between p-4 rounded-none border border-neutral-800 bg-neutral-800/30">
       <div>
         <p className="text-sm font-medium text-white">{label}</p>
         <p className="text-xs text-neutral-500">{desc}</p>
@@ -195,7 +196,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
         <PrivacyToggle label="Hide unknown locations" desc='Exclude "Unknown" from location stats.' checked={hideUnknownLocations} onToggle={() => setHideUnknownLocations(v => !v)} disabled={!canEdit} />
       </div>
 
-      <div id="section-geographic" className="p-4 rounded-xl border border-neutral-800 bg-neutral-800/30">
+      <div id="section-geographic" className="p-4 rounded-none border border-neutral-800 bg-neutral-800/30">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-white">Geographic data</p>
@@ -217,13 +218,13 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
         <h4 className="text-sm font-medium text-neutral-300">Data Retention</h4>
 
         {subscriptionError && (
-          <div className="p-3 rounded-xl border border-amber-800 bg-amber-900/20 flex items-center justify-between">
+          <div className="p-3 rounded-none border border-amber-800 bg-amber-900/20 flex items-center justify-between">
             <p className="text-xs text-amber-200">Plan limits could not be loaded.</p>
             <Button variant="secondary" size="sm" onClick={() => mutateSubscription()}>Retry</Button>
           </div>
         )}
 
-        <div className="p-4 bg-neutral-800/30 rounded-xl border border-neutral-800">
+        <div className="p-4 bg-neutral-800/30 rounded-none border border-neutral-800">
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium text-white text-sm">Keep raw event data for</p>
@@ -279,7 +280,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
 
         <div className="space-y-3">
           {pageRules.map((rule, index) => (
-            <div key={index} className="rounded-xl border border-neutral-800 bg-neutral-800/30 p-4">
+            <div key={index} className="rounded-none border border-neutral-800 bg-neutral-800/30 p-4">
               <div className="flex items-start gap-3">
                 <div className="flex-1 space-y-3">
                   <div className="flex items-center gap-3">
@@ -373,9 +374,9 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
       {/* Exclude My Visits */}
       <div id="section-exclude-self" className="space-y-3 pt-6 border-t border-neutral-800">
         <h4 className="text-sm font-medium text-neutral-300">Exclude My Visits</h4>
-        <div className="p-4 rounded-xl border border-neutral-800 bg-neutral-800/30">
+        <div className="p-4 rounded-none border border-neutral-800 bg-neutral-800/30">
           <div className="flex items-start gap-4">
-            <div className="p-2 rounded-lg bg-brand-orange/10 text-brand-orange mt-0.5">
+            <div className="p-2 rounded-none bg-brand-orange/10 text-brand-orange mt-0.5">
               <EyeSlash weight="bold" className="w-5 h-5" />
             </div>
             <div className="flex-1 min-w-0">
@@ -401,7 +402,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
       {/* PageSpeed Monitoring */}
       <div id="section-pagespeed" className="space-y-3 pt-6 border-t border-neutral-800">
         <h4 className="text-sm font-medium text-neutral-300">PageSpeed Monitoring</h4>
-        <div className="p-4 bg-neutral-800/30 rounded-xl border border-neutral-800">
+        <div className="p-4 bg-neutral-800/30 rounded-none border border-neutral-800">
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium text-white text-sm">Check frequency</p>
@@ -437,7 +438,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
             readOnly
             rows={6}
             value={generatePrivacySnippet(site)}
-            className="w-full px-4 py-3 pr-12 border border-neutral-800 rounded-xl bg-neutral-800/30 text-neutral-300 text-xs font-mono"
+            className="w-full px-4 py-3 pr-12 border border-neutral-800 rounded-none bg-neutral-800/30 text-neutral-300 text-xs font-mono"
           />
           <Button
             variant="ghost"

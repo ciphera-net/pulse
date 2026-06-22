@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { Button } from '@ciphera-net/ui'
+import { Button } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
 
 interface ErrorDisplayProps {
@@ -63,7 +63,7 @@ export default function ErrorDisplay({
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
           {onRetry && (
-            <Button variant="primary" onClick={onRetry} className="px-8 py-3">
+            <Button variant="default" onClick={onRetry} className="px-8 py-3">
               Try again
             </Button>
           )}

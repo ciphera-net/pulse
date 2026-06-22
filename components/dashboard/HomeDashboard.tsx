@@ -8,7 +8,7 @@ import { getStats, type Stats } from '@/lib/api/stats'
 import { getSubscription, type SubscriptionDetails } from '@/lib/api/billing'
 import SiteList from '@/components/sites/SiteList'
 import DeleteSiteModal from '@/components/sites/DeleteSiteModal'
-import { Button, toast, getAuthErrorMessage } from '@ciphera-net/ui'
+import { Button, toast, getAuthErrorMessage } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
 import { useCan } from '@/lib/auth/permissions'
 import { getSitesLimitForPlan } from '@/lib/plans'
@@ -124,11 +124,11 @@ export default function HomeDashboard() {
           return atLimit ? (
           <div>
             <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-neutral-400 bg-neutral-800 px-3 py-1.5 rounded-lg border border-neutral-700">
+              <span className="text-sm font-medium text-neutral-400 bg-neutral-800 px-3 py-1.5 rounded-none border border-neutral-700">
                 Limit reached ({sites.length}/{siteLimit})
               </span>
               <Link href="/pricing">
-                <Button variant="primary" className="text-sm">
+                <Button variant="default" className="text-sm">
                   Upgrade
                 </Button>
               </Link>
@@ -142,7 +142,7 @@ export default function HomeDashboard() {
         ) : null
         })() ?? (
           canCreateSite ? <Link href="/sites/new">
-            <Button variant="primary" className="text-sm whitespace-nowrap">
+            <Button variant="default" className="text-sm whitespace-nowrap">
               Add New Site
             </Button>
           </Link> : null
@@ -152,7 +152,7 @@ export default function HomeDashboard() {
       {showSkeleton ? (
         <SitesListSkeleton rows={3} />
       ) : sites.length === 0 ? (
-        <div className="mb-8 flex flex-col items-center justify-center gap-4 py-16 px-6 text-center rounded-xl border-2 border-dashed border-brand-orange/30 bg-brand-orange/10">
+        <div className="mb-8 flex flex-col items-center justify-center gap-4 py-16 px-6 text-center rounded-none border-2 border-dashed border-brand-orange/30 bg-brand-orange/10">
           <img
             src={cdnUrl('/illustrations/no-sites.png')}
             alt=""
@@ -164,7 +164,7 @@ export default function HomeDashboard() {
           </p>
           {canCreateSite && <Link
             href="/sites/new"
-            className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-orange text-white text-sm font-medium hover:bg-brand-orange-hover transition-colors duration-fast ease-apple active:scale-[0.97]"
+            className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-none bg-brand-orange text-white text-sm font-medium hover:bg-brand-orange-hover transition-colors duration-fast ease-apple active:scale-[0.97]"
           >
             New site
           </Link>}
@@ -192,24 +192,24 @@ export default function HomeDashboard() {
               const daysLeft = purgeAt ? Math.max(0, Math.ceil((purgeAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : 0
 
               return (
-                <div key={site.id} className="flex items-center justify-between p-4 rounded-xl border border-neutral-800 bg-neutral-900/50 opacity-60">
+                <div key={site.id} className="flex items-center justify-between p-4 rounded-none border border-neutral-800 bg-card opacity-60">
                   <div>
                     <span className="font-medium text-neutral-300">{site.name}</span>
                     <span className="ml-2 text-sm text-neutral-400">{site.domain}</span>
-                    <span className="ml-3 inline-flex items-center rounded-full bg-red-900/20 px-2 py-0.5 text-xs font-medium text-red-400">
+                    <span className="ml-3 inline-flex items-center rounded-none bg-red-900/20 px-2 py-0.5 text-xs font-medium text-red-400">
                       Deleting in {daysLeft} day{daysLeft !== 1 ? 's' : ''}
                     </span>
                   </div>
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleRestore(site.id)}
-                      className="px-3 py-1.5 text-xs font-medium text-neutral-300 border border-neutral-700 rounded-lg hover:bg-neutral-800 transition-colors ease-apple"
+                      className="px-3 py-1.5 text-xs font-medium text-neutral-300 border border-neutral-700 rounded-none hover:bg-neutral-800 transition-colors ease-apple"
                     >
                       Restore
                     </button>
                     <button
                       onClick={() => handlePermanentDelete(site.id)}
-                      className="px-3 py-1.5 text-xs font-medium text-red-400 border border-red-900 rounded-lg hover:bg-red-900/20 transition-colors ease-apple"
+                      className="px-3 py-1.5 text-xs font-medium text-red-400 border border-red-900 rounded-none hover:bg-red-900/20 transition-colors ease-apple"
                     >
                       Delete Now
                     </button>

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-vi.mock('@ciphera-net/ui', () => ({
+vi.mock('@ciphera-net/facet', () => ({
   authMessageFromStatus: (status: number) => `Error ${status}`,
   AUTH_ERROR_MESSAGES: { NETWORK: 'Network error, please try again.' },
 }))

@@ -42,7 +42,7 @@ function SubTab({
   return (
     <button
       onClick={onClick}
-      className={`relative px-3 py-2 text-sm font-medium whitespace-nowrap rounded-t-lg transition-all duration-base ${
+      className={`relative px-3 py-2 text-sm font-medium whitespace-nowrap transition-all duration-base ${
         active ? 'text-brand-orange' : 'text-neutral-500 hover:text-neutral-300'
       } ease-apple`}
     >
@@ -50,7 +50,7 @@ function SubTab({
       {active && (
         <motion.div
           layoutId="notifications-subtab-indicator"
-          className="absolute bottom-0 left-2 right-2 h-0.5 bg-brand-orange rounded-full"
+          className="absolute bottom-0 left-2 right-2 h-0.5 bg-brand-orange rounded-none"
           transition={SPRING}
         />
       )}

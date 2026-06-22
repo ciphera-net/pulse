@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { logger } from '@/lib/utils/logger'
-import { formatNumber, Spinner } from '@ciphera-net/ui'
+import { Spinner } from '@ciphera-net/facet'
+import { formatNumber } from '@/lib/utils/format'
 import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
 import { TopPage, getTopPages, getEntryPages, getExitPages, PageEngagement, getPageEngagement } from '@/lib/api/stats'
 import { FrameCornersIcon, FileText } from '@phosphor-icons/react'
-import { Modal, ArrowUpRightIcon } from '@ciphera-net/ui'
+import { Modal, ArrowUpRightIcon } from '@ciphera-net/facet'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ListSkeleton } from '@/components/skeletons'
 import VirtualList from './VirtualList'
@@ -160,7 +161,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
     return (
       <div
         key={item.path}
-        className={`interactive-row relative overflow-hidden flex items-center justify-between h-9 group rounded-lg px-2 -mx-2${onFilter ? ' cursor-pointer' : ''}`}
+        className={`interactive-row relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2${onFilter ? ' cursor-pointer' : ''}`}
         onClick={() => {
           onFilter?.({ dimension: 'page', operator: 'is', values: [item.path] })
           if (inModal) setIsModalOpen(false)
@@ -168,7 +169,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
       >
         {/* Bar — width based on engagement score */}
         <div
-          className="absolute inset-y-0.5 left-0.5 rounded-md transition-all duration-300 ease-apple"
+          className="absolute inset-y-0.5 left-0.5 rounded-none transition-all duration-300 ease-apple"
           style={{
             width: `${(item.engagement_score / 100) * 75}%`,
             backgroundColor: scoreColor.bar,
@@ -184,7 +185,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
           <span className="opacity-0 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0 transition-all duration-150 text-[10px] font-medium text-neutral-500 whitespace-nowrap">
             {Math.round(item.avg_scroll_depth)}% scroll · {readTime} read
           </span>
-          <span className={`inline-flex items-center justify-center w-8 h-5 rounded-full text-[10px] font-bold tabular-nums ${scoreColor.badge}`}>
+          <span className={`inline-flex items-center justify-center w-8 h-5 rounded-none text-[10px] font-bold tabular-nums ${scoreColor.badge}`}>
             {item.engagement_score}
           </span>
         </div>
@@ -194,7 +195,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
 
   return (
     <>
-      <div className="glass-surface rounded-xl p-6 h-full flex flex-col">
+      <div className="bg-card rounded-none p-6 h-full flex flex-col border border-border">
         <div className="flex items-center justify-between mb-4">
           <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-1" role="tablist" aria-label="Pages view tabs" onKeyDown={handleTabKeyDown}>
             {(['top_pages', 'entry_pages', 'exit_pages', 'engagement'] as Tab[]).map((tab) => (
@@ -203,7 +204,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
                 onClick={() => setActiveTab(tab)}
                 role="tab"
                 aria-selected={activeTab === tab}
-                className={`relative px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded cursor-pointer ${
+                className={`relative px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded-none cursor-pointer ${
                   activeTab === tab
                     ? 'text-white'
                     : 'text-neutral-500 hover:text-neutral-300'
@@ -211,7 +212,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
               >
                 {getTabLabel(tab)}
                 <span
-                  className={`absolute inset-x-0 -bottom-px h-[3px] rounded-full transition-[width,background-color] duration-base ${
+                  className={`absolute inset-x-0 -bottom-px h-[3px] rounded-none transition-[width,background-color] duration-base ${
                     activeTab === tab ? 'bg-brand-orange scale-x-100' : 'bg-transparent scale-x-0'
                   } ease-apple`}
                 />
@@ -221,7 +222,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
           {showViewAll && (
             <button
               onClick={() => setIsModalOpen(true)}
-              className="p-1.5 text-neutral-500 hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-lg ease-apple"
+              className="p-1.5 text-neutral-500 hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-none ease-apple"
               aria-label="View all pages"
             >
               <FrameCornersIcon className="w-4 h-4" weight="bold" />
@@ -266,10 +267,10 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
                   <div
                     key={page.path}
                     onClick={() => onFilter?.({ dimension: 'page', operator: 'is', values: [page.path] })}
-                    className={`interactive-row relative overflow-hidden flex items-center justify-between h-9 group rounded-lg px-2 -mx-2${onFilter ? ' cursor-pointer' : ''}`}
+                    className={`interactive-row relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2${onFilter ? ' cursor-pointer' : ''}`}
                   >
                     <div
-                      className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.07] border-l-2 border-brand-orange/70 rounded-md transition-[width,background-color] ease-apple"
+                      className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.07] border-l-2 border-brand-orange/70 rounded-none transition-[width,background-color] ease-apple"
                       style={{ width: `${barWidth}%` }}
                     />
                     <div className="relative flex-1 truncate text-white flex items-center">
@@ -314,7 +315,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
         isOpen={isModalOpen}
         onClose={() => { setIsModalOpen(false); setModalSearch('') }}
         title={getTabLabel(activeTab)}
-        className="max-w-2xl max-h-[90vh] flex flex-col !bg-neutral-900/65 backdrop-blur-xl backdrop-saturate-150 supports-[backdrop-filter]:!bg-neutral-900/60 !border-neutral-800"
+        className="max-w-2xl max-h-[90vh] flex flex-col !bg-card !border-neutral-800"
       >
         <div>
           <input
@@ -322,7 +323,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
             value={modalSearch}
             onChange={(e) => setModalSearch(e.target.value)}
             placeholder="Search pages..."
-            className="w-full px-3 py-2 mb-3 text-sm bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
+            className="w-full px-3 py-2 mb-3 text-sm bg-neutral-800 border border-neutral-700 rounded-none text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
           />
         </div>
         <div className="flex-1 overflow-y-auto min-h-0">
@@ -366,7 +367,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
                     <div
                       key={page.path}
                       onClick={() => { if (canFilter) { onFilter({ dimension: 'page', operator: 'is', values: [page.path] }); setIsModalOpen(false) } }}
-                      className={`interactive-row flex items-center justify-between h-9 group rounded-lg px-2${canFilter ? ' cursor-pointer' : ''}`}
+                      className={`interactive-row flex items-center justify-between h-9 group rounded-none px-2${canFilter ? ' cursor-pointer' : ''}`}
                     >
                       <div className="flex-1 truncate text-white flex items-center">
                         <span className="truncate">{page.path}</span>

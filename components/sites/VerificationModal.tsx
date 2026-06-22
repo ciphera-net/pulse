@@ -8,10 +8,10 @@ import {
   CheckCircleIcon, 
   AlertTriangleIcon,
   ZapIcon 
-} from '@ciphera-net/ui'
+} from '@ciphera-net/facet'
 import { Site, verifySite } from '@/lib/api/sites'
 import { getRealtime } from '@/lib/api/stats'
-import { toast, Button } from '@ciphera-net/ui'
+import { toast, Button } from '@ciphera-net/facet'
 
 interface VerificationModalProps {
   isOpen: boolean
@@ -92,7 +92,7 @@ export default function VerificationModal({ isOpen, onClose, site, onVerified }:
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm"
+            className="fixed inset-0 z-[100] bg-card"
           />
 
           {/* Modal */}
@@ -101,7 +101,7 @@ export default function VerificationModal({ isOpen, onClose, site, onVerified }:
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="glass-surface w-full max-w-md rounded-xl shadow-xl pointer-events-auto overflow-hidden"
+              className="glass-surface w-full max-w-md rounded-none pointer-events-auto overflow-hidden border border-border"
             >
               {/* Header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-800">
@@ -110,7 +110,7 @@ export default function VerificationModal({ isOpen, onClose, site, onVerified }:
                 </h3>
                 <button
                   onClick={onClose}
-                  className="p-1 rounded-lg text-neutral-500 hover:bg-neutral-800 transition-colors ease-apple"
+                  className="p-1 rounded-none text-neutral-500 hover:bg-neutral-800 transition-colors ease-apple"
                 >
                   <XIcon className="w-5 h-5" />
                 </button>
@@ -120,8 +120,8 @@ export default function VerificationModal({ isOpen, onClose, site, onVerified }:
               <div className="p-6">
                 {status === 'idle' && (
                   <div className="space-y-4">
-                    <div className="p-4 rounded-xl bg-brand-orange/5 border border-brand-orange/10 flex gap-4">
-                      <div className="p-2 bg-brand-orange/10 rounded-lg h-fit text-brand-orange">
+                    <div className="p-4 rounded-none bg-brand-orange/5 border border-brand-orange/10 flex gap-4">
+                      <div className="p-2 bg-brand-orange/10 rounded-none h-fit text-brand-orange">
                         <ZapIcon className="w-5 h-5" />
                       </div>
                       <div className="space-y-1">
@@ -160,7 +160,7 @@ export default function VerificationModal({ isOpen, onClose, site, onVerified }:
 
                 {status === 'success' && (
                   <div className="flex flex-col items-center justify-center py-6 space-y-6">
-                    <div className="w-16 h-16 bg-green-900/20 rounded-full flex items-center justify-center text-green-400">
+                    <div className="w-16 h-16 bg-green-900/20 rounded-none flex items-center justify-center text-green-400">
                       <CheckCircleIcon className="w-8 h-8" />
                     </div>
                     <div className="text-center space-y-1">
@@ -180,7 +180,7 @@ export default function VerificationModal({ isOpen, onClose, site, onVerified }:
                 {status === 'error' && (
                   <div className="space-y-6">
                     <div className="flex flex-col items-center justify-center space-y-2 text-center">
-                      <div className="w-12 h-12 bg-red-900/20 rounded-full flex items-center justify-center text-red-400">
+                      <div className="w-12 h-12 bg-red-900/20 rounded-none flex items-center justify-center text-red-400">
                         <AlertTriangleIcon className="w-6 h-6" />
                       </div>
                       <h4 className="font-medium text-red-400">
@@ -188,7 +188,7 @@ export default function VerificationModal({ isOpen, onClose, site, onVerified }:
                       </h4>
                     </div>
 
-                    <div className="p-4 bg-neutral-800/50 rounded-xl border border-neutral-800">
+                    <div className="p-4 bg-card rounded-none border border-neutral-800">
                       <p className="text-sm font-medium text-white mb-2">
                         Troubleshooting Checklist:
                       </p>

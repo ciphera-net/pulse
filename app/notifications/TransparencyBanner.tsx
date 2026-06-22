@@ -20,7 +20,7 @@ export default function TransparencyBanner() {
   }
 
   return (
-    <div className="mb-4 rounded-lg border border-neutral-800 bg-white/[0.02] p-3 text-sm text-neutral-300 flex items-start gap-3">
+    <div className="mb-4 rounded-none border border-neutral-800 bg-white/[0.02] p-3 text-sm text-neutral-300 flex items-start gap-3">
       <span className="shrink-0 text-brand-orange mt-0.5" aria-hidden="true">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="12" r="10" />

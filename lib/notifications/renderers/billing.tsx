@@ -1,5 +1,6 @@
 import type { Receipt } from '@/lib/notifications/types'
 import type { Rendered, Resolvers } from './index'
+import { formatDate } from '@/lib/utils/formatDate'
 
 function formatMoney(amountCents: number, currency: string): string {
   return new Intl.NumberFormat('en', { style: 'currency', currency }).format(amountCents / 100)
@@ -11,7 +12,7 @@ export const billingRenderers = {
     const title = p.invoice_id ? `Payment failed — Invoice #${p.invoice_id}` : 'Payment failed'
     const amount = formatMoney(p.amount, p.currency)
     const reason = p.error_code ? ` (${p.error_code})` : ''
-    const retryDate = p.retry_at && !p.retry_at.startsWith('0001') ? `. We'll retry on ${new Date(p.retry_at).toLocaleDateString('en', { month: 'short', day: 'numeric' })}` : ''
+    const retryDate = p.retry_at && !p.retry_at.startsWith('0001') ? `. We'll retry on ${formatDate(new Date(p.retry_at))}` : ''
     return {
       title,
       body: `Your payment of ${amount} could not be processed${reason}${retryDate}. Please update your payment method.`,
@@ -20,7 +21,7 @@ export const billingRenderers = {
   },
   billing_plan_renewed: (r: Receipt, _resolvers?: Resolvers): Rendered => {
     const p = r.event.payload as { plan_id: string; next_billing_at: string }
-    const when = new Date(p.next_billing_at).toLocaleDateString('en', { month: 'long', day: 'numeric' })
+    const when = formatDate(new Date(p.next_billing_at))
     return {
       title: 'Your plan renewed',
       body: `Next billing date: ${when}.`,

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast, getAuthErrorMessage, AlertTriangleIcon, XIcon } from '@ciphera-net/ui'
+import { toast, getAuthErrorMessage, AlertTriangleIcon, XIcon } from '@ciphera-net/facet'
 import { deleteSite, permanentDeleteSite } from '@/lib/api/sites'
 
 interface DeleteSiteModalProps {
@@ -75,13 +75,13 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[70] flex items-center justify-center bg-neutral-900/80 backdrop-blur-sm p-4 pointer-events-none"
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-popover p-4 pointer-events-none"
         >
           <motion.div
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
-            className="w-full max-w-sm bg-neutral-900 p-6 rounded-xl border border-red-900 shadow-xl pointer-events-auto"
+            className="w-full max-w-sm bg-neutral-900 p-6 rounded-none border border-red-900 pointer-events-auto"
           >
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-red-500">Delete {siteName || 'Site'}?</h3>
@@ -100,13 +100,13 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
                 </p>
 
                 <div className="mb-5 space-y-2">
-                  <div className="flex items-center gap-3 p-3 bg-red-900/10 border border-red-900/20 rounded-lg">
+                  <div className="flex items-center gap-3 p-3 bg-red-900/10 border border-red-900/20 rounded-none">
                     <AlertTriangleIcon className="h-4 w-4 text-red-500 shrink-0" />
                     <span className="text-sm font-medium text-red-300">
                       All events and analytics data
                     </span>
                   </div>
-                  <div className="flex items-center gap-3 p-3 bg-red-900/10 border border-red-900/20 rounded-lg">
+                  <div className="flex items-center gap-3 p-3 bg-red-900/10 border border-red-900/20 rounded-none">
                     <AlertTriangleIcon className="h-4 w-4 text-red-500 shrink-0" />
                     <span className="text-sm font-medium text-red-300">
                       Report schedules and goals
@@ -124,7 +124,7 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
                       value={deleteConfirm}
                       onChange={(e) => setDeleteConfirm(e.target.value)}
                       autoComplete="off"
-                      className="w-full px-3 py-2 text-sm border border-neutral-700 rounded-lg bg-neutral-800 text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-red-400"
+                      className="w-full px-3 py-2 text-sm border border-neutral-700 rounded-none bg-neutral-800 text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-red-400"
                       placeholder="DELETE"
                     />
                   </div>
@@ -133,7 +133,7 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
                     <button
                       type="button"
                       onClick={handleClose}
-                      className="flex-1 px-4 py-2 text-sm font-medium text-neutral-300 hover:bg-neutral-800 rounded-xl transition-colors ease-apple"
+                      className="flex-1 px-4 py-2 text-sm font-medium text-neutral-300 hover:bg-neutral-800 rounded-none transition-colors ease-apple"
                       disabled={isDeleting}
                     >
                       Cancel
@@ -141,7 +141,7 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
                     <button
                       onClick={handleSoftDelete}
                       disabled={deleteConfirm !== 'DELETE' || isDeleting}
-                      className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700  rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed ease-apple"
+                      className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed ease-apple"
                     >
                       {isDeleting ? 'Deleting...' : 'Schedule Deletion'}
                     </button>
@@ -163,13 +163,13 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
                 </p>
 
                 <div className="mb-5 space-y-2">
-                  <div className="flex items-center gap-3 p-3 bg-red-900/10 border border-red-900/20 rounded-lg">
+                  <div className="flex items-center gap-3 p-3 bg-red-900/10 border border-red-900/20 rounded-none">
                     <AlertTriangleIcon className="h-4 w-4 text-red-500 shrink-0" />
                     <span className="text-sm font-medium text-red-300">
                       All analytics data will be permanently lost
                     </span>
                   </div>
-                  <div className="flex items-center gap-3 p-3 bg-red-900/10 border border-red-900/20 rounded-lg">
+                  <div className="flex items-center gap-3 p-3 bg-red-900/10 border border-red-900/20 rounded-none">
                     <AlertTriangleIcon className="h-4 w-4 text-red-500 shrink-0" />
                     <span className="text-sm font-medium text-red-300">
                       This cannot be undone
@@ -187,7 +187,7 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
                       value={permanentConfirm}
                       onChange={(e) => setPermanentConfirm(e.target.value)}
                       autoComplete="off"
-                      className="w-full px-3 py-2 text-sm border border-neutral-700 rounded-lg bg-neutral-800 text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-red-400"
+                      className="w-full px-3 py-2 text-sm border border-neutral-700 rounded-none bg-neutral-800 text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-red-400"
                       placeholder={siteDomain}
                     />
                   </div>
@@ -203,7 +203,7 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
                           setPermanentConfirm('')
                         }
                       }}
-                      className="flex-1 px-4 py-2 text-sm font-medium text-neutral-300 hover:bg-neutral-800 rounded-xl transition-colors ease-apple"
+                      className="flex-1 px-4 py-2 text-sm font-medium text-neutral-300 hover:bg-neutral-800 rounded-none transition-colors ease-apple"
                       disabled={isPermanentDeleting}
                     >
                       {permanentOnly ? 'Cancel' : 'Back'}
@@ -211,7 +211,7 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
                     <button
                       onClick={handlePermanentDelete}
                       disabled={permanentConfirm !== siteDomain || isPermanentDeleting}
-                      className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700  rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed ease-apple"
+                      className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed ease-apple"
                     >
                       {isPermanentDeleting ? 'Deleting...' : 'Delete Forever'}
                     </button>

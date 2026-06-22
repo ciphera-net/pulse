@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
-import { Button, Checkbox, Input } from '@ciphera-net/ui'
+import { Button, Input } from '@ciphera-net/facet'
+import { Checkbox } from '@/components/ui/checkbox'
 import { createWebhook, testWebhook } from '@/lib/api/notifications-webhooks'
 import {
   Dialog,
@@ -133,7 +134,7 @@ export default function WebhookFormModal({ onClose, onCreated }: Props) {
               Cancel
             </Button>
             <Button
-              variant="primary"
+              variant="default"
               onClick={handleSave}
               disabled={busy || !url || selected.length === 0}
             >

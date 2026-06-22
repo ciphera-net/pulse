@@ -2,13 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button, Input, toast, Spinner, Modal } from '@ciphera-net/ui'
+import { Button, Input, toast, Spinner, Modal } from '@ciphera-net/facet'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { CreditCard, DownloadSimple, ArrowRight, WarningCircle, PencilSimple } from '@phosphor-icons/react'
 import { useSubscription } from '@/lib/swr/dashboard'
 import { updatePaymentMethod, cancelSubscription, resumeSubscription, getInvoices, downloadInvoicePDF, updateBillingSettings, type Invoice } from '@/lib/api/billing'
 import { formatDateLong, formatDate } from '@/lib/utils/formatDate'
-import { getAuthErrorMessage } from '@ciphera-net/ui'
+import { getAuthErrorMessage } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
 import { useCan } from '@/lib/auth/permissions'
 
@@ -132,7 +132,7 @@ export default function WorkspaceBillingTab() {
         <CreditCard className="w-10 h-10 text-neutral-500 mx-auto mb-3" />
         <h3 className="text-base font-semibold text-white mb-1">No subscription</h3>
         <p className="text-sm text-neutral-400 mb-4">You're on the Hobby plan.</p>
-        <Button variant="primary" className="text-sm" onClick={() => router.push('/switch')}>View Plans</Button>
+        <Button variant="default" className="text-sm" onClick={() => router.push('/switch')}>View Plans</Button>
       </div>
     )
   }
@@ -155,28 +155,28 @@ export default function WorkspaceBillingTab() {
       </div>
 
       {/* Plan card */}
-      <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 p-4">
+      <div className="rounded-none border border-neutral-800 bg-neutral-800/30 p-4">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <h4 className="text-lg font-bold text-white">{planLabel} Plan</h4>
             {isActive && !subscription.cancel_at_period_end && (
-              <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-green-900/30 text-green-400 border border-green-900/50">
+              <span className="px-2 py-0.5 text-xs font-medium rounded-none bg-green-900/30 text-green-400 border border-green-900/50">
                 Active
               </span>
             )}
             {subscription.subscription_status === 'canceled' && (
-              <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-red-900/30 text-red-400 border border-red-900/50">
+              <span className="px-2 py-0.5 text-xs font-medium rounded-none bg-red-900/30 text-red-400 border border-red-900/50">
                 Cancelled
               </span>
             )}
             {subscription.cancel_at_period_end && subscription.subscription_status !== 'canceled' && (
-              <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-900/30 text-yellow-400 border border-yellow-900/50">
+              <span className="px-2 py-0.5 text-xs font-medium rounded-none bg-yellow-900/30 text-yellow-400 border border-yellow-900/50">
                 Cancelling
               </span>
             )}
           </div>
           {canManageBilling ? (
-            <Button variant="primary" className="text-sm" onClick={() => router.push(isCanceled ? '/setup/plan' : '/switch')}>
+            <Button variant="default" className="text-sm" onClick={() => router.push(isCanceled ? '/setup/plan' : '/switch')}>
               {isCanceled ? 'Resubscribe' : 'Change Plan'}
             </Button>
           ) : (
@@ -185,7 +185,7 @@ export default function WorkspaceBillingTab() {
         </div>
 
         {isCanceled ? (
-          <div className="flex items-start gap-3 p-3 rounded-lg bg-red-900/20 border border-red-900/40 text-sm">
+          <div className="flex items-start gap-3 p-3 rounded-none bg-red-900/20 border border-red-900/40 text-sm">
             <WarningCircle size={16} weight="fill" className="text-red-400 shrink-0 mt-0.5" />
             <p className="text-red-300">
               Your {planLabel} plan has expired. You&apos;re now limited to 5,000 pageviews/month on the free tier.
@@ -225,7 +225,7 @@ export default function WorkspaceBillingTab() {
 
       {/* Account credit */}
       {subscription.credit_balance != null && subscription.credit_balance > 0 && (
-        <div className="rounded-lg border border-green-500/20 bg-green-500/5 px-4 py-3 flex items-center justify-between">
+        <div className="rounded-none border border-green-500/20 bg-green-500/5 px-4 py-3 flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-green-400">Account credit</p>
             <p className="text-xs text-neutral-500">Automatically applied to your next invoice</p>
@@ -236,7 +236,7 @@ export default function WorkspaceBillingTab() {
 
       {/* Pending plan change notice */}
       {subscription.pending_plan_id && (
-        <div className="flex items-center gap-3 p-3 rounded-lg bg-blue-900/20 border border-blue-900/40 text-sm mt-4">
+        <div className="flex items-center gap-3 p-3 rounded-none bg-blue-900/20 border border-blue-900/40 text-sm mt-4">
           <ArrowRight size={16} className="text-blue-400 shrink-0" />
           <p className="text-blue-300">
             Switching to <span className="font-semibold text-white">{subscription.pending_plan_id.charAt(0).toUpperCase() + subscription.pending_plan_id.slice(1)} Plan</span>
@@ -247,7 +247,7 @@ export default function WorkspaceBillingTab() {
       )}
 
       {subscription.payment_failed_at && (
-        <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-900/20 border border-amber-900/40 text-sm mt-4">
+        <div className="flex items-start gap-3 p-3 rounded-none bg-amber-900/20 border border-amber-900/40 text-sm mt-4">
           <WarningCircle size={16} weight="fill" className="text-amber-400 shrink-0 mt-0.5" />
           <p className="text-amber-300">
             Your last payment could not be processed.{' '}
@@ -299,13 +299,13 @@ export default function WorkspaceBillingTab() {
             <button
               key={method.id}
               onClick={() => setSelectedPaymentMethod(method.id)}
-              className={`flex flex-col items-center justify-center gap-1.5 rounded-xl border h-[60px] text-xs transition-all duration-base ${
+              className={`flex flex-col items-center justify-center gap-1.5 rounded-none border h-[60px] text-xs transition-all duration-base ${
                 selectedPaymentMethod === method.id
                   ? 'border-brand-orange bg-brand-orange/5 text-white'
                   : 'border-neutral-700/50 bg-neutral-800/30 text-neutral-400 hover:border-neutral-600'
               } ease-apple`}
             >
-              <div className="flex items-center gap-1 bg-white rounded-md px-1.5 py-1">
+              <div className="flex items-center gap-1 bg-white rounded-none px-1.5 py-1">
                 {method.icons.map((icon) => (
                   <img key={icon} src={cdnUrl(icon)} alt="" className="h-5 w-auto" />
                 ))}
@@ -315,7 +315,7 @@ export default function WorkspaceBillingTab() {
           ))}
         </div>
         <Button
-          variant="primary"
+          variant="default"
           className="w-full text-sm"
           onClick={() => { setShowPaymentMethodModal(false); handleUpdatePayment(selectedPaymentMethod) }}
           disabled={!selectedPaymentMethod}
@@ -339,7 +339,7 @@ export default function WorkspaceBillingTab() {
             Keep plan
           </Button>
           <Button
-            variant="primary"
+            variant="default"
             className="text-sm bg-red-600 hover:bg-red-700 border-red-600 hover:border-red-700"
             onClick={handleCancel}
             disabled={cancelling}
@@ -360,7 +360,7 @@ export default function WorkspaceBillingTab() {
                   <TooltipTrigger asChild>
                     <button
                       onClick={handleEditBilling}
-                      className="p-1.5 rounded-md hover:bg-neutral-800 text-neutral-500 hover:text-neutral-300 transition-colors"
+                      className="p-1.5 rounded-none hover:bg-neutral-800 text-neutral-500 hover:text-neutral-300 transition-colors"
                     >
                       <PencilSimple size={14} />
                     </button>
@@ -428,7 +428,7 @@ export default function WorkspaceBillingTab() {
               )}
 
               <div className="flex gap-2">
-                <Button variant="primary" className="text-sm" onClick={handleSaveBilling} disabled={savingBilling}>
+                <Button variant="default" className="text-sm" onClick={handleSaveBilling} disabled={savingBilling}>
                   {savingBilling ? 'Saving...' : 'Save'}
                 </Button>
                 <Button variant="secondary" className="text-sm" onClick={() => setEditingBilling(false)} disabled={savingBilling}>
@@ -463,14 +463,14 @@ export default function WorkspaceBillingTab() {
 
       {/* Recent Invoices */}
       {invoicesError ? (
-        <div className="rounded-xl border border-red-900/50 bg-red-950/20 p-6 text-center pt-6 border-t border-neutral-800">
+        <div className="rounded-none border border-red-900/50 bg-red-950/20 p-6 text-center pt-6 border-t border-neutral-800">
           <p className="text-red-400 text-sm mb-4">{invoicesError}</p>
           <Button variant="secondary" onClick={() => { setInvoicesError(null); setInvoicesRetry(c => c + 1) }}>Retry</Button>
         </div>
       ) : invoices.length > 0 && (
         <div className="pt-6 border-t border-neutral-800 space-y-2">
           <h4 className="text-sm font-medium text-neutral-300">Recent Invoices</h4>
-          <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
+          <div className="rounded-none border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
             {invoices.map(invoice => {
               const isCreditNote = invoice.document_type === 'credit_note'
               const fmt = new Intl.NumberFormat('en-GB', { style: 'currency', currency: invoice.currency || 'EUR' })
@@ -488,11 +488,11 @@ export default function WorkspaceBillingTab() {
                   </div>
                   <div className="flex items-center gap-2">
                     {isCreditNote ? (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-blue-900/30 text-blue-400">
+                      <span className="text-xs px-2 py-0.5 rounded-none bg-blue-900/30 text-blue-400">
                         Credit Note
                       </span>
                     ) : (
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${invoice.status === 'sent' ? 'bg-green-900/30 text-green-400' : 'bg-neutral-800 text-neutral-400'}`}>
+                      <span className={`text-xs px-2 py-0.5 rounded-none ${invoice.status === 'sent' ? 'bg-green-900/30 text-green-400' : 'bg-neutral-800 text-neutral-400'}`}>
                         {invoice.status === 'sent' ? 'Paid' : invoice.status}
                       </span>
                     )}
@@ -502,7 +502,7 @@ export default function WorkspaceBillingTab() {
                           <TooltipTrigger asChild>
                             <button
                               onClick={() => downloadInvoicePDF(invoice.id).catch(() => toast.error('PDF not available yet'))}
-                              className="p-1.5 rounded-md hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors ease-apple"
+                              className="p-1.5 rounded-none hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors ease-apple"
                             >
                               <DownloadSimple size={16} />
                             </button>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useAuth } from '@/lib/auth/context'
-import { ProfileSettings as SharedProfileSettings } from '@ciphera-net/ui'
+import { ProfileSettings as SharedProfileSettings } from '@ciphera-net/facet'
 import api from '@/lib/api/client'
 import { deriveAuthKey } from '@/lib/crypto/password'
 import { deleteAccount, getUserSessions, revokeSession, updateUserPreferences, updateDisplayName } from '@/lib/api/user'

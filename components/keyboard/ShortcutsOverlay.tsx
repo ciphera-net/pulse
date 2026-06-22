@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { XIcon } from '@ciphera-net/ui'
+import { XIcon } from '@ciphera-net/facet'
 import { SPRING, TIMING } from '@/lib/motion'
 
 interface ShortcutsOverlayProps {
@@ -38,7 +38,7 @@ const ACTIONS: ShortcutRow[] = [
 
 function Kbd({ label }: { label: string }) {
   return (
-    <kbd className="inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-md bg-neutral-800/70 border border-neutral-800 text-xs font-medium text-neutral-300 font-mono">
+    <kbd className="inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-none bg-neutral-800/70 border border-neutral-800 text-xs font-medium text-neutral-300 font-mono">
       {label}
     </kbd>
   )
@@ -88,7 +88,7 @@ export function ShortcutsOverlay({ open, onClose }: ShortcutsOverlayProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={TIMING}
-            className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 z-[100] bg-black/50"
             onClick={onClose}
           />
           <motion.div
@@ -98,13 +98,13 @@ export function ShortcutsOverlay({ open, onClose }: ShortcutsOverlayProps) {
             transition={SPRING}
             className="fixed inset-0 z-[101] flex items-center justify-center p-4 pointer-events-none"
           >
-            <div className="pointer-events-auto w-full max-w-2xl glass-overlay rounded-xl shadow-2xl overflow-hidden">
+            <div className="pointer-events-auto w-full max-w-2xl bg-card border border-border rounded-none overflow-hidden">
               <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-800">
                 <h2 className="text-title-2 font-semibold text-white">Keyboard shortcuts</h2>
                 <button
                   type="button"
                   onClick={onClose}
-                  className="text-neutral-400 hover:text-white transition-colors duration-fast ease-apple p-1 rounded-md cursor-pointer"
+                  className="text-neutral-400 hover:text-white transition-colors duration-fast ease-apple p-1 rounded-none cursor-pointer"
                   aria-label="Close"
                 >
                   <XIcon className="w-5 h-5" />

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { useSites } from '@/lib/swr/sites'
-import { toast } from '@ciphera-net/ui'
+import { toast } from '@ciphera-net/facet'
 import { CaretDown } from '@phosphor-icons/react'
 import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
 import { useCan, type Permission } from '@/lib/auth/permissions'
@@ -118,12 +118,12 @@ export default function SiteSettingsTabPage() {
       <div data-site-picker>
         <button
           onClick={() => setPickerOpen(!pickerOpen)}
-          className="w-full flex items-center gap-3 px-4 py-3 mb-6 rounded-xl border border-neutral-800 bg-neutral-800/30 hover:border-neutral-700 transition-colors ease-apple cursor-pointer"
+          className="w-full flex items-center gap-3 px-4 py-3 mb-6 rounded-none border border-neutral-800 bg-neutral-800/30 hover:border-neutral-700 transition-colors ease-apple cursor-pointer"
         >
           <img
             src={`${FAVICON_SERVICE_URL}?domain=${activeSite.domain}&sz=64`}
             alt=""
-            className="w-6 h-6 rounded object-contain shrink-0"
+            className="w-6 h-6 rounded-none object-contain shrink-0"
           />
           <div className="flex flex-col items-start min-w-0">
             <span className="text-sm font-medium text-white truncate">{activeSite.name}</span>
@@ -135,14 +135,14 @@ export default function SiteSettingsTabPage() {
         </button>
 
         {pickerOpen && sites.length > 1 && (
-          <div className="mb-6 -mt-4 rounded-xl border border-neutral-800 bg-neutral-900 overflow-hidden">
+          <div className="mb-6 -mt-4 rounded-none border border-neutral-800 bg-card border-border overflow-hidden">
             <div className="p-2">
               <input
                 type="text"
                 placeholder="Search sites..."
                 value={siteSearch}
                 onChange={(e) => setSiteSearch(e.target.value)}
-                className="w-full px-3 py-1.5 text-sm bg-white/[0.04] border border-neutral-800 rounded-lg outline-none focus:ring-2 focus:ring-brand-orange/40 text-white placeholder:text-neutral-400"
+                className="w-full px-3 py-1.5 text-sm bg-white/[0.04] border border-neutral-800 rounded-none outline-none focus:ring-2 focus:ring-brand-orange/40 text-white placeholder:text-neutral-400"
                 autoFocus
               />
             </div>
@@ -165,7 +165,7 @@ export default function SiteSettingsTabPage() {
                   <img
                     src={`${FAVICON_SERVICE_URL}?domain=${site.domain}&sz=64`}
                     alt=""
-                    className="w-5 h-5 rounded object-contain shrink-0"
+                    className="w-5 h-5 rounded-none object-contain shrink-0"
                   />
                   <span className="flex flex-col min-w-0">
                     <span className="truncate">{site.name}</span>

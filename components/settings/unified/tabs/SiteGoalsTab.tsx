@@ -1,13 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { Input, Button, toast, Spinner } from '@ciphera-net/ui'
+import { Input, Button, toast, Spinner } from '@ciphera-net/facet'
 import { Plus, Pencil, Trash, X, Target } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useGoals } from '@/lib/swr/dashboard'
 import { createGoal, updateGoal, deleteGoal } from '@/lib/api/goals'
-import { getAuthErrorMessage } from '@ciphera-net/ui'
+import { getAuthErrorMessage } from '@ciphera-net/facet'
 import { useCan } from '@/lib/auth/permissions'
 
 export default function SiteGoalsTab({ siteId }: { siteId: string }) {
@@ -95,7 +95,7 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
           <p className="text-sm text-neutral-400">Track custom events as conversion goals.</p>
         </div>
         {!creating && !editing && canManageGoals && (
-          <Button onClick={startCreate} variant="primary" className="text-sm gap-1.5">
+          <Button onClick={startCreate} variant="default" className="text-sm gap-1.5">
             <Plus weight="bold" className="w-3.5 h-3.5" /> Add Goal
           </Button>
         )}
@@ -103,7 +103,7 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
 
       {/* Create/Edit form */}
       {(creating || editing) && (
-        <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 p-4 space-y-3">
+        <div className="rounded-none border border-neutral-800 bg-neutral-800/30 p-4 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-neutral-400 mb-1">Display Name</label>
@@ -125,7 +125,7 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
           </div>
           <div className="flex items-center gap-2 justify-end">
             <Button onClick={cancel} variant="secondary" className="text-sm">Cancel</Button>
-            <Button onClick={handleSave} variant="primary" className="text-sm" disabled={saving}>
+            <Button onClick={handleSave} variant="default" className="text-sm" disabled={saving}>
               {saving ? 'Saving...' : editing ? 'Update' : 'Create'}
             </Button>
           </div>
@@ -142,7 +142,7 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
           className="py-8"
         />
       ) : (
-        <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
+        <div className="rounded-none border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
           {goals.map(goal => (
             <div
               key={goal.id}

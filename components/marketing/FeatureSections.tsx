@@ -62,7 +62,7 @@ function FeatureSection({
           className={`relative ${reverse ? 'lg:order-first' : ''}`}
         >
           {showBg && <div className="absolute -inset-8 bg-brand-orange/8 rounded-[2.5rem] blur-3xl" />}
-          <div className={`relative rounded-3xl overflow-hidden ${showBg ? 'border border-white/[0.08]' : 'glass-surface'}`}>
+          <div className={`relative rounded-none overflow-hidden ${showBg ? 'border border-white/[0.08]' : 'glass-surface'}`}>
             {showBg && (
               <>
                 <img src={cdnUrl('/pulse-showcase-bg.png')} alt="" className="absolute inset-0 w-full h-full object-cover" />

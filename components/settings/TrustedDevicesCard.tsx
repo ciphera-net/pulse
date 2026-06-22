@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/lib/auth/context'
 import { getUserDevices, removeDevice, type TrustedDevice } from '@/lib/api/devices'
-import { Button, Spinner, toast, getAuthErrorMessage } from '@ciphera-net/ui'
+import { Button, Spinner, toast, getAuthErrorMessage } from '@ciphera-net/facet'
 import { Laptop } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -70,11 +70,11 @@ export default function TrustedDevicesCard() {
           <Spinner />
         </div>
       ) : error ? (
-        <div className="rounded-xl border border-red-900/50 bg-red-950/20 p-6 text-center">
+        <div className="rounded-none border border-red-900/50 bg-red-950/20 p-6 text-center">
           <p className="text-red-400">{error}</p>
         </div>
       ) : devices.length === 0 ? (
-        <div className="glass-surface rounded-xl">
+        <div className="bg-card border border-border">
           <EmptyState
             title="No trusted devices yet"
             description="Devices are added automatically the first time you sign in and verify your session."
@@ -82,13 +82,13 @@ export default function TrustedDevicesCard() {
           />
         </div>
       ) : (
-        <div className="rounded-xl border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
+        <div className="rounded-none border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
           {devices.map((device) => (
             <div
               key={device.id}
               className="flex items-center gap-3 px-4 py-3 group"
             >
-              <div className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center bg-neutral-800 text-neutral-400">
+              <div className="flex-shrink-0 w-9 h-9 rounded-none flex items-center justify-center bg-neutral-800 text-neutral-400">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d={getDeviceIcon(device.display_hint)} />
                 </svg>
@@ -100,7 +100,7 @@ export default function TrustedDevicesCard() {
                     {device.display_hint || 'Unknown device'}
                   </span>
                   {device.is_current && (
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-green-950/40 text-green-400 flex-shrink-0">
+                    <span className="text-xs px-1.5 py-0.5 rounded-none bg-green-950/40 text-green-400 flex-shrink-0">
                       This device
                     </span>
                   )}

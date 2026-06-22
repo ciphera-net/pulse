@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Button, Input, Select, toast } from '@ciphera-net/ui'
-import { Spinner } from '@ciphera-net/ui'
+import { Button, Input, toast } from '@ciphera-net/facet'
+import Select from '@/components/ui/select'
+import { Spinner } from '@ciphera-net/facet'
 import { useAuth } from '@/lib/auth/context'
 import { useCan } from '@/lib/auth/permissions'
 import { getOrganization, updateOrganization, deleteOrganization, getOrganizationMembers, transferOwnership, type OrganizationMember } from '@/lib/api/organization'
-import { getAuthErrorMessage } from '@ciphera-net/ui'
+import { getAuthErrorMessage } from '@ciphera-net/facet'
 import { DangerZone } from '@/components/settings/unified/DangerZone'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 
@@ -109,7 +110,7 @@ export default function WorkspaceGeneralTab() {
 
   if (error) {
     return (
-      <div className="rounded-xl border border-red-900/50 bg-red-950/20 p-6 text-center">
+      <div className="rounded-none border border-red-900/50 bg-red-950/20 p-6 text-center">
         <p className="text-red-400 text-sm mb-4">{error}</p>
         <Button variant="secondary" onClick={() => { setError(null); hasInitialized.current = false; setRetryCount(c => c + 1) }}>Retry</Button>
       </div>
@@ -167,7 +168,7 @@ export default function WorkspaceGeneralTab() {
         ]}
       >
         {showTransferConfirm && (
-          <div className="p-4 border border-red-900/50 bg-red-900/10 rounded-xl space-y-3">
+          <div className="p-4 border border-red-900/50 bg-red-900/10 rounded-none space-y-3">
             <p className="text-sm text-neutral-300">Select a member to become the new owner. You will be demoted to a regular member immediately.</p>
             {members.length === 0 ? (
               <p className="text-xs text-neutral-500">No other members are available. Invite and verify a member first.</p>
@@ -207,7 +208,7 @@ export default function WorkspaceGeneralTab() {
           </div>
         )}
         {showDeleteConfirm && (
-          <div className="p-4 border border-red-900/50 bg-red-900/10 rounded-xl space-y-3">
+          <div className="p-4 border border-red-900/50 bg-red-900/10 rounded-none space-y-3">
             <p className="text-sm text-red-300">This will permanently delete:</p>
             <ul className="text-xs text-neutral-400 list-disc list-inside space-y-1">
               <li>All sites and their analytics data</li>

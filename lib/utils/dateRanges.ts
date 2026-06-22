@@ -1,4 +1,4 @@
-import { getDateRange, formatDate } from '@ciphera-net/ui'
+import { getDateRange, formatDate } from '@/lib/utils/format'
 
 /** Monday–today range for "This week" option */
 export function getThisWeekRange(): { start: string; end: string } {

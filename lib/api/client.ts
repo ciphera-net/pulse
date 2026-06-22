@@ -3,7 +3,7 @@
  * Includes Request ID propagation for debugging across services
  */
 
-import { authMessageFromStatus, AUTH_ERROR_MESSAGES } from '@ciphera-net/ui'
+import { authMessageFromStatus, AUTH_ERROR_MESSAGES } from '@ciphera-net/facet'
 import { generateRequestId, getRequestIdHeader, setLastRequestId } from '@/lib/utils/requestId'
 import { env } from '@/lib/env'
 

@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
-import { Input, Select, toast, getAuthErrorMessage } from '@ciphera-net/ui'
+import { Input, toast, getAuthErrorMessage } from '@ciphera-net/facet'
+import Select from '@/components/ui/select'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { getPrefs, updatePrefs, type Preferences } from '@/lib/api/notifications-preferences'
 import { purgeMine } from '@/lib/api/notifications-v2'
@@ -98,7 +99,7 @@ export default function MyPreferencesTab() {
         <button
           type="button"
           onClick={() => setPurging(true)}
-          className="px-4 py-2 text-sm rounded border border-red-500/30 text-red-400 hover:bg-red-500/10"
+          className="px-4 py-2 text-sm rounded-none border border-red-500/30 text-red-400 hover:bg-red-500/10"
         >
           Delete all my notification history
         </button>

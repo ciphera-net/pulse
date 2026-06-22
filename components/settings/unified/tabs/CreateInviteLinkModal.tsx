@@ -1,10 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { Button, Checkbox, Input, Select, toast } from '@ciphera-net/ui'
+import { Button, Input, toast } from '@ciphera-net/facet'
+import { Checkbox } from '@/components/ui/checkbox'
+import Select from '@/components/ui/select'
 import { Copy, Check } from '@phosphor-icons/react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { getAuthErrorMessage } from '@ciphera-net/ui'
+import { getAuthErrorMessage } from '@ciphera-net/facet'
 import { createInviteLink, type InviteLink } from '@/lib/api/organization'
 import { type Role } from '@/lib/api/roles'
 import { useSites } from '@/lib/swr/sites'
@@ -146,11 +148,11 @@ export default function CreateInviteLinkModal({ orgId, roles, open, onOpenChange
                 <p className="text-xs text-neutral-400 mt-0.5">Share this link with people you want to invite</p>
               </div>
             </div>
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-neutral-800/50 border border-neutral-700">
+            <div className="flex items-center gap-2 p-3 rounded-none bg-neutral-800/50 border border-neutral-700">
               <p className="flex-1 text-xs text-neutral-300 font-mono truncate">{created.url}</p>
               <button
                 onClick={handleCopy}
-                className="flex-shrink-0 p-1.5 rounded-md text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors"
+                className="flex-shrink-0 p-1.5 rounded-none text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors"
               >
                 {copied
                   ? <Check weight="bold" className="w-4 h-4 text-green-400" />
@@ -235,7 +237,7 @@ export default function CreateInviteLinkModal({ orgId, roles, open, onOpenChange
               </Button>
               <Button
                 onClick={handleCreate}
-                variant="primary"
+                variant="default"
                 className="text-sm"
                 disabled={submitting || !name.trim() || !roleId}
               >

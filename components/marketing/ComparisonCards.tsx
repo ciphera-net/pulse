@@ -55,11 +55,11 @@ export default function ComparisonCards() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="glass-surface rounded-2xl border-brand-orange/20 p-8 relative overflow-hidden"
+            className="glass-surface rounded-none border-brand-orange/20 p-8 relative overflow-hidden"
           >
             <div className="absolute top-0 left-0 right-0 h-[3px] bg-brand-orange" />
             <div className="flex items-center gap-3 mb-6">
-              <Image src={cdnUrl('/pulse_icon_no_margins.png')} alt="Pulse" width={40} height={40} className="rounded-lg" unoptimized />
+              <Image src={cdnUrl('/pulse_icon_no_margins.png')} alt="Pulse" width={40} height={40} className="rounded-none" unoptimized />
               <div>
                 <h3 className="text-xl font-bold text-white">Pulse</h3>
                 <p className="text-xs text-brand-orange">Privacy-first analytics</p>
@@ -81,10 +81,10 @@ export default function ComparisonCards() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="glass-surface rounded-2xl p-8"
+            className="glass-surface rounded-none p-8"
           >
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-lg bg-neutral-800 flex items-center justify-center text-lg">
+              <div className="w-10 h-10 rounded-none bg-neutral-800 flex items-center justify-center text-lg">
                 📊
               </div>
               <div>

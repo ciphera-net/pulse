@@ -19,7 +19,7 @@ export default function SettingsSections({ sections }: { sections: Section[] }) 
         <button
           key={section.id}
           onClick={() => scrollTo(section.id)}
-          className="px-2.5 py-1 text-xs font-medium text-neutral-400 hover:text-white hover:bg-white/[0.06] rounded-md transition-colors ease-apple cursor-pointer"
+          className="px-2.5 py-1 text-xs font-medium text-neutral-400 hover:text-white hover:bg-white/[0.06] rounded-none transition-colors ease-apple cursor-pointer"
         >
           {section.label}
         </button>

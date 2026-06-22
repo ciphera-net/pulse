@@ -1,6 +1,6 @@
 'use client'
 
-import { formatNumber } from '@ciphera-net/ui'
+import { formatNumber } from '@/lib/utils/format'
 import { Files } from '@phosphor-icons/react'
 import type { FrustrationByPage } from '@/lib/api/stats'
 import { TableSkeleton } from '@/components/skeletons'
@@ -15,7 +15,7 @@ export default function FrustrationByPageTable({ pages, loading }: FrustrationBy
   const maxTotal = Math.max(...pages.map(p => p.total), 1)
 
   return (
-    <div className="glass-surface rounded-xl p-6 mb-8">
+    <div className="glass-surface rounded-none p-6 mb-8">
       <div className="flex items-center justify-between mb-1">
         <h3 className="text-lg font-semibold text-white">
           Frustration by Page
@@ -47,11 +47,11 @@ export default function FrustrationByPageTable({ pages, loading }: FrustrationBy
               return (
                 <div
                   key={page.page_path}
-                  className="relative flex items-center justify-between h-9 group hover:bg-neutral-800 rounded-lg px-2 -mx-2 transition-colors ease-apple"
+                  className="relative flex items-center justify-between h-9 group hover:bg-neutral-800 rounded-none px-2 -mx-2 transition-colors ease-apple"
                 >
                   {/* Background bar */}
                   <div
-                    className="absolute inset-y-0 left-0 bg-brand-orange/25 rounded-lg transition-[width] ease-apple"
+                    className="absolute inset-y-0 left-0 bg-brand-orange/25 rounded-none transition-[width] ease-apple"
                     style={{ width: `${barWidth}%` }}
                   />
                   <span

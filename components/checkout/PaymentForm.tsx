@@ -82,7 +82,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId, bus
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-xl glass-surface p-6">
+    <form onSubmit={handleSubmit} className="rounded-none bg-card border border-border p-6">
       <h2 className="text-lg font-semibold text-white mb-4">Payment method</h2>
 
       <div className="grid grid-cols-3 gap-2 mb-5">
@@ -91,13 +91,13 @@ export default function PaymentForm({ plan, interval, limit, country, vatId, bus
             key={method.id}
             type="button"
             onClick={() => { setSelectedMethod(method.id); setFormError(null) }}
-            className={`flex flex-col items-center justify-center gap-1.5 rounded-xl border h-[60px] text-xs transition-all duration-base ${
+            className={`flex flex-col items-center justify-center gap-1.5 rounded-none border h-[60px] text-xs transition-all duration-base ${
               selectedMethod === method.id
                 ? 'border-brand-orange bg-brand-orange/5 text-white'
                 : 'border-neutral-700/50 bg-neutral-800/30 text-neutral-400 hover:border-neutral-600'
             } ease-apple`}
           >
-            <div className="flex items-center gap-1 bg-white rounded-md px-1.5 py-1">
+            <div className="flex items-center gap-1 bg-white rounded-none px-1.5 py-1">
               {method.icons.map((icon) => (
                 <img key={icon} src={cdnUrl(icon)} alt="" className="h-5 w-auto" />
               ))}
@@ -114,7 +114,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId, bus
       )}
 
       {formError && (
-        <div className="mb-4 rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
+        <div className="mb-4 rounded-none bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
           {formError}
         </div>
       )}
@@ -122,7 +122,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId, bus
       <button
         type="submit"
         disabled={submitting || !selectedMethod}
-        className="w-full rounded-lg bg-brand-orange-button px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-orange-button-hover disabled:opacity-50 disabled:cursor-not-allowed ease-apple"
+        className="w-full rounded-none bg-brand-orange-button px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-orange-button-hover disabled:opacity-50 disabled:cursor-not-allowed ease-apple"
       >
         {submitting ? 'Processing...' : 'Proceed to payment'}
       </button>

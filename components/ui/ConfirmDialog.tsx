@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Button } from '@ciphera-net/ui'
+import { Button } from '@ciphera-net/facet'
 import {
   Dialog,
   DialogContent,

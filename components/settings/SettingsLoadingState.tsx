@@ -1,4 +1,4 @@
-import { Spinner } from '@ciphera-net/ui'
+import { Spinner } from '@ciphera-net/facet'
 
 export default function SettingsLoadingState() {
   return (

@@ -11,7 +11,7 @@ import { getPrices } from '@/lib/api/billing'
 import { TRAFFIC_TIERS } from '@/lib/plans'
 import PlanSummary from '@/components/checkout/PlanSummary'
 import PaymentForm from '@/components/checkout/PaymentForm'
-import { Button, Spinner } from '@ciphera-net/ui'
+import { Button, Spinner } from '@ciphera-net/facet'
 import { TIMING } from '@/lib/motion'
 
 const PLANS = [
@@ -163,13 +163,13 @@ export default function SetupPlanPage() {
             <button
               type="button"
               onClick={handleSkip}
-              className="w-full text-left p-4 rounded-xl border-2 border-emerald-500/40 bg-emerald-500/5 hover:border-emerald-500/70 hover:bg-emerald-500/10 transition-all mb-6"
+              className="w-full text-left p-4 rounded-none border-2 border-emerald-500/40 bg-emerald-500/5 hover:border-emerald-500/70 hover:bg-emerald-500/10 transition-all mb-6"
             >
               <div className="flex items-start justify-between mb-2">
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-white">Hobby</span>
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-none">
                       Recommended
                     </span>
                   </div>
@@ -198,19 +198,19 @@ export default function SetupPlanPage() {
 
             {/* Billing toggle */}
             <div className="flex flex-col items-center gap-2 mb-6">
-              <div className="bg-neutral-800/80 border border-neutral-800 p-1 rounded-xl flex">
+              <div className="bg-neutral-800/80 border border-neutral-800 p-1 rounded-none flex">
                 <button
                   onClick={() => setIsYearly(false)}
-                  className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ease-apple ${
-                    !isYearly ? 'bg-neutral-700 text-white shadow-sm' : 'text-neutral-500 hover:text-white'
+                  className={`px-4 py-1.5 rounded-none text-sm font-medium transition-all ease-apple ${
+                    !isYearly ? 'bg-neutral-700 text-white' : 'text-neutral-500 hover:text-white'
                   }`}
                 >
                   Monthly
                 </button>
                 <button
                   onClick={() => setIsYearly(true)}
-                  className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ease-apple ${
-                    isYearly ? 'bg-neutral-700 text-white shadow-sm' : 'text-neutral-500 hover:text-white'
+                  className={`px-4 py-1.5 rounded-none text-sm font-medium transition-all ease-apple ${
+                    isYearly ? 'bg-neutral-700 text-white' : 'text-neutral-500 hover:text-white'
                   }`}
                 >
                   Yearly
@@ -229,7 +229,7 @@ export default function SetupPlanPage() {
               <select
                 value={selectedLimit}
                 onChange={(e) => setSelectedLimit(Number(e.target.value))}
-                className="w-full py-2 px-3 bg-neutral-800/80 border border-neutral-800 rounded-xl text-white text-sm outline-none focus-visible:border-brand-orange"
+                className="w-full py-2 px-3 bg-neutral-800/80 border border-neutral-800 rounded-none text-white text-sm outline-none focus-visible:border-brand-orange"
               >
                 {TRAFFIC_TIERS.map((tier) => (
                   <option key={tier.value} value={tier.value}>
@@ -248,7 +248,7 @@ export default function SetupPlanPage() {
                     key={plan.id}
                     type="button"
                     onClick={() => setSelectedPlan(plan.id)}
-                    className={`w-full text-left p-4 rounded-xl border transition-all ${
+                    className={`w-full text-left p-4 rounded-none border transition-all ${
                       plan.popular
                         ? 'border-brand-orange/40 bg-brand-orange/5 hover:border-brand-orange/70'
                         : 'border-neutral-800 hover:border-neutral-700 hover:bg-neutral-800/30'
@@ -259,7 +259,7 @@ export default function SetupPlanPage() {
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-semibold text-white">{plan.name}</span>
                           {plan.popular && (
-                            <span className="text-[10px] font-semibold uppercase tracking-wider text-brand-orange bg-brand-orange/10 px-1.5 py-0.5 rounded">
+                            <span className="text-[10px] font-semibold uppercase tracking-wider text-brand-orange bg-brand-orange/10 px-1.5 py-0.5 rounded-none">
                               Popular
                             </span>
                           )}

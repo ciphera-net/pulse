@@ -12,7 +12,7 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/sites/abc/journeys',
 }))
 
-// * Mock dateRanges to avoid pulling in @ciphera-net/ui CJS bundle
+// * Mock dateRanges to keep this unit test isolated from date helpers
 vi.mock('@/lib/utils/dateRanges', () => ({
   getDateRange: (days: number) => ({
     start: `start-${days}`,

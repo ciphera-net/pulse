@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getAdminMe } from '@/lib/api/admin'
-import { LoadingOverlay } from '@ciphera-net/ui'
+import { LoadingOverlay } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

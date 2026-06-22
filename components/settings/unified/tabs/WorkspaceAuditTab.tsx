@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Spinner, Input, Button, Select, getAuthErrorMessage } from '@ciphera-net/ui'
+import { Spinner, Input, Button, getAuthErrorMessage } from '@ciphera-net/facet'
+import Select from '@/components/ui/select'
 import { ListChecks } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useAuth } from '@/lib/auth/context'
@@ -72,7 +73,7 @@ export default function WorkspaceAuditTab() {
 
   if (error) {
     return (
-      <div className="rounded-xl border border-red-900/50 bg-red-950/20 p-6 text-center">
+      <div className="rounded-none border border-red-900/50 bg-red-950/20 p-6 text-center">
         <p className="text-red-400 text-sm mb-4">{error}</p>
         <Button variant="secondary" onClick={() => { setError(null); setRetryCount(c => c + 1) }}>Retry</Button>
       </div>
@@ -138,7 +139,7 @@ export default function WorkspaceAuditTab() {
       ) : (
         <div className="space-y-1">
           {entries.map(entry => (
-            <div key={entry.id} className="flex items-center justify-between px-4 py-3 rounded-xl hover:bg-neutral-800/40 transition-colors ease-apple">
+            <div key={entry.id} className="flex items-center justify-between px-4 py-3 rounded-none hover:bg-neutral-800/40 transition-colors ease-apple">
               <div>
                 <p className="text-sm text-white">
                   <span className="font-medium">{entry.actor_email || 'System'}</span>

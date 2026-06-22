@@ -6,7 +6,7 @@ import { useSetup } from '@/lib/setup/context'
 import { preservePlanParams } from '@/lib/setup/utils'
 import { verifySite } from '@/lib/api/sites'
 import { getRealtime } from '@/lib/api/stats'
-import { Button, Spinner, CheckCircleIcon } from '@ciphera-net/ui'
+import { Button, Spinner, CheckCircleIcon } from '@ciphera-net/facet'
 import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
 
 type VerificationState = 'idle' | 'checking' | 'success' | 'timeout'
@@ -60,7 +60,7 @@ export default function SetupInstallPage() {
   return (
     <>
       <div className="text-center mb-8">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 mb-5">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-none bg-emerald-500/10 text-emerald-400 mb-5">
           <CheckCircleIcon className="h-7 w-7" />
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-white">

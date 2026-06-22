@@ -165,7 +165,7 @@ export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPal
               <img
                 src={`${FAVICON_SERVICE_URL}?domain=${site.domain}&sz=64`}
                 alt=""
-                className="w-4 h-4 rounded-sm object-contain shrink-0"
+                className="w-4 h-4 rounded-none object-contain shrink-0"
                 aria-hidden="true"
               />
               <span className="truncate"><HighlightMatch text={site.name} query={search} /></span>

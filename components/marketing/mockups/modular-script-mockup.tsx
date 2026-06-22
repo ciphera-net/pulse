@@ -3,12 +3,12 @@
 function Toggle({ on = true }: { on?: boolean }) {
   return (
     <div
-      className={`relative w-9 h-5 rounded-full shrink-0 transition-colors ${
+      className={`relative w-9 h-5 rounded-none shrink-0 transition-colors ${
         on ? 'bg-brand-orange' : 'bg-neutral-700'
       }`}
     >
       <div
-        className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+        className={`absolute top-0.5 w-4 h-4 rounded-none bg-white transition-transform ${
           on ? 'translate-x-[18px]' : 'translate-x-0.5'
         }`}
       />
@@ -19,7 +19,7 @@ function Toggle({ on = true }: { on?: boolean }) {
 export function ModularScriptMockup() {
   return (
     <div className="relative w-full max-w-[460px] mx-auto">
-      <div className="rounded-xl border border-white/[0.08] bg-neutral-900/90 shadow-2xl overflow-hidden px-6 py-5 space-y-5">
+      <div className="rounded-none border border-white/[0.08] bg-neutral-900/90 overflow-hidden px-6 py-5 space-y-5">
         {/* Features heading */}
         <h4 className="text-sm font-bold text-white">Features</h4>
 
@@ -33,7 +33,7 @@ export function ModularScriptMockup() {
           ].map((feature) => (
             <div
               key={feature.name}
-              className="rounded-lg border border-neutral-800 bg-neutral-800/40 px-3.5 py-3 flex items-center justify-between gap-2"
+              className="rounded-none border border-neutral-800 bg-neutral-800/40 px-3.5 py-3 flex items-center justify-between gap-2"
             >
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-white leading-tight">{feature.name}</p>
@@ -45,7 +45,7 @@ export function ModularScriptMockup() {
         </div>
 
         {/* Frustration tracking — full width, disabled */}
-        <div className="rounded-lg border border-dashed border-neutral-700 bg-neutral-800/20 px-3.5 py-3 flex items-center justify-between gap-2">
+        <div className="rounded-none border border-dashed border-neutral-700 bg-neutral-800/20 px-3.5 py-3 flex items-center justify-between gap-2">
           <div>
             <p className="text-xs font-semibold text-white leading-tight">Frustration tracking</p>
             <p className="text-[10px] text-neutral-500 leading-tight mt-0.5">Rage clicks &amp; dead clicks &middot; Loads separate add-on script</p>
@@ -62,14 +62,14 @@ export function ModularScriptMockup() {
           <div className="flex items-center gap-3">
             <div>
               <p className="text-[10px] text-neutral-400 mb-1">Recognition</p>
-              <div className="flex items-center gap-1.5 rounded-lg border border-neutral-700 bg-neutral-800/60 px-3 py-1.5 text-xs text-white">
+              <div className="flex items-center gap-1.5 rounded-none border border-neutral-700 bg-neutral-800/60 px-3 py-1.5 text-xs text-white">
                 Across all tabs
                 <svg className="w-3 h-3 text-neutral-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </div>
             </div>
             <div>
               <p className="text-[10px] text-neutral-400 mb-1">Reset after</p>
-              <div className="flex items-center gap-1.5 rounded-lg border border-neutral-700 bg-neutral-800/60 px-3 py-1.5 text-xs text-white">
+              <div className="flex items-center gap-1.5 rounded-none border border-neutral-700 bg-neutral-800/60 px-3 py-1.5 text-xs text-white">
                 24 hours
                 <svg className="w-3 h-3 text-neutral-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </div>
@@ -96,7 +96,7 @@ export function ModularScriptMockup() {
             ].map((fw) => (
               <span
                 key={fw.name}
-                className="flex items-center gap-1.5 rounded-lg border border-neutral-700 bg-neutral-800/60 px-2.5 py-1.5 text-[10px] text-neutral-300"
+                className="flex items-center gap-1.5 rounded-none border border-neutral-700 bg-neutral-800/60 px-2.5 py-1.5 text-[10px] text-neutral-300"
               >
                 {fw.icon}
                 {fw.name}
@@ -107,7 +107,7 @@ export function ModularScriptMockup() {
 
         {/* Verified status */}
         <div className="flex items-center gap-2 pt-1">
-          <span className="flex items-center gap-1.5 rounded-lg border border-green-500/20 bg-green-500/5 px-2.5 py-1 text-[10px] text-green-400 font-medium">
+          <span className="flex items-center gap-1.5 rounded-none border border-green-500/20 bg-green-500/5 px-2.5 py-1 text-[10px] text-green-400 font-medium">
             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
             Verified
           </span>

@@ -143,7 +143,7 @@ function PageRow({
       data-path={page.path}
       className={`
         group flex items-center justify-between w-full relative
-        h-9 px-3 rounded-lg text-left transition-all duration-base
+        h-9 px-3 rounded-none text-left transition-all duration-base
         ${isOther ? 'cursor-default' : 'cursor-pointer'}
         ${isSelected
           ? 'bg-brand-orange/10'
@@ -156,7 +156,7 @@ function PageRow({
       {/* Background bar — animates width on mount */}
       {!isOther && barWidth > 0 && (
         <div
-          className="absolute top-0.5 bottom-0.5 left-0.5 rounded-md transition-[width] duration-gentle ease-apple"
+          className="absolute top-0.5 bottom-0.5 left-0.5 rounded-none transition-[width] duration-gentle ease-apple"
           style={{
             width: isMounted ? `calc(${barWidth}% - 4px)` : '0%',
             transitionDelay: `${rowIndex * 30}ms`,
@@ -269,11 +269,11 @@ function JourneyColumn({
           <div
             data-col={column.index}
             data-path="(exit)"
-            className="flex items-center justify-between w-full relative h-9 px-3 rounded-lg bg-red-500/15"
+            className="flex items-center justify-between w-full relative h-9 px-3 rounded-none bg-red-500/15"
             style={{ animation: 'exit-reveal 300ms var(--ease-apple) backwards' }}
           >
             <div
-              className="absolute top-0.5 bottom-0.5 left-0.5 rounded-md"
+              className="absolute top-0.5 bottom-0.5 left-0.5 rounded-none"
               style={{
                 width: `calc(100% - 4px)`,
                 backgroundColor: 'rgba(239, 68, 68, 0.15)',

@@ -14,7 +14,7 @@ function ChangeIndicator({ change }: { change: PctChangeResult }) {
   if (change === null) return null
   if (change.type === 'new') {
     return (
-      <span className="text-xs font-medium bg-brand-orange/10 text-brand-orange px-1.5 py-0.5 rounded">
+      <span className="text-xs font-medium bg-brand-orange/10 text-brand-orange px-1.5 py-0.5 rounded-none">
         New
       </span>
     )
@@ -55,7 +55,7 @@ export default function FrustrationSummaryCards({ data, loading }: FrustrationSu
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
       {/* Rage Clicks */}
-      <div className="glass-surface rounded-xl p-6">
+      <div className="glass-surface rounded-none p-6">
         <p className="text-sm font-medium text-neutral-400 mb-1">
           Rage Clicks
         </p>
@@ -73,7 +73,7 @@ export default function FrustrationSummaryCards({ data, loading }: FrustrationSu
       </div>
 
       {/* Dead Clicks */}
-      <div className="glass-surface rounded-xl p-6">
+      <div className="glass-surface rounded-none p-6">
         <p className="text-sm font-medium text-neutral-400 mb-1">
           Dead Clicks
         </p>
@@ -91,7 +91,7 @@ export default function FrustrationSummaryCards({ data, loading }: FrustrationSu
       </div>
 
       {/* Total Frustration Signals */}
-      <div className="glass-surface rounded-xl p-6">
+      <div className="glass-surface rounded-none p-6">
         <p className="text-sm font-medium text-neutral-400 mb-1">
           Total Signals
         </p>
