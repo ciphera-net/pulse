@@ -187,7 +187,17 @@ export default function SearchConsolePage() {
   if (gscStatus && !gscStatus.connected) {
     return (
       <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
-        <div className="flex flex-col items-center justify-center py-24 text-center">
+        {/* * Same page header as the connected view — without it this tab was
+         * the only one with no h1 and read as a different app. */}
+        <div className="mb-8">
+          <h1 className="text-lg font-semibold text-neutral-200 mb-1">
+            Search Console
+          </h1>
+          <p className="text-sm text-neutral-400">
+            Google Search performance, queries, and page rankings
+          </p>
+        </div>
+        <div className="flex flex-col items-center justify-center py-16 text-center">
           <div className="rounded-none bg-neutral-800 p-5 mb-6">
             <MagnifyingGlass size={40} className="text-neutral-500" />
           </div>
