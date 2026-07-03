@@ -529,11 +529,15 @@ export default function DashboardShell({
             <ContentHeader onMobileMenuOpen={openMobile} />
             <main
               id="dashboard-scroll-container"
-              className="relative flex-1 overflow-y-auto overflow-x-hidden pt-4"
+              className="relative flex-1 overflow-y-auto overflow-x-hidden"
             >
+              {/* * Top spacing lives INSIDE the scrolled content, never as padding on
+               * the scroll container — sticky children pin below a scroller's
+               * padding while content scrolls visibly through it (the settings
+               * header floated 16px down with rows showing above it). */}
               <div
                 key={pathname}
-                className="animate-in fade-in slide-in-from-bottom-4"
+                className="animate-in fade-in slide-in-from-bottom-4 pt-4"
                 style={{ animationDuration: '500ms', animationTimingFunction: 'var(--ease-apple)' }}
               >
                 {children}
