@@ -207,21 +207,21 @@ export default function AdminOrgDetailPage() {
                   <button
                     type="button"
                     onClick={() => setPeriodEnd(addMonths(new Date(), 1).toISOString().slice(0, 16))}
-                    className="text-xs text-blue-500 hover:underline"
+                    className="text-xs text-brand-orange hover:underline"
                   >
                     +1 Month
                   </button>
                   <button
                     type="button"
                     onClick={() => setPeriodEnd(addYears(new Date(), 1).toISOString().slice(0, 16))}
-                    className="text-xs text-blue-500 hover:underline"
+                    className="text-xs text-brand-orange hover:underline"
                   >
                     +1 Year
                   </button>
                   <button
                     type="button"
                     onClick={() => setPeriodEnd(addYears(new Date(), 100).toISOString().slice(0, 16))}
-                    className="text-xs text-blue-500 hover:underline"
+                    className="text-xs text-brand-orange hover:underline"
                   >
                     Forever
                   </button>
