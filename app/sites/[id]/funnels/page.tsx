@@ -342,10 +342,12 @@ export default function FunnelsPage() {
             onDateRangeChange={setDateRange}
             onShift={shiftPeriod}
           />
-          {canManageFunnels && (
+          {/* * The empty state below carries its own create CTA — showing this
+           * header button too meant two identical orange CTAs on one screen. */}
+          {canManageFunnels && funnels.length > 0 && (
             <Button variant="default" onClick={() => { setEditingFunnel(null); setModalOpen(true) }}>
               <PlusIcon className="w-4 h-4" />
-              Create Funnel
+              Create funnel
             </Button>
           )}
         </div>

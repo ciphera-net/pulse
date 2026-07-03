@@ -138,7 +138,7 @@ function JoinContent() {
             href="/"
             className="block w-full rounded-none bg-neutral-800 px-4 py-2.5 text-center text-sm font-medium text-white hover:bg-neutral-700 transition-colors"
           >
-            Go to dashboard
+            Go to Pulse
           </a>
         </div>
       </div>
@@ -171,7 +171,7 @@ function JoinContent() {
             href="/"
             className="block w-full rounded-none bg-neutral-800 px-4 py-2.5 text-center text-sm font-medium text-white hover:bg-neutral-700 transition-colors"
           >
-            Go to dashboard
+            Go to Pulse
           </a>
         </div>
       </div>
@@ -199,7 +199,7 @@ function JoinContent() {
             href="/"
             className="block w-full rounded-none bg-brand-orange px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-orange/90 transition-colors"
           >
-            Go to dashboard
+            Go to Pulse
           </a>
         </div>
       </div>
