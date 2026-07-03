@@ -281,34 +281,60 @@ export default function IntegrationsPage() {
                     {group.label}
                   </motion.h2>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {group.items.map((integration, i) => (
-                      <motion.div
-                        key={integration.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.5, delay: i * 0.05 }}
-                      >
-                        <div
-                          className="relative p-6 glass-surface rounded-none block h-full"
+                  {activeCategory === 'all' && query.trim() === '' ? (
+                    /* * The default "All" view is an overview of ~75 integrations —
+                     * compact tiles keep it scannable; picking a category or
+                     * searching switches to the full cards with descriptions. */
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {group.items.map((integration, i) => (
+                        <motion.div
+                          key={integration.id}
+                          initial={{ opacity: 0, y: 15 }}
+                          whileInView={{ opacity: 1, y: 0 }}
+                          viewport={{ once: true }}
+                          transition={{ duration: 0.4, delay: Math.min(i * 0.03, 0.3) }}
                         >
-                          <div className="flex items-start mb-6">
-                            <div className="p-3 bg-neutral-800 rounded-none">
+                          <div className="flex items-center gap-3 p-4 glass-surface rounded-none h-full">
+                            <div className="p-2 bg-neutral-800 rounded-none shrink-0 [&_svg]:w-6 [&_svg]:h-6">
                               {integration.icon}
                             </div>
+                            <span className="font-semibold text-white text-sm">
+                              {integration.name}
+                            </span>
                           </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {group.items.map((integration, i) => (
+                        <motion.div
+                          key={integration.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          whileInView={{ opacity: 1, y: 0 }}
+                          viewport={{ once: true }}
+                          transition={{ duration: 0.5, delay: i * 0.05 }}
+                        >
+                          <div
+                            className="relative p-6 glass-surface rounded-none block h-full"
+                          >
+                            <div className="flex items-start mb-6">
+                              <div className="p-3 bg-neutral-800 rounded-none">
+                                {integration.icon}
+                              </div>
+                            </div>
 
-                          <h3 className="text-xl font-bold text-white mb-3">
-                            {integration.name}
-                          </h3>
-                          <p className="text-neutral-400 leading-relaxed">
-                            {integration.description}
-                          </p>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
+                            <h3 className="text-xl font-bold text-white mb-3">
+                              {integration.name}
+                            </h3>
+                            <p className="text-neutral-400 leading-relaxed">
+                              {integration.description}
+                            </p>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </motion.div>
