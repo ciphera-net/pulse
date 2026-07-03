@@ -197,7 +197,12 @@ export default function Chart({
 
   // ─── Metrics with trends ──────────────────────────────────────────
 
-  const metricsWithTrends = useMemo(() => METRIC_CONFIGS.map((m) => {
+  const metricsWithTrends = useMemo(() => {
+    // * A tiny comparison window (< 10 previous visitors) turns every delta
+    // * into ±double-digit noise and paints the whole strip red — treat those
+    // * windows as having no meaningful delta instead.
+    const insufficientBase = (prevStats?.visitors ?? 0) < 10
+    return METRIC_CONFIGS.map((m) => {
     const value = m.key === 'engagement'
       ? (engagementData?.summary?.score ?? 0)
       : m.key === 'pages_per_visit'
@@ -208,7 +213,7 @@ export default function Chart({
       : m.key === 'pages_per_visit'
         ? (prevStats && prevStats.visitors > 0 ? prevStats.pageviews / prevStats.visitors : undefined)
         : prevStats?.[m.key as keyof Stats]
-    const change = previousValue != null && previousValue > 0
+    const change = !insufficientBase && previousValue != null && previousValue > 0
       ? ((value - previousValue) / previousValue) * 100
       : null
     const isPositive = change !== null ? (m.isNegative ? change < 0 : change > 0) : null
@@ -220,7 +225,7 @@ export default function Chart({
       change,
       isPositive,
     }
-  }), [stats, prevStats, engagementData])
+  })}, [stats, prevStats, engagementData])
 
   const hasData = data.length > 0
   const hasAnyNonZero = hasData && chartData.some((d) => (d[metric] as number) > 0
@@ -271,7 +276,10 @@ export default function Chart({
                     : <AnimatedNumber value={m.value} format={m.format} className="text-2xl font-bold text-white" />
                   }
                   {m.key === 'engagement' && engagementData && engagementData.data_days >= 7 && (
-                    <div className="flex items-center gap-1.5 mt-1 text-micro-label text-neutral-500">
+                    <div
+                      className="flex items-center gap-1.5 mt-1 text-micro-label text-neutral-500 cursor-help"
+                      title="How this period ranks against your site's own history — S: scroll depth, T: time on page, D: visit depth, B: bounce rate. P77 means better than 77% of days."
+                    >
                       <span>S P{Math.round(engagementData.summary.scroll_pctl)}</span>
                       <span>·</span>
                       <span>T P{Math.round(engagementData.summary.time_pctl)}</span>
