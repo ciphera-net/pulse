@@ -17,7 +17,7 @@ import { cdnUrl } from '@/lib/cdn'
 import {
   CaretDown, CaretRight, SidebarSimple, Gauge as GaugeIcon, Plugs as PlugsIcon, Tag as TagIcon, Globe as GlobeIcon,
   GearSix, Target, Eye, ShieldCheck, Robot, MagnifyingGlass, ChartBar,
-  Buildings, UsersThree, CreditCard, Bell, ClockCounterClockwise, User, Lock, DeviceMobile,
+  Buildings, UsersThree, Key, CreditCard, Bell, ClockCounterClockwise, User, Lock, DeviceMobile,
 } from '@phosphor-icons/react'
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -83,6 +83,7 @@ function useHomePageMeta(): PageMeta {
       integrations: { label: 'Integrations', icon: PlugsIcon },
       workspace: { label: 'General', icon: Buildings },
       members: { label: 'Members', icon: UsersThree },
+      roles: { label: 'Roles & Permissions', icon: Key },
       billing: { label: 'Billing', icon: CreditCard },
       notifications: { label: 'Notifications', icon: Bell },
       audit: { label: 'Audit Log', icon: ClockCounterClockwise },
