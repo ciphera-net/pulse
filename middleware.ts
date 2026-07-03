@@ -64,8 +64,10 @@ export const config = {
      * Match all routes except:
      * - _next/static, _next/image (Next.js internals)
      * - favicon.ico, manifest.json, icons, images (static assets)
+     * - sw.js, workbox-*.js (service worker — a redirect here breaks registration
+     *   with a SecurityError; must be reachable without auth on every page)
      * - api routes (handled by their own auth)
      */
-    '/((?!_next/static|_next/image|favicon\\.ico|manifest\\.json|sitemap\\.xml|robots\\.txt|llms\\.txt|build-id\\.json|.*\\.png$|.*\\.svg$|.*\\.ico$|api/).*)',
+    '/((?!_next/static|_next/image|favicon\\.ico|manifest\\.json|sitemap\\.xml|robots\\.txt|llms\\.txt|build-id\\.json|sw\\.js$|workbox-.*\\.js$|.*\\.png$|.*\\.svg$|.*\\.ico$|api/).*)',
   ],
 }
