@@ -64,7 +64,9 @@ const nextConfig: NextConfig = {
       {
         // * Prevent CDN/browser from serving stale HTML after deploys.
         // * Static assets (/_next/static/*) are content-hashed and cached separately by Next.js.
-        source: '/((?!_next/static|_next/image).*)',
+        // * /api/favicon sets its own long-lived Cache-Control (the CDN must cache
+        // * it, or every favicon render becomes an origin hit + upstream fetch).
+        source: '/((?!_next/static|_next/image|api/favicon).*)',
         headers: [
           { key: 'Cache-Control', value: 'no-cache, must-revalidate' },
         ],
