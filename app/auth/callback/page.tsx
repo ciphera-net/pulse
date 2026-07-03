@@ -76,7 +76,12 @@ function AuthCallbackContent() {
     if (processedRef.current && !isRetrying) return
 
     const code = searchParams.get('code')
-    if (!code) return
+    if (!code) {
+      // * No code param (stale link, prefetch, or a direct visit) — without an
+      // * error the loading overlay would spin forever.
+      setError('This sign-in link is missing its code — it may have expired. Please log in again.')
+      return
+    }
 
     const state = searchParams.get('state')
     const storedState = localStorage.getItem('oauth_state')
