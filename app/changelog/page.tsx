@@ -8,15 +8,34 @@ export const metadata: Metadata = {
   description: 'Release history and notable changes for Pulse, privacy-first web analytics.',
 }
 
-// * How many release sections (incl. Unreleased) render expanded; the rest
-// * collapse behind a native <details> so the page stays a few screens tall
+// * How many release sections (incl. Unreleased) render expanded; every other
+// * version collapses to its heading so the page stays a few screens tall
 // * instead of ~29k px.
-const EXPANDED_SECTIONS = 5
+const EXPANDED_SECTIONS = 2
 
 const PROSE_CLASSES = `prose prose-invert max-w-none
   prose-headings:font-semibold prose-headings:tracking-tight
   prose-a:text-brand-orange prose-a:no-underline hover:prose-a:underline
   prose-ul:my-4 prose-li:my-0.5`
+
+// * A collapsed release: the `## [x.y.z] - date` heading becomes the summary
+// * row; the body only renders (and only costs height) once opened.
+function CollapsedRelease({ section, linkDefs }: { section: string; linkDefs: string }) {
+  const newline = section.indexOf('\n')
+  const heading = (newline === -1 ? section : section.slice(0, newline)).replace(/^## /, '').replace(/[[\]]/g, '')
+  const body = newline === -1 ? '' : section.slice(newline + 1)
+  return (
+    <details className="border-b border-neutral-800 py-4">
+      <summary className="cursor-pointer list-none flex items-center justify-between text-base font-semibold text-neutral-300 hover:text-white transition-colors ease-apple [&::-webkit-details-marker]:hidden">
+        {heading}
+        <span className="text-neutral-600 text-sm">↓</span>
+      </summary>
+      <article className={`${PROSE_CLASSES} mt-4`}>
+        <ReactMarkdown>{[body, linkDefs].join('\n')}</ReactMarkdown>
+      </article>
+    </details>
+  )
+}
 
 /**
  * Reads CHANGELOG.md from the project root and renders it on the /changelog page.
@@ -65,14 +84,11 @@ export default function ChangelogPage() {
         <ReactMarkdown>{[preamble, ...recent, linkDefs].join('\n')}</ReactMarkdown>
       </article>
       {older.length > 0 && (
-        <details className="mt-10 border-t border-neutral-800 pt-6">
-          <summary className="cursor-pointer list-none text-sm font-medium text-neutral-400 hover:text-white transition-colors ease-apple [&::-webkit-details-marker]:hidden">
-            Show {older.length} older release{older.length === 1 ? '' : 's'} ↓
-          </summary>
-          <article className={`${PROSE_CLASSES} mt-6`}>
-            <ReactMarkdown>{[...older, linkDefs].join('\n')}</ReactMarkdown>
-          </article>
-        </details>
+        <div className="mt-10 border-t border-neutral-800">
+          {older.map((section) => (
+            <CollapsedRelease key={section.slice(0, 40)} section={section} linkDefs={linkDefs} />
+          ))}
+        </div>
       )}
     </div>
   )
