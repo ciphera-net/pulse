@@ -155,8 +155,9 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
 
   return (
     <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
-      {/* Page header */}
-      <div className="mb-6">
+      {/* Page header — sticky so long tab content keeps its context. bg must be
+          opaque (matches the shell canvas) or scrolled content shows through. */}
+      <div className="sticky top-0 z-20 bg-neutral-950 pb-4 mb-2">
         <h1 className="text-lg font-semibold text-neutral-200">{title}</h1>
         {subtitle && <p className="text-sm text-neutral-400 mt-0.5">{subtitle}</p>}
       </div>
@@ -174,8 +175,9 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
 
       {/* Main layout */}
       <div className="flex gap-8">
-        {/* Left nav */}
-        <nav className="w-52 shrink-0 hidden md:block">
+        {/* Left nav — sticks below the header; taller-than-viewport navs scroll
+            internally instead of pinning the tail out of reach. */}
+        <nav className="w-52 shrink-0 hidden md:block md:sticky md:top-[68px] md:self-start md:max-h-[calc(100vh-140px)] md:overflow-y-auto">
           <div className="relative mb-4">
             <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
             <input
