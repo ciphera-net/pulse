@@ -58,7 +58,10 @@ const Slider = React.forwardRef<
   const renderThumb = (value: number) => {
     const thumb = (
       <SliderPrimitive.Thumb
-        className="block h-5 w-5 rounded-none border-2 border-primary bg-background transition-colors focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-ring/40 data-[disabled]:cursor-not-allowed ease-apple"
+        // * Solid fill: at the min position there is no orange range beside the
+        // * thumb, and a background-coloured square vanished into the canvas.
+        // * The ::before overlay pads the touch target past the visual 20px.
+        className="relative block h-5 w-5 rounded-none border-2 border-primary bg-primary transition-colors focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-ring/40 data-[disabled]:cursor-not-allowed ease-apple before:absolute before:-inset-2 before:content-['']"
         onPointerDown={handlePointerDown}
       />
     );
