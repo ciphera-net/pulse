@@ -3,7 +3,12 @@
 import { motion } from 'framer-motion'
 import { CheckCircleIcon, XIcon } from '@ciphera-net/facet'
 
-function ComparisonTable({ title, competitors }: { title: string, competitors: { name: string, isPulse: boolean, features: Record<string, boolean | string> }[] }) {
+// * Boolean cells render ✓/✗ and assume true = good. Where the raw boolean would invert
+// * sentiment (e.g. "Cookie Banner Required" — false is the win), use { text, good } so
+// * the colour follows the meaning, not the boolean.
+type FeatureValue = boolean | string | { text: string; good: boolean }
+
+function ComparisonTable({ title, competitors }: { title: string, competitors: { name: string, isPulse: boolean, features: Record<string, FeatureValue> }[] }) {
   const allFeatures = [
     "Cookie Banner Required",
     "GDPR Compliant",
@@ -36,7 +41,9 @@ function ComparisonTable({ title, competitors }: { title: string, competitors: {
                   const val = comp.features[feature]
                   return (
                     <td key={comp.name} className="p-4 sm:p-6 text-sm sm:text-base">
-                      {val === true ? (
+                      {typeof val === 'object' ? (
+                        <span className={`font-medium ${val.good ? 'text-green-500' : 'text-red-500'}`}>{val.text}</span>
+                      ) : val === true ? (
                         <CheckCircleIcon className="w-5 h-5 text-green-500" />
                       ) : val === false ? (
                         <XIcon className="w-5 h-5 text-red-500" />
@@ -103,7 +110,7 @@ export default function AboutPage() {
               name: "Pulse",
               isPulse: true,
               features: {
-                "Cookie Banner Required": false,
+                "Cookie Banner Required": { text: "None", good: true },
                 "GDPR Compliant": true,
                 "Script Size": "< 1 KB",
                 "Data Ownership": "Yours",
@@ -115,7 +122,7 @@ export default function AboutPage() {
               name: "Google Analytics 4",
               isPulse: false,
               features: {
-                "Cookie Banner Required": true,
+                "Cookie Banner Required": { text: "Required", good: false },
                 "GDPR Compliant": "Complex",
                 "Script Size": "45 KB+",
                 "Data Ownership": "Google's",
@@ -134,7 +141,7 @@ export default function AboutPage() {
               name: "Pulse",
               isPulse: true,
               features: {
-                "Cookie Banner Required": false,
+                "Cookie Banner Required": { text: "None", good: true },
                 "GDPR Compliant": true,
                 "Script Size": "< 1 KB",
                 "Data Ownership": "Yours",
@@ -146,7 +153,7 @@ export default function AboutPage() {
               name: "Plausible",
               isPulse: false,
               features: {
-                "Cookie Banner Required": false,
+                "Cookie Banner Required": { text: "None", good: true },
                 "GDPR Compliant": true,
                 "Script Size": "< 1 KB",
                 "Data Ownership": "Yours",
