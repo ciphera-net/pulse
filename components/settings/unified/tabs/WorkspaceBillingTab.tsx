@@ -11,6 +11,7 @@ import { formatDateLong, formatDate } from '@/lib/utils/formatDate'
 import { getAuthErrorMessage } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
 import { useCan } from '@/lib/auth/permissions'
+import { formatPlanName } from '@/lib/utils/plan'
 
 const PAYMENT_METHODS = [
   { id: 'creditcard', label: 'Cards', icons: ['/icons/payment/visa.svg', '/icons/payment/mastercard.svg'] },
@@ -137,12 +138,7 @@ export default function WorkspaceBillingTab() {
     )
   }
 
-  const planLabel = (() => {
-    const raw = subscription.plan_id?.startsWith('price_') ? 'Pro'
-      : subscription.plan_id === 'free' || !subscription.plan_id ? 'Hobby'
-      : subscription.plan_id
-    return raw === 'Free' || raw === 'Pro' ? raw : raw.charAt(0).toUpperCase() + raw.slice(1)
-  })()
+  const planLabel = formatPlanName(subscription.plan_id)
 
   const isActive = subscription.subscription_status === 'active' || subscription.subscription_status === 'trialing'
   const isCanceled = subscription.subscription_status === 'canceled'

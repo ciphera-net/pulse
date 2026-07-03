@@ -13,6 +13,7 @@ import Link from 'next/link'
 import SettingsSections from '@/components/settings/SettingsSections'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 import { useCan } from '@/lib/auth/permissions'
+import { formatPlanName } from '@/lib/utils/plan'
 
 const GEO_OPTIONS = [
   { value: 'full', label: 'Full (country, region, city)' },
@@ -247,7 +248,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
           </div>
           {subscription && (
             <p className="text-xs text-neutral-500 mt-2">
-              Your {subscription.plan_id?.includes('pro') ? 'Pro' : 'Free'} plan supports up to {formatRetentionMonths(Math.max(...getRetentionOptionsForPlan(subscription.plan_id).map(o => o.value)))} of data retention.
+              Your {formatPlanName(subscription.plan_id)} plan supports up to {formatRetentionMonths(Math.max(...getRetentionOptionsForPlan(subscription.plan_id).map(o => o.value)))} of data retention.
             </p>
           )}
           {(!subscription || subscription.plan_id?.includes('free')) && (
