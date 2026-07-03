@@ -25,22 +25,24 @@ export default function FilterPill({ filter, onEdit, onRemove }: FilterPillProps
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
       transition={{ duration: 0.15, ease: EASE_APPLE }}
-      className="inline-flex items-center h-7 rounded-none bg-brand-orange/10 text-brand-orange text-xs font-medium border border-brand-orange/20"
+      // * h-10 matches the Filter button and date-range control — the pill sits
+      // * in the same toolbar row and must share its rhythm.
+      className="inline-flex items-center h-10 rounded-none bg-brand-orange/10 text-brand-orange text-sm font-medium border border-brand-orange/20"
     >
       <button
         onClick={onEdit}
-        className="flex items-center gap-1 px-2 h-full hover:bg-brand-orange/10 transition-colors cursor-pointer"
+        className="flex items-center gap-1.5 px-3 h-full hover:bg-brand-orange/10 transition-colors cursor-pointer"
       >
         <span className="text-brand-orange/70">{dim}</span>
         <span className="text-brand-orange/50">{op}</span>
-        <span className="max-w-[120px] truncate">{val}</span>
+        <span className="max-w-[140px] truncate">{val}</span>
       </button>
       <button
         onClick={(e) => { e.stopPropagation(); onRemove() }}
-        className="flex items-center justify-center w-6 h-full hover:bg-red-500/20 hover:text-red-400 transition-colors cursor-pointer border-l border-brand-orange/20"
+        className="flex items-center justify-center w-8 h-full hover:bg-red-500/20 hover:text-red-400 transition-colors cursor-pointer border-l border-brand-orange/20"
         aria-label={`Remove ${dim} filter`}
       >
-        <X className="w-3 h-3" weight="bold" />
+        <X className="w-3.5 h-3.5" weight="bold" />
       </button>
     </motion.div>
   )

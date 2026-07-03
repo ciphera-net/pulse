@@ -90,7 +90,7 @@ function InlineDropdown({ value, options, grouped, placeholder, disabled, onChan
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 mt-1 z-[110] bg-popover border border-border rounded-none min-w-[200px] w-full max-h-72 overflow-y-auto">
+        <div className="absolute top-full left-0 mt-1 z-[110] bg-popover border border-border rounded-none shadow-lg min-w-[200px] w-full max-h-72 overflow-y-auto">
           {grouped ? (
             grouped.map(cat => (
               <div key={cat.label}>
@@ -243,7 +243,7 @@ function ValueMultiSelect({ dimension, values, disabled, onChange, onFetchSugges
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 mt-1 z-[110] bg-popover border border-border rounded-none w-full min-w-[260px]">
+        <div className="absolute top-full left-0 mt-1 z-[110] bg-popover border border-border rounded-none shadow-lg w-full min-w-[260px]">
           <div className="p-2">
             <input
               ref={inputRef}
@@ -393,7 +393,7 @@ export default function FilterModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 12 }}
             transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
-            className="w-full max-w-md rounded-none border border-neutral-800 bg-neutral-900 p-6"
+            className="w-full max-w-md rounded-none border border-neutral-800 bg-neutral-900 shadow-xl p-6"
             style={{ backgroundImage: 'linear-gradient(to bottom, rgba(255,255,255,0.04), transparent 120px)' }}
           >
             {/* Header */}

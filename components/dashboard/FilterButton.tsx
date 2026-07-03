@@ -56,7 +56,7 @@ export default function FilterButton({ hasActiveFilters, onSelectDimension }: Fi
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 6, scale: 0.95 }}
               transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
-              className="fixed z-[100] bg-popover border border-border rounded-none p-3 w-[280px] origin-top-left"
+              className="fixed z-[100] bg-popover border border-border rounded-none shadow-lg p-3 w-[320px] origin-top-left"
               style={{ left: pos.left, top: pos.top }}
             >
               <div className="grid grid-cols-2 gap-3">
