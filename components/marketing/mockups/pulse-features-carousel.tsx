@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, type CSSProperties } from 'react'
 import { cdnUrl } from '@/lib/cdn'
+import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
 import {
   Files,
   ArrowSquareOut,
@@ -117,8 +118,6 @@ function getReferrerIcon(name: string, favicon?: string) {
   return <Globe className="w-4 h-4 text-neutral-400" />
 }
 
-const FAVICON_URL = 'https://www.google.com/s2/favicons'
-
 export function ReferrersCard() {
   const data = [
     { label: 'Direct', value: 186 },
@@ -145,7 +144,7 @@ export function ReferrersCard() {
             maxValue={max}
             icon={getReferrerIcon(
               d.label,
-              'domain' in d ? `${FAVICON_URL}?domain=${d.domain}&sz=32` : undefined
+              'domain' in d ? `${FAVICON_SERVICE_URL}?domain=${d.domain}&sz=32` : undefined
             )}
           />
         ))}

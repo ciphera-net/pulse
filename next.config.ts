@@ -14,9 +14,12 @@ const cspDirectives = [
   // Next.js requires 'unsafe-inline' for its bootstrap scripts; 'unsafe-eval' only in dev (HMR)
   `script-src 'self' 'unsafe-inline' https://js.ciphera.net https://api.help.ciphera.net${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''}`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://www.google.com https://*.gstatic.com https://ciphera.net https://captcha.ciphera.net https://*.cartocdn.com https://cdn.ciphera.net",
+  // * google/gstatic were only ever here for favicons — those now go through
+  // * the same-origin /api/favicon proxy, and CSP enforces that nothing
+  // * regresses to loading them from Google directly.
+  "img-src 'self' data: blob: https://ciphera.net https://captcha.ciphera.net https://*.cartocdn.com https://cdn.ciphera.net",
   "font-src 'self'",
-  `connect-src 'self' https://*.ciphera.net wss://*.ciphera.net https://ciphera.net https://www.google.com https://*.gstatic.com https://cdn.jsdelivr.net https://*.cartocdn.com${process.env.NODE_ENV === 'development' ? ' http://localhost:* ws://localhost:*' : ''}`,
+  `connect-src 'self' https://*.ciphera.net wss://*.ciphera.net https://ciphera.net https://cdn.jsdelivr.net https://*.cartocdn.com${process.env.NODE_ENV === 'development' ? ' http://localhost:* ws://localhost:*' : ''}`,
   "worker-src 'self' blob:",
   "frame-src https://api.help.ciphera.net",
   "object-src 'none'",
