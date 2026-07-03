@@ -82,7 +82,7 @@ export default function AdminOrgsPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-neutral-300">
-                      {org.subscription_status || '-'}
+                      {org.subscription_status || '—'}
                     </td>
                     <td className="px-4 py-3 text-neutral-300">
                       {new Intl.NumberFormat().format(org.pageview_limit)}

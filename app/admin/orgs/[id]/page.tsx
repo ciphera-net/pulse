@@ -136,14 +136,14 @@ export default function AdminOrgDetailPage() {
               
               <span className="text-neutral-500">Period End:</span>
               <span className="font-medium">
-                {org.current_period_end ? formatDateTime(new Date(org.current_period_end)) : '-'}
+                {org.current_period_end ? formatDateTime(new Date(org.current_period_end)) : '—'}
               </span>
 
               <span className="text-neutral-500">Customer ID:</span>
-              <span className="font-mono text-xs">{org.billing_customer_id || '-'}</span>
+              <span className="font-mono text-xs">{org.billing_customer_id || '—'}</span>
 
               <span className="text-neutral-500">Subscription ID:</span>
-              <span className="font-mono text-xs">{org.billing_subscription_id || '-'}</span>
+              <span className="font-mono text-xs">{org.billing_subscription_id || '—'}</span>
           </div>
         </div>
 
