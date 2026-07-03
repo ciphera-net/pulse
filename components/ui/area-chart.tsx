@@ -1347,7 +1347,7 @@ function XAxisLabel({
 }
 
 export function XAxis({ numTicks = 5, tickerHalfWidth = 50, formatLabel }: XAxisProps) {
-  const { xScale, margin, tooltipData, containerRef } = useChart();
+  const { xScale, margin, tooltipData, containerRef, innerWidth } = useChart();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -1366,7 +1366,10 @@ export function XAxis({ numTicks = 5, tickerHalfWidth = 50, formatLabel }: XAxis
     const startTime = startDate.getTime();
     const endTime = endDate.getTime();
     const rangeMs = endTime - startTime;
-    const tickCount = Math.max(2, numTicks);
+    // numTicks is an upper bound — narrow charts (mobile 390px) fit fewer
+    // DD/MM labels before they collide, so budget ~80px per tick.
+    const widthBudget = innerWidth > 0 ? Math.floor(innerWidth / 80) : numTicks;
+    const tickCount = Math.max(2, Math.min(numTicks, widthBudget));
 
     // Generate all natural boundary dates, then thin to fit numTicks
     const allDates: Date[] = [];
@@ -1431,7 +1434,7 @@ export function XAxis({ numTicks = 5, tickerHalfWidth = 50, formatLabel }: XAxis
       x: (xScale(date) ?? 0) + margin.left,
       label: fmt(date),
     }));
-  }, [xScale, margin.left, numTicks, formatLabel]);
+  }, [xScale, margin.left, numTicks, formatLabel, innerWidth]);
 
   const isHovering = tooltipData !== null;
   const crosshairX = tooltipData ? tooltipData.x + margin.left : null;
