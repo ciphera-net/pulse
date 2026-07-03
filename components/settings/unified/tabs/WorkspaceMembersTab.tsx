@@ -97,7 +97,15 @@ export default function WorkspaceMembersTab() {
             <div className="flex items-center gap-3">
               <UserCircle weight="fill" className="w-8 h-8 text-neutral-600" />
               <div>
-                <p className="text-sm font-medium text-white">{member.user_email || member.user_id}</p>
+                {/* * Zero-PII backend: most members have no stored email/name. Show
+                 * "You" for the signed-in member, the invite email when the backend
+                 * has one (pending invites), and a short member id otherwise —
+                 * never a raw 36-char UUID as a display name. */}
+                <p className="text-sm font-medium text-white">
+                  {member.user_id === user?.id
+                    ? 'You'
+                    : member.user_email || `Member ${member.user_id.slice(0, 8)}`}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
