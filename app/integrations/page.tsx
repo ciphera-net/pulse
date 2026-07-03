@@ -235,7 +235,7 @@ export default function IntegrationsPage() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.4 }}
-                    className="text-lg font-semibold text-neutral-400 mb-6 tracking-wide uppercase flex items-center gap-2"
+                    className="text-lg font-semibold text-neutral-400 mb-6 flex items-center gap-2"
                   >
                     <svg className="w-5 h-5 text-brand-orange" fill="currentColor" viewBox="0 0 20 20">
                       <path d="M10 1l2.39 4.84 5.34.78-3.87 3.77.91 5.33L10 13.27l-4.77 2.5.91-5.33L2.27 6.67l5.34-.78L10 1z" />
@@ -276,7 +276,7 @@ export default function IntegrationsPage() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.4 }}
-                    className="text-lg font-semibold text-neutral-400 mb-6 tracking-wide uppercase"
+                    className="text-lg font-semibold text-neutral-400 mb-6"
                   >
                     {group.label}
                   </motion.h2>
