@@ -13,7 +13,7 @@ import Link from 'next/link'
 import SettingsSections from '@/components/settings/SettingsSections'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 import { useCan } from '@/lib/auth/permissions'
-import { formatPlanName } from '@/lib/utils/plan'
+import { formatPlanName } from '@/lib/plans'
 
 const GEO_OPTIONS = [
   { value: 'full', label: 'Full (country, region, city)' },

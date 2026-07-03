@@ -13,6 +13,20 @@ export const PLAN_ID_SOLO = 'solo'
 export const PLAN_ID_TEAM = 'team'
 export const PLAN_ID_BUSINESS = 'business'
 
+/**
+ * Display name for a subscription plan_id — the single source of truth.
+ * Ad-hoc ternaries drift (the Privacy tab once recognised only 'pro' and
+ * labelled a Pioneer org "Free").
+ *
+ * plan_id shapes seen in the wild: 'free' (marketing name: Hobby), legacy
+ * Stripe 'price_…' ids (Pro), and plain ids like 'solo' / 'team' / 'pioneer'.
+ */
+export function formatPlanName(planId?: string | null): string {
+  if (!planId || planId === 'free') return 'Hobby'
+  if (planId.startsWith('price_')) return 'Pro'
+  return planId.charAt(0).toUpperCase() + planId.slice(1)
+}
+
 /** Sites limit per plan. */
 export function getSitesLimitForPlan(planId: string | null | undefined): number | null {
   if (!planId || planId === 'free') return 1
