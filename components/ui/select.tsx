@@ -184,7 +184,7 @@ export default function Select({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.15 }}
-            className={`${variant === 'ghost' ? 'fixed' : `absolute ${alignClass}`} mt-1 ${variant === 'ghost' ? 'min-w-[160px]' : panelMinW} bg-popover border border-border rounded-none z-[200] overflow-hidden py-1 max-h-[28rem] overflow-y-auto`}
+            className={`${variant === 'ghost' ? 'fixed' : `absolute ${alignClass}`} mt-1 ${variant === 'ghost' ? 'min-w-[160px]' : panelMinW} bg-popover border border-border rounded-none shadow-lg z-[200] overflow-hidden py-1 max-h-[28rem] overflow-y-auto`}
             style={variant === 'ghost' && triggerRef.current ? (() => {
               const r = triggerRef.current!.getBoundingClientRect()
               return { right: window.innerWidth - r.right, top: r.bottom + 4 }
