@@ -32,6 +32,9 @@ const labelClass = 'block text-sm font-medium text-neutral-300 mb-1.5'
 const MAX_STEPS = 8
 const MAX_FILTERS = 10
 
+/** A step whose label is still the auto "Step N" default (no custom rename). */
+const isDefaultStepName = (n: string) => /^Step \d+$/.test(n.trim())
+
 const WINDOW_PRESETS = [
   { label: '24h', value: 24, unit: 'hours' as const },
   { label: '72h', value: 72, unit: 'hours' as const },
@@ -439,7 +442,13 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
       await onSubmit({
         name,
         description,
-        steps: steps.map((s, i) => ({ ...s, order: i })),
+        // * A step is defined by its target — the label defaults to the value.
+        // * Custom names from older funnels (non "Step N") are preserved on edit.
+        steps: steps.map((s, i) => ({
+          ...s,
+          order: i,
+          name: isDefaultStepName(s.name) ? s.value.trim() || s.name : s.name,
+        })),
         conversion_window_value: windowValue,
         conversion_window_unit: windowUnit,
       })
@@ -507,11 +516,12 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
 
             <div>
               <label className={labelClass}>Steps</label>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <AnimatePresence initial={false}>
                   {steps.map((step, i) => {
                     const cat = step.category || 'page'
                     const stepError = errors[`step-${i}`]
+                    const filters = step.property_filters ?? []
                     return (
                       <motion.div
                         key={stepIds[i]}
@@ -521,80 +531,50 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
                         transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
                         className="overflow-hidden"
                       >
-                        <div className="rounded-none border border-neutral-800 bg-neutral-800/20 p-3">
-                          <div className="flex items-start gap-2">
-                            <div className="flex shrink-0 items-center gap-1 pt-1">
-                              <span className="flex h-5 w-5 items-center justify-center rounded-none bg-neutral-800 text-[10px] font-medium text-neutral-400">
-                                {i + 1}
-                              </span>
-                              <div className="flex flex-col">
-                                <button
-                                  type="button"
-                                  aria-label={`Move step ${i + 1} up`}
-                                  onClick={() => moveStep(i, -1)}
-                                  disabled={i === 0}
-                                  className="flex h-8 w-8 items-center justify-center rounded-none text-neutral-500 transition-colors duration-fast ease-apple hover:text-neutral-300 disabled:opacity-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
-                                >
-                                  <CaretUp className="h-3.5 w-3.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  aria-label={`Move step ${i + 1} down`}
-                                  onClick={() => moveStep(i, 1)}
-                                  disabled={i === steps.length - 1}
-                                  className="flex h-8 w-8 items-center justify-center rounded-none text-neutral-500 transition-colors duration-fast ease-apple hover:text-neutral-300 disabled:opacity-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
-                                >
-                                  <CaretDown className="h-3.5 w-3.5" />
-                                </button>
-                              </div>
-                            </div>
+                        <div className="flex items-start gap-2.5 rounded-none border border-neutral-800/70 bg-neutral-900/30 p-2 pl-2.5">
+                          {/* Number chip — aligned to the control row */}
+                          <span className="mt-2.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-none bg-neutral-800 text-[11px] font-medium tabular-nums text-neutral-400">
+                            {i + 1}
+                          </span>
 
-                            <div className="min-w-0 flex-1 space-y-2">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <Segmented
-                                  ariaLabel={`Step ${i + 1} type`}
-                                  value={cat}
-                                  onChange={(v) => setCategory(i, v)}
+                          {/* Type + matcher + value on one line; filters below */}
+                          <div className="min-w-0 flex-1 space-y-1.5">
+                            <div className="flex items-center gap-2">
+                              <Segmented
+                                ariaLabel={`Step ${i + 1} type`}
+                                value={cat}
+                                onChange={(v) => setCategory(i, v)}
+                                options={[
+                                  { value: 'page', label: 'Page' },
+                                  { value: 'event', label: 'Event' },
+                                ]}
+                              />
+                              {cat === 'page' && (
+                                <Select
+                                  variant="input"
+                                  className="w-28 shrink-0"
+                                  value={step.type}
+                                  onChange={(v) => updateStep(i, { type: v })}
                                   options={[
-                                    { value: 'page', label: 'Page' },
-                                    { value: 'event', label: 'Event' },
+                                    { value: 'exact', label: 'Exact' },
+                                    { value: 'contains', label: 'Contains' },
+                                    { value: 'regex', label: 'Regex' },
                                   ]}
                                 />
-                                <input
-                                  value={step.name}
-                                  onChange={(e) => updateStep(i, { name: e.target.value })}
-                                  placeholder="Step name"
-                                  aria-label={`Step ${i + 1} name`}
-                                  className={`${inputClass} min-w-0 flex-1`}
-                                />
-                              </div>
-
+                              )}
                               {cat === 'page' ? (
-                                <div className="flex gap-2">
-                                  <Select
-                                    variant="input"
-                                    className="w-32 shrink-0"
-                                    value={step.type}
-                                    onChange={(v) => updateStep(i, { type: v })}
-                                    options={[
-                                      { value: 'exact', label: 'Exact' },
-                                      { value: 'contains', label: 'Contains' },
-                                      { value: 'regex', label: 'Regex' },
-                                    ]}
-                                  />
-                                  <SuggestInput
-                                    value={step.value}
-                                    onChange={(v) => updateStep(i, { value: v })}
-                                    placeholder={step.type === 'exact' ? '/pricing' : 'pricing'}
-                                    ariaLabel={`Step ${i + 1} path`}
-                                    invalid={!!stepError}
-                                    items={pageItems}
-                                    failed={pagesFailed}
-                                    glyph={pathGlyph}
-                                    registerRef={registerField(`step-${i}`)}
-                                    onPanelOpenChange={onPanelOpenChange}
-                                  />
-                                </div>
+                                <SuggestInput
+                                  value={step.value}
+                                  onChange={(v) => updateStep(i, { value: v })}
+                                  placeholder={step.type === 'exact' ? '/pricing' : 'pricing'}
+                                  ariaLabel={`Step ${i + 1} path`}
+                                  invalid={!!stepError}
+                                  items={pageItems}
+                                  failed={pagesFailed}
+                                  glyph={pathGlyph}
+                                  registerRef={registerField(`step-${i}`)}
+                                  onPanelOpenChange={onPanelOpenChange}
+                                />
                               ) : (
                                 <SuggestInput
                                   value={step.value}
@@ -609,68 +589,90 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
                                   onPanelOpenChange={onPanelOpenChange}
                                 />
                               )}
-
-                              {cat === 'event' && step.property_filters && step.property_filters.length > 0 && (
-                                <div className="space-y-1.5">
-                                  {step.property_filters.map((f, fi) => (
-                                    <div key={fi} className="flex items-center gap-1.5">
-                                      <input
-                                        value={f.key}
-                                        onChange={(e) => updateFilter(i, fi, 'key', e.target.value)}
-                                        placeholder="key"
-                                        aria-label={`Step ${i + 1} filter ${fi + 1} key`}
-                                        className={`${inputClass} flex-1`}
-                                      />
-                                      <Select
-                                        variant="input"
-                                        className="w-40 shrink-0"
-                                        value={f.operator}
-                                        onChange={(v) => updateFilter(i, fi, 'operator', v)}
-                                        options={[
-                                          { value: 'is', label: 'is' },
-                                          { value: 'is_not', label: 'is not' },
-                                          { value: 'contains', label: 'contains' },
-                                          { value: 'not_contains', label: 'does not contain' },
-                                        ]}
-                                      />
-                                      <input
-                                        value={f.value}
-                                        onChange={(e) => updateFilter(i, fi, 'value', e.target.value)}
-                                        placeholder="value"
-                                        aria-label={`Step ${i + 1} filter ${fi + 1} value`}
-                                        className={`${inputClass} flex-1`}
-                                      />
-                                      <button
-                                        type="button"
-                                        aria-label="Remove property filter"
-                                        onClick={() => removeFilter(i, fi)}
-                                        className="shrink-0 rounded-none p-1.5 text-neutral-500 transition-colors duration-fast ease-apple hover:text-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
-                                      >
-                                        <Trash className="h-3.5 w-3.5" />
-                                      </button>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                              {cat === 'event' && (!step.property_filters || step.property_filters.length < MAX_FILTERS) && (
-                                <button
-                                  type="button"
-                                  onClick={() => addFilter(i)}
-                                  className="flex items-center gap-1 text-xs text-neutral-500 transition-colors duration-fast ease-apple hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
-                                >
-                                  <Plus className="h-3 w-3" /> Filter by property
-                                </button>
-                              )}
-
-                              {stepError && <p className="text-xs text-red-400">{stepError}</p>}
                             </div>
 
+                            {cat === 'event' && filters.length > 0 && (
+                              <div className="space-y-1.5">
+                                {filters.map((f, fi) => (
+                                  <div key={fi} className="flex items-center gap-1.5">
+                                    <input
+                                      value={f.key}
+                                      onChange={(e) => updateFilter(i, fi, 'key', e.target.value)}
+                                      placeholder="property"
+                                      aria-label={`Step ${i + 1} filter ${fi + 1} key`}
+                                      className={`${inputClass} flex-1`}
+                                    />
+                                    <Select
+                                      variant="input"
+                                      className="w-36 shrink-0"
+                                      value={f.operator}
+                                      onChange={(v) => updateFilter(i, fi, 'operator', v)}
+                                      options={[
+                                        { value: 'is', label: 'is' },
+                                        { value: 'is_not', label: 'is not' },
+                                        { value: 'contains', label: 'contains' },
+                                        { value: 'not_contains', label: 'does not contain' },
+                                      ]}
+                                    />
+                                    <input
+                                      value={f.value}
+                                      onChange={(e) => updateFilter(i, fi, 'value', e.target.value)}
+                                      placeholder="value"
+                                      aria-label={`Step ${i + 1} filter ${fi + 1} value`}
+                                      className={`${inputClass} flex-1`}
+                                    />
+                                    <button
+                                      type="button"
+                                      aria-label="Remove property filter"
+                                      onClick={() => removeFilter(i, fi)}
+                                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none text-neutral-500 transition-colors duration-fast ease-apple hover:text-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+                                    >
+                                      <Trash className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {cat === 'event' && filters.length < MAX_FILTERS && (
+                              <button
+                                type="button"
+                                onClick={() => addFilter(i)}
+                                className="inline-flex items-center gap-1 text-xs text-neutral-500 transition-colors duration-fast ease-apple hover:text-neutral-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+                              >
+                                <Plus className="h-3 w-3" /> Filter by property
+                              </button>
+                            )}
+                            {stepError && <p className="text-xs text-red-400">{stepError}</p>}
+                          </div>
+
+                          {/* Reorder + delete — aligned to the control row */}
+                          <div className="mt-1 flex shrink-0 items-center gap-0.5">
+                            <div className="flex flex-col">
+                              <button
+                                type="button"
+                                aria-label={`Move step ${i + 1} up`}
+                                onClick={() => moveStep(i, -1)}
+                                disabled={i === 0}
+                                className="flex h-4 w-6 items-center justify-center rounded-none text-neutral-500 transition-colors duration-fast ease-apple hover:text-neutral-200 disabled:opacity-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+                              >
+                                <CaretUp className="h-3 w-3" />
+                              </button>
+                              <button
+                                type="button"
+                                aria-label={`Move step ${i + 1} down`}
+                                onClick={() => moveStep(i, 1)}
+                                disabled={i === steps.length - 1}
+                                className="flex h-4 w-6 items-center justify-center rounded-none text-neutral-500 transition-colors duration-fast ease-apple hover:text-neutral-200 disabled:opacity-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+                              >
+                                <CaretDown className="h-3 w-3" />
+                              </button>
+                            </div>
                             <button
                               type="button"
                               aria-label={`Remove step ${i + 1}`}
                               onClick={() => removeStep(i)}
                               disabled={steps.length <= 1}
-                              className="mt-1 shrink-0 rounded-none p-1.5 text-neutral-500 transition-colors duration-fast ease-apple hover:text-red-400 disabled:opacity-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+                              className="flex h-8 w-8 items-center justify-center rounded-none text-neutral-500 transition-colors duration-fast ease-apple hover:text-red-400 disabled:opacity-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
                             >
                               <Trash className="h-4 w-4" />
                             </button>
@@ -685,7 +687,7 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
                   <button
                     type="button"
                     onClick={addStep}
-                    className="flex w-full items-center justify-center gap-2 rounded-none border border-dashed border-neutral-700 py-2.5 text-sm text-neutral-500 transition-colors duration-fast ease-apple hover:border-neutral-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+                    className="flex w-full items-center justify-center gap-2 rounded-none border border-dashed border-neutral-800 py-2 text-sm text-neutral-500 transition-colors duration-fast ease-apple hover:border-neutral-600 hover:text-neutral-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
                   >
                     <Plus className="h-3.5 w-3.5" /> Add step
                   </button>
@@ -693,7 +695,7 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
               </div>
             </div>
 
-            {/* Conversion window — submits exactly what it shows */}
+            {/* Conversion window — one row; submits exactly what it shows */}
             <div>
               <label htmlFor="funnel-window" className={labelClass}>Conversion window</label>
               <div className="flex flex-wrap items-center gap-2">
@@ -708,7 +710,7 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
                     clearError('window')
                   }}
                   aria-label="Conversion window value"
-                  className={`${inputClass} w-24 ${errors['window'] ? invalidClass : ''}`}
+                  className={`${inputClass} w-20 tabular-nums ${errors['window'] ? invalidClass : ''}`}
                 />
                 <Select
                   variant="input"
@@ -720,7 +722,8 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
                     { value: 'days', label: 'Days' },
                   ]}
                 />
-                <div className="flex items-center gap-1.5">
+                <div className="mx-1 h-6 w-px bg-neutral-800" aria-hidden="true" />
+                <div className="flex items-center gap-1">
                   {WINDOW_PRESETS.map((preset) => {
                     const active = windowValue === preset.value && windowUnit === preset.unit
                     return (
@@ -733,7 +736,7 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
                           setWindowUnit(preset.unit)
                           clearError('window')
                         }}
-                        className={`rounded-none border px-2 py-1 text-xs tabular-nums transition-colors duration-fast ease-apple focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ${
+                        className={`h-8 rounded-none border px-2.5 text-xs tabular-nums transition-colors duration-fast ease-apple focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ${
                           active
                             ? 'border-brand-orange/40 text-brand-orange'
                             : 'border-neutral-800 text-neutral-500 hover:text-neutral-300'
