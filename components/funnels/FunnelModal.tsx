@@ -710,7 +710,7 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
                     clearError('window')
                   }}
                   aria-label="Conversion window value"
-                  className={`${inputClass} w-20 tabular-nums ${errors['window'] ? invalidClass : ''}`}
+                  className={`${inputClass} !w-20 tabular-nums ${errors['window'] ? invalidClass : ''}`}
                 />
                 <Select
                   variant="input"
