@@ -22,6 +22,7 @@ import { FunnelDetailSkeleton } from '@/components/skeletons'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import FunnelModal from '@/components/funnels/FunnelModal'
 import { FunnelCanvas } from '@/components/funnels/FunnelCanvas'
+import { FunnelStepStrip } from '@/components/funnels/FunnelStepStrip'
 import { useCan } from '@/lib/auth/permissions'
 
 // ---------------------------------------------------------------------------
@@ -288,13 +289,24 @@ export default function FunnelDetailPage() {
 
         {/* Canvas — step columns with connecting bands; drives ?step= */}
         {!statsError && stats && stats.steps.length > 0 && (
-          <div className="mt-6">
-            <FunnelCanvas
-              steps={stats.steps}
-              selectedStep={selectedStep}
-              onSelectStep={setSelectedStep}
-            />
-          </div>
+          <>
+            <div className="mt-6">
+              <FunnelCanvas
+                steps={stats.steps}
+                selectedStep={selectedStep}
+                onSelectStep={setSelectedStep}
+              />
+            </div>
+            <div className="mt-3">
+              <FunnelStepStrip
+                siteId={siteId}
+                funnelId={funnelId}
+                steps={stats.steps}
+                selectedStep={selectedStep}
+                dateRange={dateRange}
+              />
+            </div>
+          </>
         )}
       </div>
 

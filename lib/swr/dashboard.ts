@@ -28,7 +28,7 @@ import {
 } from '@/lib/api/journeys'
 import { getSite } from '@/lib/api/sites'
 import type { Site } from '@/lib/api/sites'
-import { listFunnels, getFunnel, getFunnelStats, getFunnelTrends, type Funnel, type FunnelStats, type FunnelTrends } from '@/lib/api/funnels'
+import { listFunnels, getFunnel, getFunnelStats, getFunnelTrends, getFunnelBreakdown, type Funnel, type FunnelStats, type FunnelTrends, type FunnelBreakdown } from '@/lib/api/funnels'
 import { getUptimeStatus, type UptimeStatusResponse } from '@/lib/api/uptime'
 import { getPageSpeedConfig, getPageSpeedLatest, getPageSpeedHistory, type PageSpeedConfig, type PageSpeedCheck } from '@/lib/api/pagespeed'
 import { listGoals, type Goal } from '@/lib/api/goals'
@@ -417,6 +417,29 @@ export function useFunnelTrends(siteId: string, funnelId: string, startDate: str
       ...dashboardSWRConfig,
       refreshInterval: 60_000,
       dedupingInterval: 10_000,
+      keepPreviousData: true,
+    }
+  )
+}
+
+// * Hook for a funnel step's dimension breakdown (step is 0-based, per the API)
+export function useFunnelBreakdown(
+  siteId: string,
+  funnelId: string,
+  step: number,
+  dimension: string,
+  startDate: string,
+  endDate: string,
+  filters?: string,
+) {
+  return useSWR<FunnelBreakdown>(
+    siteId && funnelId && step >= 0 && dimension && startDate && endDate
+      ? ['funnelBreakdown', siteId, funnelId, step, dimension, `${startDate}-${endDate}`, filters]
+      : null,
+    () => getFunnelBreakdown(siteId, funnelId, step, dimension, startDate, endDate, filters),
+    {
+      ...dashboardSWRConfig,
+      dedupingInterval: 30_000,
       keepPreviousData: true,
     }
   )
