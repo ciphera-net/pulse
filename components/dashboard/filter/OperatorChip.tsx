@@ -1,8 +1,10 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { CaretDown, Check } from '@phosphor-icons/react'
 import { OPERATORS, OPERATOR_LABELS, type DimensionFilter } from '@/lib/filters'
+import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 
 // ---------------------------------------------------------------------------
 // OperatorChip — compact token that names the operator and opens a 4-option
@@ -65,10 +67,15 @@ export default function OperatorChip({ operator, onChange }: OperatorChipProps) 
         <CaretDown className="w-3 h-3 text-neutral-500" weight="bold" />
       </button>
 
+      <AnimatePresence>
       {open && (
-        <div
+        <motion.div
           role="menu"
-          className="absolute top-full left-0 mt-1 z-10 min-w-[180px] bg-popover border border-border rounded-none shadow-lg py-1"
+          initial={{ opacity: 0, y: 4, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 4, scale: 0.97 }}
+          transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
+          className="absolute top-full left-0 mt-1 z-10 min-w-[180px] bg-popover border border-border rounded-none shadow-lg py-1 origin-top-left"
         >
           {OPERATORS.map(op => (
             <button
@@ -85,8 +92,9 @@ export default function OperatorChip({ operator, onChange }: OperatorChipProps) 
               {op === operator && <Check className="w-3.5 h-3.5" weight="bold" />}
             </button>
           ))}
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   )
 }

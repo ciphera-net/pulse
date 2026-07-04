@@ -28,8 +28,28 @@ export interface FilterPopoverProps {
 
 export default function FilterPopover({ open, anchor, label, contentKey, onClose, children }: FilterPopoverProps) {
   const panelRef = useRef<HTMLDivElement>(null)
+  const measureRef = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null)
   const [resizeTick, setResizeTick] = useState(0)
+  const [contentHeight, setContentHeight] = useState<number | null>(null)
+  const [isMorphing, setIsMorphing] = useState(false)
+
+  // * Track the active stage's rendered height so the panel morphs between
+  // * stage sizes (and grows smoothly when suggestions arrive) instead of
+  // * snapping. Null until first measure — the initial open keeps its natural
+  // * height with no morph.
+  useEffect(() => {
+    if (!open) {
+      setContentHeight(null)
+      return
+    }
+    const el = measureRef.current
+    if (!el) return
+    const observer = new ResizeObserver(() => setContentHeight(el.offsetHeight))
+    observer.observe(el)
+    setContentHeight(el.offsetHeight)
+    return () => observer.disconnect()
+  }, [open, contentKey])
 
   // * Position before paint: below the anchor, flipped above when it would
   // * overflow, clamped to the viewport with a fixed margin.
@@ -127,17 +147,30 @@ export default function FilterPopover({ open, anchor, label, contentKey, onClose
           // * Off-screen until the pre-paint measure runs — never a 0,0 flash.
           style={pos ?? { left: -9999, top: -9999 }}
         >
-          <AnimatePresence mode="popLayout" initial={false}>
-            <motion.div
-              key={contentKey}
-              initial={{ opacity: 0, x: 8 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -8 }}
-              transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
-            >
-              {children}
-            </motion.div>
-          </AnimatePresence>
+          <motion.div
+            initial={false}
+            animate={contentHeight != null ? { height: contentHeight } : undefined}
+            transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
+            onAnimationStart={() => setIsMorphing(true)}
+            onAnimationComplete={() => setIsMorphing(false)}
+            // * Clip only mid-morph — at rest the operator chip's menu must be
+            // * free to overhang the panel.
+            style={{ overflow: isMorphing ? 'hidden' : undefined }}
+          >
+            <div ref={measureRef}>
+              <AnimatePresence mode="popLayout" initial={false}>
+                <motion.div
+                  key={contentKey}
+                  initial={{ opacity: 0, x: 8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -8 }}
+                  transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
+                >
+                  {children}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </motion.div>
         </motion.div>
       )}
     </AnimatePresence>,

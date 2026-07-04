@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useRef, useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
 import {
   MagnifyingGlass,
   FileText,
@@ -18,6 +19,7 @@ import {
   type Icon,
 } from '@phosphor-icons/react'
 import { DIMENSION_CATEGORIES, DIMENSION_LABELS } from '@/lib/filters'
+import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { moveHighlight } from './useFilterBuilder'
 
 // * Mirrors the dashboard's tool iconography so the popover reads as the same
@@ -103,8 +105,13 @@ export default function DimensionStage({ activeDimensions, onPick, onClose }: Di
   const renderItem = (dim: string, index: number) => {
     const DimIcon = DIMENSION_ICONS[dim]
     return (
-      <button
+      // * Tiny mount cascade (capped at 120ms) — rows that stay mounted while
+      // * typing never re-animate, so keystroke filtering stays instant.
+      <motion.button
         key={dim}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: DURATION_FAST, ease: EASE_APPLE, delay: Math.min(index * 0.015, 0.12) }}
         type="button"
         id={`filter-dim-${dim}`}
         role="option"
@@ -128,7 +135,7 @@ export default function DimensionStage({ activeDimensions, onPick, onClose }: Di
             className="w-1.5 h-1.5 rounded-full bg-brand-orange flex-shrink-0"
           />
         )}
-      </button>
+      </motion.button>
     )
   }
 

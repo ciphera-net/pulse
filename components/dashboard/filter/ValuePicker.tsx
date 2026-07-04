@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { motion } from 'framer-motion'
 import { DIMENSION_LABELS, type FilterSuggestion } from '@/lib/filters'
 import { getFilterValueIcon } from '@/lib/utils/icons'
+import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 
 // ---------------------------------------------------------------------------
 // ValuePicker — inline value search + multi-select list with live counts.
@@ -87,9 +89,18 @@ export default function ValuePicker({ dimension, values, onChange, onFetchSugges
         checked ? 'bg-brand-orange border-brand-orange' : 'border-neutral-600 bg-transparent'
       } ease-apple`}>
         {checked && (
-          <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+          <motion.svg
+            initial={{ scale: 0.4, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.12, ease: EASE_APPLE }}
+            className="w-2.5 h-2.5 text-white"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={3}
+          >
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
+          </motion.svg>
         )}
       </span>
       {dimension && (
@@ -139,7 +150,14 @@ export default function ValuePicker({ dimension, values, onChange, onFetchSugges
           <div className="inline-block w-4 h-4 border-2 border-neutral-600 border-t-brand-orange rounded-full animate-spin" />
         </div>
       ) : (filtered.length > 0 || selectedExtras.length > 0) ? (
-        <div className="max-h-52 overflow-y-auto border-t border-neutral-800">
+        /* * Gentle rise-in when the list first arrives (post-fetch); typing to
+         * filter keeps this container mounted, so keystrokes stay instant. */
+        <motion.div
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
+          className="max-h-52 overflow-y-auto border-t border-neutral-800"
+        >
           {selectedExtras.map(v => renderRow(v, v, true))}
           {filtered.map(s => renderRow(s.value, s.label, values.includes(s.value), s.count))}
           {fetchFailed && (
@@ -154,7 +172,7 @@ export default function ValuePicker({ dimension, values, onChange, onFetchSugges
               </button>
             </div>
           )}
-        </div>
+        </motion.div>
       ) : fetchFailed && !search.trim() ? (
         /* * A failed fetch must not masquerade as "no suggestions" — typing a
          * custom value still works either way. */
