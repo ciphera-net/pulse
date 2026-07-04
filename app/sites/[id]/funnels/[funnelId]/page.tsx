@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { useParams, useRouter, useSearchParams } from 'next/navigation'
+import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, FunnelSimple } from '@phosphor-icons/react'
 import { toast, Button } from '@ciphera-net/facet'
 import { updateFunnel, deleteFunnel, type CreateFunnelRequest } from '@/lib/api/funnels'
@@ -21,6 +21,7 @@ import { UpdatingChip } from '@/components/ui/UpdatingChip'
 import { FunnelDetailSkeleton } from '@/components/skeletons'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import FunnelModal from '@/components/funnels/FunnelModal'
+import { FunnelCanvas } from '@/components/funnels/FunnelCanvas'
 import { useCan } from '@/lib/auth/permissions'
 
 // ---------------------------------------------------------------------------
@@ -68,6 +69,7 @@ function KpiCard({
 export default function FunnelDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const pathname = usePathname()
   const searchParams = useSearchParams()
   const siteId = params.id as string
   const funnelId = params.funnelId as string
@@ -97,6 +99,21 @@ export default function FunnelDetailPage() {
 
   const [modalOpen, setModalOpen] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+
+  // * Selected step lives in ?step= (1-based; default 1 stays out of the URL)
+  const stepCount = stats?.steps.length ?? 0
+  const rawStep = parseInt(searchParams.get('step') ?? '1', 10)
+  const selectedStep = Math.max(1, Math.min(stepCount || 1, Number.isNaN(rawStep) ? 1 : rawStep))
+  const setSelectedStep = useCallback(
+    (n: number) => {
+      const next = new URLSearchParams(searchParams.toString())
+      if (n <= 1) next.delete('step')
+      else next.set('step', String(n))
+      const qsNext = next.toString()
+      router.replace(qsNext ? `${pathname}?${qsNext}` : pathname, { scroll: false })
+    },
+    [router, pathname, searchParams],
+  )
 
   useEffect(() => {
     document.title = funnel ? `${funnel.name} · Funnels | Pulse` : 'Funnels | Pulse'
@@ -266,6 +283,17 @@ export default function FunnelDetailPage() {
                   : '—'}
               </span>
             </KpiCard>
+          </div>
+        )}
+
+        {/* Canvas — step columns with connecting bands; drives ?step= */}
+        {!statsError && stats && stats.steps.length > 0 && (
+          <div className="mt-6">
+            <FunnelCanvas
+              steps={stats.steps}
+              selectedStep={selectedStep}
+              onSelectStep={setSelectedStep}
+            />
           </div>
         )}
       </div>
