@@ -541,6 +541,63 @@ export function BehaviorSkeleton() {
   )
 }
 
+// ─── Search Console page skeleton (mirrors header + KPI band + chart + table) ──
+
+export function SearchSkeleton() {
+  return (
+    <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-8">
+      {/* Header — title/subtitle/sync line left, range picker right */}
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <SkeletonLine className="h-6 w-40 mb-2" />
+          <SkeletonLine className="h-4 w-72 mb-2" />
+          <SkeletonLine className="h-3 w-48" />
+        </div>
+        <SkeletonLine className="h-10 w-64 rounded-none" />
+      </div>
+
+      {/* KPI band (4 cards) */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="bg-card border border-border rounded-none p-4">
+            <SkeletonLine className="h-3 w-16 mb-3" />
+            <SkeletonLine className="h-7 w-20" />
+          </div>
+        ))}
+      </div>
+
+      {/* Traffic chart card */}
+      <div className="mt-6 bg-card border border-border rounded-none p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <SkeletonLine className="h-3 w-24" />
+          <SkeletonLine className="h-3 w-40" />
+        </div>
+        <SkeletonCard className="h-64" />
+      </div>
+
+      {/* Table block */}
+      <div className="mt-6 bg-card border border-border rounded-none overflow-hidden">
+        <div className="border-b border-border p-4">
+          <SkeletonLine className="h-8 w-40" />
+        </div>
+        <div className="p-4 space-y-2">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <div key={i} className="flex h-9 items-center justify-between">
+              <SkeletonLine className="h-4 w-1/3" />
+              <div className="flex gap-8">
+                <SkeletonLine className="h-4 w-14" />
+                <SkeletonLine className="h-4 w-16" />
+                <SkeletonLine className="h-4 w-12" />
+                <SkeletonLine className="h-4 w-12" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Organization settings skeleton (members, billing, etc) ─
 
 export function MembersListSkeleton() {

@@ -1,21 +1,26 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DURATION_FAST, DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { getDateRange, formatDate } from '@/lib/utils/dateRanges'
 import DateRangePicker from '@/components/ui/DateRangePicker'
-import { PERIOD_TO_API } from '@/lib/constants/periods'
+import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
 import { CaretDown, CaretUp, MagnifyingGlass, ArrowSquareOut, FileText } from '@phosphor-icons/react'
-import { useDashboard, useGSCStatus, useGSCOverview, useGSCTopQueries, useGSCTopPages, useGSCNewQueries } from '@/lib/swr/dashboard'
+import { useSite, useGSCStatus, useGSCOverview, useGSCTopQueries, useGSCTopPages, useGSCNewQueries } from '@/lib/swr/dashboard'
 import { getGSCQueryPages, getGSCPageQueries } from '@/lib/api/gsc'
 import type { GSCDataRow } from '@/lib/api/gsc'
-import { SkeletonLine, StatCardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
-import ClicksImpressionsChart from '@/components/search/ClicksImpressionsChart'
+import { SkeletonLine, SearchSkeleton } from '@/components/skeletons'
+import SearchTrafficChart from '@/components/search/SearchTrafficChart'
+import { SyncStatusLine } from '@/components/integrations/SyncStatusLine'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { AnimatedNumber } from '@/components/ui/animated-number'
+import { UpdatingChip } from '@/components/ui/UpdatingChip'
+import { ErrorCard } from '@/components/ui/ErrorCard'
+import { guardedPctChange, type PctChangeResult } from '@/lib/utils/pctChange'
+import { formatNumber } from '@/lib/utils/format'
 
 // ─── Helpers ────────────────────────────────────────────────────
 
@@ -25,17 +30,11 @@ const formatCTR = (ctr: number) => (ctr * 100).toFixed(1) + '%'
 // Strip protocol + trailing slash for cleaner page URL display
 const stripProtocol = (url: string) => url.replace(/^https?:\/\//, '').replace(/\/$/, '')
 
-function formatChange(current: number, previous: number) {
-  if (previous === 0) return null
-  const change = ((current - previous) / previous) * 100
-  return { value: change, label: (change >= 0 ? '+' : '') + change.toFixed(1) + '%' }
-}
-
-function formatNumber(n: number) {
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M'
-  if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K'
-  return n.toLocaleString()
-}
+const cascade = (delay: number) => ({
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: DURATION_BASE, ease: EASE_APPLE, delay },
+})
 
 // ─── Page ───────────────────────────────────────────────────────
 
@@ -45,27 +44,7 @@ export default function SearchConsolePage() {
   const params = useParams()
   const siteId = params.id as string
 
-  const [period, setPeriod] = useState('30')
-  const [dateRange, setDateRange] = useState(() => getDateRange(30))
-
-  const apiPeriod = period !== 'custom' ? (PERIOD_TO_API[period] || undefined) : undefined
-
-  const shiftPeriod = useCallback((direction: -1 | 1) => {
-    const shift = (date: string, days: number) => {
-      const d = new Date(date + 'T00:00:00')
-      d.setDate(d.getDate() + days)
-      return formatDate(d)
-    }
-    const startDate = new Date(dateRange.start + 'T00:00:00')
-    const endDate = new Date(dateRange.end + 'T00:00:00')
-    const spanDays = Math.round((endDate.getTime() - startDate.getTime()) / 86400000) + 1
-    const offsetDays = spanDays * direction
-    const newRange = { start: shift(dateRange.start, offsetDays), end: shift(dateRange.end, offsetDays) }
-    const today = formatDate(new Date())
-    if (newRange.end > today) return
-    setDateRange(newRange)
-    setPeriod('custom')
-  }, [dateRange])
+  const { period, dateRange, setPeriod, shiftPeriod } = useUrlDateRange()
 
   // View toggle
   const [activeView, setActiveView] = useState<'queries' | 'pages'>('queries')
@@ -82,20 +61,24 @@ export default function SearchConsolePage() {
 
   // Data fetching
   const { data: gscStatus } = useGSCStatus(siteId)
-  const { data: dashboard } = useDashboard(siteId, dateRange.start, dateRange.end, undefined, undefined, apiPeriod)
-  const { data: overview } = useGSCOverview(siteId, dateRange.start, dateRange.end)
+  const connected = gscStatus?.connected
+  const { data: site } = useSite(siteId)
+  const {
+    data: overview,
+    isLoading: overviewLoading,
+    isValidating: overviewValidating,
+    error: overviewError,
+    mutate: retryOverview,
+  } = useGSCOverview(siteId, dateRange.start, dateRange.end)
   const { data: topQueries, isLoading: queriesLoading } = useGSCTopQueries(siteId, dateRange.start, dateRange.end, PAGE_SIZE, queryPage * PAGE_SIZE)
   const { data: topPages, isLoading: pagesLoading } = useGSCTopPages(siteId, dateRange.start, dateRange.end, PAGE_SIZE, pagePage * PAGE_SIZE)
   const { data: newQueries } = useGSCNewQueries(siteId, dateRange.start, dateRange.end)
 
-  const showSkeleton = useMinimumLoading(!gscStatus || (gscStatus?.connected && !overview))
-  const fadeClass = useSkeletonFade(showSkeleton)
-
   // Document title
   useEffect(() => {
-    const domain = dashboard?.site?.domain
+    const domain = site?.domain
     document.title = domain ? `Search Console \u00b7 ${domain} | Pulse` : 'Search Console | Pulse'
-  }, [dashboard?.site?.domain])
+  }, [site?.domain])
 
   // Reset pagination when date range changes
   useEffect(() => {
@@ -146,51 +129,20 @@ export default function SearchConsolePage() {
     }
   }
 
-  // ─── Loading skeleton ─────────────────────────────────────
-
-  if (showSkeleton) {
-    return (
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
-        <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <SkeletonLine className="h-8 w-48 mb-2" />
-            <SkeletonLine className="h-4 w-64" />
-          </div>
-          <SkeletonLine className="h-9 w-36 rounded-none" />
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-          <StatCardSkeleton />
-          <StatCardSkeleton />
-          <StatCardSkeleton />
-          <StatCardSkeleton />
-        </div>
-        <div className="glass-surface rounded-none p-6">
-          <SkeletonLine className="h-9 w-48 rounded-none mb-6" />
-          {Array.from({ length: 10 }).map((_, i) => (
-            <div key={i} className="flex items-center justify-between py-3">
-              <SkeletonLine className="h-4 w-1/3" />
-              <div className="flex gap-8">
-                <SkeletonLine className="h-4 w-16" />
-                <SkeletonLine className="h-4 w-16" />
-                <SkeletonLine className="h-4 w-12" />
-                <SkeletonLine className="h-4 w-12" />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    )
+  // ─── Route-level state: skeleton only on the very first load ──
+  if (gscStatus === undefined || (connected && overview === undefined && overviewLoading)) {
+    return <SearchSkeleton />
   }
 
   // ─── Not connected state ──────────────────────────────────
 
   if (gscStatus && !gscStatus.connected) {
     return (
-      <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-8">
         {/* * Same page header as the connected view — without it this tab was
          * the only one with no h1 and read as a different app. */}
         <div className="mb-8">
-          <h1 className="text-lg font-semibold text-neutral-200 mb-1">
+          <h1 className="text-lg font-semibold text-white mb-1">
             Search Console
           </h1>
           <p className="text-sm text-neutral-400">
@@ -209,7 +161,7 @@ export default function SearchConsolePage() {
           </p>
           <Link
             href="/settings/site/integrations"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-none bg-brand-orange-button hover:bg-brand-orange-button-hover text-white text-sm font-medium transition-colors ease-apple"
+            className="inline-flex h-10 items-center gap-2 rounded-none bg-brand-orange-button px-5 text-sm font-medium text-white transition-colors ease-apple hover:bg-brand-orange-button-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
           >
             Connect in Settings
             <ArrowSquareOut size={16} weight="bold" />
@@ -221,75 +173,83 @@ export default function SearchConsolePage() {
 
   // ─── Connected — main view ────────────────────────────────
 
-  const clicksChange = overview ? formatChange(overview.total_clicks, overview.prev_clicks) : null
-  const impressionsChange = overview ? formatChange(overview.total_impressions, overview.prev_impressions) : null
-  const ctrChange = overview ? formatChange(overview.avg_ctr, overview.prev_avg_ctr) : null
-  // For position, lower is better — invert the direction
-  const positionChange = overview ? formatChange(overview.avg_position, overview.prev_avg_position) : null
-
   const queries = topQueries?.queries ?? []
   const queriesTotal = topQueries?.total ?? 0
   const pages = topPages?.pages ?? []
   const pagesTotal = topPages?.total ?? 0
 
   return (
-    <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
+    <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-8">
       {/* Header */}
-      <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-lg font-semibold text-neutral-200 mb-1">
-            Search Console
-          </h1>
-          <p className="text-sm text-neutral-400">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-lg font-semibold text-white">Search Console</h1>
+          <p className="mt-1 text-sm text-neutral-400">
             Google Search performance, queries, and page rankings
           </p>
+          <SyncStatusLine
+            status={gscStatus.status}
+            lastSyncedAt={gscStatus.last_synced_at}
+            errorMessage={gscStatus.error_message}
+            settingsHref="/settings/site/integrations"
+          />
         </div>
         <DateRangePicker
           period={period}
           dateRange={dateRange}
-          onPeriodChange={setPeriod}
-          onDateRangeChange={setDateRange}
+          onPeriodChange={(p) => setPeriod(p as Period)}
+          onDateRangeChange={(range) => setPeriod('custom', range)}
           onShift={shiftPeriod}
         />
       </div>
 
-      {/* Overview cards */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0 }}
-        className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8"
-      >
-        <OverviewCard
-          label="Total Clicks"
-          value={overview ? formatNumber(overview.total_clicks) : '-'}
-          change={clicksChange}
-        />
-        <OverviewCard
-          label="Total Impressions"
-          value={overview ? formatNumber(overview.total_impressions) : '-'}
-          change={impressionsChange}
-        />
-        <OverviewCard
-          label="Average CTR"
-          value={overview ? formatCTR(overview.avg_ctr) : '-'}
-          change={ctrChange}
-        />
-        <OverviewCard
-          label="Average Position"
-          value={overview ? formatPosition(overview.avg_position) : '-'}
-          change={positionChange}
-          invertChange
-        />
-      </motion.div>
+      {/* Content — the chip covers range changes, the ErrorCard covers failures */}
+      <div className="relative">
+        <UpdatingChip active={overviewValidating && !!overview} className="-top-1 right-0" />
+        {overviewError ? (
+          <ErrorCard
+            title="Couldn't load search data"
+            description="The Search Console request failed for this period. Your data is safe — this is a loading problem."
+            onRetry={() => { void retryOverview() }}
+          />
+        ) : overview ? (
+          <>
+            {/* KPI band */}
+            <motion.div {...cascade(0)} className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <KpiCard
+                label="Clicks"
+                value={overview.total_clicks}
+                format={(v) => formatNumber(Math.round(v))}
+                delta={guardedPctChange(overview.total_clicks, overview.prev_clicks, overview.prev_clicks)}
+              />
+              <KpiCard
+                label="Impressions"
+                value={overview.total_impressions}
+                format={(v) => formatNumber(Math.round(v))}
+                delta={guardedPctChange(overview.total_impressions, overview.prev_impressions, overview.prev_impressions)}
+              />
+              <KpiCard
+                label="Avg CTR"
+                value={overview.avg_ctr}
+                format={(v) => `${(v * 100).toFixed(1)}%`}
+                delta={guardedPctChange(overview.avg_ctr, overview.prev_avg_ctr, overview.prev_impressions)}
+              />
+              <KpiCard
+                label="Avg position"
+                value={overview.avg_position}
+                format={(v) => v.toFixed(1)}
+                delta={guardedPctChange(overview.avg_position, overview.prev_avg_position, overview.prev_impressions)}
+                invert
+              />
+            </motion.div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: 0.05 }}
-      >
-        <ClicksImpressionsChart siteId={siteId} startDate={dateRange.start} endDate={dateRange.end} />
-      </motion.div>
+            {/* Traffic chart — dual-scale clicks (left) / impressions (right) */}
+            <motion.div {...cascade(0.05)} className="mt-6">
+              <SearchTrafficChart siteId={siteId} startDate={dateRange.start} endDate={dateRange.end} />
+            </motion.div>
+
+            {/* Views, tables and drill-downs (kept functional; rebuilt in T5) */}
+            <div className="mt-6">
 
       {/* Position tracker */}
       {topQueries?.queries && topQueries.queries.length > 0 && (
@@ -504,41 +464,53 @@ export default function SearchConsolePage() {
           )}
         </motion.div>
       )}
-
+            </div>
+          </>
+        ) : null}
+      </div>
     </div>
   )
 }
 
 // ─── Sub-components ─────────────────────────────────────────────
 
-function OverviewCard({
+// KPI band — dashboard KPI language (mono micro label, tabular AnimatedNumber,
+// guarded delta). Position is an INVERTED metric: lower is better, so a drop is
+// green. The guard (min base 10) silences noisy -100%-on-tiny-base deltas.
+function DeltaBadge({ change, invert = false }: { change: PctChangeResult; invert?: boolean }) {
+  if (!change || change.type !== 'pct') return null
+  if (change.value === 0) {
+    return <span className="font-mono text-xs tabular-nums text-neutral-500">0%</span>
+  }
+  const up = change.value > 0
+  const good = invert ? !up : up
+  return (
+    <span className={`text-xs font-medium tabular-nums ${good ? 'text-green-400' : 'text-red-400'}`}>
+      {up ? '↑' : '↓'} {Math.abs(change.value)}%
+    </span>
+  )
+}
+
+function KpiCard({
   label,
   value,
-  change,
-  invertChange = false,
+  format,
+  delta,
+  invert = false,
 }: {
   label: string
-  value: string
-  change: { value: number; label: string } | null
-  invertChange?: boolean
+  value: number
+  format: (v: number) => string
+  delta: PctChangeResult
+  invert?: boolean
 }) {
-  // For position, lower is better so a negative change is good
-  const isPositive = change ? (invertChange ? change.value < 0 : change.value > 0) : false
-  const isNegative = change ? (invertChange ? change.value > 0 : change.value < 0) : false
-
   return (
-    <div className="glass-surface p-6 rounded-none">
-      <p className="text-xs font-medium text-neutral-400 mb-1">{label}</p>
-      <p className="text-2xl font-semibold tabular-nums text-white">{value}</p>
-      {change && (
-        <p className={`text-xs mt-1 font-medium ${
-          isPositive ? 'text-green-400' :
-          isNegative ? 'text-red-400' :
-          'text-neutral-400'
-        }`}>
-          {change.label} vs previous period
-        </p>
-      )}
+    <div className="rounded-none border border-border bg-card p-4">
+      <div className="mb-1.5 flex items-start justify-between gap-2">
+        <span className="font-mono text-xs text-neutral-500">{label}</span>
+        <DeltaBadge change={delta} invert={invert} />
+      </div>
+      <AnimatedNumber value={value} format={format} className="text-2xl font-semibold tabular-nums text-white" />
     </div>
   )
 }
