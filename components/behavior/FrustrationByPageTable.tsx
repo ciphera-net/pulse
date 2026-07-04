@@ -1,37 +1,56 @@
 'use client'
 
-import { formatNumber } from '@/lib/utils/format'
 import { Files } from '@phosphor-icons/react'
+import { formatNumber } from '@/lib/utils/format'
+import { EmptyState } from '@/components/ui/EmptyState'
 import type { FrustrationByPage } from '@/lib/api/stats'
-import { TableSkeleton } from '@/components/skeletons'
+
+// ---------------------------------------------------------------------------
+// Frustration by page — the ?page= lens navigation. Rows are focusable
+// (↑/↓ move, Enter/Space toggle, click toggles); the pinned row carries the
+// selected ring and a brighter bar. Selecting a row filters the element tables
+// above via the URL lens; the summary and this table stay unfiltered.
+// ---------------------------------------------------------------------------
 
 interface FrustrationByPageTableProps {
   pages: FrustrationByPage[]
-  loading: boolean
+  lensPage: string | null
+  onToggleLens: (path: string) => void
 }
 
-export default function FrustrationByPageTable({ pages, loading }: FrustrationByPageTableProps) {
+export default function FrustrationByPageTable({ pages, lensPage, onToggleLens }: FrustrationByPageTableProps) {
   const hasData = pages.length > 0
-  const maxTotal = Math.max(...pages.map(p => p.total), 1)
+  const maxTotal = Math.max(...pages.map((p) => p.total), 1)
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement
+    const idxRaw = target.dataset?.idx
+    if (idxRaw === undefined) return
+    let idx = parseInt(idxRaw, 10)
+    if (e.key === 'ArrowDown') idx += 1
+    else if (e.key === 'ArrowUp') idx -= 1
+    else return
+    e.preventDefault()
+    idx = Math.max(0, Math.min(pages.length - 1, idx))
+    e.currentTarget.querySelector<HTMLButtonElement>(`button[data-idx="${idx}"]`)?.focus()
+  }
 
   return (
-    <div className="glass-surface rounded-none p-6 mb-8">
-      <div className="flex items-center justify-between mb-1">
-        <h3 className="text-lg font-semibold text-white">
-          Frustration by Page
-        </h3>
+    <div className="rounded-none border border-border bg-card p-4">
+      <div className="mb-3 flex h-6 items-center justify-between gap-3">
+        <span className="font-mono text-xs text-neutral-500">Frustration by page</span>
+        {hasData && (
+          <span className="hidden font-mono text-xs text-neutral-600 sm:block">
+            Select a page to filter signals
+          </span>
+        )}
       </div>
-      <p className="text-sm text-neutral-400 mb-4">
-        Pages with the most frustration signals
-      </p>
 
-      {loading ? (
-        <TableSkeleton rows={5} cols={5} />
-      ) : hasData ? (
-        <div className="overflow-x-auto -mx-6 px-6">
-          {/* Header */}
-          <div className="flex items-center justify-between px-2 -mx-2 mb-2 text-xs font-medium text-neutral-500 uppercase tracking-wider">
-            <span>Page</span>
+      {hasData ? (
+        <div className="overflow-x-auto">
+          {/* Column header */}
+          <div className="flex h-6 items-center px-2 font-mono text-xs text-neutral-500">
+            <span className="flex-1">Page</span>
             <div className="flex items-center gap-6">
               <span className="w-12 text-right">Rage</span>
               <span className="w-12 text-right">Dead</span>
@@ -41,25 +60,28 @@ export default function FrustrationByPageTable({ pages, loading }: FrustrationBy
           </div>
 
           {/* Rows */}
-          <div className="space-y-0.5">
-            {pages.map((page) => {
-              const barWidth = (page.total / maxTotal) * 75
+          <div className="space-y-0.5" onKeyDown={onKeyDown}>
+            {pages.map((page, i) => {
+              const active = lensPage === page.page_path
+              const barWidth = (page.total / maxTotal) * 100
               return (
-                <div
+                <button
                   key={page.page_path}
-                  className="relative flex items-center justify-between h-9 group hover:bg-neutral-800 rounded-none px-2 -mx-2 transition-colors ease-apple"
+                  type="button"
+                  data-idx={i}
+                  title={page.page_path}
+                  aria-pressed={active}
+                  onClick={() => onToggleLens(page.page_path)}
+                  className={`group relative flex h-9 w-full items-center rounded-none px-2 text-left transition-colors duration-fast ease-apple hover:bg-neutral-800/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange ${
+                    active ? 'ring-1 ring-inset ring-brand-orange/40' : ''
+                  }`}
                 >
-                  {/* Background bar */}
                   <div
-                    className="absolute inset-y-0 left-0 bg-brand-orange/25 rounded-none transition-[width] ease-apple"
+                    className={`absolute inset-y-1 left-0 rounded-none ${active ? 'bg-brand-orange/20' : 'bg-brand-orange/10'}`}
                     style={{ width: `${barWidth}%` }}
+                    aria-hidden="true"
                   />
-                  <span
-                    className="relative text-sm text-white truncate max-w-[200px] sm:max-w-[300px]"
-                    title={page.page_path}
-                  >
-                    {page.page_path}
-                  </span>
+                  <span className="relative flex-1 truncate text-sm text-white">{page.page_path}</span>
                   <div className="relative flex items-center gap-6">
                     <span className="w-12 text-right text-sm tabular-nums text-neutral-400">
                       {formatNumber(page.rage_clicks)}
@@ -71,29 +93,20 @@ export default function FrustrationByPageTable({ pages, loading }: FrustrationBy
                       {formatNumber(page.total)}
                     </span>
                     <span className="w-16 text-right text-sm tabular-nums text-neutral-400">
-                      {page.unique_elements}
+                      {formatNumber(page.unique_elements)}
                     </span>
                   </div>
-                </div>
+                </button>
               )
             })}
           </div>
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center text-center px-6 py-8 gap-4 min-h-[200px]">
-          <div className="rounded-full bg-neutral-800 p-4">
-            <Files className="w-8 h-8 text-neutral-400" />
-          </div>
-          <h4 className="font-semibold text-white">
-            No frustration signals detected
-          </h4>
-          <p className="text-sm text-neutral-400 max-w-md">
-            Page-level frustration data will appear here once rage clicks or dead clicks are detected on your site.
-          </p>
-          <a href="/installation" target="_blank" rel="noopener noreferrer" className="mt-1 text-sm font-medium text-brand-orange hover:underline">
-            View setup guide
-          </a>
-        </div>
+        <EmptyState
+          icon={<Files />}
+          title="No frustration signals detected"
+          description="Page-level frustration appears here once rage or dead clicks are recorded on your site."
+        />
       )}
     </div>
   )

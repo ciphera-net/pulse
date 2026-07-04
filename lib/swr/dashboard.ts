@@ -18,6 +18,9 @@ import {
   getStats,
   getDailyStats,
   getBehavior,
+  getRageClicks,
+  getDeadClicks,
+  getFrustrationDaily,
   type RealtimePageVisitors,
 } from '@/lib/api/stats'
 import {
@@ -61,6 +64,8 @@ import type {
   DashboardReferrersData,
   DashboardGoalsData,
   BehaviorData,
+  FrustrationElement,
+  FrustrationDailyPoint,
 } from '@/lib/api/stats'
 
 // * SWR fetcher functions
@@ -334,6 +339,49 @@ export function useBehavior(siteId: string, start: string, end: string, period?:
       refreshInterval: 60 * 1000,
       dedupingInterval: 10 * 1000,
     }
+  )
+}
+
+// * Hook for the daily rage/dead frustration series (behavior trend chart).
+export function useFrustrationDaily(siteId: string, start: string, end: string) {
+  return useSWR<{ days: FrustrationDailyPoint[] }>(
+    siteId && start && end ? ['frustrationDaily', siteId, start, end] : null,
+    () => getFrustrationDaily(siteId, start, end),
+    { ...dashboardSWRConfig, keepPreviousData: true },
+  )
+}
+
+// * Lens/dialog hooks for FILTERED frustration elements (behavior page ?page= lens
+// * and the view-all dialog). `enabled` gates the fetch so the un-lensed tables
+// * render the useBehavior payload with no extra request; keepPreviousData holds
+// * the previous page's rows while a new lens loads.
+export function useRageClicks(
+  siteId: string,
+  start: string,
+  end: string,
+  limit: number,
+  pagePath?: string,
+  enabled: boolean = true,
+) {
+  return useSWR<{ items: FrustrationElement[]; total: number }>(
+    enabled && siteId && start && end ? ['rageClicks', siteId, start, end, limit, pagePath ?? ''] : null,
+    () => getRageClicks(siteId, start, end, limit, pagePath),
+    { ...dashboardSWRConfig, keepPreviousData: true },
+  )
+}
+
+export function useDeadClicks(
+  siteId: string,
+  start: string,
+  end: string,
+  limit: number,
+  pagePath?: string,
+  enabled: boolean = true,
+) {
+  return useSWR<{ items: FrustrationElement[]; total: number }>(
+    enabled && siteId && start && end ? ['deadClicks', siteId, start, end, limit, pagePath ?? ''] : null,
+    () => getDeadClicks(siteId, start, end, limit, pagePath),
+    { ...dashboardSWRConfig, keepPreviousData: true },
   )
 }
 

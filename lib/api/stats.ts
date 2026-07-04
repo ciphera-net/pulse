@@ -543,3 +543,16 @@ export function getFrustrationByPage(siteId: string, startDate?: string, endDate
   return apiRequest<{ pages: FrustrationByPage[] }>(`/sites/${siteId}/frustration/by-page${buildQuery({ startDate, endDate, limit })}`)
     .then(r => r?.pages ?? [])
 }
+
+export interface FrustrationDailyPoint {
+  date: string
+  rage_clicks: number
+  dead_clicks: number
+}
+
+// * Daily rage/dead series for the behavior trend. Backend zero-fills every day
+// * in range (mirrors the funnel-trends convention) so the series is dense.
+export function getFrustrationDaily(siteId: string, startDate?: string, endDate?: string): Promise<{ days: FrustrationDailyPoint[] }> {
+  return apiRequest<{ days: FrustrationDailyPoint[] }>(`/sites/${siteId}/frustration/daily${buildQuery({ startDate, endDate })}`)
+    .then(r => r ?? { days: [] })
+}
