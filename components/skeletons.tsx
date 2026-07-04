@@ -598,6 +598,70 @@ export function SearchSkeleton() {
   )
 }
 
+// ─── CDN page skeleton (mirrors header + KPI band + charts + distribution) ──
+
+export function CDNSkeleton() {
+  return (
+    <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-8">
+      {/* Header — title/subtitle/sync line left, range picker right */}
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <SkeletonLine className="h-6 w-40 mb-2" />
+          <SkeletonLine className="h-4 w-72 mb-2" />
+          <SkeletonLine className="h-3 w-48" />
+        </div>
+        <SkeletonLine className="h-10 w-64 rounded-none" />
+      </div>
+
+      {/* KPI band (5 cards) */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="bg-card border border-border rounded-none p-4">
+            <SkeletonLine className="h-3 w-16 mb-3" />
+            <SkeletonLine className="h-7 w-20" />
+          </div>
+        ))}
+      </div>
+
+      {/* Bandwidth chart (full width) */}
+      <div className="mt-6 bg-card border border-border rounded-none p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <SkeletonLine className="h-3 w-24" />
+          <SkeletonLine className="h-3 w-36" />
+        </div>
+        <SkeletonCard className="h-[280px]" />
+      </div>
+
+      {/* Requests · Errors · Origin latency */}
+      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="bg-card border border-border rounded-none p-4">
+            <SkeletonLine className="h-3 w-24 mb-3" />
+            <SkeletonCard className="h-[220px]" />
+          </div>
+        ))}
+      </div>
+
+      {/* Traffic distribution — map + ranked rows */}
+      <div className="mt-6 bg-card border border-border rounded-none p-4">
+        <SkeletonLine className="h-3 w-32 mb-4" />
+        <SkeletonCard className="h-[360px] mb-6" />
+        <div className="space-y-0.5">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex h-9 items-center justify-between px-2">
+              <div className="flex items-center gap-2">
+                <SkeletonLine className="h-3.5 w-5" />
+                <SkeletonLine className="h-4 w-28" />
+              </div>
+              <SkeletonLine className="h-4 w-20" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Organization settings skeleton (members, billing, etc) ─
 
 export function MembersListSkeleton() {
