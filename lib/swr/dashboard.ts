@@ -47,8 +47,8 @@ import {
   type SessionSummary,
   type QuarantineFilters,
 } from '@/lib/api/quarantine'
-import { getGSCStatus, getGSCOverview, getGSCTopQueries, getGSCTopPages, getGSCDailyTotals, getGSCNewQueries, getGSCTopCountries, getGSCTopDevices, getGSCOpportunities } from '@/lib/api/gsc'
-import type { GSCStatus, GSCOverview, GSCQueryResponse, GSCPageResponse, GSCDailyTotal, GSCNewQueries, GSCCountryResponse, GSCDeviceResponse, GSCOpportunityResponse } from '@/lib/api/gsc'
+import { getGSCStatus, getGSCOverview, getGSCTopQueries, getGSCTopPages, getGSCDailyTotals, getGSCNewQueries, getGSCTopCountries, getGSCTopDevices, getGSCOpportunities, getGSCQueryPages, getGSCPageQueries, getGSCQueryTrend } from '@/lib/api/gsc'
+import type { GSCStatus, GSCOverview, GSCQueryResponse, GSCPageResponse, GSCDailyTotal, GSCNewQueries, GSCCountryResponse, GSCDeviceResponse, GSCOpportunityResponse, GSCQueryTrendPoint } from '@/lib/api/gsc'
 import { getBunnyStatus, getBunnyOverview, getBunnyDailyStats, getBunnyTopCountries } from '@/lib/api/bunny'
 import type { BunnyStatus, BunnyOverview, BunnyDailyRow, BunnyGeoRow } from '@/lib/api/bunny'
 import { getSubscription, type SubscriptionDetails } from '@/lib/api/billing'
@@ -631,6 +631,38 @@ export function useGSCOpportunities(siteId: string, start: string, end: string, 
     status?.connected ? [`gsc-opportunities`, siteId, start, end, limit] : null,
     () => getGSCOpportunities(siteId, start, end, limit),
     { ...dashboardSWRConfig, keepPreviousData: true }
+  )
+}
+
+// * Drill-down: the pages contributing to a query (queries-view expansion). The
+// * key includes the query, so each expanded row owns its own cache entry — two
+// * quick expands can't cross-render (the old shared-state race). Null key while
+// * collapsed (query empty); keepPreviousData holds the prior pages across a
+// * range revalidation.
+export function useGSCQueryPages(siteId: string, query: string, start: string, end: string) {
+  return useSWR<GSCPageResponse>(
+    siteId && query && start && end ? ['gscQueryPages', siteId, query, start, end] : null,
+    () => getGSCQueryPages(siteId, query, start, end),
+    { ...dashboardSWRConfig, keepPreviousData: true },
+  )
+}
+
+// * Drill-down: the queries contributing to a page (pages-view expansion).
+export function useGSCPageQueries(siteId: string, page: string, start: string, end: string) {
+  return useSWR<GSCQueryResponse>(
+    siteId && page && start && end ? ['gscPageQueries', siteId, page, start, end] : null,
+    () => getGSCPageQueries(siteId, page, start, end),
+    { ...dashboardSWRConfig, keepPreviousData: true },
+  )
+}
+
+// * A single query's daily position/clicks trend (queries-view sparkline). Null
+// * key until the row is expanded (query empty).
+export function useGSCQueryTrend(siteId: string, query: string, start: string, end: string) {
+  return useSWR<GSCQueryTrendPoint[]>(
+    siteId && query && start && end ? ['gscQueryTrend', siteId, query, start, end] : null,
+    () => getGSCQueryTrend(siteId, query, start, end),
+    { ...dashboardSWRConfig, keepPreviousData: true },
   )
 }
 
