@@ -27,7 +27,9 @@ import dynamic from 'next/dynamic'
 import { DashboardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import FilterButton from '@/components/dashboard/FilterButton'
 import FilterPills from '@/components/dashboard/FilterPills'
-import FilterModal, { type FilterSuggestion } from '@/components/dashboard/FilterModal'
+import FilterBuilder from '@/components/dashboard/filter/FilterBuilder'
+import { useFilterBuilder } from '@/components/dashboard/filter/useFilterBuilder'
+import { type FilterSuggestion } from '@/lib/filters'
 const Chart = dynamic(() => import('@/components/dashboard/Chart'), { ssr: false })
 import ContentStats from '@/components/dashboard/ContentStats'
 import TopReferrers from '@/components/dashboard/TopReferrers'
@@ -170,11 +172,6 @@ export default function SiteDashboardPage() {
   const resolvedDateRange: { start: string; end: string } | null =
     dashboard?.date_range ?? (apiPeriod ? null : dateRange)
 
-  // Filter modal state
-  const [editingFilterIndex, setEditingFilterIndex] = useState<number | null>(null)
-  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
-  const [filterModalDimension, setFilterModalDimension] = useState<string | null>(null)
-
   // Engagement percentile data
   const [engagementData, setEngagementData] = useState<EngagementPercentilesData | null>(null)
 
@@ -196,32 +193,15 @@ export default function SiteDashboardPage() {
     setFilters([])
   }, [])
 
-  const handleOpenFilterForDimension = useCallback((dimension: string) => {
-    setFilterModalDimension(dimension)
-    setEditingFilterIndex(null)
-    setIsFilterModalOpen(true)
-  }, [])
-
-  const handleEditFilter = useCallback((index: number) => {
-    setEditingFilterIndex(index)
-    setFilterModalDimension(filters[index]?.dimension || null)
-    setIsFilterModalOpen(true)
-  }, [filters])
-
-  const handleFilterModalSave = useCallback((filter: DimensionFilter) => {
-    if (editingFilterIndex !== null) {
-      setFilters(prev => prev.map((f, i) => i === editingFilterIndex ? filter : f))
+  // * Commit a draft from the filter popover — replaces the filter at its
+  // * index when editing, appends (via the duplicate-guarded add) otherwise.
+  const handleFilterApply = useCallback((filter: DimensionFilter, editingIndex: number | null) => {
+    if (editingIndex !== null) {
+      setFilters(prev => prev.map((f, i) => i === editingIndex ? filter : f))
     } else {
-      setFilters(prev => [...prev, filter])
+      handleAddFilter(filter)
     }
-    setIsFilterModalOpen(false)
-    setEditingFilterIndex(null)
-  }, [editingFilterIndex])
-
-  const handleFilterModalClose = useCallback(() => {
-    setIsFilterModalOpen(false)
-    setEditingFilterIndex(null)
-  }, [])
+  }, [handleAddFilter])
 
   // Fetch full suggestion list (up to 100) when a dimension is selected in the filter dropdown
   const handleFetchSuggestions = useCallback(async (dimension: string): Promise<FilterSuggestion[]> => {
@@ -297,6 +277,10 @@ export default function SiteDashboardPage() {
     }
     window.history.replaceState({}, '', url.toString())
   }, [filtersParam])
+
+  // Single-surface filter popover (create anchored to the Filter button,
+  // edit anchored to the clicked pill).
+  const filterBuilder = useFilterBuilder(handleFetchSuggestions)
 
   // Previous period date range for comparison.
   // Returns null when the previous range would be invalid for the backend:
@@ -448,8 +432,17 @@ export default function SiteDashboardPage() {
         )}
       </div>
       <div className="flex-1" />
-      <FilterPills filters={filters} onEdit={handleEditFilter} onRemove={handleRemoveFilter} onClear={handleClearFilters} />
-      <FilterButton hasActiveFilters={filters.length > 0} onSelectDimension={handleOpenFilterForDimension} />
+      <FilterPills
+        filters={filters}
+        onEdit={(index, anchor) => filterBuilder.openEdit(filters[index], index, anchor)}
+        onRemove={handleRemoveFilter}
+        onClear={handleClearFilters}
+      />
+      <FilterButton
+        hasActiveFilters={filters.length > 0}
+        active={filterBuilder.open}
+        onClick={anchor => filterBuilder.openCreate(anchor)}
+      />
       <DateRangePicker
         period={period}
         dateRange={dateRange}
@@ -571,13 +564,10 @@ export default function SiteDashboardPage() {
         campaigns={campaigns}
       />
 
-      <FilterModal
-        open={isFilterModalOpen}
-        initialDimension={filterModalDimension}
-        initialFilter={editingFilterIndex !== null ? filters[editingFilterIndex] : null}
-        onSave={handleFilterModalSave}
-        onClose={handleFilterModalClose}
-        onFetchSuggestions={handleFetchSuggestions}
+      <FilterBuilder
+        builder={filterBuilder}
+        filters={filters}
+        onApply={handleFilterApply}
       />
     </div>
   )

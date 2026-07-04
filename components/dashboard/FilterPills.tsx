@@ -6,7 +6,7 @@ import FilterPill from './FilterPill'
 
 interface FilterPillsProps {
   filters: DimensionFilter[]
-  onEdit: (index: number) => void
+  onEdit: (index: number, anchor: HTMLElement) => void
   onRemove: (index: number) => void
   onClear: () => void
 }
@@ -21,7 +21,7 @@ export default function FilterPills({ filters, onEdit, onRemove, onClear }: Filt
           <FilterPill
             key={`${filter.dimension}-${filter.operator}-${index}`}
             filter={filter}
-            onEdit={() => onEdit(index)}
+            onEdit={anchor => onEdit(index, anchor)}
             onRemove={() => onRemove(index)}
           />
         ))}

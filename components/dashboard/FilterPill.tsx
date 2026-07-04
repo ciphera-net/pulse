@@ -7,7 +7,8 @@ import { EASE_APPLE } from '@/lib/motion'
 
 interface FilterPillProps {
   filter: DimensionFilter
-  onEdit: () => void
+  /** Receives the pill's label element so the filter popover can anchor to it. */
+  onEdit: (anchor: HTMLElement) => void
   onRemove: () => void
 }
 
@@ -30,7 +31,7 @@ export default function FilterPill({ filter, onEdit, onRemove }: FilterPillProps
       className="inline-flex items-center h-10 rounded-none bg-brand-orange/10 text-brand-orange text-sm font-medium border border-brand-orange/20"
     >
       <button
-        onClick={onEdit}
+        onClick={e => onEdit(e.currentTarget)}
         className="flex items-center gap-1.5 px-3 h-full hover:bg-brand-orange/10 transition-colors cursor-pointer"
       >
         <span className="text-brand-orange/70">{dim}</span>

@@ -6,10 +6,9 @@ import { DIMENSION_LABELS, type FilterSuggestion } from '@/lib/filters'
 // ---------------------------------------------------------------------------
 // ValuePicker — inline value search + multi-select list with live counts.
 //
-// Extracted from FilterModal's ValueMultiSelect so the same picker can render
-// inside any surface (the modal's dropdown shell today, the filter popover's
-// value stage next). Owns search text, suggestion fetching, and the
-// custom-value affordance; the parent owns the selected values.
+// Owns search text, suggestion fetching (with an explicit failed state — a
+// dead request must not read as "no suggestions"), and the custom-value
+// affordance; the parent owns the selected values.
 // ---------------------------------------------------------------------------
 
 export interface ValuePickerProps {
