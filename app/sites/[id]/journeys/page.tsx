@@ -2,14 +2,17 @@
 
 import { useCallback, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import { FlowArrow, Rows, X } from '@phosphor-icons/react'
+import { FlowArrow, Rows, TreeStructure, X } from '@phosphor-icons/react'
 import { formatDate } from '@/lib/utils/dateRanges'
+import { formatDate as formatDisplayDate } from '@/lib/utils/formatDate'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import ColumnJourney from '@/components/journeys/ColumnJourney'
 import SankeyJourney from '@/components/journeys/SankeyJourney'
 import { StepperControl } from '@/components/ui/stepper-control'
 import { Segmented } from '@/components/ui/segmented'
 import { EntryCombobox } from '@/components/journeys/EntryCombobox'
+import { ErrorCard } from '@/components/ui/ErrorCard'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { JourneysSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import {
   useJourneyFilters,
@@ -52,7 +55,12 @@ export default function JourneysPage() {
     filters.setPeriod('custom', newRange)
   }, [filters.dateRange, filters.setPeriod])
 
-  const { data: transitionsData, isLoading: transitionsLoading } = useJourneyTransitions(
+  const {
+    data: transitionsData,
+    error: transitionsError,
+    isLoading: transitionsLoading,
+    mutate: retryTransitions,
+  } = useJourneyTransitions(
     siteId,
     filters.dateRange.start,
     filters.dateRange.end,
@@ -82,6 +90,8 @@ export default function JourneysPage() {
   if (showSkeleton) return <JourneysSkeleton />
 
   const totalSessions = transitionsData?.total_sessions ?? 0
+  const transitions = transitionsData?.transitions ?? []
+  const periodLabel = `${formatDisplayDate(new Date(filters.dateRange.start + 'T00:00:00'))} – ${formatDisplayDate(new Date(filters.dateRange.end + 'T00:00:00'))}`
 
   return (
     <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
@@ -173,29 +183,48 @@ export default function JourneysPage() {
           </div>
         </div>
 
-        {/* Journey Chart */}
+        {/* Journey canvas — error and settled-empty states before either view */}
         <div className="p-6">
-          {filters.viewMode === 'columns' ? (
+          {transitionsError ? (
+            <ErrorCard
+              title="Couldn't load journeys"
+              description="The journey data request failed. Your data is safe — this is a loading problem, not a tracking one."
+              onRetry={() => { void retryTransitions() }}
+            />
+          ) : transitions.length === 0 ? (
+            filters.entryPath ? (
+              <EmptyState
+                icon={<TreeStructure />}
+                title={`No journeys start at ${filters.entryPath}`}
+                description="No sessions entered through this page in this period. Try another entry point or widen the date range."
+                action={{ label: 'Clear entry filter', onClick: () => filters.setEntryPath('') }}
+              />
+            ) : (
+              <EmptyState
+                icon={<TreeStructure />}
+                title="No journey data yet"
+                description="Navigation flows will appear here as visitors browse through your site."
+                action={{ label: 'View setup guide', href: '/installation' }}
+              />
+            )
+          ) : filters.viewMode === 'columns' ? (
             <ColumnJourney
-              transitions={transitionsData?.transitions ?? []}
+              transitions={transitions}
               depth={filters.committedDepth}
               maxPagesPerStep={filters.committedDensity}
+              lens={filters.lens}
+              onLensChange={filters.setLens}
+              totalSessions={totalSessions}
+              periodLabel={periodLabel}
             />
           ) : (
             <SankeyJourney
-              transitions={transitionsData?.transitions ?? []}
+              transitions={transitions}
               depth={filters.committedDepth}
               maxPagesPerStep={filters.committedDensity}
             />
           )}
         </div>
-
-        {/* Footer */}
-        {totalSessions > 0 && (
-          <div className="px-6 pb-5 text-sm text-neutral-400">
-            {totalSessions.toLocaleString()} sessions tracked
-          </div>
-        )}
       </div>
 
     </div>
