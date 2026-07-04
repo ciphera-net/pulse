@@ -338,6 +338,7 @@ export function useBehavior(siteId: string, start: string, end: string, period?:
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,
       dedupingInterval: 10 * 1000,
+      keepPreviousData: true,
     }
   )
 }

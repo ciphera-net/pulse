@@ -47,7 +47,9 @@ export default function ScrollDepthBars({ scrollDepth }: { scrollDepth?: ScrollD
               )
             })}
           </div>
-          <p className="mt-3 font-mono text-xs text-neutral-500">{formatNumber(total)} sessions</p>
+          <p className="mt-3 font-mono text-xs text-neutral-500">
+            {formatNumber(total)} {total === 1 ? 'session' : 'sessions'}
+          </p>
         </>
       ) : (
         <EmptyState
