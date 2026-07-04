@@ -53,9 +53,12 @@ export interface DimensionStageProps {
   activeDimensions: Set<string>
   onPick: (dimension: string) => void
   onClose: () => void
+  /** Optional allowlist — when set, only these dimensions are offered (additive;
+   * omitted on the dashboard, so it's unaffected). */
+  allowed?: readonly string[]
 }
 
-export default function DimensionStage({ activeDimensions, onPick, onClose }: DimensionStageProps) {
+export default function DimensionStage({ activeDimensions, onPick, onClose, allowed }: DimensionStageProps) {
   const [search, setSearch] = useState('')
   const [highlight, setHighlight] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
@@ -68,17 +71,20 @@ export default function DimensionStage({ activeDimensions, onPick, onClose }: Di
   }, [])
 
   const query = search.trim().toLowerCase()
+  const allowSet = useMemo(() => (allowed ? new Set(allowed) : null), [allowed])
 
   // * Groups with their matching dimensions; `flat` is the keyboard order.
   const { groups, flat } = useMemo(() => {
     const groups = DIMENSION_CATEGORIES
       .map(cat => ({
         label: cat.label,
-        dimensions: cat.dimensions.filter(d => DIMENSION_LABELS[d].toLowerCase().includes(query)),
+        dimensions: cat.dimensions.filter(
+          d => (!allowSet || allowSet.has(d)) && DIMENSION_LABELS[d].toLowerCase().includes(query),
+        ),
       }))
       .filter(g => g.dimensions.length > 0)
     return { groups, flat: groups.flatMap(g => g.dimensions) }
-  }, [query])
+  }, [query, allowSet])
 
   // * Clamp the highlight when the filtered list shrinks.
   useEffect(() => {

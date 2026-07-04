@@ -17,8 +17,15 @@ import { ErrorCard } from '@/components/ui/ErrorCard'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { UpdatingChip } from '@/components/ui/UpdatingChip'
 import { JourneysSkeleton } from '@/components/skeletons'
+import FilterButton from '@/components/dashboard/FilterButton'
+import FilterPills from '@/components/dashboard/FilterPills'
+import FilterBuilder from '@/components/dashboard/filter/FilterBuilder'
+import { useFilterBuilder } from '@/components/dashboard/filter/useFilterBuilder'
+import { useFilterSuggestions } from '@/lib/hooks/useFilterSuggestions'
+import type { DimensionFilter } from '@/lib/filters'
 import {
   useJourneyFilters,
+  JOURNEY_FILTER_DIMENSIONS,
   DEPTH_MIN,
   DEPTH_MAX,
   DEPTH_STEP,
@@ -72,11 +79,30 @@ export default function JourneysPage() {
     filters.committedDepth,
     1,
     filters.entryPath || undefined,
+    filters.filtersParam || undefined,
   )
   const { data: entryPoints } = useJourneyEntryPoints(
     siteId,
     filters.dateRange.start,
     filters.dateRange.end,
+    filters.filtersParam || undefined,
+  )
+
+  // ── Dashboard filter system restricted to journeys dimensions ──
+  const fetchSuggestions = useFilterSuggestions(siteId, filters.dateRange, filters.filtersParam || undefined)
+  const filterBuilder = useFilterBuilder(fetchSuggestions)
+  const handleFilterApply = useCallback(
+    (filter: DimensionFilter, editingIndex: number | null) => {
+      if (editingIndex !== null) {
+        filters.setDimensionFilters(filters.dimensionFilters.map((f, i) => (i === editingIndex ? filter : f)))
+      } else {
+        const dup = filters.dimensionFilters.some(
+          (f) => f.dimension === filter.dimension && f.operator === filter.operator && f.values.join(';') === filter.values.join(';'),
+        )
+        if (!dup) filters.setDimensionFilters([...filters.dimensionFilters, filter])
+      }
+    },
+    [filters],
   )
   const { data: dashboard } = useDashboard(
     siteId,
@@ -191,6 +217,11 @@ export default function JourneysPage() {
                 </button>
               </div>
             )}
+            <FilterButton
+              hasActiveFilters={filters.dimensionFilters.length > 0}
+              active={filterBuilder.open}
+              onClick={(anchor) => filterBuilder.openCreate(anchor)}
+            />
             <span className="hidden flex-1 sm:block" />
             <button
               onClick={filters.resetFilters}
@@ -215,6 +246,18 @@ export default function JourneysPage() {
           </div>
         </div>
 
+        {/* Active filter pills — only present when filters are applied */}
+        {filters.dimensionFilters.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2.5">
+            <FilterPills
+              filters={filters.dimensionFilters}
+              onEdit={(index, anchor) => filterBuilder.openEdit(filters.dimensionFilters[index], index, anchor)}
+              onRemove={(index) => filters.setDimensionFilters(filters.dimensionFilters.filter((_, i) => i !== index))}
+              onClear={() => filters.setDimensionFilters([])}
+            />
+          </div>
+        )}
+
         {/* Journey canvas — error and settled-empty states before either view */}
         <div className="relative p-6">
           <UpdatingChip active={transitionsValidating} />
@@ -231,6 +274,13 @@ export default function JourneysPage() {
                 title={`No journeys start at ${filters.entryPath}`}
                 description="No sessions entered through this page in this period. Try another entry point or widen the date range."
                 action={{ label: 'Clear entry filter', onClick: () => filters.setEntryPath('') }}
+              />
+            ) : filters.dimensionFilters.length > 0 ? (
+              <EmptyState
+                icon={<TreeStructure />}
+                title="No journeys match these filters"
+                description="No sessions match the active filters in this period. Try loosening them or widening the date range."
+                action={{ label: 'Clear filters', onClick: () => filters.setDimensionFilters([]) }}
               />
             ) : (
               <EmptyState
@@ -264,6 +314,13 @@ export default function JourneysPage() {
         </div>
       </div>
 
+      {/* Filter popover — dimensions restricted to journeys' V1 set */}
+      <FilterBuilder
+        builder={filterBuilder}
+        filters={filters.dimensionFilters}
+        onApply={handleFilterApply}
+        allowedDimensions={JOURNEY_FILTER_DIMENSIONS}
+      />
     </div>
   )
 }

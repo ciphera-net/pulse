@@ -18,9 +18,11 @@ export interface FilterBuilderProps {
   builder: UseFilterBuilder
   filters: DimensionFilter[]
   onApply: (filter: DimensionFilter, editingIndex: number | null) => void
+  /** Optional dimension allowlist forwarded to the dimension stage. */
+  allowedDimensions?: readonly string[]
 }
 
-export default function FilterBuilder({ builder, filters, onApply }: FilterBuilderProps) {
+export default function FilterBuilder({ builder, filters, onApply, allowedDimensions }: FilterBuilderProps) {
   const { open, anchor, draft, dispatch, close, fetchSuggestions } = builder
 
   const activeDimensions = useMemo(() => new Set(filters.map(f => f.dimension)), [filters])
@@ -48,6 +50,7 @@ export default function FilterBuilder({ builder, filters, onApply }: FilterBuild
           activeDimensions={activeDimensions}
           onPick={dimension => dispatch({ type: 'pick_dimension', dimension })}
           onClose={close}
+          allowed={allowedDimensions}
         />
       ) : (
         <ValueStage

@@ -9,8 +9,12 @@ import {
   periodToDateRange,
   type Period,
 } from './periodUrl'
+import { serializeFilters, parseFiltersFromURL, type DimensionFilter } from '@/lib/filters'
 
 export type { Period }
+
+/** Journeys V1 supports only the session_flows dimensions (design §8). */
+export const JOURNEY_FILTER_DIMENSIONS = ['country', 'device', 'referrer'] as const
 
 // ─── Constants ──────────────────────────────────────────────────────
 
@@ -61,6 +65,10 @@ export interface JourneyFilters {
   entryPath: string
   /** Pinned chain path shared by both views; null = no lens. */
   lens: string | null
+  /** Dashboard-codec dimension filters (country/device/referrer). */
+  dimensionFilters: DimensionFilter[]
+  /** Serialized `filters=` param, or '' when none. */
+  filtersParam: string
   viewMode: ViewMode
   period: Period
   dateRange: { start: string; end: string }
@@ -69,6 +77,7 @@ export interface JourneyFilters {
   setDensity: (n: number) => void
   setEntryPath: (p: string) => void
   setLens: (path: string | null) => void
+  setDimensionFilters: (filters: DimensionFilter[]) => void
   setViewMode: (m: ViewMode) => void
   setPeriod: (p: Period, customRange?: { start: string; end: string }) => void
   resetFilters: () => void
@@ -95,6 +104,13 @@ export function useJourneyFilters(): JourneyFilters {
   const entryPath = searchParams.get('entry') ?? ''
   const lens = searchParams.get('lens') || null
   const viewMode = parseView(searchParams.get('view'))
+
+  const rawFilters = searchParams.get('filters')
+  const dimensionFilters = useMemo(
+    () => (rawFilters ? parseFiltersFromURL(rawFilters) : []),
+    [rawFilters],
+  )
+  const filtersParam = useMemo(() => serializeFilters(dimensionFilters), [dimensionFilters])
 
   // * Raw period value from URL (may be 'custom')
   const rawPeriod = parsePeriod(searchParams.get('period'))
@@ -172,6 +188,10 @@ export function useJourneyFilters(): JourneyFilters {
     (path: string | null) => updateUrl({ lens: path || null }),
     [updateUrl],
   )
+  const setDimensionFilters = useCallback(
+    (filters: DimensionFilter[]) => updateUrl({ filters: serializeFilters(filters) || null }),
+    [updateUrl],
+  )
   const setViewMode = useCallback(
     (m: ViewMode) => updateUrl({ view: m }),
     [updateUrl],
@@ -194,6 +214,7 @@ export function useJourneyFilters(): JourneyFilters {
       density: null,
       entry: null,
       lens: null,
+      filters: null,
       view: null,
       period: null,
       start: null,
@@ -206,6 +227,7 @@ export function useJourneyFilters(): JourneyFilters {
     density === DENSITY_DEFAULT &&
     entryPath === '' &&
     lens === null &&
+    dimensionFilters.length === 0 &&
     viewMode === DEFAULT_VIEW &&
     period === DEFAULT_PERIOD
 
@@ -216,6 +238,8 @@ export function useJourneyFilters(): JourneyFilters {
     committedDensity,
     entryPath,
     lens,
+    dimensionFilters,
+    filtersParam,
     viewMode,
     period,
     dateRange,
@@ -223,6 +247,7 @@ export function useJourneyFilters(): JourneyFilters {
     setDensity,
     setEntryPath,
     setLens,
+    setDimensionFilters,
     setViewMode,
     setPeriod,
     resetFilters,

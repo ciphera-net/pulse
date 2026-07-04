@@ -80,10 +80,10 @@ const fetchers = {
   campaigns: (siteId: string, start: string, end: string, limit: number) =>
     getCampaigns(siteId, start, end, limit),
   behavior: (siteId: string, start: string, end: string) => getBehavior(siteId, start, end),
-  journeyTransitions: (siteId: string, start: string, end: string, depth?: number, minSessions?: number, entryPath?: string) =>
-    getJourneyTransitions(siteId, start, end, { depth, minSessions, entryPath }),
-  journeyEntryPoints: (siteId: string, start: string, end: string) =>
-    getJourneyEntryPoints(siteId, start, end),
+  journeyTransitions: (siteId: string, start: string, end: string, depth?: number, minSessions?: number, entryPath?: string, filters?: string) =>
+    getJourneyTransitions(siteId, start, end, { depth, minSessions, entryPath, filters }),
+  journeyEntryPoints: (siteId: string, start: string, end: string, filters?: string) =>
+    getJourneyEntryPoints(siteId, start, end, filters),
   funnels: (siteId: string) => listFunnels(siteId),
   uptimeStatus: (siteId: string) => getUptimeStatus(siteId),
   pageSpeedConfig: (siteId: string) => getPageSpeedConfig(siteId),
@@ -338,10 +338,10 @@ export function useBehavior(siteId: string, start: string, end: string, period?:
 }
 
 // * Hook for journey flow transitions (Sankey diagram data)
-export function useJourneyTransitions(siteId: string, start: string, end: string, depth?: number, minSessions?: number, entryPath?: string) {
+export function useJourneyTransitions(siteId: string, start: string, end: string, depth?: number, minSessions?: number, entryPath?: string, filters?: string) {
   return useSWR<TransitionsResponse>(
-    siteId && start && end ? ['journeyTransitions', siteId, start, end, depth, minSessions, entryPath] : null,
-    () => fetchers.journeyTransitions(siteId, start, end, depth, minSessions, entryPath),
+    siteId && start && end ? ['journeyTransitions', siteId, start, end, depth, minSessions, entryPath, filters] : null,
+    () => fetchers.journeyTransitions(siteId, start, end, depth, minSessions, entryPath, filters),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,
@@ -354,10 +354,10 @@ export function useJourneyTransitions(siteId: string, start: string, end: string
 }
 
 // * Hook for journey entry points (refreshes less frequently)
-export function useJourneyEntryPoints(siteId: string, start: string, end: string) {
+export function useJourneyEntryPoints(siteId: string, start: string, end: string, filters?: string) {
   return useSWR<EntryPoint[]>(
-    siteId && start && end ? ['journeyEntryPoints', siteId, start, end] : null,
-    () => fetchers.journeyEntryPoints(siteId, start, end),
+    siteId && start && end ? ['journeyEntryPoints', siteId, start, end, filters] : null,
+    () => fetchers.journeyEntryPoints(siteId, start, end, filters),
     {
       ...dashboardSWRConfig,
       refreshInterval: 5 * 60 * 1000,

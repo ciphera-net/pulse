@@ -158,6 +158,53 @@ describe('useJourneyFilters', () => {
     expect(calledWith).toContain('depth=6')
   })
 
+  it('parses dimension filters from the URL codec', () => {
+    mockSearchParams = new URLSearchParams('filters=country%7Cis%7CUS')
+    const { result } = renderHook(() => useJourneyFilters())
+    expect(result.current.dimensionFilters).toEqual([
+      { dimension: 'country', operator: 'is', values: ['US'] },
+    ])
+    expect(result.current.filtersParam).toBe('country|is|US')
+    expect(result.current.isDefault).toBe(false)
+  })
+
+  it('has no dimension filters by default', () => {
+    const { result } = renderHook(() => useJourneyFilters())
+    expect(result.current.dimensionFilters).toEqual([])
+    expect(result.current.filtersParam).toBe('')
+  })
+
+  it('setDimensionFilters serializes into the filters param', () => {
+    const { result } = renderHook(() => useJourneyFilters())
+    act(() => {
+      result.current.setDimensionFilters([{ dimension: 'device', operator: 'is', values: ['mobile'] }])
+    })
+    const calledWith = mockReplace.mock.calls[0][0] as string
+    expect(calledWith).toContain('filters=device%7Cis%7Cmobile')
+  })
+
+  it('setDimensionFilters([]) strips the filters param', () => {
+    mockSearchParams = new URLSearchParams('filters=device%7Cis%7Cmobile&depth=6')
+    const { result } = renderHook(() => useJourneyFilters())
+    act(() => {
+      result.current.setDimensionFilters([])
+    })
+    const calledWith = mockReplace.mock.calls[0][0] as string
+    expect(calledWith).not.toContain('filters=')
+    expect(calledWith).toContain('depth=6')
+  })
+
+  it('resetFilters clears the filters param too', () => {
+    mockSearchParams = new URLSearchParams('filters=country%7Cis%7CUS&depth=6')
+    const { result } = renderHook(() => useJourneyFilters())
+    act(() => {
+      result.current.resetFilters()
+    })
+    const calledWith = mockReplace.mock.calls[0][0] as string
+    expect(calledWith).not.toContain('filters=')
+    expect(calledWith).not.toContain('depth=')
+  })
+
   it('clamps depth on write when value exceeds max', () => {
     const { result } = renderHook(() => useJourneyFilters())
     act(() => {
