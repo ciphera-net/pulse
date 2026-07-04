@@ -33,6 +33,8 @@ export function extractCountryCode(datacenter: string): string {
     if (US_STATES.has(code)) return 'US'
     if (CA_PROVINCES.has(code)) return 'CA'
   }
+  // * Bunny writes "UK" for London; ISO 3166 (and the flag set) use GB.
+  if (code === 'UK') return 'GB'
   return code
 }
 

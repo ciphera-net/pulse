@@ -30,6 +30,10 @@ describe('extractCountryCode', () => {
     expect(extractCountryCode('NA: Mexico City, MX')).toBe('MX')
   })
 
+  it('normalizes Bunny\'s UK to ISO GB so the flag set resolves', () => {
+    expect(extractCountryCode('EU: London, UK')).toBe('GB')
+  })
+
   it('returns empty for unparseable strings', () => {
     expect(extractCountryCode('')).toBe('')
     expect(extractCountryCode('Zurich')).toBe('')
