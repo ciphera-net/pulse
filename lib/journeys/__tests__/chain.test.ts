@@ -5,6 +5,7 @@ import {
   buildAdjacency,
   chainThrough,
   chainThroughLink,
+  chainThroughNode,
   exitCount,
   nodeId,
   linkKey,
@@ -114,6 +115,43 @@ describe('chainThrough', () => {
   it('returns empty sets for a path that appears nowhere', () => {
     const chain = chainThrough(links, '/nope')
     expect(chain.nodeIds.size).toBe(0)
+    expect(chain.linkKeys.size).toBe(0)
+  })
+})
+
+describe('chainThroughNode', () => {
+  // Two occurrences of /relay: at step 1 and step 3. They have DIFFERENT flows.
+  const links = [
+    { source: '0:/', target: '1:/relay', value: 5 },      // → /relay @1
+    { source: '1:/relay', target: '2:/app', value: 4 },   // /relay @1 →
+    { source: '2:/app', target: '3:/relay', value: 3 },   // → /relay @3
+    { source: '3:/relay', target: '4:/done', value: 2 },  // /relay @3 →
+    { source: '0:/x', target: '1:/other', value: 9 },     // unrelated branch
+  ]
+
+  it('highlights only the flow through the specific node, not sibling occurrences', () => {
+    const chain = chainThroughNode(links, '1:/relay')
+    // Only /relay @1's own chain — @1 connects to / (back) and /app→/relay@3→/done (fwd)
+    expect(chain.nodeIds.has('1:/relay')).toBe(true)
+    expect(chain.nodeIds.has('0:/')).toBe(true)
+    // the unrelated branch is never touched
+    expect(chain.nodeIds.has('1:/other')).toBe(false)
+    expect(chain.linkKeys.has(linkKey('0:/x', '1:/other'))).toBe(false)
+  })
+
+  it('a different occurrence of the same path yields a different (upstream-limited) chain', () => {
+    const atStep3 = chainThroughNode(links, '3:/relay')
+    // /relay @3 reaches back through /app → /relay@1 → / and forward to /done
+    expect(atStep3.nodeIds.has('3:/relay')).toBe(true)
+    expect(atStep3.nodeIds.has('4:/done')).toBe(true)
+    // but it does NOT seed from /relay @1 as an origin — the forward-only /done
+    // proves node-specific seeding (a step-1 seed would also pull /other-free branches)
+    expect(atStep3.nodeIds.has('1:/other')).toBe(false)
+  })
+
+  it('returns just the node when it participates in no links', () => {
+    const chain = chainThroughNode(links, '9:/isolated')
+    expect(chain.nodeIds).toEqual(new Set(['9:/isolated']))
     expect(chain.linkKeys.size).toBe(0)
   })
 })

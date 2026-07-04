@@ -94,17 +94,11 @@ function bfs(seeds: Iterable<string>, adj: Map<string, Set<string>>, into: Set<s
 }
 
 /**
- * The connected chain through every occurrence of `path`: BFS forward and
- * backward from each `step:path` seed, keeping links whose both endpoints are
- * reachable (SankeyJourney's original filter semantics). Empty sets when the
- * path appears nowhere.
+ * The connected chain reachable from a set of seed nodes: BFS forward and
+ * backward, keeping links whose both endpoints are reachable. Shared by the
+ * path-based lens (all occurrences) and the node-specific hover.
  */
-export function chainThrough(links: ChainLink[], path: string): Chain {
-  const seeds = new Set<string>()
-  for (const l of links) {
-    if (pathOfNode(l.source) === path) seeds.add(l.source)
-    if (pathOfNode(l.target) === path) seeds.add(l.target)
-  }
+function chainFromSeeds(links: ChainLink[], seeds: Set<string>): Chain {
   if (seeds.size === 0) return { nodeIds: new Set(), linkKeys: new Set() }
 
   const { fwd, bwd } = buildAdjacency(links)
@@ -122,6 +116,30 @@ export function chainThrough(links: ChainLink[], path: string): Chain {
     }
   }
   return { nodeIds, linkKeys }
+}
+
+/**
+ * The connected chain through **every** occurrence of `path` (all steps) — the
+ * pinned lens's "trace this page across the whole journey" view (design §4.2).
+ * Empty sets when the path appears nowhere.
+ */
+export function chainThrough(links: ChainLink[], path: string): Chain {
+  const seeds = new Set<string>()
+  for (const l of links) {
+    if (pathOfNode(l.source) === path) seeds.add(l.source)
+    if (pathOfNode(l.target) === path) seeds.add(l.target)
+  }
+  return chainFromSeeds(links, seeds)
+}
+
+/**
+ * The connected chain through a **single** `step:path` node — the flow that
+ * actually passes through that specific row (hover semantics). Unlike
+ * chainThrough, sibling occurrences of the same path at other steps are NOT
+ * seeded, so hovering /relay at step 2 highlights only its own flow.
+ */
+export function chainThroughNode(links: ChainLink[], node: string): Chain {
+  return chainFromSeeds(links, new Set([node]))
 }
 
 /**

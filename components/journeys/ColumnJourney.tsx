@@ -8,6 +8,7 @@ import { aggregateJourney } from '@/lib/journeys/aggregate'
 import {
   buildLinks,
   chainThrough,
+  chainThroughNode,
   exitCount,
   linkKey,
   nodeId,
@@ -203,11 +204,13 @@ function PageRow({
   onChain: boolean
   isLensRow: boolean
   hasChain: boolean
-  onHover: (path: string | null) => void
+  /** Receives the specific `step:path` node id — hover is node-specific. */
+  onHover: (nodeId: string | null) => void
   onToggleLens: (path: string) => void
 }) {
   const pct = columnTotal > 0 ? Math.round((sessionCount / columnTotal) * 100) : 0
   const barWidth = maxCount > 0 ? (sessionCount / maxCount) * 100 : 0
+  const id = nodeId(colIndex, path)
 
   return (
     <button
@@ -218,8 +221,8 @@ function PageRow({
       data-idx={rowIndex}
       data-path={path}
       onClick={() => onToggleLens(path)}
-      onMouseEnter={() => { if (!isOther) onHover(path) }}
-      onFocus={() => { if (!isOther) onHover(path) }}
+      onMouseEnter={() => { if (!isOther) onHover(id) }}
+      onFocus={() => { if (!isOther) onHover(id) }}
       className={`group relative flex h-9 w-full items-center gap-2 rounded-none px-3 text-left transition-colors duration-fast ease-apple
         ${isOther ? 'cursor-default' : 'cursor-pointer hover:bg-neutral-800/60'}
         ${hasChain && !onChain ? 'opacity-40' : ''}
@@ -275,7 +278,7 @@ export default function ColumnJourney({
   periodLabel,
 }: ColumnJourneyProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const [hoverPath, setHoverPath] = useState<string | null>(null)
+  const [hoverId, setHoverId] = useState<string | null>(null)
   const [measureTick, setMeasureTick] = useState(0)
 
   const columns = useMemo(
@@ -284,11 +287,13 @@ export default function ColumnJourney({
   )
   const links = useMemo(() => buildLinks(transitions, columns), [transitions, columns])
 
-  const activePath = hoverPath ?? lens
-  const chain = useMemo(
-    () => (activePath ? chainThrough(links, activePath) : null),
-    [links, activePath],
-  )
+  // * Hover is node-specific (only the flow through that row); a pinned lens is
+  // * path-based (traces the page across every step — design §4.2).
+  const chain = useMemo(() => {
+    if (hoverId) return chainThroughNode(links, hoverId)
+    if (lens) return chainThrough(links, lens)
+    return null
+  }, [links, hoverId, lens])
   // * A lens whose path vanished from the current data must not dim everything.
   const hasChain = (chain?.nodeIds.size ?? 0) > 0
 
@@ -351,9 +356,9 @@ export default function ColumnJourney({
         ref={containerRef}
         className="relative -mx-6 overflow-x-auto px-6 pb-2"
         onKeyDown={onKeyDown}
-        onMouseLeave={() => setHoverPath(null)}
+        onMouseLeave={() => setHoverId(null)}
         onBlur={(e) => {
-          if (!e.currentTarget.contains(e.relatedTarget as Node)) setHoverPath(null)
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) setHoverId(null)
         }}
         onScrollCapture={() => setMeasureTick((t) => t + 1)}
       >
@@ -407,7 +412,7 @@ export default function ColumnJourney({
                           onChain={hasChain && (chain?.nodeIds.has(id) ?? false)}
                           isLensRow={lens === page.path}
                           hasChain={hasChain}
-                          onHover={setHoverPath}
+                          onHover={setHoverId}
                           onToggleLens={toggleLens}
                         />
                       )

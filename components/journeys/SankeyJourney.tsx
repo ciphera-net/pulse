@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import type { PathTransition } from '@/lib/api/journeys'
 import {
-  chainThrough,
+  chainThroughNode,
   chainThroughLink,
   pathOfNode,
   type Chain,
@@ -43,7 +43,7 @@ const NODE_DIM_OPACITY = 0.08
 const LABEL_DIM_OPACITY = 0.2
 
 type Hover =
-  | { kind: 'node'; path: string }
+  | { kind: 'node'; id: string; path: string }
   | { kind: 'link'; source: string; target: string }
   | null
 
@@ -106,11 +106,13 @@ export default function SankeyJourney({
   }, [transitions, depth, maxPagesPerStep, containerWidth, lens])
 
   const chainLinks: ChainLink[] = layout.links
+  // * Hovering a node highlights only the flow through that specific node
+  // * (chainThroughNode), not every occurrence of its path.
   const chain: Chain | null = useMemo(() => {
     if (!hover) return null
     return hover.kind === 'link'
       ? chainThroughLink(chainLinks, hover.source, hover.target)
-      : chainThrough(chainLinks, hover.path)
+      : chainThroughNode(chainLinks, hover.id)
   }, [hover, chainLinks])
 
   const stepOrdinals = useMemo(
@@ -284,7 +286,7 @@ export default function SankeyJourney({
                 data-idx={ordinalIdx}
                 style={{ cursor: clickable ? 'pointer' : 'default', outline: 'none' }}
                 onMouseEnter={(e) => {
-                  setHover({ kind: 'node', path: n.path })
+                  setHover({ kind: 'node', id: n.id, path: n.path })
                   setTooltip({
                     x: e.clientX,
                     y: e.clientY,
@@ -298,7 +300,7 @@ export default function SankeyJourney({
                 onMouseLeave={clearHover}
                 onFocus={(e) => {
                   setFocusedId(n.id)
-                  setHover({ kind: 'node', path: n.path })
+                  setHover({ kind: 'node', id: n.id, path: n.path })
                   const rect = (e.currentTarget as SVGGElement).getBoundingClientRect()
                   setTooltip({
                     x: rect.right,
@@ -340,15 +342,21 @@ export default function SankeyJourney({
         </svg>
       </div>
 
-      {/* Tooltip — fixed, popover surface (sanctioned shadow) */}
+      {/* Tooltip — fixed, popover surface (sanctioned shadow). Anchors to the
+          right of the cursor normally, flips to the left in the right portion of
+          the viewport so it never runs off the last column. */}
       {tooltip && (
         <div
-          className="pointer-events-none fixed z-50 -translate-y-1/2 whitespace-nowrap rounded-none border border-border bg-popover px-3 py-2 shadow-lg"
-          style={{ left: tooltip.x + 14, top: tooltip.y }}
+          className="pointer-events-none fixed z-50 max-w-xs -translate-y-1/2 truncate rounded-none border border-border bg-popover px-3 py-2 shadow-lg"
+          style={
+            tooltip.x > (typeof window !== 'undefined' ? window.innerWidth : 0) * 0.62
+              ? { right: (typeof window !== 'undefined' ? window.innerWidth : 0) - tooltip.x + 14, top: tooltip.y }
+              : { left: tooltip.x + 14, top: tooltip.y }
+          }
           role="status"
         >
-          <div className="text-sm font-medium text-white">{tooltip.title}</div>
-          <div className="mt-0.5 text-sm text-neutral-400">{tooltip.sub}</div>
+          <div className="truncate text-sm font-medium text-white">{tooltip.title}</div>
+          <div className="truncate text-sm text-neutral-400">{tooltip.sub}</div>
         </div>
       )}
 
