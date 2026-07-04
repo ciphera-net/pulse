@@ -23,6 +23,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import FunnelModal from '@/components/funnels/FunnelModal'
 import { FunnelCanvas } from '@/components/funnels/FunnelCanvas'
 import { FunnelStepStrip } from '@/components/funnels/FunnelStepStrip'
+import { FunnelTrendChart } from '@/components/funnels/FunnelTrendChart'
 import { useCan } from '@/lib/auth/permissions'
 
 // ---------------------------------------------------------------------------
@@ -303,6 +304,14 @@ export default function FunnelDetailPage() {
                 funnelId={funnelId}
                 steps={stats.steps}
                 selectedStep={selectedStep}
+                dateRange={dateRange}
+              />
+            </div>
+            <div className="mt-3">
+              <FunnelTrendChart
+                siteId={siteId}
+                funnelId={funnelId}
+                steps={stats.steps}
                 dateRange={dateRange}
               />
             </div>
