@@ -18,12 +18,18 @@ export interface ValuePickerProps {
   onChange: (values: string[]) => void
   onFetchSuggestions?: (dimension: string) => Promise<FilterSuggestion[]>
   autoFocus?: boolean
+  /** Enter with an empty search box — the popover uses it to apply the draft. */
+  onSubmit?: () => void
+  /** Backspace with an empty search box — the popover uses it to go back a stage. */
+  onBackspaceWhenEmpty?: () => void
 }
 
-export default function ValuePicker({ dimension, values, onChange, onFetchSuggestions, autoFocus }: ValuePickerProps) {
+export default function ValuePicker({ dimension, values, onChange, onFetchSuggestions, autoFocus, onSubmit, onBackspaceWhenEmpty }: ValuePickerProps) {
   const [search, setSearch] = useState('')
   const [suggestions, setSuggestions] = useState<FilterSuggestion[]>([])
   const [isFetching, setIsFetching] = useState(false)
+  const [fetchFailed, setFetchFailed] = useState(false)
+  const [retryTick, setRetryTick] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
 
   // * Fetch on mount and whenever the dimension changes. Consumers that only
@@ -31,14 +37,15 @@ export default function ValuePicker({ dimension, values, onChange, onFetchSugges
   useEffect(() => {
     setSuggestions([])
     setSearch('')
+    setFetchFailed(false)
     if (!dimension || !onFetchSuggestions) return
     let cancelled = false
     setIsFetching(true)
     onFetchSuggestions(dimension)
       .then(data => { if (!cancelled) { setSuggestions(data); setIsFetching(false) } })
-      .catch(() => { if (!cancelled) setIsFetching(false) })
+      .catch(() => { if (!cancelled) { setFetchFailed(true); setIsFetching(false) } })
     return () => { cancelled = true }
-  }, [dimension, onFetchSuggestions])
+  }, [dimension, onFetchSuggestions, retryTick])
 
   useEffect(() => {
     if (autoFocus) inputRef.current?.focus()
@@ -72,12 +79,17 @@ export default function ValuePicker({ dimension, values, onChange, onFetchSugges
           onKeyDown={e => {
             if (e.key === 'Enter') {
               e.preventDefault()
-              if (filtered.length === 1 && !values.includes(filtered[0].value)) {
+              if (search.trim() === '') {
+                onSubmit?.()
+              } else if (filtered.length === 1 && !values.includes(filtered[0].value)) {
                 toggle(filtered[0].value)
                 setSearch('')
               } else {
                 handleAddCustom()
               }
+            } else if (e.key === 'Backspace' && search === '') {
+              e.preventDefault()
+              onBackspaceWhenEmpty?.()
             }
           }}
           placeholder={`Search ${dimLabel.toLowerCase()}…`}
@@ -88,6 +100,19 @@ export default function ValuePicker({ dimension, values, onChange, onFetchSugges
       {isFetching ? (
         <div className="px-4 py-4 text-center">
           <div className="inline-block w-4 h-4 border-2 border-neutral-600 border-t-brand-orange rounded-full animate-spin" />
+        </div>
+      ) : fetchFailed && suggestions.length === 0 && !search.trim() ? (
+        /* * A failed fetch must not masquerade as "no suggestions" — typing a
+         * custom value still works either way. */
+        <div className="px-3 py-3 text-center border-t border-neutral-800 space-y-1.5">
+          <p className="text-sm text-red-400">Couldn&apos;t load suggestions</p>
+          <button
+            type="button"
+            onClick={() => setRetryTick(t => t + 1)}
+            className="text-xs font-medium text-neutral-400 hover:text-white underline underline-offset-2 transition-colors cursor-pointer ease-apple"
+          >
+            Retry
+          </button>
         </div>
       ) : filtered.length > 0 ? (
         <div className="max-h-52 overflow-y-auto border-t border-neutral-800">
@@ -131,7 +156,7 @@ export default function ValuePicker({ dimension, values, onChange, onFetchSugges
         </div>
       ) : (
         <div className="px-3 py-3 text-sm text-neutral-500 text-center border-t border-neutral-800">
-          No suggestions available
+          No {dimLabel.toLowerCase()} recorded in this period — type a value to filter anyway
         </div>
       )}
     </>
