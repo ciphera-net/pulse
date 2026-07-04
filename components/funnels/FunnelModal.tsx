@@ -24,10 +24,15 @@ import { formatNumber } from '@/lib/utils/format'
 
 type StepWithoutOrder = Omit<FunnelStep, 'order'>
 
+// * One control spec for the whole modal: h-10, border-border, sharp, and the
+// * same ring-2 brand-orange focus the Segmented and Select controls use.
 const inputClass =
-  'w-full h-10 px-3 bg-transparent border border-neutral-800 rounded-none text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 transition-colors ease-apple'
+  'h-10 w-full rounded-none border border-border bg-transparent px-3 text-sm text-white placeholder:text-neutral-600 transition-colors ease-apple focus:outline-none focus:ring-2 focus:ring-brand-orange'
+// * Kills the native number spinner so the window input matches the rest.
+const numberInputClass =
+  '[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
 const invalidClass = 'border-red-500/60'
-const labelClass = 'block text-sm font-medium text-neutral-300 mb-1.5'
+const labelClass = 'mb-1.5 block text-sm font-medium text-neutral-300'
 
 const MAX_STEPS = 8
 const MAX_FILTERS = 10
@@ -191,7 +196,7 @@ function SuggestInput({
           ref={listRef}
           role="listbox"
           aria-label={`${ariaLabel} suggestions`}
-          className="absolute left-0 right-0 top-full z-10 mt-1 max-h-56 overflow-y-auto border border-border bg-popover py-1"
+          className="absolute left-0 right-0 top-full z-20 mt-1 max-h-56 overflow-y-auto rounded-none border border-border bg-popover py-1 shadow-lg"
         >
           {showSpinner ? (
             <div className="flex items-center justify-center py-4">
@@ -531,7 +536,7 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
                         transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
                         className="overflow-hidden"
                       >
-                        <div className="flex items-start gap-2.5 rounded-none border border-neutral-800/70 bg-neutral-900/30 p-2 pl-2.5">
+                        <div className="flex items-start gap-2.5 rounded-none border border-border bg-neutral-900/30 p-2 pl-2.5">
                           {/* Number chip — aligned to the control row */}
                           <span className="mt-2.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-none bg-neutral-800 text-[11px] font-medium tabular-nums text-neutral-400">
                             {i + 1}
@@ -552,7 +557,7 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
                               {cat === 'page' && (
                                 <Select
                                   variant="input"
-                                  className="w-28 shrink-0"
+                                  className="w-32 shrink-0"
                                   value={step.type}
                                   onChange={(v) => updateStep(i, { type: v })}
                                   options={[
@@ -604,7 +609,7 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
                                     />
                                     <Select
                                       variant="input"
-                                      className="w-36 shrink-0"
+                                      className="w-40 shrink-0"
                                       value={f.operator}
                                       onChange={(v) => updateFilter(i, fi, 'operator', v)}
                                       options={[
@@ -687,7 +692,7 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
                   <button
                     type="button"
                     onClick={addStep}
-                    className="flex w-full items-center justify-center gap-2 rounded-none border border-dashed border-neutral-800 py-2 text-sm text-neutral-500 transition-colors duration-fast ease-apple hover:border-neutral-600 hover:text-neutral-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+                    className="flex h-10 w-full items-center justify-center gap-2 rounded-none border border-dashed border-border text-sm text-neutral-500 transition-colors duration-fast ease-apple hover:border-neutral-600 hover:text-neutral-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
                   >
                     <Plus className="h-3.5 w-3.5" /> Add step
                   </button>
@@ -710,11 +715,11 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
                     clearError('window')
                   }}
                   aria-label="Conversion window value"
-                  className={`${inputClass} !w-20 tabular-nums ${errors['window'] ? invalidClass : ''}`}
+                  className={`${inputClass} ${numberInputClass} !w-20 tabular-nums ${errors['window'] ? invalidClass : ''}`}
                 />
                 <Select
                   variant="input"
-                  className="w-28"
+                  className="w-28 shrink-0"
                   value={windowUnit}
                   onChange={(v) => setWindowUnit(v as 'hours' | 'days')}
                   options={[
@@ -722,7 +727,7 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
                     { value: 'days', label: 'Days' },
                   ]}
                 />
-                <div className="mx-1 h-6 w-px bg-neutral-800" aria-hidden="true" />
+                <div className="mx-1 h-6 w-px bg-border" aria-hidden="true" />
                 <div className="flex items-center gap-1">
                   {WINDOW_PRESETS.map((preset) => {
                     const active = windowValue === preset.value && windowUnit === preset.unit
@@ -736,10 +741,10 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
                           setWindowUnit(preset.unit)
                           clearError('window')
                         }}
-                        className={`h-8 rounded-none border px-2.5 text-xs tabular-nums transition-colors duration-fast ease-apple focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ${
+                        className={`h-10 rounded-none border px-3 text-sm tabular-nums transition-colors duration-fast ease-apple focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ${
                           active
-                            ? 'border-brand-orange/40 text-brand-orange'
-                            : 'border-neutral-800 text-neutral-500 hover:text-neutral-300'
+                            ? 'border-brand-orange/50 text-brand-orange'
+                            : 'border-border text-neutral-400 hover:text-neutral-200'
                         }`}
                       >
                         {preset.label}
