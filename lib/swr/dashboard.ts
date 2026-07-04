@@ -346,6 +346,9 @@ export function useJourneyTransitions(siteId: string, start: string, end: string
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,
       dedupingInterval: 10 * 1000,
+      // * Depth/entry/period changes keep the canvas rendered with the previous
+      // * data while the new key loads — no full-page skeleton after first load.
+      keepPreviousData: true,
     }
   )
 }
@@ -359,6 +362,7 @@ export function useJourneyEntryPoints(siteId: string, start: string, end: string
       ...dashboardSWRConfig,
       refreshInterval: 5 * 60 * 1000,
       dedupingInterval: 30 * 1000,
+      keepPreviousData: true,
     }
   )
 }
@@ -372,6 +376,7 @@ export function useFunnels(siteId: string) {
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,
       dedupingInterval: 10 * 1000,
+      keepPreviousData: true,
     }
   )
 }
