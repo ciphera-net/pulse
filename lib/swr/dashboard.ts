@@ -516,7 +516,7 @@ export function useGSCOverview(siteId: string, start: string, end: string) {
   return useSWR<GSCOverview>(
     siteId && start && end ? ['gscOverview', siteId, start, end] : null,
     () => fetchers.gscOverview(siteId, start, end),
-    dashboardSWRConfig
+    { ...dashboardSWRConfig, keepPreviousData: true }
   )
 }
 
@@ -525,7 +525,7 @@ export function useGSCTopQueries(siteId: string, start: string, end: string, lim
   return useSWR<GSCQueryResponse>(
     siteId && start && end ? ['gscTopQueries', siteId, start, end, limit, offset] : null,
     () => fetchers.gscTopQueries(siteId, start, end, limit, offset),
-    dashboardSWRConfig
+    { ...dashboardSWRConfig, keepPreviousData: true }
   )
 }
 
@@ -534,7 +534,7 @@ export function useGSCTopPages(siteId: string, start: string, end: string, limit
   return useSWR<GSCPageResponse>(
     siteId && start && end ? ['gscTopPages', siteId, start, end, limit, offset] : null,
     () => fetchers.gscTopPages(siteId, start, end, limit, offset),
-    dashboardSWRConfig
+    { ...dashboardSWRConfig, keepPreviousData: true }
   )
 }
 
@@ -543,7 +543,7 @@ export function useGSCDailyTotals(siteId: string, start: string, end: string) {
   return useSWR<{ daily_totals: GSCDailyTotal[] }>(
     siteId && start && end ? ['gscDailyTotals', siteId, start, end] : null,
     () => fetchers.gscDailyTotals(siteId, start, end),
-    dashboardSWRConfig
+    { ...dashboardSWRConfig, keepPreviousData: true }
   )
 }
 
@@ -552,7 +552,7 @@ export function useGSCNewQueries(siteId: string, start: string, end: string) {
   return useSWR<GSCNewQueries>(
     siteId && start && end ? ['gscNewQueries', siteId, start, end] : null,
     () => fetchers.gscNewQueries(siteId, start, end),
-    dashboardSWRConfig
+    { ...dashboardSWRConfig, keepPreviousData: true }
   )
 }
 
@@ -562,7 +562,7 @@ export function useGSCTopCountries(siteId: string, start: string, end: string, l
   return useSWR<GSCCountryResponse>(
     status?.connected ? [`gsc-top-countries`, siteId, start, end, limit, offset] : null,
     () => getGSCTopCountries(siteId, start, end, limit, offset),
-    { revalidateOnFocus: false }
+    { ...dashboardSWRConfig, keepPreviousData: true }
   )
 }
 
@@ -572,7 +572,7 @@ export function useGSCTopDevices(siteId: string, start: string, end: string) {
   return useSWR<GSCDeviceResponse>(
     status?.connected ? [`gsc-top-devices`, siteId, start, end] : null,
     () => getGSCTopDevices(siteId, start, end),
-    { revalidateOnFocus: false }
+    { ...dashboardSWRConfig, keepPreviousData: true }
   )
 }
 
@@ -582,7 +582,7 @@ export function useGSCOpportunities(siteId: string, start: string, end: string, 
   return useSWR<GSCOpportunityResponse>(
     status?.connected ? [`gsc-opportunities`, siteId, start, end, limit] : null,
     () => getGSCOpportunities(siteId, start, end, limit),
-    { revalidateOnFocus: false }
+    { ...dashboardSWRConfig, keepPreviousData: true }
   )
 }
 
@@ -600,7 +600,7 @@ export function useBunnyOverview(siteId: string, startDate: string, endDate: str
   return useSWR<BunnyOverview>(
     siteId && startDate && endDate ? ['bunnyOverview', siteId, startDate, endDate] : null,
     () => fetchers.bunnyOverview(siteId, startDate, endDate),
-    dashboardSWRConfig
+    { ...dashboardSWRConfig, keepPreviousData: true }
   )
 }
 
@@ -609,7 +609,7 @@ export function useBunnyDailyStats(siteId: string, startDate: string, endDate: s
   return useSWR<{ daily_stats: BunnyDailyRow[] }>(
     siteId && startDate && endDate ? ['bunnyDailyStats', siteId, startDate, endDate] : null,
     () => fetchers.bunnyDailyStats(siteId, startDate, endDate),
-    dashboardSWRConfig
+    { ...dashboardSWRConfig, keepPreviousData: true }
   )
 }
 
@@ -618,7 +618,7 @@ export function useBunnyTopCountries(siteId: string, startDate: string, endDate:
   return useSWR<{ countries: BunnyGeoRow[] }>(
     siteId && startDate && endDate ? ['bunnyTopCountries', siteId, startDate, endDate] : null,
     () => fetchers.bunnyTopCountries(siteId, startDate, endDate),
-    dashboardSWRConfig
+    { ...dashboardSWRConfig, keepPreviousData: true }
   )
 }
 

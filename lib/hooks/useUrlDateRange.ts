@@ -14,19 +14,20 @@ import {
 export type { Period }
 
 // ---------------------------------------------------------------------------
-// URL-synced date range for the funnels pages (?period=&start=&end=) — the
-// journeys grammar, so list and detail views are shareable and survive
-// refresh. Defaults (period=30) stay out of the URL.
+// Shared URL-synced date range for date-ranged pages (funnels, behavior,
+// search, CDN) (?period=&start=&end=) — the journeys grammar, so list and
+// detail views are shareable and survive refresh. Defaults (period=30) stay
+// out of the URL.
 // ---------------------------------------------------------------------------
 
-export interface FunnelDateRange {
+export interface UrlDateRange {
   period: Period
   dateRange: { start: string; end: string }
   setPeriod: (p: Period, customRange?: { start: string; end: string }) => void
   shiftPeriod: (direction: -1 | 1) => void
 }
 
-export function useFunnelDateRange(): FunnelDateRange {
+export function useUrlDateRange(): UrlDateRange {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()

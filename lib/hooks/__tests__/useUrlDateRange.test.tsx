@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
-import { useFunnelDateRange } from '../useFunnelDateRange'
+import { useUrlDateRange } from '../useUrlDateRange'
 
 // * Mock Next.js navigation
 const mockReplace = vi.fn()
@@ -28,36 +28,36 @@ beforeEach(() => {
   mockSearchParams = new URLSearchParams()
 })
 
-describe('useFunnelDateRange', () => {
+describe('useUrlDateRange', () => {
   it('defaults to period 30 with its computed range', () => {
-    const { result } = renderHook(() => useFunnelDateRange())
+    const { result } = renderHook(() => useUrlDateRange())
     expect(result.current.period).toBe('30')
     expect(result.current.dateRange).toEqual({ start: 'start-30', end: 'end-30' })
   })
 
   it('reads a preset period from the URL', () => {
     mockSearchParams = new URLSearchParams('period=7')
-    const { result } = renderHook(() => useFunnelDateRange())
+    const { result } = renderHook(() => useUrlDateRange())
     expect(result.current.period).toBe('7')
     expect(result.current.dateRange).toEqual({ start: 'start-7', end: 'end-7' })
   })
 
   it('reads a custom range from the URL when valid', () => {
     mockSearchParams = new URLSearchParams('period=custom&start=2026-01-01&end=2026-01-31')
-    const { result } = renderHook(() => useFunnelDateRange())
+    const { result } = renderHook(() => useUrlDateRange())
     expect(result.current.period).toBe('custom')
     expect(result.current.dateRange).toEqual({ start: '2026-01-01', end: '2026-01-31' })
   })
 
   it('normalizes period=custom with missing or malformed dates to the default', () => {
     mockSearchParams = new URLSearchParams('period=custom')
-    expect(renderHook(() => useFunnelDateRange()).result.current.period).toBe('30')
+    expect(renderHook(() => useUrlDateRange()).result.current.period).toBe('30')
     mockSearchParams = new URLSearchParams('period=custom&start=garbage&end=2026-01-31')
-    expect(renderHook(() => useFunnelDateRange()).result.current.period).toBe('30')
+    expect(renderHook(() => useUrlDateRange()).result.current.period).toBe('30')
   })
 
   it('setPeriod custom writes period/start/end; presets strip them', () => {
-    const { result } = renderHook(() => useFunnelDateRange())
+    const { result } = renderHook(() => useUrlDateRange())
     act(() => {
       result.current.setPeriod('custom', { start: '2026-01-01', end: '2026-01-31' })
     })
@@ -67,7 +67,7 @@ describe('useFunnelDateRange', () => {
     expect(calledWith).toContain('end=2026-01-31')
 
     mockSearchParams = new URLSearchParams('period=custom&start=2026-01-01&end=2026-01-31')
-    const { result: r2 } = renderHook(() => useFunnelDateRange())
+    const { result: r2 } = renderHook(() => useUrlDateRange())
     mockReplace.mockClear()
     act(() => {
       r2.current.setPeriod('7')
@@ -80,7 +80,7 @@ describe('useFunnelDateRange', () => {
 
   it('omits the default period from the URL', () => {
     mockSearchParams = new URLSearchParams('period=7')
-    const { result } = renderHook(() => useFunnelDateRange())
+    const { result } = renderHook(() => useUrlDateRange())
     act(() => {
       result.current.setPeriod('30')
     })
@@ -90,7 +90,7 @@ describe('useFunnelDateRange', () => {
 
   it('shiftPeriod moves a custom range back by its own span', () => {
     mockSearchParams = new URLSearchParams('period=custom&start=2026-01-08&end=2026-01-14')
-    const { result } = renderHook(() => useFunnelDateRange())
+    const { result } = renderHook(() => useUrlDateRange())
     act(() => {
       result.current.shiftPeriod(-1)
     })
@@ -101,7 +101,7 @@ describe('useFunnelDateRange', () => {
 
   it('shiftPeriod forward clamps at today (no-op past it)', () => {
     mockSearchParams = new URLSearchParams('period=custom&start=2099-01-01&end=2099-01-07')
-    const { result } = renderHook(() => useFunnelDateRange())
+    const { result } = renderHook(() => useUrlDateRange())
     act(() => {
       result.current.shiftPeriod(1)
     })

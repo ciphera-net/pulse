@@ -8,7 +8,7 @@ import { toast, Button } from '@ciphera-net/facet'
 import { updateFunnel, deleteFunnel, type CreateFunnelRequest } from '@/lib/api/funnels'
 import { ApiError } from '@/lib/api/client'
 import { useFunnelDetail, useFunnelStats } from '@/lib/swr/dashboard'
-import { useFunnelDateRange, type Period } from '@/lib/hooks/useFunnelDateRange'
+import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
 import { previousDateRange } from '@/lib/hooks/periodUrl'
 import { useFilterSuggestions } from '@/lib/hooks/useFilterSuggestions'
 import { type DimensionFilter, serializeFilters, parseFiltersFromURL } from '@/lib/filters'
@@ -83,7 +83,7 @@ export default function FunnelDetailPage() {
   const funnelId = params.funnelId as string
   const canManage = useCan('funnels.manage')
 
-  const { period, dateRange, setPeriod, shiftPeriod } = useFunnelDateRange()
+  const { period, dateRange, setPeriod, shiftPeriod } = useUrlDateRange()
 
   // ── Dashboard filter system, URL-synced with the dashboard's exact codec ──
   const [filters, setFilters] = useState<DimensionFilter[]>(() => {

@@ -15,7 +15,7 @@ import { FunnelSimple } from '@phosphor-icons/react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import FunnelModal, { type FunnelPrefill } from '@/components/funnels/FunnelModal'
 import DateRangePicker from '@/components/ui/DateRangePicker'
-import { useFunnelDateRange, type Period } from '@/lib/hooks/useFunnelDateRange'
+import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
 import { useCan } from '@/lib/auth/permissions'
 
 // * ?prefill=<encodeURIComponent(JSON)> seeds the create modal (journeys lens
@@ -52,7 +52,7 @@ export default function FunnelsPage() {
 
   const { data: site } = useSite(siteId)
   const { data: funnels, error: funnelsError, isLoading, mutate } = useFunnels(siteId)
-  const { period, dateRange, setPeriod, shiftPeriod } = useFunnelDateRange()
+  const { period, dateRange, setPeriod, shiftPeriod } = useUrlDateRange()
   const [deletingFunnel, setDeletingFunnel] = useState<{ id: string; name: string } | null>(null)
   const [prefill, setPrefill] = useState<FunnelPrefill | null>(() => parsePrefill(searchParams.get('prefill')))
   const [modalOpen, setModalOpen] = useState<boolean>(() => parsePrefill(searchParams.get('prefill')) !== null)
