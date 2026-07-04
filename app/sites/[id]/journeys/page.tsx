@@ -294,7 +294,9 @@ export default function JourneysPage() {
             <ColumnJourney
               transitions={transitions}
               depth={filters.committedDepth}
-              maxPagesPerStep={filters.committedDensity}
+              /* Columns stay readable at ≤10 rows/step; the flow view is the
+                 detailed lens for higher densities. */
+              maxPagesPerStep={Math.min(filters.committedDensity, 10)}
               lens={filters.lens}
               onLensChange={filters.setLens}
               totalSessions={totalSessions}
