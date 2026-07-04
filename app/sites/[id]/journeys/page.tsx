@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import Select from '@/components/ui/select'
+import { FlowArrow, Rows, X } from '@phosphor-icons/react'
 import { formatDate } from '@/lib/utils/dateRanges'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import ColumnJourney from '@/components/journeys/ColumnJourney'
 import SankeyJourney from '@/components/journeys/SankeyJourney'
-import { Slider } from '@/components/ui/slider'
-import { Label } from '@/components/ui/label'
+import { StepperControl } from '@/components/ui/stepper-control'
+import { Segmented } from '@/components/ui/segmented'
+import { EntryCombobox } from '@/components/journeys/EntryCombobox'
 import { JourneysSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import {
   useJourneyFilters,
@@ -78,14 +79,6 @@ export default function JourneysPage() {
   const showSkeleton = useMinimumLoading(transitionsLoading && !transitionsData)
   const fadeClass = useSkeletonFade(showSkeleton)
 
-  const entryPointOptions = [
-    { value: '', label: 'All entry points' },
-    ...(entryPoints ?? []).map((ep) => ({
-      value: ep.path,
-      label: `${ep.path} (${ep.session_count.toLocaleString()})`,
-    })),
-  ]
-
   if (showSkeleton) return <JourneysSkeleton />
 
   const totalSessions = transitionsData?.total_sessions ?? 0
@@ -112,58 +105,51 @@ export default function JourneysPage() {
       </div>
 
       {/* Single card: toolbar + chart */}
-      <div className="glass-surface rounded-none overflow-hidden">
-        {/* Toolbar */}
-        <div className="p-6 border-b border-neutral-800">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div className="flex flex-col gap-3">
-              <div className="flex items-baseline justify-between">
-                <Label className="text-xs font-medium text-neutral-400 uppercase tracking-wider">
-                  Depth
-                </Label>
-                <span className="text-sm font-semibold text-primary tabular-nums">
-                  {filters.depth} steps
-                </span>
-              </div>
-              <Slider
-                value={[filters.depth]}
-                onValueChange={([v]) => filters.setDepth(v)}
-                min={DEPTH_MIN}
-                max={DEPTH_MAX}
-                step={DEPTH_STEP}
-                aria-label={`${filters.depth} steps deep`}
-                className="[&_[role=slider]]:h-6 [&_[role=slider]]:w-2.5 [&_[role=slider]]:border-[3px] [&_[role=slider]]:border-background [&_[role=slider]]:bg-primary [&_[role=slider]]:ring-offset-0"
-              />
-            </div>
-            <div className="flex flex-col gap-3">
-              <div className="flex items-baseline justify-between">
-                <Label className="text-xs font-medium text-neutral-400 uppercase tracking-wider">
-                  Paths per step
-                </Label>
-                <span className="text-sm font-semibold text-primary tabular-nums">
-                  {filters.density} paths
-                </span>
-              </div>
-              <Slider
-                value={[filters.density]}
-                onValueChange={([v]) => filters.setDensity(v)}
-                min={DENSITY_MIN}
-                max={DENSITY_MAX}
-                step={DENSITY_STEP}
-                aria-label={`${filters.density} paths per step`}
-                className="[&_[role=slider]]:h-6 [&_[role=slider]]:w-2.5 [&_[role=slider]]:border-[3px] [&_[role=slider]]:border-background [&_[role=slider]]:bg-primary [&_[role=slider]]:ring-offset-0"
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-6">
-            <Select
-              variant="input"
-              className="flex-1 min-w-[180px]"
-              value={filters.entryPath}
-              onChange={(value) => filters.setEntryPath(value)}
-              options={entryPointOptions}
+      <div className="bg-card border border-border rounded-none overflow-hidden">
+        {/* Toolbar — one h-10 row; wraps to two rows <sm (steppers / combobox+view) */}
+        <div className="flex flex-wrap items-center gap-2 border-b border-border p-4">
+          <div className="flex items-center gap-2">
+            <StepperControl
+              label="Depth"
+              value={filters.depth}
+              min={DEPTH_MIN}
+              max={DEPTH_MAX}
+              step={DEPTH_STEP}
+              onChange={filters.setDepth}
             />
+            <StepperControl
+              label="Paths"
+              value={filters.density}
+              min={DENSITY_MIN}
+              max={DENSITY_MAX}
+              step={DENSITY_STEP}
+              onChange={filters.setDensity}
+            />
+          </div>
+          <div className="flex min-w-[280px] flex-1 items-center gap-2">
+            <EntryCombobox
+              value={filters.entryPath}
+              onChange={filters.setEntryPath}
+              entries={entryPoints ?? []}
+              className="min-w-0 flex-1 sm:w-64 sm:flex-none"
+            />
+            {filters.lens && (
+              <div className="inline-flex h-10 max-w-56 items-center gap-1.5 rounded-none border border-neutral-800 px-2.5">
+                <span className="font-mono text-xs text-neutral-500">Lens</span>
+                <span className="truncate text-sm text-white" title={filters.lens}>
+                  {filters.lens}
+                </span>
+                <button
+                  type="button"
+                  aria-label="Clear lens"
+                  onClick={() => filters.setLens(null)}
+                  className="ml-0.5 rounded-none p-0.5 text-neutral-500 transition-colors duration-fast ease-apple hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
+            <span className="hidden flex-1 sm:block" />
             <button
               onClick={filters.resetFilters}
               disabled={filters.isDefault}
@@ -175,30 +161,15 @@ export default function JourneysPage() {
             >
               Reset
             </button>
-          </div>
-
-          {/* View toggle — matches dashboard tab pattern (CSS scale transition) */}
-          <div className="flex gap-1 mt-6 pt-4 border-t border-neutral-800" role="tablist" aria-label="Journey view tabs">
-            {(['columns', 'flow'] as const).map((mode) => (
-              <button
-                key={mode}
-                onClick={() => filters.setViewMode(mode)}
-                role="tab"
-                aria-selected={filters.viewMode === mode}
-                className={`relative px-2.5 py-1 text-xs font-medium transition-colors capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded-none cursor-pointer ${
-                  filters.viewMode === mode
-                    ? 'text-white'
-                    : 'text-neutral-500 hover:text-neutral-300'
-                } ease-apple`}
-              >
-                {mode === 'columns' ? 'Columns' : 'Flow'}
-                <span
-                  className={`absolute inset-x-0 -bottom-px h-[3px] rounded-none transition-[width,background-color] duration-base ${
-                    filters.viewMode === mode ? 'bg-brand-orange scale-x-100' : 'bg-transparent scale-x-0'
-                  } ease-apple`}
-                />
-              </button>
-            ))}
+            <Segmented
+              ariaLabel="Journey view"
+              value={filters.viewMode}
+              onChange={filters.setViewMode}
+              options={[
+                { value: 'columns', label: 'Columns', icon: <Rows className="h-4 w-4" /> },
+                { value: 'flow', label: 'Flow', icon: <FlowArrow className="h-4 w-4" /> },
+              ]}
+            />
           </div>
         </div>
 

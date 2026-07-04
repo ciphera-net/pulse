@@ -112,6 +112,8 @@ export interface JourneyFilters {
   density: number
   committedDensity: number
   entryPath: string
+  /** Pinned chain path shared by both views; null = no lens. */
+  lens: string | null
   viewMode: ViewMode
   period: Period
   dateRange: { start: string; end: string }
@@ -119,6 +121,7 @@ export interface JourneyFilters {
   setDepth: (n: number) => void
   setDensity: (n: number) => void
   setEntryPath: (p: string) => void
+  setLens: (path: string | null) => void
   setViewMode: (m: ViewMode) => void
   setPeriod: (p: Period, customRange?: { start: string; end: string }) => void
   resetFilters: () => void
@@ -143,6 +146,7 @@ export function useJourneyFilters(): JourneyFilters {
     DENSITY_DEFAULT,
   )
   const entryPath = searchParams.get('entry') ?? ''
+  const lens = searchParams.get('lens') || null
   const viewMode = parseView(searchParams.get('view'))
 
   // * Raw period value from URL (may be 'custom')
@@ -217,6 +221,10 @@ export function useJourneyFilters(): JourneyFilters {
     (p: string) => updateUrl({ entry: p || null }),
     [updateUrl],
   )
+  const setLens = useCallback(
+    (path: string | null) => updateUrl({ lens: path || null }),
+    [updateUrl],
+  )
   const setViewMode = useCallback(
     (m: ViewMode) => updateUrl({ view: m }),
     [updateUrl],
@@ -238,6 +246,7 @@ export function useJourneyFilters(): JourneyFilters {
       depth: null,
       density: null,
       entry: null,
+      lens: null,
       view: null,
       period: null,
       start: null,
@@ -249,6 +258,7 @@ export function useJourneyFilters(): JourneyFilters {
     depth === DEPTH_DEFAULT &&
     density === DENSITY_DEFAULT &&
     entryPath === '' &&
+    lens === null &&
     viewMode === DEFAULT_VIEW &&
     period === DEFAULT_PERIOD
 
@@ -258,12 +268,14 @@ export function useJourneyFilters(): JourneyFilters {
     density,
     committedDensity,
     entryPath,
+    lens,
     viewMode,
     period,
     dateRange,
     setDepth,
     setDensity,
     setEntryPath,
+    setLens,
     setViewMode,
     setPeriod,
     resetFilters,

@@ -34,6 +34,7 @@ describe('useJourneyFilters', () => {
     expect(result.current.depth).toBe(4)
     expect(result.current.density).toBe(20)
     expect(result.current.entryPath).toBe('')
+    expect(result.current.lens).toBeNull()
     expect(result.current.viewMode).toBe('columns')
     expect(result.current.period).toBe('30')
     expect(result.current.isDefault).toBe(true)
@@ -104,7 +105,7 @@ describe('useJourneyFilters', () => {
   })
 
   it('resetFilters clears all filter params', () => {
-    mockSearchParams = new URLSearchParams('depth=6&density=30&entry=%2F&view=flow')
+    mockSearchParams = new URLSearchParams('depth=6&density=30&entry=%2F&lens=%2Flogin&view=flow')
     const { result } = renderHook(() => useJourneyFilters())
     act(() => {
       result.current.resetFilters()
@@ -113,6 +114,7 @@ describe('useJourneyFilters', () => {
     expect(calledWith).not.toContain('depth=')
     expect(calledWith).not.toContain('density=')
     expect(calledWith).not.toContain('entry=')
+    expect(calledWith).not.toContain('lens=')
     expect(calledWith).not.toContain('view=')
   })
 
@@ -120,6 +122,40 @@ describe('useJourneyFilters', () => {
     mockSearchParams = new URLSearchParams('depth=6')
     const { result } = renderHook(() => useJourneyFilters())
     expect(result.current.isDefault).toBe(false)
+  })
+
+  it('reads lens from URL when present', () => {
+    mockSearchParams = new URLSearchParams('lens=%2Flogin')
+    const { result } = renderHook(() => useJourneyFilters())
+    expect(result.current.lens).toBe('/login')
+    expect(result.current.isDefault).toBe(false)
+  })
+
+  it('treats an empty lens param as null', () => {
+    mockSearchParams = new URLSearchParams('lens=')
+    const { result } = renderHook(() => useJourneyFilters())
+    expect(result.current.lens).toBeNull()
+    expect(result.current.isDefault).toBe(true)
+  })
+
+  it('setLens writes the path to the URL', () => {
+    const { result } = renderHook(() => useJourneyFilters())
+    act(() => {
+      result.current.setLens('/login')
+    })
+    const calledWith = mockReplace.mock.calls[0][0] as string
+    expect(calledWith).toContain('lens=%2Flogin')
+  })
+
+  it('setLens(null) strips the lens param', () => {
+    mockSearchParams = new URLSearchParams('lens=%2Flogin&depth=6')
+    const { result } = renderHook(() => useJourneyFilters())
+    act(() => {
+      result.current.setLens(null)
+    })
+    const calledWith = mockReplace.mock.calls[0][0] as string
+    expect(calledWith).not.toContain('lens=')
+    expect(calledWith).toContain('depth=6')
   })
 
   it('clamps depth on write when value exceeds max', () => {
