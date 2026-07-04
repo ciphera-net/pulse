@@ -55,6 +55,13 @@ export default function ValuePicker({ dimension, values, onChange, onFetchSugges
     s.value.toLowerCase().includes(search.toLowerCase())
   )
 
+  // * Chosen values missing from the suggestion list (custom entries, values
+  // * outside the top 100, or a failed fetch) must stay visible and removable.
+  const selectedExtras = values.filter(v =>
+    !suggestions.some(s => s.value === v) &&
+    v.toLowerCase().includes(search.toLowerCase())
+  )
+
   function toggle(val: string) {
     onChange(values.includes(val) ? values.filter(v => v !== val) : [...values, val])
   }
@@ -67,6 +74,31 @@ export default function ValuePicker({ dimension, values, onChange, onFetchSugges
   }
 
   const dimLabel = dimension ? (DIMENSION_LABELS[dimension] ?? dimension) : 'value'
+
+  const renderRow = (value: string, label: string, checked: boolean, count?: number) => (
+    <button
+      key={value}
+      type="button"
+      onClick={() => toggle(value)}
+      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-neutral-800 transition-colors cursor-pointer ease-apple"
+    >
+      <span className={`flex items-center justify-center w-3.5 h-3.5 rounded-none border flex-shrink-0 transition-colors ${
+        checked ? 'bg-brand-orange border-brand-orange' : 'border-neutral-600 bg-transparent'
+      } ease-apple`}>
+        {checked && (
+          <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+        )}
+      </span>
+      <span className="truncate text-white flex-1 min-w-0">{label}</span>
+      {count !== undefined && (
+        <span className="text-xs text-neutral-500 tabular-nums flex-shrink-0">
+          {count.toLocaleString()}
+        </span>
+      )}
+    </button>
+  )
 
   return (
     <>
@@ -100,7 +132,24 @@ export default function ValuePicker({ dimension, values, onChange, onFetchSugges
         <div className="px-4 py-4 text-center">
           <div className="inline-block w-4 h-4 border-2 border-neutral-600 border-t-brand-orange rounded-full animate-spin" />
         </div>
-      ) : fetchFailed && suggestions.length === 0 && !search.trim() ? (
+      ) : (filtered.length > 0 || selectedExtras.length > 0) ? (
+        <div className="max-h-52 overflow-y-auto border-t border-neutral-800">
+          {selectedExtras.map(v => renderRow(v, v, true))}
+          {filtered.map(s => renderRow(s.value, s.label, values.includes(s.value), s.count))}
+          {fetchFailed && (
+            <div className="flex items-center justify-between gap-2 px-3 py-2 text-xs text-red-400/90 border-t border-neutral-800">
+              Suggestions unavailable
+              <button
+                type="button"
+                onClick={() => setRetryTick(t => t + 1)}
+                className="font-medium text-neutral-400 hover:text-white underline underline-offset-2 transition-colors cursor-pointer ease-apple"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+        </div>
+      ) : fetchFailed && !search.trim() ? (
         /* * A failed fetch must not masquerade as "no suggestions" — typing a
          * custom value still works either way. */
         <div className="px-3 py-3 text-center border-t border-neutral-800 space-y-1.5">
@@ -112,36 +161,6 @@ export default function ValuePicker({ dimension, values, onChange, onFetchSugges
           >
             Retry
           </button>
-        </div>
-      ) : filtered.length > 0 ? (
-        <div className="max-h-52 overflow-y-auto border-t border-neutral-800">
-          {filtered.map(s => {
-            const checked = values.includes(s.value)
-            return (
-              <button
-                key={s.value}
-                type="button"
-                onClick={() => toggle(s.value)}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-neutral-800 transition-colors cursor-pointer ease-apple"
-              >
-                <span className={`flex items-center justify-center w-3.5 h-3.5 rounded-none border flex-shrink-0 transition-colors ${
-                  checked ? 'bg-brand-orange border-brand-orange' : 'border-neutral-600 bg-transparent'
-                } ease-apple`}>
-                  {checked && (
-                    <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </span>
-                <span className="truncate text-white flex-1 min-w-0">{s.label}</span>
-                {s.count !== undefined && (
-                  <span className="text-xs text-neutral-500 tabular-nums flex-shrink-0">
-                    {s.count.toLocaleString()}
-                  </span>
-                )}
-              </button>
-            )
-          })}
         </div>
       ) : search.trim() ? (
         <div className="px-2 pb-2 border-t border-neutral-800 pt-2">

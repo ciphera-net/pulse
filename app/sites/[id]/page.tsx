@@ -262,8 +262,11 @@ export default function SiteDashboardPage() {
         default:
           return []
       }
-    } catch {
-      return []
+    } catch (err) {
+      // * Rethrow so the value picker renders its explicit error + retry —
+      // * returning [] here made a dead request look like "no suggestions".
+      logger.error('Filter suggestions failed', err)
+      throw err
     }
   }, [siteId, resolvedDateRange?.start, resolvedDateRange?.end, filtersParam])
 
