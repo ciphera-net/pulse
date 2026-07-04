@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { motion } from 'framer-motion'
 import { DIMENSION_LABELS, type FilterSuggestion } from '@/lib/filters'
 import { getFilterValueIcon } from '@/lib/utils/icons'
@@ -29,25 +29,46 @@ export interface ValuePickerProps {
 export default function ValuePicker({ dimension, values, onChange, onFetchSuggestions, autoFocus, onSubmit, onBackspaceWhenEmpty }: ValuePickerProps) {
   const [search, setSearch] = useState('')
   const [suggestions, setSuggestions] = useState<FilterSuggestion[]>([])
-  const [isFetching, setIsFetching] = useState(false)
+  // * Lazily true so the very first paint is already the loading state — a
+  // * post-paint effect flashed the "no values recorded" empty message for a
+  // * frame before every fetch.
+  const [isFetching, setIsFetching] = useState(() => Boolean(dimension && onFetchSuggestions))
+  const [hasFetched, setHasFetched] = useState(false)
+  const [showSpinner, setShowSpinner] = useState(false)
   const [fetchFailed, setFetchFailed] = useState(false)
   const [retryTick, setRetryTick] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // * Fetch on mount and whenever the dimension changes. Consumers that only
-  // * want fetch-on-open (the modal's dropdown) mount the picker lazily.
-  useEffect(() => {
+  // * Fetch on mount and whenever the dimension changes. Layout effect so the
+  // * dimension-change reset lands before paint — no stale-list or
+  // * empty-state flash between stages.
+  useLayoutEffect(() => {
     setSuggestions([])
     setSearch('')
     setFetchFailed(false)
-    if (!dimension || !onFetchSuggestions) return
+    setHasFetched(false)
+    if (!dimension || !onFetchSuggestions) {
+      setIsFetching(false)
+      return
+    }
     let cancelled = false
     setIsFetching(true)
     onFetchSuggestions(dimension)
-      .then(data => { if (!cancelled) { setSuggestions(data); setIsFetching(false) } })
-      .catch(() => { if (!cancelled) { setFetchFailed(true); setIsFetching(false) } })
+      .then(data => { if (!cancelled) { setSuggestions(data); setIsFetching(false); setHasFetched(true) } })
+      .catch(() => { if (!cancelled) { setFetchFailed(true); setIsFetching(false); setHasFetched(true) } })
     return () => { cancelled = true }
   }, [dimension, onFetchSuggestions, retryTick])
+
+  // * Spinner only earns its paint after 150ms — cache hits and fast
+  // * responses resolve without ever flashing it.
+  useEffect(() => {
+    if (!isFetching) {
+      setShowSpinner(false)
+      return
+    }
+    const timer = setTimeout(() => setShowSpinner(true), 150)
+    return () => clearTimeout(timer)
+  }, [isFetching])
 
   useEffect(() => {
     if (autoFocus) inputRef.current?.focus()
@@ -146,8 +167,17 @@ export default function ValuePicker({ dimension, values, onChange, onFetchSugges
       </div>
 
       {isFetching ? (
-        <div className="px-4 py-4 text-center">
-          <div className="inline-block w-4 h-4 border-2 border-neutral-600 border-t-brand-orange rounded-full animate-spin" />
+        /* * Fixed-height box keeps the panel's morph pointed at one target
+         * while loading; the spinner fades in only for slow fetches. */
+        <div className="flex min-h-[52px] items-center justify-center border-t border-neutral-800">
+          {showSpinner && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
+              className="inline-block w-4 h-4 border-2 border-neutral-600 border-t-brand-orange rounded-full animate-spin"
+            />
+          )}
         </div>
       ) : (filtered.length > 0 || selectedExtras.length > 0) ? (
         /* * Gentle rise-in when the list first arrives (post-fetch); typing to
@@ -196,10 +226,14 @@ export default function ValuePicker({ dimension, values, onChange, onFetchSugges
             Filter by &ldquo;{search.trim()}&rdquo;
           </button>
         </div>
-      ) : (
+      ) : (hasFetched || !onFetchSuggestions) ? (
         <div className="px-3 py-3 text-sm text-neutral-500 text-center border-t border-neutral-800">
           No {dimLabel.toLowerCase()} recorded in this period — type a value to filter anyway
         </div>
+      ) : (
+        /* * Pre-fetch frames (dimension just changed): hold the loading box's
+         * height so nothing flashes before the layout effect kicks in. */
+        <div className="min-h-[52px] border-t border-neutral-800" />
       )}
     </>
   )
