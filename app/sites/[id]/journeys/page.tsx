@@ -222,6 +222,10 @@ export default function JourneysPage() {
               transitions={transitions}
               depth={filters.committedDepth}
               maxPagesPerStep={filters.committedDensity}
+              lens={filters.lens}
+              onLensChange={filters.setLens}
+              totalSessions={totalSessions}
+              periodLabel={periodLabel}
             />
           )}
         </div>

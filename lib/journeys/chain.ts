@@ -125,6 +125,53 @@ export function chainThrough(links: ChainLink[], path: string): Chain {
 }
 
 /**
+ * The chain through one specific hop: the hop itself plus everything
+ * link-walk-reachable downstream of its target and upstream of its source
+ * (the flow view's link-hover highlight, ported from findConnected).
+ */
+export function chainThroughLink(links: ChainLink[], source: string, target: string): Chain {
+  const outBy = new Map<string, ChainLink[]>()
+  const inBy = new Map<string, ChainLink[]>()
+  for (const l of links) {
+    if (!outBy.has(l.source)) outBy.set(l.source, [])
+    outBy.get(l.source)!.push(l)
+    if (!inBy.has(l.target)) inBy.set(l.target, [])
+    inBy.get(l.target)!.push(l)
+  }
+
+  const linkKeys = new Set<string>([linkKey(source, target)])
+  const walk = (start: string, by: Map<string, ChainLink[]>, next: (l: ChainLink) => string) => {
+    const seen = new Set<string>([start])
+    let queue = [start]
+    while (queue.length > 0) {
+      const batch: string[] = []
+      for (const id of queue) {
+        for (const l of by.get(id) ?? []) {
+          linkKeys.add(linkKey(l.source, l.target))
+          const n = next(l)
+          if (!seen.has(n)) {
+            seen.add(n)
+            batch.push(n)
+          }
+        }
+      }
+      queue = batch
+    }
+  }
+  walk(target, outBy, (l) => l.target)
+  walk(source, inBy, (l) => l.source)
+
+  const nodeIds = new Set<string>([source, target])
+  for (const l of links) {
+    if (linkKeys.has(linkKey(l.source, l.target))) {
+      nodeIds.add(l.source)
+      nodeIds.add(l.target)
+    }
+  }
+  return { nodeIds, linkKeys }
+}
+
+/**
  * Sessions that were on `path` at `colIdx` and made no onward hop — the
  * exit count shown on the column after the lens column.
  */

@@ -4,6 +4,7 @@ import {
   buildLinks,
   buildAdjacency,
   chainThrough,
+  chainThroughLink,
   exitCount,
   nodeId,
   linkKey,
@@ -113,6 +114,29 @@ describe('chainThrough', () => {
     const chain = chainThrough(links, '/nope')
     expect(chain.nodeIds.size).toBe(0)
     expect(chain.linkKeys.size).toBe(0)
+  })
+})
+
+describe('chainThroughLink', () => {
+  const links = [
+    { source: '0:/', target: '1:/login', value: 5 },
+    { source: '0:/', target: '1:/pricing', value: 2 },
+    { source: '1:/login', target: '2:/app', value: 4 },
+    { source: '1:/pricing', target: '2:/checkout', value: 1 },
+  ]
+
+  it('keeps the hop plus its upstream and downstream walk', () => {
+    const chain = chainThroughLink(links, '0:/', '1:/login')
+    expect(chain.linkKeys).toEqual(
+      new Set([linkKey('0:/', '1:/login'), linkKey('1:/login', '2:/app')]),
+    )
+    expect(chain.nodeIds).toEqual(new Set(['0:/', '1:/login', '2:/app']))
+  })
+
+  it('does not leak into sibling fans of the shared source', () => {
+    const chain = chainThroughLink(links, '1:/login', '2:/app')
+    expect(chain.linkKeys.has(linkKey('0:/', '1:/pricing'))).toBe(false)
+    expect(chain.nodeIds.has('2:/checkout')).toBe(false)
   })
 })
 
