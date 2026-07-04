@@ -275,30 +275,38 @@ export function ChecksSkeleton() {
 export function FunnelsListSkeleton() {
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
-      <div className="mb-8">
-        <div className="flex items-center gap-4 mb-6">
-          <SkeletonLine className="h-10 w-10 rounded-none" />
-          <div>
-            <SkeletonLine className="h-8 w-24 mb-1" />
-            <SkeletonLine className="h-4 w-64" />
-          </div>
+      {/* Header — title/subtitle left, range picker + create right */}
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <SkeletonLine className="h-6 w-24 mb-2" />
+          <SkeletonLine className="h-4 w-72" />
         </div>
-        <div className="grid gap-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="bg-neutral-900 border border-neutral-800 rounded-none p-6">
-              <SkeletonLine className="h-6 w-40 mb-2" />
-              <SkeletonLine className="h-4 w-64 mb-4" />
-              <div className="flex items-center gap-2">
-                {Array.from({ length: 3 }).map((_, j) => (
-                  <div key={j} className="flex items-center">
-                    <SkeletonLine className="h-7 w-20 rounded-none" />
-                    {j < 2 && <SkeletonLine className="h-4 w-4 mx-2 rounded-none" />}
-                  </div>
-                ))}
+        <div className="flex items-center gap-2">
+          <SkeletonLine className="h-10 w-64" />
+          <SkeletonLine className="h-10 w-36" />
+        </div>
+      </div>
+      {/* Summary rows: name+chips+desc left, conversion+sparkline right */}
+      <div className="grid gap-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="bg-card border border-border rounded-none p-5">
+            <div className="flex items-start justify-between gap-6">
+              <div className="min-w-0 flex-1">
+                <SkeletonLine className="h-5 w-44 mb-3" />
+                <div className="flex items-center gap-2 mb-3">
+                  {Array.from({ length: 3 }).map((_, j) => (
+                    <SkeletonLine key={j} className="h-6 w-24" />
+                  ))}
+                </div>
+                <SkeletonLine className="h-4 w-64" />
+              </div>
+              <div className="flex shrink-0 items-center gap-5">
+                <SkeletonLine className="h-7 w-14" />
+                <SkeletonLine className="h-7 w-24" />
               </div>
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
     </div>
   )

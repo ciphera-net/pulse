@@ -3,15 +3,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import {
-  getDateRange,
-  getThisWeekRange,
-  getThisMonthRange,
-  getThisYearRange,
-  getYesterdayRange,
-  getLast24HoursRange,
-  getLast1HourRange,
-  formatDate,
-} from '@/lib/utils/dateRanges'
+  DEFAULT_PERIOD,
+  isValidDateString,
+  parsePeriod,
+  periodToDateRange,
+  type Period,
+} from './periodUrl'
+
+export type { Period }
 
 // ─── Constants ──────────────────────────────────────────────────────
 
@@ -26,24 +25,10 @@ export const DENSITY_STEP = 5
 export const DENSITY_DEFAULT = 20
 
 export type ViewMode = 'columns' | 'flow'
-export type Period = '1h' | '24h' | 'today' | 'yesterday' | '7' | '30' | 'week' | 'month' | 'year' | 'custom'
 
 const VIEW_MODES: ReadonlySet<ViewMode> = new Set(['columns', 'flow'])
-const PERIODS: ReadonlySet<Period> = new Set([
-  '1h',
-  '24h',
-  'today',
-  'yesterday',
-  '7',
-  '30',
-  'week',
-  'month',
-  'year',
-  'custom',
-])
 
 const DEFAULT_VIEW: ViewMode = 'columns'
-const DEFAULT_PERIOD: Period = '30'
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
@@ -64,44 +49,6 @@ function clampInt(
 function parseView(raw: string | null): ViewMode {
   if (raw && VIEW_MODES.has(raw as ViewMode)) return raw as ViewMode
   return DEFAULT_VIEW
-}
-
-function parsePeriod(raw: string | null): Period {
-  if (raw && PERIODS.has(raw as Period)) return raw as Period
-  return DEFAULT_PERIOD
-}
-
-function isValidDateString(s: string | null): s is string {
-  if (!s) return false
-  return /^\d{4}-\d{2}-\d{2}$/.test(s)
-}
-
-function periodToDateRange(period: Period) {
-  switch (period) {
-    case '1h':
-      return getLast1HourRange()
-    case '24h':
-      return getLast24HoursRange()
-    case 'today': {
-      const today = formatDate(new Date())
-      return { start: today, end: today }
-    }
-    case 'yesterday':
-      return getYesterdayRange()
-    case '7':
-      return getDateRange(7)
-    case '30':
-      return getDateRange(30)
-    case 'week':
-      return getThisWeekRange()
-    case 'month':
-      return getThisMonthRange()
-    case 'year':
-      return getThisYearRange()
-    case 'custom':
-      // * Fallback only — actual custom range comes from URL read path
-      return getDateRange(30)
-  }
 }
 
 // ─── Hook ───────────────────────────────────────────────────────────
