@@ -10,6 +10,12 @@ import { ApiError } from '@/lib/api/client'
 import { useFunnelDetail, useFunnelStats } from '@/lib/swr/dashboard'
 import { useFunnelDateRange, type Period } from '@/lib/hooks/useFunnelDateRange'
 import { previousDateRange } from '@/lib/hooks/periodUrl'
+import { useFilterSuggestions } from '@/lib/hooks/useFilterSuggestions'
+import { type DimensionFilter, serializeFilters, parseFiltersFromURL } from '@/lib/filters'
+import FilterButton from '@/components/dashboard/FilterButton'
+import FilterPills from '@/components/dashboard/FilterPills'
+import FilterBuilder from '@/components/dashboard/filter/FilterBuilder'
+import { useFilterBuilder } from '@/components/dashboard/filter/useFilterBuilder'
 import { guardedPctChange, type PctChangeResult } from '@/lib/utils/pctChange'
 import { formatNumber, formatConvertTime } from '@/lib/utils/format'
 import { formatDate as formatDisplayDate } from '@/lib/utils/formatDate'
@@ -78,6 +84,41 @@ export default function FunnelDetailPage() {
   const canManage = useCan('funnels.manage')
 
   const { period, dateRange, setPeriod, shiftPeriod } = useFunnelDateRange()
+
+  // ── Dashboard filter system, URL-synced with the dashboard's exact codec ──
+  const [filters, setFilters] = useState<DimensionFilter[]>(() => {
+    const raw = searchParams.get('filters')
+    return raw ? parseFiltersFromURL(raw) : []
+  })
+  const filtersParam = useMemo(() => serializeFilters(filters), [filters])
+
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    if (filtersParam) url.searchParams.set('filters', filtersParam)
+    else url.searchParams.delete('filters')
+    window.history.replaceState({}, '', url.toString())
+  }, [filtersParam])
+
+  const handleAddFilter = useCallback((filter: DimensionFilter) => {
+    setFilters(prev => {
+      const isDuplicate = prev.some(
+        f => f.dimension === filter.dimension && f.operator === filter.operator && f.values.join(';') === filter.values.join(';')
+      )
+      if (isDuplicate) return prev
+      return [...prev, filter]
+    })
+  }, [])
+  const handleFilterApply = useCallback((filter: DimensionFilter, editingIndex: number | null) => {
+    if (editingIndex !== null) {
+      setFilters(prev => prev.map((f, i) => (i === editingIndex ? filter : f)))
+    } else {
+      handleAddFilter(filter)
+    }
+  }, [handleAddFilter])
+
+  const fetchSuggestions = useFilterSuggestions(siteId, dateRange, filtersParam || undefined)
+  const filterBuilder = useFilterBuilder(fetchSuggestions)
+
   const {
     data: funnel,
     error: funnelError,
@@ -89,7 +130,7 @@ export default function FunnelDetailPage() {
     error: statsError,
     isValidating: statsValidating,
     mutate: retryStats,
-  } = useFunnelStats(siteId, funnelId, dateRange.start, dateRange.end)
+  } = useFunnelStats(siteId, funnelId, dateRange.start, dateRange.end, filtersParam || undefined)
 
   const prevRange = useMemo(() => previousDateRange(dateRange), [dateRange])
   const { data: prevStats } = useFunnelStats(
@@ -97,6 +138,7 @@ export default function FunnelDetailPage() {
     funnelId,
     prevRange?.start ?? '',
     prevRange?.end ?? '',
+    filtersParam || undefined,
   )
 
   const [modalOpen, setModalOpen] = useState(false)
@@ -198,6 +240,17 @@ export default function FunnelDetailPage() {
             </p>
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <FilterPills
+              filters={filters}
+              onEdit={(index, anchor) => filterBuilder.openEdit(filters[index], index, anchor)}
+              onRemove={(index) => setFilters(prev => prev.filter((_, i) => i !== index))}
+              onClear={() => setFilters([])}
+            />
+            <FilterButton
+              hasActiveFilters={filters.length > 0}
+              active={filterBuilder.open}
+              onClick={(anchor) => filterBuilder.openCreate(anchor)}
+            />
             <DateRangePicker
               period={period}
               dateRange={dateRange}
@@ -305,6 +358,7 @@ export default function FunnelDetailPage() {
                 steps={stats.steps}
                 selectedStep={selectedStep}
                 dateRange={dateRange}
+                filters={filtersParam || undefined}
               />
             </div>
             <div className="mt-3">
@@ -313,11 +367,15 @@ export default function FunnelDetailPage() {
                 funnelId={funnelId}
                 steps={stats.steps}
                 dateRange={dateRange}
+                filters={filtersParam || undefined}
               />
             </div>
           </>
         )}
       </div>
+
+      {/* Filter popover — create anchors to the button, edit to the pill */}
+      <FilterBuilder builder={filterBuilder} filters={filters} onApply={handleFilterApply} />
 
       {/* Delete confirm */}
       <Dialog open={confirmingDelete} onOpenChange={() => setConfirmingDelete(false)}>
