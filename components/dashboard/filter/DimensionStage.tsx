@@ -1,9 +1,45 @@
 'use client'
 
 import { useMemo, useRef, useState, useEffect } from 'react'
-import { MagnifyingGlass } from '@phosphor-icons/react'
+import {
+  MagnifyingGlass,
+  FileText,
+  ArrowSquareOut,
+  Broadcast,
+  Tag,
+  Compass,
+  Cpu,
+  DeviceMobile,
+  FrameCorners,
+  GlobeHemisphereWest,
+  MapPin,
+  Buildings,
+  CursorClick,
+  type Icon,
+} from '@phosphor-icons/react'
 import { DIMENSION_CATEGORIES, DIMENSION_LABELS } from '@/lib/filters'
 import { moveHighlight } from './useFilterBuilder'
+
+// * Mirrors the dashboard's tool iconography so the popover reads as the same
+// * product surface (flags/brand icons appear once a dimension is picked).
+const DIMENSION_ICONS: Record<string, Icon> = {
+  page: FileText,
+  referrer: ArrowSquareOut,
+  channel: Broadcast,
+  utm_source: Tag,
+  utm_medium: Tag,
+  utm_campaign: Tag,
+  utm_term: Tag,
+  utm_content: Tag,
+  browser: Compass,
+  os: Cpu,
+  device: DeviceMobile,
+  screen_resolution: FrameCorners,
+  country: GlobeHemisphereWest,
+  region: MapPin,
+  city: Buildings,
+  event_name: CursorClick,
+}
 
 // ---------------------------------------------------------------------------
 // DimensionStage — stage 1 of the filter popover: type-to-search over the
@@ -64,29 +100,37 @@ export default function DimensionStage({ activeDimensions, onPick, onClose }: Di
     }
   }
 
-  const renderItem = (dim: string, index: number) => (
-    <button
-      key={dim}
-      type="button"
-      id={`filter-dim-${dim}`}
-      role="option"
-      aria-selected={index === highlight}
-      data-index={index}
-      onClick={() => onPick(dim)}
-      onMouseEnter={() => setHighlight(index)}
-      className={`w-full flex items-center justify-between gap-2 px-3 py-1.5 text-sm text-left rounded-none transition-colors cursor-pointer ease-apple ${
-        index === highlight ? 'bg-white/[0.06] text-white' : 'text-neutral-300'
-      }`}
-    >
-      <span>{DIMENSION_LABELS[dim]}</span>
-      {activeDimensions.has(dim) && (
-        <span
-          aria-label="has an active filter"
-          className="w-1.5 h-1.5 rounded-full bg-brand-orange flex-shrink-0"
-        />
-      )}
-    </button>
-  )
+  const renderItem = (dim: string, index: number) => {
+    const DimIcon = DIMENSION_ICONS[dim]
+    return (
+      <button
+        key={dim}
+        type="button"
+        id={`filter-dim-${dim}`}
+        role="option"
+        aria-selected={index === highlight}
+        data-index={index}
+        onClick={() => onPick(dim)}
+        onMouseEnter={() => setHighlight(index)}
+        className={`w-full flex items-center gap-2.5 px-3 py-1.5 text-sm text-left rounded-none transition-colors cursor-pointer ease-apple ${
+          index === highlight ? 'bg-white/[0.06] text-white' : 'text-neutral-300'
+        }`}
+      >
+        {DimIcon && (
+          <DimIcon
+            className={`w-4 h-4 flex-shrink-0 ${index === highlight ? 'text-neutral-300' : 'text-neutral-500'}`}
+          />
+        )}
+        <span className="flex-1">{DIMENSION_LABELS[dim]}</span>
+        {activeDimensions.has(dim) && (
+          <span
+            aria-label="has an active filter"
+            className="w-1.5 h-1.5 rounded-full bg-brand-orange flex-shrink-0"
+          />
+        )}
+      </button>
+    )
+  }
 
   // Flat index bookkeeping across groups for keyboard order.
   let runningIndex = -1

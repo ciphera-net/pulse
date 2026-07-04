@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { DIMENSION_LABELS, type FilterSuggestion } from '@/lib/filters'
+import { getFilterValueIcon } from '@/lib/utils/icons'
 
 // ---------------------------------------------------------------------------
 // ValuePicker — inline value search + multi-select list with live counts.
@@ -91,6 +92,11 @@ export default function ValuePicker({ dimension, values, onChange, onFetchSugges
           </svg>
         )}
       </span>
+      {dimension && (
+        <span className="flex h-4 w-4 items-center justify-center flex-shrink-0 [&_svg]:h-4 [&_svg]:w-4 [&_img]:h-4 [&_img]:w-4 [&_img]:object-contain">
+          {getFilterValueIcon(dimension, value)}
+        </span>
+      )}
       <span className="truncate text-white flex-1 min-w-0">{label}</span>
       {count !== undefined && (
         <span className="text-xs text-neutral-500 tabular-nums flex-shrink-0">
