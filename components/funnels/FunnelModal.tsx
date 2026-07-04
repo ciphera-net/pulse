@@ -74,6 +74,7 @@ function SuggestInput({
   failed,
   glyph,
   registerRef,
+  onPanelOpenChange,
 }: {
   value: string
   onChange: (v: string) => void
@@ -85,11 +86,20 @@ function SuggestInput({
   failed?: boolean
   glyph: (value: string) => React.ReactNode
   registerRef?: (el: HTMLInputElement | null) => void
+  /** Lets the dialog keep Escape for the panel while one is open. */
+  onPanelOpenChange?: (open: boolean) => void
 }) {
   const [open, setOpen] = useState(false)
   const [highlight, setHighlight] = useState(0)
   const [showSpinner, setShowSpinner] = useState(false)
   const listRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    onPanelOpenChange?.(true)
+    return () => onPanelOpenChange?.(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
 
   // * 150ms rule — fast fetches never flash the spinner row
   useEffect(() => {
@@ -233,6 +243,12 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
   const [stepIds, setStepIds] = useState<number[]>(() =>
     Array.from({ length: initialStepCount }, (_, i) => i),
   )
+  // * Radix's escape listener runs on document capture — this counter lets an
+  // * open suggestion panel claim Escape before the dialog dismisses.
+  const openPanels = useRef(0)
+  const onPanelOpenChange = useCallback((open: boolean) => {
+    openPanels.current += open ? 1 : -1
+  }, [])
   const fieldRefs = useRef(new Map<string, HTMLInputElement>())
   const registerField = (key: string) => (el: HTMLInputElement | null) => {
     if (el) fieldRefs.current.set(key, el)
@@ -428,7 +444,12 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose() }}>
-      <DialogContent className="flex max-h-[85vh] w-full flex-col gap-0 p-0 sm:max-w-2xl">
+      <DialogContent
+        className="flex max-h-[85vh] w-full flex-col gap-0 p-0 sm:max-w-2xl"
+        onEscapeKeyDown={(e) => {
+          if (openPanels.current > 0) e.preventDefault()
+        }}
+      >
         {/* Header */}
         <div className="shrink-0 border-b border-border px-6 py-4">
           <DialogTitle className="text-lg font-semibold text-white">
@@ -556,6 +577,7 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
                                     failed={pagesFailed}
                                     glyph={pathGlyph}
                                     registerRef={registerField(`step-${i}`)}
+                                    onPanelOpenChange={onPanelOpenChange}
                                   />
                                 </div>
                               ) : (
@@ -569,6 +591,7 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
                                   failed={goalsFailed}
                                   glyph={eventGlyph}
                                   registerRef={registerField(`step-${i}`)}
+                                  onPanelOpenChange={onPanelOpenChange}
                                 />
                               )}
 
