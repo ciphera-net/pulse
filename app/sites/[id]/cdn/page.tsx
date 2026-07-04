@@ -12,6 +12,7 @@ import * as Flags from 'country-flag-icons/react/3x2'
 
 import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 import { formatNumber } from '@/lib/utils/format'
+import { extractCountryCode, extractCity } from '@/lib/utils/bunnyDatacenter'
 import { formatDate, formatDateShort } from '@/lib/utils/formatDate'
 import { guardedPctChange, type PctChangeResult } from '@/lib/utils/pctChange'
 import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
@@ -44,35 +45,6 @@ const ERR_5XX = '#ef4444'
 const TOTAL_DOT = '#a3a3a3'
 
 // ─── Helpers ────────────────────────────────────────────────────
-
-// US state codes → map to "US" for the dotted map
-const US_STATES = new Set([
-  'AL','AK','AZ','AR','CO','CT','DC','DE','FL','GA','HI','ID','IL','IN','IA',
-  'KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ',
-  'NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT',
-  'VA','WA','WV','WI','WY',
-])
-// Canadian province codes → map to "CA"
-const CA_PROVINCES = new Set(['AB','BC','MB','NB','NL','NS','NT','NU','ON','PE','QC','SK','YT'])
-
-/**
- * Extract ISO country code from a BunnyCDN datacenter string (alpha-2 + city).
- * e.g. "EU: Zurich, CH" → "CH", "NA: Chicago, IL" → "US", "NA: Toronto, CA" → "CA"
- */
-function extractCountryCode(datacenter: string): string {
-  const parts = datacenter.split(', ')
-  const code = parts[parts.length - 1]?.trim().toUpperCase()
-  if (!code || code.length !== 2) return ''
-  if (US_STATES.has(code)) return 'US'
-  if (CA_PROVINCES.has(code)) return 'CA'
-  return code
-}
-
-/** Extract the city name from a BunnyCDN datacenter string. "EU: Zurich, CH" → "Zurich" */
-function extractCity(datacenter: string): string {
-  const afterColon = datacenter.split(': ')[1] || datacenter
-  return afterColon.split(',')[0]?.trim() || datacenter
-}
 
 /** Flag icon for an alpha-2 country code, or null when unavailable. */
 function getFlagIcon(code: string) {
@@ -382,7 +354,11 @@ export default function CDNPage() {
                   <div className="rounded-none border border-border bg-card p-4">
                     <span className="font-mono text-xs text-neutral-500">Errors</span>
                     <div className="mt-3">
-                      {daily.length > 0 ? (
+                      {daily.length > 0 && errorData.every((d) => d['3xx'] + d['4xx'] + d['5xx'] === 0) ? (
+                        <div className="flex h-[220px] items-center justify-center">
+                          <p className="font-mono text-xs text-neutral-500">No errors in this period.</p>
+                        </div>
+                      ) : daily.length > 0 ? (
                         <BarChart
                           data={errorData}
                           xDataKey="date"
@@ -734,7 +710,6 @@ function DistributionRow({ row, maxBandwidth, totalBandwidth }: { row: BunnyGeoR
         <span className="text-xs font-medium tabular-nums text-brand-orange opacity-0 transition-opacity duration-fast ease-apple group-hover:opacity-100">
           {pct.toFixed(1)}%
         </span>
-        <span className="text-neutral-400">{formatNumber(row.requests)}</span>
         <span className="w-20 text-right text-white">{formatBytes(row.bandwidth)}</span>
       </span>
     </div>
