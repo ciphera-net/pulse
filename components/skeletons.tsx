@@ -317,18 +317,32 @@ export function FunnelsListSkeleton() {
 export function FunnelDetailSkeleton() {
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
-      <div className="mb-8">
-        <div className="flex items-center gap-4 mb-6">
-          <SkeletonLine className="h-9 w-9 rounded-none" />
+      {/* Back link + header row (name/meta left, range + actions right) */}
+      <div className="mb-6">
+        <SkeletonLine className="h-4 w-20 mb-3" />
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
-            <SkeletonLine className="h-6 w-48 mb-1" />
-            <SkeletonLine className="h-4 w-64" />
+            <SkeletonLine className="h-6 w-56 mb-2" />
+            <SkeletonLine className="h-4 w-72" />
+          </div>
+          <div className="flex items-center gap-2">
+            <SkeletonLine className="h-10 w-64" />
+            <SkeletonLine className="h-10 w-20" />
+            <SkeletonLine className="h-10 w-20" />
           </div>
         </div>
-        <SkeletonCard className="h-48 mb-6" />
-        <SkeletonCard className="h-48 mb-6" />
-        <SkeletonCard className="h-64" />
       </div>
+      {/* KPI band */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="bg-card border border-border rounded-none p-4">
+            <SkeletonLine className="h-3 w-20 mb-3" />
+            <SkeletonLine className="h-7 w-16" />
+          </div>
+        ))}
+      </div>
+      {/* Canvas region */}
+      <SkeletonCard className="h-72" />
     </div>
   )
 }

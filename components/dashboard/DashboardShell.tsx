@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { PlusIcon, ExternalLinkIcon, LayoutDashboardIcon, PathIcon, FunnelIcon, CursorClickIcon, SearchIcon, CloudUploadIcon, HeartbeatIcon, SettingsIcon, UserMenu, type CipheraApp } from '@ciphera-net/facet'
 import { formatUpdatedAgo } from '@/lib/utils/format'
+import { useFunnelDetail } from '@/lib/swr/dashboard'
 import { useAuth } from '@/lib/auth/context'
 import NotificationCenter from '@/components/notifications/NotificationCenter'
 import { getUserOrganizations, switchContext, type OrganizationMember } from '@/lib/api/organization'
@@ -57,7 +58,21 @@ const PAGE_META: Record<string, PageMeta> = {
 
 function usePageMeta(): PageMeta {
   const pathname = usePathname()
-  const segment = pathname.replace(/^\/sites\/[^/]+\/?/, '').split('/')[0]
+  const siteMatch = pathname.match(/^\/sites\/([^/]+)\/?(.*)$/)
+  const siteId = siteMatch?.[1] ?? ''
+  const rest = (siteMatch?.[2] ?? '').split('/')
+  const segment = rest[0] ?? ''
+  // * Funnel detail: the [funnelId] crumb shows the funnel's name (SWR dedupes
+  // * with the detail page's own fetch), with Funnels as a linked parent.
+  const funnelId = segment === 'funnels' && rest[1] && rest[1] !== 'new' ? rest[1] : ''
+  const { data: funnel } = useFunnelDetail(siteId, funnelId)
+  if (funnelId) {
+    return {
+      title: funnel?.name ?? 'Funnel',
+      icon: FunnelIcon,
+      parent: { title: 'Funnels', icon: FunnelIcon, href: `/sites/${siteId}/funnels` },
+    }
+  }
   return PAGE_META[segment] ?? { title: segment ? segment.charAt(0).toUpperCase() + segment.slice(1) : 'Dashboard', icon: LayoutDashboardIcon }
 }
 
@@ -432,6 +447,15 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
                 <CaretRight className="w-3 h-3 text-neutral-600" />
                 <BreadcrumbSitePicker currentSiteId={siteId} currentSiteName={siteName} />
                 <CaretRight className="w-3 h-3 text-neutral-600" />
+                {currentMeta.parent && (
+                  <>
+                    <Link href={currentMeta.parent.href} className="inline-flex items-center gap-1 text-neutral-500 hover:text-neutral-300 transition-colors ease-apple">
+                      <currentMeta.parent.icon className="w-3.5 h-3.5" />
+                      {currentMeta.parent.title}
+                    </Link>
+                    <CaretRight className="w-3 h-3 text-neutral-600" />
+                  </>
+                )}
                 <span className="inline-flex items-center gap-1 text-neutral-400">
                   <PageIcon className="w-3.5 h-3.5" />
                   {currentMeta.title}

@@ -7,7 +7,7 @@ import type { Funnel, FunnelStep } from '@/lib/api/funnels'
 import { useFunnelStats, useFunnelTrends } from '@/lib/swr/dashboard'
 import { AnimatedNumber } from '@/components/ui/animated-number'
 import { guardedPctChange, type PctChangeResult } from '@/lib/utils/pctChange'
-import { formatDate } from '@/lib/utils/dateRanges'
+import { previousDateRange } from '@/lib/hooks/periodUrl'
 
 // ---------------------------------------------------------------------------
 // Funnels list row — the whole card is a link to the funnel detail route;
@@ -16,8 +16,6 @@ import { formatDate } from '@/lib/utils/dateRanges'
 // the value in title), the conversion % is plain white with a tiny-base-
 // guarded delta, and the right rail carries a lazy 96×28 trend sparkline.
 // ---------------------------------------------------------------------------
-
-const DAY_MS = 86400000
 
 interface FunnelSummaryCardProps {
   funnel: Funnel
@@ -97,18 +95,7 @@ export function FunnelSummaryCard({
     dateRange.end,
   )
 
-  // * Previous period from LOCAL date parts — a toISOString() here shifts a
-  // * day near midnight in non-UTC timezones.
-  const prevRange = useMemo(() => {
-    const s = new Date(dateRange.start + 'T00:00:00')
-    const e = new Date(dateRange.end + 'T00:00:00')
-    const duration = e.getTime() - s.getTime()
-    if (duration > 366 * DAY_MS) return null
-    const prevEnd = new Date(s.getTime() - DAY_MS)
-    const prevStart = new Date(prevEnd.getTime() - duration)
-    if (prevStart.getFullYear() < 2020) return null
-    return { start: formatDate(prevStart), end: formatDate(prevEnd) }
-  }, [dateRange])
+  const prevRange = useMemo(() => previousDateRange(dateRange), [dateRange])
 
   const { data: prevStats } = useFunnelStats(
     siteId,

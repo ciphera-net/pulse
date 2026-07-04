@@ -83,6 +83,25 @@ export function periodToDateRange(period: Period): { start: string; end: string 
 const DAY_MS = 86400000
 
 /**
+ * The equal-length window immediately before `range`, or null when the span
+ * is unreasonable (>366 days) or would reach before 2020. Local date parts
+ * throughout — a toISOString() here shifts a day near midnight outside UTC.
+ */
+export function previousDateRange(range: {
+  start: string
+  end: string
+}): { start: string; end: string } | null {
+  const s = new Date(range.start + 'T00:00:00')
+  const e = new Date(range.end + 'T00:00:00')
+  const duration = e.getTime() - s.getTime()
+  if (duration > 366 * DAY_MS) return null
+  const prevEnd = new Date(s.getTime() - DAY_MS)
+  const prevStart = new Date(prevEnd.getTime() - duration)
+  if (prevStart.getFullYear() < 2020) return null
+  return { start: formatDate(prevStart), end: formatDate(prevEnd) }
+}
+
+/**
  * The same range shifted by its own span, or null when the shift would land
  * past today (local date parts throughout — no UTC drift).
  */
