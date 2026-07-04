@@ -13,10 +13,36 @@ import { ErrorCard } from '@/components/ui/ErrorCard'
 import { FunnelSummaryCard } from '@/components/funnels/FunnelSummaryCard'
 import { FunnelSimple } from '@phosphor-icons/react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
-import FunnelModal from '@/components/funnels/FunnelModal'
+import FunnelModal, { type FunnelPrefill } from '@/components/funnels/FunnelModal'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import { useFunnelDateRange, type Period } from '@/lib/hooks/useFunnelDateRange'
 import { useCan } from '@/lib/auth/permissions'
+
+// * ?prefill=<encodeURIComponent(JSON)> seeds the create modal (journeys lens
+// * cross-link). Parsed defensively — malformed input just opens nothing.
+function parsePrefill(raw: string | null): FunnelPrefill | null {
+  if (!raw) return null
+  try {
+    const p = JSON.parse(raw)
+    if (!p || typeof p !== 'object') return null
+    const rawSteps = Array.isArray(p.steps) ? p.steps.slice(0, 8) : []
+    const steps = rawSteps
+      .filter((s: unknown): s is Record<string, unknown> => !!s && typeof s === 'object')
+      .map((s: Record<string, unknown>, i: number) => ({
+        name: typeof s.name === 'string' && s.name ? s.name : `Step ${i + 1}`,
+        value: typeof s.value === 'string' ? s.value : '',
+        type: s.type === 'contains' || s.type === 'regex' ? (s.type as string) : 'exact',
+        category: s.category === 'event' ? ('event' as const) : ('page' as const),
+      }))
+    return {
+      name: typeof p.name === 'string' ? p.name : undefined,
+      description: typeof p.description === 'string' ? p.description : undefined,
+      steps: steps.length > 0 ? steps : undefined,
+    }
+  } catch {
+    return null
+  }
+}
 
 export default function FunnelsPage() {
   const params = useParams()
@@ -28,8 +54,18 @@ export default function FunnelsPage() {
   const { data: funnels, error: funnelsError, isLoading, mutate } = useFunnels(siteId)
   const { period, dateRange, setPeriod, shiftPeriod } = useFunnelDateRange()
   const [deletingFunnel, setDeletingFunnel] = useState<{ id: string; name: string } | null>(null)
-  const [modalOpen, setModalOpen] = useState(false)
+  const [prefill, setPrefill] = useState<FunnelPrefill | null>(() => parsePrefill(searchParams.get('prefill')))
+  const [modalOpen, setModalOpen] = useState<boolean>(() => parsePrefill(searchParams.get('prefill')) !== null)
   const [editingFunnel, setEditingFunnel] = useState<Funnel | null>(null)
+
+  // * Consume the prefill param once — the modal is seeded, the URL cleaned
+  useEffect(() => {
+    if (!searchParams.get('prefill')) return
+    const url = new URL(window.location.href)
+    url.searchParams.delete('prefill')
+    window.history.replaceState({}, '', url.toString())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     const domain = site?.domain
@@ -134,8 +170,10 @@ export default function FunnelsPage() {
       {modalOpen && canManageFunnels && (
         <FunnelModal
           isOpen={modalOpen}
-          onClose={() => { setModalOpen(false); setEditingFunnel(null) }}
+          siteId={siteId}
+          onClose={() => { setModalOpen(false); setEditingFunnel(null); setPrefill(null) }}
           initialData={editingFunnel ?? undefined}
+          prefill={!editingFunnel ? prefill ?? undefined : undefined}
           onSubmit={async (data: CreateFunnelRequest) => {
             if (editingFunnel) {
               await updateFunnel(siteId, editingFunnel.id, data)

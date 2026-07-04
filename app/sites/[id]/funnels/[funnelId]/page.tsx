@@ -413,6 +413,7 @@ export default function FunnelDetailPage() {
       {modalOpen && canManage && (
         <FunnelModal
           isOpen={modalOpen}
+          siteId={siteId}
           onClose={() => setModalOpen(false)}
           initialData={funnel}
           onSubmit={async (data: CreateFunnelRequest) => {
