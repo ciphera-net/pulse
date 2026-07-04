@@ -59,6 +59,13 @@ export default function DimensionStage({ activeDimensions, onPick, onClose }: Di
   const [search, setSearch] = useState('')
   const [highlight, setHighlight] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  // * Self-focus on mount — the popover only focuses on open, so without this
+  // * the keyboard is stranded after Backspace/back returns to this stage.
+  useEffect(() => {
+    inputRef.current?.focus()
+  }, [])
 
   const query = search.trim().toLowerCase()
 
@@ -147,6 +154,7 @@ export default function DimensionStage({ activeDimensions, onPick, onClose }: Di
       <div className="relative p-2 border-b border-neutral-800">
         <MagnifyingGlass className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-500 pointer-events-none" />
         <input
+          ref={inputRef}
           data-autofocus
           role="combobox"
           aria-expanded="true"
