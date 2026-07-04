@@ -6,6 +6,13 @@ export interface DimensionFilter {
   values: string[]
 }
 
+/** A suggested value for a dimension, sourced from the breakdown endpoints. */
+export interface FilterSuggestion {
+  value: string
+  label: string
+  count?: number
+}
+
 export const DIMENSION_LABELS: Record<string, string> = {
   page: 'Page',
   referrer: 'Referrer',
