@@ -60,12 +60,36 @@ export default function AccountProfileTab() {
 
   if (!user) return <div className="flex items-center justify-center py-12"><Spinner className="w-6 h-6 text-neutral-500" /></div>
 
+  // * Zero-knowledge accounts: the server never stores PII, so name/email are
+  // * hydrated from the encrypted-vault cookie that Ciphera ID sets on
+  // * .ciphera.net. A sign-in through Pulse's own form never provisions that
+  // * cookie, leaving PII empty — say so instead of rendering blank fields.
+  const piiUnavailable = !user.email
+
   return (
     <div className="space-y-6">
       <div>
         <h3 className="text-base font-semibold text-white mb-1">Profile</h3>
         <p className="text-sm text-neutral-400">Manage your personal account settings.</p>
       </div>
+
+      {piiUnavailable && (
+        <div className="p-4 border border-yellow-900/50 bg-yellow-900/10 rounded-none space-y-2">
+          <p className="text-sm font-medium text-yellow-300">Profile details unavailable in this session</p>
+          <p className="text-xs text-neutral-400">
+            Your name and email are end-to-end encrypted and weren&apos;t unlocked when you signed
+            in here. Sign in on Ciphera ID once, then reload Pulse to restore them.
+          </p>
+          <a
+            href="https://id.ciphera.net"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex text-xs font-medium text-brand-orange hover:underline"
+          >
+            Open Ciphera ID →
+          </a>
+        </div>
+      )}
 
       {/* Display Name */}
       <div className="space-y-4">
@@ -80,7 +104,7 @@ export default function AccountProfileTab() {
 
         <div>
           <label className="block text-xs font-medium text-neutral-400 mb-1.5">Email Address</label>
-          <Input value={user.email} disabled className="opacity-60" />
+          <Input value={user.email} disabled placeholder="Not available in this session" className="opacity-60" />
           <p className="text-xs text-neutral-500 mt-1">Email changes require password verification. Use <a href="https://id.ciphera.net/settings" target="_blank" rel="noopener noreferrer" className="text-brand-orange hover:underline">Ciphera ID</a> to change your email.</p>
         </div>
       </div>

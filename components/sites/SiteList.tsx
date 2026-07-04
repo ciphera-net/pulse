@@ -80,16 +80,18 @@ function SiteCard({ site, stats, statsLoading }: SiteCardProps) {
 
       {/* Mini Stats Grid */}
       <div className="mb-6 grid grid-cols-2 gap-4 rounded-none bg-neutral-800/50 p-3">
+        {/* * Zero renders as "—": a card full of hard 0s reads as "tracking is
+         * broken" when it usually just means no traffic in the window. */}
         <div>
           <p className="text-xs text-neutral-500">Visitors (24h)</p>
           <p className="font-mono text-lg font-medium text-white">
-            {statsLoading ? '--' : formatNumber(visitors24h)}
+            {statsLoading ? '--' : visitors24h === 0 ? '—' : formatNumber(visitors24h)}
           </p>
         </div>
         <div>
           <p className="text-xs text-neutral-500">Pageviews</p>
           <p className="font-mono text-lg font-medium text-white">
-            {statsLoading ? '--' : formatNumber(pageviews)}
+            {statsLoading ? '--' : pageviews === 0 ? '—' : formatNumber(pageviews)}
           </p>
         </div>
       </div>

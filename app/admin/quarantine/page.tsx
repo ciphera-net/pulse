@@ -275,7 +275,7 @@ function EventsTab() {
                       {ev.path}
                     </td>
                     <td className="px-4 py-3 text-xs text-neutral-400 max-w-[180px] truncate">
-                      {ev.referrer || '-'}
+                      {ev.referrer || '—'}
                     </td>
                     <td className="px-4 py-3">
                       <Badge label={REASON_LABELS[ev.detection_reason] || ev.detection_reason} colorClass={REASON_COLORS[ev.detection_reason]} />
@@ -568,7 +568,7 @@ export default function AdminQuarantinePage() {
             onClick={() => setTab(t.key)}
             className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
               tab === t.key
-                ? 'border-white text-white'
+                ? 'border-brand-orange text-white'
                 : 'border-transparent text-neutral-400 hover:text-neutral-200'
             } ease-apple`}
           >

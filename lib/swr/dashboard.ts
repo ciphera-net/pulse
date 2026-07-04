@@ -18,6 +18,9 @@ import {
   getStats,
   getDailyStats,
   getBehavior,
+  getRageClicks,
+  getDeadClicks,
+  getFrustrationDaily,
   type RealtimePageVisitors,
 } from '@/lib/api/stats'
 import {
@@ -28,7 +31,7 @@ import {
 } from '@/lib/api/journeys'
 import { getSite } from '@/lib/api/sites'
 import type { Site } from '@/lib/api/sites'
-import { listFunnels, getFunnel, getFunnelStats, getFunnelTrends, type Funnel, type FunnelStats, type FunnelTrends } from '@/lib/api/funnels'
+import { listFunnels, getFunnel, getFunnelStats, getFunnelTrends, getFunnelBreakdown, type Funnel, type FunnelStats, type FunnelTrends, type FunnelBreakdown } from '@/lib/api/funnels'
 import { getUptimeStatus, type UptimeStatusResponse } from '@/lib/api/uptime'
 import { getPageSpeedConfig, getPageSpeedLatest, getPageSpeedHistory, type PageSpeedConfig, type PageSpeedCheck } from '@/lib/api/pagespeed'
 import { listGoals, type Goal } from '@/lib/api/goals'
@@ -44,8 +47,8 @@ import {
   type SessionSummary,
   type QuarantineFilters,
 } from '@/lib/api/quarantine'
-import { getGSCStatus, getGSCOverview, getGSCTopQueries, getGSCTopPages, getGSCDailyTotals, getGSCNewQueries, getGSCTopCountries, getGSCTopDevices, getGSCOpportunities } from '@/lib/api/gsc'
-import type { GSCStatus, GSCOverview, GSCQueryResponse, GSCPageResponse, GSCDailyTotal, GSCNewQueries, GSCCountryResponse, GSCDeviceResponse, GSCOpportunityResponse } from '@/lib/api/gsc'
+import { getGSCStatus, getGSCOverview, getGSCTopQueries, getGSCTopPages, getGSCDailyTotals, getGSCNewQueries, getGSCTopCountries, getGSCTopDevices, getGSCOpportunities, getGSCQueryPages, getGSCPageQueries, getGSCQueryTrend } from '@/lib/api/gsc'
+import type { GSCStatus, GSCOverview, GSCQueryResponse, GSCPageResponse, GSCDailyTotal, GSCNewQueries, GSCCountryResponse, GSCDeviceResponse, GSCOpportunityResponse, GSCQueryTrendPoint } from '@/lib/api/gsc'
 import { getBunnyStatus, getBunnyOverview, getBunnyDailyStats, getBunnyTopCountries } from '@/lib/api/bunny'
 import type { BunnyStatus, BunnyOverview, BunnyDailyRow, BunnyGeoRow } from '@/lib/api/bunny'
 import { getSubscription, type SubscriptionDetails } from '@/lib/api/billing'
@@ -61,6 +64,8 @@ import type {
   DashboardReferrersData,
   DashboardGoalsData,
   BehaviorData,
+  FrustrationElement,
+  FrustrationDailyPoint,
 } from '@/lib/api/stats'
 
 // * SWR fetcher functions
@@ -80,10 +85,10 @@ const fetchers = {
   campaigns: (siteId: string, start: string, end: string, limit: number) =>
     getCampaigns(siteId, start, end, limit),
   behavior: (siteId: string, start: string, end: string) => getBehavior(siteId, start, end),
-  journeyTransitions: (siteId: string, start: string, end: string, depth?: number, minSessions?: number, entryPath?: string) =>
-    getJourneyTransitions(siteId, start, end, { depth, minSessions, entryPath }),
-  journeyEntryPoints: (siteId: string, start: string, end: string) =>
-    getJourneyEntryPoints(siteId, start, end),
+  journeyTransitions: (siteId: string, start: string, end: string, depth?: number, minSessions?: number, entryPath?: string, filters?: string) =>
+    getJourneyTransitions(siteId, start, end, { depth, minSessions, entryPath, filters }),
+  journeyEntryPoints: (siteId: string, start: string, end: string, filters?: string) =>
+    getJourneyEntryPoints(siteId, start, end, filters),
   funnels: (siteId: string) => listFunnels(siteId),
   uptimeStatus: (siteId: string) => getUptimeStatus(siteId),
   pageSpeedConfig: (siteId: string) => getPageSpeedConfig(siteId),
@@ -333,32 +338,80 @@ export function useBehavior(siteId: string, start: string, end: string, period?:
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,
       dedupingInterval: 10 * 1000,
+      keepPreviousData: true,
     }
   )
 }
 
+// * Hook for the daily rage/dead frustration series (behavior trend chart).
+export function useFrustrationDaily(siteId: string, start: string, end: string) {
+  return useSWR<{ days: FrustrationDailyPoint[] }>(
+    siteId && start && end ? ['frustrationDaily', siteId, start, end] : null,
+    () => getFrustrationDaily(siteId, start, end),
+    { ...dashboardSWRConfig, keepPreviousData: true },
+  )
+}
+
+// * Lens/dialog hooks for FILTERED frustration elements (behavior page ?page= lens
+// * and the view-all dialog). `enabled` gates the fetch so the un-lensed tables
+// * render the useBehavior payload with no extra request; keepPreviousData holds
+// * the previous page's rows while a new lens loads.
+export function useRageClicks(
+  siteId: string,
+  start: string,
+  end: string,
+  limit: number,
+  pagePath?: string,
+  enabled: boolean = true,
+) {
+  return useSWR<{ items: FrustrationElement[]; total: number }>(
+    enabled && siteId && start && end ? ['rageClicks', siteId, start, end, limit, pagePath ?? ''] : null,
+    () => getRageClicks(siteId, start, end, limit, pagePath),
+    { ...dashboardSWRConfig, keepPreviousData: true },
+  )
+}
+
+export function useDeadClicks(
+  siteId: string,
+  start: string,
+  end: string,
+  limit: number,
+  pagePath?: string,
+  enabled: boolean = true,
+) {
+  return useSWR<{ items: FrustrationElement[]; total: number }>(
+    enabled && siteId && start && end ? ['deadClicks', siteId, start, end, limit, pagePath ?? ''] : null,
+    () => getDeadClicks(siteId, start, end, limit, pagePath),
+    { ...dashboardSWRConfig, keepPreviousData: true },
+  )
+}
+
 // * Hook for journey flow transitions (Sankey diagram data)
-export function useJourneyTransitions(siteId: string, start: string, end: string, depth?: number, minSessions?: number, entryPath?: string) {
+export function useJourneyTransitions(siteId: string, start: string, end: string, depth?: number, minSessions?: number, entryPath?: string, filters?: string) {
   return useSWR<TransitionsResponse>(
-    siteId && start && end ? ['journeyTransitions', siteId, start, end, depth, minSessions, entryPath] : null,
-    () => fetchers.journeyTransitions(siteId, start, end, depth, minSessions, entryPath),
+    siteId && start && end ? ['journeyTransitions', siteId, start, end, depth, minSessions, entryPath, filters] : null,
+    () => fetchers.journeyTransitions(siteId, start, end, depth, minSessions, entryPath, filters),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,
       dedupingInterval: 10 * 1000,
+      // * Depth/entry/period changes keep the canvas rendered with the previous
+      // * data while the new key loads — no full-page skeleton after first load.
+      keepPreviousData: true,
     }
   )
 }
 
 // * Hook for journey entry points (refreshes less frequently)
-export function useJourneyEntryPoints(siteId: string, start: string, end: string) {
+export function useJourneyEntryPoints(siteId: string, start: string, end: string, filters?: string) {
   return useSWR<EntryPoint[]>(
-    siteId && start && end ? ['journeyEntryPoints', siteId, start, end] : null,
-    () => fetchers.journeyEntryPoints(siteId, start, end),
+    siteId && start && end ? ['journeyEntryPoints', siteId, start, end, filters] : null,
+    () => fetchers.journeyEntryPoints(siteId, start, end, filters),
     {
       ...dashboardSWRConfig,
       refreshInterval: 5 * 60 * 1000,
       dedupingInterval: 30 * 1000,
+      keepPreviousData: true,
     }
   )
 }
@@ -372,6 +425,7 @@ export function useFunnels(siteId: string) {
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,
       dedupingInterval: 10 * 1000,
+      keepPreviousData: true,
     }
   )
 }
@@ -412,6 +466,29 @@ export function useFunnelTrends(siteId: string, funnelId: string, startDate: str
       ...dashboardSWRConfig,
       refreshInterval: 60_000,
       dedupingInterval: 10_000,
+      keepPreviousData: true,
+    }
+  )
+}
+
+// * Hook for a funnel step's dimension breakdown (step is 0-based, per the API)
+export function useFunnelBreakdown(
+  siteId: string,
+  funnelId: string,
+  step: number,
+  dimension: string,
+  startDate: string,
+  endDate: string,
+  filters?: string,
+) {
+  return useSWR<FunnelBreakdown>(
+    siteId && funnelId && step >= 0 && dimension && startDate && endDate
+      ? ['funnelBreakdown', siteId, funnelId, step, dimension, `${startDate}-${endDate}`, filters]
+      : null,
+    () => getFunnelBreakdown(siteId, funnelId, step, dimension, startDate, endDate, filters),
+    {
+      ...dashboardSWRConfig,
+      dedupingInterval: 30_000,
       keepPreviousData: true,
     }
   )
@@ -488,7 +565,7 @@ export function useGSCOverview(siteId: string, start: string, end: string) {
   return useSWR<GSCOverview>(
     siteId && start && end ? ['gscOverview', siteId, start, end] : null,
     () => fetchers.gscOverview(siteId, start, end),
-    dashboardSWRConfig
+    { ...dashboardSWRConfig, keepPreviousData: true }
   )
 }
 
@@ -497,7 +574,7 @@ export function useGSCTopQueries(siteId: string, start: string, end: string, lim
   return useSWR<GSCQueryResponse>(
     siteId && start && end ? ['gscTopQueries', siteId, start, end, limit, offset] : null,
     () => fetchers.gscTopQueries(siteId, start, end, limit, offset),
-    dashboardSWRConfig
+    { ...dashboardSWRConfig, keepPreviousData: true }
   )
 }
 
@@ -506,7 +583,7 @@ export function useGSCTopPages(siteId: string, start: string, end: string, limit
   return useSWR<GSCPageResponse>(
     siteId && start && end ? ['gscTopPages', siteId, start, end, limit, offset] : null,
     () => fetchers.gscTopPages(siteId, start, end, limit, offset),
-    dashboardSWRConfig
+    { ...dashboardSWRConfig, keepPreviousData: true }
   )
 }
 
@@ -515,7 +592,7 @@ export function useGSCDailyTotals(siteId: string, start: string, end: string) {
   return useSWR<{ daily_totals: GSCDailyTotal[] }>(
     siteId && start && end ? ['gscDailyTotals', siteId, start, end] : null,
     () => fetchers.gscDailyTotals(siteId, start, end),
-    dashboardSWRConfig
+    { ...dashboardSWRConfig, keepPreviousData: true }
   )
 }
 
@@ -524,7 +601,7 @@ export function useGSCNewQueries(siteId: string, start: string, end: string) {
   return useSWR<GSCNewQueries>(
     siteId && start && end ? ['gscNewQueries', siteId, start, end] : null,
     () => fetchers.gscNewQueries(siteId, start, end),
-    dashboardSWRConfig
+    { ...dashboardSWRConfig, keepPreviousData: true }
   )
 }
 
@@ -534,7 +611,7 @@ export function useGSCTopCountries(siteId: string, start: string, end: string, l
   return useSWR<GSCCountryResponse>(
     status?.connected ? [`gsc-top-countries`, siteId, start, end, limit, offset] : null,
     () => getGSCTopCountries(siteId, start, end, limit, offset),
-    { revalidateOnFocus: false }
+    { ...dashboardSWRConfig, keepPreviousData: true }
   )
 }
 
@@ -544,7 +621,7 @@ export function useGSCTopDevices(siteId: string, start: string, end: string) {
   return useSWR<GSCDeviceResponse>(
     status?.connected ? [`gsc-top-devices`, siteId, start, end] : null,
     () => getGSCTopDevices(siteId, start, end),
-    { revalidateOnFocus: false }
+    { ...dashboardSWRConfig, keepPreviousData: true }
   )
 }
 
@@ -554,7 +631,39 @@ export function useGSCOpportunities(siteId: string, start: string, end: string, 
   return useSWR<GSCOpportunityResponse>(
     status?.connected ? [`gsc-opportunities`, siteId, start, end, limit] : null,
     () => getGSCOpportunities(siteId, start, end, limit),
-    { revalidateOnFocus: false }
+    { ...dashboardSWRConfig, keepPreviousData: true }
+  )
+}
+
+// * Drill-down: the pages contributing to a query (queries-view expansion). The
+// * key includes the query, so each expanded row owns its own cache entry — two
+// * quick expands can't cross-render (the old shared-state race). Null key while
+// * collapsed (query empty); keepPreviousData holds the prior pages across a
+// * range revalidation.
+export function useGSCQueryPages(siteId: string, query: string, start: string, end: string) {
+  return useSWR<GSCPageResponse>(
+    siteId && query && start && end ? ['gscQueryPages', siteId, query, start, end] : null,
+    () => getGSCQueryPages(siteId, query, start, end),
+    { ...dashboardSWRConfig, keepPreviousData: true },
+  )
+}
+
+// * Drill-down: the queries contributing to a page (pages-view expansion).
+export function useGSCPageQueries(siteId: string, page: string, start: string, end: string) {
+  return useSWR<GSCQueryResponse>(
+    siteId && page && start && end ? ['gscPageQueries', siteId, page, start, end] : null,
+    () => getGSCPageQueries(siteId, page, start, end),
+    { ...dashboardSWRConfig, keepPreviousData: true },
+  )
+}
+
+// * A single query's daily position/clicks trend (queries-view sparkline). Null
+// * key until the row is expanded (query empty).
+export function useGSCQueryTrend(siteId: string, query: string, start: string, end: string) {
+  return useSWR<GSCQueryTrendPoint[]>(
+    siteId && query && start && end ? ['gscQueryTrend', siteId, query, start, end] : null,
+    () => getGSCQueryTrend(siteId, query, start, end),
+    { ...dashboardSWRConfig, keepPreviousData: true },
   )
 }
 
@@ -572,7 +681,7 @@ export function useBunnyOverview(siteId: string, startDate: string, endDate: str
   return useSWR<BunnyOverview>(
     siteId && startDate && endDate ? ['bunnyOverview', siteId, startDate, endDate] : null,
     () => fetchers.bunnyOverview(siteId, startDate, endDate),
-    dashboardSWRConfig
+    { ...dashboardSWRConfig, keepPreviousData: true }
   )
 }
 
@@ -581,7 +690,7 @@ export function useBunnyDailyStats(siteId: string, startDate: string, endDate: s
   return useSWR<{ daily_stats: BunnyDailyRow[] }>(
     siteId && startDate && endDate ? ['bunnyDailyStats', siteId, startDate, endDate] : null,
     () => fetchers.bunnyDailyStats(siteId, startDate, endDate),
-    dashboardSWRConfig
+    { ...dashboardSWRConfig, keepPreviousData: true }
   )
 }
 
@@ -590,7 +699,7 @@ export function useBunnyTopCountries(siteId: string, startDate: string, endDate:
   return useSWR<{ countries: BunnyGeoRow[] }>(
     siteId && startDate && endDate ? ['bunnyTopCountries', siteId, startDate, endDate] : null,
     () => fetchers.bunnyTopCountries(siteId, startDate, endDate),
-    dashboardSWRConfig
+    { ...dashboardSWRConfig, keepPreviousData: true }
   )
 }
 

@@ -100,8 +100,8 @@ export default function SetupDonePage() {
             if (site) sessionStorage.setItem('pulse_active_site', site.id)
           }}
         >
-          <div className="h-9 w-9 rounded-none bg-blue-500/10 flex items-center justify-center shrink-0">
-            <FunnelIcon className="h-4.5 w-4.5 text-blue-400" />
+          <div className="h-9 w-9 rounded-none bg-brand-orange/10 flex items-center justify-center shrink-0">
+            <FunnelIcon className="h-4.5 w-4.5 text-brand-orange" />
           </div>
           <div>
             <p className="text-sm font-medium text-white">Set up a goal</p>
@@ -113,8 +113,8 @@ export default function SetupDonePage() {
           href="/settings/organization/members"
           className="flex items-center gap-3 p-3 rounded-none border border-neutral-800 hover:border-neutral-700 hover:bg-neutral-800/30 transition-all"
         >
-          <div className="h-9 w-9 rounded-none bg-purple-500/10 flex items-center justify-center shrink-0">
-            <UsersIcon className="h-4.5 w-4.5 text-purple-400" />
+          <div className="h-9 w-9 rounded-none bg-brand-orange/10 flex items-center justify-center shrink-0">
+            <UsersIcon className="h-4.5 w-4.5 text-brand-orange" />
           </div>
           <div>
             <p className="text-sm font-medium text-white">Invite your team</p>
@@ -128,8 +128,8 @@ export default function SetupDonePage() {
           rel="noopener noreferrer"
           className="flex items-center gap-3 p-3 rounded-none border border-neutral-800 hover:border-neutral-700 hover:bg-neutral-800/30 transition-all"
         >
-          <div className="h-9 w-9 rounded-none bg-amber-500/10 flex items-center justify-center shrink-0">
-            <BookOpenIcon className="h-4.5 w-4.5 text-amber-400" />
+          <div className="h-9 w-9 rounded-none bg-brand-orange/10 flex items-center justify-center shrink-0">
+            <BookOpenIcon className="h-4.5 w-4.5 text-brand-orange" />
           </div>
           <div>
             <p className="text-sm font-medium text-white">Read the docs</p>

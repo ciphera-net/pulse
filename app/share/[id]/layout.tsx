@@ -49,7 +49,9 @@ export async function generateMetadata({ params }: SharePageParams): Promise<Met
         siteName: 'Pulse by Ciphera',
         type: 'website',
         images: [{
-          url: `${FAVICON_SERVICE_URL}?domain=${domain}&sz=128`,
+          // * OG images must be absolute for external crawlers; the proxy
+          // * path is origin-relative, so prefix our own public URL.
+          url: `${env.NEXT_PUBLIC_APP_URL}${FAVICON_SERVICE_URL}?domain=${domain}&sz=128`,
           width: 128,
           height: 128,
           alt: `${domain} favicon`,

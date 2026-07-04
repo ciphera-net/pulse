@@ -226,7 +226,7 @@ export default function DateRangePicker({
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 4, scale: 0.98 }}
           transition={{ duration: 0.15 }}
-          className="fixed z-50 flex rounded-none border border-neutral-800 bg-neutral-900 overflow-hidden"
+          className="fixed z-50 flex rounded-none border border-neutral-800 bg-neutral-900 shadow-lg overflow-hidden"
           style={pos ? { left: pos.left, top: pos.top } : undefined}
         >
           <div className="w-44 border-r border-neutral-800 py-2 overflow-y-auto max-h-[400px]">

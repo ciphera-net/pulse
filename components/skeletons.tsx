@@ -171,25 +171,26 @@ export function DashboardSkeleton() {
 export function JourneysSkeleton() {
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
-      {/* Header */}
-      <div className="mb-8 flex items-center justify-between">
+      {/* Header — title/subtitle left, date range picker right */}
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <SkeletonLine className="h-8 w-32 mb-2" />
+          <SkeletonLine className="h-6 w-28 mb-2" />
           <SkeletonLine className="h-4 w-64" />
         </div>
-        <SkeletonLine className="h-9 w-36 rounded-none" />
+        <SkeletonLine className="h-10 w-64" />
       </div>
-      {/* Controls */}
-      <div className="flex items-center gap-4 mb-6">
-        <SkeletonLine className="h-9 w-48 rounded-none" />
-        <SkeletonLine className="h-9 w-48 rounded-none" />
-      </div>
-      {/* Sankey area */}
-      <SkeletonCard className="h-[400px] mb-6" />
-      {/* Top paths table */}
-      <div className="bg-neutral-900 border border-neutral-800 rounded-none p-6">
-        <SkeletonLine className="h-6 w-24 mb-4" />
-        <TableSkeleton rows={5} cols={4} />
+      {/* Card: one h-10 toolbar row + canvas */}
+      <div className="bg-card border border-border rounded-none overflow-hidden">
+        <div className="flex flex-wrap items-center gap-2 border-b border-border p-4">
+          <SkeletonLine className="h-10 w-28" />
+          <SkeletonLine className="h-10 w-28" />
+          <SkeletonLine className="h-10 w-64" />
+          <span className="hidden flex-1 sm:block" />
+          <SkeletonLine className="h-10 w-44" />
+        </div>
+        <div className="p-6">
+          <SkeletonCard className="h-[400px]" />
+        </div>
       </div>
     </div>
   )
@@ -274,30 +275,38 @@ export function ChecksSkeleton() {
 export function FunnelsListSkeleton() {
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
-      <div className="mb-8">
-        <div className="flex items-center gap-4 mb-6">
-          <SkeletonLine className="h-10 w-10 rounded-none" />
-          <div>
-            <SkeletonLine className="h-8 w-24 mb-1" />
-            <SkeletonLine className="h-4 w-64" />
-          </div>
+      {/* Header — title/subtitle left, range picker + create right */}
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <SkeletonLine className="h-6 w-24 mb-2" />
+          <SkeletonLine className="h-4 w-72" />
         </div>
-        <div className="grid gap-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="bg-neutral-900 border border-neutral-800 rounded-none p-6">
-              <SkeletonLine className="h-6 w-40 mb-2" />
-              <SkeletonLine className="h-4 w-64 mb-4" />
-              <div className="flex items-center gap-2">
-                {Array.from({ length: 3 }).map((_, j) => (
-                  <div key={j} className="flex items-center">
-                    <SkeletonLine className="h-7 w-20 rounded-none" />
-                    {j < 2 && <SkeletonLine className="h-4 w-4 mx-2 rounded-none" />}
-                  </div>
-                ))}
+        <div className="flex items-center gap-2">
+          <SkeletonLine className="h-10 w-64" />
+          <SkeletonLine className="h-10 w-36" />
+        </div>
+      </div>
+      {/* Summary rows: name+chips+desc left, conversion+sparkline right */}
+      <div className="grid gap-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="bg-card border border-border rounded-none p-5">
+            <div className="flex items-start justify-between gap-6">
+              <div className="min-w-0 flex-1">
+                <SkeletonLine className="h-5 w-44 mb-3" />
+                <div className="flex items-center gap-2 mb-3">
+                  {Array.from({ length: 3 }).map((_, j) => (
+                    <SkeletonLine key={j} className="h-6 w-24" />
+                  ))}
+                </div>
+                <SkeletonLine className="h-4 w-64" />
+              </div>
+              <div className="flex shrink-0 items-center gap-5">
+                <SkeletonLine className="h-7 w-14" />
+                <SkeletonLine className="h-7 w-24" />
               </div>
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -308,18 +317,32 @@ export function FunnelsListSkeleton() {
 export function FunnelDetailSkeleton() {
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
-      <div className="mb-8">
-        <div className="flex items-center gap-4 mb-6">
-          <SkeletonLine className="h-9 w-9 rounded-none" />
+      {/* Back link + header row (name/meta left, range + actions right) */}
+      <div className="mb-6">
+        <SkeletonLine className="h-4 w-20 mb-3" />
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
-            <SkeletonLine className="h-6 w-48 mb-1" />
-            <SkeletonLine className="h-4 w-64" />
+            <SkeletonLine className="h-6 w-56 mb-2" />
+            <SkeletonLine className="h-4 w-72" />
+          </div>
+          <div className="flex items-center gap-2">
+            <SkeletonLine className="h-10 w-64" />
+            <SkeletonLine className="h-10 w-20" />
+            <SkeletonLine className="h-10 w-20" />
           </div>
         </div>
-        <SkeletonCard className="h-48 mb-6" />
-        <SkeletonCard className="h-48 mb-6" />
-        <SkeletonCard className="h-64" />
       </div>
+      {/* KPI band */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="bg-card border border-border rounded-none p-4">
+            <SkeletonLine className="h-3 w-20 mb-3" />
+            <SkeletonLine className="h-7 w-16" />
+          </div>
+        ))}
+      </div>
+      {/* Canvas region */}
+      <SkeletonCard className="h-72" />
     </div>
   )
 }
@@ -429,50 +452,211 @@ export function PricingCardsSkeleton() {
   )
 }
 
-// ─── Behavior page skeleton ─────────────────────────────────
+// ─── Behavior page skeleton (mirrors the real KPI-band + tables layout) ──
 
 export function BehaviorSkeleton() {
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
+    <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-8">
       {/* Header */}
-      <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <SkeletonLine className="h-8 w-32 mb-2" />
+          <SkeletonLine className="h-6 w-28 mb-2" />
           <SkeletonLine className="h-4 w-64" />
         </div>
-        <SkeletonLine className="h-9 w-36 rounded-none" />
+        <SkeletonLine className="h-10 w-64 rounded-none" />
       </div>
 
-      {/* Summary cards (3 cols) */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+      {/* KPI band (3 cards) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="bg-neutral-900 border border-neutral-800 rounded-none p-6 space-y-3">
-            <SkeletonLine className="h-4 w-24" />
-            <SkeletonLine className="h-8 w-16" />
-            <SkeletonLine className="h-3 w-32" />
+          <div key={i} className="bg-card border border-border rounded-none p-4">
+            <SkeletonLine className="h-3 w-20 mb-3" />
+            <SkeletonLine className="h-7 w-16 mb-2" />
+            <SkeletonLine className="h-3 w-28" />
           </div>
         ))}
       </div>
 
-      {/* Rage clicks + Dead clicks side by side */}
-      <div className="grid gap-6 lg:grid-cols-2 mb-8">
-        <WidgetSkeleton />
-        <WidgetSkeleton />
+      {/* Element tables (2 cols) */}
+      <div className="mt-6 grid gap-3 lg:grid-cols-2">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div key={i} className="bg-card border border-border rounded-none p-4">
+            <div className="mb-3 flex h-6 items-center justify-between">
+              <SkeletonLine className="h-3 w-20" />
+              <SkeletonLine className="h-3 w-12" />
+            </div>
+            <div className="mb-1 flex h-6 items-center justify-between px-2">
+              <SkeletonLine className="h-3 w-14" />
+              <SkeletonLine className="h-3 w-10" />
+            </div>
+            <div className="space-y-0.5">
+              {Array.from({ length: 7 }).map((_, j) => (
+                <div key={j} className="flex h-9 items-center justify-between px-2">
+                  <SkeletonLine className="h-4 w-2/5" />
+                  <SkeletonLine className="h-4 w-10" />
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
 
-      {/* By-page table */}
-      <div className="mb-8">
-        <div className="bg-neutral-900 border border-neutral-800 rounded-none p-6">
-          <SkeletonLine className="h-6 w-40 mb-2" />
-          <SkeletonLine className="h-4 w-64 mb-4" />
-          <TableSkeleton rows={5} cols={4} />
+      {/* Frustration by page */}
+      <div className="mt-6 bg-card border border-border rounded-none p-4">
+        <SkeletonLine className="h-3 w-32 mb-3" />
+        <div className="mb-1 flex h-6 items-center justify-between px-2">
+          <SkeletonLine className="h-3 w-12" />
+          <SkeletonLine className="h-3 w-40" />
+        </div>
+        <div className="space-y-0.5">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex h-9 items-center justify-between px-2">
+              <SkeletonLine className="h-4 w-1/3" />
+              <SkeletonLine className="h-4 w-40" />
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Scroll depth + Frustration trend */}
-      <div className="grid gap-6 lg:grid-cols-2 mb-8">
-        <WidgetSkeleton />
-        <WidgetSkeleton />
+      {/* Daily trend + scroll depth */}
+      <div className="mt-6 grid gap-3 lg:grid-cols-2">
+        <div className="bg-card border border-border rounded-none p-4">
+          <SkeletonLine className="h-3 w-28 mb-3" />
+          <SkeletonCard className="h-64" />
+        </div>
+        <div className="bg-card border border-border rounded-none p-4">
+          <SkeletonLine className="h-3 w-24 mb-4" />
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <SkeletonLine className="h-3 w-9" />
+                <SkeletonLine className="h-6 flex-1" />
+                <SkeletonLine className="h-4 w-12" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Search Console page skeleton (mirrors header + KPI band + chart + table) ──
+
+export function SearchSkeleton() {
+  return (
+    <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-8">
+      {/* Header — title/subtitle/sync line left, range picker right */}
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <SkeletonLine className="h-6 w-40 mb-2" />
+          <SkeletonLine className="h-4 w-72 mb-2" />
+          <SkeletonLine className="h-3 w-48" />
+        </div>
+        <SkeletonLine className="h-10 w-64 rounded-none" />
+      </div>
+
+      {/* KPI band (4 cards) */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="bg-card border border-border rounded-none p-4">
+            <SkeletonLine className="h-3 w-16 mb-3" />
+            <SkeletonLine className="h-7 w-20" />
+          </div>
+        ))}
+      </div>
+
+      {/* Traffic chart card */}
+      <div className="mt-6 bg-card border border-border rounded-none p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <SkeletonLine className="h-3 w-24" />
+          <SkeletonLine className="h-3 w-40" />
+        </div>
+        <SkeletonCard className="h-64" />
+      </div>
+
+      {/* Table block */}
+      <div className="mt-6 bg-card border border-border rounded-none overflow-hidden">
+        <div className="border-b border-border p-4">
+          <SkeletonLine className="h-8 w-40" />
+        </div>
+        <div className="p-4 space-y-2">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <div key={i} className="flex h-9 items-center justify-between">
+              <SkeletonLine className="h-4 w-1/3" />
+              <div className="flex gap-8">
+                <SkeletonLine className="h-4 w-14" />
+                <SkeletonLine className="h-4 w-16" />
+                <SkeletonLine className="h-4 w-12" />
+                <SkeletonLine className="h-4 w-12" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── CDN page skeleton (mirrors header + KPI band + charts + distribution) ──
+
+export function CDNSkeleton() {
+  return (
+    <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-8">
+      {/* Header — title/subtitle/sync line left, range picker right */}
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <SkeletonLine className="h-6 w-40 mb-2" />
+          <SkeletonLine className="h-4 w-72 mb-2" />
+          <SkeletonLine className="h-3 w-48" />
+        </div>
+        <SkeletonLine className="h-10 w-64 rounded-none" />
+      </div>
+
+      {/* KPI band (5 cards) */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="bg-card border border-border rounded-none p-4">
+            <SkeletonLine className="h-3 w-16 mb-3" />
+            <SkeletonLine className="h-7 w-20" />
+          </div>
+        ))}
+      </div>
+
+      {/* Bandwidth chart (full width) */}
+      <div className="mt-6 bg-card border border-border rounded-none p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <SkeletonLine className="h-3 w-24" />
+          <SkeletonLine className="h-3 w-36" />
+        </div>
+        <SkeletonCard className="h-[280px]" />
+      </div>
+
+      {/* Requests · Errors · Origin latency */}
+      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="bg-card border border-border rounded-none p-4">
+            <SkeletonLine className="h-3 w-24 mb-3" />
+            <SkeletonCard className="h-[220px]" />
+          </div>
+        ))}
+      </div>
+
+      {/* Traffic distribution — map + ranked rows */}
+      <div className="mt-6 bg-card border border-border rounded-none p-4">
+        <SkeletonLine className="h-3 w-32 mb-4" />
+        <SkeletonCard className="h-[360px] mb-6" />
+        <div className="space-y-0.5">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex h-9 items-center justify-between px-2">
+              <div className="flex items-center gap-2">
+                <SkeletonLine className="h-3.5 w-5" />
+                <SkeletonLine className="h-4 w-28" />
+              </div>
+              <SkeletonLine className="h-4 w-20" />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )

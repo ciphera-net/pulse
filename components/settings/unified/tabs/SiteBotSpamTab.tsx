@@ -26,7 +26,7 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
   const [selectedSessions, setSelectedSessions] = useState<Set<string>>(new Set())
   const [botDateRange] = useState(() => getDateRange(7))
 
-  const { data: sessionsData, mutate: mutateSessions } = useSessions(siteId, { start_date: botDateRange.start, end_date: botDateRange.end, suspicious: botView === 'review' ? suspiciousOnly : undefined })
+  const { data: sessionsData, error: sessionsError, isLoading: sessionsLoading, mutate: mutateSessions } = useSessions(siteId, { start_date: botDateRange.start, end_date: botDateRange.end, suspicious: botView === 'review' ? suspiciousOnly : undefined })
   const sessions = sessionsData?.sessions
 
   const hasInitialized = useRef(false)
@@ -176,6 +176,27 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
 
         {/* Session cards */}
         <div className="space-y-2 max-h-96 overflow-y-auto">
+          {sessionsError ? (
+            /* * A failed request must never masquerade as "no suspicious sessions" —
+             * that would read as a healthy site while detection is actually down. */
+            <div className="p-4 border border-red-900/50 bg-red-900/10 rounded-none space-y-2">
+              <p className="text-sm font-medium text-red-300">Couldn&apos;t load sessions</p>
+              <p className="text-xs text-neutral-400">The session list failed to load, so this is a server error — not an empty result. Try again in a moment.</p>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => mutateSessions()}
+                className="text-red-400 border-red-900/50 hover:bg-red-900/20"
+              >
+                Retry
+              </Button>
+            </div>
+          ) : sessionsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Spinner className="w-5 h-5 text-neutral-500" />
+            </div>
+          ) : (
+            <>
           {(sessions || [])
             .filter(s => botView === 'blocked' ? s.quarantined : !s.quarantined)
             .map(session => (
@@ -227,6 +248,8 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
               icon={<Shield weight="regular" />}
               className="py-8"
             />
+          )}
+            </>
           )}
         </div>
       </div>

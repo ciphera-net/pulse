@@ -1,111 +1,90 @@
 'use client'
 
-import { TrendUp } from '@phosphor-icons/react'
+import { useMemo } from 'react'
+import { BarChart, Bar, BarXAxis, BarValueAxis, Grid, ChartTooltip } from '@/components/ui/bar-chart'
+import { UpdatingChip } from '@/components/ui/UpdatingChip'
+import { ErrorCard } from '@/components/ui/ErrorCard'
+import { useFrustrationDaily } from '@/lib/swr/dashboard'
+import { formatDateShort } from '@/lib/utils/formatDate'
 
-import { EmptyState } from '@/components/ui/EmptyState'
-import { DonutChart } from '@/components/ui/donut-chart'
-import type { FrustrationSummary } from '@/lib/api/stats'
-import { WidgetSkeleton } from '@/components/skeletons'
+// ---------------------------------------------------------------------------
+// Daily frustration trend — stacked rage/dead bars from the additive daily
+// endpoint (one hue, two weights). Replaces the current-vs-previous donut that
+// was never actually a trend. Stable height, DD/MM ticks, chart-system tooltip.
+// ---------------------------------------------------------------------------
+
+const RAGE = '#FD5E0F'
+const DEAD = 'rgba(253, 94, 15, 0.35)'
+const TOTAL_DOT = '#737373'
+
+const num = (v: unknown) => (typeof v === 'number' ? v : 0)
 
 interface FrustrationTrendProps {
-  summary: FrustrationSummary | null
-  loading: boolean
+  siteId: string
+  start: string
+  end: string
 }
 
-const LABELS: Record<string, string> = {
-  rage_clicks: 'Rage Clicks',
-  dead_clicks: 'Dead Clicks',
-  prev_rage_clicks: 'Prev Rage Clicks',
-  prev_dead_clicks: 'Prev Dead Clicks',
-}
+export default function FrustrationTrend({ siteId, start, end }: FrustrationTrendProps) {
+  const { data, error, isLoading, isValidating, mutate } = useFrustrationDaily(siteId, start, end)
 
-const COLORS = {
-  rage_clicks: 'rgba(253, 94, 15, 0.7)',
-  dead_clicks: 'rgba(180, 83, 9, 0.7)',
-  prev_rage_clicks: 'rgba(253, 94, 15, 0.35)',
-  prev_dead_clicks: 'rgba(180, 83, 9, 0.35)',
-} as const
-
-export default function FrustrationTrend({ summary, loading }: FrustrationTrendProps) {
-  if (loading || !summary) return <WidgetSkeleton />
-
-  const hasData = summary.rage_clicks > 0 || summary.dead_clicks > 0 ||
-    summary.prev_rage_clicks > 0 || summary.prev_dead_clicks > 0
-
-  const totalCurrent = summary.rage_clicks + summary.dead_clicks
-  const totalPrevious = summary.prev_rage_clicks + summary.prev_dead_clicks
-  const totalChange = totalPrevious > 0
-    ? Math.round(((totalCurrent - totalPrevious) / totalPrevious) * 100)
-    : null
-  const hasPrevious = totalPrevious > 0
-
-  const chartData = [
-    { label: LABELS.rage_clicks, value: summary.rage_clicks, fill: COLORS.rage_clicks },
-    { label: LABELS.dead_clicks, value: summary.dead_clicks, fill: COLORS.dead_clicks },
-    { label: LABELS.prev_rage_clicks, value: summary.prev_rage_clicks, fill: COLORS.prev_rage_clicks },
-    { label: LABELS.prev_dead_clicks, value: summary.prev_dead_clicks, fill: COLORS.prev_dead_clicks },
-  ].filter(d => d.value > 0)
-
-  if (!hasData) {
-    return (
-      <div className="glass-surface rounded-none p-6 h-full flex flex-col">
-        <div className="flex items-center justify-between mb-1">
-          <h3 className="text-lg font-semibold text-white">
-            Frustration Trend
-          </h3>
-        </div>
-        <p className="text-sm text-neutral-400 mb-4">
-          Rage vs. dead click breakdown
-        </p>
-        <div className="flex-1 min-h-[270px] flex flex-col items-center justify-center">
-          <EmptyState
-            icon={<TrendUp />}
-            title="No trend data yet"
-            description="The frustration trend chart needs a few days of data before patterns emerge."
-          />
-        </div>
-      </div>
-    )
-  }
+  const days = data?.days ?? []
+  const hasSignals = days.some((d) => d.rage_clicks > 0 || d.dead_clicks > 0)
+  const chartData = useMemo(
+    () =>
+      days.map((d) => ({
+        label: formatDateShort(new Date(d.date + 'T00:00:00')),
+        rage: d.rage_clicks,
+        dead: d.dead_clicks,
+      })),
+    [days],
+  )
 
   return (
-    <div className="glass-surface rounded-none p-6 h-full flex flex-col">
-      <div className="flex items-center justify-between mb-1">
-        <h3 className="text-lg font-semibold text-white">
-          Frustration Trend
-        </h3>
-      </div>
-      <p className="text-sm text-neutral-400 mb-4">
-        {hasPrevious
-          ? 'Rage and dead clicks split across current and previous period'
-          : 'Rage vs. dead click breakdown'}
-      </p>
-
-      <div className="flex-1 flex items-center justify-center">
-        <DonutChart
-          data={chartData}
-          innerRadius={0.6}
-          size={220}
-          centerLabel={
-            <div className="text-center">
-              <p className="text-lg font-semibold text-white">{totalCurrent.toLocaleString()}</p>
-              <p className="text-xs text-neutral-400">total</p>
-            </div>
-          }
-        />
+    <div className="relative flex h-full flex-col rounded-none border border-border bg-card p-4">
+      <UpdatingChip active={isValidating && !!data} />
+      <div className="mb-3">
+        <span className="font-mono text-xs text-neutral-500">Daily frustration</span>
       </div>
 
-      <div className="flex items-center justify-center gap-2 text-sm font-medium pt-2">
-        {totalChange !== null ? (
-          <>
-            {totalChange > 0 ? 'Up' : totalChange < 0 ? 'Down' : 'No change'} by {Math.abs(totalChange)}% vs previous period <TrendUp className="h-4 w-4" />
-          </>
-        ) : totalCurrent > 0 ? (
-          <>
-            {totalCurrent.toLocaleString()} new signals this period <TrendUp className="h-4 w-4" />
-          </>
+      <div className="h-64 flex-1">
+        {error ? (
+          <ErrorCard
+            title="Couldn't load the trend"
+            description="The daily series failed for this period."
+            onRetry={() => { void mutate() }}
+            className="py-8"
+          />
+        ) : isLoading && !data ? null : hasSignals ? (
+          <BarChart
+            data={chartData}
+            xDataKey="label"
+            className="h-64"
+            aspectRatio="unset"
+            margin={{ top: 8, right: 16, bottom: 36, left: 40 }}
+            barGap={0.3}
+          >
+            <Grid horizontal vertical={false} numTicksRows={4} />
+            <BarValueAxis numTicks={4} />
+            <Bar dataKey="rage" stackId="signals" fill={RAGE} radius={0} />
+            <Bar dataKey="dead" stackId="signals" fill={DEAD} radius={0} />
+            <BarXAxis />
+            <ChartTooltip
+              rows={(point) => {
+                const rage = num(point.rage)
+                const dead = num(point.dead)
+                return [
+                  { color: RAGE, label: 'Rage clicks', value: rage },
+                  { color: DEAD, label: 'Dead clicks', value: dead },
+                  { color: TOTAL_DOT, label: 'Total', value: rage + dead },
+                ]
+              }}
+            />
+          </BarChart>
         ) : (
-          'No frustration signals detected'
+          <div className="flex h-full items-center justify-center">
+            <p className="text-sm text-neutral-500">Trend appears once signals are recorded.</p>
+          </div>
         )}
       </div>
     </div>

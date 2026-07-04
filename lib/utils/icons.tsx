@@ -8,7 +8,14 @@ import {
   Desktop,
   Link,
   CursorClick,
+  MapPin,
+  Buildings,
+  Broadcast,
+  FileText,
+  Tag,
+  FrameCorners,
 } from '@phosphor-icons/react'
+import * as Flags from 'country-flag-icons/react/3x2'
 const ICON_SIZE = 20
 
 function brandIcon(slug: string, alt: string) {
@@ -299,6 +306,58 @@ export function getReferrerFavicon(referrer: string): string | null {
     return `${FAVICON_SERVICE_URL}?domain=${url.hostname.toLowerCase()}&sz=32`
   } catch {
     return null
+  }
+}
+
+// ─── Filter value icons ───────────────────────────────────────────────────────
+
+/** Country flag for an ISO code; special aggregate codes fall back to a globe. */
+export function getCountryFlagIcon(code: string): ReactNode {
+  if (!code || code === 'Unknown') return <Globe className="text-neutral-400" />
+  const FlagComponent = (Flags as Record<string, React.ComponentType<{ className?: string }>>)[code.toUpperCase()]
+  return FlagComponent ? <FlagComponent className="rounded-none" /> : <Globe className="text-neutral-400" />
+}
+
+/**
+ * Icon for a filter-suggestion value, matching the dashboard panels'
+ * iconography (flags in Locations, brand icons in TechSpecs, favicons in
+ * Referrers) so the filter popover reads as the same product.
+ */
+export function getFilterValueIcon(dimension: string, value: string): ReactNode {
+  switch (dimension) {
+    case 'country':
+      return getCountryFlagIcon(value)
+    case 'browser':
+      return getBrowserIcon(value)
+    case 'os':
+      return getOSIcon(value)
+    case 'device':
+      return getDeviceIcon(value)
+    case 'referrer': {
+      const favicon = getReferrerFavicon(value)
+      if (favicon) return <img src={favicon} alt="" loading="lazy" />
+      return getReferrerIcon(value)
+    }
+    case 'channel':
+      return <Broadcast className="text-neutral-500" />
+    case 'page':
+      return <FileText className="text-neutral-500" />
+    case 'region':
+      return <MapPin className="text-neutral-500" />
+    case 'city':
+      return <Buildings className="text-neutral-500" />
+    case 'screen_resolution':
+      return <FrameCorners className="text-neutral-500" />
+    case 'event_name':
+      return <CursorClick className="text-neutral-500" />
+    case 'utm_source':
+    case 'utm_medium':
+    case 'utm_campaign':
+    case 'utm_term':
+    case 'utm_content':
+      return <Tag className="text-neutral-500" />
+    default:
+      return <Globe className="text-neutral-500" />
   }
 }
 

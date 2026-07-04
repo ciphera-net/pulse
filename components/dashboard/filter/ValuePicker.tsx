@@ -1,0 +1,240 @@
+'use client'
+
+import { useState, useRef, useEffect, useLayoutEffect } from 'react'
+import { motion } from 'framer-motion'
+import { DIMENSION_LABELS, type FilterSuggestion } from '@/lib/filters'
+import { getFilterValueIcon } from '@/lib/utils/icons'
+import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
+
+// ---------------------------------------------------------------------------
+// ValuePicker — inline value search + multi-select list with live counts.
+//
+// Owns search text, suggestion fetching (with an explicit failed state — a
+// dead request must not read as "no suggestions"), and the custom-value
+// affordance; the parent owns the selected values.
+// ---------------------------------------------------------------------------
+
+export interface ValuePickerProps {
+  dimension: string | null
+  values: string[]
+  onChange: (values: string[]) => void
+  onFetchSuggestions?: (dimension: string) => Promise<FilterSuggestion[]>
+  autoFocus?: boolean
+  /** Enter with an empty search box — the popover uses it to apply the draft. */
+  onSubmit?: () => void
+  /** Backspace with an empty search box — the popover uses it to go back a stage. */
+  onBackspaceWhenEmpty?: () => void
+}
+
+export default function ValuePicker({ dimension, values, onChange, onFetchSuggestions, autoFocus, onSubmit, onBackspaceWhenEmpty }: ValuePickerProps) {
+  const [search, setSearch] = useState('')
+  const [suggestions, setSuggestions] = useState<FilterSuggestion[]>([])
+  // * Lazily true so the very first paint is already the loading state — a
+  // * post-paint effect flashed the "no values recorded" empty message for a
+  // * frame before every fetch.
+  const [isFetching, setIsFetching] = useState(() => Boolean(dimension && onFetchSuggestions))
+  const [hasFetched, setHasFetched] = useState(false)
+  const [showSpinner, setShowSpinner] = useState(false)
+  const [fetchFailed, setFetchFailed] = useState(false)
+  const [retryTick, setRetryTick] = useState(0)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  // * Fetch on mount and whenever the dimension changes. Layout effect so the
+  // * dimension-change reset lands before paint — no stale-list or
+  // * empty-state flash between stages.
+  useLayoutEffect(() => {
+    setSuggestions([])
+    setSearch('')
+    setFetchFailed(false)
+    setHasFetched(false)
+    if (!dimension || !onFetchSuggestions) {
+      setIsFetching(false)
+      return
+    }
+    let cancelled = false
+    setIsFetching(true)
+    onFetchSuggestions(dimension)
+      .then(data => { if (!cancelled) { setSuggestions(data); setIsFetching(false); setHasFetched(true) } })
+      .catch(() => { if (!cancelled) { setFetchFailed(true); setIsFetching(false); setHasFetched(true) } })
+    return () => { cancelled = true }
+  }, [dimension, onFetchSuggestions, retryTick])
+
+  // * Spinner only earns its paint after 150ms — cache hits and fast
+  // * responses resolve without ever flashing it.
+  useEffect(() => {
+    if (!isFetching) {
+      setShowSpinner(false)
+      return
+    }
+    const timer = setTimeout(() => setShowSpinner(true), 150)
+    return () => clearTimeout(timer)
+  }, [isFetching])
+
+  useEffect(() => {
+    if (autoFocus) inputRef.current?.focus()
+  }, [autoFocus])
+
+  const filtered = suggestions.filter(s =>
+    s.label.toLowerCase().includes(search.toLowerCase()) ||
+    s.value.toLowerCase().includes(search.toLowerCase())
+  )
+
+  // * Chosen values missing from the suggestion list (custom entries, values
+  // * outside the top 100, or a failed fetch) must stay visible and removable.
+  const selectedExtras = values.filter(v =>
+    !suggestions.some(s => s.value === v) &&
+    v.toLowerCase().includes(search.toLowerCase())
+  )
+
+  function toggle(val: string) {
+    onChange(values.includes(val) ? values.filter(v => v !== val) : [...values, val])
+  }
+
+  function handleAddCustom() {
+    const trimmed = search.trim()
+    if (!trimmed || values.includes(trimmed)) return
+    onChange([...values, trimmed])
+    setSearch('')
+  }
+
+  const dimLabel = dimension ? (DIMENSION_LABELS[dimension] ?? dimension) : 'value'
+
+  const renderRow = (value: string, label: string, checked: boolean, count?: number) => (
+    <button
+      key={value}
+      type="button"
+      onClick={() => toggle(value)}
+      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-neutral-800 transition-colors cursor-pointer ease-apple"
+    >
+      <span className={`flex items-center justify-center w-3.5 h-3.5 rounded-none border flex-shrink-0 transition-colors ${
+        checked ? 'bg-brand-orange border-brand-orange' : 'border-neutral-600 bg-transparent'
+      } ease-apple`}>
+        {checked && (
+          <motion.svg
+            initial={{ scale: 0.4, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.12, ease: EASE_APPLE }}
+            className="w-2.5 h-2.5 text-white"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={3}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </motion.svg>
+        )}
+      </span>
+      {dimension && (
+        <span className="flex h-4 w-4 items-center justify-center flex-shrink-0 [&_svg]:h-4 [&_svg]:w-4 [&_img]:h-4 [&_img]:w-4 [&_img]:object-contain">
+          {getFilterValueIcon(dimension, value)}
+        </span>
+      )}
+      <span className="truncate text-white flex-1 min-w-0">{label}</span>
+      {count !== undefined && (
+        <span className="text-xs text-neutral-500 tabular-nums flex-shrink-0">
+          {count.toLocaleString()}
+        </span>
+      )}
+    </button>
+  )
+
+  return (
+    <>
+      <div className="p-2">
+        <input
+          ref={inputRef}
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              if (search.trim() === '') {
+                onSubmit?.()
+              } else if (filtered.length === 1 && !values.includes(filtered[0].value)) {
+                toggle(filtered[0].value)
+                setSearch('')
+              } else {
+                handleAddCustom()
+              }
+            } else if (e.key === 'Backspace' && search === '') {
+              e.preventDefault()
+              onBackspaceWhenEmpty?.()
+            }
+          }}
+          placeholder={`Search ${dimLabel.toLowerCase()}…`}
+          className="w-full px-2.5 py-1.5 text-sm bg-neutral-800 border border-neutral-700 rounded-none text-white placeholder-neutral-500 focus:outline-none focus:ring-1 focus:ring-brand-orange/40 focus:border-brand-orange/40 transition-colors ease-apple"
+        />
+      </div>
+
+      {isFetching ? (
+        /* * Fixed-height box keeps the panel's morph pointed at one target
+         * while loading; the spinner fades in only for slow fetches. */
+        <div className="flex min-h-[52px] items-center justify-center border-t border-neutral-800">
+          {showSpinner && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
+              className="inline-block w-4 h-4 border-2 border-neutral-600 border-t-brand-orange rounded-full animate-spin"
+            />
+          )}
+        </div>
+      ) : (filtered.length > 0 || selectedExtras.length > 0) ? (
+        /* * Gentle rise-in when the list first arrives (post-fetch); typing to
+         * filter keeps this container mounted, so keystrokes stay instant. */
+        <motion.div
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
+          className="max-h-52 overflow-y-auto border-t border-neutral-800"
+        >
+          {selectedExtras.map(v => renderRow(v, v, true))}
+          {filtered.map(s => renderRow(s.value, s.label, values.includes(s.value), s.count))}
+          {fetchFailed && (
+            <div className="flex items-center justify-between gap-2 px-3 py-2 text-xs text-red-400/90 border-t border-neutral-800">
+              Suggestions unavailable
+              <button
+                type="button"
+                onClick={() => setRetryTick(t => t + 1)}
+                className="font-medium text-neutral-400 hover:text-white underline underline-offset-2 transition-colors cursor-pointer ease-apple"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+        </motion.div>
+      ) : fetchFailed && !search.trim() ? (
+        /* * A failed fetch must not masquerade as "no suggestions" — typing a
+         * custom value still works either way. */
+        <div className="px-3 py-3 text-center border-t border-neutral-800 space-y-1.5">
+          <p className="text-sm text-red-400">Couldn&apos;t load suggestions</p>
+          <button
+            type="button"
+            onClick={() => setRetryTick(t => t + 1)}
+            className="text-xs font-medium text-neutral-400 hover:text-white underline underline-offset-2 transition-colors cursor-pointer ease-apple"
+          >
+            Retry
+          </button>
+        </div>
+      ) : search.trim() ? (
+        <div className="px-2 pb-2 border-t border-neutral-800 pt-2">
+          <button
+            type="button"
+            onClick={handleAddCustom}
+            className="w-full px-3 py-1.5 text-sm font-medium bg-neutral-800 text-white rounded-none hover:bg-neutral-700 transition-colors cursor-pointer border border-neutral-700 ease-apple"
+          >
+            Filter by &ldquo;{search.trim()}&rdquo;
+          </button>
+        </div>
+      ) : (hasFetched || !onFetchSuggestions) ? (
+        <div className="px-3 py-3 text-sm text-neutral-500 text-center border-t border-neutral-800">
+          No {dimLabel.toLowerCase()} recorded in this period — type a value to filter anyway
+        </div>
+      ) : (
+        /* * Pre-fetch frames (dimension just changed): hold the loading box's
+         * height so nothing flashes before the layout effect kicks in. */
+        <div className="min-h-[52px] border-t border-neutral-800" />
+      )}
+    </>
+  )
+}

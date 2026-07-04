@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@ciphera-net/facet'
 
@@ -44,17 +45,8 @@ export default function Select({
   const [isOpen, setIsOpen] = useState(false)
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
   const ref = useRef<HTMLDivElement>(null)
-  const listRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (ref.current && !ref.current.contains(event.target as Node)) {
-        setIsOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
 
   const selectableOptions = options.filter((o) => !o.divider)
 
@@ -111,8 +103,8 @@ export default function Select({
 
   // Scroll highlighted option into view
   useEffect(() => {
-    if (isOpen && listRef.current && highlightedIndex >= 0) {
-      const items = listRef.current.querySelectorAll('[role="option"]')
+    if (isOpen && panelRef.current && highlightedIndex >= 0) {
+      const items = panelRef.current.querySelectorAll('[role="option"]')
       items[highlightedIndex]?.scrollIntoView({ block: 'nearest' })
     }
   }, [highlightedIndex, isOpen])
@@ -123,9 +115,9 @@ export default function Select({
   const triggerBase =
     variant === 'input'
       ? cn(
-          'min-w-[140px] px-3.5 h-11 border border-input rounded-none bg-transparent text-foreground text-left text-sm',
-          'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors',
-          isOpen && 'ring-1 ring-ring border-ring'
+          'min-w-0 px-3 h-10 border border-input rounded-none bg-transparent text-foreground text-left text-sm',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange transition-colors',
+          isOpen && 'ring-2 ring-brand-orange border-brand-orange'
         )
       : variant === 'ghost'
         ? cn(
@@ -139,12 +131,54 @@ export default function Select({
           )
 
   const triggerLayout = 'w-full '
-  const alignClass = align === 'left' ? 'left-0' : 'right-0'
-  const panelMinW = fullWidth ? 'w-full' : 'min-w-[140px] w-full'
-
   const highlightedId = highlightedIndex >= 0 ? `select-option-${options[highlightedIndex]?.value}` : undefined
 
-  const triggerRef = useRef<HTMLButtonElement>(null)
+  // * Dropdown is portalled to the body with fixed positioning so it never
+  // * clips inside a scrollable ancestor (dialogs, cards). Position is measured
+  // * from the trigger and kept in sync while open.
+  const [coords, setCoords] = useState<{ left: number; width: number; top?: number; bottom?: number; maxH: number }>()
+
+  const measure = useCallback(() => {
+    const t = triggerRef.current?.getBoundingClientRect()
+    if (!t) return
+    const gap = 4
+    const spaceBelow = window.innerHeight - t.bottom
+    const spaceAbove = t.top
+    const openUp = spaceBelow < 240 && spaceAbove > spaceBelow
+    const maxH = Math.min(448, (openUp ? spaceAbove : spaceBelow) - gap - 8)
+    setCoords({
+      left: t.left,
+      width: t.width,
+      maxH,
+      ...(openUp ? { bottom: window.innerHeight - t.top + gap } : { top: t.bottom + gap }),
+    })
+  }, [])
+
+  useLayoutEffect(() => {
+    if (isOpen) measure()
+  }, [isOpen, measure])
+
+  useEffect(() => {
+    if (!isOpen) return
+    const onScrollOrResize = () => measure()
+    window.addEventListener('scroll', onScrollOrResize, true)
+    window.addEventListener('resize', onScrollOrResize)
+    return () => {
+      window.removeEventListener('scroll', onScrollOrResize, true)
+      window.removeEventListener('resize', onScrollOrResize)
+    }
+  }, [isOpen, measure])
+
+  // * Outside-click must ignore the portalled panel, not just the trigger.
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      const target = event.target as Node
+      if (ref.current?.contains(target) || panelRef.current?.contains(target)) return
+      setIsOpen(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   return (
     <div className={`relative ${fullWidth || variant === 'ghost' ? 'w-full h-full' : ''} ${className}`} ref={ref}>
@@ -160,7 +194,7 @@ export default function Select({
         aria-expanded={isOpen}
         aria-activedescendant={isOpen ? highlightedId : undefined}
       >
-        <span className={!selectedOption && placeholder ? 'text-muted-foreground' : ''}>
+        <span className={cn('truncate', !selectedOption && placeholder ? 'text-muted-foreground' : '')}>
           {displayLabel}
         </span>
         <svg
@@ -176,54 +210,62 @@ export default function Select({
         </svg>
       </button>
 
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            ref={listRef}
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.15 }}
-            className={`${variant === 'ghost' ? 'fixed' : `absolute ${alignClass}`} mt-1 ${variant === 'ghost' ? 'min-w-[160px]' : panelMinW} bg-popover border border-border rounded-none z-[200] overflow-hidden py-1 max-h-[28rem] overflow-y-auto`}
-            style={variant === 'ghost' && triggerRef.current ? (() => {
-              const r = triggerRef.current!.getBoundingClientRect()
-              return { right: window.innerWidth - r.right, top: r.bottom + 4 }
-            })() : undefined}
-            role="listbox"
-          >
-            {options.map((option, index) => option.divider ? (
-              <div key={`divider-${index}`} className="my-1 border-t border-border" role="separator" />
-            ) : (
-              <button
-                type="button"
-                key={option.value}
-                id={`select-option-${option.value}`}
-                role="option"
-                aria-selected={value === option.value}
-                onClick={() => {
-                  onChange(option.value)
-                  setIsOpen(false)
+      {typeof document !== 'undefined' &&
+        createPortal(
+          <AnimatePresence>
+            {isOpen && coords && (
+              <motion.div
+                ref={panelRef}
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.15 }}
+                className="fixed bg-popover border border-border rounded-none shadow-lg z-[300] overflow-y-auto py-1"
+                style={{
+                  left: coords.left,
+                  width: coords.width,
+                  minWidth: Math.max(coords.width, 140),
+                  top: coords.top,
+                  bottom: coords.bottom,
+                  maxHeight: coords.maxH,
                 }}
-                onMouseEnter={() => setHighlightedIndex(index)}
-                className={cn(
-                  'w-full text-left px-4 py-2 text-sm transition-colors duration-100 flex items-center justify-between rounded-none',
-                  value === option.value
-                    ? 'text-brand-orange font-medium'
-                    : 'text-popover-foreground',
-                  highlightedIndex === index && 'bg-accent'
-                )}
+                role="listbox"
               >
-                {option.label}
-                {value === option.value && (
-                  <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                )}
-              </button>
-            ))}
-          </motion.div>
+                {options.map((option, index) => option.divider ? (
+                  <div key={`divider-${index}`} className="my-1 border-t border-border" role="separator" />
+                ) : (
+                  <button
+                    type="button"
+                    key={option.value}
+                    id={`select-option-${option.value}`}
+                    role="option"
+                    aria-selected={value === option.value}
+                    onClick={() => {
+                      onChange(option.value)
+                      setIsOpen(false)
+                    }}
+                    onMouseEnter={() => setHighlightedIndex(index)}
+                    className={cn(
+                      'w-full text-left px-3 py-2 text-sm transition-colors duration-100 flex items-center justify-between gap-2 rounded-none',
+                      value === option.value
+                        ? 'text-brand-orange font-medium'
+                        : 'text-popover-foreground',
+                      highlightedIndex === index && 'bg-accent'
+                    )}
+                  >
+                    <span className="truncate">{option.label}</span>
+                    {value === option.value && (
+                      <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body,
         )}
-      </AnimatePresence>
     </div>
   )
 }

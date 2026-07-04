@@ -5,20 +5,12 @@ import { logger } from '@/lib/utils/logger'
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
-  getTopPages,
-  getTopReferrers,
-  getCountries,
-  getCities,
-  getRegions,
-  getBrowsers,
-  getOS,
-  getDevices,
-  getCampaigns,
   getEngagementPercentiles,
   type Stats,
   type DailyStat,
   type EngagementPercentilesData,
 } from '@/lib/api/stats'
+import { useFilterSuggestions } from '@/lib/hooks/useFilterSuggestions'
 import { getDateRange, formatDate, getThisWeekRange, getThisMonthRange, getYesterdayRange, getLast24HoursRange, getLast1HourRange, getThisYearRange } from '@/lib/utils/dateRanges'
 import { toast } from '@ciphera-net/facet'
 import DateRangePicker from '@/components/ui/DateRangePicker'
@@ -27,7 +19,8 @@ import dynamic from 'next/dynamic'
 import { DashboardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import FilterButton from '@/components/dashboard/FilterButton'
 import FilterPills from '@/components/dashboard/FilterPills'
-import FilterModal, { type FilterSuggestion } from '@/components/dashboard/FilterModal'
+import FilterBuilder from '@/components/dashboard/filter/FilterBuilder'
+import { useFilterBuilder } from '@/components/dashboard/filter/useFilterBuilder'
 const Chart = dynamic(() => import('@/components/dashboard/Chart'), { ssr: false })
 import ContentStats from '@/components/dashboard/ContentStats'
 import TopReferrers from '@/components/dashboard/TopReferrers'
@@ -170,11 +163,6 @@ export default function SiteDashboardPage() {
   const resolvedDateRange: { start: string; end: string } | null =
     dashboard?.date_range ?? (apiPeriod ? null : dateRange)
 
-  // Filter modal state
-  const [editingFilterIndex, setEditingFilterIndex] = useState<number | null>(null)
-  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
-  const [filterModalDimension, setFilterModalDimension] = useState<string | null>(null)
-
   // Engagement percentile data
   const [engagementData, setEngagementData] = useState<EngagementPercentilesData | null>(null)
 
@@ -196,96 +184,18 @@ export default function SiteDashboardPage() {
     setFilters([])
   }, [])
 
-  const handleOpenFilterForDimension = useCallback((dimension: string) => {
-    setFilterModalDimension(dimension)
-    setEditingFilterIndex(null)
-    setIsFilterModalOpen(true)
-  }, [])
-
-  const handleEditFilter = useCallback((index: number) => {
-    setEditingFilterIndex(index)
-    setFilterModalDimension(filters[index]?.dimension || null)
-    setIsFilterModalOpen(true)
-  }, [filters])
-
-  const handleFilterModalSave = useCallback((filter: DimensionFilter) => {
-    if (editingFilterIndex !== null) {
-      setFilters(prev => prev.map((f, i) => i === editingFilterIndex ? filter : f))
+  // * Commit a draft from the filter popover — replaces the filter at its
+  // * index when editing, appends (via the duplicate-guarded add) otherwise.
+  const handleFilterApply = useCallback((filter: DimensionFilter, editingIndex: number | null) => {
+    if (editingIndex !== null) {
+      setFilters(prev => prev.map((f, i) => i === editingIndex ? filter : f))
     } else {
-      setFilters(prev => [...prev, filter])
+      handleAddFilter(filter)
     }
-    setIsFilterModalOpen(false)
-    setEditingFilterIndex(null)
-  }, [editingFilterIndex])
-
-  const handleFilterModalClose = useCallback(() => {
-    setIsFilterModalOpen(false)
-    setEditingFilterIndex(null)
-  }, [])
+  }, [handleAddFilter])
 
   // Fetch full suggestion list (up to 100) when a dimension is selected in the filter dropdown
-  const handleFetchSuggestions = useCallback(async (dimension: string): Promise<FilterSuggestion[]> => {
-    if (!resolvedDateRange) return []
-    const start = resolvedDateRange.start
-    const end = resolvedDateRange.end
-    const f = filtersParam || undefined
-    const limit = 100
-
-    try {
-      const regionNames = (() => { try { return new Intl.DisplayNames(['en'], { type: 'region' }) } catch { return null } })()
-
-      switch (dimension) {
-        case 'page': {
-          const data = await getTopPages(siteId, start, end, limit, f)
-          return data.map(p => ({ value: p.path, label: p.path, count: p.pageviews }))
-        }
-        case 'referrer': {
-          const data = await getTopReferrers(siteId, start, end, limit, f)
-          return data.filter(r => r.referrer && r.referrer !== '').map(r => ({ value: r.referrer, label: r.referrer, count: r.pageviews }))
-        }
-        case 'country': {
-          const data = await getCountries(siteId, start, end, limit, f)
-          return data.filter(c => c.country && c.country !== 'Unknown').map(c => ({ value: c.country, label: regionNames?.of(c.country) ?? c.country, count: c.pageviews }))
-        }
-        case 'city': {
-          const data = await getCities(siteId, start, end, limit, f)
-          return data.filter(c => c.city && c.city !== 'Unknown').map(c => ({ value: c.city, label: c.city, count: c.pageviews }))
-        }
-        case 'region': {
-          const data = await getRegions(siteId, start, end, limit, f)
-          return data.filter(r => r.region && r.region !== 'Unknown').map(r => ({ value: r.region, label: r.region, count: r.pageviews }))
-        }
-        case 'browser': {
-          const data = await getBrowsers(siteId, start, end, limit, f)
-          return data.filter(b => b.browser && b.browser !== 'Unknown').map(b => ({ value: b.browser, label: b.browser, count: b.pageviews }))
-        }
-        case 'os': {
-          const data = await getOS(siteId, start, end, limit, f)
-          return data.filter(o => o.os && o.os !== 'Unknown').map(o => ({ value: o.os, label: o.os, count: o.pageviews }))
-        }
-        case 'device': {
-          const data = await getDevices(siteId, start, end, limit, f)
-          return data.filter(d => d.device && d.device !== 'Unknown').map(d => ({ value: d.device, label: d.device, count: d.pageviews }))
-        }
-        case 'utm_source':
-        case 'utm_medium':
-        case 'utm_campaign': {
-          const data = await getCampaigns(siteId, start, end, limit, f)
-          const map = new Map<string, number>()
-          const field = dimension === 'utm_source' ? 'source' : dimension === 'utm_medium' ? 'medium' : 'campaign'
-          data.forEach(c => {
-            const val = c[field]
-            if (val) map.set(val, (map.get(val) ?? 0) + c.pageviews)
-          })
-          return [...map.entries()].map(([v, count]) => ({ value: v, label: v, count }))
-        }
-        default:
-          return []
-      }
-    } catch {
-      return []
-    }
-  }, [siteId, resolvedDateRange?.start, resolvedDateRange?.end, filtersParam])
+  const handleFetchSuggestions = useFilterSuggestions(siteId, resolvedDateRange, filtersParam || undefined)
 
   // Sync filters to URL
   useEffect(() => {
@@ -297,6 +207,10 @@ export default function SiteDashboardPage() {
     }
     window.history.replaceState({}, '', url.toString())
   }, [filtersParam])
+
+  // Single-surface filter popover (create anchored to the Filter button,
+  // edit anchored to the clicked pill).
+  const filterBuilder = useFilterBuilder(handleFetchSuggestions)
 
   // Previous period date range for comparison.
   // Returns null when the previous range would be invalid for the backend:
@@ -448,8 +362,17 @@ export default function SiteDashboardPage() {
         )}
       </div>
       <div className="flex-1" />
-      <FilterPills filters={filters} onEdit={handleEditFilter} onRemove={handleRemoveFilter} onClear={handleClearFilters} />
-      <FilterButton hasActiveFilters={filters.length > 0} onSelectDimension={handleOpenFilterForDimension} />
+      <FilterPills
+        filters={filters}
+        onEdit={(index, anchor) => filterBuilder.openEdit(filters[index], index, anchor)}
+        onRemove={handleRemoveFilter}
+        onClear={handleClearFilters}
+      />
+      <FilterButton
+        hasActiveFilters={filters.length > 0}
+        active={filterBuilder.open}
+        onClick={anchor => filterBuilder.openCreate(anchor)}
+      />
       <DateRangePicker
         period={period}
         dateRange={dateRange}
@@ -571,13 +494,10 @@ export default function SiteDashboardPage() {
         campaigns={campaigns}
       />
 
-      <FilterModal
-        open={isFilterModalOpen}
-        initialDimension={filterModalDimension}
-        initialFilter={editingFilterIndex !== null ? filters[editingFilterIndex] : null}
-        onSave={handleFilterModalSave}
-        onClose={handleFilterModalClose}
-        onFetchSuggestions={handleFetchSuggestions}
+      <FilterBuilder
+        builder={filterBuilder}
+        filters={filters}
+        onApply={handleFilterApply}
       />
     </div>
   )

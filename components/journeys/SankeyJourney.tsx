@@ -1,652 +1,374 @@
 'use client'
 
-import * as d3 from 'd3'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { TreeStructure, X } from '@phosphor-icons/react'
+import { motion } from 'framer-motion'
 import type { PathTransition } from '@/lib/api/journeys'
-import { EmptyState } from '@/components/ui/EmptyState'
-import { aggregateJourney } from '@/lib/journeys/aggregate'
+import {
+  chainThroughNode,
+  chainThroughLink,
+  pathOfNode,
+  type Chain,
+  type ChainLink,
+} from '@/lib/journeys/chain'
+import { layoutSankey, NODE_WIDTH, type SankeyLink } from '@/lib/journeys/sankeyLayout'
+import { StepHeader } from './StepHeader'
+import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-}
-
-// ─── Types ──────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
+// Flow view — a declarative React SVG render of lib/journeys/sankeyLayout.
+// Sharp neutral strips and quiet links; hovering a strip or a link raises its
+// BFS chain to orange and dims the rest; clicking (or Enter) pins the shared
+// ?lens=, which re-renders the layout as the chain subgraph. The tooltip is a
+// React fixed div on the popover surface (sanctioned shadow), and strips are
+// keyboard-focusable with arrow navigation.
+// ---------------------------------------------------------------------------
 
 interface SankeyJourneyProps {
   transitions: PathTransition[]
   depth: number
   maxPagesPerStep?: number
+  lens: string | null
+  onLensChange: (path: string | null) => void
+  totalSessions: number
+  periodLabel: string
 }
 
-interface SNode {
-  id: string
-  name: string
-  step: number
-  height: number
+const ORANGE = '#FD5E0F'
+const NEUTRAL_500 = '#737373'
+const NEUTRAL_600 = '#525252'
+const LINK_OPACITY = 0.2
+const LINK_CHAIN_OPACITY = 0.45
+const LINK_DIM_OPACITY = 0.08
+const NODE_DIM_OPACITY = 0.08
+const LABEL_DIM_OPACITY = 0.2
+
+type Hover =
+  | { kind: 'node'; id: string; path: string }
+  | { kind: 'link'; source: string; target: string }
+  | null
+
+interface TooltipState {
   x: number
   y: number
-  count: number
-  inLinks: SLink[]
-  outLinks: SLink[]
-}
-
-interface SLink {
-  source: string
-  target: string
-  value: number
-  sourceY?: number
-  targetY?: number
-}
-
-// ─── Constants ──────────────────────────────────────────────────────
-
-const NODE_WIDTH = 14
-const NODE_HIT_WIDTH = 24
-const NODE_GAP = 20
-const MIN_NODE_HEIGHT = 3
-const MAX_LINK_HEIGHT = 50
-const MIN_LINK_HEIGHT = 1
-const LINK_OPACITY = 0.3
-const LINK_HOVER_OPACITY = 0.6
-const HEADER_HEIGHT = 56
-const LABEL_OFFSET = 4
-
-const COLOR_PALETTE = [
-  'hsl(160, 45%, 40%)', 'hsl(220, 45%, 50%)', 'hsl(270, 40%, 50%)',
-  'hsl(25, 50%, 50%)', 'hsl(340, 40%, 50%)', 'hsl(190, 45%, 45%)',
-  'hsl(45, 45%, 50%)', 'hsl(0, 45%, 50%)',
-]
-
-// ─── Helpers ────────────────────────────────────────────────────────
-
-function pathFromId(id: string): string {
-  const idx = id.indexOf(':')
-  return idx >= 0 ? id.slice(idx + 1) : id
-}
-
-function stepFromId(id: string): number {
-  const idx = id.indexOf(':')
-  return idx >= 0 ? parseInt(id.slice(0, idx), 10) : 0
-}
-
-function firstSegment(path: string): string {
-  const parts = path.split('/').filter(Boolean)
-  return parts.length > 0 ? `/${parts[0]}` : path
+  title: string
+  sub: string
 }
 
 function smartLabel(path: string): string {
   if (path === '/' || path === '(other)') return path
   const segments = path.replace(/\/$/, '').split('/')
   if (segments.length <= 2) return path
-  return `.../${segments[segments.length - 1]}`
+  return `…/${segments[segments.length - 1]}`
 }
 
-// ─── Data Transformation ────────────────────────────────────────────
-
-function buildData(
-  transitions: PathTransition[],
-  depth: number,
-  maxPagesPerStep: number,
-  filterPath?: string,
-): { nodes: SNode[]; links: SLink[] } {
-  if (transitions.length === 0) return { nodes: [], links: [] }
-
-  const aggregated = aggregateJourney(transitions, { depth, maxPagesPerStep })
-  if (aggregated.length === 0) return { nodes: [], links: [] }
-
-  // * Build set of which paths survived (other) rollup per step
-  const pathsByStep = new Map<number, Set<string>>()
-  for (const step of aggregated) {
-    pathsByStep.set(step.index, new Set(step.pages.map((p) => p.path)))
-  }
-
-  // * Scope transitions to within the requested depth
-  const scoped = transitions.filter((t) => t.step_index + 1 < depth)
-
-  // * Build links — use (other) as fallback when a path was rolled up
-  const linkMap = new Map<string, number>()
-  for (const t of scoped) {
-    const fromPaths = pathsByStep.get(t.step_index)
-    const toPaths = pathsByStep.get(t.step_index + 1)
-    if (!fromPaths || !toPaths) continue
-    const fp = fromPaths.has(t.from_path) ? t.from_path : '(other)'
-    const tp = toPaths.has(t.to_path) ? t.to_path : '(other)'
-    if (fp === '(other)' && tp === '(other)') continue
-    const src = `${t.step_index}:${fp}`
-    const tgt = `${t.step_index + 1}:${tp}`
-    const key = `${src}|${tgt}`
-    linkMap.set(key, (linkMap.get(key) ?? 0) + t.session_count)
-  }
-
-  let links: SLink[] = Array.from(linkMap.entries()).map(([k, v]) => {
-    const [source, target] = k.split('|')
-    return { source, target, value: v }
-  })
-
-  // * Build nodes from aggregated step pages + any link endpoints (to catch (other) nodes)
-  const nodeIdSet = new Set<string>()
-  for (const step of aggregated) {
-    for (const page of step.pages) {
-      nodeIdSet.add(`${step.index}:${page.path}`)
-    }
-  }
-  for (const l of links) {
-    nodeIdSet.add(l.source)
-    nodeIdSet.add(l.target)
-  }
-
-  let nodes: SNode[] = Array.from(nodeIdSet).map((id) => ({
-    id,
-    name: pathFromId(id),
-    step: stepFromId(id),
-    height: 0,
-    x: 0,
-    y: 0,
-    count: 0,
-    inLinks: [],
-    outLinks: [],
-  }))
-
-  // * Filter by clicked path (BFS forward + backward) — UNCHANGED from original
-  if (filterPath) {
-    const matchIds = nodes.filter((n) => n.name === filterPath).map((n) => n.id)
-    if (matchIds.length === 0) return { nodes: [], links: [] }
-
-    const fwd = new Map<string, Set<string>>()
-    const bwd = new Map<string, Set<string>>()
-    for (const l of links) {
-      if (!fwd.has(l.source)) fwd.set(l.source, new Set())
-      fwd.get(l.source)!.add(l.target)
-      if (!bwd.has(l.target)) bwd.set(l.target, new Set())
-      bwd.get(l.target)!.add(l.source)
-    }
-
-    const reachable = new Set<string>(matchIds)
-    let queue = [...matchIds]
-    while (queue.length > 0) {
-      const next: string[] = []
-      for (const id of queue) {
-        for (const nb of fwd.get(id) ?? []) {
-          if (!reachable.has(nb)) { reachable.add(nb); next.push(nb) }
-        }
-      }
-      queue = next
-    }
-    queue = [...matchIds]
-    while (queue.length > 0) {
-      const next: string[] = []
-      for (const id of queue) {
-        for (const nb of bwd.get(id) ?? []) {
-          if (!reachable.has(nb)) { reachable.add(nb); next.push(nb) }
-        }
-      }
-      queue = next
-    }
-
-    links = links.filter((l) => reachable.has(l.source) && reachable.has(l.target))
-    const kept = new Set<string>()
-    for (const l of links) { kept.add(l.source); kept.add(l.target) }
-    nodes = nodes.filter((n) => kept.has(n.id))
-  }
-
-  return { nodes, links }
+function linkPath(l: SankeyLink): string {
+  const gap = l.targetX - l.sourceX
+  const c1 = l.sourceX + gap / 3
+  const c2 = l.targetX - gap / 3
+  return `M ${l.sourceX},${l.sourceY} C ${c1},${l.sourceY} ${c2},${l.targetY} ${l.targetX},${l.targetY}`
 }
-
-// ─── Component ──────────────────────────────────────────────────────
 
 export default function SankeyJourney({
   transitions,
   depth,
   maxPagesPerStep = 20,
+  lens,
+  onLensChange,
+  totalSessions,
+  periodLabel,
 }: SankeyJourneyProps) {
-  const [filterPath, setFilterPath] = useState<string | null>(null)
-  const [isDark, setIsDark] = useState(false)
-  const svgRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const nodeRefs = useRef(new Map<string, SVGGElement>())
   const [containerWidth, setContainerWidth] = useState(900)
+  const [hover, setHover] = useState<Hover>(null)
+  const [tooltip, setTooltip] = useState<TooltipState | null>(null)
+  const [focusedId, setFocusedId] = useState<string | null>(null)
 
-  // Detect dark mode
-  useEffect(() => {
-    const el = document.documentElement
-    setIsDark(el.classList.contains('dark'))
-    const obs = new MutationObserver(() => setIsDark(el.classList.contains('dark')))
-    obs.observe(el, { attributes: true, attributeFilter: ['class'] })
-    return () => obs.disconnect()
-  }, [])
-
-  // Measure container
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
     const measure = () => setContainerWidth(el.clientWidth)
     measure()
-    const obs = new ResizeObserver(measure)
-    obs.observe(el)
-    return () => obs.disconnect()
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
   }, [])
 
-  const data = useMemo(
-    () => buildData(transitions, depth, maxPagesPerStep, filterPath ?? undefined),
-    [transitions, depth, maxPagesPerStep, filterPath],
+  // * Lens renders the chain subgraph; a lens with no flows in the current
+  // * data falls back to the full graph (the toolbar chip stays clearable).
+  const layout = useMemo(() => {
+    const opts = { depth, maxPagesPerStep, width: containerWidth }
+    if (lens) {
+      const filtered = layoutSankey(transitions, { ...opts, lens })
+      if (filtered.nodes.length > 0) return filtered
+    }
+    return layoutSankey(transitions, opts)
+  }, [transitions, depth, maxPagesPerStep, containerWidth, lens])
+
+  const chainLinks: ChainLink[] = layout.links
+  // * Hovering a node highlights only the flow through that specific node
+  // * (chainThroughNode), not every occurrence of its path.
+  const chain: Chain | null = useMemo(() => {
+    if (!hover) return null
+    return hover.kind === 'link'
+      ? chainThroughLink(chainLinks, hover.source, hover.target)
+      : chainThroughNode(chainLinks, hover.id)
+  }, [hover, chainLinks])
+
+  const stepOrdinals = useMemo(
+    () => new Map(layout.steps.map((s, ordinal) => [s.index, ordinal])),
+    [layout.steps],
+  )
+  const nodesByStep = useMemo(() => {
+    const m = new Map<number, string[]>()
+    for (const n of layout.nodes) {
+      if (!m.has(n.step)) m.set(n.step, [])
+      m.get(n.step)!.push(n.id)
+    }
+    return m
+  }, [layout.nodes])
+
+  const toggleLens = useCallback(
+    (path: string) => {
+      if (path === '(other)') return
+      onLensChange(lens === path ? null : path)
+    },
+    [lens, onLensChange],
   )
 
-  // Clear filter on data change
-  const transKey = transitions.length + '-' + depth + '-' + maxPagesPerStep
-  const [prevKey, setPrevKey] = useState(transKey)
-  if (prevKey !== transKey) {
-    setPrevKey(transKey)
-    if (filterPath !== null) setFilterPath(null)
-  }
-
-  const handleNodeClick = useCallback((path: string) => {
-    if (path === '(other)') return
-    setFilterPath((prev) => (prev === path ? null : path))
+  const clearHover = useCallback(() => {
+    setHover(null)
+    setTooltip(null)
   }, [])
 
-  // ─── D3 Rendering ──────────────────────────────────────────────
-  useEffect(() => {
-    if (!svgRef.current || data.nodes.length === 0) return
-
-    const svg = d3.select(svgRef.current)
-    svg.selectAll('*').remove()
-
-    const { nodes, links } = data
-
-    const linkColor = isDark ? 'rgba(163,163,163,0.5)' : 'rgba(82,82,82,0.5)'
-    const textColor = isDark ? '#e5e5e5' : '#171717'
-
-    // Wire up node ↔ link references
-    for (const n of nodes) { n.inLinks = []; n.outLinks = []; n.count = 0 }
-    const nodeMap = new Map(nodes.map((n) => [n.id, n]))
-    for (const l of links) {
-      const src = nodeMap.get(l.source)
-      const tgt = nodeMap.get(l.target)
-      if (src) src.outLinks.push(l)
-      if (tgt) tgt.inLinks.push(l)
-    }
-    for (const n of nodes) {
-      const inVal = n.inLinks.reduce((s, l) => s + l.value, 0)
-      const outVal = n.outLinks.reduce((s, l) => s + l.value, 0)
-      n.count = n.step === 0 ? outVal : Math.max(inVal, outVal)
-    }
-
-    // Calculate node + link heights (proportional to value, shared scale).
-    // MAX_LINK_HEIGHT is intentionally small so nodes stay as Rybbit-style
-    // thin strips rather than tall bars.
-    const maxVal = d3.max(links, (l) => l.value) || 1
-    const heightScale = d3.scaleLinear().domain([0, maxVal]).range([0, MAX_LINK_HEIGHT])
-    for (const n of nodes) {
-      const inVal = n.inLinks.reduce((s, l) => s + l.value, 0)
-      const outVal = n.outLinks.reduce((s, l) => s + l.value, 0)
-      n.height = Math.max(heightScale(Math.max(inVal, outVal)), MIN_NODE_HEIGHT)
-    }
-
-    // Group by step, determine layout
-    const byStep = d3.group(nodes, (n) => n.step)
-    const numSteps = byStep.size
-    const width = containerWidth
-    const stepWidth = width / numSteps
-
-    // Calculate chart height from tallest column (add header + bottom padding)
-    const stepHeights = Array.from(byStep.values()).map(
-      (ns) => ns.reduce((s, n) => s + n.height, 0) + (ns.length - 1) * NODE_GAP,
-    )
-    const height = Math.max(200, Math.max(...stepHeights) + HEADER_HEIGHT + 20)
-
-    // Position nodes in columns, aligned from top (below header row)
-    byStep.forEach((stepNodes, step) => {
-      let cy = HEADER_HEIGHT
-      for (const n of stepNodes) {
-        n.x = step * stepWidth
-        n.y = cy + n.height / 2
-        cy += n.height + NODE_GAP
+  const onKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      const target = e.target as SVGGElement
+      const stepRaw = target.dataset?.step
+      const idxRaw = target.dataset?.idx
+      if (stepRaw === undefined || idxRaw === undefined) return
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        const id = target.dataset.id
+        if (id) toggleLens(pathOfNode(id))
+        return
       }
-    })
-
-    // Calculate link y-positions (stacked within each node)
-    for (const n of nodes) {
-      n.outLinks.sort((a, b) => b.value - a.value)
-      n.inLinks.sort((a, b) => b.value - a.value)
-
-      let outY = n.y - n.height / 2
-      for (const l of n.outLinks) {
-        const lh = heightScale(l.value)
-        l.sourceY = outY + lh / 2
-        outY += lh
+      let ordinal = stepOrdinals.get(parseInt(stepRaw, 10)) ?? 0
+      let idx = parseInt(idxRaw, 10)
+      switch (e.key) {
+        case 'ArrowDown': idx += 1; break
+        case 'ArrowUp': idx -= 1; break
+        case 'ArrowRight': ordinal += 1; break
+        case 'ArrowLeft': ordinal -= 1; break
+        default: return
       }
+      e.preventDefault()
+      ordinal = Math.max(0, Math.min(layout.steps.length - 1, ordinal))
+      const ids = nodesByStep.get(layout.steps[ordinal]?.index) ?? []
+      if (ids.length === 0) return
+      idx = Math.max(0, Math.min(ids.length - 1, idx))
+      nodeRefs.current.get(ids[idx])?.focus()
+    },
+    [stepOrdinals, nodesByStep, layout.steps, toggleLens],
+  )
 
-      let inY = n.y - n.height / 2
-      for (const l of n.inLinks) {
-        const lh = heightScale(l.value)
-        l.targetY = inY + lh / 2
-        inY += lh
-      }
-    }
+  if (layout.nodes.length === 0) return null
 
-    // Color by first path segment
-    const segCounts = new Map<string, number>()
-    for (const n of nodes) {
-      const seg = firstSegment(n.name)
-      segCounts.set(seg, (segCounts.get(seg) ?? 0) + 1)
-    }
-    const segColors = new Map<string, string>()
-    let ci = 0
-    segCounts.forEach((count, seg) => {
-      if (count > 1) { segColors.set(seg, COLOR_PALETTE[ci % COLOR_PALETTE.length]); ci++ }
-    })
-    const defaultColor = isDark ? 'hsl(0, 0%, 50%)' : 'hsl(0, 0%, 45%)'
-    const nodeColor = (n: SNode) => segColors.get(firstSegment(n.name)) ?? defaultColor
-    const linkSourceColor = (l: SLink) => {
-      const src = nodeMap.get(l.source)
-      return src ? nodeColor(src) : linkColor
-    }
-
-    // Link path generator
-    const linkPath = (l: SLink) => {
-      const src = nodeMap.get(l.source)
-      const tgt = nodeMap.get(l.target)
-      if (!src || !tgt) return ''
-      const sy = l.sourceY ?? src.y
-      const ty = l.targetY ?? tgt.y
-      const sx = src.x + NODE_WIDTH
-      const tx = tgt.x
-      const gap = tx - sx
-      const c1x = sx + gap / 3
-      const c2x = tx - gap / 3
-      return `M ${sx},${sy} C ${c1x},${sy} ${c2x},${ty} ${tx},${ty}`
-    }
-
-    svg.attr('width', width).attr('height', height)
-    const g = svg.append('g')
-
-    // ── Draw step column headers (match ColumnJourney style) ─
-    // Visitors per step: step 0 uses outgoing totals, later steps use incoming
-    const stepVisitors = new Map<number, number>()
-    for (const n of nodes) {
-      const val =
-        n.step === 0
-          ? n.outLinks.reduce((s, l) => s + l.value, 0)
-          : n.inLinks.reduce((s, l) => s + l.value, 0)
-      stepVisitors.set(n.step, (stepVisitors.get(n.step) ?? 0) + val)
-    }
-    const stepIndices = Array.from(byStep.keys()).sort((a, b) => a - b)
-
-    // Drop-off % per step vs. previous step
-    const stepDropOff = new Map<number, number>()
-    for (let i = 1; i < stepIndices.length; i++) {
-      const prev = stepVisitors.get(stepIndices[i - 1]) ?? 0
-      const curr = stepVisitors.get(stepIndices[i]) ?? 0
-      if (prev > 0) {
-        stepDropOff.set(stepIndices[i], Math.round(((curr - prev) / prev) * 100))
-      }
-    }
-
-    const headerColor = isDark ? '#737373' : '#737373' // neutral-500
-    const visitorColor = isDark ? '#ffffff' : '#171717'
-
-    const headers = g
-      .selectAll('.step-header')
-      .data(stepIndices)
-      .join('g')
-      .attr('class', 'step-header')
-      .attr('transform', (step) => `translate(${step * stepWidth + NODE_WIDTH / 2},0)`)
-
-    // Line 1: "STEP N"
-    headers
-      .append('text')
-      .attr('y', 14)
-      .attr('fill', headerColor)
-      .attr('font-size', '11px')
-      .attr('font-weight', '500')
-      .attr('letter-spacing', '1px')
-      .attr('text-anchor', 'start')
-      .text((step) => `STEP ${step + 1}`)
-
-    // Line 2: "X visitors" + optional drop-off
-    const visitorText = headers
-      .append('text')
-      .attr('y', 32)
-      .attr('font-size', '13px')
-      .attr('font-weight', '600')
-      .attr('text-anchor', 'start')
-
-    visitorText
-      .append('tspan')
-      .attr('fill', visitorColor)
-      .text((step) => `${(stepVisitors.get(step) ?? 0).toLocaleString()} visitors`)
-
-    visitorText
-      .append('tspan')
-      .attr('dx', 6)
-      .attr('font-size', '11px')
-      .attr('font-weight', '500')
-      .attr('fill', (step) => {
-        const pct = stepDropOff.get(step) ?? 0
-        if (pct === 0) return 'transparent'
-        return pct < 0 ? '#ef4444' : '#10b981'
-      })
-      .text((step) => {
-        const pct = stepDropOff.get(step)
-        if (pct === undefined || pct === 0) return ''
-        return pct > 0 ? `+${pct}%` : `${pct}%`
-      })
-
-    // ── Draw links ────────────────────────────────────────
-    g.selectAll('.link')
-      .data(links)
-      .join('path')
-      .attr('class', 'link')
-      .attr('d', linkPath)
-      .attr('fill', 'none')
-      .attr('stroke', (d) => linkSourceColor(d))
-      .attr('stroke-width', (d) => Math.max(MIN_LINK_HEIGHT, heightScale(d.value)))
-      .attr('opacity', LINK_OPACITY)
-      .attr('data-source', (d) => d.source)
-      .attr('data-target', (d) => d.target)
-      .style('pointer-events', 'none')
-
-    // ── Tooltip — matches sidebar tooltip styling ─────────
-    const tooltip = d3.select('body').append('div')
-      .style('position', 'fixed')
-      .style('visibility', 'hidden')
-      .style('background-color', '#0a0a0a')                       // bg-neutral-950
-      .style('border', '1px solid rgba(38, 38, 38, 0.6)')         // border-neutral-800/60
-      .style('border-radius', '0')                              // rounded-none
-      .style('padding', '8px 12px')                               // px-3 py-2
-      .style('font-size', '14px')                                 // text-sm
-      .style('font-weight', '500')                                // font-medium
-      .style('color', '#ffffff')                                  // text-white
-      .style('white-space', 'nowrap')                             // whitespace-nowrap
-      .style('pointer-events', 'none')
-      .style('z-index', '100')
-      .style('box-shadow', 'none') //
-      .style('transform', 'translateY(-50%)')                     // -translate-y-1/2
-
-    // ── Draw nodes ────────────────────────────────────────
-    const nodeGs = g.selectAll('.node')
-      .data(nodes)
-      .join('g')
-      .attr('class', 'node')
-      .attr('transform', (d) => `translate(${d.x},${d.y - d.height / 2})`)
-      .style('cursor', 'pointer')
-
-    // Node hit area (invisible, wider than visible rect for easier clicking)
-    nodeGs.append('rect')
-      .attr('class', 'node-hit')
-      .attr('x', -(NODE_HIT_WIDTH - NODE_WIDTH) / 2)
-      .attr('width', NODE_HIT_WIDTH)
-      .attr('height', (d) => d.height)
-      .attr('fill', 'transparent')
-      .style('cursor', 'pointer')
-
-    // Node bars
-    nodeGs.append('rect')
-      .attr('class', 'node-rect')
-      .attr('width', NODE_WIDTH)
-      .attr('height', (d) => d.height)
-      .attr('fill', (d) => nodeColor(d))
-      .attr('rx', 2)
-      .attr('ry', 2)
-
-    // Node labels
-    nodeGs.append('text')
-      .attr('class', 'node-text')
-      .attr('x', NODE_WIDTH + LABEL_OFFSET)
-      .attr('y', (d) => d.height / 2 + 4)
-      .text((d) => smartLabel(d.name))
-      .attr('font-size', '12px')
-      .attr('fill', textColor)
-      .attr('text-anchor', 'start')
-
-    // ── Hover: find all connected paths ───────────────────
-    const findConnected = (startLink: SLink, dir: 'fwd' | 'bwd') => {
-      const result: SLink[] = []
-      const visited = new Set<string>()
-      const queue = [startLink]
-      while (queue.length > 0) {
-        const cur = queue.shift()!
-        const lid = `${cur.source}|${cur.target}`
-        if (visited.has(lid)) continue
-        visited.add(lid)
-        result.push(cur)
-        if (dir === 'fwd') {
-          const tgt = nodeMap.get(cur.target)
-          if (tgt) tgt.outLinks.forEach((l) => queue.push(l))
-        } else {
-          const src = nodeMap.get(cur.source)
-          if (src) src.inLinks.forEach((l) => queue.push(l))
-        }
-      }
-      return result
-    }
-
-    const highlightPaths = (nodeId: string) => {
-      const connectedLinks: SLink[] = []
-      const connectedNodes = new Set<string>([nodeId])
-      const directLinks = links.filter((l) => l.source === nodeId || l.target === nodeId)
-      for (const dl of directLinks) {
-        connectedLinks.push(dl, ...findConnected(dl, 'fwd'), ...findConnected(dl, 'bwd'))
-      }
-      const connectedLinkIds = new Set(connectedLinks.map((l) => `${l.source}|${l.target}`))
-      connectedLinks.forEach((l) => { connectedNodes.add(l.source); connectedNodes.add(l.target) })
-
-      g.selectAll<SVGPathElement, SLink>('.link')
-        .attr('opacity', function () {
-          const s = d3.select(this).attr('data-source')
-          const t = d3.select(this).attr('data-target')
-          return connectedLinkIds.has(`${s}|${t}`) ? LINK_HOVER_OPACITY : 0.05
-        })
-      g.selectAll<SVGRectElement, SNode>('.node-rect')
-        .attr('opacity', (d) => connectedNodes.has(d.id) ? 1 : 0.15)
-      g.selectAll<SVGTextElement, SNode>('.node-text')
-        .attr('opacity', (d) => connectedNodes.has(d.id) ? 1 : 0.2)
-    }
-
-    const resetHighlight = () => {
-      g.selectAll('.link').attr('opacity', LINK_OPACITY)
-        .attr('stroke', (d: unknown) => linkSourceColor(d as SLink))
-      g.selectAll('.node-rect').attr('opacity', 1)
-      g.selectAll('.node-text').attr('opacity', 1)
-      tooltip.style('visibility', 'hidden')
-    }
-
-    // Node hover
-    nodeGs
-      .on('mouseenter', function (event, d) {
-        tooltip.style('visibility', 'visible')
-          .html(`<div>${escapeHtml(d.name)}</div><div style="color:#a3a3a3;font-weight:400;margin-top:2px">${d.count.toLocaleString()} sessions</div>`)
-          .style('top', `${event.pageY - 10}px`).style('left', `${event.pageX + 12}px`)
-        highlightPaths(d.id)
-      })
-      .on('mousemove', (event) => {
-        tooltip.style('top', `${event.clientY}px`).style('left', `${event.clientX + 14}px`)
-      })
-      .on('mouseleave', resetHighlight)
-      .on('click', (_, d) => handleNodeClick(d.name))
-
-    // Link hit areas (wider invisible paths for easier hovering)
-    g.selectAll('.link-hit')
-      .data(links)
-      .join('path')
-      .attr('class', 'link-hit')
-      .attr('d', linkPath)
-      .attr('fill', 'none')
-      .attr('stroke', 'transparent')
-      .attr('stroke-width', (d) => Math.max(heightScale(d.value), 14))
-      .attr('data-source', (d) => d.source)
-      .attr('data-target', (d) => d.target)
-      .style('cursor', 'pointer')
-      .on('mouseenter', function (event, d) {
-        const src = nodeMap.get(d.source)
-        const tgt = nodeMap.get(d.target)
-        tooltip.style('visibility', 'visible')
-          .html(`<div>${escapeHtml(src?.name ?? '?')} → ${escapeHtml(tgt?.name ?? '?')}</div><div style="color:#a3a3a3;font-weight:400;margin-top:2px">${d.value.toLocaleString()} sessions</div>`)
-          .style('top', `${event.pageY - 10}px`).style('left', `${event.pageX + 12}px`)
-        // Highlight this link's connected paths
-        const all = [d, ...findConnected(d, 'fwd'), ...findConnected(d, 'bwd')]
-        const lids = new Set(all.map((l) => `${l.source}|${l.target}`))
-        const nids = new Set<string>()
-        all.forEach((l) => { nids.add(l.source); nids.add(l.target) })
-        g.selectAll<SVGPathElement, SLink>('.link')
-          .attr('opacity', function () {
-            const s = d3.select(this).attr('data-source')
-            const t = d3.select(this).attr('data-target')
-            return lids.has(`${s}|${t}`) ? LINK_HOVER_OPACITY : 0.05
-          })
-        g.selectAll<SVGRectElement, SNode>('.node-rect')
-          .attr('opacity', (nd) => nids.has(nd.id) ? 1 : 0.15)
-        g.selectAll<SVGTextElement, SNode>('.node-text')
-          .attr('opacity', (nd) => nids.has(nd.id) ? 1 : 0.2)
-      })
-      .on('mousemove', (event) => {
-        tooltip.style('top', `${event.clientY}px`).style('left', `${event.clientX + 14}px`)
-      })
-      .on('mouseleave', resetHighlight)
-
-    return () => { tooltip.remove() }
-  }, [data, containerWidth, isDark, handleNodeClick])
-
-  // ─── Empty state ────────────────────────────────────────────────
-  if (!transitions.length || data.nodes.length === 0) {
-    return (
-      <EmptyState
-        icon={<TreeStructure />}
-        title="No journey data yet"
-        description="Navigation flows will appear here as visitors browse through your site."
-        action={{ label: 'View setup guide', href: '/installation' }}
-      />
-    )
-  }
+  const lastStepIndex = layout.steps[layout.steps.length - 1]?.index
 
   return (
     <div>
-      {filterPath && (
-        <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-none bg-brand-orange/10 text-sm">
-          <span className="text-neutral-300">
-            Showing flows through{' '}
-            <span className="font-medium text-white">
-              {filterPath}
-            </span>
-          </span>
-          <button
-            type="button"
-            onClick={() => setFilterPath(null)}
-            className="ml-auto flex items-center gap-1 text-xs font-medium text-brand-orange hover:text-brand-orange/80 transition-colors ease-apple"
+      {/* Step headers — DOM so typography matches the columns view exactly */}
+      <div className="relative mb-2 h-11">
+        {layout.steps.map((s) => (
+          <div
+            key={s.index}
+            className="absolute top-0"
+            style={
+              s.index === lastStepIndex && layout.steps.length > 1
+                ? { right: 0 }
+                : { left: s.x }
+            }
           >
-            <X weight="bold" className="w-3.5 h-3.5" />
-            Reset
-          </button>
+            <StepHeader index={s.index} visitors={s.visitors} dropOffPercent={s.dropOffPercent} />
+          </div>
+        ))}
+      </div>
+
+      <div ref={containerRef} className="w-full overflow-hidden" onMouseLeave={clearHover}>
+        <svg
+          width={layout.width}
+          height={layout.height}
+          className="w-full"
+          role="group"
+          aria-label="Visitor flow between pages"
+          onKeyDown={onKeyDown}
+        >
+          {/* Links */}
+          {layout.links.map((l, i) => {
+            const onChain = chain?.linkKeys.has(l.key) ?? false
+            const opacity = chain
+              ? onChain
+                ? LINK_CHAIN_OPACITY
+                : LINK_DIM_OPACITY
+              : LINK_OPACITY
+            return (
+              <motion.path
+                key={l.key}
+                fill="none"
+                stroke={onChain ? ORANGE : NEUTRAL_600}
+                initial={{ pathLength: 0, opacity: 0 }}
+                animate={{
+                  pathLength: 1,
+                  opacity,
+                  d: linkPath(l),
+                  strokeWidth: l.strokeWidth,
+                }}
+                transition={{
+                  duration: DURATION_BASE,
+                  ease: EASE_APPLE,
+                  delay: Math.min(i * 0.01, 0.12),
+                  opacity: { duration: DURATION_BASE / 2, ease: EASE_APPLE, delay: 0 },
+                }}
+                style={{ pointerEvents: 'none' }}
+              />
+            )
+          })}
+
+          {/* Link hit areas — wide invisible strokes for hover + tooltip */}
+          {layout.links.map((l) => (
+            <path
+              key={`hit-${l.key}`}
+              d={linkPath(l)}
+              fill="none"
+              stroke="transparent"
+              strokeWidth={Math.max(l.strokeWidth, 14)}
+              onMouseEnter={(e) => {
+                setHover({ kind: 'link', source: l.source, target: l.target })
+                setTooltip({
+                  x: e.clientX,
+                  y: e.clientY,
+                  title: `${pathOfNode(l.source)} → ${pathOfNode(l.target)}`,
+                  sub: `${l.value.toLocaleString()} sessions`,
+                })
+              }}
+              onMouseMove={(e) =>
+                setTooltip((t) => (t ? { ...t, x: e.clientX, y: e.clientY } : t))
+              }
+              onMouseLeave={clearHover}
+            />
+          ))}
+
+          {/* Nodes */}
+          {layout.nodes.map((n) => {
+            const onChain = chain?.nodeIds.has(n.id) ?? false
+            const isLast = n.step === lastStepIndex && layout.steps.length > 1
+            const ordinalIdx = nodesByStep.get(n.step)?.indexOf(n.id) ?? 0
+            const rectOpacity = chain && !onChain ? NODE_DIM_OPACITY : 1
+            const labelOpacity = chain && !onChain ? LABEL_DIM_OPACITY : 1
+            const clickable = n.path !== '(other)'
+            return (
+              <motion.g
+                key={n.id}
+                ref={(el: SVGGElement | null) => {
+                  if (el) nodeRefs.current.set(n.id, el)
+                  else nodeRefs.current.delete(n.id)
+                }}
+                initial={{ x: n.x, y: n.y, opacity: 0 }}
+                animate={{ x: n.x, y: n.y, opacity: 1 }}
+                transition={{ duration: DURATION_BASE, ease: EASE_APPLE }}
+                tabIndex={0}
+                role="button"
+                aria-label={`${n.path} — ${n.count.toLocaleString()} sessions`}
+                aria-pressed={lens === n.path}
+                data-id={n.id}
+                data-step={n.step}
+                data-idx={ordinalIdx}
+                style={{ cursor: clickable ? 'pointer' : 'default', outline: 'none' }}
+                onMouseEnter={(e) => {
+                  setHover({ kind: 'node', id: n.id, path: n.path })
+                  setTooltip({
+                    x: e.clientX,
+                    y: e.clientY,
+                    title: n.path,
+                    sub: `${n.count.toLocaleString()} sessions`,
+                  })
+                }}
+                onMouseMove={(e) =>
+                  setTooltip((t) => (t ? { ...t, x: e.clientX, y: e.clientY } : t))
+                }
+                onMouseLeave={clearHover}
+                onFocus={(e) => {
+                  setFocusedId(n.id)
+                  setHover({ kind: 'node', id: n.id, path: n.path })
+                  const rect = (e.currentTarget as SVGGElement).getBoundingClientRect()
+                  setTooltip({
+                    x: rect.right,
+                    y: rect.top + rect.height / 2,
+                    title: n.path,
+                    sub: `${n.count.toLocaleString()} sessions`,
+                  })
+                }}
+                onBlur={() => {
+                  setFocusedId(null)
+                  clearHover()
+                }}
+                onClick={() => toggleLens(n.path)}
+              >
+                {/* Wider invisible hit area */}
+                <rect x={-5} width={NODE_WIDTH + 10} height={n.height} fill="transparent" />
+                <motion.rect
+                  width={NODE_WIDTH}
+                  rx={0}
+                  fill={onChain ? ORANGE : NEUTRAL_500}
+                  stroke={focusedId === n.id ? ORANGE : 'none'}
+                  strokeWidth={focusedId === n.id ? 1.5 : 0}
+                  animate={{ height: n.height, opacity: rectOpacity }}
+                  transition={{ duration: DURATION_BASE, ease: EASE_APPLE }}
+                />
+                <motion.text
+                  x={isLast ? -4 : NODE_WIDTH + 4}
+                  textAnchor={isLast ? 'end' : 'start'}
+                  fontSize={12}
+                  fill="#e5e5e5"
+                  animate={{ y: n.height / 2 + 4, opacity: labelOpacity }}
+                  transition={{ duration: DURATION_BASE, ease: EASE_APPLE }}
+                >
+                  {smartLabel(n.path)}
+                </motion.text>
+              </motion.g>
+            )
+          })}
+        </svg>
+      </div>
+
+      {/* Tooltip — fixed, popover surface (sanctioned shadow). Anchors to the
+          right of the cursor normally, flips to the left in the right portion of
+          the viewport so it never runs off the last column. */}
+      {tooltip && (
+        <div
+          className="pointer-events-none fixed z-50 max-w-xs -translate-y-1/2 truncate rounded-none border border-border bg-popover px-3 py-2 shadow-lg"
+          style={
+            tooltip.x > (typeof window !== 'undefined' ? window.innerWidth : 0) * 0.62
+              ? { right: (typeof window !== 'undefined' ? window.innerWidth : 0) - tooltip.x + 14, top: tooltip.y }
+              : { left: tooltip.x + 14, top: tooltip.y }
+          }
+          role="status"
+        >
+          <div className="truncate text-sm font-medium text-white">{tooltip.title}</div>
+          <div className="truncate text-sm text-neutral-400">{tooltip.sub}</div>
         </div>
       )}
 
-      <div ref={containerRef} className="w-full overflow-hidden">
-        <svg ref={svgRef} className="w-full" />
+      {/* Meta footer — sessions · effective depth · period */}
+      <div className="mt-4 border-t border-border pt-3 text-sm text-neutral-400">
+        {totalSessions.toLocaleString()} sessions tracked
+        {' · '}
+        {layout.steps.length < depth
+          ? `Showing ${layout.steps.length} of ${depth} steps — no traffic beyond step ${layout.steps.length} in this period`
+          : `${layout.steps.length} steps`}
+        {' · '}
+        {periodLabel}
       </div>
     </div>
   )

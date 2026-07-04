@@ -7,7 +7,7 @@ import Link from 'next/link'
 import { createSite, getSite, type Site } from '@/lib/api/sites'
 import { useSites, mutateSites } from '@/lib/swr/sites'
 import { getSubscription } from '@/lib/api/billing'
-import { getSitesLimitForPlan } from '@/lib/plans'
+import { getSitesLimitForPlan, formatPlanName } from '@/lib/plans'
 import { trackSiteCreatedFromDashboard, trackSiteCreatedScriptCopied } from '@/lib/welcomeAnalytics'
 import { toast } from '@ciphera-net/facet'
 import { getAuthErrorMessage } from '@ciphera-net/facet'
@@ -61,7 +61,7 @@ export default function NewSitePage() {
         const siteLimit = subscription?.plan_id ? getSitesLimitForPlan(subscription.plan_id) : null
         if (siteLimit != null && sites.length >= siteLimit) {
           setAtLimit(true)
-          toast.error(`${subscription.plan_id} plan limit reached (${siteLimit} site${siteLimit === 1 ? '' : 's'}). Please upgrade to add more sites.`)
+          toast.error(`${formatPlanName(subscription.plan_id)} plan limit reached (${siteLimit} site${siteLimit === 1 ? '' : 's'}). Please upgrade to add more sites.`)
           router.replace('/')
         }
       } catch (error) {

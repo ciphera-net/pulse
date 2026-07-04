@@ -3,15 +3,18 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import {
-  getDateRange,
-  getThisWeekRange,
-  getThisMonthRange,
-  getThisYearRange,
-  getYesterdayRange,
-  getLast24HoursRange,
-  getLast1HourRange,
-  formatDate,
-} from '@/lib/utils/dateRanges'
+  DEFAULT_PERIOD,
+  isValidDateString,
+  parsePeriod,
+  periodToDateRange,
+  type Period,
+} from './periodUrl'
+import { serializeFilters, parseFiltersFromURL, type DimensionFilter } from '@/lib/filters'
+
+export type { Period }
+
+/** Journeys V1 supports only the session_flows dimensions (design §8). */
+export const JOURNEY_FILTER_DIMENSIONS = ['country', 'device', 'referrer'] as const
 
 // ─── Constants ──────────────────────────────────────────────────────
 
@@ -26,24 +29,10 @@ export const DENSITY_STEP = 5
 export const DENSITY_DEFAULT = 20
 
 export type ViewMode = 'columns' | 'flow'
-export type Period = '1h' | '24h' | 'today' | 'yesterday' | '7' | '30' | 'week' | 'month' | 'year' | 'custom'
 
 const VIEW_MODES: ReadonlySet<ViewMode> = new Set(['columns', 'flow'])
-const PERIODS: ReadonlySet<Period> = new Set([
-  '1h',
-  '24h',
-  'today',
-  'yesterday',
-  '7',
-  '30',
-  'week',
-  'month',
-  'year',
-  'custom',
-])
 
 const DEFAULT_VIEW: ViewMode = 'columns'
-const DEFAULT_PERIOD: Period = '30'
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
@@ -66,44 +55,6 @@ function parseView(raw: string | null): ViewMode {
   return DEFAULT_VIEW
 }
 
-function parsePeriod(raw: string | null): Period {
-  if (raw && PERIODS.has(raw as Period)) return raw as Period
-  return DEFAULT_PERIOD
-}
-
-function isValidDateString(s: string | null): s is string {
-  if (!s) return false
-  return /^\d{4}-\d{2}-\d{2}$/.test(s)
-}
-
-function periodToDateRange(period: Period) {
-  switch (period) {
-    case '1h':
-      return getLast1HourRange()
-    case '24h':
-      return getLast24HoursRange()
-    case 'today': {
-      const today = formatDate(new Date())
-      return { start: today, end: today }
-    }
-    case 'yesterday':
-      return getYesterdayRange()
-    case '7':
-      return getDateRange(7)
-    case '30':
-      return getDateRange(30)
-    case 'week':
-      return getThisWeekRange()
-    case 'month':
-      return getThisMonthRange()
-    case 'year':
-      return getThisYearRange()
-    case 'custom':
-      // * Fallback only — actual custom range comes from URL read path
-      return getDateRange(30)
-  }
-}
-
 // ─── Hook ───────────────────────────────────────────────────────────
 
 export interface JourneyFilters {
@@ -112,6 +63,12 @@ export interface JourneyFilters {
   density: number
   committedDensity: number
   entryPath: string
+  /** Pinned chain path shared by both views; null = no lens. */
+  lens: string | null
+  /** Dashboard-codec dimension filters (country/device/referrer). */
+  dimensionFilters: DimensionFilter[]
+  /** Serialized `filters=` param, or '' when none. */
+  filtersParam: string
   viewMode: ViewMode
   period: Period
   dateRange: { start: string; end: string }
@@ -119,6 +76,8 @@ export interface JourneyFilters {
   setDepth: (n: number) => void
   setDensity: (n: number) => void
   setEntryPath: (p: string) => void
+  setLens: (path: string | null) => void
+  setDimensionFilters: (filters: DimensionFilter[]) => void
   setViewMode: (m: ViewMode) => void
   setPeriod: (p: Period, customRange?: { start: string; end: string }) => void
   resetFilters: () => void
@@ -143,7 +102,15 @@ export function useJourneyFilters(): JourneyFilters {
     DENSITY_DEFAULT,
   )
   const entryPath = searchParams.get('entry') ?? ''
+  const lens = searchParams.get('lens') || null
   const viewMode = parseView(searchParams.get('view'))
+
+  const rawFilters = searchParams.get('filters')
+  const dimensionFilters = useMemo(
+    () => (rawFilters ? parseFiltersFromURL(rawFilters) : []),
+    [rawFilters],
+  )
+  const filtersParam = useMemo(() => serializeFilters(dimensionFilters), [dimensionFilters])
 
   // * Raw period value from URL (may be 'custom')
   const rawPeriod = parsePeriod(searchParams.get('period'))
@@ -217,6 +184,14 @@ export function useJourneyFilters(): JourneyFilters {
     (p: string) => updateUrl({ entry: p || null }),
     [updateUrl],
   )
+  const setLens = useCallback(
+    (path: string | null) => updateUrl({ lens: path || null }),
+    [updateUrl],
+  )
+  const setDimensionFilters = useCallback(
+    (filters: DimensionFilter[]) => updateUrl({ filters: serializeFilters(filters) || null }),
+    [updateUrl],
+  )
   const setViewMode = useCallback(
     (m: ViewMode) => updateUrl({ view: m }),
     [updateUrl],
@@ -238,6 +213,8 @@ export function useJourneyFilters(): JourneyFilters {
       depth: null,
       density: null,
       entry: null,
+      lens: null,
+      filters: null,
       view: null,
       period: null,
       start: null,
@@ -249,6 +226,8 @@ export function useJourneyFilters(): JourneyFilters {
     depth === DEPTH_DEFAULT &&
     density === DENSITY_DEFAULT &&
     entryPath === '' &&
+    lens === null &&
+    dimensionFilters.length === 0 &&
     viewMode === DEFAULT_VIEW &&
     period === DEFAULT_PERIOD
 
@@ -258,12 +237,17 @@ export function useJourneyFilters(): JourneyFilters {
     density,
     committedDensity,
     entryPath,
+    lens,
+    dimensionFilters,
+    filtersParam,
     viewMode,
     period,
     dateRange,
     setDepth,
     setDensity,
     setEntryPath,
+    setLens,
+    setDimensionFilters,
     setViewMode,
     setPeriod,
     resetFilters,

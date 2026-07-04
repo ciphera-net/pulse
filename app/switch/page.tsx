@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, Suspense, useState } from 'react'
+import { Fragment, Suspense, useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import useSWR from 'swr'
@@ -115,6 +115,16 @@ function SwitchPlanContent() {
   const [estimateLoading, setEstimateLoading] = useState(false)
   const [estimateError, setEstimateError] = useState(false)
   const [switching, setSwitching] = useState(false)
+
+  // * Preselect the org's current billing interval — a yearly org defaulting
+  // * to Monthly misquotes their own plan. Ref-guarded so an SWR revalidation
+  // * doesn't stomp a manual toggle.
+  const intervalInitialized = useRef(false)
+  useEffect(() => {
+    if (!subscription || intervalInitialized.current) return
+    setIsYearly(subscription.billing_interval === 'year')
+    intervalInitialized.current = true
+  }, [subscription])
 
   if (isLoading) {
     return <LoadingOverlay logoSrc={cdnUrl('/pulse_icon_no_margins.png')} title="Pulse" />

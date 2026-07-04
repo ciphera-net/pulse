@@ -11,6 +11,7 @@ import { formatDateLong, formatDate } from '@/lib/utils/formatDate'
 import { getAuthErrorMessage } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
 import { useCan } from '@/lib/auth/permissions'
+import { formatPlanName } from '@/lib/plans'
 
 const PAYMENT_METHODS = [
   { id: 'creditcard', label: 'Cards', icons: ['/icons/payment/visa.svg', '/icons/payment/mastercard.svg'] },
@@ -137,12 +138,7 @@ export default function WorkspaceBillingTab() {
     )
   }
 
-  const planLabel = (() => {
-    const raw = subscription.plan_id?.startsWith('price_') ? 'Pro'
-      : subscription.plan_id === 'free' || !subscription.plan_id ? 'Hobby'
-      : subscription.plan_id
-    return raw === 'Free' || raw === 'Pro' ? raw : raw.charAt(0).toUpperCase() + raw.slice(1)
-  })()
+  const planLabel = formatPlanName(subscription.plan_id)
 
   const isActive = subscription.subscription_status === 'active' || subscription.subscription_status === 'trialing'
   const isCanceled = subscription.subscription_status === 'canceled'
@@ -203,6 +199,12 @@ export default function WorkspaceBillingTab() {
               <div>
                 <p className="text-xs text-neutral-500 uppercase tracking-wider">Pageviews</p>
                 <p className="text-lg font-semibold text-white">{subscription.pageview_usage.toLocaleString()} / {subscription.pageview_limit.toLocaleString()}</p>
+                <div className="mt-2 h-1.5 w-full max-w-[160px] bg-neutral-800 rounded-none overflow-hidden">
+                  <div
+                    className={`h-full ${subscription.pageview_usage / subscription.pageview_limit >= 0.9 ? 'bg-red-500' : 'bg-brand-orange'}`}
+                    style={{ width: `${Math.min(100, (subscription.pageview_usage / subscription.pageview_limit) * 100)}%` }}
+                  />
+                </div>
               </div>
             )}
             {subscription.current_period_end && (

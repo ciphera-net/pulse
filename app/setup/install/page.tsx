@@ -69,7 +69,7 @@ export default function SetupInstallPage() {
         <p className="mt-2 text-sm text-neutral-400 max-w-sm mx-auto">
           {site
             ? `Add this snippet to "${site.name}" to start collecting data.`
-            : 'Add the Pulse snippet to your site.'}
+            : 'Each site gets its own snippet once it exists.'}
         </p>
       </div>
 
@@ -126,9 +126,23 @@ export default function SetupInstallPage() {
       )}
 
       {!site && (
-        <Button onClick={handleContinue} className="w-full">
-          Continue
-        </Button>
+        /* * The heading promises a snippet — when no site is attached to this
+         * setup session there is none to show, so say that instead of a
+         * silent empty gap above a bare Continue button. */
+        <div className="space-y-3">
+          <div className="p-4 border border-neutral-800 bg-neutral-900 rounded-none text-center">
+            <p className="text-sm text-neutral-400">
+              No site is attached to this setup session, so there&apos;s no snippet to
+              show yet. Create your site first and the snippet will appear here.
+            </p>
+          </div>
+          <Button onClick={() => router.push('/setup')} variant="secondary" className="w-full">
+            Back to site setup
+          </Button>
+          <Button onClick={handleContinue} className="w-full">
+            Continue anyway
+          </Button>
+        </div>
       )}
 
       <button

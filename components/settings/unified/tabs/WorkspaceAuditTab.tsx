@@ -34,6 +34,20 @@ const ACTION_LABELS: Record<string, string> = {
   subscription_resumed: 'Resumed subscription',
 }
 
+// * Fallback for actions the label map doesn't know yet — "quarantine_rule_created"
+// * reads as "Quarantine rule created" instead of leaking the raw event name.
+function humanizeAction(action: string): string {
+  const words = action.replace(/[._]/g, ' ').trim()
+  return words.charAt(0).toUpperCase() + words.slice(1)
+}
+
+// * Payload values are shallow (strings/numbers/bools; rarely a nested object).
+function formatPayloadValue(value: unknown): string {
+  if (value === null || value === undefined) return '—'
+  if (typeof value === 'object') return JSON.stringify(value)
+  return String(value)
+}
+
 const PAGE_SIZE = 20
 
 export default function WorkspaceAuditTab() {
@@ -144,10 +158,17 @@ export default function WorkspaceAuditTab() {
                 <p className="text-sm text-white">
                   <span className="font-medium">{entry.actor_email || 'System'}</span>
                   {' '}
-                  <span className="text-neutral-400">{ACTION_LABELS[entry.action] || entry.action}</span>
+                  <span className="text-neutral-400">{ACTION_LABELS[entry.action] || humanizeAction(entry.action)}</span>
                 </p>
                 {entry.payload && Object.keys(entry.payload).length > 0 && (
-                  <p className="text-xs text-neutral-500 mt-0.5">{JSON.stringify(entry.payload)}</p>
+                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+                    {Object.entries(entry.payload).map(([key, value]) => (
+                      <span key={key} className="text-xs text-neutral-500">
+                        <span className="text-neutral-600">{key.replace(/_/g, ' ')}:</span>{' '}
+                        {formatPayloadValue(value)}
+                      </span>
+                    ))}
+                  </div>
                 )}
               </div>
               <p className="text-xs text-neutral-500 shrink-0 ml-4">

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { EASE_APPLE } from '@/lib/motion'
 import { Button, Input, Spinner, toast, getAuthErrorMessage } from '@ciphera-net/facet'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -494,7 +495,7 @@ function RoleCard({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
+            transition={{ duration: 0.2, ease: EASE_APPLE }}
             className="overflow-hidden"
           >
             <div className="border-t border-neutral-800 px-4 py-4 space-y-5">
@@ -682,7 +683,7 @@ export default function WorkspaceRolesTab() {
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
+            transition={{ duration: 0.2, ease: EASE_APPLE }}
           >
             <CreateRoleForm
               existingRoles={roles}

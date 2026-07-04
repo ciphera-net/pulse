@@ -27,6 +27,7 @@ function buildQuery(opts: {
   depth?: number
   min_sessions?: number
   entry_path?: string
+  filters?: string
 }): string {
   const params = new URLSearchParams()
   if (opts.startDate) params.append('start_date', opts.startDate)
@@ -34,6 +35,7 @@ function buildQuery(opts: {
   if (opts.depth != null) params.append('depth', opts.depth.toString())
   if (opts.min_sessions != null) params.append('min_sessions', opts.min_sessions.toString())
   if (opts.entry_path) params.append('entry_path', opts.entry_path)
+  if (opts.filters) params.append('filters', opts.filters)
   const query = params.toString()
   return query ? `?${query}` : ''
 }
@@ -44,7 +46,7 @@ export function getJourneyTransitions(
   siteId: string,
   startDate?: string,
   endDate?: string,
-  opts?: { depth?: number; minSessions?: number; entryPath?: string }
+  opts?: { depth?: number; minSessions?: number; entryPath?: string; filters?: string }
 ): Promise<TransitionsResponse> {
   return apiRequest<TransitionsResponse>(
     `/sites/${siteId}/journeys/transitions${buildQuery({
@@ -53,6 +55,7 @@ export function getJourneyTransitions(
       depth: opts?.depth,
       min_sessions: opts?.minSessions,
       entry_path: opts?.entryPath,
+      filters: opts?.filters,
     })}`
   ).then(r => r ?? { transitions: [], total_sessions: 0 })
 }
@@ -60,9 +63,10 @@ export function getJourneyTransitions(
 export function getJourneyEntryPoints(
   siteId: string,
   startDate?: string,
-  endDate?: string
+  endDate?: string,
+  filters?: string
 ): Promise<EntryPoint[]> {
   return apiRequest<{ entry_points: EntryPoint[] }>(
-    `/sites/${siteId}/journeys/entry-points${buildQuery({ startDate, endDate })}`
+    `/sites/${siteId}/journeys/entry-points${buildQuery({ startDate, endDate, filters })}`
   ).then(r => r?.entry_points ?? [])
 }
