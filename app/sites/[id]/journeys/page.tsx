@@ -13,7 +13,8 @@ import { Segmented } from '@/components/ui/segmented'
 import { EntryCombobox } from '@/components/journeys/EntryCombobox'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { JourneysSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
+import { UpdatingChip } from '@/components/ui/UpdatingChip'
+import { JourneysSkeleton } from '@/components/skeletons'
 import {
   useJourneyFilters,
   DEPTH_MIN,
@@ -59,6 +60,7 @@ export default function JourneysPage() {
     data: transitionsData,
     error: transitionsError,
     isLoading: transitionsLoading,
+    isValidating: transitionsValidating,
     mutate: retryTransitions,
   } = useJourneyTransitions(
     siteId,
@@ -84,8 +86,9 @@ export default function JourneysPage() {
     document.title = domain ? `Journeys \u00b7 ${domain} | Pulse` : 'Journeys | Pulse'
   }, [dashboard?.site?.domain])
 
-  const showSkeleton = useMinimumLoading(transitionsLoading && !transitionsData)
-  const fadeClass = useSkeletonFade(showSkeleton)
+  // * First-ever load only — keepPreviousData keeps the canvas mounted with
+  // * stale data on every later refetch, so this is true once per mount.
+  const showSkeleton = transitionsLoading && !transitionsData
 
   if (showSkeleton) return <JourneysSkeleton />
 
@@ -94,7 +97,7 @@ export default function JourneysPage() {
   const periodLabel = `${formatDisplayDate(new Date(filters.dateRange.start + 'T00:00:00'))} – ${formatDisplayDate(new Date(filters.dateRange.end + 'T00:00:00'))}`
 
   return (
-    <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
       {/* Header */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -184,7 +187,8 @@ export default function JourneysPage() {
         </div>
 
         {/* Journey canvas — error and settled-empty states before either view */}
-        <div className="p-6">
+        <div className="relative p-6">
+          <UpdatingChip active={transitionsValidating} />
           {transitionsError ? (
             <ErrorCard
               title="Couldn't load journeys"

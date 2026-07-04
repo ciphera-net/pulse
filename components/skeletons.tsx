@@ -171,25 +171,26 @@ export function DashboardSkeleton() {
 export function JourneysSkeleton() {
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
-      {/* Header */}
-      <div className="mb-8 flex items-center justify-between">
+      {/* Header — title/subtitle left, date range picker right */}
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <SkeletonLine className="h-8 w-32 mb-2" />
+          <SkeletonLine className="h-6 w-28 mb-2" />
           <SkeletonLine className="h-4 w-64" />
         </div>
-        <SkeletonLine className="h-9 w-36 rounded-none" />
+        <SkeletonLine className="h-10 w-64" />
       </div>
-      {/* Controls */}
-      <div className="flex items-center gap-4 mb-6">
-        <SkeletonLine className="h-9 w-48 rounded-none" />
-        <SkeletonLine className="h-9 w-48 rounded-none" />
-      </div>
-      {/* Sankey area */}
-      <SkeletonCard className="h-[400px] mb-6" />
-      {/* Top paths table */}
-      <div className="bg-neutral-900 border border-neutral-800 rounded-none p-6">
-        <SkeletonLine className="h-6 w-24 mb-4" />
-        <TableSkeleton rows={5} cols={4} />
+      {/* Card: one h-10 toolbar row + canvas */}
+      <div className="bg-card border border-border rounded-none overflow-hidden">
+        <div className="flex flex-wrap items-center gap-2 border-b border-border p-4">
+          <SkeletonLine className="h-10 w-28" />
+          <SkeletonLine className="h-10 w-28" />
+          <SkeletonLine className="h-10 w-64" />
+          <span className="hidden flex-1 sm:block" />
+          <SkeletonLine className="h-10 w-44" />
+        </div>
+        <div className="p-6">
+          <SkeletonCard className="h-[400px]" />
+        </div>
       </div>
     </div>
   )
