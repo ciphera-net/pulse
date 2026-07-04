@@ -93,6 +93,9 @@ function SuggestInput({
   const [highlight, setHighlight] = useState(0)
   const [showSpinner, setShowSpinner] = useState(false)
   const listRef = useRef<HTMLDivElement>(null)
+  // * Blur schedules a delayed close so row clicks land first; refocusing
+  // * within that window must cancel it or the fresh panel closes itself.
+  const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -100,6 +103,13 @@ function SuggestInput({
     return () => onPanelOpenChange?.(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
+
+  useEffect(
+    () => () => {
+      if (blurTimer.current) clearTimeout(blurTimer.current)
+    },
+    [],
+  )
 
   // * 150ms rule — fast fetches never flash the spinner row
   useEffect(() => {
@@ -161,8 +171,13 @@ function SuggestInput({
           setOpen(true)
           setHighlight(0)
         }}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 120)}
+        onFocus={() => {
+          if (blurTimer.current) clearTimeout(blurTimer.current)
+          setOpen(true)
+        }}
+        onBlur={() => {
+          blurTimer.current = setTimeout(() => setOpen(false), 120)
+        }}
         onKeyDown={onKeyDown}
         placeholder={placeholder}
         aria-label={ariaLabel}
