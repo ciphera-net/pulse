@@ -172,6 +172,69 @@ export function chainThroughLink(links: ChainLink[], source: string, target: str
 }
 
 /**
+ * The heaviest single path through every hop around `path` — the funnel
+ * spine for "Create funnel from this path". Seeds at the occurrence with the
+ * most throughput, then greedily follows the biggest link in each direction.
+ * Stops at (other) buckets and caps at `maxSteps` values.
+ */
+export function spineThrough(links: ChainLink[], path: string, maxSteps = 6): string[] {
+  const { fwd, bwd } = buildAdjacency(links)
+  const valueByKey = new Map(links.map((l) => [linkKey(l.source, l.target), l.value]))
+
+  const seeds: string[] = []
+  for (const l of links) {
+    if (pathOfNode(l.source) === path && !seeds.includes(l.source)) seeds.push(l.source)
+    if (pathOfNode(l.target) === path && !seeds.includes(l.target)) seeds.push(l.target)
+  }
+  if (seeds.length === 0) return []
+
+  const throughput = (id: string) => {
+    let sum = 0
+    for (const nb of fwd.get(id) ?? []) sum += valueByKey.get(linkKey(id, nb)) ?? 0
+    for (const nb of bwd.get(id) ?? []) sum += valueByKey.get(linkKey(nb, id)) ?? 0
+    return sum
+  }
+  seeds.sort((a, b) => throughput(b) - throughput(a) || stepOfNode(a) - stepOfNode(b))
+  const seed = seeds[0]
+
+  const heaviest = (id: string, dir: 'fwd' | 'bwd'): string | null => {
+    const neighbours = (dir === 'fwd' ? fwd : bwd).get(id)
+    if (!neighbours) return null
+    let best: string | null = null
+    let bestValue = -1
+    for (const nb of neighbours) {
+      if (pathOfNode(nb) === '(other)') continue
+      const v = valueByKey.get(dir === 'fwd' ? linkKey(id, nb) : linkKey(nb, id)) ?? 0
+      if (v > bestValue) {
+        best = nb
+        bestValue = v
+      }
+    }
+    return best
+  }
+
+  const forward: string[] = []
+  let cursor: string | null = seed
+  while (forward.length < maxSteps && (cursor = heaviest(cursor, 'fwd'))) {
+    forward.push(pathOfNode(cursor))
+  }
+  const backward: string[] = []
+  cursor = seed
+  while (backward.length < maxSteps && (cursor = heaviest(cursor, 'bwd'))) {
+    backward.unshift(pathOfNode(cursor))
+  }
+
+  const spine = [...backward, path, ...forward]
+  // * Trim to maxSteps keeping the lens inside the window
+  if (spine.length > maxSteps) {
+    const lensIdx = backward.length
+    const start = Math.max(0, Math.min(lensIdx, spine.length - maxSteps))
+    return spine.slice(start, start + maxSteps)
+  }
+  return spine
+}
+
+/**
  * Sessions that were on `path` at `colIdx` and made no onward hop — the
  * exit count shown on the column after the lens column.
  */

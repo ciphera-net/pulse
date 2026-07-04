@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { CircleNotch, FileText, House } from '@phosphor-icons/react'
+import { ArrowRight, CircleNotch, FileText, House } from '@phosphor-icons/react'
 import type { FunnelStepStats } from '@/lib/api/funnels'
 import { useFunnelBreakdown } from '@/lib/swr/dashboard'
 import { getFilterValueIcon } from '@/lib/utils/icons'
@@ -155,10 +156,19 @@ export function FunnelStepStrip({
     <div className="grid gap-3 md:grid-cols-2">
       {/* Exits pane */}
       <div className="rounded-none border border-border bg-card p-4">
-        <div className="mb-3 flex h-10 items-center">
+        <div className="mb-3 flex h-10 items-center justify-between gap-3">
           <span className="font-mono text-xs text-neutral-500">
             Where visitors went after dropping off
           </span>
+          {step.step.category !== 'event' && step.step.type === 'exact' && (
+            <Link
+              href={`/sites/${siteId}/journeys?entry=${encodeURIComponent(step.step.value)}`}
+              className="inline-flex shrink-0 items-center gap-1 text-xs text-neutral-500 transition-colors duration-fast ease-apple hover:text-neutral-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+            >
+              View journeys from here
+              <ArrowRight className="h-3 w-3" />
+            </Link>
+          )}
         </div>
         <HeightMorph>
           {selectedStep === 1 ? (

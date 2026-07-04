@@ -9,6 +9,7 @@ import {
   nodeId,
   linkKey,
   pathOfNode,
+  spineThrough,
   stepOfNode,
 } from '../chain'
 import type { PathTransition } from '@/lib/api/journeys'
@@ -137,6 +138,41 @@ describe('chainThroughLink', () => {
     const chain = chainThroughLink(links, '1:/login', '2:/app')
     expect(chain.linkKeys.has(linkKey('0:/', '1:/pricing'))).toBe(false)
     expect(chain.nodeIds.has('2:/checkout')).toBe(false)
+  })
+})
+
+describe('spineThrough', () => {
+  it('follows the heaviest hop in both directions', () => {
+    const links = [
+      { source: '0:/', target: '1:/login', value: 8 },
+      { source: '0:/', target: '1:/pricing', value: 2 },
+      { source: '1:/login', target: '2:/app', value: 6 },
+      { source: '1:/login', target: '2:/docs', value: 1 },
+    ]
+    expect(spineThrough(links, '/login')).toEqual(['/', '/login', '/app'])
+  })
+
+  it('stops at (other) buckets instead of including them', () => {
+    const links = [
+      { source: '0:/', target: '1:/login', value: 5 },
+      { source: '1:/login', target: '2:(other)', value: 9 },
+    ]
+    expect(spineThrough(links, '/login')).toEqual(['/', '/login'])
+  })
+
+  it('caps the spine at maxSteps while keeping the lens inside', () => {
+    const links = Array.from({ length: 9 }, (_, i) => ({
+      source: `${i}:/p${i}`,
+      target: `${i + 1}:/p${i + 1}`,
+      value: 10 - i,
+    }))
+    const spine = spineThrough(links, '/p4', 6)
+    expect(spine).toHaveLength(6)
+    expect(spine).toContain('/p4')
+  })
+
+  it('returns empty for a path with no flows', () => {
+    expect(spineThrough([], '/ghost')).toEqual([])
   })
 })
 

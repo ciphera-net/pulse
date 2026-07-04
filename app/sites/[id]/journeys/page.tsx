@@ -1,8 +1,10 @@
 'use client'
 
 import { useCallback, useEffect } from 'react'
-import { useParams } from 'next/navigation'
-import { FlowArrow, Rows, TreeStructure, X } from '@phosphor-icons/react'
+import { useParams, useRouter } from 'next/navigation'
+import { FlowArrow, FunnelSimple, Rows, TreeStructure, X } from '@phosphor-icons/react'
+import { aggregateJourney } from '@/lib/journeys/aggregate'
+import { buildLinks, spineThrough } from '@/lib/journeys/chain'
 import { formatDate } from '@/lib/utils/dateRanges'
 import { formatDate as formatDisplayDate } from '@/lib/utils/formatDate'
 import DateRangePicker from '@/components/ui/DateRangePicker'
@@ -33,6 +35,7 @@ import {
 
 export default function JourneysPage() {
   const params = useParams()
+  const router = useRouter()
   const siteId = params.id as string
 
   const filters = useJourneyFilters()
@@ -96,6 +99,23 @@ export default function JourneysPage() {
   const transitions = transitionsData?.transitions ?? []
   const periodLabel = `${formatDisplayDate(new Date(filters.dateRange.start + 'T00:00:00'))} – ${formatDisplayDate(new Date(filters.dateRange.end + 'T00:00:00'))}`
 
+  // * Lens → funnel cross-link: the heaviest chain through the lens becomes
+  // * a prefilled create-funnel modal on the funnels page.
+  const createFunnelFromLens = () => {
+    if (!filters.lens) return
+    const columns = aggregateJourney(transitions, {
+      depth: filters.committedDepth,
+      maxPagesPerStep: filters.committedDensity,
+    })
+    const spine = spineThrough(buildLinks(transitions, columns), filters.lens, 6)
+    const values = spine.length > 0 ? spine : [filters.lens]
+    const prefill = {
+      name: `Journey via ${filters.lens}`,
+      steps: values.map((value) => ({ value, type: 'exact', category: 'page' })),
+    }
+    router.push(`/sites/${siteId}/funnels?prefill=${encodeURIComponent(JSON.stringify(prefill))}`)
+  }
+
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
       {/* Header */}
@@ -147,16 +167,25 @@ export default function JourneysPage() {
               className="min-w-0 flex-1 sm:w-64 sm:flex-none"
             />
             {filters.lens && (
-              <div className="inline-flex h-10 max-w-56 items-center gap-1.5 rounded-none border border-neutral-800 px-2.5">
+              <div className="inline-flex h-10 max-w-64 items-center gap-1.5 rounded-none border border-neutral-800 px-2.5">
                 <span className="font-mono text-xs text-neutral-500">Lens</span>
                 <span className="truncate text-sm text-white" title={filters.lens}>
                   {filters.lens}
                 </span>
                 <button
                   type="button"
+                  aria-label="Create funnel from this path"
+                  title="Create funnel from this path"
+                  onClick={createFunnelFromLens}
+                  className="ml-0.5 rounded-none p-0.5 text-neutral-500 transition-colors duration-fast ease-apple hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+                >
+                  <FunnelSimple className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
                   aria-label="Clear lens"
                   onClick={() => filters.setLens(null)}
-                  className="ml-0.5 rounded-none p-0.5 text-neutral-500 transition-colors duration-fast ease-apple hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+                  className="rounded-none p-0.5 text-neutral-500 transition-colors duration-fast ease-apple hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
