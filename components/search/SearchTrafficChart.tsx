@@ -47,6 +47,18 @@ interface Point {
 const evenTicks = (min: number, max: number, count: number) =>
   Array.from({ length: count }, (_, i) => min + (max - min) * (i / (count - 1)))
 
+// * Tick positions must stay (both axes share one grid), but small integer
+// * domains round several fractions to the same label — keep the first only.
+const dedupeTickLabels = (ticks: number[]) => {
+  const seen = new Set<string>()
+  return ticks.map((t) => {
+    const label = formatNumber(Math.round(t))
+    if (seen.has(label)) return { t, label: null }
+    seen.add(label)
+    return { t, label }
+  })
+}
+
 function ChartBody({ width, height, data }: { width: number; height: number; data: Point[] }) {
   const innerWidth = width - MARGIN.left - MARGIN.right
   const innerHeight = height - MARGIN.top - MARGIN.bottom
@@ -124,37 +136,41 @@ function ChartBody({ width, height, data }: { width: number; height: number; dat
           })}
 
           {/* Left axis — clicks */}
-          {leftTicks.map((t, i) => (
-            <text
-              key={i}
-              x={-8}
-              y={clicksScale(t)}
-              textAnchor="end"
-              dominantBaseline="middle"
-              fontSize={11}
-              fill={CLICKS}
-              fillOpacity={0.75}
-              style={{ fontVariantNumeric: 'tabular-nums' }}
-            >
-              {formatNumber(Math.round(t))}
-            </text>
-          ))}
+          {dedupeTickLabels(leftTicks).map(({ t, label }, i) =>
+            label === null ? null : (
+              <text
+                key={i}
+                x={-8}
+                y={clicksScale(t)}
+                textAnchor="end"
+                dominantBaseline="middle"
+                fontSize={11}
+                fill={CLICKS}
+                fillOpacity={0.75}
+                style={{ fontVariantNumeric: 'tabular-nums' }}
+              >
+                {label}
+              </text>
+            ),
+          )}
 
           {/* Right axis — impressions */}
-          {rightTicks.map((t, i) => (
-            <text
-              key={i}
-              x={innerWidth + 8}
-              y={imprScale(t)}
-              textAnchor="start"
-              dominantBaseline="middle"
-              fontSize={11}
-              fill="var(--chart-axis)"
-              style={{ fontVariantNumeric: 'tabular-nums' }}
-            >
-              {formatNumber(Math.round(t))}
-            </text>
-          ))}
+          {dedupeTickLabels(rightTicks).map(({ t, label }, i) =>
+            label === null ? null : (
+              <text
+                key={i}
+                x={innerWidth + 8}
+                y={imprScale(t)}
+                textAnchor="start"
+                dominantBaseline="middle"
+                fontSize={11}
+                fill="var(--chart-axis)"
+                style={{ fontVariantNumeric: 'tabular-nums' }}
+              >
+                {label}
+              </text>
+            ),
+          )}
 
           {/* X axis — DD/MM */}
           {xTicks.map((idx) => (
