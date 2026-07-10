@@ -1,0 +1,130 @@
+depends_on:
+  - push
+
+when:
+  - event: push
+    branch: main
+  - event: push
+    branch: staging
+
+steps:
+  deploy:
+    image: alpine:3.20
+    when:
+      - event: push
+        branch: main
+    volumes:
+      - /opt/woodpecker/secrets/nomad-token:/run/ci/nomad-token:ro
+      - /opt/vault-agent/tls/ca.pem:/run/ci/nomad-ca.pem:ro
+    environment:
+      REGISTRY_USERNAME:
+        from_secret: registry_username
+      REGISTRY_PASSWORD:
+        from_secret: registry_password
+    commands:
+      - apk add --no-cache curl jq >/dev/null
+      - export NOMAD_TOKEN=$(cat /run/ci/nomad-token)
+      - export DEPLOY_SHA=${CI_COMMIT_SHA:0:7}
+      - |
+        DIGEST=$(curl -sfI -u "$REGISTRY_USERNAME:$REGISTRY_PASSWORD" \
+          -H "Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.docker.distribution.manifest.v2+json" \
+          "https://registry.ops.ciphera.net/v2/ciphera-net/pulse-frontend/manifests/sha-$DEPLOY_SHA" \
+          | tr -d '\r' | awk 'tolower($1)=="docker-content-digest:"{print $2}')
+        test -n "$DIGEST"
+      - |
+        curl -sf --cacert /run/ci/nomad-ca.pem -H "X-Nomad-Token: $NOMAD_TOKEN" \
+          https://10.10.0.110:4646/v1/job/pulse-frontend | jq \
+          ".Meta.deploy_sha = \"$DEPLOY_SHA\" |
+           .TaskGroups[0].Tasks[0].Config.image = \"registry.ops.ciphera.net/ciphera-net/pulse-frontend@$DIGEST\" |
+           .TaskGroups[0].Tasks[0].Config.force_pull = true" > /tmp/job.json
+      - |
+        curl -fsS --cacert /run/ci/nomad-ca.pem -X POST -H "X-Nomad-Token: $NOMAD_TOKEN" \
+          -H "Content-Type: application/json" \
+          -d "{\"Job\": $(cat /tmp/job.json)}" \
+          https://10.10.0.110:4646/v1/jobs
+      - echo "Deployed pulse-frontend ($DEPLOY_SHA)"
+
+  deploy-staging:
+    image: alpine:3.20
+    when:
+      - event: push
+        branch: staging
+    volumes:
+      - /opt/woodpecker/secrets/nomad-token:/run/ci/nomad-token:ro
+      - /opt/vault-agent/tls/ca.pem:/run/ci/nomad-ca.pem:ro
+    environment:
+      REGISTRY_USERNAME:
+        from_secret: registry_username
+      REGISTRY_PASSWORD:
+        from_secret: registry_password
+    commands:
+      - apk add --no-cache curl jq >/dev/null
+      - export NOMAD_TOKEN=$(cat /run/ci/nomad-token)
+      - export DEPLOY_SHA=${CI_COMMIT_SHA:0:7}
+      - |
+        DIGEST=$(curl -sfI -u "$REGISTRY_USERNAME:$REGISTRY_PASSWORD" \
+          -H "Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.docker.distribution.manifest.v2+json" \
+          "https://registry.ops.ciphera.net/v2/ciphera-net/pulse-frontend-staging/manifests/sha-$DEPLOY_SHA" \
+          | tr -d '\r' | awk 'tolower($1)=="docker-content-digest:"{print $2}')
+        test -n "$DIGEST"
+      - |
+        curl -sf --cacert /run/ci/nomad-ca.pem -H "X-Nomad-Token: $NOMAD_TOKEN" \
+          https://10.10.0.110:4646/v1/job/pulse-frontend-staging | jq \
+          ".Meta.deploy_sha = \"$DEPLOY_SHA\" |
+           .TaskGroups[0].Tasks[0].Config.image = \"registry.ops.ciphera.net/ciphera-net/pulse-frontend-staging@$DIGEST\" |
+           .TaskGroups[0].Tasks[0].Config.force_pull = true" > /tmp/job.json
+      - |
+        curl -fsS --cacert /run/ci/nomad-ca.pem -X POST -H "X-Nomad-Token: $NOMAD_TOKEN" \
+          -H "Content-Type: application/json" \
+          -d "{\"Job\": $(cat /tmp/job.json)}" \
+          https://10.10.0.110:4646/v1/jobs
+      - echo "Deployed pulse-frontend-staging ($DEPLOY_SHA)"
+
+  cdn-scripts:
+    image: alpine:3.20
+    when:
+      - event: push
+        branch: main
+    failure: ignore
+    environment:
+      AWS_ACCESS_KEY_ID:
+        from_secret: exoscale_cdn_scripts_key
+      AWS_SECRET_ACCESS_KEY:
+        from_secret: exoscale_cdn_scripts_secret
+      AWS_DEFAULT_REGION: ch-dk-2
+      BUNNY_API_KEY:
+        from_secret: bunny_api_key
+    commands:
+      - apk add --no-cache aws-cli curl openssl >/dev/null
+      - |
+        echo -n '{' > public/script-sri.json
+        first=true
+        for file in script.js script.frustration.js script.interactions.js; do
+          [ -f "public/$file" ] || continue
+          hash=$(openssl dgst -sha384 -binary "public/$file" | openssl base64 -A)
+          $first || echo -n ',' >> public/script-sri.json
+          echo -n "\"$file\":\"sha384-${hash}\"" >> public/script-sri.json
+          first=false
+        done
+        echo '}' >> public/script-sri.json
+        cat public/script-sri.json
+      - |
+        for file in script.js script.frustration.js script.interactions.js script-sri.json; do
+          [ -f "public/$file" ] || continue
+          ct="application/javascript"
+          [ "$file" = "script-sri.json" ] && ct="application/json"
+          aws s3 cp "public/$file" "s3://ciphera-scripts/$file" \
+            --endpoint-url https://sos-ch-dk-2.exo.io \
+            --content-type "$ct" \
+            --cache-control "public, max-age=7200" \
+            --acl public-read \
+            --quiet
+        done
+        echo "Scripts uploaded to CDN"
+      - |
+        for path in script.js script.frustration.js script.interactions.js script-sri.json; do
+          curl -fsS -X POST \
+            "https://api.bunny.net/purge?url=https://js.ciphera.net/$path&async=false" \
+            -H "AccessKey: $BUNNY_API_KEY"
+        done
+        echo "CDN cache purged"
