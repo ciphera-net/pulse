@@ -1,0 +1,89 @@
+depends_on:
+  - build
+
+when:
+  - event: push
+    branch: main
+  - event: push
+    branch: staging
+
+steps:
+  write-npmrc:
+    image: alpine:3.20
+    environment:
+      NPM_TOKEN:
+        from_secret: npm_token
+    commands:
+      - printf '@ciphera-net:registry=https://npm.pkg.github.com/\n//npm.pkg.github.com/:_authToken=%s\nlegacy-peer-deps=true\n' "$NPM_TOKEN" > .npmrc-ci
+
+  push:
+    image: woodpeckerci/plugin-docker-buildx:6.1.1
+    when:
+      - event: push
+        branch: main
+    settings:
+      registry: registry.ops.ciphera.net
+      repo: registry.ops.ciphera.net/ciphera-net/pulse-frontend
+      tags:
+        - shadow-${CI_COMMIT_SHA:0:7}
+      username:
+        from_secret: registry_username
+      password:
+        from_secret: registry_password
+      cache_from:
+        - type=registry\,ref=registry.ops.ciphera.net/ciphera-net/pulse-frontend:buildcache
+      secrets:
+        - id=npmrc\,src=.npmrc-ci
+      build_args:
+        NEXT_PUBLIC_API_URL:
+          from_secret: next_public_api_url
+        NEXT_PUBLIC_APP_URL:
+          from_secret: next_public_app_url
+        NEXT_PUBLIC_ID_URL:
+          from_secret: next_public_id_url
+        NEXT_PUBLIC_ID_API_URL:
+          from_secret: next_public_id_api_url
+        NEXT_PUBLIC_CAPTCHA_API_URL:
+          from_secret: next_public_captcha_api_url
+        NEXT_PUBLIC_CHARGEBEE_SITE:
+          from_secret: next_public_chargebee_site
+        NEXT_PUBLIC_CHARGEBEE_PUBLISHABLE_KEY:
+          from_secret: next_public_chargebee_publishable_key
+        NEXT_PUBLIC_CDN_URL:
+          from_secret: next_public_cdn_url
+
+  push-staging:
+    image: woodpeckerci/plugin-docker-buildx:6.1.1
+    when:
+      - event: push
+        branch: staging
+    settings:
+      registry: registry.ops.ciphera.net
+      repo: registry.ops.ciphera.net/ciphera-net/pulse-frontend-staging
+      tags:
+        - shadow-staging-${CI_COMMIT_SHA:0:7}
+      username:
+        from_secret: registry_username
+      password:
+        from_secret: registry_password
+      cache_from:
+        - type=registry\,ref=registry.ops.ciphera.net/ciphera-net/pulse-frontend-staging:buildcache
+      secrets:
+        - id=npmrc\,src=.npmrc-ci
+      build_args:
+        NEXT_PUBLIC_API_URL:
+          from_secret: staging_next_public_api_url
+        NEXT_PUBLIC_APP_URL:
+          from_secret: staging_next_public_app_url
+        NEXT_PUBLIC_ID_URL:
+          from_secret: staging_next_public_id_url
+        NEXT_PUBLIC_ID_API_URL:
+          from_secret: staging_next_public_id_api_url
+        NEXT_PUBLIC_CAPTCHA_API_URL:
+          from_secret: staging_next_public_captcha_api_url
+        NEXT_PUBLIC_CHARGEBEE_SITE:
+          from_secret: staging_next_public_chargebee_site
+        NEXT_PUBLIC_CHARGEBEE_PUBLISHABLE_KEY:
+          from_secret: staging_next_public_chargebee_publishable_key
+        NEXT_PUBLIC_CDN_URL:
+          from_secret: staging_next_public_cdn_url
