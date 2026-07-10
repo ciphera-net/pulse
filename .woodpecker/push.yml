@@ -25,13 +25,15 @@ steps:
       registry: registry.ops.ciphera.net
       repo: registry.ops.ciphera.net/ciphera-net/pulse-frontend
       tags:
-        - shadow-${CI_COMMIT_SHA:0:7}
+        - sha-${CI_COMMIT_SHA:0:7}
+        - latest
       username:
         from_secret: registry_username
       password:
         from_secret: registry_password
       cache_from:
         - type=registry\,ref=registry.ops.ciphera.net/ciphera-net/pulse-frontend:buildcache
+      cache_to: type=registry,ref=registry.ops.ciphera.net/ciphera-net/pulse-frontend:buildcache,mode=max
       secrets:
         - id=npmrc\,src=.npmrc-ci
       build_args:
@@ -61,13 +63,15 @@ steps:
       registry: registry.ops.ciphera.net
       repo: registry.ops.ciphera.net/ciphera-net/pulse-frontend-staging
       tags:
-        - shadow-staging-${CI_COMMIT_SHA:0:7}
+        - sha-${CI_COMMIT_SHA:0:7}
+        - latest
       username:
         from_secret: registry_username
       password:
         from_secret: registry_password
       cache_from:
         - type=registry\,ref=registry.ops.ciphera.net/ciphera-net/pulse-frontend-staging:buildcache
+      cache_to: type=registry,ref=registry.ops.ciphera.net/ciphera-net/pulse-frontend-staging:buildcache,mode=max
       secrets:
         - id=npmrc\,src=.npmrc-ci
       build_args:
