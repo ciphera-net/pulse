@@ -13,3 +13,4 @@ steps:
       - export NODE_AUTH_TOKEN="$NPM_READ_TOKEN"
       - npm ci
       - npm test
+# CI check: verify pull_request pipeline auth
