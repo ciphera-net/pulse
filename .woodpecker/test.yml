@@ -1,0 +1,15 @@
+when:
+  - event: push
+    branch: [main, staging]
+  - event: pull_request
+
+steps:
+  test:
+    image: node:22
+    environment:
+      NPM_READ_TOKEN:
+        from_secret: npm_read_token
+    commands:
+      - export NODE_AUTH_TOKEN="$NPM_READ_TOKEN"
+      - npm ci
+      - npm test
