@@ -72,6 +72,15 @@ describe('parseFiltersFromURL', () => {
     expect(result).toEqual([])
   })
 
+  it('drops filters with an empty or whitespace-only value (would 400 forever)', () => {
+    expect(parseFiltersFromURL('browser|is|')).toEqual([])
+    expect(parseFiltersFromURL('browser|is|   ')).toEqual([])
+    // keeps the non-empty values, drops the empty ones
+    expect(parseFiltersFromURL('country|is|US;;GB')).toEqual([
+      { dimension: 'country', operator: 'is', values: ['US', 'GB'] },
+    ])
+  })
+
   it('drops malformed entries but keeps valid ones', () => {
     const result = parseFiltersFromURL('browser|is|Chrome,bad|input,country|is|US')
     expect(result).toHaveLength(2)

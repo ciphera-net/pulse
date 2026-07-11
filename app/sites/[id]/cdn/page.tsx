@@ -53,11 +53,18 @@ function getFlagIcon(code: string) {
   return FlagComponent ? <FlagComponent className="h-3.5 w-5 shrink-0 rounded-none" /> : null
 }
 
-/** Map each datacenter entry to its country centroid for the dotted map. */
+/** Map datacenter entries to country centroids for the dotted map, summing
+ * bandwidth per country. Several Bunny datacenters can resolve to the same
+ * country (e.g. two US PoPs); mapping 1:1 produced duplicate country entries
+ * and the map kept only one, undercounting multi-datacenter countries. */
 function mapToCountryCentroids(data: BunnyGeoRow[]): Array<{ country: string; pageviews: number }> {
-  return data
-    .map((row) => ({ country: extractCountryCode(row.country_code), pageviews: row.bandwidth }))
-    .filter((d) => d.country !== '')
+  const byCountry = new Map<string, number>()
+  for (const row of data) {
+    const country = extractCountryCode(row.country_code)
+    if (country === '') continue
+    byCountry.set(country, (byCountry.get(country) ?? 0) + row.bandwidth)
+  }
+  return Array.from(byCountry, ([country, pageviews]) => ({ country, pageviews }))
 }
 
 /** Bytes → "1.5 GB". Kept local — CDN is its only consumer. */

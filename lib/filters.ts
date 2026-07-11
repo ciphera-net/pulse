@@ -67,7 +67,10 @@ export function parseFiltersFromURL(raw: string): DimensionFilter[] {
     return {
       dimension,
       operator: operator as DimensionFilter['operator'],
-      values: valuesRaw?.split(';') ?? [],
+      // * Drop empty / whitespace-only values. An empty valuesRaw splits to ['']
+      // * (length 1), which used to slip past the length check below and send an
+      // * empty filter value the backend rejects with a 400 on every request.
+      values: (valuesRaw?.split(';') ?? []).map(v => v.trim()).filter(v => v !== ''),
     }
   }).filter(f => f.dimension && f.operator && f.values.length > 0)
 }
