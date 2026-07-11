@@ -26,7 +26,7 @@ import { SidebarProvider, useSidebar } from '@/lib/sidebar-context'
 import { LiveIndicatorProvider, useLiveIndicator } from '@/lib/live-indicator-context'
 import { getSite } from '@/lib/api/sites'
 import { useSites } from '@/lib/swr/sites'
-import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
+import { SiteFavicon } from '@/components/sites/SiteFavicon'
 import ContentHeader from './ContentHeader'
 import { ShortcutHandler } from '@/components/keyboard/ShortcutHandler'
 import { ShortcutsOverlay } from '@/components/keyboard/ShortcutsOverlay'
@@ -346,9 +346,10 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
                     : 'text-neutral-300 hover:bg-white/[0.06]'
                 }`}
               >
-                <img
-                  src={`${FAVICON_SERVICE_URL}?domain=${site.domain}&sz=64`}
-                  alt=""
+                <SiteFavicon
+                  domain={site.domain}
+                  name={site.name}
+                  size={20}
                   className="w-5 h-5 rounded-none object-contain shrink-0"
                 />
                 <span className="flex flex-col min-w-0">
@@ -380,12 +381,11 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
         className="inline-flex items-center gap-2 text-neutral-500 hover:text-neutral-300 transition-colors max-w-[180px] cursor-pointer ease-apple"
       >
         {currentSite?.domain && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={`${FAVICON_SERVICE_URL}?domain=${currentSite.domain}&sz=64`}
-            alt=""
+          <SiteFavicon
+            domain={currentSite.domain}
+            name={currentSiteName}
+            size={14}
             className="w-3.5 h-3.5 rounded-none object-contain shrink-0"
-            aria-hidden="true"
           />
         )}
         <span className="truncate">{currentSiteName}</span>

@@ -9,7 +9,7 @@ import { useCan } from '@/lib/auth/permissions'
 import { useSites, FaviconPreloader } from '@/lib/swr/sites'
 import { cdnUrl } from '@/lib/cdn'
 import { useSidebar } from '@/lib/sidebar-context'
-import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
+import { SiteFavicon } from '@/components/sites/SiteFavicon'
 import { Gauge as GaugeIcon, Plugs as PlugsIcon, Tag as TagIcon, MagnifyingGlass } from '@phosphor-icons/react'
 import {
   LayoutDashboardIcon,
@@ -221,9 +221,10 @@ function HomeSiteLink({
       } ease-apple`}
     >
       <span className="w-7 h-7 rounded-none bg-white/[0.04] flex items-center justify-center shrink-0 overflow-hidden">
-        <img
-          src={`${FAVICON_SERVICE_URL}?domain=${site.domain}&sz=64`}
-          alt=""
+        <SiteFavicon
+          domain={site.domain}
+          name={site.name}
+          size={18}
           className="w-[18px] h-[18px] rounded-none object-contain"
         />
       </span>

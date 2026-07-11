@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import Image from 'next/image'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { getPublicDashboard, getPublicStats, getPublicDailyStats, getPublicRealtime, authenticatePublicDashboard, type DashboardData, type Stats, type DailyStat } from '@/lib/api/stats'
 import { toast } from '@ciphera-net/facet'
@@ -19,7 +18,7 @@ import DateRangePicker from '@/components/ui/DateRangePicker'
 import { PERIOD_TO_API } from '@/lib/constants/periods'
 import { DashboardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import ExportModal from '@/components/dashboard/ExportModal'
-import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
+import { SiteFavicon } from '@/components/sites/SiteFavicon'
 
 // Helper to get date ranges
 const getDateRange = (days: number) => {
@@ -277,16 +276,11 @@ export default function PublicDashboardPage() {
                         <span className="text-sm font-medium text-brand-orange uppercase tracking-wider">Public Dashboard</span>
                     </div>
                     <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-                    <Image
-                        src={`${FAVICON_SERVICE_URL}?domain=${site.domain}&sz=64`}
-                        alt={site.name}
-                        width={32}
-                        height={32}
+                    <SiteFavicon
+                        domain={site.domain}
+                        name={site.name}
+                        size={32}
                         className="w-8 h-8 rounded-none"
-                        onError={(e) => {
-                        (e.target as HTMLImageElement).src = '/globe.svg'
-                        }}
-                        unoptimized
                     />
                     {site.domain}
                     </h1>
