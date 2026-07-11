@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { getLastSiteId, markSessionEntered, entryRedirectTarget } from '@/lib/last-site'
 import { listDeletedSites, restoreSite, type Site } from '@/lib/api/sites'
 import { useSites } from '@/lib/swr/sites'
 import { getStats, type Stats } from '@/lib/api/stats'
@@ -18,11 +20,24 @@ import { SitesListSkeleton, useMinimumLoading, useSkeletonFade } from '@/compone
 type SiteStatsMap = Record<string, { stats: Stats }>
 
 export default function HomeDashboard() {
+  const router = useRouter()
   const { sites, isLoading: sitesLoading, mutate: mutateSitesList } = useSites()
   const [siteStats, setSiteStats] = useState<SiteStatsMap>({})
   const [subscription, setSubscription] = useState<SubscriptionDetails | null>(null)
   const [deletedSites, setDeletedSites] = useState<Site[]>([])
   const [permanentDeleteSiteModal, setPermanentDeleteSiteModal] = useState<Site | null>(null)
+  // * null = redirect decision pending (hold the skeleton, don't flash the list)
+  const [entryRedirect, setEntryRedirect] = useState<string | null | false>(sitesLoading ? null : false)
+
+  // * App entry lands on the last-visited site, once per browser session.
+  // * The decision waits for the sites list so the remembered id is validated
+  // * against current access (deleted site / revoked role → show the list).
+  useEffect(() => {
+    if (sitesLoading) return
+    const target = entryRedirectTarget(getLastSiteId(), sites.map((s) => s.id), markSessionEntered())
+    setEntryRedirect(target ?? false)
+    if (target) router.replace(`/sites/${target}`)
+  }, [sitesLoading]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     loadDeletedSites()
@@ -141,7 +156,9 @@ export default function HomeDashboard() {
         )}
       </div>
 
-      {showSkeleton ? (
+      {showSkeleton || entryRedirect !== false ? (
+        /* also held while the entry redirect is pending or in flight, so the
+           list never flashes before navigation */
         <SitesListSkeleton rows={3} />
       ) : sites.length === 0 ? (
         <div className="mb-8 flex flex-col items-center justify-center gap-4 py-16 px-6 text-center rounded-none border-2 border-dashed border-brand-orange/30 bg-brand-orange/10">
