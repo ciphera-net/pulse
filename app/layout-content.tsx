@@ -194,11 +194,20 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
     return <>{children}</>
   }
 
-  // Public/marketing: sticky header + footer
+  // Public/marketing: sticky header + footer, all on the bordered rail.
+  // The rail container (max-w-6xl + sm:border-x) is identical on the header,
+  // this main, and the footer, so the two vertical lines run continuously top
+  // to bottom. Sections/pages render inside it and supply their own px-6;
+  // full-bleed border-b sections span the rail width. No horizontal padding
+  // here so section hairlines reach the rail edges.
   return (
     <div className="flex flex-col min-h-screen">
       <MarketingHeader />
-      <main id="main-content" tabIndex={-1} className="flex-1 pb-8">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="mx-auto w-full max-w-6xl flex-1 pb-8 sm:border-x sm:border-border"
+      >
         {children}
       </main>
       <Footer
