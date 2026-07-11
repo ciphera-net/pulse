@@ -280,6 +280,22 @@ export default function ColumnJourney({
   const containerRef = useRef<HTMLDivElement>(null)
   const [hoverId, setHoverId] = useState<string | null>(null)
   const [measureTick, setMeasureTick] = useState(0)
+  // * Scroll affordance: macOS overlay scrollbars are invisible until touched,
+  // * so on narrow viewports the columns beyond the fold read as clipped. A
+  // * right-edge fade signals there is more to scroll.
+  const [canScrollRight, setCanScrollRight] = useState(false)
+
+  useLayoutEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const check = () =>
+      setCanScrollRight(el.scrollWidth - el.clientWidth - el.scrollLeft > 8)
+    check()
+    const observer = new ResizeObserver(check)
+    observer.observe(el)
+    return () => observer.disconnect()
+    // measureTick bumps on scroll; transitions/depth change the column count
+  }, [measureTick, transitions, depth])
 
   const columns = useMemo(
     () => aggregateJourney(transitions, { depth, maxPagesPerStep }),
@@ -448,6 +464,12 @@ export default function ColumnJourney({
           measureTick={measureTick}
         />
       </div>
+      {canScrollRight && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 -right-6 w-14 bg-gradient-to-l from-card to-transparent"
+        />
+      )}
 
       {/* Meta footer — sessions · effective depth · period */}
       <div className="mt-4 border-t border-border pt-3 text-sm text-neutral-400">

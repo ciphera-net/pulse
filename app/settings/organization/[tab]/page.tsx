@@ -1,6 +1,7 @@
 'use client'
 
-import { useParams } from 'next/navigation'
+import { useEffect } from 'react'
+import { useParams, useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { useCan, type Permission } from '@/lib/auth/permissions'
 import { ShieldWarning } from '@phosphor-icons/react'
@@ -40,6 +41,7 @@ function AccessDenied() {
 
 export default function OrganizationSettingsTabPage() {
   const params = useParams()
+  const router = useRouter()
   const tab = params.tab as string
 
   const requiredPerm = TAB_PERMISSIONS[tab]
@@ -47,8 +49,14 @@ export default function OrganizationSettingsTabPage() {
 
   const TabComponent = TAB_COMPONENTS[tab]
 
+  // * Unknown tabs redirect to the section default instead of dead-ending
+  // * on a raw fallback string.
+  useEffect(() => {
+    if (!TabComponent) router.replace('/settings/organization/general')
+  }, [TabComponent, router])
+
   if (!TabComponent) {
-    return <p className="text-sm text-neutral-400">Unknown settings tab.</p>
+    return null
   }
 
   if (requiredPerm && !hasAccess) {
