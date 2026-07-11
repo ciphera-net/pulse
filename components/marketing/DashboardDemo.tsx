@@ -175,8 +175,11 @@ export default function DashboardDemo() {
   const noop = () => {}
 
   return (
-    <div className="border border-border bg-card">
-      {/* Dashboard surface — flat, bordered, no glow gimmick */}
+    <div className="overflow-hidden border border-border bg-card">
+      {/* Dashboard surface — flat, bordered, no glow gimmick. overflow-hidden:
+          the real dashboard widgets inside (Audience tab row) are wider than a
+          390px viewport; this demo is a decorative artifact, so it clips at its
+          frame instead of dragging the whole page sideways. */}
       <div className="p-4 sm:p-6">
         {/* Dashboard header */}
         <div className="mb-6 flex items-center justify-between">

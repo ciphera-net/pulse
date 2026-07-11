@@ -139,7 +139,9 @@ function ScriptMockup() {
 function FeatureRowBlock({ id, label, heading, description, features, mockup, proof, reverse }: FeatureRow) {
   return (
     <div id={id} className="scroll-mt-28">
-      <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
+      {/* min-w-0 on both columns — otherwise the code <pre>'s intrinsic width
+          wins over the viewport and the page scrolls sideways on mobile. */}
+      <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16 [&>*]:min-w-0">
         {/* Text side */}
         <div className={cn(reverse && 'lg:order-last')}>
           <p className="font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
