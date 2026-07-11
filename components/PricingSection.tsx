@@ -1,17 +1,17 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { CheckCircle as CircleCheck } from '@phosphor-icons/react'
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
-import { toast, Button } from '@ciphera-net/facet'
+import { toast, Button, ArrowRightIcon, CheckIcon } from '@ciphera-net/facet'
 import { useSubscription } from '@/lib/swr/dashboard'
 import { getUserOrganizations } from '@/lib/api/organization'
 import PricingFAQ from '@/components/marketing/PricingFAQ'
-import CTASection from '@/components/marketing/CTASection'
 import { Slider } from '@/components/ui/slider'
-import { Badge } from '@ciphera-net/facet'
+import { Eyebrow } from '@/components/marketing/system/Eyebrow'
+import { HairlineGrid } from '@/components/marketing/system/HairlineGrid'
 import useSWR from 'swr'
 import { TRAFFIC_TIERS } from '@/lib/plans'
 import { getPrices } from '@/lib/api/billing'
@@ -57,6 +57,13 @@ const TIER_10M_PLUS = { label: '10M+', value: 10000001 }
 
 // All tiers shown in the slider, including the custom-price 10M+ tier
 const ALL_SLIDER_TIERS = [...TRAFFIC_TIERS, TIER_10M_PLUS] as const
+
+const INCLUDED_EVERYWHERE = [
+  'Cookie-free tracking',
+  'GDPR compliant',
+  'Swiss infrastructure',
+  '100% data ownership',
+]
 
 export default function PricingSection() {
   const searchParams = useSearchParams()
@@ -109,7 +116,6 @@ export default function PricingSection() {
       return
     }
 
-
     try {
       const orgs = await getUserOrganizations()
       if (orgs.length === 0) {
@@ -122,286 +128,348 @@ export default function PricingSection() {
     }
   }
 
+  // Roving arrow-key handling for the billing segmented control.
+  function handleToggleKeyDown(e: React.KeyboardEvent<HTMLButtonElement>) {
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      e.preventDefault()
+      setIsYearly((v) => !v)
+    }
+  }
+
   return (
-    <section className="pb-24 px-4 max-w-6xl mx-auto">
-      {/* Title section */}
-      <div className="text-center mb-10">
-        <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-4">
-          Pricing
-        </h2>
-        <p className="text-lg text-neutral-400 max-w-xl mx-auto leading-relaxed">
-          Select the plan that best suits your needs
-        </p>
-      </div>
+    <>
+      {/* Header — mono eyebrow, semantic h1, short dek */}
+      <section className="border-b border-border">
+        <div className="px-6 pb-12 pt-16 text-center sm:pt-20">
+          <Eyebrow label="Pulse · Pricing" className="text-center" />
+          <h1 className="mt-6 font-display text-5xl font-bold tracking-tight text-foreground sm:text-6xl">
+            Pricing
+          </h1>
+          <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+            Simple, transparent pricing for privacy-first analytics. Start free,
+            scale when you need to — no cookies, no consent banner, ever.
+          </p>
 
-      {/* Monthly/Yearly toggle */}
-      <div className="flex flex-col items-center gap-2 mb-10">
-        <div
-          className="bg-neutral-900 border border-neutral-800 p-1 rounded-none flex"
-          role="radiogroup"
-          aria-label="Billing interval"
-        >
-          <button
-            onClick={() => setIsYearly(false)}
-            role="radio"
-            aria-checked={!isYearly}
-            className={cn(
-              'min-w-[96px] px-4 py-2 rounded-none text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ease-apple',
-              !isYearly
-                ? 'bg-neutral-700 text-white'
-                : 'text-neutral-500 hover:text-white',
-            )}
-          >
-            Monthly
-          </button>
-          <button
-            onClick={() => setIsYearly(true)}
-            role="radio"
-            aria-checked={isYearly}
-            className={cn(
-              'min-w-[96px] px-4 py-2 rounded-none text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ease-apple',
-              isYearly
-                ? 'bg-neutral-700 text-white'
-                : 'text-neutral-500 hover:text-white',
-            )}
-          >
-            Yearly
-          </button>
-        </div>
-        <span className="text-xs text-neutral-500 font-medium">
-          Get 1 month free with yearly
-        </span>
-      </div>
-
-      {/* Pageview tier slider */}
-      <div className="max-w-3xl mx-auto mb-12">
-        <p className="text-neutral-400 text-sm text-center mb-6">
-          How many monthly pageviews do you expect?
-        </p>
-
-        {/* Desktop: labels + slider */}
-        <div className="hidden md:block">
-          <div className="flex items-end justify-between mb-3 px-0.5">
-            {ALL_SLIDER_TIERS.map((tier, i) => (
+          {/* Billing toggle — segmented control, h-10 bordered container */}
+          <div className="mt-10 flex flex-col items-center gap-3">
+            <div
+              role="tablist"
+              aria-label="Billing interval"
+              className="flex h-10 items-stretch border border-border p-1"
+            >
               <button
-                key={tier.label}
                 type="button"
-                onClick={() => setSliderIndex(i)}
-                aria-label={`Select ${tier.label} pageviews per month`}
+                role="tab"
+                aria-selected={!isYearly}
+                tabIndex={!isYearly ? 0 : -1}
+                onClick={() => setIsYearly(false)}
+                onKeyDown={handleToggleKeyDown}
                 className={cn(
-                  'text-xs font-medium tabular-nums whitespace-nowrap transition-colors rounded-none px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ease-apple',
-                  i === sliderIndex
-                    ? 'text-brand-orange font-semibold'
-                    : 'text-neutral-500 hover:text-neutral-300',
+                  'min-w-[96px] px-4 text-sm font-medium transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none',
+                  !isYearly
+                    ? 'bg-muted text-foreground'
+                    : 'text-muted-foreground hover:text-foreground',
                 )}
               >
-                {tier.label}
+                Monthly
               </button>
-            ))}
+              <button
+                type="button"
+                role="tab"
+                aria-selected={isYearly}
+                tabIndex={isYearly ? 0 : -1}
+                onClick={() => setIsYearly(true)}
+                onKeyDown={handleToggleKeyDown}
+                className={cn(
+                  'min-w-[96px] px-4 text-sm font-medium transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none',
+                  isYearly
+                    ? 'bg-muted text-foreground'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                Yearly
+              </button>
+            </div>
+            <span className="font-mono text-xs text-muted-foreground">
+              Get 1 month free with yearly
+            </span>
           </div>
-          <Slider
-            value={[sliderIndex]}
-            onValueChange={([v]) => setSliderIndex(v)}
-            min={0}
-            max={ALL_SLIDER_TIERS.length - 1}
-            step={1}
-            aria-label={`${currentTraffic.label} pageviews per month`}
-            className="[&_[role=slider]]:h-6 [&_[role=slider]]:w-2.5 [&_[role=slider]]:border-[3px] [&_[role=slider]]:border-background [&_[role=slider]]:bg-primary [&_[role=slider]]:ring-offset-0"
-          />
-        </div>
 
-        {/* Mobile: dropdown */}
-        <div className="md:hidden">
-          <select
-            value={sliderIndex}
-            onChange={(e) => setSliderIndex(parseInt(e.target.value))}
-            className="w-full py-2.5 px-4 bg-neutral-900 border border-neutral-800 rounded-none text-white text-sm outline-none focus:ring-2 focus:ring-brand-orange"
-          >
-            {ALL_SLIDER_TIERS.map((tier, i) => {
-              const soloCents = prices?.['solo']?.[(tier as { value: number }).value]
+          {/* Pageview tier slider — restyled on the app slider primitive */}
+          <div className="mx-auto mt-12 max-w-3xl text-left">
+            <p className="mb-6 text-center text-sm text-muted-foreground">
+              How many monthly pageviews do you expect?
+            </p>
+
+            {/* Desktop: labels + slider */}
+            <div className="hidden md:block">
+              <div className="mb-3 flex items-end justify-between px-0.5">
+                {ALL_SLIDER_TIERS.map((tier, i) => (
+                  <button
+                    key={tier.label}
+                    type="button"
+                    onClick={() => setSliderIndex(i)}
+                    aria-label={`Select ${tier.label} pageviews per month`}
+                    className={cn(
+                      'whitespace-nowrap px-1 py-0.5 font-mono text-xs tabular-nums transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none',
+                      i === sliderIndex
+                        ? 'text-primary'
+                        : 'text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    {tier.label}
+                  </button>
+                ))}
+              </div>
+              <Slider
+                value={[sliderIndex]}
+                onValueChange={([v]) => setSliderIndex(v)}
+                min={0}
+                max={ALL_SLIDER_TIERS.length - 1}
+                step={1}
+                aria-label={`${currentTraffic.label} pageviews per month`}
+              />
+            </div>
+
+            {/* Mobile: dropdown */}
+            <div className="md:hidden">
+              <select
+                value={sliderIndex}
+                onChange={(e) => setSliderIndex(parseInt(e.target.value))}
+                className="h-10 w-full border border-border bg-card px-4 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring"
+              >
+                {ALL_SLIDER_TIERS.map((tier, i) => {
+                  const soloCents = prices?.['solo']?.[(tier as { value: number }).value]
+                  return (
+                    <option key={tier.label} value={i}>
+                      {tier.label} pageviews/month
+                      {soloCents ? ` — from €${soloCents / 100}/mo` : ' — Custom'}
+                    </option>
+                  )
+                })}
+              </select>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Tier cards — one hairline grid, four cells */}
+      <section className="border-b border-border">
+        <div className="px-6 py-16 sm:py-20">
+          <HairlineGrid columns={4}>
+            {PLANS.map((plan) => {
+              const priceDetails = getPrice(plan.id)
+              const isTeam = plan.id === 'team'
+              const selectedLimit = TRAFFIC_TIERS[sliderIndex]?.value
+              const isCurrent = plan.isFree
+                ? currentPlanId === 'free'
+                : currentPlanId === plan.id && currentLimit === selectedLimit
+              const isCustomTier = currentTraffic.value === TIER_10M_PLUS.value
+
               return (
-                <option key={tier.label} value={i}>
-                  {tier.label} pageviews/month
-                  {soloCents ? ` — from €${soloCents / 100}/mo` : ' — Custom'}
-                </option>
+                <div
+                  key={plan.id}
+                  className={cn(
+                    'relative flex flex-col bg-card p-6',
+                    // Highlighted tier: an inset primary ring reads cleanly inside
+                    // a gap-px grid where cells carry no borders of their own; a
+                    // border-t-2 would be swallowed by the 1px gap.
+                    isTeam && 'ring-1 ring-inset ring-primary',
+                  )}
+                >
+                  {/* Tier name — mono micro-label; popular tier flags itself */}
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
+                      {plan.name}
+                    </span>
+                    {isTeam && (
+                      <span className="font-mono text-xs uppercase tracking-[0.08em] text-primary">
+                        Most popular
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Price */}
+                  <div className="mt-5">
+                    {plan.isFree ? (
+                      <>
+                        <div className="flex items-baseline gap-1">
+                          <span className="font-display text-4xl font-bold tabular-nums text-foreground">
+                            €0
+                          </span>
+                          <span className="text-sm text-muted-foreground">/mo</span>
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          5k pageviews · forever free
+                        </p>
+                      </>
+                    ) : isCustomTier ? (
+                      <>
+                        <div className="flex items-baseline gap-1">
+                          <span className="font-display text-4xl font-bold text-foreground">
+                            Custom
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Contact us for pricing
+                        </p>
+                      </>
+                    ) : priceDetails ? (
+                      <>
+                        <div className="flex items-baseline gap-1">
+                          <span className="font-display text-4xl font-bold tabular-nums text-foreground">
+                            €{isYearly ? priceDetails.effectiveMonthly : priceDetails.monthly}
+                          </span>
+                          <span className="text-sm text-muted-foreground">/mo</span>
+                        </div>
+                        {isYearly ? (
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            €{priceDetails.yearlyTotal} billed yearly · excl. VAT
+                          </p>
+                        ) : (
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {currentTraffic.label} pageviews · billed monthly
+                          </p>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex items-baseline gap-1">
+                          <span className="font-display text-4xl font-bold text-muted-foreground">
+                            —
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">Loading…</p>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Description */}
+                  <p className="mt-4 text-sm text-muted-foreground">{plan.description}</p>
+
+                  {/* Divider */}
+                  <div className="my-5 h-px bg-border" />
+
+                  {/* Feature list */}
+                  <ul className="mb-6 flex flex-grow flex-col gap-3">
+                    {plan.features.map((feature) => (
+                      <li key={feature} className="flex items-start gap-2.5">
+                        <CheckIcon
+                          aria-hidden="true"
+                          className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground"
+                        />
+                        <span className="text-sm text-foreground">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  {/* CTA — primary only on the highlighted tier, outline elsewhere */}
+                  <Button
+                    variant={isTeam ? 'default' : 'outline'}
+                    onClick={() => {
+                      if (isCurrent) return
+                      if (plan.isFree) {
+                        if (!user) {
+                          initiateOAuthFlow()
+                          return
+                        }
+                        window.location.href = '/'
+                        return
+                      }
+                      if (isCustomTier) {
+                        window.location.href =
+                          'mailto:business@ciphera.net?subject=Enterprise%20Plan%20Inquiry'
+                        return
+                      }
+                      handleSubscribe(plan.id)
+                    }}
+                    disabled={isCurrent || (!plan.isFree && !isCustomTier && !priceDetails)}
+                    className="mt-auto w-full justify-center"
+                  >
+                    {isCurrent
+                      ? 'Current plan'
+                      : plan.isFree
+                        ? 'Get started free'
+                        : isCustomTier
+                          ? 'Contact us'
+                          : subscription?.subscription_status === 'active'
+                            ? 'Switch plan'
+                            : 'Get started'}
+                  </Button>
+                </div>
               )
             })}
-          </select>
-        </div>
-      </div>
+          </HairlineGrid>
 
-      {/* 4-column plan card grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {PLANS.map((plan) => {
-          const priceDetails = getPrice(plan.id)
-          const isTeam = plan.id === 'team'
-          const selectedLimit = TRAFFIC_TIERS[sliderIndex]?.value
-          const isCurrent = plan.isFree
-            ? currentPlanId === 'free'
-            : currentPlanId === plan.id && currentLimit === selectedLimit
-          const isCustomTier = currentTraffic.value === TIER_10M_PLUS.value
+          {/* All plans include — quiet bordered row */}
+          <div className="mt-6 border border-border bg-card px-6 py-5">
+            <p className="mb-4 text-center font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
+              All plans include
+            </p>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-center sm:gap-8">
+              {INCLUDED_EVERYWHERE.map((item) => (
+                <div key={item} className="flex items-center gap-2">
+                  <CheckIcon
+                    aria-hidden="true"
+                    className="h-4 w-4 shrink-0 text-muted-foreground"
+                  />
+                  <span className="text-sm text-foreground">{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
 
-          return (
-            <div
-              key={plan.id}
-              className={cn(
-                'relative flex flex-col rounded-none border p-6 transition-all',
-                isTeam
-                  ? 'border-brand-orange bg-neutral-900 lg:scale-105 lg:z-10'
-                  : 'border-neutral-800 bg-neutral-900',
-              )}
+          {/* Enterprise nudge — bordered row on tokens */}
+          <div className="mt-4 flex flex-col items-start justify-between gap-3 border border-border bg-card px-6 py-4 sm:flex-row sm:items-center">
+            <p className="text-sm text-muted-foreground">
+              <span className="font-semibold text-foreground">Need something bigger?</span>{' '}
+              We&apos;ll build a custom plan for you — unlimited sites, SLA, managed proxy,
+              raw data export.
+            </p>
+            <a
+              href="mailto:business@ciphera.net?subject=Enterprise%20Plan%20Inquiry"
+              className="shrink-0 font-mono text-xs text-primary transition-colors duration-150 hover:text-foreground motion-reduce:transition-none"
             >
-              {/* Badge + plan name */}
-              <div className="flex items-center justify-between mb-4">
-                <Badge
-                  variant={isTeam ? 'brand' : 'neutral'}
-                  size="md"
-                  className={isTeam ? 'bg-brand-orange text-white border-transparent' : ''}
-                >
-                  {plan.name}
-                </Badge>
-                {isTeam && (
-                  <span className="text-xs font-semibold text-brand-orange uppercase tracking-wider">
-                    Popular
-                  </span>
-                )}
-              </div>
-
-              {/* Price */}
-              <div className="mb-2">
-                {plan.isFree ? (
-                  <>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-bold text-white">€0</span>
-                      <span className="text-neutral-500 text-sm">/mo</span>
-                    </div>
-                    <p className="text-neutral-500 text-xs mt-1">5k pageviews · forever free</p>
-                  </>
-                ) : isCustomTier ? (
-                  <>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-bold text-white">Custom</span>
-                    </div>
-                    <p className="text-neutral-500 text-xs mt-1">Contact us for pricing</p>
-                  </>
-                ) : priceDetails ? (
-                  <>
-                    <div className="flex items-baseline gap-1">
-                      <span className={cn('text-4xl font-bold', isTeam ? 'text-white' : 'text-white')}>
-                        €{isYearly ? priceDetails.effectiveMonthly : priceDetails.monthly}
-                      </span>
-                      <span className="text-neutral-500 text-sm">/mo</span>
-                    </div>
-                    {isYearly ? (
-                      <p className="text-neutral-500 text-xs mt-1">
-                        €{priceDetails.yearlyTotal} billed yearly · excl. VAT
-                      </p>
-                    ) : (
-                      <p className="text-neutral-500 text-xs mt-1">
-                        {currentTraffic.label} pageviews · billed monthly
-                      </p>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-bold text-neutral-500">—</span>
-                    </div>
-                    <p className="text-neutral-500 text-xs mt-1">Loading...</p>
-                  </>
-                )}
-              </div>
-
-              {/* Description */}
-              <p className="text-neutral-400 text-sm mb-5">{plan.description}</p>
-
-              {/* Divider */}
-              <div className="border-t border-neutral-800 mb-5" />
-
-              {/* Feature list */}
-              <ul className="flex flex-col gap-3 flex-grow mb-6">
-                {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-2.5">
-                    <CircleCheck className="w-4 h-4 text-brand-orange shrink-0 mt-0.5" />
-                    <span className="text-neutral-200 text-sm">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-
-              {/* CTA button */}
-              <Button
-                variant={isTeam ? 'default' : 'secondary'}
-                onClick={() => {
-                  if (isCurrent) return
-                  if (plan.isFree) {
-                    if (!user) { initiateOAuthFlow(); return }
-                    window.location.href = '/'
-                    return
-                  }
-                  if (isCustomTier) {
-                    window.location.href = 'mailto:business@ciphera.net?subject=Enterprise%20Plan%20Inquiry'
-                    return
-                  }
-                  handleSubscribe(plan.id)
-                }}
-                disabled={isCurrent || (!plan.isFree && !isCustomTier && !priceDetails)}
-                className={cn(
-                  'w-full justify-center',
-                  isTeam && '',
-                )}
-              >
-                {isCurrent
-                  ? 'Current plan'
-                  : plan.isFree
-                  ? 'Get Started Free'
-                  : isCustomTier
-                  ? 'Contact us'
-                  : subscription?.subscription_status === 'active'
-                  ? 'Switch plan'
-                  : 'Get Started'}
-              </Button>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* All plans include row */}
-      <div className="rounded-none border border-neutral-800 bg-neutral-900/30 px-6 py-5 mb-4">
-        <p className="text-neutral-400 text-sm font-semibold text-center uppercase tracking-wider mb-4">
-          All plans include
-        </p>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-4 sm:gap-8">
-          {['Cookie-free tracking', 'GDPR compliant', 'Swiss infrastructure', '100% data ownership'].map((item) => (
-            <div key={item} className="flex items-center gap-2">
-              <CircleCheck className="w-4 h-4 text-brand-orange shrink-0" />
-              <span className="text-neutral-200 text-sm">{item}</span>
-            </div>
-          ))}
+              Let&apos;s talk →
+            </a>
+          </div>
         </div>
-      </div>
+      </section>
 
-      {/* Enterprise nudge */}
-      <div className="card-glass px-6 py-4 mt-2 mb-20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <p className="text-sm text-neutral-300">
-          <span className="font-semibold text-white">Need something bigger?</span>{' '}
-          We&apos;ll build a custom plan for you — unlimited sites, SLA, managed proxy, raw data export.
-        </p>
-        <a
-          href="mailto:business@ciphera.net?subject=Enterprise%20Plan%20Inquiry"
-          className="text-sm font-semibold text-brand-orange hover:text-white transition-colors shrink-0 ease-apple"
-        >
-          Let&apos;s talk →
-        </a>
-      </div>
+      {/* FAQ — shared category-rail pattern */}
+      <section className="border-b border-border">
+        <div className="px-6 py-16 sm:py-20">
+          <Eyebrow label="FAQ" />
+          <h2 className="mt-4 font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+            Pricing questions, answered.
+          </h2>
+          <PricingFAQ />
+        </div>
+      </section>
 
-      {/* Gradient divider */}
-      <div className="h-px w-full bg-gradient-to-r from-transparent via-neutral-800 to-transparent" />
-
-      {/* FAQ */}
-      <PricingFAQ />
-
-      {/* CTA */}
-      <CTASection secondaryLabel="View Features" secondaryHref="/features" />
-    </section>
+      {/* Closing CTA — quiet bordered row, facet Buttons */}
+      <section>
+        <div className="flex flex-col items-start justify-between gap-8 px-6 py-20 sm:py-24 lg:flex-row lg:items-center">
+          <div className="max-w-xl">
+            <h2 className="font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+              Start tracking with privacy.
+            </h2>
+            <p className="mt-4 text-base leading-relaxed text-muted-foreground">
+              Join the developers who respect their users&apos; privacy while getting the
+              insights they need. No cookies, no consent banner, no compromise.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button size="lg" onClick={() => initiateOAuthFlow()}>
+              Try Pulse Free
+              <ArrowRightIcon className="ml-2 h-4 w-4" aria-hidden="true" />
+            </Button>
+            <Button asChild variant="outline" size="lg">
+              <Link href="/features">View features</Link>
+            </Button>
+          </div>
+        </div>
+      </section>
+    </>
   )
 }

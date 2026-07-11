@@ -1,77 +1,133 @@
 'use client'
 
-import { FAQ } from '@/components/marketing/FAQ'
+import { useRef, useState } from 'react'
+import { PlusIcon } from '@ciphera-net/facet'
+import { cn } from '@/lib/utils'
+import { pricingFaqCategories, pricingFaqData } from '@/components/marketing/pricing-faq-data'
 
-const categories: Record<string, string> = {
-  billing: "Billing",
-  plans: "Plans",
-  privacy: "Privacy",
-}
-
-const faqData: Record<string, { question: string; answer: string }[]> = {
-  billing: [
-    {
-      question: "When am I charged?",
-      answer: "You're charged immediately when you subscribe. Your subscription renews automatically at the end of each billing period (monthly or yearly). You can cancel anytime — your plan stays active until the end of the paid period.",
-    },
-    {
-      question: "How does VAT work?",
-      answer: "Prices shown are exclusive of VAT. VAT is calculated at checkout based on your country. EU businesses can enter their VAT ID to apply the reverse charge mechanism.",
-    },
-    {
-      question: "What payment methods do you accept?",
-      answer: "We accept credit and debit cards (Visa, Mastercard, American Express), iDEAL, Bancontact, SEPA Direct Debit, and other European payment methods. All payments are securely processed.",
-    },
-    {
-      question: "Can I get a refund?",
-      answer: "We don't offer refunds, but you can cancel your subscription anytime. Your plan stays active until the end of the current billing period. The Hobby plan is free forever, so you can always try Pulse before committing.",
-    },
-  ],
-  plans: [
-    {
-      question: "Can I change plans anytime?",
-      answer: "Yes. You can upgrade or downgrade your plan at any time from your billing settings. When upgrading, the new price takes effect on your next billing cycle. When downgrading, you keep your current plan until the end of the paid period.",
-    },
-    {
-      question: "What happens if I exceed my pageview limit?",
-      answer: "We don't cut off your tracking. If you consistently exceed your limit, we'll reach out to help you find the right plan. We believe in fair usage, not hard cutoffs.",
-    },
-    {
-      question: "What's the difference between Solo and Team?",
-      answer: "Solo is for a single website with one team member. Team supports up to 5 sites with unlimited team members, plus features like shared dashboard links, funnels, and uptime monitoring.",
-    },
-    {
-      question: "Do yearly plans include a discount?",
-      answer: "Yes. Yearly plans give you 1 month free — you pay for 11 months instead of 12. The effective monthly rate is shown on each plan card when you toggle to yearly billing.",
-    },
-  ],
-  privacy: [
-    {
-      question: "Where is my data stored?",
-      answer: "All analytics data is processed and stored on Swiss infrastructure, protected by the Swiss Federal Act on Data Protection (FADP). Data never leaves Swiss jurisdiction.",
-    },
-    {
-      question: "Do you use cookies?",
-      answer: "No. Pulse doesn't use cookies, fingerprinting, or any form of persistent tracking. This means you don't need a cookie consent banner when using Pulse.",
-    },
-    {
-      question: "Are you GDPR compliant?",
-      answer: "Yes, by architecture — not by configuration. Pulse doesn't collect personal data as defined by GDPR Article 4. There are no data subjects in the dataset, so no DPA is required.",
-    },
-    {
-      question: "Can I export my data?",
-      answer: "Yes. You own 100% of your data. You can export it anytime from the dashboard or via our API. If you cancel, we keep your data available for 30 days before deletion.",
-    },
-  ],
-}
+// Continuous 01–NN numbering across every category — the index aesthetic,
+// matching the home FAQ. Mirrors HomeFAQ so the two pages read as one system.
+let runningIndex = 0
+const GROUPS = Object.entries(pricingFaqCategories).map(([key, label]) => ({
+  key,
+  label,
+  items: (pricingFaqData[key] ?? []).map((item) => ({
+    ...item,
+    n: String(++runningIndex).padStart(2, '0'),
+  })),
+}))
 
 export default function PricingFAQ() {
+  const [activeKey, setActiveKey] = useState(GROUPS[0].key)
+  const [openId, setOpenId] = useState<string | null>(null)
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
+
+  function selectGroup(key: string) {
+    setActiveKey(key)
+    setOpenId(null)
+  }
+
+  // Roving tabindex: arrow keys move both selection and focus along the rail.
+  function handleTabKeyDown(e: React.KeyboardEvent<HTMLButtonElement>, index: number) {
+    const last = GROUPS.length - 1
+    let next: number | null = null
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') next = index === last ? 0 : index + 1
+    else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') next = index === 0 ? last : index - 1
+    else if (e.key === 'Home') next = 0
+    else if (e.key === 'End') next = last
+    if (next === null) return
+    e.preventDefault()
+    selectGroup(GROUPS[next].key)
+    tabRefs.current[next]?.focus()
+  }
+
+  const activeIndex = GROUPS.findIndex((g) => g.key === activeKey)
+  const group = GROUPS[activeIndex] ?? GROUPS[0]
+
   return (
-    <FAQ
-      title="Frequently Asked Questions"
-      subtitle="Everything you need to know about pricing"
-      categories={categories}
-      faqData={faqData}
-    />
+    <div className="mt-10 grid items-start gap-8 lg:grid-cols-[200px_1fr]">
+      {/* Category selector — horizontal on mobile, vertical rail on desktop */}
+      <div
+        role="tablist"
+        aria-label="Pricing FAQ categories"
+        aria-orientation="vertical"
+        className="flex flex-wrap gap-x-6 gap-y-2 lg:flex-col lg:gap-y-1"
+      >
+        {GROUPS.map((g, i) => {
+          const isActive = g.key === activeKey
+          return (
+            <button
+              key={g.key}
+              ref={(el) => {
+                tabRefs.current[i] = el
+              }}
+              type="button"
+              role="tab"
+              id={`pricing-faq-tab-${i}`}
+              tabIndex={isActive ? 0 : -1}
+              aria-selected={isActive}
+              aria-controls={isActive ? 'pricing-faq-panel' : undefined}
+              onClick={() => selectGroup(g.key)}
+              onKeyDown={(e) => handleTabKeyDown(e, i)}
+              className={cn(
+                'flex items-baseline justify-between gap-3 py-1.5 text-left font-mono text-xs transition-colors duration-150 motion-reduce:transition-none',
+                isActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {g.label}
+              <span className="tabular-nums text-muted-foreground">
+                {String(g.items.length).padStart(2, '0')}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Active category's rows — continuous global numbering preserved */}
+      <div
+        role="tabpanel"
+        id="pricing-faq-panel"
+        aria-labelledby={`pricing-faq-tab-${activeIndex}`}
+        className="border border-border"
+      >
+        {group.items.map((item) => {
+          const isOpen = openId === item.n
+          const answerId = `pricing-faq-answer-${item.n}`
+          return (
+            <div key={item.n} className="border-b border-border last:border-b-0">
+              <button
+                type="button"
+                aria-expanded={isOpen}
+                aria-controls={answerId}
+                onClick={() => setOpenId(isOpen ? null : item.n)}
+                className="flex w-full items-center gap-5 px-5 py-4 text-left transition-colors duration-150 hover:bg-accent motion-reduce:transition-none"
+              >
+                <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                  {item.n}
+                </span>
+                <span className="flex-1 text-sm font-medium text-foreground">{item.question}</span>
+                <PlusIcon
+                  aria-hidden="true"
+                  className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-300 motion-reduce:transition-none"
+                  style={{ transform: isOpen ? 'rotate(45deg)' : 'rotate(0deg)' }}
+                />
+              </button>
+
+              <div
+                id={answerId}
+                className="grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none"
+                style={{ gridTemplateRows: isOpen ? '1fr' : '0fr' }}
+              >
+                <div className="overflow-hidden">
+                  <p className="px-5 pb-5 pl-[60px] text-sm leading-relaxed text-muted-foreground">
+                    {item.answer}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
   )
 }
