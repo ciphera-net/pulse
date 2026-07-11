@@ -11,7 +11,12 @@ import { NextRequest, NextResponse } from 'next/server'
  * dropped the google/gstatic allowances, so a regression fails loudly.
  */
 
-const UPSTREAM = 'https://www.google.com/s2/favicons'
+// * Sigil (self-hosted, sovereign favicon resolver) is the upstream when
+// * FAVICON_UPSTREAM_URL is set (Nomad env / Docker build-arg). Falls back to
+// * Google's s2 service until Sigil is proven in staging, then the default is
+// * removed. The route stays a same-origin server-side proxy either way, so the
+// * upstream never sees a customer's browser — only Pulse's origin.
+const UPSTREAM = process.env.FAVICON_UPSTREAM_URL ?? 'https://www.google.com/s2/favicons'
 
 // * Sizes actually used by the app (see FAVICON_SERVICE_URL consumers).
 const ALLOWED_SIZES = new Set(['16', '32', '64', '128'])
