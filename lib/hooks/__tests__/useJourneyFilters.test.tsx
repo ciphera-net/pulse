@@ -158,13 +158,14 @@ describe('useJourneyFilters', () => {
     expect(calledWith).toContain('depth=6')
   })
 
-  it('parses dimension filters from the URL codec', () => {
+  it('parses dimension filters from the URL codec (legacy, unprefixed)', () => {
     mockSearchParams = new URLSearchParams('filters=country%7Cis%7CUS')
     const { result } = renderHook(() => useJourneyFilters())
     expect(result.current.dimensionFilters).toEqual([
       { dimension: 'country', operator: 'is', values: ['US'] },
     ])
-    expect(result.current.filtersParam).toBe('country|is|US')
+    // re-serialized for API calls in the versioned v2 format
+    expect(result.current.filtersParam).toBe('v2:country|is|US')
     expect(result.current.isDefault).toBe(false)
   })
 
@@ -180,7 +181,7 @@ describe('useJourneyFilters', () => {
       result.current.setDimensionFilters([{ dimension: 'device', operator: 'is', values: ['mobile'] }])
     })
     const calledWith = mockReplace.mock.calls[0][0] as string
-    expect(calledWith).toContain('filters=device%7Cis%7Cmobile')
+    expect(calledWith).toContain('filters=v2%3Adevice%7Cis%7Cmobile')
   })
 
   it('setDimensionFilters([]) strips the filters param', () => {
