@@ -32,11 +32,33 @@ import { ShortcutHandler } from '@/components/keyboard/ShortcutHandler'
 import { ShortcutsOverlay } from '@/components/keyboard/ShortcutsOverlay'
 import { CommandPalette } from '@/components/command/CommandPalette'
 
+// * Cross-app icons come from their canonical CDN locations (never a frontend
+// * origin — the old ciphera.net/id_icon URL 404'd after assets moved to the
+// * CDN). Help has no mark of its own yet; it uses the Ciphera icon, which is
+// * also what help.ciphera.net ships as its favicon.
 const CIPHERA_APPS: CipheraApp[] = [
   { id: 'pulse', name: 'Pulse', description: 'Your current app — Privacy-first analytics', icon: cdnUrl('/pulse_icon_no_margins.png'), href: 'https://pulse.ciphera.net', isAvailable: false },
-  { id: 'id', name: 'ID', description: 'Your Ciphera account settings', icon: 'https://ciphera.net/id_icon_no_margins.png', href: 'https://id.ciphera.net', isAvailable: true },
-  { id: 'help', name: 'Help', description: 'Documentation, support & status', icon: 'https://cdn.ciphera.net/help/help_icon.png', href: 'https://help.ciphera.net', isAvailable: true },
+  { id: 'id', name: 'ID', description: 'Your Ciphera account settings', icon: 'https://cdn.ciphera.net/id/id_icon_no_margins.png', href: 'https://id.ciphera.net', isAvailable: true },
+  { id: 'help', name: 'Help', description: 'Documentation, support & status', icon: 'https://cdn.ciphera.net/website/ciphera_icon.png', href: 'https://help.ciphera.net', isAvailable: true },
 ]
+
+/**
+ * App tile icon with the same graceful monogram fallback as SiteFavicon — a
+ * missing CDN asset must degrade to a lettered tile, not the broken-image box
+ * with alt text bleeding through (exactly how the dead ID/Help URLs presented).
+ * `alt` is empty: the app name is printed right under the tile.
+ */
+function AppSwitcherIcon({ src, name }: { src: string; name: string }) {
+  const [failed, setFailed] = useState(false)
+  if (failed) {
+    return (
+      <div aria-hidden className="flex h-8 w-8 items-center justify-center bg-neutral-800 text-sm font-semibold text-neutral-400">
+        {name.trim()[0]?.toUpperCase() ?? '?'}
+      </div>
+    )
+  }
+  return <img src={src} alt="" className="w-8 h-8 object-contain" onError={() => setFailed(true)} />
+}
 
 type PageMeta = {
   title: string
@@ -198,7 +220,7 @@ function BreadcrumbAppSwitcher() {
                     } ease-apple`}
                   >
                     <div className="w-10 h-10 flex items-center justify-center shrink-0">
-                      <img src={app.icon} alt={app.name} className="w-8 h-8 object-contain" />
+                      <AppSwitcherIcon src={app.icon} name={app.name} />
                     </div>
                     <span className="text-xs font-medium text-white text-center">{app.name}</span>
                   </a>
