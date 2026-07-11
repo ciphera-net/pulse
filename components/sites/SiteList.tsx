@@ -1,12 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
 import { Site } from '@/lib/api/sites'
 import type { Stats } from '@/lib/api/stats'
 import { formatNumber } from '@/lib/utils/format'
 import { BarChartIcon, SettingsIcon, BookOpenIcon, ExternalLinkIcon, Button } from '@ciphera-net/facet'
-import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
+import { SiteFavicon } from '@/components/sites/SiteFavicon'
 import { PlusCircle } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 
@@ -34,13 +33,11 @@ function SiteCard({ site, stats, statsLoading }: SiteCardProps) {
       <div className="flex items-start justify-between mb-6">
         <div className="flex items-center gap-4">
           <div className="h-12 w-12 overflow-hidden rounded-none border border-neutral-800 bg-neutral-800 p-1">
-            <Image
-              src={`${FAVICON_SERVICE_URL}?domain=${site.domain}&sz=64`}
-              alt={site.name}
-              width={40}
-              height={40}
-              className="h-full w-full object-contain"
-              unoptimized
+            <SiteFavicon
+              domain={site.domain}
+              name={site.name}
+              size={40}
+              className="object-contain"
             />
           </div>
           <div>
