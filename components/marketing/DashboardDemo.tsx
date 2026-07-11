@@ -1,6 +1,5 @@
 'use client'
 
-import { cdnUrl } from '@/lib/cdn'
 import Chart from '@/components/dashboard/Chart'
 import ContentStats from '@/components/dashboard/ContentStats'
 import TopReferrers from '@/components/dashboard/TopReferrers'
@@ -176,39 +175,28 @@ export default function DashboardDemo() {
   const noop = () => {}
 
   return (
-    <div className="relative">
-      {/* Orange glow behind */}
-      <div className="absolute -inset-8 bg-brand-orange/8 rounded-[2.5rem] blur-3xl" />
-
-      {/* Outer frame with showcase bg */}
-      <div className="relative rounded-none border border-white/[0.08] overflow-hidden p-5 sm:p-8 lg:p-10">
-        <img src={cdnUrl('/pulse-showcase-bg.png')} alt="" className="absolute inset-0 w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-black/40" />
-
-        {/* Inner dashboard — solid background */}
-        <div className="relative rounded-none bg-card p-4 sm:p-6">
-          {/* Dashboard header */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <div>
-                <h2 className="text-xl font-bold text-white">Ciphera</h2>
-                <p className="text-sm text-neutral-400">ciphera.net</p>
-              </div>
-              <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded-none border border-green-500/20">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
-                </span>
-                <span className="text-sm font-medium text-green-400">12 current visitors</span>
-              </div>
+    <div className="border border-border bg-card">
+      {/* Dashboard surface — flat, bordered, no glow gimmick */}
+      <div className="p-4 sm:p-6">
+        {/* Dashboard header */}
+        <div className="mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div>
+              <h2 className="text-xl font-bold text-foreground">Ciphera</h2>
+              <p className="text-sm text-muted-foreground">ciphera.net</p>
             </div>
-            <div className="glass-surface px-4 py-2 rounded-none text-sm text-neutral-300">
-              Today
+            <div className="flex items-center gap-2 border border-border px-3 py-1">
+              <span className="h-2 w-2 bg-green-500" />
+              <span className="text-sm font-medium text-muted-foreground">12 current visitors</span>
             </div>
           </div>
+          <div className="border border-border bg-muted px-4 py-2 text-sm text-muted-foreground">
+            Today
+          </div>
+        </div>
 
-          {/* Chart with stats */}
-          <div className="mb-6">
+        {/* Chart with stats */}
+        <div className="mb-6">
             <Chart
               data={FAKE_DAILY_STATS}
               stats={FAKE_STATS}
@@ -269,7 +257,6 @@ export default function DashboardDemo() {
               onFilter={noop}
             />
           </div>
-        </div>
       </div>
     </div>
   )

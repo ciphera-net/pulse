@@ -1,17 +1,25 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import Image from 'next/image'
+import Link from 'next/link'
+import { ArrowRightIcon, Button, GithubIcon, LoadingOverlay } from '@ciphera-net/facet'
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
-import { LoadingOverlay, Button } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
-import { Cookie, ShieldCheck, Code, Lightning, ArrowRight, GithubLogo } from '@phosphor-icons/react'
+import { Eyebrow } from '@/components/marketing/system/Eyebrow'
+import { MarketingSection } from '@/components/marketing/system/MarketingSection'
+import { TrustStrip } from '@/components/marketing/system/TrustStrip'
 import DashboardDemo from '@/components/marketing/DashboardDemo'
 import FeatureSections from '@/components/marketing/FeatureSections'
+import { WhyPulse } from '@/components/marketing/WhyPulse'
 import ComparisonCards from '@/components/marketing/ComparisonCards'
-import CTASection from '@/components/marketing/CTASection'
-import PulseFAQ from '@/components/marketing/PulseFAQ'
+import { HomeFAQ } from '@/components/marketing/HomeFAQ'
+import { HomeClosingCta } from '@/components/marketing/HomeClosingCta'
 import HomeDashboard from '@/components/dashboard/HomeDashboard'
+
+// The ember floor lives under the website CDN prefix, so it's referenced by
+// absolute URL rather than cdnUrl() (which prepends Pulse's /pulse prefix).
+const HERO_EMBER = 'https://cdn.ciphera.net/website/hero-glyph-ember.jpg'
 
 export default function HomePage() {
   const { user, loading: authLoading } = useAuth()
@@ -23,79 +31,115 @@ export default function HomePage() {
   if (!user) {
     return (
       <>
-        {/* HERO — compact headline + live demo */}
-        <div className="pt-20 pb-10 lg:pt-28 lg:pb-16">
-          <div className="w-full max-w-6xl mx-auto px-6 text-center mb-16">
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="text-4xl sm:text-5xl md:text-6xl font-bold text-white leading-[1.1] mb-6"
-            >
+        {/* HERO — refined centered composition on the rail. The ember JPG is a
+            quiet symmetric floor: a bottom-anchored radial mask fades its top
+            into the background, and a top-down scrim keeps text contrast. */}
+        <section className="relative overflow-hidden border-b border-border">
+          <Image
+            src={HERO_EMBER}
+            alt=""
+            aria-hidden="true"
+            fill
+            priority
+            unoptimized
+            sizes="100vw"
+            className="object-cover object-bottom opacity-70 [mask-image:radial-gradient(140%_120%_at_50%_100%,#000_45%,transparent_100%)]"
+          />
+          {/* Top-down scrim so the headline keeps contrast where the glow rises. */}
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 bg-gradient-to-b from-background via-background/60 to-transparent"
+          />
+
+          <div className="relative mx-auto max-w-3xl px-6 pb-0 pt-24 text-center sm:pt-32">
+            <Eyebrow label="Pulse · Privacy-first analytics" className="text-center" />
+
+            <h1 className="mt-6 font-display text-6xl font-bold leading-[0.95] tracking-tight text-foreground sm:text-7xl">
               Analytics without the{' '}
               <span className="relative inline-block">
-                <span className="gradient-text">surveillance.</span>
-                <svg className="absolute -bottom-2 left-0 w-full h-3 text-brand-orange/30" viewBox="0 0 200 12" preserveAspectRatio="none">
+                surveillance.
+                <svg
+                  aria-hidden="true"
+                  className="absolute -bottom-2 left-0 h-3 w-full text-primary"
+                  viewBox="0 0 200 12"
+                  preserveAspectRatio="none"
+                >
                   <path d="M0 9C50 3 150 3 200 9" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
                 </svg>
               </span>
-            </motion.h1>
+            </h1>
 
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              className="text-xl text-neutral-300 mb-8 leading-relaxed max-w-2xl mx-auto"
-            >
+            <p className="mx-auto mt-8 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
               Respect your users&apos; privacy while getting the insights you need.
               No cookies, no IP tracking, fully GDPR compliant.
-            </motion.p>
+            </p>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="flex flex-row gap-3 flex-wrap justify-center mb-8"
-            >
-              <Button onClick={() => initiateOAuthFlow()} variant="default" className="px-6 py-3 gap-2">
-                Try Pulse Free <ArrowRight weight="bold" className="w-4 h-4" />
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-3 pb-24 sm:pb-32">
+              <Button size="lg" onClick={() => initiateOAuthFlow()}>
+                Try Pulse Free
+                <ArrowRightIcon className="ml-2 h-4 w-4" aria-hidden="true" />
               </Button>
-              <Button onClick={() => window.open('https://github.com/ciphera-net/pulse', '_blank')} variant="secondary" className="px-6 py-3 border border-white/10 gap-2">
-                <GithubLogo weight="bold" className="w-4 h-4" /> View on GitHub
+              <Button asChild variant="outline" size="lg">
+                <a href="https://github.com/ciphera-net/pulse" target="_blank" rel="noopener noreferrer">
+                  <GithubIcon className="mr-2 h-4 w-4" aria-hidden="true" />
+                  View on GitHub
+                </a>
               </Button>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-              className="flex flex-wrap gap-x-6 gap-y-3 text-sm text-neutral-400 justify-center"
-            >
-              <span className="flex items-center gap-2"><Cookie weight="bold" className="w-4 h-4" /> Cookie-free</span>
-              <span className="text-neutral-700">|</span>
-              <span className="flex items-center gap-2"><Code weight="bold" className="w-4 h-4" /> Open source client</span>
-              <span className="text-neutral-700">|</span>
-              <span className="flex items-center gap-2"><ShieldCheck weight="bold" className="w-4 h-4" /> GDPR compliant</span>
-              <span className="text-neutral-700">|</span>
-              <span className="flex items-center gap-2"><Lightning weight="bold" className="w-4 h-4" /> Under 2KB</span>
-            </motion.div>
+            </div>
           </div>
+        </section>
 
-          {/* Live Dashboard Demo */}
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.4 }}
-            className="w-full max-w-7xl mx-auto px-6"
-          >
+        {/* TrustStrip — the hero's bottom edge */}
+        <TrustStrip />
+
+        {/* 01 · Product — dashboard mockup + alternating feature rows */}
+        <MarketingSection
+          eyebrowNumber="01"
+          eyebrowLabel="Product"
+          heading="Everything, nothing you don't need."
+          dek="A real-time dashboard built for clarity — the full picture of your traffic without a single cookie."
+        >
+          <div className="mt-12">
             <DashboardDemo />
-          </motion.div>
-        </div>
+          </div>
+          <div className="mt-20 sm:mt-24">
+            <FeatureSections />
+          </div>
+        </MarketingSection>
 
-        <FeatureSections />
-        <ComparisonCards />
-        <PulseFAQ />
-        <CTASection />
+        {/* 02 · Why Pulse — 4-up hairline feature grid */}
+        <MarketingSection
+          eyebrowNumber="02"
+          eyebrowLabel="Why Pulse"
+          heading="Privacy-first doesn't mean less insight."
+          dek="Four guarantees, each backed by something you can verify — not a claim on a marketing page."
+        >
+          <WhyPulse />
+        </MarketingSection>
+
+        {/* 03 · Compare — Pulse vs. traditional analytics */}
+        <MarketingSection
+          eyebrowNumber="03"
+          eyebrowLabel="Compare"
+          heading="How Pulse compares."
+          dek="See how privacy-first analytics stacks up against the tracking-heavy status quo."
+        >
+          <ComparisonCards />
+        </MarketingSection>
+
+        {/* 04 · FAQ — category rail + continuous numbering accordion */}
+        <MarketingSection
+          eyebrowNumber="04"
+          eyebrowLabel="FAQ"
+          heading="Frequently asked questions."
+        >
+          <HomeFAQ />
+        </MarketingSection>
+
+        {/* 05 · Get started — closer (no border-b: the footer's border-t owns it) */}
+        <section>
+          <HomeClosingCta />
+        </section>
       </>
     )
   }
