@@ -35,7 +35,11 @@ export async function GET(request: NextRequest) {
 
   try {
     const upstream = await fetch(`${UPSTREAM}?domain=${encodeURIComponent(domain)}&sz=${sz}`, {
-      signal: AbortSignal.timeout(4000),
+      // * 10s: the self-hosted resolver may need a few seconds to fetch a site's
+      // * page + candidates on a cold cache (Google's cache answered instantly);
+      // * once warm it's near-instant. Too tight a timeout shows a monogram for
+      // * icons that would have resolved on a retry.
+      signal: AbortSignal.timeout(10000),
       // * The CDN caches via the response headers below; keep Next's data
       // * cache out of the way so misses don't accumulate on disk.
       cache: 'no-store',
