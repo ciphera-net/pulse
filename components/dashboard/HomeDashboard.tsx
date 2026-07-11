@@ -8,6 +8,7 @@ import { getStats, type Stats } from '@/lib/api/stats'
 import { getSubscription, type SubscriptionDetails } from '@/lib/api/billing'
 import SiteList from '@/components/sites/SiteList'
 import DeleteSiteModal from '@/components/sites/DeleteSiteModal'
+import SiteLimitUpgradeButton from '@/components/dashboard/SiteLimitUpgradeButton'
 import { Button, toast, getAuthErrorMessage } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
 import { useCan } from '@/lib/auth/permissions'
@@ -123,16 +124,7 @@ export default function HomeDashboard() {
           const atLimit = siteLimit != null && sites.length >= siteLimit
           return atLimit ? (
           <div>
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-neutral-400 bg-neutral-800 px-3 py-1.5 rounded-none border border-neutral-700">
-                Limit reached ({sites.length}/{siteLimit})
-              </span>
-              <Link href="/pricing">
-                <Button variant="default" className="text-sm">
-                  Upgrade
-                </Button>
-              </Link>
-            </div>
+            <SiteLimitUpgradeButton used={sites.length} limit={siteLimit} />
             {deletedSites.length > 0 && (
               <p className="text-sm text-neutral-400 mt-2">
                 You have a site pending deletion. Restore it or permanently delete it to free the slot.
