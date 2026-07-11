@@ -567,7 +567,8 @@ export default function DashboardShell({
             {/* pb-24 on mobile: scroll clearance for the floating checklist
                 pill + support button (S2-i) */}
             <main
-              id="dashboard-scroll-container"
+              id="main-content"
+              tabIndex={-1}
               className="relative flex-1 overflow-y-auto overflow-x-hidden pb-24 sm:pb-0"
             >
               {/* * Top spacing lives INSIDE the scrolled content, never as padding on

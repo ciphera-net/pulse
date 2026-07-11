@@ -56,6 +56,7 @@ export default function ScrollDepthBars({ scrollDepth }: { scrollDepth?: ScrollD
           icon={<ArrowLineDown />}
           title="No scrolls recorded yet"
           description="Scroll tracking is automatic — depth data appears once visitors start reading your pages."
+          action={{ label: 'Install tracking script', href: '/installation' }}
         />
       )}
     </div>

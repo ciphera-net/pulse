@@ -216,6 +216,7 @@ export default function FrustrationTable({
             icon={<CursorClick />}
             title={`No ${kindNoun} detected`}
             description="Frustration signals are tracked automatically once the behavior script is installed."
+            action={{ label: 'Install tracking script', href: '/installation' }}
           />
         )}
       </div>

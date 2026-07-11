@@ -156,7 +156,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
         />
         {/* pb-28 on mobile: scroll clearance for the floating checklist pill
             + support button, so end-of-page controls are never covered (S2-i) */}
-        <main className="flex-1 pb-28 sm:pb-8">
+        <main id="main-content" tabIndex={-1} className="flex-1 pb-28 sm:pb-8">
           {children}
         </main>
       </div>
@@ -198,7 +198,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-col min-h-screen">
       <MarketingHeader />
-      <main className="flex-1 pb-8">
+      <main id="main-content" tabIndex={-1} className="flex-1 pb-8">
         {children}
       </main>
       <Footer

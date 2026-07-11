@@ -106,6 +106,7 @@ export default function FrustrationByPageTable({ pages, lensPage, onToggleLens }
           icon={<Files />}
           title="No frustration signals detected"
           description="Page-level frustration appears here once rage or dead clicks are recorded on your site."
+          action={{ label: 'Install tracking script', href: '/installation' }}
         />
       )}
     </div>

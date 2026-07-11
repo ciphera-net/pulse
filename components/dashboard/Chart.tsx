@@ -272,7 +272,16 @@ export default function Chart({
                     )}
                   </div>
                   {m.key === 'engagement' && (!engagementData || engagementData.data_days < 7)
-                    ? <span className="text-xs text-neutral-500">Collecting data…</span>
+                    ? (
+                      /* keep the sibling tiles' value rhythm while the score
+                         warms up instead of a bare placeholder string */
+                      <>
+                        <span className="text-2xl font-bold text-neutral-600">—</span>
+                        <div className="mt-1 text-micro-label text-neutral-500" title="The engagement score compares each day against your site's own history and needs 7 days of data.">
+                          Collecting data · needs 7 days
+                        </div>
+                      </>
+                    )
                     : <AnimatedNumber value={m.value} format={m.format} className="text-2xl font-bold text-white" />
                   }
                   {m.key === 'engagement' && engagementData && engagementData.data_days >= 7 && (

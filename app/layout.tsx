@@ -62,6 +62,13 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geist.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} dark`} suppressHydrationWarning>
       <body className="antialiased min-h-screen flex flex-col bg-background text-foreground">
+        {/* WCAG 2.1 A: first focusable element; visible only on keyboard focus */}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[200] focus:bg-brand-orange focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white"
+        >
+          Skip to content
+        </a>
         <Script
           defer
           data-domain="pulse.ciphera.net"

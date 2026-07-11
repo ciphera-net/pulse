@@ -59,7 +59,7 @@ export default function SetupSitePage() {
   return (
     <>
       <div className="text-center mb-8">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-none bg-blue-500/10 text-blue-400 mb-5">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-none bg-brand-orange/10 text-brand-orange mb-5">
           <GlobeIcon className="h-7 w-7" />
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-white">
