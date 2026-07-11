@@ -104,18 +104,19 @@ export default function SiteSettingsTabPage() {
     return () => document.removeEventListener('mousedown', handler)
   }, [pickerOpen])
 
-  if (sites.length === 0 || !activeSiteId) {
-    return null
-  }
-
-
   const TabComponent = TAB_COMPONENTS[tab]
 
-  // * Unknown tabs redirect to the section default instead of dead-ending
-  // * on a raw fallback string.
+  // * Unknown tabs redirect to the section default instead of dead-ending on a
+  // * raw fallback string. This hook MUST stay above the early return below:
+  // * `sites` loads async (empty → resolved), so a hook placed after the guard
+  // * changes the render's hook count when sites arrive → React error #310.
   useEffect(() => {
     if (!TabComponent) router.replace('/settings/site/general')
   }, [TabComponent, router])
+
+  if (sites.length === 0 || !activeSiteId) {
+    return null
+  }
 
   const activeSite = sites.find((s) => s.id === activeSiteId) ?? sites[0]
 
