@@ -161,3 +161,10 @@
     animation: skeletonFade var(--duration-base) var(--ease-apple);
   }
 }
+
+/* S2-j: facet's Toaster hardcodes sonner's top-right position, whose default
+   offset overlays the app header's action row (plan-limit pill, nav icons,
+   notification bell). Push the toast stack below the header. */
+[data-sonner-toaster][data-y-position='top'] {
+  top: 72px !important;
+}

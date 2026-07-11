@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { PlusIcon, ExternalLinkIcon, LayoutDashboardIcon, PathIcon, FunnelIcon, CursorClickIcon, SearchIcon, CloudUploadIcon, HeartbeatIcon, SettingsIcon, UserMenu, type CipheraApp } from '@ciphera-net/facet'
+import { PlusIcon, ExternalLinkIcon, LayoutDashboardIcon, PathIcon, FunnelIcon, CursorClickIcon, SearchIcon, CloudUploadIcon, HeartbeatIcon, SettingsIcon, UserMenu } from '@ciphera-net/facet'
 import { formatUpdatedAgo } from '@/lib/utils/format'
 import { useFunnelDetail } from '@/lib/swr/dashboard'
 import { useAuth } from '@/lib/auth/context'
@@ -14,7 +14,6 @@ import NotificationCenter from '@/components/notifications/NotificationCenter'
 import { getUserOrganizations, switchContext, type OrganizationMember } from '@/lib/api/organization'
 import { setSessionAction } from '@/app/actions/auth'
 import { logger } from '@/lib/utils/logger'
-import { cdnUrl } from '@/lib/cdn'
 import {
   CaretDown, CaretRight, SidebarSimple, Gauge as GaugeIcon, Plugs as PlugsIcon, Tag as TagIcon, Globe as GlobeIcon,
   GearSix, Target, Eye, ShieldCheck, Robot, MagnifyingGlass, ChartBar,
@@ -28,19 +27,11 @@ import { getSite } from '@/lib/api/sites'
 import { useSites } from '@/lib/swr/sites'
 import { SiteFavicon } from '@/components/sites/SiteFavicon'
 import ContentHeader from './ContentHeader'
+import { CIPHERA_APPS } from '@/lib/ciphera-apps'
 import { ShortcutHandler } from '@/components/keyboard/ShortcutHandler'
 import { ShortcutsOverlay } from '@/components/keyboard/ShortcutsOverlay'
 import { CommandPalette } from '@/components/command/CommandPalette'
 
-// * Cross-app icons come from their canonical CDN locations (never a frontend
-// * origin — the old ciphera.net/id_icon URL 404'd after assets moved to the
-// * CDN). Help has no mark of its own yet; it uses the Ciphera icon, which is
-// * also what help.ciphera.net ships as its favicon.
-const CIPHERA_APPS: CipheraApp[] = [
-  { id: 'pulse', name: 'Pulse', description: 'Your current app — Privacy-first analytics', icon: cdnUrl('/pulse_icon_no_margins.png'), href: 'https://pulse.ciphera.net', isAvailable: false },
-  { id: 'id', name: 'ID', description: 'Your Ciphera account settings', icon: 'https://cdn.ciphera.net/id/id_icon_no_margins.png', href: 'https://id.ciphera.net', isAvailable: true },
-  { id: 'help', name: 'Help', description: 'Documentation, support & status', icon: 'https://cdn.ciphera.net/website/ciphera_icon.png', href: 'https://help.ciphera.net', isAvailable: true },
-]
 
 /**
  * App tile icon with the same graceful monogram fallback as SiteFavicon — a
@@ -573,9 +564,11 @@ export default function DashboardShell({
             className="flex-1 flex flex-col min-w-0 mr-3 mb-3 rounded-none bg-neutral-950 border border-neutral-800 overflow-hidden relative"
           >
             <ContentHeader onMobileMenuOpen={openMobile} />
+            {/* pb-24 on mobile: scroll clearance for the floating checklist
+                pill + support button (S2-i) */}
             <main
               id="dashboard-scroll-container"
-              className="relative flex-1 overflow-y-auto overflow-x-hidden"
+              className="relative flex-1 overflow-y-auto overflow-x-hidden pb-24 sm:pb-0"
             >
               {/* * Top spacing lives INSIDE the scrolled content, never as padding on
                * the scroll container — sticky children pin below a scroller's

@@ -1,9 +1,9 @@
 'use client'
 
 import { OfflineBanner } from '@/components/OfflineBanner'
+import { CIPHERA_APPS } from '@/lib/ciphera-apps'
 import { Footer } from '@/components/Footer'
 import Header from '@/components/Header'
- import { type CipheraApp } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
 import { Header as MarketingHeader } from '@/components/marketing/Header'
 import NotificationCenter from '@/components/notifications/NotificationCenter'
@@ -23,33 +23,6 @@ import { ErrorBoundary } from '@/components/error-boundary'
 import VersionToast from '@/components/VersionToast'
 
 const ORG_SWITCH_KEY = 'pulse_switching_org'
-
-const CIPHERA_APPS: CipheraApp[] = [
-  {
-    id: 'pulse',
-    name: 'Pulse',
-    description: 'Your current app — Privacy-first analytics',
-    icon: cdnUrl('/pulse_icon_no_margins.png'),
-    href: 'https://pulse.ciphera.net',
-    isAvailable: false,
-  },
-  {
-    id: 'id',
-    name: 'ID',
-    description: 'Your Ciphera account settings',
-    icon: 'https://ciphera.net/id_icon_no_margins.png',
-    href: 'https://id.ciphera.net',
-    isAvailable: true,
-  },
-  {
-    id: 'help',
-    name: 'Help',
-    description: 'Documentation, support & status',
-    icon: 'https://cdn.ciphera.net/help/help_icon.png',
-    href: 'https://help.ciphera.net',
-    isAvailable: true,
-  },
-]
 
 function LayoutInner({ children }: { children: React.ReactNode }) {
   const auth = useAuth()
@@ -181,7 +154,9 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
           currentAppId="pulse"
           onOpenSettings={() => router.push('/settings/account/profile')}
         />
-        <main className="flex-1 pb-8">
+        {/* pb-28 on mobile: scroll clearance for the floating checklist pill
+            + support button, so end-of-page controls are never covered (S2-i) */}
+        <main className="flex-1 pb-28 sm:pb-8">
           {children}
         </main>
       </div>
