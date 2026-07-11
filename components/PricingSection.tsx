@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth/context'
@@ -128,11 +128,17 @@ export default function PricingSection() {
     }
   }
 
-  // Roving arrow-key handling for the billing segmented control.
+  // Roving arrow-key handling for the billing segmented control. DOM focus
+  // must move with the roving tabindex — flipping ARIA state alone strands
+  // focus on a tabindex="-1" tab.
+  const monthlyTabRef = useRef<HTMLButtonElement>(null)
+  const yearlyTabRef = useRef<HTMLButtonElement>(null)
   function handleToggleKeyDown(e: React.KeyboardEvent<HTMLButtonElement>) {
     if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
       e.preventDefault()
-      setIsYearly((v) => !v)
+      const nextYearly = !isYearly
+      setIsYearly(nextYearly)
+      ;(nextYearly ? yearlyTabRef : monthlyTabRef).current?.focus()
     }
   }
 
@@ -158,6 +164,7 @@ export default function PricingSection() {
               className="flex h-10 items-stretch border border-border p-1"
             >
               <button
+                ref={monthlyTabRef}
                 type="button"
                 role="tab"
                 aria-selected={!isYearly}
@@ -174,6 +181,7 @@ export default function PricingSection() {
                 Monthly
               </button>
               <button
+                ref={yearlyTabRef}
                 type="button"
                 role="tab"
                 aria-selected={isYearly}
