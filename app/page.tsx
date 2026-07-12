@@ -94,10 +94,10 @@ export default function HomePage() {
           <div className="relative mx-auto mt-14 w-full max-w-5xl px-6 pb-16 sm:mt-16 sm:pb-20">
             <MacWindow>
               <Image
-                src={cdnUrl('/marketing/dashboard-hero-tall-2x.png')}
+                src={cdnUrl('/marketing/dashboard-hero-deep-2x.png')}
                 alt="The Pulse dashboard for ciphera.net — 30 days of real visitor, pageview and engagement data"
                 width={2304}
-                height={1790}
+                height={2004}
                 priority
                 unoptimized
                 className="block w-full"

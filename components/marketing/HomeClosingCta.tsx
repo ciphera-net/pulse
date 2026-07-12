@@ -47,11 +47,11 @@ export function HomeClosingCta() {
           <div className="relative w-[80%]">
             <MacWindow>
               <Image
-                src={cdnUrl('/marketing/dashboard-hero-tall-2x.png')}
+                src={cdnUrl('/marketing/dashboard-hero-deep-2x.png')}
                 alt=""
                 aria-hidden="true"
                 width={2304}
-                height={1790}
+                height={2004}
                 unoptimized
                 className="block w-full"
               />
