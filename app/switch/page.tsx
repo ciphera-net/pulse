@@ -9,6 +9,7 @@ import { toast, Spinner, LoadingOverlay } from '@ciphera-net/facet'
 import { useSubscription } from '@/lib/swr/dashboard'
 import { getPrices, changePlan, estimatePlanChange, type PlanChangeEstimate } from '@/lib/api/billing'
 import { TRAFFIC_TIERS } from '@/lib/plans'
+import Select from '@/components/ui/select'
 import { cdnUrl } from '@/lib/cdn'
 import { TIMING } from '@/lib/motion'
 
@@ -232,17 +233,16 @@ function SwitchPlanContent() {
                 <label className="block text-xs font-medium text-neutral-500 mb-1.5 text-center">
                   Monthly pageviews
                 </label>
-                <select
-                  value={selectedLimit}
-                  onChange={(e) => setSelectedLimit(Number(e.target.value))}
-                  className="w-full py-2 px-3 bg-neutral-800/80 border border-neutral-800 rounded-none text-white text-sm outline-none focus-visible:border-brand-orange"
-                >
-                  {TRAFFIC_TIERS.map((tier) => (
-                    <option key={tier.value} value={tier.value}>
-                      {tier.label} pageviews/month
-                    </option>
-                  ))}
-                </select>
+                <Select
+                  variant="input"
+                  fullWidth
+                  value={String(selectedLimit)}
+                  onChange={(v) => setSelectedLimit(Number(v))}
+                  options={TRAFFIC_TIERS.map((tier) => ({
+                    value: String(tier.value),
+                    label: `${tier.label} pageviews/month`,
+                  }))}
+                />
               </div>
 
               {/* Plan cards */}

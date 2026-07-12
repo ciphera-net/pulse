@@ -361,7 +361,7 @@ export default function ScriptSetupBlock({
           {FEATURES.map((f) => (
             <div
               key={f.key}
-              className="glass-surface flex items-center justify-between rounded-none px-4 py-3"
+              className="bg-card border border-border flex items-center justify-between rounded-none px-4 py-3"
             >
               <div className="min-w-0 mr-3">
                 <span className="text-sm font-medium text-white block">

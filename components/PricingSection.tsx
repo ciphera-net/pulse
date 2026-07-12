@@ -10,6 +10,7 @@ import { useSubscription } from '@/lib/swr/dashboard'
 import { getUserOrganizations } from '@/lib/api/organization'
 import PricingFAQ from '@/components/marketing/PricingFAQ'
 import { Slider } from '@/components/ui/slider'
+import Select from '@/components/ui/select'
 import { Eyebrow } from '@/components/marketing/system/Eyebrow'
 import { HairlineGrid } from '@/components/marketing/system/HairlineGrid'
 import useSWR from 'swr'
@@ -239,23 +240,21 @@ export default function PricingSection() {
               />
             </div>
 
-            {/* Mobile: dropdown */}
+            {/* Mobile: dropdown — the app Select (portaled), never the native control */}
             <div className="md:hidden">
-              <select
-                value={sliderIndex}
-                onChange={(e) => setSliderIndex(parseInt(e.target.value))}
-                className="h-10 w-full border border-border bg-card px-4 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring"
-              >
-                {ALL_SLIDER_TIERS.map((tier, i) => {
+              <Select
+                variant="input"
+                fullWidth
+                value={String(sliderIndex)}
+                onChange={(v) => setSliderIndex(Number(v))}
+                options={ALL_SLIDER_TIERS.map((tier, i) => {
                   const soloCents = prices?.['solo']?.[(tier as { value: number }).value]
-                  return (
-                    <option key={tier.label} value={i}>
-                      {tier.label} pageviews/month
-                      {soloCents ? ` — from €${soloCents / 100}/mo` : ' — Custom'}
-                    </option>
-                  )
+                  return {
+                    value: String(i),
+                    label: `${tier.label} pageviews/month${soloCents ? ` — from €${soloCents / 100}/mo` : ' — Custom'}`,
+                  }
                 })}
-              </select>
+              />
             </div>
           </div>
         </div>
