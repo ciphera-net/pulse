@@ -52,29 +52,32 @@ const FAKE_ENGAGEMENT: EngagementPercentilesData = {
   data_days: 30,
 }
 
+// Paths, referrers and countries mirror the shapes the real ciphera.net
+// dashboard shows today (12-07-2026) — incl. the "Shared Link" and AI-assistant
+// referrer channels — so the demo reads like the product, not like a template.
 const FAKE_TOP_PAGES = [
   { path: '/', pageviews: 2341, visits: 1892 },
-  { path: '/products/pulse', pageviews: 1567, visits: 1234 },
-  { path: '/products/drop', pageviews: 987, visits: 812 },
+  { path: '/blog/open-source-privacy-tools-2026', pageviews: 1567, visits: 1234 },
+  { path: '/products/pulse', pageviews: 987, visits: 812 },
   { path: '/pricing', pageviews: 876, visits: 723 },
-  { path: '/blog/privacy-first-analytics', pageviews: 654, visits: 543 },
+  { path: '/products/relay', pageviews: 654, visits: 543 },
   { path: '/about', pageviews: 432, visits: 367 },
-  { path: '/docs/getting-started', pageviews: 389, visits: 312 },
-  { path: '/blog/end-to-end-encryption', pageviews: 345, visits: 289 },
+  { path: '/blog/biggest-data-breaches-2025-2026', pageviews: 389, visits: 312 },
+  { path: '/products/captcha', pageviews: 345, visits: 289 },
   { path: '/contact', pageviews: 287, visits: 234 },
-  { path: '/careers', pageviews: 198, visits: 167 },
+  { path: '/products/id', pageviews: 198, visits: 167 },
 ]
 
 const FAKE_ENTRY_PAGES = [
   { path: '/', pageviews: 1987, visits: 1654 },
-  { path: '/products/pulse', pageviews: 1123, visits: 987 },
-  { path: '/blog/privacy-first-analytics', pageviews: 567, visits: 489 },
-  { path: '/products/drop', pageviews: 534, visits: 456 },
+  { path: '/blog/open-source-privacy-tools-2026', pageviews: 1123, visits: 987 },
+  { path: '/products/pulse', pageviews: 567, visits: 489 },
+  { path: '/blog/biggest-data-breaches-2025-2026', pageviews: 534, visits: 456 },
   { path: '/pricing', pageviews: 423, visits: 378 },
-  { path: '/docs/getting-started', pageviews: 312, visits: 267 },
+  { path: '/products/relay', pageviews: 312, visits: 267 },
   { path: '/about', pageviews: 234, visits: 198 },
-  { path: '/blog/end-to-end-encryption', pageviews: 198, visits: 167 },
-  { path: '/careers', pageviews: 145, visits: 123 },
+  { path: '/products/captcha', pageviews: 198, visits: 167 },
+  { path: '/products/id', pageviews: 145, visits: 123 },
   { path: '/contact', pageviews: 112, visits: 98 },
 ]
 
@@ -82,38 +85,38 @@ const FAKE_EXIT_PAGES = [
   { path: '/pricing', pageviews: 1456, visits: 1234 },
   { path: '/', pageviews: 1234, visits: 1087 },
   { path: '/contact', pageviews: 876, visits: 756 },
-  { path: '/products/drop', pageviews: 654, visits: 543 },
+  { path: '/blog/open-source-privacy-tools-2026', pageviews: 654, visits: 543 },
   { path: '/products/pulse', pageviews: 567, visits: 478 },
-  { path: '/docs/getting-started', pageviews: 432, visits: 367 },
+  { path: '/products/relay', pageviews: 432, visits: 367 },
   { path: '/about', pageviews: 345, visits: 289 },
-  { path: '/blog/privacy-first-analytics', pageviews: 298, visits: 245 },
-  { path: '/careers', pageviews: 234, visits: 198 },
-  { path: '/blog/end-to-end-encryption', pageviews: 178, visits: 145 },
+  { path: '/blog/biggest-data-breaches-2025-2026', pageviews: 298, visits: 245 },
+  { path: '/products/captcha', pageviews: 234, visits: 198 },
+  { path: '/products/id', pageviews: 178, visits: 145 },
 ]
 
 const FAKE_REFERRERS = [
-  { referrer: 'google.com', pageviews: 3421 },
-  { referrer: '(direct)', pageviews: 2100 },
-  { referrer: 'twitter.com', pageviews: 876 },
-  { referrer: 'github.com', pageviews: 654 },
-  { referrer: 'reddit.com', pageviews: 432 },
-  { referrer: 'producthunt.com', pageviews: 312 },
-  { referrer: 'news.ycombinator.com', pageviews: 267 },
-  { referrer: 'linkedin.com', pageviews: 198 },
-  { referrer: 'duckduckgo.com', pageviews: 112 },
-  { referrer: 'dev.to', pageviews: 78 },
+  { referrer: 'Direct', pageviews: 3421 },
+  { referrer: 'Google', pageviews: 2100 },
+  { referrer: 'Shared Link', pageviews: 876 },
+  { referrer: 'GitHub', pageviews: 654 },
+  { referrer: 'ChatGPT', pageviews: 432 },
+  { referrer: 'Bing', pageviews: 312 },
+  { referrer: 'Reddit', pageviews: 267 },
+  { referrer: 'LinkedIn', pageviews: 198 },
+  { referrer: 'DuckDuckGo', pageviews: 112 },
+  { referrer: 'Copilot', pageviews: 78 },
 ]
 
 const FAKE_COUNTRIES = [
-  { country: 'CH', pageviews: 2534 },
+  { country: 'US', pageviews: 2534 },
   { country: 'DE', pageviews: 1856 },
-  { country: 'US', pageviews: 1234 },
-  { country: 'FR', pageviews: 876 },
-  { country: 'GB', pageviews: 654 },
+  { country: 'CH', pageviews: 1234 },
+  { country: 'GB', pageviews: 876 },
+  { country: 'FR', pageviews: 654 },
   { country: 'NL', pageviews: 432 },
-  { country: 'AT', pageviews: 312 },
-  { country: 'SE', pageviews: 198 },
-  { country: 'JP', pageviews: 156 },
+  { country: 'IN', pageviews: 312 },
+  { country: 'AT', pageviews: 198 },
+  { country: 'SE', pageviews: 156 },
   { country: 'CA', pageviews: 134 },
 ]
 
@@ -145,11 +148,11 @@ const FAKE_REGIONS = [
 
 const FAKE_BROWSERS = [
   { browser: 'Chrome', pageviews: 5234 },
-  { browser: 'Firefox', pageviews: 1518 },
-  { browser: 'Safari', pageviews: 987 },
+  { browser: 'Safari', pageviews: 1518 },
+  { browser: 'Firefox', pageviews: 987 },
   { browser: 'Edge', pageviews: 456 },
-  { browser: 'Brave', pageviews: 178 },
-  { browser: 'Arc', pageviews: 59 },
+  { browser: 'Samsung Internet', pageviews: 178 },
+  { browser: 'Brave', pageviews: 59 },
 ]
 
 const FAKE_OS = [
@@ -207,8 +210,10 @@ export default function DashboardDemo() {
               <h2 className="text-xl font-bold text-foreground">Ciphera</h2>
               <p className="text-sm text-muted-foreground">ciphera.net</p>
             </div>
-            <div className="flex items-center gap-2 border border-border px-3 py-1">
-              <span className="h-2 w-2 bg-green-500" />
+            {/* Matches the real toolbar's live-visitors control: pulsing dot,
+                no chip border. */}
+            <div className="flex items-center gap-2 px-1 py-1">
+              <span className="h-2 w-2 animate-pulse bg-green-500" />
               <span className="text-sm font-medium text-muted-foreground">12 current visitors</span>
             </div>
           </div>
