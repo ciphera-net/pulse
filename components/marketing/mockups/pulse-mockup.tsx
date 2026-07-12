@@ -20,14 +20,16 @@ export function PulseMockup() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button tabIndex={-1} className="flex cursor-default items-center gap-1.5 bg-primary px-2.5 py-1 text-[10px] font-medium text-primary-foreground">
+            {/* Neutral export affordance — the real dashboard's export is a
+                quiet icon, never an orange button (orange is spent on data). */}
+            <button tabIndex={-1} className="flex cursor-default items-center gap-1.5 border border-border bg-card px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
               <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
               Export
             </button>
             <div className="flex cursor-default items-center gap-1 border border-border bg-card px-2.5 py-1 text-[10px] text-muted-foreground">
-              Today
+              Last 30 days
               <svg className="h-2.5 w-2.5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
@@ -50,7 +52,7 @@ export function PulseMockup() {
           {/* Unique Visitors — selected/highlighted */}
           <div className="relative border border-border bg-muted p-2.5">
             <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary" />
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-primary">Unique Visitors</p>
+            <p className="text-[10px] font-semibold text-primary">Unique visitors</p>
             <div className="mt-1 flex items-baseline gap-1.5">
               <p className="text-base font-bold leading-none text-foreground">247</p>
               <span className="flex items-center gap-0.5 text-[10px] font-medium text-red-500">
@@ -64,7 +66,7 @@ export function PulseMockup() {
 
           {/* Total Pageviews */}
           <div className="border border-border bg-card p-2.5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total Pageviews</p>
+            <p className="text-[10px] font-semibold text-muted-foreground">Total pageviews</p>
             <div className="mt-1 flex items-baseline gap-1.5">
               <p className="text-base font-bold leading-none text-foreground">512</p>
               <span className="flex items-center gap-0.5 text-[10px] font-medium text-red-500">
@@ -78,7 +80,7 @@ export function PulseMockup() {
 
           {/* Bounce Rate */}
           <div className="border border-border bg-card p-2.5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Bounce Rate</p>
+            <p className="text-[10px] font-semibold text-muted-foreground">Bounce rate</p>
             <div className="mt-1 flex items-baseline gap-1.5">
               <p className="text-base font-bold leading-none text-foreground">68%</p>
               <span className="flex items-center gap-0.5 text-[10px] font-medium text-green-500">
@@ -92,7 +94,7 @@ export function PulseMockup() {
 
           {/* Visit Duration */}
           <div className="border border-border bg-card p-2.5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Visit Duration</p>
+            <p className="text-[10px] font-semibold text-muted-foreground">Visit duration</p>
             <div className="mt-1 flex items-baseline gap-1.5">
               <p className="text-base font-bold leading-none text-foreground">3m 18s</p>
               <span className="flex items-center gap-0.5 text-[10px] font-medium text-red-500">
@@ -109,10 +111,10 @@ export function PulseMockup() {
         <div className="border border-border bg-card p-3">
           {/* Chart header */}
           <div className="mb-3 flex items-center justify-between">
-            <span className="text-[10px] font-medium text-foreground">Unique Visitors</span>
+            <span className="text-[10px] font-medium text-foreground">Unique visitors</span>
             <div className="flex items-center gap-2">
               <div className="flex cursor-default items-center gap-1 border border-border bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
-                1 hour
+                1 day
                 <svg className="h-2 w-2 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
