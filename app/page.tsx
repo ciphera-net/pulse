@@ -2,14 +2,13 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowRightIcon, Button, GithubIcon, LoadingOverlay } from '@ciphera-net/facet'
+import { ArrowRightIcon, Button, LoadingOverlay } from '@ciphera-net/facet'
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
 import { cdnUrl } from '@/lib/cdn'
 import { Eyebrow } from '@/components/marketing/system/Eyebrow'
 import { MarketingSection } from '@/components/marketing/system/MarketingSection'
 import { TrustStrip } from '@/components/marketing/system/TrustStrip'
-import DashboardDemo from '@/components/marketing/DashboardDemo'
 import FeatureSections from '@/components/marketing/FeatureSections'
 import { WhyPulse } from '@/components/marketing/WhyPulse'
 import ComparisonCards from '@/components/marketing/ComparisonCards'
@@ -77,18 +76,30 @@ export default function HomePage() {
                 <ArrowRightIcon className="ml-2 h-4 w-4" aria-hidden="true" />
               </Button>
               <Button asChild variant="outline" size="lg">
-                <a href="https://github.com/ciphera-net/pulse" target="_blank" rel="noopener noreferrer">
-                  <GithubIcon className="mr-2 h-4 w-4" aria-hidden="true" />
-                  View on GitHub
-                </a>
+                <Link href="/demo">
+                  Live demo
+                  <ArrowRightIcon className="ml-2 h-4 w-4" aria-hidden="true" />
+                </Link>
               </Button>
             </div>
           </div>
 
-          {/* The artifact. Cropped by the section edge; max-h keeps the hero
-              honest on tall dashboards, the crop line reads as intentional. */}
-          <div className="relative mx-auto mt-14 max-h-[420px] w-full max-w-5xl overflow-hidden px-6 sm:mt-16 sm:max-h-[520px]">
-            <DashboardDemo />
+          {/* The artifact — a retina capture of the LIVE ciphera.net dashboard
+              (real data, last 30 days; same data as /demo). Full rail width,
+              docked into the fold: the image ends on the chart card's own
+              bottom border, so the crop line is a seam the dashboard itself
+              drew — nothing is sliced mid-pixel. The TrustStrip below reads
+              as the plate's caption bar. */}
+          <div className="relative mt-14 w-full sm:mt-16">
+            <Image
+              src={cdnUrl('/marketing/dashboard-hero-2x.png')}
+              alt="The Pulse dashboard for ciphera.net — 30 days of real visitor, pageview and engagement data"
+              width={2304}
+              height={1152}
+              priority
+              unoptimized
+              className="block w-full border-t border-border"
+            />
           </div>
         </section>
 

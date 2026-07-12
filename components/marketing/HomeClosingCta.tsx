@@ -1,13 +1,16 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { ArrowRightIcon, Button } from '@ciphera-net/facet'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
-import { PulseMockup } from './mockups/pulse-mockup'
+import { cdnUrl } from '@/lib/cdn'
 
-// The closer: 1.3fr text column leads, a bordered mockup card sits a notch
-// smaller and flush right. No photography exists for Pulse — the dashboard
-// mockup IS the artifact, floated over a subtle scrim inside the square frame.
+// The closer: 1.3fr text column leads, a bordered photo card sits a notch
+// smaller and flush right. The product shot is the same retina capture of the
+// live ciphera.net dashboard the hero uses (one asset, one cache entry),
+// floated as a complete bordered plate over a subtle scrim — the website's
+// closing-card recipe with the dashboard standing in for photography.
 export function HomeClosingCta() {
   return (
     <div className="grid items-center gap-12 px-6 py-20 sm:py-28 lg:grid-cols-[1.3fr_1fr]">
@@ -41,7 +44,15 @@ export function HomeClosingCta() {
             className="absolute inset-0 bg-gradient-to-b from-background/60 via-transparent to-background/60"
           />
           <div className="relative w-[80%]">
-            <PulseMockup />
+            <Image
+              src={cdnUrl('/marketing/dashboard-hero-2x.png')}
+              alt=""
+              aria-hidden="true"
+              width={2304}
+              height={1152}
+              unoptimized
+              className="block w-full border border-border"
+            />
           </div>
         </div>
       </div>
