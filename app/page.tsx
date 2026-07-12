@@ -9,6 +9,7 @@ import { cdnUrl } from '@/lib/cdn'
 import { Eyebrow } from '@/components/marketing/system/Eyebrow'
 import { MarketingSection } from '@/components/marketing/system/MarketingSection'
 import { TrustStrip } from '@/components/marketing/system/TrustStrip'
+import { BrowserFrame } from '@/components/marketing/system/BrowserFrame'
 import FeatureSections from '@/components/marketing/FeatureSections'
 import { WhyPulse } from '@/components/marketing/WhyPulse'
 import ComparisonCards from '@/components/marketing/ComparisonCards'
@@ -91,15 +92,17 @@ export default function HomePage() {
               drew — nothing is sliced mid-pixel. The TrustStrip below reads
               as the plate's caption bar. */}
           <div className="relative mt-14 w-full sm:mt-16">
-            <Image
-              src={cdnUrl('/marketing/dashboard-hero-2x.png')}
-              alt="The Pulse dashboard for ciphera.net — 30 days of real visitor, pageview and engagement data"
-              width={2304}
-              height={1152}
-              priority
-              unoptimized
-              className="block w-full border-t border-border"
-            />
+            <BrowserFrame label="pulse.ciphera.net/demo" className="border-t border-border">
+              <Image
+                src={cdnUrl('/marketing/dashboard-hero-2x.png')}
+                alt="The Pulse dashboard for ciphera.net — 30 days of real visitor, pageview and engagement data"
+                width={2304}
+                height={1152}
+                priority
+                unoptimized
+                className="block w-full"
+              />
+            </BrowserFrame>
           </div>
         </section>
 
