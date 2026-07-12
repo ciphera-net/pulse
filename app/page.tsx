@@ -31,9 +31,11 @@ export default function HomePage() {
   if (!user) {
     return (
       <>
-        {/* HERO — refined centered composition on the rail. The ember JPG is a
-            quiet symmetric floor: a bottom-anchored radial mask fades its top
-            into the background, and a top-down scrim keeps text contrast. */}
+        {/* HERO — product-first: the dashboard mockup IS the hero artifact.
+            The copy block stays compact above it; the ember reduces to a faint
+            warm floor behind the mockup (light under the artifact), and the
+            hero's bottom border crops the mockup — a deliberate teaser, the
+            full demo lives one scroll away. */}
         <section className="relative overflow-hidden border-b border-border">
           <Image
             src={HERO_EMBER}
@@ -43,18 +45,13 @@ export default function HomePage() {
             priority
             unoptimized
             sizes="100vw"
-            className="object-cover object-bottom opacity-70 [mask-image:radial-gradient(140%_120%_at_50%_100%,#000_45%,transparent_100%)]"
-          />
-          {/* Top-down scrim so the headline keeps contrast where the glow rises. */}
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 bg-gradient-to-b from-background via-background/60 to-transparent"
+            className="object-cover object-bottom opacity-40 [mask-image:radial-gradient(85%_65%_at_50%_100%,#000_25%,transparent_78%)]"
           />
 
-          <div className="relative mx-auto max-w-3xl px-6 pb-0 pt-24 text-center sm:pt-32">
+          <div className="relative mx-auto max-w-3xl px-6 pt-20 text-center sm:pt-28">
             <Eyebrow label="Pulse · Privacy-first analytics" className="text-center" />
 
-            <h1 className="mt-6 font-display text-6xl font-bold leading-[0.95] tracking-tight text-foreground sm:text-7xl">
+            <h1 className="mt-6 font-display text-5xl font-bold leading-[0.95] tracking-tight text-foreground sm:text-6xl lg:text-7xl">
               Analytics without the{' '}
               <span className="relative inline-block">
                 surveillance.
@@ -69,12 +66,12 @@ export default function HomePage() {
               </span>
             </h1>
 
-            <p className="mx-auto mt-8 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+            <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
               Respect your users&apos; privacy while getting the insights you need.
               No cookies, no IP tracking, fully GDPR compliant.
             </p>
 
-            <div className="mt-10 flex flex-wrap items-center justify-center gap-3 pb-24 sm:pb-32">
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <Button size="lg" onClick={() => initiateOAuthFlow()}>
                 Try Pulse Free
                 <ArrowRightIcon className="ml-2 h-4 w-4" aria-hidden="true" />
@@ -87,22 +84,26 @@ export default function HomePage() {
               </Button>
             </div>
           </div>
+
+          {/* The artifact. Cropped by the section edge; max-h keeps the hero
+              honest on tall dashboards, the crop line reads as intentional. */}
+          <div className="relative mx-auto mt-14 max-h-[420px] w-full max-w-5xl overflow-hidden px-6 sm:mt-16 sm:max-h-[520px]">
+            <DashboardDemo />
+          </div>
         </section>
 
         {/* TrustStrip — the hero's bottom edge */}
         <TrustStrip />
 
-        {/* 01 · Product — dashboard mockup + alternating feature rows */}
+        {/* 01 · Product — alternating feature rows (the dashboard demo now
+            leads the hero; this section carries the deeper feature stories) */}
         <MarketingSection
           eyebrowNumber="01"
           eyebrowLabel="Product"
           heading="Everything, nothing you don't need."
-          dek="A real-time dashboard built for clarity — the full picture of your traffic without a single cookie."
+          dek="Funnels, journeys, reports and a live dashboard — every feature answers a question about your traffic without costing your visitors their privacy."
         >
           <div className="mt-12">
-            <DashboardDemo />
-          </div>
-          <div className="mt-20 sm:mt-24">
             <FeatureSections />
           </div>
         </MarketingSection>
