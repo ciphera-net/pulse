@@ -6,38 +6,51 @@ import TopReferrers from '@/components/dashboard/TopReferrers'
 import Audience from '@/components/dashboard/Locations'
 import TechSpecs from '@/components/dashboard/TechSpecs'
 import { useState } from 'react'
+import { SearchIcon, ChevronLeftIcon, ChevronRightIcon } from '@ciphera-net/facet'
+import type { EngagementPercentilesData } from '@/lib/api/stats'
 
-// ─── Fake Data ───────────────────────────────────────────────────────
+// ─── Fixture data ────────────────────────────────────────────────────
+// The demo portrays the dashboard's REAL first-load view: last 30 days at
+// daily resolution. Dates are computed at render time so the axis always
+// reads current; the value pattern is fixed so the artifact stays
+// deterministic. Weekly rhythm (weekend dips) + a gentle upward trend.
 
-const FAKE_STATS = { pageviews: 8432, visitors: 2847, bounce_rate: 42, avg_duration: 154, avg_scroll_depth: 0, avg_visible_duration: 0 }
-const FAKE_PREV_STATS = { pageviews: 7821, visitors: 2543, bounce_rate: 45, avg_duration: 134, avg_scroll_depth: 0, avg_visible_duration: 0 }
-
-const FAKE_DAILY_STATS = [
-  { date: '2026-03-21 00:00:00', pageviews: 42, visitors: 26, bounce_rate: 46, avg_duration: 118, avg_scroll_depth: 0, avg_visible_duration: 0 },
-  { date: '2026-03-21 01:00:00', pageviews: 38, visitors: 24, bounce_rate: 47, avg_duration: 115, avg_scroll_depth: 0, avg_visible_duration: 0 },
-  { date: '2026-03-21 02:00:00', pageviews: 35, visitors: 22, bounce_rate: 47, avg_duration: 112, avg_scroll_depth: 0, avg_visible_duration: 0 },
-  { date: '2026-03-21 03:00:00', pageviews: 34, visitors: 21, bounce_rate: 48, avg_duration: 110, avg_scroll_depth: 0, avg_visible_duration: 0 },
-  { date: '2026-03-21 04:00:00', pageviews: 36, visitors: 23, bounce_rate: 47, avg_duration: 112, avg_scroll_depth: 0, avg_visible_duration: 0 },
-  { date: '2026-03-21 05:00:00', pageviews: 45, visitors: 29, bounce_rate: 46, avg_duration: 116, avg_scroll_depth: 0, avg_visible_duration: 0 },
-  { date: '2026-03-21 06:00:00', pageviews: 62, visitors: 40, bounce_rate: 45, avg_duration: 122, avg_scroll_depth: 0, avg_visible_duration: 0 },
-  { date: '2026-03-21 07:00:00', pageviews: 95, visitors: 62, bounce_rate: 43, avg_duration: 132, avg_scroll_depth: 0, avg_visible_duration: 0 },
-  { date: '2026-03-21 08:00:00', pageviews: 148, visitors: 98, bounce_rate: 41, avg_duration: 145, avg_scroll_depth: 0, avg_visible_duration: 0 },
-  { date: '2026-03-21 09:00:00', pageviews: 215, visitors: 145, bounce_rate: 39, avg_duration: 155, avg_scroll_depth: 0, avg_visible_duration: 0 },
-  { date: '2026-03-21 10:00:00', pageviews: 285, visitors: 192, bounce_rate: 38, avg_duration: 162, avg_scroll_depth: 0, avg_visible_duration: 0 },
-  { date: '2026-03-21 11:00:00', pageviews: 338, visitors: 228, bounce_rate: 37, avg_duration: 168, avg_scroll_depth: 0, avg_visible_duration: 0 },
-  { date: '2026-03-21 12:00:00', pageviews: 355, visitors: 240, bounce_rate: 38, avg_duration: 165, avg_scroll_depth: 0, avg_visible_duration: 0 },
-  { date: '2026-03-21 13:00:00', pageviews: 372, visitors: 252, bounce_rate: 37, avg_duration: 170, avg_scroll_depth: 0, avg_visible_duration: 0 },
-  { date: '2026-03-21 14:00:00', pageviews: 390, visitors: 265, bounce_rate: 36, avg_duration: 175, avg_scroll_depth: 0, avg_visible_duration: 0 },
-  { date: '2026-03-21 15:00:00', pageviews: 385, visitors: 260, bounce_rate: 36, avg_duration: 173, avg_scroll_depth: 0, avg_visible_duration: 0 },
-  { date: '2026-03-21 16:00:00', pageviews: 362, visitors: 245, bounce_rate: 37, avg_duration: 168, avg_scroll_depth: 0, avg_visible_duration: 0 },
-  { date: '2026-03-21 17:00:00', pageviews: 325, visitors: 218, bounce_rate: 38, avg_duration: 162, avg_scroll_depth: 0, avg_visible_duration: 0 },
-  { date: '2026-03-21 18:00:00', pageviews: 282, visitors: 190, bounce_rate: 40, avg_duration: 155, avg_scroll_depth: 0, avg_visible_duration: 0 },
-  { date: '2026-03-21 19:00:00', pageviews: 238, visitors: 160, bounce_rate: 41, avg_duration: 148, avg_scroll_depth: 0, avg_visible_duration: 0 },
-  { date: '2026-03-21 20:00:00', pageviews: 195, visitors: 132, bounce_rate: 42, avg_duration: 140, avg_scroll_depth: 0, avg_visible_duration: 0 },
-  { date: '2026-03-21 21:00:00', pageviews: 155, visitors: 105, bounce_rate: 43, avg_duration: 132, avg_scroll_depth: 0, avg_visible_duration: 0 },
-  { date: '2026-03-21 22:00:00', pageviews: 112, visitors: 75, bounce_rate: 44, avg_duration: 125, avg_scroll_depth: 0, avg_visible_duration: 0 },
-  { date: '2026-03-21 23:00:00', pageviews: 72, visitors: 46, bounce_rate: 45, avg_duration: 120, avg_scroll_depth: 0, avg_visible_duration: 0 },
+const DAY_VISITORS = [
+  74, 81, 88, 92, 96, 71, 64, 83, 90, 97,
+  103, 108, 79, 72, 95, 104, 112, 118, 121, 88,
+  81, 109, 117, 126, 131, 138, 99, 91, 128, 141,
 ]
+
+const FAKE_DAILY_STATS = DAY_VISITORS.map((visitors, i) => {
+  const d = new Date()
+  d.setDate(d.getDate() - (DAY_VISITORS.length - 1 - i))
+  const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} 00:00:00`
+  return {
+    date,
+    visitors,
+    pageviews: Math.round(visitors * (2.7 + ((i * 7) % 5) * 0.1)),
+    bounce_rate: 46 - Math.round(i / 4) + ((i * 3) % 4),
+    avg_duration: 128 + i + ((i * 11) % 17),
+    avg_scroll_depth: 56 + ((i * 5) % 13),
+    avg_visible_duration: 84 + ((i * 9) % 21),
+  }
+})
+
+const totals = FAKE_DAILY_STATS.reduce(
+  (acc, d) => ({ pageviews: acc.pageviews + d.pageviews, visitors: acc.visitors + d.visitors }),
+  { pageviews: 0, visitors: 0 },
+)
+
+const FAKE_STATS = { pageviews: totals.pageviews, visitors: totals.visitors, bounce_rate: 41, avg_duration: 154, avg_scroll_depth: 62, avg_visible_duration: 97 }
+const FAKE_PREV_STATS = { pageviews: Math.round(totals.pageviews * 0.86), visitors: Math.round(totals.visitors * 0.88), bounce_rate: 44, avg_duration: 139, avg_scroll_depth: 57, avg_visible_duration: 88 }
+
+// Unlocks the real engagement KPI (score + S/T/D/B percentiles) instead of
+// the "Collecting data · needs 7 days" warm-up placeholder.
+const FAKE_ENGAGEMENT: EngagementPercentilesData = {
+  summary: { score: 74, scroll_pctl: 68, time_pctl: 77, depth_pctl: 79, bounce_pctl: 63 },
+  daily: FAKE_DAILY_STATS.map((d, i) => ({ date: d.date.slice(0, 10), score: 58 + ((i * 7) % 23) })),
+  data_days: 30,
+}
 
 const FAKE_TOP_PAGES = [
   { path: '/', pageviews: 2341, visits: 1892 },
@@ -169,8 +182,12 @@ const FAKE_SCREEN_RESOLUTIONS = [
 export default function DashboardDemo() {
   const [todayInterval, setTodayInterval] = useState<'minute' | 'hour'>('hour')
   const [multiDayInterval, setMultiDayInterval] = useState<'hour' | 'day'>('day')
-  const today = new Date().toISOString().split('T')[0]
-  const dateRange = { start: today, end: today }
+  // 30-day range matching the fixture series (the dashboard's default view).
+  const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const end = new Date()
+  const start = new Date()
+  start.setDate(start.getDate() - (DAY_VISITORS.length - 1))
+  const dateRange = { start: fmt(start), end: fmt(end) }
 
   const noop = () => {}
 
@@ -181,8 +198,10 @@ export default function DashboardDemo() {
           390px viewport; this demo is a decorative artifact, so it clips at its
           frame instead of dragging the whole page sideways. */}
       <div className="p-4 sm:p-6">
-        {/* Dashboard header */}
-        <div className="mb-6 flex items-center justify-between">
+        {/* Dashboard header — mirrors the real toolbar: live chip left,
+            Filter + range stepper right (static chrome; the site identity
+            block frames the artifact for marketing). */}
+        <div className="mb-6 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div>
               <h2 className="text-xl font-bold text-foreground">Ciphera</h2>
@@ -193,24 +212,39 @@ export default function DashboardDemo() {
               <span className="text-sm font-medium text-muted-foreground">12 current visitors</span>
             </div>
           </div>
-          <div className="border border-border bg-muted px-4 py-2 text-sm text-muted-foreground">
-            Today
+          <div aria-hidden="true" className="hidden items-center gap-2 sm:flex">
+            <span className="flex h-9 items-center gap-2 border border-border px-3 text-sm text-muted-foreground">
+              <SearchIcon className="h-3.5 w-3.5" />
+              Filter
+            </span>
+            <span className="flex h-9 w-9 items-center justify-center border border-border text-muted-foreground">
+              <ChevronLeftIcon className="h-4 w-4" />
+            </span>
+            <span className="flex h-9 items-center border border-border px-3 text-sm text-muted-foreground">
+              Last 30 days
+            </span>
+            <span className="flex h-9 w-9 items-center justify-center border border-border text-muted-foreground">
+              <ChevronRightIcon className="h-4 w-4" />
+            </span>
           </div>
         </div>
 
-        {/* Chart with stats */}
+        {/* Chart with stats — the real component in its real default state:
+            30 days, daily interval, engagement percentiles live, export icon. */}
         <div className="mb-6">
             <Chart
               data={FAKE_DAILY_STATS}
               stats={FAKE_STATS}
               prevStats={FAKE_PREV_STATS}
-              interval={todayInterval}
+              interval="day"
               dateRange={dateRange}
-              period="today"
+              period="30"
               todayInterval={todayInterval}
               setTodayInterval={setTodayInterval}
               multiDayInterval={multiDayInterval}
               setMultiDayInterval={setMultiDayInterval}
+              engagementData={FAKE_ENGAGEMENT}
+              onExport={noop}
             />
           </div>
 
