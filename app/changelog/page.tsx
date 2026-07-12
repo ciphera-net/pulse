@@ -2,6 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import ReactMarkdown from 'react-markdown'
 import type { Metadata } from 'next'
+import { MarketingSection } from '@/components/marketing/system/MarketingSection'
 import { ChangelogReleases, type Release } from './ChangelogReleases'
 
 export const metadata: Metadata = {
@@ -80,24 +81,19 @@ export default function ChangelogPage() {
     }
   })
 
-  // Full-bleed section slab — the MarketingSection recipe inlined, because this
-  // page is a Server Component and MarketingSection routes through the client-only
-  // `cn` helper (every other marketing page is `'use client'`).
   return (
-    <section className="border-b border-border">
-      <div className="px-6 py-16 sm:py-20">
-        <div className="max-w-2xl">
-          <p className="font-mono text-xs text-muted-foreground">Pulse · Changelog</p>
-          <h1 className="mt-6 font-display text-4xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-6xl">
-            Changelog
-          </h1>
-          <div className={`${PREAMBLE_PROSE} mt-6`}>
-            <ReactMarkdown>{preamble.trim()}</ReactMarkdown>
-          </div>
+    <MarketingSection>
+      <div className="max-w-2xl">
+        <p className="font-mono text-xs text-muted-foreground">Pulse · Changelog</p>
+        <h1 className="mt-6 font-display text-4xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-6xl">
+          Changelog
+        </h1>
+        <div className={`${PREAMBLE_PROSE} mt-6`}>
+          <ReactMarkdown>{preamble.trim()}</ReactMarkdown>
         </div>
-
-        <ChangelogReleases releases={releases} />
       </div>
-    </section>
+
+      <ChangelogReleases releases={releases} />
+    </MarketingSection>
   )
 }

@@ -1,4 +1,4 @@
-import { cn } from '@/lib/utils'
+import { cn } from '@/lib/cn'
 import { Eyebrow } from './Eyebrow'
 
 interface MarketingSectionProps extends React.ComponentProps<'section'> {

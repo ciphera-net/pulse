@@ -1,5 +1,5 @@
-// Shared Pulse FAQ content. Consumed by both the legacy PulseFAQ (still used on
-// /faq) and the home page's category-rail FAQ, so the Q&A stays in one place.
+// Shared Pulse FAQ content, consumed by the home page's category-rail FAQ and
+// the /faq page, so the Q&A stays in one place.
 
 export interface FAQItem {
   question: string

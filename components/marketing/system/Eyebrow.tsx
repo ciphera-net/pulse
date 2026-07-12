@@ -1,4 +1,4 @@
-import { cn } from '@/lib/utils'
+import { cn } from '@/lib/cn'
 
 interface EyebrowProps extends React.ComponentProps<'p'> {
   /** Zero-padded section number, e.g. "01". Renders as `NN · Label`. */

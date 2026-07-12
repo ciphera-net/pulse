@@ -291,7 +291,7 @@ export default function PricingSection() {
                       {plan.name}
                     </span>
                     {isTeam && (
-                      <span className="font-mono text-xs uppercase tracking-[0.08em] text-primary">
+                      <span className="font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
                         Most popular
                       </span>
                     )}
