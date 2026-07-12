@@ -14,6 +14,7 @@ export default function robots(): MetadataRoute.Robots {
           '/changelog',
           '/installation',
           '/integrations',
+          '/demo',
         ],
         disallow: [
           '/api/',

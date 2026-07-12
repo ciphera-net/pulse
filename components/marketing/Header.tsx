@@ -14,6 +14,7 @@ type NavLink = { title: string; href: string }
 const NAV_LINKS: NavLink[] = [
   { title: 'Features', href: '/features' },
   { title: 'Pricing', href: '/pricing' },
+  { title: 'Live demo', href: '/demo' },
   { title: 'Integrations', href: '/integrations' },
   { title: 'Changelog', href: '/changelog' },
   { title: 'FAQ', href: '/faq' },
