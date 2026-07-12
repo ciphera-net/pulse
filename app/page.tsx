@@ -9,7 +9,7 @@ import { cdnUrl } from '@/lib/cdn'
 import { Eyebrow } from '@/components/marketing/system/Eyebrow'
 import { MarketingSection } from '@/components/marketing/system/MarketingSection'
 import { TrustStrip } from '@/components/marketing/system/TrustStrip'
-import { BrowserFrame } from '@/components/marketing/system/BrowserFrame'
+import { MacWindow } from '@/components/marketing/system/MacWindow'
 import FeatureSections from '@/components/marketing/FeatureSections'
 import { WhyPulse } from '@/components/marketing/WhyPulse'
 import ComparisonCards from '@/components/marketing/ComparisonCards'
@@ -86,13 +86,12 @@ export default function HomePage() {
           </div>
 
           {/* The artifact — a retina capture of the LIVE ciphera.net dashboard
-              (real data, last 30 days; same data as /demo). Full rail width,
-              docked into the fold: the image ends on the chart card's own
-              bottom border, so the crop line is a seam the dashboard itself
-              drew — nothing is sliced mid-pixel. The TrustStrip below reads
-              as the plate's caption bar. */}
-          <div className="relative mt-14 w-full sm:mt-16">
-            <BrowserFrame label="pulse.ciphera.net/demo" className="border-t border-border">
+              (real data, last 30 days; same data as /demo) inside a dark-mode
+              macOS window, floating on margins like plausible's, docked into
+              the fold: the capture ends on the chart card's own bottom border,
+              so the crop line is a seam the dashboard itself drew. */}
+          <div className="relative mx-auto mt-14 w-full max-w-5xl px-6 sm:mt-16">
+            <MacWindow docked>
               <Image
                 src={cdnUrl('/marketing/dashboard-hero-2x.png')}
                 alt="The Pulse dashboard for ciphera.net — 30 days of real visitor, pageview and engagement data"
@@ -102,7 +101,7 @@ export default function HomePage() {
                 unoptimized
                 className="block w-full"
               />
-            </BrowserFrame>
+            </MacWindow>
           </div>
         </section>
 

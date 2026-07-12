@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { ArrowRightIcon, Button } from '@ciphera-net/facet'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
 import { cdnUrl } from '@/lib/cdn'
-import { BrowserFrame } from './system/BrowserFrame'
+import { MacWindow } from './system/MacWindow'
 
 // The closer: 1.3fr text column leads, a bordered photo card sits a notch
 // smaller and flush right. The product shot is the same retina capture of the
@@ -45,7 +45,7 @@ export function HomeClosingCta() {
             className="absolute inset-0 bg-gradient-to-b from-background/60 via-transparent to-background/60"
           />
           <div className="relative w-[80%]">
-            <BrowserFrame label="pulse.ciphera.net/demo" className="border border-border">
+            <MacWindow>
               <Image
                 src={cdnUrl('/marketing/dashboard-hero-2x.png')}
                 alt=""
@@ -55,7 +55,7 @@ export function HomeClosingCta() {
                 unoptimized
                 className="block w-full"
               />
-            </BrowserFrame>
+            </MacWindow>
           </div>
         </div>
       </div>
