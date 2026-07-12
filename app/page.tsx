@@ -87,14 +87,12 @@ export default function HomePage() {
 
           {/* The artifact — a retina capture of the LIVE ciphera.net dashboard
               (real data, last 30 days; same data as /demo) inside a dark-mode
-              macOS window, floating on margins like plausible's, docked into
-              the fold: the capture ends on the chart card's own bottom border,
-              so the crop line is a seam the dashboard itself drew. */}
-          {/* The window dissolves toward the fold (mask on the whole window,
-              border and shadow included) — the dashboard melts into the ember
-              floor instead of hitting a hard cut. */}
-          <div className="relative mx-auto mt-14 w-full max-w-5xl px-6 sm:mt-16">
-            <MacWindow docked className="[mask-image:linear-gradient(to_bottom,#000_68%,transparent_100%)]">
+              macOS window. The window is a complete closed frame floating on
+              margins with air before the TrustStrip — a real window sitting on
+              the page; its viewport cropping the dashboard mid-scroll is
+              exactly what a real browser window does. */}
+          <div className="relative mx-auto mt-14 w-full max-w-5xl px-6 pb-16 sm:mt-16 sm:pb-20">
+            <MacWindow>
               <Image
                 src={cdnUrl('/marketing/dashboard-hero-tall-2x.png')}
                 alt="The Pulse dashboard for ciphera.net — 30 days of real visitor, pageview and engagement data"
