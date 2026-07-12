@@ -17,10 +17,6 @@ import { HomeFAQ } from '@/components/marketing/HomeFAQ'
 import { HomeClosingCta } from '@/components/marketing/HomeClosingCta'
 import HomeDashboard from '@/components/dashboard/HomeDashboard'
 
-// The ember floor lives under the website CDN prefix, so it's referenced by
-// absolute URL rather than cdnUrl() (which prepends Pulse's /pulse prefix).
-const HERO_EMBER = 'https://cdn.ciphera.net/website/hero-glyph-ember.jpg'
-
 export default function HomePage() {
   const { user, loading: authLoading } = useAuth()
 
@@ -37,15 +33,13 @@ export default function HomePage() {
             hero's bottom border crops the mockup — a deliberate teaser, the
             full demo lives one scroll away. */}
         <section className="relative overflow-hidden border-b border-border">
-          <Image
-            src={HERO_EMBER}
-            alt=""
+          {/* Clean warm floor — a pure gradient, no texture. The glyph-ember JPG
+              fought the window's bottom fade (its glyphs read through the
+              semi-transparent zone), so the hero floor is textureless: the
+              window dissolves into plain warmth. */}
+          <div
             aria-hidden="true"
-            fill
-            priority
-            unoptimized
-            sizes="100vw"
-            className="object-cover object-bottom opacity-40 [mask-image:radial-gradient(85%_65%_at_50%_100%,#000_25%,transparent_78%)]"
+            className="absolute inset-0 bg-[radial-gradient(85%_65%_at_50%_100%,rgba(249,115,22,0.14),transparent_72%)]"
           />
 
           <div className="relative mx-auto max-w-3xl px-6 pt-20 text-center sm:pt-28">
@@ -90,8 +84,11 @@ export default function HomePage() {
               macOS window, floating on margins like plausible's, docked into
               the fold: the capture ends on the chart card's own bottom border,
               so the crop line is a seam the dashboard itself drew. */}
+          {/* The window dissolves toward the fold (mask on the whole window,
+              border and shadow included) — the dashboard melts into the ember
+              floor instead of hitting a hard cut. */}
           <div className="relative mx-auto mt-14 w-full max-w-5xl px-6 sm:mt-16">
-            <MacWindow docked>
+            <MacWindow docked className="[mask-image:linear-gradient(to_bottom,#000_68%,transparent_100%)]">
               <Image
                 src={cdnUrl('/marketing/dashboard-hero-tall-2x.png')}
                 alt="The Pulse dashboard for ciphera.net — 30 days of real visitor, pageview and engagement data"
