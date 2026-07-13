@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Smoke — SPA history</title>
+  <script>window.pulseConfig = { api: location.origin, domain: 'smoke-test.invalid' };</script>
+  <script defer src="/script.js"></script>
+</head>
+<body>
+  <h1 id="view">Home</h1>
+  <button id="go-about" onclick="navigate('/about')">About</button>
+  <button id="go-pricing" onclick="navigate('/pricing')">Pricing</button>
+  <script>
+    function navigate(path) {
+      history.pushState({}, '', path);
+      document.getElementById('view').textContent = path;
+    }
+  </script>
+</body>
+</html>
