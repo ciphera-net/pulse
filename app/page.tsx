@@ -68,7 +68,7 @@ export default function HomePage() {
             </h1>
 
             <p className="mx-auto mt-8 max-w-2xl text-balance text-base leading-relaxed text-muted-foreground sm:text-lg">
-              The open-source alternative to Google Analytics — built in
+              The open-source alternative to Google&nbsp;Analytics — built in
               Belgium, hosted in the EU.
             </p>
 
