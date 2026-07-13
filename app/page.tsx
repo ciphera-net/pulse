@@ -52,18 +52,39 @@ export default function HomePage() {
               the TrustStrip below owns the claims as chips. Forced two-line
               headline so the larger scale never rewraps. */}
           <div className="relative mx-auto max-w-5xl px-6 pt-20 text-center sm:pt-28">
-            <h1 className="text-balance font-display text-5xl font-bold leading-[0.95] tracking-tight text-foreground sm:text-7xl lg:text-[5.5rem]">
-              Analytics without the{' '}
-              <span className="relative inline-block">
-                surveillance.
-                <svg
-                  aria-hidden="true"
-                  className="absolute -bottom-2 left-0 h-3 w-full text-primary"
-                  viewBox="0 0 200 12"
-                  preserveAspectRatio="none"
-                >
-                  <path d="M0 9C50 3 150 3 200 9" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
-                </svg>
+            <h1 className="font-display text-5xl font-bold leading-[0.95] tracking-tight text-foreground sm:text-7xl lg:text-[5.5rem]">
+              Analytics without
+              <span className="sr-only"> the surveillance.</span>
+              {/* Rotates ONCE on load through the three things Pulse removes,
+                  then settles on "surveillance." — decorative duplicates
+                  (aria-hidden; the sr-only line above is the real sentence).
+                  The hand-drawn underline stretches to each word. */}
+              <span aria-hidden="true" className="grid">
+                {(
+                  [
+                    ['surveillance.', 'animate-hero-word-1', ''],
+                    ['cookies.', 'animate-hero-word-2', 'opacity-0'],
+                    ['consent banners.', 'animate-hero-word-3', 'opacity-0'],
+                  ] as const
+                ).map(([word, anim, base]) => (
+                  <span
+                    key={word}
+                    className={`[grid-area:1/1] motion-reduce:animate-none ${anim} ${base}`}
+                  >
+                    the{' '}
+                    <span className="relative inline-block">
+                      {word}
+                      <svg
+                        aria-hidden="true"
+                        className="absolute -bottom-2 left-0 h-3 w-full text-primary"
+                        viewBox="0 0 200 12"
+                        preserveAspectRatio="none"
+                      >
+                        <path d="M0 9C50 3 150 3 200 9" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+                      </svg>
+                    </span>
+                  </span>
+                ))}
               </span>
             </h1>
 
