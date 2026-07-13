@@ -368,7 +368,7 @@ function SidebarContent({
               </div>
             )}
             <div className="space-y-0.5">
-              <HomeNavLink href="https://docs.ciphera.net" icon={BookOpenIcon} label="Documentation" collapsed={c} onClick={isMobile ? onMobileClose : undefined} external />
+              <HomeNavLink href="https://help.ciphera.net" icon={BookOpenIcon} label="Documentation" collapsed={c} onClick={isMobile ? onMobileClose : undefined} external />
             </div>
           </div>
         </nav>

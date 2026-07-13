@@ -29,7 +29,7 @@ const footerColumns: { heading: string; links: FooterLink[] }[] = [
     links: [
       { name: 'Installation', href: '/installation' },
       { name: 'FAQ', href: '/faq' },
-      { name: 'Documentation', href: 'https://docs.ciphera.net', external: true },
+      { name: 'Documentation', href: 'https://help.ciphera.net', external: true },
       { name: 'About', href: '/about' },
     ],
   },
