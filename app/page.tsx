@@ -6,7 +6,6 @@ import { ArrowRightIcon, Button, LoadingOverlay } from '@ciphera-net/facet'
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
 import { cdnUrl } from '@/lib/cdn'
-import { Eyebrow } from '@/components/marketing/system/Eyebrow'
 import { MarketingSection } from '@/components/marketing/system/MarketingSection'
 import { TrustStrip } from '@/components/marketing/system/TrustStrip'
 import { MacWindow } from '@/components/marketing/system/MacWindow'
@@ -48,10 +47,11 @@ export default function HomePage() {
             className="object-cover object-bottom opacity-40 [mask-image:radial-gradient(85%_65%_at_50%_100%,#000_25%,transparent_78%)]"
           />
 
+          {/* Copy block — headline and CTAs only (operator decision 13-07):
+              no eyebrow (logo + H1 already carry it), no dek (the TrustStrip
+              below owns those exact claims as chips — one voice per fact). */}
           <div className="relative mx-auto max-w-3xl px-6 pt-20 text-center sm:pt-28">
-            <Eyebrow label="Pulse · Privacy-first analytics" className="text-center" />
-
-            <h1 className="mt-6 font-display text-5xl font-bold leading-[0.95] tracking-tight text-foreground sm:text-6xl lg:text-7xl">
+            <h1 className="font-display text-5xl font-bold leading-[0.95] tracking-tight text-foreground sm:text-6xl lg:text-7xl">
               Analytics without the{' '}
               <span className="relative inline-block">
                 surveillance.
@@ -66,12 +66,7 @@ export default function HomePage() {
               </span>
             </h1>
 
-            <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-              Respect your users&apos; privacy while getting the insights you need.
-              No cookies, no IP tracking, fully GDPR compliant.
-            </p>
-
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
               <Button size="lg" onClick={() => initiateOAuthFlow()}>
                 Try Pulse Free
                 <ArrowRightIcon className="ml-2 h-4 w-4" aria-hidden="true" />
