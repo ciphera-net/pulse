@@ -47,11 +47,12 @@ export default function HomePage() {
             className="object-cover object-bottom opacity-40 [mask-image:radial-gradient(85%_65%_at_50%_100%,#000_25%,transparent_78%)]"
           />
 
-          {/* Copy block — headline and CTAs only (operator decision 13-07):
-              no eyebrow (logo + H1 already carry it), no dek (the TrustStrip
-              below owns those exact claims as chips — one voice per fact). */}
-          <div className="relative mx-auto max-w-3xl px-6 pt-20 text-center sm:pt-28">
-            <h1 className="font-display text-5xl font-bold leading-[0.95] tracking-tight text-foreground sm:text-6xl lg:text-7xl">
+          {/* Copy block — no eyebrow (logo + H1 already carry it); the dek is
+              a POSITIONING line (category anchor + sovereignty), not claims —
+              the TrustStrip below owns the claims as chips. Forced two-line
+              headline so the larger scale never rewraps. */}
+          <div className="relative mx-auto max-w-5xl px-6 pt-20 text-center sm:pt-28">
+            <h1 className="text-balance font-display text-5xl font-bold leading-[0.95] tracking-tight text-foreground sm:text-7xl lg:text-[5.5rem]">
               Analytics without the{' '}
               <span className="relative inline-block">
                 surveillance.
@@ -66,7 +67,12 @@ export default function HomePage() {
               </span>
             </h1>
 
-            <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
+            <p className="mx-auto mt-8 max-w-2xl text-balance text-base leading-relaxed text-muted-foreground sm:text-lg">
+              The open-source alternative to Google Analytics — built in
+              Belgium, hosted in the EU.
+            </p>
+
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <Button size="lg" onClick={() => initiateOAuthFlow()}>
                 Try Pulse Free
                 <ArrowRightIcon className="ml-2 h-4 w-4" aria-hidden="true" />
@@ -78,6 +84,10 @@ export default function HomePage() {
                 </Link>
               </Button>
             </div>
+
+            <p className="mt-6 font-mono text-xs text-muted-foreground">
+              Free tier &middot; No credit card &middot; 2-minute setup
+            </p>
           </div>
 
           {/* The artifact — a retina capture of the LIVE ciphera.net dashboard
@@ -98,6 +108,20 @@ export default function HomePage() {
                 className="block w-full"
               />
             </MacWindow>
+
+            {/* The window shows REAL data — say so. Dot mirrors the app's
+                live-visitors control (RealtimeVisitors recipe). */}
+            <Link
+              href="/demo"
+              className="mt-5 flex items-center justify-center gap-2 font-mono text-xs text-muted-foreground transition-colors hover:text-foreground motion-reduce:transition-none"
+            >
+              <span
+                aria-hidden="true"
+                className="h-2 w-2 rounded-full bg-green-500 animate-pulse motion-reduce:animate-none"
+              />
+              Live data — this is our real dashboard
+              <ArrowRightIcon className="h-3 w-3" aria-hidden="true" />
+            </Link>
           </div>
         </section>
 
