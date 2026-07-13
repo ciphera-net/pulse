@@ -84,10 +84,6 @@ export default function HomePage() {
                 </Link>
               </Button>
             </div>
-
-            <p className="mt-6 font-mono text-xs text-muted-foreground">
-              Free tier &middot; No credit card &middot; 2-minute setup
-            </p>
           </div>
 
           {/* The artifact — a retina capture of the LIVE ciphera.net dashboard
