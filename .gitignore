@@ -50,3 +50,6 @@ public/swe-worker-*.js
 playwright.config.ts
 test-results/
 tests/
+
+# Versioned tracking-script build artifacts (published to CDN, not committed)
+dist/scripts/

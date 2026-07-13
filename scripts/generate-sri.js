@@ -10,7 +10,9 @@ const fs = require('fs');
 const path = require('path');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
-const SCRIPTS = ['script.js', 'script.frustration.js'];
+// * All three tracking scripts must be hashed — the interactions add-on was
+// * previously omitted, so enabling SRI silently emitted no integrity for it.
+const SCRIPTS = ['script.js', 'script.frustration.js', 'script.interactions.js'];
 
 const out = {};
 for (const name of SCRIPTS) {

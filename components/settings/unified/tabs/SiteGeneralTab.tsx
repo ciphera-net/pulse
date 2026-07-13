@@ -202,7 +202,8 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
         </div>
 
         <ScriptSetupBlock
-          site={{ domain: site.domain, name: site.name, script_features: scriptFeatures }}
+          site={{ domain: site.domain, name: site.name, script_features: scriptFeatures, detected_framework: site.detected_framework }}
+          siteId={siteId}
           showFrameworkPicker
           className="mb-4"
           onFeaturesChange={(features) => setScriptFeatures(features)}

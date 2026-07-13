@@ -1,22 +1,17 @@
 'use client'
 
 /**
- * @file Integrations overview — search, mono tab filters, and a hairline logo grid.
+ * @file Integrations directory — searchable, tier-aware, interactive.
  *
- * Rebuilt onto the marketing section grammar (design §5.7). The void fix is the
- * point: every section renders at first paint — no scroll-gated motion, nothing
- * starts hidden, content is visible with JS off. The 75+ tiles, 7 categories,
- * search, and the "Request integration" closer all stay.
+ * Redesign (§7.3): every tile is now a real Link to its per-integration guide
+ * (`/integrations/[slug]`) with a Facet hover + focus ring; each carries an
+ * honest support-tier micro-badge sourced from the registry; a featured band of
+ * Tier-1 verified platforms leads, then a dense directory for the long tail. The
+ * grid uses auto-fill so incomplete rows never leave half-empty `bg-card` cells.
  *
- * Category headers use PLAIN mono labels, not `NN ·` numbering (D9, decided
- * in-task — see the comment above CATEGORY_TABS). Filter pills became mono text
- * tabs on the FAQ-rail recipe with a roving tabindex that moves DOM focus
- * (copied from HomeFAQ). Logo tiles are HairlineGrid cells (`bg-card`, logo +
- * name); brand logo colours stay — logos are logos.
- *
- * This route is client-auth-gated (pre-existing): a fresh unauthenticated
- * visitor lands on the marketing rail; an authenticated user gets DashboardShell.
- * The gate lives in `app/layout-content.tsx` and is untouched here.
+ * This route is client-auth-gated (pre-existing): an unauthenticated visitor
+ * gets the marketing rail; an authenticated user gets DashboardShell. The gate
+ * lives in `app/layout-content.tsx` and is untouched here.
  */
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
@@ -24,41 +19,62 @@ import Link from 'next/link'
 import { ArrowRightIcon, Button, SearchIcon, XIcon } from '@ciphera-net/facet'
 import { cn } from '@/lib/utils'
 import { MarketingSection } from '@/components/marketing/system/MarketingSection'
+import { TierBadge } from '@/components/integrations/TierBadge'
 import {
   integrations,
   categoryLabels,
   categoryOrder,
+  supportTierLabels,
+  type Integration,
   type IntegrationCategory,
+  type SupportTier,
 } from '@/lib/integrations'
 
-// * IDs of popular integrations shown in the pinned "Popular" row
-const POPULAR_IDS = [
-  'nextjs', 'react', 'wordpress', 'shopify', 'webflow', 'vue', 'astro', 'vercel',
-]
-
-// * D9 decision (decided in-task): category headers render as PLAIN mono labels
-// * (`Backend Frameworks`, `CMS & Blogging`, …) WITHOUT the `NN ·` numbering.
-// * Reasoning: (1) the design doc's own §5.7 doubt — numbering an integration
-// * directory is index-of-content chrome that competes with the logo grid for
-// * attention rather than anchoring it; (2) the labels are already long, multi-
-// * word names ("Static Sites & Documentation"), so a leading `03 ·` reads as
-// * clutter, not structure; (3) the tab rail already carries zero-padded COUNTS
-// * per category, so the numeric/index register is spoken there — repeating it
-// * on the headers would double the accounting. The page does not read flat
-// * because the tab rail, the search affordance, and the hairline cell borders
-// * supply the structure that numbering would otherwise provide.
 const CATEGORY_TABS: { key: IntegrationCategory | 'all'; label: string }[] = [
   { key: 'all', label: 'All' },
   ...categoryOrder.map((cat) => ({ key: cat, label: categoryLabels[cat] })),
 ]
 
+const TIER_FILTERS: { key: SupportTier | 'all'; label: string }[] = [
+  { key: 'all', label: 'All tiers' },
+  { key: 'verified', label: supportTierLabels.verified },
+  { key: 'standard-snippet', label: supportTierLabels['standard-snippet'] },
+  { key: 'plan-gated', label: supportTierLabels['plan-gated'] },
+  { key: 'special-handling', label: supportTierLabels['special-handling'] },
+]
+
+// * The featured band: Tier-1 verified platforms, ordered by pickerRank then name.
+const FEATURED = integrations
+  .filter((i) => i.supportTier === 'verified')
+  .sort((a, b) => {
+    if (a.pickerRank != null && b.pickerRank != null) return a.pickerRank - b.pickerRank
+    if (a.pickerRank != null) return -1
+    if (b.pickerRank != null) return 1
+    return a.name.localeCompare(b.name)
+  })
+
+function IntegrationCard({ integration }: { integration: Integration }) {
+  return (
+    <Link
+      href={`/integrations/${integration.id}`}
+      className="group flex items-center gap-3 bg-card p-4 transition-colors duration-150 ease-apple hover:bg-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none"
+    >
+      <div className="shrink-0 [&_svg]:h-6 [&_svg]:w-6">{integration.icon}</div>
+      <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
+        {integration.name}
+      </span>
+      <TierBadge tier={integration.supportTier} />
+    </Link>
+  )
+}
+
 export default function IntegrationsPage() {
   const [query, setQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState<IntegrationCategory | 'all'>('all')
+  const [activeTier, setActiveTier] = useState<SupportTier | 'all'>('all')
   const searchRef = useRef<HTMLInputElement>(null)
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
 
-  // * Keyboard shortcut: "/" to focus search
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (
@@ -73,15 +89,10 @@ export default function IntegrationsPage() {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [])
 
-  // * Filter integrations by search query + active category
-  const { filteredGroups, totalResults, popularIntegrations } = useMemo(() => {
+  const { filteredGroups, totalResults } = useMemo(() => {
     const q = query.toLowerCase().trim()
-    const isSearching = q.length > 0
-    const isCategoryFiltered = activeCategory !== 'all'
-
     let filtered = integrations
-
-    if (isSearching) {
+    if (q) {
       filtered = filtered.filter(
         (i) =>
           i.name.toLowerCase().includes(q) ||
@@ -89,10 +100,8 @@ export default function IntegrationsPage() {
           categoryLabels[i.category].toLowerCase().includes(q),
       )
     }
-
-    if (isCategoryFiltered) {
-      filtered = filtered.filter((i) => i.category === activeCategory)
-    }
+    if (activeCategory !== 'all') filtered = filtered.filter((i) => i.category === activeCategory)
+    if (activeTier !== 'all') filtered = filtered.filter((i) => i.supportTier === activeTier)
 
     const groups = categoryOrder
       .map((cat) => ({
@@ -102,24 +111,17 @@ export default function IntegrationsPage() {
       }))
       .filter((g) => g.items.length > 0)
 
-    // * Only show popular row when not searching/filtering
-    const popular =
-      !isSearching && !isCategoryFiltered
-        ? POPULAR_IDS.map((id) => integrations.find((i) => i.id === id)).filter(Boolean)
-        : []
-
-    return { filteredGroups: groups, totalResults: filtered.length, popularIntegrations: popular }
-  }, [query, activeCategory])
+    return { filteredGroups: groups, totalResults: filtered.length }
+  }, [query, activeCategory, activeTier])
 
   const hasResults = filteredGroups.length > 0
-  const isFiltering = query.length > 0 || activeCategory !== 'all'
+  const isFiltering = query.length > 0 || activeCategory !== 'all' || activeTier !== 'all'
+  const showFeatured = !isFiltering
 
   const selectCategory = useCallback((cat: IntegrationCategory | 'all') => {
     setActiveCategory(cat)
   }, [])
 
-  // Roving tabindex: arrow keys move both selection and DOM focus along the rail
-  // (copied from HomeFAQ so the tab UI behaves identically across the surface).
   const handleTabKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
       const last = CATEGORY_TABS.length - 1
@@ -136,8 +138,6 @@ export default function IntegrationsPage() {
     [selectCategory],
   )
 
-  const activeIndex = CATEGORY_TABS.findIndex((t) => t.key === activeCategory)
-
   return (
     <>
       {/* ── HERO + RAIL ── */}
@@ -149,15 +149,12 @@ export default function IntegrationsPage() {
           </h1>
           <p className="mt-6 text-base leading-relaxed text-muted-foreground sm:text-lg">
             Connect Pulse with {integrations.length}+ frameworks, CMS platforms, and hosting
-            providers. One script tag — any stack, up and running in minutes.
+            providers. One script tag — any stack. Every platform below carries an honest support
+            tier so you know exactly what to expect.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Button asChild size="lg" variant="outline">
-              <a
-                href="https://docs.ciphera.net/pulse/script-installation"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
+              <a href="https://help.ciphera.net/docs/pulse/script-installation" target="_blank" rel="noopener noreferrer">
                 Installation docs
                 <ArrowRightIcon className="ml-2 h-4 w-4" aria-hidden="true" />
               </a>
@@ -165,7 +162,7 @@ export default function IntegrationsPage() {
           </div>
         </div>
 
-        {/* ── SEARCH + FILTER RAIL ── */}
+        {/* Search + filters */}
         <div className="mt-12">
           <div className="relative max-w-md">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
@@ -205,7 +202,7 @@ export default function IntegrationsPage() {
             </p>
           )}
 
-          {/* Filter tabs — mono text, roving tabindex WITH DOM focus following. */}
+          {/* Category tabs (roving tabindex) */}
           <div
             role="tablist"
             aria-label="Filter integrations by category"
@@ -221,14 +218,15 @@ export default function IntegrationsPage() {
                   }}
                   type="button"
                   role="tab"
-                  id={`integration-tab-${i}`}
                   tabIndex={isActive ? 0 : -1}
                   aria-selected={isActive}
                   onClick={() => selectCategory(tab.key)}
                   onKeyDown={(e) => handleTabKeyDown(e, i)}
                   className={cn(
-                    'py-1.5 text-left font-mono text-xs transition-colors duration-150 motion-reduce:transition-none',
-                    isActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
+                    'border-b py-1.5 text-left font-mono text-xs transition-colors duration-150 motion-reduce:transition-none',
+                    isActive
+                      ? 'border-brand-orange text-foreground'
+                      : 'border-transparent text-muted-foreground hover:text-foreground',
                   )}
                 >
                   {tab.label}
@@ -236,93 +234,89 @@ export default function IntegrationsPage() {
               )
             })}
           </div>
-        </div>
-      </MarketingSection>
 
-      {/* ── GRID ── */}
-      <MarketingSection aria-labelledby={`integration-tab-${activeIndex >= 0 ? activeIndex : 0}`}>
-        {hasResults ? (
-          <div className="space-y-16">
-            {/* Popular — pinned row, shown only in the unfiltered overview. */}
-            {popularIntegrations.length > 0 && (
-              <div>
-                <p className="mb-6 font-mono text-xs text-muted-foreground">Popular</p>
-                <div className="grid grid-cols-1 gap-px border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
-                  {popularIntegrations.map((integration) => (
-                    <div
-                      key={integration!.id}
-                      className="flex items-center gap-3 bg-card p-4"
-                    >
-                      <div className="shrink-0 [&_svg]:h-6 [&_svg]:w-6">{integration!.icon}</div>
-                      <span className="text-sm font-semibold text-foreground">
-                        {integration!.name}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Category groups — plain mono labels (D9). */}
-            {filteredGroups.map((group) => {
-              // Compact tiles in the default overview; full description cards when
-              // the visitor has narrowed to a category or is searching.
-              const compact = activeCategory === 'all' && query.trim() === ''
+          {/* Tier filter */}
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            {TIER_FILTERS.map((t) => {
+              const isActive = t.key === activeTier
               return (
-                <div key={group.category}>
-                  <p className="mb-6 font-mono text-xs text-muted-foreground">
-                    {group.label}
-                    <span className="ml-2 tabular-nums text-muted-foreground/60">
-                      {String(group.items.length).padStart(2, '0')}
-                    </span>
-                  </p>
-                  {compact ? (
-                    <div className="grid grid-cols-1 gap-px border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
-                      {group.items.map((integration) => (
-                        <div
-                          key={integration.id}
-                          className="flex items-center gap-3 bg-card p-4"
-                        >
-                          <div className="shrink-0 [&_svg]:h-6 [&_svg]:w-6">
-                            {integration.icon}
-                          </div>
-                          <span className="text-sm font-semibold text-foreground">
-                            {integration.name}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 gap-px border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
-                      {group.items.map((integration) => (
-                        <div key={integration.id} className="bg-card p-6">
-                          <div className="mb-6 [&_svg]:h-8 [&_svg]:w-8">
-                            {integration.icon}
-                          </div>
-                          <h3 className="mb-2 text-base font-semibold text-foreground">
-                            {integration.name}
-                          </h3>
-                          <p className="text-sm leading-relaxed text-muted-foreground">
-                            {integration.description}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => setActiveTier(t.key)}
+                  className={cn(
+                    'rounded-none border px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.08em] transition-colors duration-150 ease-apple motion-reduce:transition-none',
+                    isActive
+                      ? 'border-brand-orange bg-brand-orange/10 text-brand-orange'
+                      : 'border-border text-muted-foreground hover:text-foreground',
                   )}
-                </div>
+                >
+                  {t.label}
+                </button>
               )
             })}
           </div>
+        </div>
+      </MarketingSection>
+
+      {/* ── FEATURED (Tier-1 verified) ── */}
+      {showFeatured && (
+        <MarketingSection>
+          <p className="mb-6 font-mono text-xs text-muted-foreground">Verified · first-class support</p>
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-px border border-border bg-border">
+            {FEATURED.map((integration) => (
+              <Link
+                key={integration.id}
+                href={`/integrations/${integration.id}`}
+                className="group flex flex-col gap-3 bg-card p-5 transition-colors duration-150 ease-apple hover:bg-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="[&_svg]:h-8 [&_svg]:w-8">{integration.icon}</div>
+                  <TierBadge tier={integration.supportTier} />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-foreground">{integration.name}</h3>
+                  {integration.snippet?.label && (
+                    <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
+                      {integration.snippet.label}
+                    </p>
+                  )}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </MarketingSection>
+      )}
+
+      {/* ── DIRECTORY ── */}
+      <MarketingSection>
+        {hasResults ? (
+          <div className="space-y-14">
+            {filteredGroups.map((group) => (
+              <div key={group.category}>
+                <p className="mb-6 font-mono text-xs text-muted-foreground">
+                  {group.label}
+                  <span className="ml-2 tabular-nums text-muted-foreground/60">
+                    {String(group.items.length).padStart(2, '0')}
+                  </span>
+                </p>
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-px border border-border bg-border">
+                  {group.items.map((integration) => (
+                    <IntegrationCard key={integration.id} integration={integration} />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         ) : (
-          // No results — a quiet bordered notice.
           <div className="border border-border bg-card p-10 text-center">
             <p className="font-mono text-xs text-muted-foreground">No matches</p>
             <h3 className="mt-3 text-lg font-semibold text-foreground">
-              Nothing found for &ldquo;{query}&rdquo;
+              Nothing found{query && <> for &ldquo;{query}&rdquo;</>}
             </h3>
             <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
-              Let us know which integration you&apos;d like to see next and we&apos;ll take a
-              look.
+              Pulse is a single script tag, so it already works anywhere. Tell us which platform
+              you&apos;d like a dedicated guide for and we&apos;ll add it.
             </p>
             <div className="mt-6 flex justify-center">
               <Button asChild size="lg">
@@ -333,15 +327,13 @@ export default function IntegrationsPage() {
         )}
       </MarketingSection>
 
-      {/* ── REQUEST INTEGRATION — quiet bordered CTA row ── */}
+      {/* ── REQUEST CTA ── */}
       {hasResults && (
         <MarketingSection>
           <div className="flex flex-col items-start justify-between gap-6 border border-border bg-card p-8 sm:flex-row sm:items-center">
             <div>
               <p className="font-mono text-xs text-muted-foreground">Missing something?</p>
-              <p className="mt-3 text-lg font-semibold text-foreground">
-                Request an integration.
-              </p>
+              <p className="mt-3 text-lg font-semibold text-foreground">Request an integration.</p>
               <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
                 Pulse is a single script tag, so it already works anywhere. Tell us the platform
                 you&apos;d like a dedicated guide for and we&apos;ll add it.
