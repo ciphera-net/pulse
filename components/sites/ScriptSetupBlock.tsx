@@ -123,6 +123,14 @@ export default function ScriptSetupBlock({
   const pickerIntegrations = useMemo(() => getPickerIntegrations(), [])
   const selected: Integration | undefined = framework ? getIntegration(framework) : undefined
 
+  // * Defense-in-depth: the snippet is COPIED and pasted into the customer's
+  // * <head>, so a domain value carrying a double-quote could break out of the
+  // * data-domain attribute and inject an attacker-controlled src — defeating
+  // * the SRI pinning this panel exists to provide. Restrict to the DNS
+  // * hostname charset before interpolation. (The backend also validates the
+  // * hostname on create; this guarantees a safe snippet regardless.)
+  const safeDomain = site.domain.replace(/[^a-zA-Z0-9.-]/g, '')
+
   // * Build a script tag. Core tag carries the config attributes; add-on tags
   // * are minimal. SRI ⇒ the immutable versioned URL + integrity + crossorigin,
   // * never the rolling URL.
@@ -130,7 +138,7 @@ export default function ScriptSetupBlock({
     (file: string, isCore: boolean): string => {
       const attrs: string[] = ['defer']
       if (isCore) {
-        attrs.push(`data-domain="${site.domain}"`)
+        attrs.push(`data-domain="${safeDomain}"`)
         if (storage === 'session') attrs.push('data-storage="session"')
         if (storage === 'local' && ttl !== '24') attrs.push(`data-storage-ttl="${ttl}"`)
         for (const f of FEATURES) if (!features[f.key]) attrs.push(f.attr)
@@ -145,14 +153,14 @@ export default function ScriptSetupBlock({
       }
       return `<script ${attrs.join(' ')}></script>`
     },
-    [site.domain, storage, ttl, features, showSRI],
+    [safeDomain, storage, ttl, features, showSRI],
   )
 
   const scriptSnippet = useMemo(() => {
     // Idiomatic framework wiring (e.g. next/script) — only when NOT using SRI,
     // since SRI requires the literal tag form with an integrity attribute.
     if (selected?.snippet?.code && !showSRI) {
-      let snippet = selected.snippet.code.replace(/DOMAIN/g, site.domain)
+      let snippet = selected.snippet.code.replace(/DOMAIN/g, safeDomain)
       if (features.frustration) snippet += `\n${buildTag('script.frustration.js', false)}`
       if (features.interactions) snippet += `\n${buildTag('script.interactions.js', false)}`
       return snippet
@@ -161,7 +169,7 @@ export default function ScriptSetupBlock({
     if (features.frustration) snippet += `\n${buildTag('script.frustration.js', false)}`
     if (features.interactions) snippet += `\n${buildTag('script.interactions.js', false)}`
     return snippet
-  }, [selected, showSRI, site.domain, features, buildTag])
+  }, [selected, showSRI, safeDomain, features, buildTag])
 
   const copyScript = useCallback(() => {
     navigator.clipboard.writeText(scriptSnippet)
