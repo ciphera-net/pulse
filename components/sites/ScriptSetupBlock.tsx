@@ -456,7 +456,12 @@ export default function ScriptSetupBlock({
 
 // * ─── Inline install-health verify loop (Stage 1.1 telemetry) ────────────────
 function InstallVerify({ siteId, domain }: { siteId: string; domain: string }) {
-  const { data, isLoading } = useInstallStatus(siteId, { poll: true })
+  const { data, isLoading, error } = useInstallStatus(siteId, { poll: true })
+
+  // * Degrade quietly if the install-status endpoint isn't available yet (e.g. a
+  // * backend that predates this telemetry): show nothing rather than a
+  // * misleading perpetual "listening" state.
+  if (error && !data) return null
 
   const status = data?.install_status
   const lastSeen = data?.last_event_at ? relativeTime(data.last_event_at) : null
