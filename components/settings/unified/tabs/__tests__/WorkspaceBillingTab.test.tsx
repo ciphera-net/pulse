@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
-import type { SubscriptionDetails } from '@/lib/api/billing'
+import type { SubscriptionDetails, Invoice } from '@/lib/api/billing'
+import * as billingApi from '@/lib/api/billing'
 
 // --- Mocks ---------------------------------------------------------------
 
@@ -113,3 +114,85 @@ describe('WorkspaceBillingTab banners & states', () => {
     expect(screen.getAllByRole('radio').length).toBeGreaterThan(0)
   })
 })
+
+describe('WorkspaceBillingTab invoice amount formatting', () => {
+  // The component formats invoice amounts with Intl.NumberFormat(undefined, …),
+  // i.e. against the runtime's default locale. Runners disagree on that default,
+  // so we pin it: any `undefined` locale is coerced to a fixed one, and the
+  // expected string is derived from the SAME Intl call — the assertion tracks
+  // real Intl output for a known locale rather than a hard-coded glyph.
+  const FIXED_LOCALE = 'en-US'
+  const OriginalNumberFormat = Intl.NumberFormat
+
+  function fmt(currency: string, amount: number): string {
+    return new OriginalNumberFormat(FIXED_LOCALE, { style: 'currency', currency }).format(amount)
+  }
+
+  beforeEach(() => {
+    // Coerce the component's `undefined` locale to FIXED_LOCALE; leave explicit
+    // locales untouched. Subclass so `new Intl.NumberFormat(...)` stays a valid
+    // constructor and `supportedLocalesOf`/instanceof continue to work.
+    class PinnedNumberFormat extends OriginalNumberFormat {
+      constructor(locales?: string | string[], options?: Intl.NumberFormatOptions) {
+        super(locales ?? FIXED_LOCALE, options)
+      }
+    }
+    // eslint-disable-next-line no-global-assign
+    Intl.NumberFormat = PinnedNumberFormat as unknown as typeof Intl.NumberFormat
+  })
+
+  afterEach(() => {
+    Intl.NumberFormat = OriginalNumberFormat
+    vi.restoreAllMocks()
+  })
+
+  it('renders invoice total and VAT via locale currency formatting', async () => {
+    const invoice: Invoice = {
+      id: 'inv_1',
+      invoice_number: 'INV-2026-0001',
+      amount_cents: 100000,
+      vat_cents: 21000,
+      total_cents: 121000,
+      currency: 'EUR',
+      description: 'Team plan',
+      status: 'sent',
+      created_at: '2026-07-01T00:00:00Z',
+    }
+    vi.spyOn(billingApi, 'getInvoices').mockResolvedValue([invoice])
+
+    render(<WorkspaceBillingTab />)
+
+    // €1,210.00 total, €210.00 VAT — exactly what Intl produces for en-US/EUR.
+    await waitFor(() => expect(screen.getByText(fmt('EUR', 1210))).toBeTruthy())
+    expect(screen.getByText(new RegExp(escapeRegExp(fmt('EUR', 210))))).toBeTruthy()
+    // A hard-coded, locale-correct glyph check so a regression in locale wiring
+    // (e.g. dropping the grouping separator) is caught, not just self-consistent.
+    expect(screen.getByText('€1,210.00')).toBeTruthy()
+  })
+
+  it('formats a credit note as a negative amount with the invoice currency', async () => {
+    const creditNote: Invoice = {
+      id: 'inv_cn',
+      invoice_number: 'CN-2026-0007',
+      amount_cents: -5000,
+      vat_cents: -1050,
+      total_cents: -6050,
+      currency: 'EUR',
+      description: 'Proration credit',
+      status: 'sent',
+      document_type: 'credit_note',
+      created_at: '2026-07-02T00:00:00Z',
+    }
+    vi.spyOn(billingApi, 'getInvoices').mockResolvedValue([creditNote])
+
+    render(<WorkspaceBillingTab />)
+
+    // Amount is rendered as the absolute value with a leading minus glyph.
+    await waitFor(() => expect(screen.getByText(`−${fmt('EUR', 60.5)}`)).toBeTruthy())
+    expect(screen.getByText('Credit Note')).toBeTruthy()
+  })
+})
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
