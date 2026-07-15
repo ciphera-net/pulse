@@ -203,10 +203,11 @@ export interface CalculateVATParams {
   vat_id?: string
 }
 
-export async function calculateVAT(params: CalculateVATParams): Promise<VATResult> {
+export async function calculateVAT(params: CalculateVATParams, signal?: AbortSignal): Promise<VATResult> {
   return apiRequest<VATResult>('/api/billing/calculate-vat', {
     method: 'POST',
     body: JSON.stringify(params),
+    signal,
   })
 }
 

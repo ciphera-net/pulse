@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { SPRING, TIMING } from '@/lib/motion'
 import Select from '@/components/ui/select'
 import useSWR from 'swr'
-import { TRAFFIC_TIERS } from '@/lib/plans'
+import { TRAFFIC_TIERS, formatPlanName } from '@/lib/plans'
 import { COUNTRY_OPTIONS } from '@/lib/countries'
 import { calculateVAT, getPrices, type VATResult } from '@/lib/api/billing'
 
@@ -62,33 +62,47 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
     router.replace(`/checkout?${params.toString()}`, { scroll: false })
   }
 
-  const fetchVAT = useCallback(async (c: string, v: string, iv: string) => {
-    if (!c) { setVatResult(null); return }
-    setVatLoading(true)
-    try {
-      const result = await calculateVAT({ plan_id: plan, interval: iv, limit, country: c, vat_id: v || undefined })
-      setVatResult(result)
-    } catch {
-      setVatResult(null)
-    } finally {
-      setVatLoading(false)
-    }
-  }, [plan, limit])
-
-  // Auto-fetch when country or interval changes (using the already-verified VAT ID if any)
-  useEffect(() => {
-    if (!country) { setVatResult(null); return }
-    fetchVAT(country, verifiedVatId, currentInterval)
-  }, [country, currentInterval, fetchVAT, verifiedVatId])
-
-  // Clear verified state when VAT ID input changes after a successful verification
+  // Editing the VAT ID after a successful verification invalidates the verified
+  // state. This is pure state normalization — it does NOT fetch. Clearing
+  // `verifiedVatId` re-runs the single fetch effect below with the un-verified
+  // (21%) VAT ID, so there is exactly one fetch path.
   useEffect(() => {
     if (verifiedVatId !== '' && vatId !== verifiedVatId) {
       setVerifiedVatId('')
-      // Re-fetch without VAT ID to show the 21% rate
-      if (country) fetchVAT(country, '', currentInterval)
     }
-  }, [vatId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [vatId, verifiedVatId])
+
+  // Single, well-ordered VAT fetch path. Two guards prevent an out-of-order
+  // response from clobbering a newer one:
+  //   1. AbortController — a superseded in-flight request is aborted.
+  //   2. Monotonic sequence id — even if an aborted request still resolves
+  //      (e.g. it raced past the abort, or the client maps AbortError to a
+  //      network error), only the latest request's result is applied.
+  const vatSeq = useRef(0)
+  useEffect(() => {
+    if (!country) { setVatResult(null); setVatLoading(false); return }
+
+    const seq = ++vatSeq.current
+    const controller = new AbortController()
+    setVatLoading(true)
+
+    calculateVAT(
+      { plan_id: plan, interval: currentInterval, limit, country, vat_id: verifiedVatId || undefined },
+      controller.signal,
+    )
+      .then((result) => {
+        if (seq !== vatSeq.current) return // a newer request superseded this one
+        setVatResult(result)
+        setVatLoading(false)
+      })
+      .catch(() => {
+        if (seq !== vatSeq.current) return // stale failure — ignore
+        setVatResult(null)
+        setVatLoading(false)
+      })
+
+    return () => controller.abort()
+  }, [country, currentInterval, verifiedVatId, plan, limit])
 
   const handleVerifyVatId = () => {
     if (!vatId || !country) return
@@ -104,7 +118,7 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
       {/* Plan name + interval toggle */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-4">
         <div className="flex items-center gap-3">
-          <h2 className="text-lg font-semibold text-white capitalize">{plan}</h2>
+          <h2 className="text-lg font-semibold text-white">{formatPlanName(plan)}</h2>
         </div>
         <div className="flex items-center gap-1 p-1 bg-neutral-800/50 rounded-none sm:ml-auto">
           {(['month', 'year'] as const).map((iv) => (
