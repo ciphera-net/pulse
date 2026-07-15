@@ -194,9 +194,14 @@ export default function WorkspaceBillingTab() {
             )}
           </div>
           {canManageBilling ? (
-            <Button variant="default" className="text-sm" onClick={() => router.push(isCanceled ? '/setup/plan' : '/switch')}>
-              {isCanceled ? 'Resubscribe' : 'Change Plan'}
-            </Button>
+            // In past_due, "Change Plan" routes to /switch which bounces (the
+            // switch guard requires an active/trialing subscription). Hide it —
+            // the Update-payment-method CTA below is the correct action here.
+            isPastDue ? null : (
+              <Button variant="default" className="text-sm" onClick={() => router.push(isCanceled ? '/setup/plan' : '/switch')}>
+                {isCanceled ? 'Resubscribe' : 'Change Plan'}
+              </Button>
+            )
           ) : (
             <p className="text-xs text-neutral-500">Only the workspace owner can modify billing.</p>
           )}

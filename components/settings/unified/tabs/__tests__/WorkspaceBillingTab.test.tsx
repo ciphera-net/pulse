@@ -113,6 +113,25 @@ describe('WorkspaceBillingTab banners & states', () => {
     await waitFor(() => expect(screen.getByRole('radiogroup', { name: 'Payment method' })).toBeTruthy())
     expect(screen.getAllByRole('radio').length).toBeGreaterThan(0)
   })
+
+  it('shows Change Plan for an active subscription', async () => {
+    mockSubscription = { ...base, subscription_status: 'active' }
+    render(<WorkspaceBillingTab />)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Change Plan' })).toBeTruthy())
+  })
+
+  it('hides Change Plan in past_due (the Update-payment-method CTA is the correct action)', async () => {
+    // /switch bounces in past_due (its guard requires active/trialing), so the
+    // Change Plan button must not be offered here.
+    mockSubscription = { ...base, subscription_status: 'past_due' }
+    render(<WorkspaceBillingTab />)
+    await waitFor(() =>
+      expect(screen.getByText(/Payment past due — update your payment method to keep your plan/i)).toBeTruthy(),
+    )
+    expect(screen.queryByRole('button', { name: 'Change Plan' })).toBeNull()
+    // The Update-payment-method CTA remains available (banner + actions row).
+    expect(screen.getAllByRole('button', { name: /Update payment method/i }).length).toBeGreaterThan(0)
+  })
 })
 
 describe('WorkspaceBillingTab invoice amount formatting', () => {
