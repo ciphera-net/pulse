@@ -6,15 +6,23 @@ export interface TaxID {
   country?: string
 }
 
+/**
+ * Subscription lifecycle status. `''` means never subscribed (free/Hobby tier).
+ * Mirrors the backend state machine (`internal/billing/state.go`).
+ */
+export type SubscriptionStatus = 'active' | 'trialing' | 'past_due' | 'canceled' | ''
+
 export interface SubscriptionDetails {
   plan_id: string
-  subscription_status: string
+  subscription_status: SubscriptionStatus
   current_period_end: string
   billing_interval: string
   pageview_limit: number
   has_payment_method: boolean
   /** True when subscription is set to cancel at the end of the current period. */
   cancel_at_period_end?: boolean
+  /** ISO timestamp at which a scheduled cancellation takes effect (present when cancel_at_period_end). */
+  cancel_effective_at?: string
   /** Number of sites for the org (billing usage). Present when backend supports usage API. */
   sites_count?: number
   /** Pageviews in current billing period (when pageview_limit > 0). Present when backend supports usage API. */
@@ -72,8 +80,18 @@ export interface ChangePlanParams {
 }
 
 
-export async function changePlan(params: ChangePlanParams): Promise<{ ok: boolean }> {
-  return apiRequest<{ ok: boolean }>('/api/billing/change-plan', {
+export interface ChangePlanResult {
+  ok: boolean
+  /**
+   * True when the plan change is contingent on an async payment confirmation
+   * (grant-after-payment upgrades). The entitlement is NOT applied yet — it
+   * lands when the payment webhook confirms. UI must not imply it took effect.
+   */
+  pending?: boolean
+}
+
+export async function changePlan(params: ChangePlanParams): Promise<ChangePlanResult> {
+  return apiRequest<ChangePlanResult>('/api/billing/change-plan', {
     method: 'POST',
     body: JSON.stringify(params),
   })
