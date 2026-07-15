@@ -43,7 +43,7 @@ export default function SetupPlanPage() {
   const router = useRouter()
   const { pendingPlan, completeStep } = useSetup()
   const { data: subscription } = useSubscription()
-  const { data: prices, error: pricesError, isLoading: pricesLoading, mutate: retryPrices } = useSWR('plan-prices', getPrices)
+  const { data: prices, error: pricesError, isValidating: pricesValidating, mutate: retryPrices } = useSWR('plan-prices', getPrices)
   const planRefs = useRef<(HTMLButtonElement | null)[]>([])
 
   const [selectedPlan, setSelectedPlan] = useState<string | null>(pendingPlan?.planId ?? null)
@@ -92,6 +92,7 @@ export default function SetupPlanPage() {
     if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') target = (index - 1 + PLANS.length) % PLANS.length
     if (target === null) return
     e.preventDefault()
+    setSelectedPlan(PLANS[target].id)
     planRefs.current[target]?.focus()
   }
 
@@ -254,8 +255,8 @@ export default function SetupPlanPage() {
               <div className="rounded-none border border-red-900/50 bg-red-950/20 p-6 text-center">
                 <WarningCircle size={20} weight="fill" className="text-red-400 mx-auto mb-2" />
                 <p className="text-sm text-red-300 mb-4">Couldn&apos;t load plan pricing. Please try again.</p>
-                <Button variant="secondary" className="text-sm" disabled={pricesLoading} onClick={() => retryPrices()}>
-                  {pricesLoading ? 'Retrying...' : 'Retry'}
+                <Button variant="secondary" className="text-sm" disabled={pricesValidating} onClick={() => retryPrices()}>
+                  {pricesValidating ? 'Retrying...' : 'Retry'}
                 </Button>
               </div>
             ) : (
