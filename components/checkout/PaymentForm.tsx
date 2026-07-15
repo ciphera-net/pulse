@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Lock, ShieldCheck } from '@phosphor-icons/react'
 import { createCheckoutSession } from '@/lib/api/billing'
 import { cdnUrl } from '@/lib/cdn'
@@ -32,15 +32,27 @@ export default function PaymentForm({ plan, interval, limit, country, vatId, bus
   const [selectedMethod, setSelectedMethod] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  // Synchronous in-flight guard. `submitting` (React state) re-renders too late
+  // to block a second click fired before the re-render commits — a ref flips
+  // immediately, closing that race.
+  const inFlight = useRef(false)
+  const methodRefs = useRef<(HTMLButtonElement | null)[]>([])
 
   useEffect(() => {
-    const reset = (e: PageTransitionEvent) => { if (e.persisted) setSubmitting(false) }
+    // DELIBERATE: re-enable the submit button when the page is restored from
+    // bfcache (Back after being redirected to the payment provider). A returning
+    // user must be able to retry — do not remove this to "fix" double-submit;
+    // the inFlight ref + `submitting` state already guard concurrent submits.
+    const reset = (e: PageTransitionEvent) => {
+      if (e.persisted) { inFlight.current = false; setSubmitting(false) }
+    }
     window.addEventListener('pageshow', reset)
     return () => window.removeEventListener('pageshow', reset)
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (inFlight.current) return
     setFormError(null)
 
     if (!selectedMethod) {
@@ -57,6 +69,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId, bus
       return
     }
 
+    inFlight.current = true
     setSubmitting(true)
 
     try {
@@ -76,35 +89,60 @@ export default function PaymentForm({ plan, interval, limit, country, vatId, bus
 
       window.location.href = url
     } catch (err) {
+      inFlight.current = false
       setFormError((err as Error)?.message || 'Payment failed. Please try again.')
       setSubmitting(false)
     }
+  }
+
+  const selectMethod = (id: string) => { setSelectedMethod(id); setFormError(null) }
+
+  const onMethodKeyDown = (e: React.KeyboardEvent, index: number) => {
+    let target: number | null = null
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') target = (index + 1) % PAYMENT_METHODS.length
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') target = (index - 1 + PAYMENT_METHODS.length) % PAYMENT_METHODS.length
+    if (target === null) return
+    e.preventDefault()
+    selectMethod(PAYMENT_METHODS[target].id)
+    methodRefs.current[target]?.focus()
   }
 
   return (
     <form onSubmit={handleSubmit} className="rounded-none bg-card border border-border p-6">
       <h2 className="text-lg font-semibold text-white mb-4">Payment method</h2>
 
-      <div className="grid grid-cols-3 gap-2 mb-5">
-        {PAYMENT_METHODS.map((method) => (
-          <button
-            key={method.id}
-            type="button"
-            onClick={() => { setSelectedMethod(method.id); setFormError(null) }}
-            className={`flex flex-col items-center justify-center gap-1.5 rounded-none border h-[60px] text-xs transition-all duration-base ${
-              selectedMethod === method.id
-                ? 'border-brand-orange bg-brand-orange/5 text-white'
-                : 'border-neutral-700/50 bg-neutral-800/30 text-neutral-400 hover:border-neutral-600'
-            } ease-apple`}
-          >
-            <div className="flex items-center gap-1 bg-white rounded-none px-1.5 py-1">
-              {method.icons.map((icon) => (
-                <img key={icon} src={cdnUrl(icon)} alt="" className="h-5 w-auto" />
-              ))}
-            </div>
-            <span>{method.label}</span>
-          </button>
-        ))}
+      <div role="radiogroup" aria-label="Payment method" className="grid grid-cols-3 gap-2 mb-5">
+        {PAYMENT_METHODS.map((method, i) => {
+          const selected = selectedMethod === method.id
+          // Roving tabindex: the selected option is the tab stop, or the first
+          // option when nothing is selected yet.
+          const isTabStop = selected || (!selectedMethod && i === 0)
+          return (
+            <button
+              key={method.id}
+              ref={(el) => { methodRefs.current[i] = el }}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              aria-label={method.label}
+              tabIndex={isTabStop ? 0 : -1}
+              onClick={() => selectMethod(method.id)}
+              onKeyDown={(e) => onMethodKeyDown(e, i)}
+              className={`flex flex-col items-center justify-center gap-1.5 rounded-none border h-[60px] text-xs transition-all duration-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange ${
+                selected
+                  ? 'border-brand-orange bg-brand-orange/5 text-white'
+                  : 'border-neutral-700/50 bg-neutral-800/30 text-neutral-400 hover:border-neutral-600'
+              } ease-apple`}
+            >
+              <div className="flex items-center gap-1 bg-white rounded-none px-1.5 py-1">
+                {method.icons.map((icon) => (
+                  <img key={icon} src={cdnUrl(icon)} alt="" className="h-5 w-auto" />
+                ))}
+              </div>
+              <span>{method.label}</span>
+            </button>
+          )
+        })}
       </div>
 
       {selectedMethod && (
