@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import useSWR from 'swr'
-import { Check } from '@phosphor-icons/react'
+import { Check, WarningCircle } from '@phosphor-icons/react'
 import { useSetup } from '@/lib/setup/context'
 import { useSubscription } from '@/lib/swr/dashboard'
 import { getPrices } from '@/lib/api/billing'
@@ -43,7 +43,8 @@ export default function SetupPlanPage() {
   const router = useRouter()
   const { pendingPlan, completeStep } = useSetup()
   const { data: subscription } = useSubscription()
-  const { data: prices } = useSWR('plan-prices', getPrices)
+  const { data: prices, error: pricesError, isLoading: pricesLoading, mutate: retryPrices } = useSWR('plan-prices', getPrices)
+  const planRefs = useRef<(HTMLButtonElement | null)[]>([])
 
   const [selectedPlan, setSelectedPlan] = useState<string | null>(pendingPlan?.planId ?? null)
   const [isYearly, setIsYearly] = useState(pendingPlan?.interval === 'year')
@@ -83,6 +84,15 @@ export default function SetupPlanPage() {
     const yearlyTotal = Math.round((monthly * 11) * 100) / 100
     const effectiveMonthly = Math.round((yearlyTotal / 12) * 100) / 100
     return { monthly, effectiveMonthly, yearlyTotal }
+  }
+
+  const onPlanKeyDown = (e: React.KeyboardEvent, index: number) => {
+    let target: number | null = null
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') target = (index + 1) % PLANS.length
+    if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') target = (index - 1 + PLANS.length) % PLANS.length
+    if (target === null) return
+    e.preventDefault()
+    planRefs.current[target]?.focus()
   }
 
   const selectedInterval = isYearly ? 'year' as const : 'month' as const
@@ -240,15 +250,31 @@ export default function SetupPlanPage() {
             </div>
 
             {/* Plan cards */}
-            <div className="space-y-3">
-              {PLANS.map((plan) => {
+            {pricesError ? (
+              <div className="rounded-none border border-red-900/50 bg-red-950/20 p-6 text-center">
+                <WarningCircle size={20} weight="fill" className="text-red-400 mx-auto mb-2" />
+                <p className="text-sm text-red-300 mb-4">Couldn&apos;t load plan pricing. Please try again.</p>
+                <Button variant="secondary" className="text-sm" disabled={pricesLoading} onClick={() => retryPrices()}>
+                  {pricesLoading ? 'Retrying...' : 'Retry'}
+                </Button>
+              </div>
+            ) : (
+            <div role="radiogroup" aria-label="Choose a paid plan" className="space-y-3">
+              {PLANS.map((plan, i) => {
                 const price = getPrice(plan.id)
+                const selected = selectedPlan === plan.id
                 return (
                   <button
                     key={plan.id}
+                    ref={(el) => { planRefs.current[i] = el }}
                     type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    aria-label={plan.name}
+                    tabIndex={selected || (!selectedPlan && i === 0) ? 0 : -1}
                     onClick={() => setSelectedPlan(plan.id)}
-                    className={`w-full text-left p-4 rounded-none border transition-all ${
+                    onKeyDown={(e) => onPlanKeyDown(e, i)}
+                    className={`w-full text-left p-4 rounded-none border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange ${
                       plan.popular
                         ? 'border-brand-orange/40 bg-brand-orange/5 hover:border-brand-orange/70'
                         : 'border-neutral-800 hover:border-neutral-700 hover:bg-neutral-800/30'
@@ -289,6 +315,7 @@ export default function SetupPlanPage() {
                 )
               })}
             </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
